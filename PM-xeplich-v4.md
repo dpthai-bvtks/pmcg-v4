@@ -273,5 +273,22 @@ git add . && git commit -m "..." && git push origin main
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+### [v4.0.0-rev39] - 01/09/2026: Sửa Triệt Để Modal Đổi Mật Khẩu Không Hiện Khi Bấm
+- **Yêu cầu của người dùng**:
+  + Bấm "Đổi Mật Khẩu" ở tài khoản superadmin không hiện popup, cũng không có lỗi console.
+- **Phân tích nguyên nhân**:
+  + Modal `#modal-change-password` nằm trong body nhưng `<div class="container">` có `overflow: hidden` và `position: relative`. Trình duyệt hiện đại (Chrome/Firefox) sẽ clip `position: fixed` nếu phần tử tổ tiên trực tiếp/gián tiếp có `overflow: hidden` (ngay cả body), khiến modal dù có z-index cao vẫn không hiện ra.
+  + Ngoài ra, `style.setProperty('display', 'flex', 'important')` không phải luôn có độ ưu tiên cao hơn inline `style="display: none"` trong mọi trình duyệt.
+- **Giải pháp**:
+  + `js/app.js`: Viết lại hoàn toàn `openChangePasswordModal`. Khi mở, kiểm tra nếu modal chưa là con trực tiếp của `document.body` thì gọi `document.body.appendChild(modal)` để re-parent nó. Sau đó gán `style.cssText` đặt toàn bộ inline styles với `!important` để đảm bảo vượt qua mọi quy tắc CSS. z-index được nâng lên `2147483647` (giá trị tối đa).
+  + `closeChangePasswordModal`: Đơn giản hóa dùng `style.cssText = 'display:none !important'`.
+  + Đồng bộ phiên bản `v4.0.0-rev39`, cập nhật footer timestamp `23:10 01/09/2026` và cache buster cho `sw.js`.
+- **File sửa đổi**:
+  + `js/app.js`
+  + `index.html`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+
 
 

@@ -17,41 +17,47 @@ window.openChangePasswordModal = function(e) {
         if (typeof e.preventDefault === 'function') e.preventDefault();
         if (typeof e.stopPropagation === 'function') e.stopPropagation();
     }
+    // Đóng dropdown
     const userMenu = document.getElementById('user-dropdown-menu');
     if (userMenu) userMenu.style.display = 'none';
     const arrow = document.getElementById('user-dropdown-arrow');
     if (arrow) arrow.style.transform = 'rotate(0deg)';
 
+    // Populate username
     let currentUsername = 'admin';
     try {
         const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
         currentUsername = sess.username || currentUsername;
-    } catch(e) {}
+    } catch(e2) {}
 
-    const uInput = document.getElementById('cpw-username');
-    if (uInput) uInput.value = currentUsername;
-
-    const oldInput = document.getElementById('cpw-old-password');
-    const newInput = document.getElementById('cpw-new-password');
-    const confInput = document.getElementById('cpw-confirm-password');
-
-    if (oldInput) oldInput.value = '';
-    if (newInput) newInput.value = '';
-    if (confInput) confInput.value = '';
-
+    // Lấy modal và hiển thị trực tiếp bằng removeProperty để xóa display:none cũ
     const modal = document.getElementById('modal-change-password');
     if (modal) {
-        modal.style.display = 'flex';
-        modal.style.setProperty('display', 'flex', 'important');
+        // Gán username
+        const uInput = document.getElementById('cpw-username');
+        if (uInput) uInput.value = currentUsername;
+        const oldInput = document.getElementById('cpw-old-password');
+        const newInput = document.getElementById('cpw-new-password');
+        const confInput = document.getElementById('cpw-confirm-password');
+        if (oldInput) oldInput.value = '';
+        if (newInput) newInput.value = '';
+        if (confInput) confInput.value = '';
+
+        // Di chuyển modal lên body nếu chưa là con trực tiếp của body
+        if (modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
+        }
+        // Xóa style cũ và gán display mới
+        modal.style.cssText = 'display:flex !important; position:fixed !important; top:0 !important; left:0 !important; width:100vw !important; height:100vh !important; background:rgba(15,23,42,0.65) !important; backdrop-filter:blur(4px) !important; z-index:2147483647 !important; align-items:center !important; justify-content:center !important;';
+
+        setTimeout(() => { if (oldInput) oldInput.focus(); }, 100);
     }
-    setTimeout(() => { if (oldInput) oldInput.focus(); }, 100);
 };
 
 window.closeChangePasswordModal = function() {
     const modal = document.getElementById('modal-change-password');
     if (modal) {
-        modal.style.display = 'none';
-        modal.style.setProperty('display', 'none', 'important');
+        modal.style.cssText = 'display:none !important;';
     }
 };
 
