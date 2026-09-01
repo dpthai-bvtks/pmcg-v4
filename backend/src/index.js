@@ -137,11 +137,16 @@ async function processApiRequest(c) {
 
   await ensureSchema(db);
 
-  const res = await handleApiAction(action, args, env, c.req.raw, ctx, unitCode);
-  if (res && res.status === 200) {
-    dispatchBackgroundSync(action, args, env, ctx, unitCode);
+  try {
+    const res = await handleApiAction(action, args, env, c.req.raw, ctx, unitCode);
+    if (res && res.status === 200) {
+      dispatchBackgroundSync(action, args, env, ctx, unitCode);
+    }
+    return res;
+  } catch (err) {
+    console.error(`[API Action Error - ${action}]:`, err);
+    return error(`[Server Action Error - ${action}]: ${err.message || String(err)}`, 500);
   }
-  return res;
 }
 
 app.post('/', processApiRequest);
@@ -445,6 +450,99 @@ async function ensureSchema(db) {
     for (const sql of migrations) {
       try { await db.prepare(sql).run(); } catch(e) {}
     }
+    
+    // Multi-tenant table unique constraint migrations
+    try {
+      // 1. tai_khoan
+      const tkSql = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='tai_khoan'").first();
+      if (tkSql && tkSql.sql && (tkSql.sql.includes("username TEXT UNIQUE") || (tkSql.sql.includes("UNIQUE (username)") || tkSql.sql.includes("UNIQUE(username)")))) {
+        await db.prepare(`
+          CREATE TABLE IF NOT EXISTS tai_khoan_v4 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+            username TEXT NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'user',
+            permissions TEXT DEFAULT '',
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(unit_code, username)
+          )
+        `).run();
+        await db.prepare(`
+          INSERT OR IGNORE INTO tai_khoan_v4 (id, unit_code, username, password_hash, role, permissions, updated_at)
+          SELECT id, COALESCE(unit_code, 'bvtks_cs2'), username, password_hash, role, permissions, updated_at FROM tai_khoan
+        `).run();
+        await db.prepare("DROP TABLE tai_khoan").run();
+        await db.prepare("ALTER TABLE tai_khoan_v4 RENAME TO tai_khoan").run();
+        await db.prepare("CREATE INDEX IF NOT EXISTS idx_tai_khoan_unit ON tai_khoan(unit_code, username)").run();
+      }
+    } catch(e) {
+      console.warn("[Migrate tai_khoan error]:", e);
+    }
+
+    try {
+      // 2. cai_dat
+      const cdSql = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='cai_dat'").first();
+      if (cdSql && cdSql.sql && (cdSql.sql.includes("key TEXT UNIQUE") || (cdSql.sql.includes("UNIQUE (key)") || cdSql.sql.includes("UNIQUE(key)")))) {
+        await db.prepare(`
+          CREATE TABLE IF NOT EXISTS cai_dat_v4 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+            key TEXT NOT NULL,
+            value TEXT NOT NULL,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(unit_code, key)
+          )
+        `).run();
+        await db.prepare(`
+          INSERT OR IGNORE INTO cai_dat_v4 (id, unit_code, key, value, updated_at)
+          SELECT id, COALESCE(unit_code, 'bvtks_cs2'), key, value, updated_at FROM cai_dat
+        `).run();
+        await db.prepare("DROP TABLE cai_dat").run();
+        await db.prepare("ALTER TABLE cai_dat_v4 RENAME TO cai_dat").run();
+        await db.prepare("CREATE INDEX IF NOT EXISTS idx_cai_dat_unit ON cai_dat(unit_code, key)").run();
+      }
+    } catch(e) {
+      console.warn("[Migrate cai_dat error]:", e);
+    }
+
+    try {
+      // 3. nhan_su
+      const nsSql = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='nhan_su'").first();
+      if (nsSql && nsSql.sql && (nsSql.sql.includes("name TEXT UNIQUE") || (nsSql.sql.includes("UNIQUE (name)") || nsSql.sql.includes("UNIQUE(name)")))) {
+        await db.prepare(`
+          CREATE TABLE IF NOT EXISTS nhan_su_v4 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+            name TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'KTV',
+            system TEXT NOT NULL DEFAULT 'PHCN',
+            skills TEXT DEFAULT '',
+            fixed_busy TEXT DEFAULT '',
+            temp_busy TEXT DEFAULT '',
+            his_name TEXT DEFAULT '',
+            priority INTEGER DEFAULT 0,
+            trang_thai TEXT DEFAULT 'Đi làm',
+            thoi_gian_lam TEXT DEFAULT '07:30-11:30, 13:00-16:30',
+            nguoi_thay_the TEXT DEFAULT 'Không',
+            is_active INTEGER DEFAULT 1,
+            order_idx INTEGER DEFAULT 0,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(unit_code, name)
+          )
+        `).run();
+        await db.prepare(`
+          INSERT OR IGNORE INTO nhan_su_v4 (id, unit_code, name, role, system, skills, fixed_busy, temp_busy, his_name, priority, trang_thai, thoi_gian_lam, nguoi_thay_the, is_active, order_idx, updated_at)
+          SELECT id, COALESCE(unit_code, 'bvtks_cs2'), name, role, system, skills, fixed_busy, temp_busy, his_name, priority, trang_thai, thoi_gian_lam, nguoi_thay_the, is_active, order_idx, updated_at FROM nhan_su
+        `).run();
+        await db.prepare("DROP TABLE nhan_su").run();
+        await db.prepare("ALTER TABLE nhan_su_v4 RENAME TO nhan_su").run();
+        await db.prepare("CREATE INDEX IF NOT EXISTS idx_nhan_su_unit ON nhan_su(unit_code, name)").run();
+      }
+    } catch(e) {
+      console.warn("[Migrate nhan_su error]:", e);
+    }
+
     schemaEnsured = true;
   } catch(err) {
     console.warn("[ensureSchema error]:", err);
