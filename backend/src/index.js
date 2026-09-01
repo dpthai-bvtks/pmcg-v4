@@ -870,7 +870,16 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       // 1. Đổi mật khẩu Super Admin
       if (uName.toLowerCase() === "superadmin" || uName.toLowerCase() === "master") {
         const passHash = await hashPassword(oldPass);
-        const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = 'MASTER' AND key = 'superadmin_password_hash'").first();
+        let rec = null;
+        try {
+          rec = await db.prepare("SELECT id, value FROM cai_dat WHERE unit_code = 'MASTER' AND key = 'superadmin_password_hash'").first();
+        } catch(e) {}
+        if (!rec) {
+          try {
+            rec = await db.prepare("SELECT id, value FROM cai_dat WHERE key = 'superadmin_password_hash'").first();
+          } catch(e) {}
+        }
+
         let isOldValid = false;
         if (rec && rec.value) {
           isOldValid = (rec.value === passHash);
@@ -879,12 +888,23 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         }
 
         if (!isOldValid) {
-          return error("Mật khẩu cũ của Super Admin không chính xác!", 400);
+          return error("Mật khẩu hiện tại của Super Admin không chính xác!", 400);
         }
 
         const newHash = await hashPassword(newPass);
-        await db.prepare("INSERT INTO cai_dat (unit_code, key, value) VALUES ('MASTER', 'superadmin_password_hash', ?) ON CONFLICT(unit_code, key) DO UPDATE SET value = excluded.value")
-          .bind(newHash).run();
+        if (rec && rec.id) {
+          try {
+            await db.prepare("UPDATE cai_dat SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(newHash, rec.id).run();
+          } catch(e) {
+            await db.prepare("UPDATE cai_dat SET value = ? WHERE id = ?").bind(newHash, rec.id).run();
+          }
+        } else {
+          try {
+            await db.prepare("INSERT INTO cai_dat (unit_code, key, value) VALUES ('MASTER', 'superadmin_password_hash', ?)").bind(newHash).run();
+          } catch(e) {
+            await db.prepare("INSERT OR REPLACE INTO cai_dat (key, value) VALUES ('superadmin_password_hash', ?)").bind(newHash).run();
+          }
+        }
         return success({ message: "Đã đổi mật khẩu Super Admin thành công!" });
       }
 
@@ -2555,7 +2575,15 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       // 👑 1. Master Super Admin Backdoor (dành cho chủ phần mềm quản trị toàn hệ thống)
       if (username.toLowerCase() === "superadmin" || username.toLowerCase() === "master") {
         const passHash = await hashPassword(password);
-        const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = 'MASTER' AND key = 'superadmin_password_hash'").first();
+        let rec = null;
+        try {
+          rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = 'MASTER' AND key = 'superadmin_password_hash'").first();
+        } catch(e) {}
+        if (!rec) {
+          try {
+            rec = await db.prepare("SELECT value FROM cai_dat WHERE key = 'superadmin_password_hash'").first();
+          } catch(e) {}
+        }
         let isSuperValid = false;
         if (rec && rec.value) {
           isSuperValid = (rec.value === passHash);
