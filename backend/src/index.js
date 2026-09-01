@@ -2304,20 +2304,23 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     // 📅 CHẤM CÔNG (CHAM CONG) & NHÂN SỰ CHẤM CÔNG
     // ============================================================
     case "getEmployees": {
-      const rec = await db.prepare("SELECT value FROM cai_dat WHERE key = 'chamcong_employees'").first();
+      const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'chamcong_employees'").bind(unitCode).first();
       if (rec && rec.value) {
         try {
           const list = JSON.parse(rec.value);
-          if (Array.isArray(list) && list.length > 0) return success(list);
+          if (Array.isArray(list)) return success(list);
         } catch(e) {}
       }
-      const staffRes = await db.prepare("SELECT ten FROM nhan_su ORDER BY rowid ASC").all();
-      const names = (staffRes.results || []).map(r => r.ten).filter(Boolean);
-      if (names.length > 0) return success(names);
-      return success([
-        "Bs Khuyến", "Bs Thái", "KTV Phan Hiền", "KTV Đặng Thảo", "KTV Nguyễn Thủy",
-        "KTV Lan Hương", "KTV Phương Thảo", "KTV Nguyễn Lộc", "KTV Thùy Linh", "KTV Phạm Vân"
-      ]);
+      // Đối với đơn vị bvtks_cs2 mặc định thì cung cấp danh sách nhân sự chuẩn
+      if (unitCode === "bvtks_cs2") {
+        return success([
+          "Hoàng Đức Đạt", "Lê Thị Thu Hoa", "Nguyễn Thị Duyên Thảo", "Nguyễn Thu Hằng",
+          "Đặng Phong Thái", "Phạm Thạch Khuyến", "Nguyễn Thị Xuân Lương", "Nguyễn Thị Hà",
+          "Phan Thị Thu Hiền", "Lê Thị Thu Hiền", "Nguyễn Văn Khính", "Phạm Thị Thuyến", "Trần Thị Duyên"
+        ]);
+      }
+      // Các đơn vị khác mới tạo sẽ khởi đầu với danh sách rỗng để tự nhập
+      return success([]);
     }
 
     case "saveEmployees": {
@@ -2325,14 +2328,14 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       if (typeof list === "object" && list !== null && !Array.isArray(list)) {
         list = list.employees || list.list || [];
       }
-      await db.prepare("INSERT INTO cai_dat (key, value) VALUES ('chamcong_employees', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
-        .bind(JSON.stringify(list)).run();
+      await db.prepare("INSERT INTO cai_dat (unit_code, key, value) VALUES (?, 'chamcong_employees', ?) ON CONFLICT(unit_code, key) DO UPDATE SET value = excluded.value")
+        .bind(unitCode, JSON.stringify(list)).run();
       await bumpDataVersion(db);
       return success({ message: "Đã lưu danh sách nhân sự chấm công thành công!" });
     }
 
     case "getErrorConfig": {
-      const rec = await db.prepare("SELECT value FROM cai_dat WHERE key = 'error_config'").first();
+      const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'error_config'").bind(unitCode).first();
       if (rec && rec.value) {
         try { return success(JSON.parse(rec.value)); } catch(e) {}
       }
@@ -2341,8 +2344,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
     case "saveErrorConfig": {
       const config = args[0] || { staff: {} };
-      await db.prepare("INSERT INTO cai_dat (key, value) VALUES ('error_config', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
-        .bind(JSON.stringify(config)).run();
+      await db.prepare("INSERT INTO cai_dat (unit_code, key, value) VALUES (?, 'error_config', ?) ON CONFLICT(unit_code, key) DO UPDATE SET value = excluded.value")
+        .bind(unitCode, JSON.stringify(config)).run();
       await bumpDataVersion(db);
       return success({ message: "Đã lưu cấu hình thành công!" });
     }

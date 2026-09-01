@@ -36,10 +36,16 @@
             return 'KTV';
         }
 
-        const DEFAULT_CHAMCONG_EMPLOYEES = Object.keys(DEFAULT_CHAMCONG_STAFF);
+        function getChamCongStorageKey(key) {
+        const u = localStorage.getItem('pm_unit_code') || 'bvtks_cs2';
+        return key + '_' + u;
+    }
 
-        let adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES]; 
-        let adminChamCongStaffConfig = { ...DEFAULT_CHAMCONG_STAFF };
+    const DEFAULT_CHAMCONG_EMPLOYEES = Object.keys(DEFAULT_CHAMCONG_STAFF);
+
+        const isBVTKS_CS2 = (localStorage.getItem('pm_unit_code') || 'bvtks_cs2') === 'bvtks_cs2';
+        let adminChamCongEmployees = isBVTKS_CS2 ? [...DEFAULT_CHAMCONG_EMPLOYEES] : []; 
+        let adminChamCongStaffConfig = isBVTKS_CS2 ? { ...DEFAULT_CHAMCONG_STAFF } : {};
         let editAdminEmployeeIndex = -1;
 
         // ==========================================
@@ -104,11 +110,11 @@
 
         // Tự động nạp danh sách nhân sự từ cache khi khởi động
         try {
-            const cachedEmp = JSON.parse(localStorage.getItem('med_chamcong_employees') || '[]');
+            const cachedEmp = JSON.parse(localStorage.getItem(getChamCongStorageKey('med_chamcong_employees')) || '[]');
             if (Array.isArray(cachedEmp) && cachedEmp.length > 0) {
                 adminChamCongEmployees = cachedEmp;
             }
-            const cachedStaff = JSON.parse(localStorage.getItem('med_chamcong_staff_config') || '{}');
+            const cachedStaff = JSON.parse(localStorage.getItem(getChamCongStorageKey('med_chamcong_staff_config')) || '{}');
             if (cachedStaff && Object.keys(cachedStaff).length > 0) {
                 adminChamCongStaffConfig = cachedStaff;
             }
@@ -140,7 +146,7 @@
                 if (list.length > 0) {
                     // Extract names if list contains objects
                     adminChamCongEmployees = list.map(item => typeof item === 'object' && item !== null ? (item.ten || item.name || item.his_name) : item).filter(Boolean);
-                    try { localStorage.setItem('med_chamcong_employees', JSON.stringify(adminChamCongEmployees)); } catch(e){}
+                    try { localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees)); } catch(e){}
                     if (callback) callback(adminChamCongEmployees);
                 }
             }).withFailureHandler(err => {
@@ -168,7 +174,7 @@
                     adminChamCongEmployees = adminChamCongEmployees.map(item => typeof item === 'object' && item !== null ? (item.ten || item.name || item.his_name) : item).filter(Boolean);
                 }
                 if (adminChamCongEmployees.length > 0) {
-                    try { localStorage.setItem('med_chamcong_employees', JSON.stringify(adminChamCongEmployees)); } catch(e){}
+                    try { localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees)); } catch(e){}
                 }
                 google.script.run.withSuccessHandler(resConfig => {
                     window.hideGlobalLoading();
@@ -195,8 +201,8 @@
             adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
             adminChamCongStaffConfig = { ...DEFAULT_CHAMCONG_STAFF };
             try {
-                localStorage.setItem('med_chamcong_employees', JSON.stringify(adminChamCongEmployees));
-                localStorage.setItem('med_chamcong_staff_config', JSON.stringify(adminChamCongStaffConfig));
+                localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees));
+                localStorage.setItem(getChamCongStorageKey('med_chamcong_staff_config'), JSON.stringify(adminChamCongStaffConfig));
             } catch(e){}
             renderAdminChamCongTable();
 
@@ -2420,3 +2426,25 @@ function renderAdminChamCongTable() {
                 }
             });
         });
+
+window.resetChamCongForUnit = function(unitCode) {
+    const isDefault = (unitCode || 'bvtks_cs2') === 'bvtks_cs2';
+    const cachedEmp = localStorage.getItem(getChamCongStorageKey('med_chamcong_employees'));
+    const cachedConf = localStorage.getItem(getChamCongStorageKey('med_chamcong_staff_config'));
+    
+    if (cachedEmp) {
+        try { adminChamCongEmployees = JSON.parse(cachedEmp); } catch(e){ adminChamCongEmployees = isDefault ? [...DEFAULT_CHAMCONG_EMPLOYEES] : []; }
+    } else {
+        adminChamCongEmployees = isDefault ? [...DEFAULT_CHAMCONG_EMPLOYEES] : [];
+    }
+
+    if (cachedConf) {
+        try { adminChamCongStaffConfig = JSON.parse(cachedConf); } catch(e){ adminChamCongStaffConfig = isDefault ? { ...DEFAULT_CHAMCONG_STAFF } : {}; }
+    } else {
+        adminChamCongStaffConfig = isDefault ? { ...DEFAULT_CHAMCONG_STAFF } : {};
+    }
+
+    if (typeof renderAdminChamCongTable === 'function') {
+        renderAdminChamCongTable();
+    }
+};
