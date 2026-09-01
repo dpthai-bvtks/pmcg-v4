@@ -1,0 +1,14 @@
+name = "pmcg-api"
+main = "src/index.js"
+compatibility_date = "2024-08-01"
+
+# Cấu hình Database D1 đã tạo thành công
+[[d1_databases]]
+binding = "DB"
+database_name = "pmcg-db"
+database_id = "361c6030-0826-46e1-8a94-2f951f98a022"
+
+# CRON Trigger tự động chạy backup lúc 17:00 hàng ngày (10:00 UTC)
+[triggers]
+crons = ["0 10 * * *"]
+

@@ -1,0 +1,22 @@
+﻿{
+  "name": "pmcg-backend-v4",
+  "version": "4.0.0",
+  "type": "module",
+  "description": "Cloudflare Worker Hono Multi-Tenant Backend for PM-XepLich v4 SaaS",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:web": "wrangler pages deploy .. --project-name=pmcg-v4 --branch=main --commit-dirty=true",
+    "deploy:all": "wrangler deploy && wrangler pages deploy .. --project-name=pmcg-v4 --branch=main --commit-dirty=true",
+    "d1:init": "wrangler d1 execute pmcg-db --file=./schema.sql --remote"
+  },
+  "devDependencies": {
+    "wrangler": "^3.72.0"
+  },
+  "dependencies": {
+    "hono": "^4.6.0",
+    "puppeteer": "^25.8.0",
+    "xlsx": "^0.18.5"
+  }
+}

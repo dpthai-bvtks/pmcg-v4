@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /#tab-admin
+Disallow: /#tab-kiemtra
+Disallow: /#tab-busy
+Sitemap: https://xeplichthuthuat.io.vn/sitemap.xml

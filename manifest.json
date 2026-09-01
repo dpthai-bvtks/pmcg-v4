@@ -1,0 +1,33 @@
+{
+  "name": "Lịch Trình YHCT - PHCN",
+  "short_name": "T.I.M.E.S",
+  "description": "Phần Mềm Quản Lý & Xếp Lịch Điều Trị Y Học Cổ Truyền - Phục Hồi Chức Năng",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#0f766e",
+  "lang": "vi",
+  "icons": [
+    {
+      "src": "favicon-128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "logo-chuan-chinh.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["medical", "productivity", "utilities"]
+}

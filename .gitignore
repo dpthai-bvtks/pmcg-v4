@@ -1,0 +1,8 @@
+﻿node_modules/
+backend/node_modules/
+.wrangler/
+.env
+.DS_Store
+scratch_cache_update.js
+scratch/
+backend-backup/

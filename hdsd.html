@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hướng Dẫn Sử Dụng - T.I.M.E.S. System v3.2.5 | BVTKS CS2</title>
+    <meta name="description" content="Tài liệu hướng dẫn sử dụng chi tiết toàn diện hệ thống xếp lịch thủ thuật y học cổ truyền và phục hồi chức năng T.I.M.E.S. System v3.2.5 tích hợp Trí Tuệ Nhân Tạo AI, Đa Luồng và Quy Hoạch Toán Học CP-SAT.">
+    <link rel="icon" type="image/png" sizes="128x128" href="favicon-128.png?v=3.2.5">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3.2.5">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #1e3d2b;
+            --primary-light: #27ae60;
+            --primary-hover: #16a085;
+            --accent: #e67e22;
+            --accent-purple: #8e44ad;
+            --accent-blue: #2980b9;
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --sidebar-width: 320px;
+            --header-height: 70px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.12);
+        }
+
+        [data-theme="dark"] {
+            --primary: #27ae60;
+            --primary-light: #2ecc71;
+            --primary-hover: #1abc9c;
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.6);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            line-height: 1.7;
+            font-size: 15px;
+            scroll-behavior: smooth;
+        }
+
+        /* HEADER */
+        .doc-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--header-height);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            z-index: 1000;
+            transition: all 0.3s;
+        }
+
+        [data-theme="dark"] .doc-header {
+            background: rgba(30, 41, 59, 0.95);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .header-logo {
+            width: 44px;
+            height: 44px;
+            object-fit: contain;
+            cursor: pointer;
+        }
+
+        .header-title-group h1 {
+            font-size: 16px;
+            font-weight: 800;
+            color: #1e3d2b;
+            letter-spacing: -0.3px;
+            line-height: 1.2;
+        }
+
+        [data-theme="dark"] .header-title-group h1 {
+            color: #2ecc71;
+        }
+
+        .header-title-group p {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .search-box {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-input {
+            padding: 8px 14px 8px 36px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: var(--bg-main);
+            color: var(--text-main);
+            font-size: 13px;
+            width: 240px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .search-input:focus {
+            width: 300px;
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.15);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            font-size: 14px;
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        .btn-header {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-home {
+            background: #1e3d2b;
+            color: #fff;
+        }
+
+        .btn-home:hover {
+            background: #27ae60;
+            color: #fff;
+        }
+
+        .btn-theme, .btn-print {
+            background: var(--bg-main);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+        }
+
+        .btn-theme:hover, .btn-print:hover {
+            background: var(--border);
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            font-size: 22px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-main);
+        }
+
+        /* LAYOUT */
+        .doc-container {
+            display: flex;
+            margin-top: var(--header-height);
+            min-height: calc(100vh - var(--header-height));
+        }
+
+        /* SIDEBAR (TOC) */
+        .doc-sidebar {
+            width: var(--sidebar-width);
+            height: calc(100vh - var(--header-height));
+            position: sticky;
+            top: var(--header-height);
+            background: var(--bg-card);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 24px 16px;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            padding-left: 10px;
+        }
+
+        .toc-list {
+            list-style: none;
+        }
+
+        .toc-item {
+            margin-bottom: 4px;
+        }
+
+        .toc-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 13.5px;
+            font-weight: 500;
+            transition: all 0.15s;
+            line-height: 1.4;
+        }
+
+        .toc-link:hover {
+            background: rgba(39, 174, 96, 0.08);
+            color: var(--primary-light);
+        }
+
+        .toc-link.active {
+            background: rgba(39, 174, 96, 0.12);
+            color: #1e3d2b;
+            font-weight: 700;
+            border-left: 3px solid #27ae60;
+        }
+
+        [data-theme="dark"] .toc-link.active {
+            color: #2ecc71;
+        }
+
+        .toc-sub {
+            padding-left: 18px;
+            margin-top: 2px;
+        }
+
+        .toc-sub .toc-link {
+            font-size: 12.5px;
+            padding: 6px 10px;
+        }
+
+        /* MAIN CONTENT */
+        .doc-content {
+            flex: 1;
+            min-width: 0;
+            padding: 40px 60px 100px 60px;
+            max-width: 1050px;
+            margin: 0 auto;
+        }
+
+        /* TYPOGRAPHY */
+        .doc-hero {
+            background: linear-gradient(135deg, rgba(30,61,43,0.08) 0%, rgba(39,174,96,0.05) 100%);
+            border: 1px solid rgba(39,174,96,0.2);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 40px;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #27ae60;
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .hero-title {
+            font-size: 26px;
+            font-weight: 900;
+            color: #1e3d2b;
+            margin-bottom: 10px;
+            line-height: 1.3;
+        }
+
+        [data-theme="dark"] .hero-title {
+            color: #2ecc71;
+        }
+
+        .hero-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .hero-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        h2.section-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: #1e3d2b;
+            margin-top: 50px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+        }
+
+        [data-theme="dark"] h2.section-title {
+            color: #2ecc71;
+        }
+
+        h3.subsection-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-top: 30px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        p {
+            margin-bottom: 16px;
+            color: var(--text-main);
+        }
+
+        ul, ol {
+            margin-bottom: 18px;
+            padding-left: 24px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        /* CARDS & ALERTS */
+        .alert {
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 24px;
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .alert-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+            line-height: 1;
+            margin-top: 2px;
+        }
+
+        .alert-note {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1e40af;
+        }
+
+        .alert-tip {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+        }
+
+        .alert-important {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            color: #92400e;
+        }
+
+        .alert-ai {
+            background: #f5f3ff;
+            border: 1px solid #ddd6fe;
+            color: #5b21b6;
+        }
+
+        [data-theme="dark"] .alert-note {
+            background: rgba(30, 64, 175, 0.2);
+            border-color: #1e40af;
+            color: #93c5fd;
+        }
+        [data-theme="dark"] .alert-tip {
+            background: rgba(22, 101, 52, 0.2);
+            border-color: #166534;
+            color: #86efac;
+        }
+        [data-theme="dark"] .alert-important {
+            background: rgba(146, 64, 14, 0.2);
+            border-color: #92400e;
+            color: #fde68a;
+        }
+        [data-theme="dark"] .alert-ai {
+            background: rgba(91, 33, 182, 0.2);
+            border-color: #5b21b6;
+            color: #c4b5fd;
+        }
+
+        /* TABLES */
+        .table-responsive {
+            overflow-x: auto;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-card);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13.5px;
+            text-align: left;
+        }
+
+        th {
+            background: #f1f5f9;
+            color: #334155;
+            font-weight: 700;
+            padding: 12px 16px;
+            border-bottom: 2px solid var(--border);
+            white-space: nowrap;
+        }
+
+        [data-theme="dark"] th {
+            background: #1e293b;
+            color: #cbd5e1;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-main);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(0, 0, 0, 0.015);
+        }
+
+        [data-theme="dark"] tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* IMAGE CARDS */
+        .image-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s;
+        }
+
+        .image-card:hover {
+            box-shadow: var(--shadow-md);
+            border-color: rgba(39, 174, 96, 0.4);
+        }
+
+        .image-wrapper {
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            background: #f1f5f9;
+            cursor: pointer;
+        }
+
+        .image-wrapper img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 8px;
+            transition: opacity 0.2s, transform 0.3s;
+        }
+
+        .image-wrapper:hover img {
+            opacity: 0.95;
+            transform: scale(1.01);
+        }
+
+        .image-caption {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 6px 4px 6px;
+            font-size: 12.5px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .zoom-hint {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--primary-light);
+            font-weight: 600;
+        }
+
+        /* LIGHTBOX MODAL */
+        #lightbox {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 99999;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            backdrop-filter: blur(5px);
+        }
+
+        #lightbox img {
+            max-width: 95vw;
+            max-height: 90vh;
+            border-radius: 8px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+            object-fit: contain;
+        }
+
+        #lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 25px;
+            color: white;
+            font-size: 36px;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.2s;
+        }
+
+        #lightbox-close:hover {
+            color: #2ecc71;
+        }
+
+        /* FLOATING BACK TO TOP */
+        .back-to-top {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #1e3d2b;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: var(--shadow-md);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+            z-index: 900;
+            border: none;
+        }
+
+        .back-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .back-to-top:hover {
+            background: #27ae60;
+            transform: translateY(-3px);
+        }
+
+        /* CODE SNIPPET */
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12.5px;
+            background: rgba(0, 0, 0, 0.05);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #d97706;
+        }
+
+        [data-theme="dark"] code {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fbbf24;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 1024px) {
+            .doc-sidebar {
+                position: fixed;
+                left: -320px;
+                top: var(--header-height);
+                z-index: 999;
+                transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: var(--shadow-lg);
+            }
+
+            .doc-sidebar.open {
+                left: 0;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .doc-content {
+                padding: 30px 20px 80px 20px;
+            }
+
+            .search-input {
+                width: 160px;
+            }
+            .search-input:focus {
+                width: 200px;
+            }
+        }
+
+        /* PRINT STYLES */
+        @media print {
+            .doc-header, .doc-sidebar, .back-to-top, .search-box, .header-actions {
+                display: none !important;
+            }
+            .doc-container {
+                margin-top: 0;
+            }
+            .doc-content {
+                padding: 0;
+                max-width: 100%;
+            }
+            .image-card {
+                box-shadow: none;
+                border: 1px solid #ccc;
+                page-break-inside: avoid;
+            }
+            h2.section-title {
+                page-break-before: always;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header class="doc-header">
+        <div class="header-left">
+            <button class="mobile-menu-btn" onclick="toggleSidebar()" title="Mở Mục Lục">☰</button>
+            <img src="logo-chuan-chinh.png?v=3.2.5" alt="Logo" class="header-logo" onclick="window.location.href='index.html'">
+            <div class="header-title-group">
+                <h1>T.I.M.E.S. SYSTEM V3.2.5</h1>
+                <p>Khoa YHCT - PHCN | Bệnh Viện Than - Khoáng Sản CS2</p>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="doc-search" class="search-input" placeholder="Tìm kiếm nội dung..." onkeyup="searchDocument(this.value)">
+            </div>
+            <button class="btn-header btn-print" onclick="window.print()" title="In tài liệu ra máy in hoặc PDF">🖨️ In Hướng Dẫn</button>
+            <button class="btn-header btn-theme" id="theme-toggle" onclick="toggleTheme()" title="Đổi giao diện Sáng / Tối">🌙</button>
+            <a href="index.html" class="btn-header btn-home" title="Trở về phần mềm chính">🏠 Về Phần Mềm</a>
+        </div>
+    </header>
+
+    <!-- CONTAINER -->
+    <div class="doc-container">
+
+        <!-- SIDEBAR TOC -->
+        <aside class="doc-sidebar" id="doc-sidebar">
+            <div class="sidebar-header-label">📑 Mục Lục Tài Liệu</div>
+            <ul class="toc-list">
+                <li class="toc-item"><a href="#chuong-1" class="toc-link"><span>1.</span> Giới Thiệu & Kiến Trúc Tam Trụ</a></li>
+                <li class="toc-item"><a href="#chuong-2" class="toc-link"><span>2.</span> Đăng Nhập & Giao Diện</a></li>
+                <li class="toc-item"><a href="#chuong-3" class="toc-link"><span>3.</span> Dashboard Trang Chủ</a></li>
+                <li class="toc-item">
+                    <a href="#chuong-4" class="toc-link"><span>4.</span> Danh Mục Hệ Thống</a>
+                    <ul class="toc-list toc-sub">
+                        <li><a href="#chuong-4-1" class="toc-link">4.1 Máy Móc (63+ máy)</a></li>
+                        <li><a href="#chuong-4-2" class="toc-link">4.2 Thủ Thuật YHCT - PHCN</a></li>
+                        <li><a href="#chuong-4-3" class="toc-link">4.3 Nhân Sự Y Tế</a></li>
+                        <li><a href="#chuong-4-4" class="toc-link">4.4 Phòng & Giường Bệnh</a></li>
+                        <li><a href="#chuong-4-5" class="toc-link">4.5 Phác Đồ Lâm Sàng</a></li>
+                    </ul>
+                </li>
+                <li class="toc-item">
+                    <a href="#chuong-5" class="toc-link"><span>5.</span> Tiếp Nhận Bệnh Nhân</a>
+                    <ul class="toc-list toc-sub">
+                        <li><a href="#chuong-5-1" class="toc-link">5.1 Tiếp Nhận & Lọc BN</a></li>
+                        <li><a href="#chuong-5-2" class="toc-link">5.2 Giờ Bận & Ra Viện</a></li>
+                    </ul>
+                </li>
+                <li class="toc-item">
+                    <a href="#chuong-6" class="toc-link"><span>6.</span> Xếp Lịch 2 Kịch Bản Cốt Lõi</a>
+                    <ul class="toc-list toc-sub">
+                        <li><a href="#chuong-6-1" class="toc-link">6.1 Kịch Bản 1: Tối Ưu Nhanh</a></li>
+                        <li><a href="#chuong-6-2" class="toc-link">6.2 Kịch Bản 2: Toán Học CP-SAT</a></li>
+                        <li><a href="#chuong-6-3" class="toc-link">6.3 Ma Trận Lịch Trình & In Ấn</a></li>
+                    </ul>
+                </li>
+                <li class="toc-item"><a href="#chuong-7" class="toc-link"><span>7.</span> Xếp Lịch Thứ 7</a></li>
+                <li class="toc-item">
+                    <a href="#chuong-8" class="toc-link"><span>8.</span> Tiện Ích Kiểm Soát</a>
+                    <ul class="toc-list toc-sub">
+                        <li><a href="#chuong-8-1" class="toc-link">8.1 Kiểm Tra Xung Đột</a></li>
+                        <li><a href="#chuong-8-2" class="toc-link">8.2 Tìm Khung Giờ Rảnh</a></li>
+                    </ul>
+                </li>
+                <li class="toc-item">
+                    <a href="#chuong-9" class="toc-link"><span>9.</span> Chấm Công & Thống Kê</a>
+                    <ul class="toc-list toc-sub">
+                        <li><a href="#chuong-9-1" class="toc-link">9.1 Bảng Chấm Công</a></li>
+                        <li><a href="#chuong-9-2" class="toc-link">9.2 Thống Kê KPI & Thực Lĩnh</a></li>
+                    </ul>
+                </li>
+                <li class="toc-item">
+                    <a href="#chuong-10" class="toc-link"><span>10.</span> Trung Tâm Huấn Luyện AI</a>
+                    <ul class="toc-list toc-sub">
+                        <li><a href="#chuong-10-1" class="toc-link">10.1 Học Từ 20.449+ Dòng Lịch Sử</a></li>
+                        <li><a href="#chuong-10-2" class="toc-link">10.2 Tự Động Học Theo Giờ</a></li>
+                    </ul>
+                </li>
+                <li class="toc-item"><a href="#chuong-11" class="toc-link"><span>11.</span> Quản Trị & Sao Lưu Cloudflare D1</a></li>
+                <li class="toc-item"><a href="#chuong-12" class="toc-link"><span>12.</span> Phím Tắt & Mẹo Vận Hành</a></li>
+            </ul>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="doc-content">
+
+            <!-- HERO -->
+            <div class="doc-hero">
+                <div class="hero-badge">🌟 Phiên Bản v3.2.5 - AI & CP-SAT Supercharged Edition</div>
+                <h1 class="hero-title">TÀI LIỆU HƯỚNG DẪN SỬ DỤNG TOÀN DIỆN HỆ THỐNG XẾP LỊCH T.I.M.E.S. SYSTEM V3.2.5</h1>
+                <div class="hero-meta">
+                    <span>🏥 <b>Đơn vị:</b> Khoa YHCT - PHCN, BVTKS CS2</span>
+                    <span>🤖 <b>Công nghệ:</b> AI Machine Learning + CP-SAT Solver + Multi-Thread Workers</span>
+                    <span>⚡ <b>Tốc độ Engine:</b> 0.05 - 0.3s / 200+ ca</span>
+                    <span>📅 <b>Cập nhật:</b> 29/08/2026</span>
+                </div>
+            </div>
+
+            <!-- CHƯƠNG 1 -->
+            <section id="chuong-1">
+                <h2 class="section-title"><span>1.</span> GIỚI THIỆU TỔNG QUAN & KIẾN TRÚC TAM TRỤ TỐI ƯU HÓA</h2>
+                <p>Phần mềm <strong>T.I.M.E.S. System v3.2.5</strong> (<em>Treatment Intelligent Management & Efficiency Scheduler</em>) là nền tảng quản trị và tự động hóa xếp lịch thủ thuật Y học cổ truyền & Phục hồi chức năng thế hệ mới, vận hành hoàn toàn trên điện toán đám mây Cloudflare Edge D1 và xử lý cục bộ trên trình duyệt.</p>
+                
+                <div class="alert alert-ai">
+                    <div class="alert-icon">🏆</div>
+                    <div class="alert-content">
+                        <strong>Kiến Trúc Đột Phá "Tam Trụ Tối Ưu Hóa" (Tri-Pillar Optimization):</strong>
+                        <br>• <strong>🤖 Nhóm 3 (AI & Machine Learning Co-pilot)</strong>: Tự động học từ hơn <strong>20.449 dòng lịch sử thực tế trong 5 tháng qua</strong>, phân tích ma trận thói quen gán nhân sự - phòng bệnh, phân bổ khung giờ vàng YHCT/PHCN và nhận diện các nút thắt tắc nghẽn máy móc.
+                        <br>• <strong>🚀 Nhóm 2 (Đa Luồng Web Workers & Metaheuristics)</strong>: Khai thác song song <strong>2 - 8 nhân CPU</strong>, kết hợp Tabu Search (bộ nhớ cấm lặp) + Late Acceptance Hill Climbing (LAHC) + Nén khe hở lịch (*Gap-Compression*) cho tốc độ quét siêu tốc <strong>~0.1s</strong>.
+                        <br>• <strong>🧠 Nhóm 1 (Quy Hoạch Ràng Buộc Toán Học CP-SAT & Branch-and-Bound)</strong>: Áp dụng quy hoạch ràng buộc không gian rời rạc, tiếp nhận nghiệm mồi từ Nhóm 2 để rà soát toàn bộ cây nghiệm và giải cứu triệt để các ca xung đột máy hiếm.
+                    </div>
+                </div>
+
+                <p><strong>Những cam kết chất lượng của phiên bản v3.2.5:</strong></p>
+                <ul>
+                    <li><strong>0% Trùng Giờ</strong>: Tuyệt đối không trùng Bác sĩ, KTV, Máy móc, Giường bệnh hay khung giờ bận của bệnh nhân.</li>
+                    <li><strong>Tối Giản Hóa Giao Diện</strong>: Tinh gọn chỉ còn đúng <strong>2 Kịch Bản Xếp Lịch Cốt Lõi</strong> (Kịch bản 1: Tối ưu nhanh & Kịch bản 2: Toán học chuyên sâu).</li>
+                    <li><strong>Bảo Mật Tuyệt Đối & Không Chi Phí Máy Chủ</strong>: Toàn bộ quá trình tính toán diễn ra ngay trên CPU thiết bị của bác sĩ; dữ liệu lưu trữ bền vững trên Cloudflare SQLite D1.</li>
+                </ul>
+            </section>
+
+            <!-- CHƯƠNG 2 -->
+            <section id="chuong-2">
+                <h2 class="section-title"><span>2.</span> ĐĂNG NHẬP, BẢO MẬT & ĐIỀU HƯỚNG GIAO DIỆN</h2>
+                <p>Hệ thống hỗ trợ đăng nhập đa vai trò phân quyền (Admin toàn quyền hoặc User chỉ xem/thao tác tab được chỉ định).</p>
+
+                <div class="image-card">
+                    <div class="image-wrapper" onclick="openLightbox('docs/images/01_login.png')">
+                        <img src="docs/images/01_login.png" alt="Màn hình Đăng Nhập Glassmorphism">
+                    </div>
+                    <div class="image-caption">
+                        <span>Hình 2.1: Giao diện Đăng Nhập Hệ Thống An Toàn Glassmorphism</span>
+                        <span class="zoom-hint">🔍 Nhấp để phóng to</span>
+                    </div>
+                </div>
+
+                <h3 class="subsection-title">Các bước đăng nhập & thao tác nhanh:</h3>
+                <ol>
+                    <li>Nhập <strong>Tên đăng nhập</strong> và <strong>Mật khẩu</strong>, bấm <code>Enter</code> để đăng nhập.</li>
+                    <li><strong>Thanh Header Đa Năng</strong>:
+                        <ul>
+                            <li>Hiển thị tên người dùng và vai trò phân quyền.</li>
+                            <li>Nút <code>🌙/☀️</code>: Chuyển đổi linh hoạt giao diện Sáng / Tối.</li>
+                            <li>Nút <code>🟢 Cloudflare Main</code>: Xem trạng thái kết nối Cloudflare Worker & D1 Database.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Menu Ngang Trên Cùng</strong>: Chuyển đổi nhanh giữa các Tab chức năng (Bệnh Nhân, Xếp Lịch, Thứ 7, Giờ Bận, Chấm Công, Thống Kê, Tiện Ích, Kiểm Tra, Danh Mục, Cài Đặt).</li>
+                </ol>
+            </section>
+
+            <!-- CHƯƠNG 3 -->
+            <section id="chuong-3">
+                <h2 class="section-title"><span>3.</span> BẢNG ĐIỀU KHIỂN TRANG CHỦ (DASHBOARD)</h2>
+                <p>Dashboard cung cấp bức tranh tổng thể thời gian thực về tình hình tiếp nhận bệnh nhân, khối lượng thủ thuật và tiến độ điều phối trong ngày.</p>
+
+                <div class="image-card">
+                    <div class="image-wrapper" onclick="openLightbox('docs/images/02_dashboard.png')">
+                        <img src="docs/images/02_dashboard.png" alt="Bảng điều khiển Dashboard">
+                    </div>
+                    <div class="image-caption">
+                        <span>Hình 3.1: Dashboard Thống Kê Tổng Quan & Tiến Độ Điều Trị Trong Ngày</span>
+                        <span class="zoom-hint">🔍 Nhấp để phóng to</span>
+                    </div>
+                </div>
+
+                <h3 class="subsection-title">Các chỉ số then chốt trên Dashboard:</h3>
+                <ul>
+                    <li><strong>Chỉ số tổng hợp</strong>: Số Bác sĩ & KTV đi làm, Tổng số bệnh nhân có mặt, Tổng ca chỉ định, Số ca xếp thành công, Số ca rớt.</li>
+                    <li><strong>Tải trọng công việc nhân viên</strong>: Số lượng ca phân bổ thực tế cho từng nhân sự để đảm bảo công bằng.</li>
+                    <li><strong>Phân bố nhóm kỹ thuật</strong>: Thống kê số ca Điện châm, Thủy châm, Điện xung, Sóng ngắn, Parafin, Kéo giãn, Siêu âm...</li>
+                </ul>
+            </section>
+
+            <!-- CHƯƠNG 4 -->
+            <section id="chuong-4">
+                <h2 class="section-title"><span>4.</span> KHỐI QUẢN LÝ 5 DANH MỤC HỆ THỐNG</h2>
+
+                <h3 class="subsection-title" id="chuong-4-1">4.1 Quản Lý Danh Mục Máy Móc</h3>
+                <p>Quản lý toàn bộ 63+ máy móc, thiết bị điều trị hiện có tại khoa. Hỗ trợ sắp xếp thứ tự ưu tiên bằng thao tác kéo thả <code>☰</code> SortableJS.</p>
+
+                <div class="image-card">
+                    <div class="image-wrapper" onclick="openLightbox('docs/images/03_machines.png')">
+                        <img src="docs/images/03_machines.png" alt="Quản Lý Máy Móc">
+                    </div>
+                    <div class="image-caption">
+                        <span>Hình 4.1: Danh Mục Máy Móc & Điều Khiển Trạng Thái Sẵn Sàng / Hỏng / Bảo Trì</span>
+                        <span class="zoom-hint">🔍 Nhấp để phóng to</span>
+                    </div>
+                </div>
+
+                <h3 class="subsection-title" id="chuong-4-2">4.2 Quản Lý Danh Mục Thủ Thuật</h3>
+                <p>Cấu hình các thông số y khoa chuẩn cho từng kỹ thuật điều trị:</p>
+
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Thông số</th>
+                                <th>Ý nghĩa chuyên môn</th>
+                                <th>Quy tắc xếp lịch</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Tên Viết Tắt</strong></td>
+                                <td>Mã định danh hiển thị trên lịch & y lệnh</td>
+                                <td><code>DC</code> (Điện châm), <code>TC</code> (Thủy châm), <code>DX</code> (Điện xung)...</td>
+                            </tr>
+                            <tr>
+                                <td><strong>TG Thực Hiện</strong></td>
+                                <td>Thời gian nhân sự trực tiếp thao tác (phút)</td>
+                                <td>Bác sĩ/KTV chỉ bị khóa lịch trong thời gian này, sau đó rảnh tay đi làm ca khác.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>TG Thủ Thuật</strong></td>
+                                <td>Tổng thời gian máy duy trì trên người bệnh</td>
+                                <td>Giường và máy sẽ bị giữ chỗ liên tục suốt thời gian này.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Khoảng Cách Nghỉ</strong></td>
+                                <td>Thời gian đệm an toàn giữa 2 ca của cùng 1 BN</td>
+                                <td>Tránh dồn dập ca thủ thuật, giúp người bệnh hồi phục thể trạng.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Rút máy / Người phụ</strong></td>
+                                <td>Cấu hình điều dưỡng hỗ trợ rút máy</td>
+                                <td>Giải phóng Bác sĩ/KTV chính sớm hơn.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3 class="subsection-title" id="chuong-4-3">4.3 Quản Lý Nhân Sự Y Tế</h3>
+                <p>Quản lý Bác sĩ, KTV, Điều dưỡng, trạng thái đi làm, phân quyền danh sách kỹ năng chuyên môn và cài đặt giờ làm việc (07:30 - 11:30 & 13:00 - 16:30).</p>
+
+                <h3 class="subsection-title" id="chuong-4-4">4.4 Quản Lý Phòng & Giường Bệnh</h3>
+                <p>Cấu hình các phòng thủ thuật (Phòng 101, Phòng 102, Phòng 103...), số giường tối đa trong phòng, danh sách máy móc cố định và nhân sự phụ trách chính theo phòng.</p>
+
+                <h3 class="subsection-title" id="chuong-4-5">4.5 Quản Lý Phác Đồ Lâm Sàng</h3>
+                <p>Khai báo các gói phác đồ điều trị mẫu (ví dụ: Phác đồ Thoát vị đĩa đệm, Phác đồ Đau vai gáy, Phác đồ Di chứng tai biến...) để gán 1-chạm hàng loạt thủ thuật cho bệnh nhân mới.</p>
+            </section>
+
+            <!-- CHƯƠNG 5 -->
+            <section id="chuong-5">
+                <h2 class="section-title"><span>5.</span> KHỐI TIẾP NHẬN & QUẢN LÝ BỆNH NHÂN</h2>
+
+                <h3 class="subsection-title" id="chuong-5-1">5.1 Tiếp Nhận & Lọc Bệnh Nhân</h3>
+                <p>Tiếp nhận bệnh nhân nhanh chóng với bảng chọn checkbox 2 hệ YHCT & PHCN, hỗ trợ phân loại Nội trú / Ngoại trú và buổi điều trị (Sáng / Chiều / Tự động).</p>
+
+                <div class="image-card">
+                    <div class="image-wrapper" onclick="openLightbox('docs/images/07_patients.png')">
+                        <img src="docs/images/07_patients.png" alt="Tiếp Nhận Bệnh Nhân">
+                    </div>
+                    <div class="image-caption">
+                        <span>Hình 5.1: Giao diện Tiếp Nhận Bệnh Nhân & Bảng Chọn Nhanh Thủ Thuật</span>
+                        <span class="zoom-hint">🔍 Nhấp để phóng to</span>
+                    </div>
+                </div>
+
+                <h3 class="subsection-title" id="chuong-5-2">5.2 Khai Báo Giờ Bận & Giờ Ra Viện</h3>
+                <p>Hệ thống tôn trọng tuyệt đối các khoảng thời gian bận:</p>
+                <ul>
+                    <li><strong>Giờ bận của Bác sĩ / KTV</strong>: Đi hội chẩn, họp khoa, công tác đột xuất (VD: <code>08:30-09:30</code>).</li>
+                    <li><strong>Giờ bận của Bệnh nhân</strong>: Đi xét nghiệm, chụp X-quang, truyền dịch (VD: <code>09:00-10:00</code>).</li>
+                    <li><strong>Giờ ra viện trong ngày</strong>: Bệnh nhân ra viện lúc 15:30 sẽ được ưu tiên xếp xong toàn bộ thủ thuật trước 15:30.</li>
+                </ul>
+            </section>
+
+            <!-- CHƯƠNG 6 -->
+            <section id="chuong-6">
+                <h2 class="section-title"><span>6.</span> PHÂN HỆ XẾP LỊCH TỰ ĐỘNG - 2 KỊCH BẢN CỐT LÕI</h2>
+                <p>Khi bấm nút <strong>CHẠY XẾP LỊCH TỔNG</strong>, hộp thoại tinh gọn với <strong>đúng 2 Kịch Bản Tinh Hoa</strong> sẽ xuất hiện:</p>
+
+                <div class="image-card">
+                    <div class="image-wrapper" onclick="openLightbox('docs/images/09_schedule_strategy_modal.png')">
+                        <img src="docs/images/09_schedule_strategy_modal.png" alt="Hộp Thoại Chọn 2 Kịch Bản Xếp Lịch">
+                    </div>
+                    <div class="image-caption">
+                        <span>Hình 6.1: Hộp Thoại Chọn 2 Kịch Bản Xếp Lịch Cốt Lõi</span>
+                        <span class="zoom-hint">🔍 Nhấp để phóng to</span>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Kịch bản</th>
+                                <th>Đặc điểm công nghệ</th>
+                                <th>Thời gian chạy</th>
+                                <th>Trường hợp áp dụng</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>🚀 Kịch bản 1: Tối Ưu Nhanh</strong></td>
+                                <td>Web Worker đa luồng song song (4-8 nhân CPU) + Tabu Search + LAHC + Nén khe hở lịch.</td>
+                                <td><strong>0.1s - 0.3s</strong></td>
+                                <td>Dùng cho ngày làm việc thường quy (đạt tỷ lệ xếp thành công 100%).</td>
+                            </tr>
+                            <tr>
+                                <td><strong>🧠 Kịch bản 2: Toán Học Chuyên Sâu</strong></td>
+                                <td>Quy hoạch ràng buộc toán học CP-SAT + Hybrid Warm-Start + Branch-and-Bound rà soát toàn bộ cây nghiệm.</td>
+                                <td><strong>0.5s - 1.5s</strong></td>
+                                <td>Dùng cho ngày siêu cao điểm hoặc khi có nhiều ca phức tạp cần giải cứu xung đột.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3 class="subsection-title" id="chuong-6-3">6.3 Ma Trận Lịch Trình Chi Tiết & Thao Tác Bổ Trợ</h3>
+                <div class="image-card">
+                    <div class="image-wrapper" onclick="openLightbox('docs/images/09_schedule_table.png')">
+                        <img src="docs/images/09_schedule_table.png" alt="Bảng Ma Trận Lịch Trình Hoàn Chỉnh">
+                    </div>
+                    <div class="image-caption">
+                        <span>Hình 6.2: Ma Trận Xếp Lịch Chi Tiết Từng Khung Giờ Tuyệt Đối Không Trùng Lặp</span>
+                        <span class="zoom-hint">🔍 Nhấp để phóng to</span>
+                    </div>
+                </div>
+
+                <ul>
+                    <li>⚡ <strong>XẾP BỔ SUNG</strong>: Xếp thêm bệnh nhân mới đến muộn vào các khe trống còn lại mà không làm xáo trộn lịch của các bệnh nhân đã xếp trước đó.</li>
+                    <li>📤 <strong>XUẤT LỊCH Y LỆNH</strong>: Xuất file Excel chuẩn định dạng y lệnh bệnh viện để in ấn và dán tại các buồng bệnh.</li>
+                    <li>🖨 <strong>IN LỊCH TRÌNH</strong>: Xuất bản in theo từng phòng hoặc toàn khoa khổ giấy A4/A3.</li>
+                    <li>🟣 <strong>CHỐT SỔ & SANG NGÀY MỚI</strong>: Lưu dữ liệu ngày hôm nay vào bảng lịch sử D1 và chuẩn bị danh sách bệnh nhân cho ngày làm việc kế tiếp.</li>
+                </ul>
+            </section>
+
+            <!-- CHƯƠNG 7 -->
+            <section id="chuong-7">
+                <h2 class="section-title"><span>7.</span> PHÂN HỆ XẾP LỊCH THỨ 7 CHUYÊN BIỆT</h2>
+                <p>Dành riêng cho ca trực sáng Thứ 7 theo mô hình thẻ bệnh nhân (Card View) với thời gian điều trị cô đọng (07:30 - 11:30):</p>
+
+                <div class="image-card">
+                    <div class="image-wrapper" onclick="openLightbox('docs/images/10_sat.png')">
+                        <img src="docs/images/10_sat.png" alt="Xếp Lịch Thứ 7">
+                    </div>
+                    <div class="image-caption">
+                        <span>Hình 7.1: Giao Diện Xếp Lịch Thứ 7 Dạng Thẻ & Cài Đặt Giờ Sẵn Sàng (Giờ SS)</span>
+                        <span class="zoom-hint">🔍 Nhấp để phóng to</span>
+                    </div>
+                </div>
+
+                <ul>
+                    <li>Tích chọn danh mục thủ thuật làm riêng cho ngày Thứ 7 của từng bệnh nhân.</li>
+                    <li>Cài đặt <strong>Giờ Sẵn Sàng (Giờ SS)</strong> theo giờ thực tế bệnh nhân có mặt tại viện.</li>
+                    <li>Khai báo danh sách Bác sĩ / KTV đi trực qua nút <code>👥 Nhân sự đi làm</code> và bấm <strong>▶ XẾP LỊCH THỨ 7</strong>.</li>
+                </ul>
+            </section>
+
+            <!-- CHƯƠNG 8 -->
+            <section id="chuong-8">
+                <h2 class="section-title"><span>8.</span> CÁC TIỆN ÍCH KIỂM SOÁT & TRA CỨU THÔNG MINH</h2>
+
+                <h3 class="subsection-title" id="chuong-8-1">8.1 Tiện Ích Kiểm Tra Lỗi Lịch</h3>
+                <p>Tự động rà soát toàn bộ lịch trình và phát hiện ngay nếu có bất kỳ vi phạm nào về trùng Bác sĩ, trùng KTV, trùng Giường bệnh hay sai quy trình y tế.</p>
+
+                <h3 class="subsection-title" id="chuong-8-2">8.2 Tiện Ích Tìm Khung Giờ Rảnh</h3>
+                <p>Hỗ trợ tìm ngay Bác sĩ hoặc Máy móc đang rảnh rỗi trong các khung giờ sáng / chiều để tiếp nhận ca phát sinh hoặc đổi lịch theo yêu cầu của người bệnh.</p>
+            </section>
+
+            <!-- CHƯƠNG 9 -->
+            <section id="chuong-9">
+                <h2 class="section-title"><span>9.</span> KHỐI CHẤM CÔNG & THỐNG KÊ TỔNG HỢP</h2>
+
+                <h3 class="subsection-title" id="chuong-9-1">9.1 Bảng Chấm Công Điện Tử</h3>
+                <p>Chấm công trực tiếp theo tháng, phân loại ngày công (Đi làm, Trực, Phép, Nghỉ bù...), tự động tính tổng công và đồng bộ tức thì lên Cloudflare D1.</p>
+
+                <h3 class="subsection-title" id="chuong-9-2">9.2 Thống Kê Tổng Hợp & Xuất Thực Lĩnh</h3>
+                <p>Thống kê số lượng thủ thuật theo Phân loại Loại 1, Loại 2, Loại 3 của từng nhân sự, tính toán tiền công thực lĩnh và xuất báo cáo Excel chỉ với 1 cú nhấp chuột.</p>
+            </section>
+
+            <!-- CHƯƠNG 10 -->
+            <section id="chuong-10">
+                <h2 class="section-title"><span>10.</span> TRUNG TÂM HUẤN LUYỆN & TỐI ƯU HÓA TRÍ TUỆ NHÂN TẠO (AI)</h2>
+                <p>Nằm riêng biệt tại mục <strong>🤖 Huấn Luyện AI</strong> trong Menu Quản Trị, đây là trái tim điều phối thông minh của phần mềm:</p>
+
+                <div class="alert alert-ai">
+                    <div class="alert-icon">🧠</div>
+                    <div class="alert-content">
+                        <strong>AI Tự Động Học Từ Hơn 20.449+ Dòng Lịch Sử Thực Tế (5 Tháng Qua):</strong>
+                        <br>• <strong>Ma trận thói quen nhân sự</strong>: Học xem Bác sĩ/KTV nào chuyên làm thủ thuật nào tại phòng nào để gán chuẩn xác như điều phối viên kinh nghiệm.
+                        <br>• <strong>Khung giờ vàng</strong>: Tự động xếp các ca châm cứu/thủ công vào đầu giờ sáng, chia đều máy móc trong ngày.
+                        <br>• <strong>Dự báo tắc nghẽn</strong>: Phát hiện các máy có tải cao (Kéo giãn, Siêu âm, Sóng ngắn) để ưu tiên xử lý trước.
+                    </div>
+                </div>
+
+                <h3 class="subsection-title" id="chuong-10-1">10.1 Bảng Điều Khiển AI Thời Gian Thực</h3>
+                <ul>
+                    <li><strong>📊 Dữ liệu lịch sử đã học</strong>: Hiển thị chính xác số dòng thực tế từ bảng <code>lich_su</code> của Cloudflare D1 (tự động tăng dần theo thời gian).</li>
+                    <li><strong>⏰ Lần huấn luyện gần nhất</strong>: Hiển thị đầy đủ giờ phút giây và ngày tháng năm (ví dụ: <code>12:15:30 - 29/08/2026</code>).</li>
+                    <li><strong>👥 Cặp thói quen nhân sự</strong>: Số lượng mẫu kết hợp *(Nhân sự @ Phòng @ Thủ thuật)* đã được tối ưu.</li>
+                </ul>
+
+                <h3 class="subsection-title" id="chuong-10-2">10.2 Tự Động Huấn Luyện Định Kỳ Theo Giờ Chỉ Định</h3>
+                <p>Bác sĩ không cần phải nhớ bấm nút thủ công mỗi ngày. Hệ thống có tiến trình chạy nền tự động quét và huấn luyện lại AI hàng ngày theo khung giờ đã chọn (Mặc định: **`17:00`** hàng ngày). Ngoài ra, bác sĩ có thể bấm nút **`🤖 HUẤN LUYỆN AI`** bất cứ lúc nào để cập nhật tức thì.</p>
+            </section>
+
+            <!-- CHƯƠNG 11 -->
+            <section id="chuong-11">
+                <h2 class="section-title"><span>11.</span> QUẢN TRỊ HỆ THỐNG, BẢO MẬT & SAO LƯU CLOUDFLARE D1</h2>
+                <ul>
+                    <li><strong>Cài đặt hệ thống</strong>: Tùy chỉnh dòng chữ chạy thông báo toàn khoa, giờ chốt sổ tự động, thời gian YHCT kết thúc muộn vào giờ nghỉ trưa/chiều, và các trọng số phạt của thuật toán.</li>
+                    <li><strong>Quản lý tài khoản</strong>: Tạo mới, đổi mật khẩu và phân quyền chi tiết cho từng tài khoản nhân viên.</li>
+                    <li><strong>Tự động sao lưu lên Google Drive</strong>: Cấu hình Webhook Google Apps Script để Cloudflare tự động đẩy bản backup <code>.sql</code>/<code>.json</code> lên Google Drive của khoa hàng ngày lúc 17:00.</li>
+                </ul>
+            </section>
+
+            <!-- CHƯƠNG 12 -->
+            <section id="chuong-12">
+                <h2 class="section-title"><span>12.</span> BẢNG PHÍM TẮT & MẸO VẬN HÀNH TỐI ƯU</h2>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Phím tắt / Thao tác</th>
+                                <th>Chức năng</th>
+                                <th>Phân hệ áp dụng</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>Ctrl + F5</code></td>
+                                <td>Tải lại trang và xóa bộ nhớ cache trình duyệt để nạp bản cập nhật mới nhất</td>
+                                <td>Toàn hệ thống</td>
+                            </tr>
+                            <tr>
+                                <td><code>Enter</code></td>
+                                <td>Đăng nhập nhanh hoặc lưu form dữ liệu</td>
+                                <td>Đăng nhập / Modal</td>
+                            </tr>
+                            <tr>
+                                <td><code>Kéo thả ☰</code></td>
+                                <td>Thay đổi thứ tự ưu tiên của Bệnh nhân, Nhân sự, Máy móc, Phòng bệnh</td>
+                                <td>Các bảng danh mục</td>
+                            </tr>
+                            <tr>
+                                <td><code>Double Click ô</code></td>
+                                <td>Chỉnh sửa nhanh thông tin ca thủ thuật hoặc bệnh nhân</td>
+                                <td>Bảng bệnh nhân / Bảng lịch</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- LIGHTBOX MODAL -->
+    <div id="lightbox" onclick="closeLightbox()">
+        <span id="lightbox-close">&times;</span>
+        <img id="lightbox-img" src="" alt="Phóng to hình ảnh">
+    </div>
+
+    <!-- FLOATING BACK TO TOP BUTTON -->
+    <button class="back-to-top" id="btn-back-to-top" onclick="scrollToTop()" title="Cuộn lên đầu trang">↑</button>
+
+    <script>
+        // Lightbox Functionality
+        function openLightbox(src) {
+            const lb = document.getElementById('lightbox');
+            const img = document.getElementById('lightbox-img');
+            img.src = src;
+            lb.style.display = 'flex';
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox').style.display = 'none';
+        }
+
+        // Toggle Sidebar on Mobile
+        function toggleSidebar() {
+            document.getElementById('doc-sidebar').classList.toggle('open');
+        }
+
+        // Theme Toggle (Dark / Light)
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('doc_theme', newTheme);
+            updateThemeButton();
+        }
+
+        function updateThemeButton() {
+            const theme = document.documentElement.getAttribute('data-theme');
+            const btn = document.getElementById('theme-toggle');
+            if (btn) btn.innerText = theme === 'dark' ? '☀️' : '🌙';
+        }
+
+        // Search in document
+        function searchDocument(query) {
+            query = query.toLowerCase().trim();
+            const content = document.querySelector('.doc-content');
+            const sections = content.querySelectorAll('section, h2, h3, p, li, .image-card');
+
+            if (!query) {
+                sections.forEach(el => el.style.display = '');
+                return;
+            }
+
+            sections.forEach(el => {
+                const text = el.innerText.toLowerCase();
+                if (text.includes(query)) {
+                    el.style.display = '';
+                }
+            });
+        }
+
+        // Back to Top Scroll
+        window.addEventListener('scroll', () => {
+            const btn = document.getElementById('btn-back-to-top');
+            if (window.scrollY > 300) {
+                btn.classList.add('visible');
+            } else {
+                btn.classList.remove('visible');
+            }
+
+            // Update Active TOC link based on scroll position
+            const sections = document.querySelectorAll('section[id]');
+            let currentSecId = '';
+            sections.forEach(sec => {
+                const rect = sec.getBoundingClientRect();
+                if (rect.top <= 120 && rect.bottom >= 120) {
+                    currentSecId = sec.getAttribute('id');
+                }
+            });
+
+            if (currentSecId) {
+                document.querySelectorAll('.toc-link').forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === '#' + currentSecId) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+        });
+
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Init theme on load
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('doc_theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeButton();
+        });
+    </script>
+</body>
+</html>
