@@ -7,8 +7,8 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "deploy:web": "wrangler pages deploy .. --project-name=pmcg-v4 --branch=main --commit-dirty=true",
-    "deploy:all": "wrangler deploy && wrangler pages deploy .. --project-name=pmcg-v4 --branch=main --commit-dirty=true",
+    "deploy:web": "wrangler pages deploy .. --project-name=pmcg-v3 --branch=main --commit-dirty=true",
+    "deploy:all": "wrangler deploy && wrangler pages deploy .. --project-name=pmcg-v3 --branch=main --commit-dirty=true",
     "d1:init": "wrangler d1 execute pmcg-db --file=./schema.sql --remote"
   },
   "devDependencies": {
