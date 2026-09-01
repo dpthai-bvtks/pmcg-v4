@@ -6189,7 +6189,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             // Xây dựng ma trận dữ liệu Excel (9 Cột có Cột Phòng Điều Trị)
             const ws_data = [
-                ["BỆNH VIỆN THAN - KHOÁNG SẢN CS2 - KHOA YHCT & PHCN"],
+                [(localStorage.getItem('pm_unit_name') || 'Bệnh viện Than - Khoáng sản Cơ sở 2').toUpperCase() + " - KHOA YHCT & PHCN"],
                 ["BẢNG LỊCH TRÌNH ĐIỀU TRỊ THỦ THUẬT"],
                 [`Ngày thực hiện: ${displayDate}`],
                 [""], // Dòng trống cách quãng
@@ -6629,7 +6629,7 @@ window.renderSttOrderControl = function (type, i, total) {
                             {
                                 width: '*',
                                 text: [
-                                    { text: 'BỆNH VIỆN THAN - KHOÁNG SẢN CS2\n', bold: true, fontSize: 9.5 },
+                                    { text: (localStorage.getItem('pm_unit_name') || 'Bệnh viện Than - Khoáng sản Cơ sở 2').toUpperCase() + '\n', bold: true, fontSize: 9.5 },
                                     { text: 'KHOA YHCT - PHỤC HỒI CHỨC NĂNG', bold: true, fontSize: 10.5, color: '#1e3d2b' }
                                 ]
                             },

@@ -1418,14 +1418,14 @@ function renderAdminChamCongTable() {
             const daysInMonth = new Date(year, month, 0).getDate();
 
             const workbook = new ExcelJS.Workbook();
-            workbook.creator = 'T.I.M.E.S System - BVTKS CS2';
+            workbook.creator = 'T.I.M.E.S System - ' + (localStorage.getItem('pm_unit_name') || 'Bệnh viện Than - Khoáng sản Cơ sở 2');
             workbook.created = new Date();
             const ws = workbook.addWorksheet(`Chấm Công T${month}.${year}`, {
                 views: [{ showGridLines: true }]
             });
 
             // Tiêu đề bệnh viện
-            ws.getCell('A1').value = 'BỆNH VIỆN THAN - KHOÁNG SẢN CS2';
+            ws.getCell('A1').value = (localStorage.getItem('pm_unit_name') || 'Bệnh viện Than - Khoáng sản Cơ sở 2').toUpperCase();
             ws.getCell('A1').font = { name: 'Times New Roman', size: 11, bold: true };
             
             ws.getCell('A2').value = 'KHOA Y HỌC CỔ TRUYỀN - PHỤC HỒI CHỨC NĂNG';
@@ -1653,13 +1653,13 @@ function renderAdminChamCongTable() {
             const isOldPeriod = (timeInfo.year < 2026 || (timeInfo.year === 2026 && timeInfo.month < 7));
 
             const workbook = new ExcelJS.Workbook();
-            workbook.creator = 'T.I.M.E.S System - BVTKS CS2';
+            workbook.creator = 'T.I.M.E.S System - ' + (localStorage.getItem('pm_unit_name') || 'Bệnh viện Than - Khoáng sản Cơ sở 2');
             workbook.created = new Date();
 
             // ================= SHEET 1: BẢNG TỔNG HỢP CHI TIẾT =================
             const ws1 = workbook.addWorksheet('Bảng Tiền Chi Tiết', { views: [{ showGridLines: true }] });
             
-            ws1.getCell('A1').value = 'BỆNH VIỆN THAN - KHOÁNG SẢN CS2';
+            ws1.getCell('A1').value = (localStorage.getItem('pm_unit_name') || 'Bệnh viện Than - Khoáng sản Cơ sở 2').toUpperCase();
             ws1.getCell('A1').font = { name: 'Times New Roman', size: 11, bold: true };
             
             ws1.getCell('A2').value = 'KHOA Y HỌC CỔ TRUYỀN - PHỤC HỒI CHỨC NĂNG';
@@ -1876,7 +1876,7 @@ function renderAdminChamCongTable() {
 
             // ================= SHEET 2: TỔNG HỢP CÁC LOẠI THỦ THUẬT =================
             const ws2 = workbook.addWorksheet('Tổng Hợp Loại TT', { views: [{ showGridLines: true }] });
-            ws2.getCell('A1').value = 'BỆNH VIỆN THAN - KHOÁNG SẢN CS2';
+            ws2.getCell('A1').value = (localStorage.getItem('pm_unit_name') || 'Bệnh viện Than - Khoáng sản Cơ sở 2').toUpperCase();
             ws2.getCell('A1').font = { name: 'Times New Roman', size: 11, bold: true };
             ws2.getCell('A2').value = 'KHOA Y HỌC CỔ TRUYỀN - PHỤC HỒI CHỨC NĂNG';
             ws2.getCell('A2').font = { name: 'Times New Roman', size: 11, bold: true, italic: true };
@@ -1994,7 +1994,7 @@ function renderAdminChamCongTable() {
 
             // ================= SHEET 3: BẢNG THANH TOÁN TIỀN THỦ THUẬT =================
             const ws3 = workbook.addWorksheet('Bảng Thanh Toán', { views: [{ showGridLines: true }] });
-            ws3.getCell('A1').value = 'BỆNH VIỆN THAN - KHOÁNG SẢN CS2';
+            ws3.getCell('A1').value = (localStorage.getItem('pm_unit_name') || 'Bệnh viện Than - Khoáng sản Cơ sở 2').toUpperCase();
             ws3.getCell('A1').font = { name: 'Times New Roman', size: 11, bold: true };
             ws3.getCell('A2').value = 'KHOA Y HỌC CỔ TRUYỀN - PHỤC HỒI CHỨC NĂNG';
             ws3.getCell('A2').font = { name: 'Times New Roman', size: 11, bold: true, italic: true };
@@ -2152,14 +2152,14 @@ function renderAdminChamCongTable() {
             const isOldPeriod = (timeInfo.year < 2026 || (timeInfo.year === 2026 && timeInfo.month < 7));
 
             const workbook = new ExcelJS.Workbook();
-            workbook.creator = 'T.I.M.E.S System - BVTKS CS2';
+            workbook.creator = 'T.I.M.E.S System - ' + (localStorage.getItem('pm_unit_name') || 'Bệnh viện Than - Khoáng sản Cơ sở 2');
             workbook.created = new Date();
             const ws = workbook.addWorksheet('Bảng Thực Lĩnh', {
                 views: [{ showGridLines: true }]
             });
 
             // Tiêu đề bệnh viện
-            ws.getCell('A1').value = 'BỆNH VIỆN THAN - KHOÁNG SẢN CS2';
+            ws.getCell('A1').value = (localStorage.getItem('pm_unit_name') || 'Bệnh viện Than - Khoáng sản Cơ sở 2').toUpperCase();
             ws.getCell('A1').font = { name: 'Times New Roman', size: 11, bold: true };
             
             ws.getCell('A2').value = 'KHOA Y HỌC CỔ TRUYỀN - PHỤC HỒI CHỨC NĂNG';
