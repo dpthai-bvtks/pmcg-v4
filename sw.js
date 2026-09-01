@@ -3,7 +3,7 @@
  * Quản lý Cache đệm tĩnh, cho phép mở App ngoại tuyến (Offline-first) và tải tức thì.
  */
 
-const CACHE_NAME = 'pmcg-v4-cache-4.0.0-rev26';
+const CACHE_NAME = 'pmcg-v4-cache-4.0.0-rev28';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -99,4 +99,12 @@ self.addEventListener('fetch', (event) => {
       return cachedResponse || fetchPromise;
     })
   );
+});
+
+// Lắng nghe lệnh SKIP_WAITING từ trang chủ để cập nhật SW ngay lập tức
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    console.log('[Service Worker] Nhận SKIP_WAITING, kích hoạt ngay...');
+    self.skipWaiting();
+  }
 });
