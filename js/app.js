@@ -1116,11 +1116,10 @@ window.renderSttOrderControl = function (type, i, total) {
                         sessionId: 'sess_' + Date.now()
                     }));
 
-                    // Dynamic Brand White-labeling
-                    const appHosp = document.getElementById('app-hospital-name');
-                    if (appHosp) appHosp.innerText = uUnitName.toUpperCase();
-                    const mobTitle = document.getElementById('mobile-header-date');
-                    if (mobTitle) mobTitle.innerText = uUnitName;
+                    // Dynamic Brand Header Update
+                    if (typeof window.updateAppHeader === 'function') {
+                        window.updateAppHeader(uUnit, uRole);
+                    }
                     document.title = 'T.I.M.E.S System - Phần mềm xếp lịch thủ thuật thông minh';
 
                     // Super Admin UI handling

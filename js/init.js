@@ -1,3 +1,37 @@
+
+window.updateAppHeader = function(unitCode, role) {
+    const uCode = (unitCode || localStorage.getItem('pm_unit_code') || 'bvtks_cs2').toLowerCase();
+    let sessRole = role;
+    if (!sessRole) {
+        try {
+            const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
+            sessRole = sess.role || '';
+        } catch(e) {}
+    }
+
+    const appHosp = document.getElementById('app-hospital-name');
+    const appSub = document.getElementById('app-sub-title');
+    const appSlogan = document.getElementById('app-slogan');
+    const mobSub = document.getElementById('mobile-header-date');
+
+    if (sessRole === 'SUPER_ADMIN') {
+        if (appHosp) appHosp.innerText = 'T.I.M.E.S SYSTEM';
+        if (appSub) appSub.innerText = 'HỆ THỐNG QUẢN LÝ ĐƠN VỊ & BẢN QUYỀN SAAS';
+        if (appSlogan) appSlogan.innerText = 'TRUNG TÂM ĐIỀU HÀNH TOÀN CỤC';
+        if (mobSub) mobSub.innerText = 'Super Admin Portal';
+    } else if (uCode === 'bvtks_cs2') {
+        if (appHosp) appHosp.innerText = 'BỆNH VIỆN THAN - KHOÁNG SẢN CS2';
+        if (appSub) appSub.innerText = 'KHOA Y HỌC CỔ TRUYỀN - PHỤC HỒI CHỨC NĂNG';
+        if (appSlogan) appSlogan.innerText = 'Y HỌC TỐT, PHỤC HỒI NHANH';
+        if (mobSub) mobSub.innerText = 'Khoa YHCT - PHCN';
+    } else {
+        if (appHosp) appHosp.innerText = 'T.I.M.E.S SYSTEM';
+        if (appSub) appSub.innerText = 'Hệ thống xếp lịch thủ thuật YHCT- PHCN thông minh';
+        if (appSlogan) appSlogan.innerText = 'Nhanh gọn, tối ưu, chính xác';
+        if (mobSub) mobSub.innerText = 'YHCT - PHCN';
+    }
+};
+
 /* ==========================================
    T.I.M.E.S SYSTEM - INITIALIZATION & THEME
    ========================================== */
@@ -8,13 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const unitInput = document.getElementById('login-unit');
     if (unitInput) unitInput.value = savedUnit;
 
-    const savedUnitName = localStorage.getItem('pm_unit_name');
-    if (savedUnitName) {
-        const appHosp = document.getElementById('app-hospital-name');
-        if (appHosp) appHosp.innerText = savedUnitName.toUpperCase();
-        const mobTitle = document.getElementById('mobile-header-date');
-        if (mobTitle) mobTitle.innerText = savedUnitName;
-        document.title = 'T.I.M.E.S System - Phần mềm xếp lịch thủ thuật thông minh';
+    if (typeof window.updateAppHeader === 'function') {
+        window.updateAppHeader(savedUnit);
     }
 
     try {

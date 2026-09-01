@@ -303,13 +303,9 @@
                             title="Về trang chủ">
 
                         <div class="banner-text">
-
-                            <h1>BỆNH VIỆN THAN - KHOÁNG SẢN CS2</h1>
-
-                            <h2>KHOA Y HỌC CỔ TRUYỀN - PHỤC HỒI CHỨC NĂNG</h2>
-
-                            <p>Y HỌC TỐT, PHỤC HỒI NHANH</p>
-
+                            <h1 id="app-hospital-name">BỆNH VIỆN THAN - KHOÁNG SẢN CS2</h1>
+                            <h2 id="app-sub-title">KHOA Y HỌC CỔ TRUYỀN - PHỤC HỒI CHỨC NĂNG</h2>
+                            <p id="app-slogan">Y HỌC TỐT, PHỤC HỒI NHANH</p>
                         </div>
 
                     </div>
@@ -3219,7 +3215,7 @@
 
                     <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 3.2.6</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 14:24 01/09/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 14:32 01/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -3657,20 +3653,20 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.0.0-rev13"></script>
-    <script src="js/ai-scheduler.js?v=4.0.0-rev13"></script>
-    <script src="js/cp-solver.js?v=4.0.0-rev13"></script>
-    <script src="js/scheduler-engine.js?v=4.0.0-rev13"></script>
-    <script src="js/app.js?v=4.0.0-rev13"></script>
-    <script src="js/init.js?v=4.0.0-rev13"></script>
-    <script src="js/sync.js?v=4.0.0-rev13"></script>
-    <script src="js/thongke.js?v=4.0.0-rev13"></script>
+    <script src="js/offline-sync-engine.js?v=4.0.0-rev14"></script>
+    <script src="js/ai-scheduler.js?v=4.0.0-rev14"></script>
+    <script src="js/cp-solver.js?v=4.0.0-rev14"></script>
+    <script src="js/scheduler-engine.js?v=4.0.0-rev14"></script>
+    <script src="js/app.js?v=4.0.0-rev14"></script>
+    <script src="js/init.js?v=4.0.0-rev14"></script>
+    <script src="js/sync.js?v=4.0.0-rev14"></script>
+    <script src="js/thongke.js?v=4.0.0-rev14"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js?v=4.0.0-rev13')
+            navigator.serviceWorker.register('./sw.js?v=4.0.0-rev14')
                 .then(reg => console.log('[PWA] Service Worker đăng ký thành công! Scope:', reg.scope))
                 .catch(err => console.warn('[PWA] Service Worker đăng ký thất bại:', err));
         });
