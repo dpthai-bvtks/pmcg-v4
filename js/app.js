@@ -8915,8 +8915,17 @@ window.renderSttOrderControl = function (type, i, total) {
             const dropdownDivider = document.getElementById('user-menu-divider');
             const superTab = document.getElementById('nav-tab-tenants');
 
+            // Các nút danh mục trong Tab Quản Trị (Admin)
+            const btnSettings = document.getElementById('nav-btn-settings');
+            const btnAccounts = document.getElementById('nav-btn-accounts');
+            const btnEmployees = document.getElementById('nav-btn-employees');
+            const btnAi = document.getElementById('nav-btn-ai');
+            const btnBackup = document.getElementById('nav-btn-backup');
+            const btnQuicklinks = document.getElementById('nav-btn-quicklinks');
+
             if (role === 'SUPER_ADMIN') {
-                // 👑 SUPER ADMIN: Chỉ hiển thị Tab Quản Lý Đơn Vị SaaS & Tab Cài Đặt Hệ Thống
+                // 👑 SUPER ADMIN:
+                // 1. Menu chính: Chỉ hiện Tab Quản Lý Đơn Vị SaaS & Tab Cài Đặt / Sao Lưu Toàn Cục
                 allTabs.forEach(t => {
                     const tabId = t.getAttribute('data-tab');
                     if (tabId === 'tab-tenants' || tabId === 'tab-admin') {
@@ -8931,7 +8940,22 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (dropdownDivider) dropdownDivider.style.display = 'block';
                 document.body.classList.remove('read-only-user');
 
-                // Tự động kích hoạt tab Quản lý đơn vị
+                // 2. Menu con trong Tab Admin:
+                // GIỮ: Sao Lưu & Khôi Phục, Quản Lý Liên Kết Nhanh
+                if (btnBackup) btnBackup.style.display = 'block';
+                if (btnQuicklinks) btnQuicklinks.style.display = 'block';
+                // ẨN: Cài đặt hệ thống, Quản lý tài khoản, Nhân sự chấm công, Huấn luyện AI
+                if (btnSettings) btnSettings.style.display = 'none';
+                if (btnAccounts) btnAccounts.style.display = 'none';
+                if (btnEmployees) btnEmployees.style.display = 'none';
+                if (btnAi) btnAi.style.display = 'none';
+
+                // Mặc định kích hoạt mục Sao Lưu & Khôi Phục khi vào tab Admin
+                if (btnBackup && typeof switchAdminSection === 'function') {
+                    switchAdminSection('admin-sec-backup', btnBackup);
+                }
+
+                // Tự động mở tab Quản lý đơn vị SaaS
                 const targetBtn = document.querySelector('.nav-tab[data-tab="tab-tenants"]') || superTab;
                 if (targetBtn) {
                     targetBtn.click();
@@ -8940,8 +8964,23 @@ window.renderSttOrderControl = function (type, i, total) {
                 return;
             }
 
-            // 🏥 ADMIN & NHÂN VIÊN BỆNH VIỆN: TUYỆT ĐỐI ẨN TAB SAAS TENANTS
+            // 🏥 ADMIN & NHÂN VIÊN BỆNH VIỆN / ĐƠN VỊ:
+            // TUYỆT ĐỐI ẨN TAB SAAS TENANTS
             if (superTab) superTab.style.display = 'none';
+
+            // Menu con trong Tab Admin của Đơn Vị:
+            // GIỮ: Cài đặt hệ thống, Quản lý tài khoản, Nhân sự chấm công, Huấn luyện AI
+            if (btnSettings) btnSettings.style.display = 'block';
+            if (btnAccounts) btnAccounts.style.display = 'block';
+            if (btnEmployees) btnEmployees.style.display = 'block';
+            if (btnAi) btnAi.style.display = 'block';
+            // ẨN: Sao Lưu & Khôi Phục, Quản Lý Liên Kết Nhanh
+            if (btnBackup) btnBackup.style.display = 'none';
+            if (btnQuicklinks) btnQuicklinks.style.display = 'none';
+
+            if (btnSettings && typeof switchAdminSection === 'function') {
+                switchAdminSection('admin-sec-settings', btnSettings);
+            }
 
             if (role === 'Admin' || permsStr === 'ALL') {
                 allTabs.forEach(t => {
