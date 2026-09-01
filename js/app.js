@@ -12578,7 +12578,7 @@ window.closeChangePasswordModal = function() {
     if (modal) modal.style.display = 'none';
 };
 
-window.submitChangePassword = async function() {
+window.submitChangePassword = function() {
     const uName = (document.getElementById('cpw-username')?.value || '').trim();
     const oldPass = (document.getElementById('cpw-old-password')?.value || '').trim();
     const newPass = (document.getElementById('cpw-new-password')?.value || '').trim();
@@ -12603,28 +12603,29 @@ window.submitChangePassword = async function() {
         btn.innerHTML = '<span>⏳</span> Đang lưu...';
     }
 
-    try {
-        const currentUnit = localStorage.getItem('pm_unit_code') || 'bvtks_cs2';
-        const res = await executeApiTask('changePassword', [{
-            username: uName,
-            old_password: oldPass,
-            new_password: newPass,
-            unit_code: currentUnit
-        }]);
-
-        if (res && res.status === 'success') {
-            alert('🎉 ' + (res.data?.message || 'Đã đổi mật khẩu thành công!'));
-            closeChangePasswordModal();
-        } else {
-            alert('❌ ' + (res?.error || 'Không thể đổi mật khẩu. Vui lòng thử lại!'));
-        }
-    } catch(err) {
-        console.error('Change password error:', err);
-        alert('❌ Lỗi kết nối: ' + (err.message || String(err)));
-    } finally {
+    const currentUnit = localStorage.getItem('pm_unit_code') || 'bvtks_cs2';
+    callApi('changePassword', [{
+        username: uName,
+        old_password: oldPass,
+        new_password: newPass,
+        unit_code: currentUnit
+    }], res => {
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = '<span>💾</span> Lưu Mật Khẩu';
         }
-    }
+        if (res && (res.status === 'success' || res.message || res.success)) {
+            alert('🎉 ' + (res.data?.message || res.message || 'Đã đổi mật khẩu thành công!'));
+            closeChangePasswordModal();
+        } else {
+            alert('❌ ' + (res?.error || res?.message || 'Không thể đổi mật khẩu. Vui lòng kiểm tra lại mật khẩu hiện tại!'));
+        }
+    }, err => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>💾</span> Lưu Mật Khẩu';
+        }
+        console.error('Change password error:', err);
+        alert('❌ Lỗi kết nối máy chủ: ' + (err.message || String(err)));
+    });
 };
