@@ -34,20 +34,6 @@ window.OfflineSyncEngine = (function () {
   }
 
   initDexie();
-      dexieDb.version(1).stores({
-        cache: 'key, timestamp',
-        patients: '++id, name, age, room, status, order_idx',
-        history: '++id, date, patient_name, procedure_name, staff_name',
-        schedules: 'date, created_at',
-        chamcong: 'month_year, updated_at',
-        thongke: 'month_year, updated_at',
-        syncQueue: '++id, action, timestamp'
-      });
-      console.log('[Dexie.js] Khởi tạo bộ nhớ đệm Offline IndexedDB thành công!');
-    }
-  } catch (e) {
-    console.warn('[Dexie.js] Khởi tạo Dexie thất bại, chuyển sang IndexedDB thuần:', e);
-  }
 
   // Fallback IndexedDB thuần nếu Dexie chưa sẵn sàng
   let rawDbInstance = null;
