@@ -1,4 +1,55 @@
 
+window.toggleUserDropdown = function(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    const menu = document.getElementById('user-dropdown-menu');
+    const arrow = document.getElementById('user-dropdown-arrow');
+    if (!menu) return;
+    const isVisible = menu.style.display === 'block';
+    menu.style.display = isVisible ? 'none' : 'block';
+    if (arrow) arrow.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(180deg)';
+};
+
+window.openChangePasswordModal = function() {
+    const userMenu = document.getElementById('user-dropdown-menu');
+    if (userMenu) userMenu.style.display = 'none';
+    const arrow = document.getElementById('user-dropdown-arrow');
+    if (arrow) arrow.style.transform = 'rotate(0deg)';
+
+    let currentUsername = 'admin';
+    try {
+        const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
+        currentUsername = sess.username || currentUsername;
+    } catch(e) {}
+
+    const uInput = document.getElementById('cpw-username');
+    if (uInput) uInput.value = currentUsername;
+
+    const oldInput = document.getElementById('cpw-old-password');
+    const newInput = document.getElementById('cpw-new-password');
+    const confInput = document.getElementById('cpw-confirm-password');
+
+    if (oldInput) oldInput.value = '';
+    if (newInput) newInput.value = '';
+    if (confInput) confInput.value = '';
+
+    const modal = document.getElementById('modal-change-password');
+    if (modal) {
+        modal.style.setProperty('display', 'flex', 'important');
+    }
+    setTimeout(() => { if (oldInput) oldInput.focus(); }, 100);
+};
+
+window.closeChangePasswordModal = function() {
+    const modal = document.getElementById('modal-change-password');
+    if (modal) {
+        modal.style.setProperty('display', 'none', 'important');
+    }
+};
+
+
 window.updateAppHeader = function(unitCode, role) {
     const uCode = (unitCode || localStorage.getItem('pm_unit_code') || 'bvtks_cs2').toLowerCase();
     let sessRole = role;
@@ -12548,35 +12599,9 @@ window.deleteTenantPrompt = function (code, encName) {
 // ============================================================
 // 🔑 ĐỔI MẬT KHẨU TÀI KHOẢN (SUPER ADMIN & ALL USERS)
 // ============================================================
-window.openChangePasswordModal = function() {
-    const userMenu = document.getElementById('user-dropdown-menu');
-    if (userMenu) userMenu.style.display = 'none';
 
-    let currentUsername = 'admin';
-    try {
-        const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
-        currentUsername = sess.username || currentUsername;
-    } catch(e) {}
 
-    const uInput = document.getElementById('cpw-username');
-    if (uInput) uInput.value = currentUsername;
 
-    const oldInput = document.getElementById('cpw-old-password');
-    const newInput = document.getElementById('cpw-new-password');
-    const confInput = document.getElementById('cpw-confirm-password');
-
-    if (oldInput) oldInput.value = '';
-    if (newInput) newInput.value = '';
-    if (confInput) confInput.value = '';
-
-    const modal = document.getElementById('modal-change-password');
-    if (modal) modal.style.display = 'flex';
-};
-
-window.closeChangePasswordModal = function() {
-    const modal = document.getElementById('modal-change-password');
-    if (modal) modal.style.display = 'none';
-};
 
 window.submitChangePassword = function() {
     const uName = (document.getElementById('cpw-username')?.value || '').trim();

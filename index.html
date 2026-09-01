@@ -341,7 +341,7 @@
 
                             <div class="user-menu-dropdown-container" id="user-menu-container"
                                 style="position: relative; display: inline-block; margin-left: 8px;">
-                                <button id="nav-btn-user"
+                                <button id="nav-btn-user" onclick="window.toggleUserDropdown(event)"
                                     style="display: flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; cursor: pointer; border: 1px solid #cbd5e1; background: #f1f5f9; color: #1e293b; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                                     <span id="user-display-name">👤 admin</span>
                                     <span style="font-size: 8px; transition: transform 0.2s; display: inline-block;"
@@ -3221,7 +3221,7 @@
 
                     <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 3.2.6</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 21:09 01/09/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 21:31 01/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -3659,18 +3659,18 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.0.0-rev34"></script>
-    <script src="js/ai-scheduler.js?v=4.0.0-rev34"></script>
-    <script src="js/cp-solver.js?v=4.0.0-rev34"></script>
-    <script src="js/scheduler-engine.js?v=4.0.0-rev34"></script>
-    <script src="js/app.js?v=4.0.0-rev34"></script>
-    <script src="js/init.js?v=4.0.0-rev34"></script>
-    <script src="js/sync.js?v=4.0.0-rev34"></script>
-    <script src="js/thongke.js?v=4.0.0-rev34"></script>
+    <script src="js/offline-sync-engine.js?v=4.0.0-rev35"></script>
+    <script src="js/ai-scheduler.js?v=4.0.0-rev35"></script>
+    <script src="js/cp-solver.js?v=4.0.0-rev35"></script>
+    <script src="js/scheduler-engine.js?v=4.0.0-rev35"></script>
+    <script src="js/app.js?v=4.0.0-rev35"></script>
+    <script src="js/init.js?v=4.0.0-rev35"></script>
+    <script src="js/sync.js?v=4.0.0-rev35"></script>
+    <script src="js/thongke.js?v=4.0.0-rev35"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>
-    const APP_VERSION = '4.0.0-rev34';
+    const APP_VERSION = '4.0.0-rev35';
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             // Unregister old service workers if version changed
