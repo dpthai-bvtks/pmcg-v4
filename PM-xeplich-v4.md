@@ -224,3 +224,19 @@ git add . && git commit -m "..." && git push origin main
 - Màn hình Đăng nhập thêm ô nhập Mã Đơn Vị.
 - Tab `tab-tenants` (Cổng Quản Trị Super Admin) với thống kê, bảng danh sách, form thêm/sửa.
 - Phân quyền tabs/admin-menu cho Super Admin vs Đơn vị.
+
+### [v4.0.0-rev36] - 01/09/2026: Sửa Lỗi Dropdown Menu Tài Khoản & Bổ Sung Menu Mobile
+- **Yêu cầu của người dùng**: Bấm vào tên tài khoản phía góc trên bên phải nhưng không hiện ra dropdown menu.
+- **Phân tích nguyên nhân & Giải pháp**:
+  + `index.html`: Nút `#nav-btn-user` thiếu sự kiện `onclick="window.toggleUserDropdown(event)"`. Gắn sự kiện kích hoạt trực tiếp.
+  + `js/app.js`: Chuẩn hóa hàm `window.toggleUserDropdown(e)` và xuất phạm vi toàn cục cho `window.goToAdminTab`, `window.triggerLogout`, `window.openChangePasswordModal`. Tối ưu lắng nghe sự kiện click ngoài vùng để tự động đóng dropdown.
+  + `css/style.css`: Dọn dẹp các khối CSS trùng lặp / cú pháp lỗi xung quanh class `.user-dropdown-menu`.
+  + Bổ sung thêm nút `🔑 Đổi Mật Khẩu` và `🚪 Đăng Xuất` trực tiếp vào danh mục mở rộng Mobile Drawer.
+  + Đồng bộ phiên bản `v4.0.0-rev36`, cập nhật footer timestamp `22:20 01/09/2026` và cache buster cho `sw.js`.
+- **File sửa đổi**:
+  + `index.html`
+  + `js/app.js`
+  + `css/style.css`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+

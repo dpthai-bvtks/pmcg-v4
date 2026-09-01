@@ -10838,7 +10838,12 @@ window.renderSttOrderControl = function (type, i, total) {
         });
 
         // --- USER MENU DROPDOWN LOGIC ---
-        function goToAdminTab() {
+        window.goToAdminTab = function() {
+            const dropMenu = document.getElementById('user-dropdown-menu');
+            if (dropMenu) dropMenu.style.display = 'none';
+            const arrow = document.getElementById('user-dropdown-arrow');
+            if (arrow) arrow.style.transform = 'rotate(0deg)';
+
             const tabBtn = document.querySelector('.nav-tab[data-tab="tab-admin"]');
             if (tabBtn) {
                 tabBtn.click();
@@ -10850,13 +10855,9 @@ window.renderSttOrderControl = function (type, i, total) {
                     const activeSubBtn = document.querySelector('.admin-nav-btn.active') || document.getElementById('nav-btn-settings');
                     switchAdminSection('admin-sec-settings', activeSubBtn);
                 }
-                try { history.replaceState(null, '', '#tab=tab-admin'); } catch(e) {}
+                try { history.replaceState(null, '', '#tab-admin'); } catch(e) {}
             }
-            const dropMenu = document.getElementById('user-dropdown-menu');
-            if (dropMenu) dropMenu.style.display = 'none';
-            const arrow = document.getElementById('user-dropdown-arrow');
-            if (arrow) arrow.style.transform = 'rotate(0deg)';
-        }
+        };
 
         window.triggerLogout = function () {
             const dropMenu = document.getElementById('user-dropdown-menu');
@@ -10871,27 +10872,17 @@ window.renderSttOrderControl = function (type, i, total) {
             }
         };
 
-        // Event Listeners for toggle
+        // Event Listeners for user dropdown outside click
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof loadSystemSettings === 'function') loadSystemSettings();
 
-            const btnUser = document.getElementById('nav-btn-user');
-            const menu = document.getElementById('user-dropdown-menu');
-            const arrow = document.getElementById('user-dropdown-arrow');
-
-            if (btnUser && menu) {
-                btnUser.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const isOpen = menu.style.display === 'block';
-                    menu.style.display = isOpen ? 'none' : 'block';
-                    if (arrow) arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
-                });
-            }
-
             document.addEventListener('click', (e) => {
+                const menu = document.getElementById('user-dropdown-menu');
+                const arrow = document.getElementById('user-dropdown-arrow');
+                const btnUser = document.getElementById('nav-btn-user');
                 if (menu && menu.style.display === 'block') {
-                    const container = document.getElementById('user-menu-container');
-                    if (container && !container.contains(e.target)) {
+                    if (btnUser && btnUser.contains(e.target)) return;
+                    if (!menu.contains(e.target)) {
                         menu.style.display = 'none';
                         if (arrow) arrow.style.transform = 'rotate(0deg)';
                     }

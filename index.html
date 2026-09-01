@@ -72,7 +72,7 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=3.2.1">
+    <link rel="stylesheet" href="css/style.css?v=4.0.0-rev36">
     <!-- PWA & Mobile Web App Meta Tags -->
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
@@ -80,7 +80,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=3.2.1">
+    <link rel="stylesheet" href="css/mobile.css?v=4.0.0-rev36">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
     <script src="js/dexie.min.js?v=3.2.6"></script>
@@ -172,6 +172,11 @@
             
             <button class="mobile-drawer-item" onclick="openDocLookupModal(); toggleMobileDrawer(false);"><span class="item-icon">📚</span> Tra Cứu Văn Bản & BHXH</button>
             <button class="mobile-drawer-item" onclick="openHdsdModal(); toggleMobileDrawer(false);"><span class="item-icon">📖</span> Hướng Dẫn Sử Dụng</button>
+
+            <div class="mobile-drawer-divider"></div>
+
+            <button class="mobile-drawer-item" onclick="openChangePasswordModal(); toggleMobileDrawer(false);"><span class="item-icon">🔑</span> Đổi Mật Khẩu</button>
+            <button class="mobile-drawer-item" style="color: #e11d48;" onclick="triggerLogout(); toggleMobileDrawer(false);"><span class="item-icon">🚪</span> Đăng Xuất</button>
         </div>
     </div>
 
@@ -3221,7 +3226,7 @@
 
                     <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 3.2.6</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 21:31 01/09/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 22:20 01/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -3659,18 +3664,18 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.0.0-rev35"></script>
-    <script src="js/ai-scheduler.js?v=4.0.0-rev35"></script>
-    <script src="js/cp-solver.js?v=4.0.0-rev35"></script>
-    <script src="js/scheduler-engine.js?v=4.0.0-rev35"></script>
-    <script src="js/app.js?v=4.0.0-rev35"></script>
-    <script src="js/init.js?v=4.0.0-rev35"></script>
-    <script src="js/sync.js?v=4.0.0-rev35"></script>
-    <script src="js/thongke.js?v=4.0.0-rev35"></script>
+    <script src="js/offline-sync-engine.js?v=4.0.0-rev36"></script>
+    <script src="js/ai-scheduler.js?v=4.0.0-rev36"></script>
+    <script src="js/cp-solver.js?v=4.0.0-rev36"></script>
+    <script src="js/scheduler-engine.js?v=4.0.0-rev36"></script>
+    <script src="js/app.js?v=4.0.0-rev36"></script>
+    <script src="js/init.js?v=4.0.0-rev36"></script>
+    <script src="js/sync.js?v=4.0.0-rev36"></script>
+    <script src="js/thongke.js?v=4.0.0-rev36"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>
-    const APP_VERSION = '4.0.0-rev35';
+    const APP_VERSION = '4.0.0-rev36';
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             // Unregister old service workers if version changed

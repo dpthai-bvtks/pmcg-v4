@@ -3796,9 +3796,6 @@
             border-color: #94a3b8 !important;
         }
 
-        .user-dropdown-menu a {
-    display: flex;
-}
 
 /* ============================================================ */
 /* 💡 SMART UNSCHEDULED ADVISOR STYLES                          */
@@ -3953,18 +3950,6 @@
 }
 
 
-            display: flex;
-        }
-
-        .user-dropdown-menu a:hover {
-            background: #f8fafc !important;
-            color: #1abc9c !important;
-        }
-
-        .user-dropdown-menu a#user-menu-admin-btn:hover {
-            background: #e8f8f5 !important;
-            color: #16a085 !important;
-        }
 
         /* Tùy chỉnh giao diện cho ô nhập ngày tháng của Flatpickr */
         input.flatpickr-input[type="text"] {
@@ -4141,25 +4126,6 @@ transition: box-shadow 0.3s;
             line-height: 1.4;
         }
 
-        /* --- USER DROPDOWN MENU STYLE --- */
-        #nav-btn-user:hover {
-            background: #cbd5e1 !important;
-            border-color: #94a3b8 !important;
-        }
-
-        .user-dropdown-menu a {
-            display: flex;
-        }
-
-        .user-dropdown-menu a:hover {
-            background: #f8fafc !important;
-            color: #1abc9c !important;
-        }
-
-        .user-dropdown-menu a#user-menu-admin-btn:hover {
-            background: #e8f8f5 !important;
-            color: #16a085 !important;
-        }
 
         /* Tùy chỉnh giao diện cho ô nhập ngày tháng của Flatpickr */
         input.flatpickr-input[type="text"] {
