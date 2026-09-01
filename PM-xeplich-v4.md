@@ -113,6 +113,15 @@ git add . && git commit -m "..." && git push origin main
 
 ## 10. 📝 Nhật Ký Phát Triển (Changelog)
 
+### [v4.0.0-rev19] - 01/09/2026: Triệt Để Khắc Phục Màn Hình Trắng Super Admin & Xóa Nút Đăng Xuất Thừa
+- **Bug 1 (Màn hình trắng Super Admin)**:
+  - Hash Routing listener trong `DOMContentLoaded` mặc định đặt hash là `#tab-home` khi tải trang, khiến tab-home (bị ẩn bởi Super Admin) nhận class `.active`, trong khi `#tab-tenants` không có `.active` → Màn hình trống.
+  - Khi `applyPermissions('SUPER_ADMIN')` chạy, chuyển trực tiếp sang hash `#tab-tenants` và gán ngay `targetEl.style.display = 'block'` + gọi `loadTenantsList()`.
+- **Bug 2 (Thừa nút Đăng xuất)**:
+  - Loại bỏ thẻ `<a>` Đăng xuất thừa nằm ngoài `#user-dropdown-menu` ở thanh header góc trên bên phải.
+- **Bug 3 (offline-sync-engine.js:48 SyntaxError)**:
+  - Đã dọn dẹp khối code lặp thừa sau `initDexie()` gây crash runtime JS.
+
 ### [v4.0.0-rev17] - 01/09/2026: Sửa Lỗi Trang Super Admin Trống
 - **Bug**: Khi khôi phục session Super Admin từ localStorage, hàm `applyPermissions` gọi `targetBtn.click()` trước khi tab click listeners được đăng ký → tab-tenants không được kích hoạt → trang trắng.
 - **Fix `js/app.js`**:

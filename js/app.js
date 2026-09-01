@@ -8954,12 +8954,28 @@ window.renderSttOrderControl = function (type, i, total) {
                     switchAdminSection('admin-sec-backup', btnBackup);
                 }
 
-                // Tự động mở tab Quản lý đơn vị SaaS
-                const targetBtn = document.querySelector('.nav-tab[data-tab="tab-tenants"]') || superTab;
-                if (targetBtn) {
-                    targetBtn.click();
+                // Tự động kích hoạt trực tiếp tab Quản lý đơn vị SaaS
+                let currentHash = window.location.hash ? window.location.hash.substring(1) : '';
+                if (currentHash !== 'tab-admin' && currentHash !== 'tab-tenants') {
+                    currentHash = 'tab-tenants';
+                    window.location.hash = '#tab-tenants';
                 }
-                if (typeof loadTenantsList === 'function') loadTenantsList();
+
+                document.querySelectorAll('.tab-content, .page').forEach(c => {
+                    c.classList.remove('active');
+                });
+                const targetEl = document.getElementById(currentHash);
+                if (targetEl) {
+                    targetEl.classList.add('active');
+                    targetEl.style.display = 'block';
+                }
+                allTabs.forEach(t => t.classList.remove('active'));
+                const activeNavBtn = document.querySelector(`.nav-tab[data-tab="${currentHash}"]`) || superTab;
+                if (activeNavBtn) activeNavBtn.classList.add('active');
+
+                if (currentHash === 'tab-tenants' && typeof loadTenantsList === 'function') {
+                    loadTenantsList();
+                }
                 return;
             }
 
