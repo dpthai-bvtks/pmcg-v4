@@ -8924,6 +8924,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             if (role === 'SUPER_ADMIN') {
                 // 👑 SUPER ADMIN:
+                // 1. Menu chính: Chỉ hiện Tab Quản Lý Đơn Vị SaaS & Tab Cài Đặt / Sao Lưu Toàn Cục
                 allTabs.forEach(t => {
                     const tabId = t.getAttribute('data-tab');
                     if (tabId === 'tab-tenants' || tabId === 'tab-admin') {
@@ -8938,49 +8939,41 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (dropdownDivider) dropdownDivider.style.display = 'block';
                 document.body.classList.remove('read-only-user');
 
+                // 2. Menu con trong Tab Admin:
+                // GIỮ: Sao Lưu & Khôi Phục, Quản Lý Liên Kết Nhanh
                 if (btnBackup) btnBackup.style.display = 'block';
                 if (btnQuicklinks) btnQuicklinks.style.display = 'block';
+                // ẨN: Cài đặt hệ thống, Quản lý tài khoản, Nhân sự chấm công, Huấn luyện AI
                 if (btnSettings) btnSettings.style.display = 'none';
                 if (btnAccounts) btnAccounts.style.display = 'none';
                 if (btnEmployees) btnEmployees.style.display = 'none';
                 if (btnAi) btnAi.style.display = 'none';
 
+                // Mặc định kích hoạt mục Sao Lưu & Khôi Phục khi vào tab Admin
                 if (btnBackup && typeof switchAdminSection === 'function') {
                     switchAdminSection('admin-sec-backup', btnBackup);
                 }
 
-                let currentHash = window.location.hash ? window.location.hash.substring(1) : '';
-                if (currentHash !== 'tab-admin' && currentHash !== 'tab-tenants') {
-                    currentHash = 'tab-tenants';
-                    window.location.hash = '#tab-tenants';
+                // Tự động mở tab Quản lý đơn vị SaaS
+                const targetBtn = document.querySelector('.nav-tab[data-tab="tab-tenants"]') || superTab;
+                if (targetBtn) {
+                    targetBtn.click();
                 }
-
-                document.querySelectorAll('.tab-content, .page').forEach(c => {
-                    c.classList.remove('active');
-                    c.style.display = '';
-                });
-                const targetEl = document.getElementById(currentHash);
-                if (targetEl) {
-                    targetEl.classList.add('active');
-                    targetEl.style.display = '';
-                }
-                allTabs.forEach(t => t.classList.remove('active'));
-                const activeNavBtn = document.querySelector(`.nav-tab[data-tab="${currentHash}"]`) || superTab;
-                if (activeNavBtn) activeNavBtn.classList.add('active');
-
-                if (currentHash === 'tab-tenants' && typeof loadTenantsList === 'function') {
-                    loadTenantsList();
-                }
+                if (typeof loadTenantsList === 'function') loadTenantsList();
                 return;
             }
 
             // 🏥 ADMIN & NHÂN VIÊN BỆNH VIỆN / ĐƠN VỊ:
+            // TUYỆT ĐỐI ẨN TAB SAAS TENANTS
             if (superTab) superTab.style.display = 'none';
 
+            // Menu con trong Tab Admin của Đơn Vị:
+            // GIỮ: Cài đặt hệ thống, Quản lý tài khoản, Nhân sự chấm công, Huấn luyện AI
             if (btnSettings) btnSettings.style.display = 'block';
             if (btnAccounts) btnAccounts.style.display = 'block';
             if (btnEmployees) btnEmployees.style.display = 'block';
             if (btnAi) btnAi.style.display = 'block';
+            // ẨN: Sao Lưu & Khôi Phục, Quản Lý Liên Kết Nhanh
             if (btnBackup) btnBackup.style.display = 'none';
             if (btnQuicklinks) btnQuicklinks.style.display = 'none';
 
@@ -8988,7 +8981,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 switchAdminSection('admin-sec-settings', btnSettings);
             }
 
-            if (role === 'Admin' || role === 'admin' || permsStr === 'ALL') {
+            if (role === 'Admin' || permsStr === 'ALL') {
                 allTabs.forEach(t => {
                     const tabId = t.getAttribute('data-tab');
                     if (tabId === 'tab-tenants') {
@@ -9017,25 +9010,6 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (adminBtn) adminBtn.style.display = 'none';
                 document.body.classList.add('read-only-user');
             }
-
-            // Kích hoạt tab cho Admin / Nhân viên
-            let currentHash = window.location.hash ? window.location.hash.substring(1) : '';
-            if (!currentHash || currentHash === 'tab-tenants') {
-                currentHash = 'tab-home';
-                window.location.hash = '#tab-home';
-            }
-            document.querySelectorAll('.tab-content, .page').forEach(c => {
-                c.classList.remove('active');
-                c.style.display = '';
-            });
-            const targetEl = document.getElementById(currentHash);
-            if (targetEl) {
-                targetEl.classList.add('active');
-                targetEl.style.display = '';
-            }
-            allTabs.forEach(t => t.classList.remove('active'));
-            const activeNavBtn = document.querySelector(`.nav-tab[data-tab="${currentHash}"]`);
-            if (activeNavBtn) activeNavBtn.classList.add('active');
         }
 
         function togglePermissionsBox() {
@@ -9307,7 +9281,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-                window.onload = function () {
+        window.onload = function () {
 
             const sessionStr = localStorage.getItem('meds_session');
 
@@ -9319,28 +9293,12 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 updateLogoutButton(session.username);
 
-                // Áp dụng quyền - sau một tick nhỏ để DOM/tab listeners kịp khởi tạo
-                setTimeout(() => {
-                    applyPermissions(session.role, session.permissions);
+                applyPermissions(session.role, session.permissions);
 
-                    if (session.role === 'SUPER_ADMIN') {
-                        // Kích hoạt tab-tenants thủ công nếu click chưa chạy được
-                        setTimeout(() => {
-                            const tenantTab = document.getElementById('tab-tenants');
-                            const isActive = tenantTab && tenantTab.classList.contains('active');
-                            if (!isActive) {
-                                document.querySelectorAll('.tab-content, .page').forEach(c => c.classList.remove('active'));
-                                if (tenantTab) tenantTab.classList.add('active');
-                            }
-                            if (typeof loadTenantsList === 'function') loadTenantsList();
-                        }, 200);
-                    }
-
-                    if ((session.role === 'Admin' || session.role === 'admin') && typeof loadAccounts === 'function') {
-                        loadAccounts();
-                    }
-                }, 80);
-
+                if (session.role === 'Admin' && typeof loadAccounts === 'function') {
+                    loadAccounts();
+                }
+                
                 startAutoSync();
 
             } else {
@@ -10658,104 +10616,148 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // -----------------------------------------------------------
 
+        // 📌 HASH ROUTING LOGIC
+
         // -----------------------------------------------------------
-        // 📌 SMOOTH TAB ROUTING LOGIC (NO NATIVE ANCHOR JUMP)
-        // -----------------------------------------------------------
-        window.switchTab = function (targetTab, updateUrl = true) {
-            if (!targetTab) targetTab = 'tab-home';
-            const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
-            if (sess.role === 'SUPER_ADMIN' && (targetTab === 'tab-home' || !targetTab)) {
-                targetTab = 'tab-tenants';
-            }
-
-            if (updateUrl && window.history && window.history.replaceState) {
-                history.replaceState(null, '', '#' + targetTab);
-            }
-
-            // Cập nhật giao diện tabs
-            document.querySelectorAll('.nav-tab, .nav-item').forEach(t => t.classList.remove('active'));
-            let activeBtn = document.querySelector(`[data-tab="${targetTab}"]`);
-            if (activeBtn) activeBtn.classList.add('active');
-
-            // Ẩn tất cả tab và chỉ kích hoạt tab mục tiêu
-            document.querySelectorAll('.tab-content, .page').forEach(c => {
-                c.classList.remove('active');
-                c.style.display = 'none';
-            });
-            let targetEl = document.getElementById(targetTab);
-            if (targetEl) {
-                targetEl.classList.add('active');
-                targetEl.style.display = 'block';
-            }
-
-            // Reset scroll về đỉnh
-            window.scrollTo(0, 0);
-            document.documentElement.scrollTop = 0;
-            document.body.scrollTop = 0;
-            const sc = document.querySelector('.tab-scroll-content');
-            if (sc) sc.scrollTop = 0;
-
-            // Điều chỉnh class body
-            document.body.classList.toggle('tab-sat-active', targetTab === 'tab-sat');
-            document.body.classList.toggle('tab-schedule-active', targetTab === 'tab-schedule');
-
-            // Kích hoạt load dữ liệu riêng
-            if (targetTab === 'tab-sat' && typeof satCache !== 'undefined' && Object.keys(satCache).length === 0) {
-                if (typeof taiDsSat === 'function') taiDsSat();
-            }
-            if (targetTab === 'tab-home' || targetTab === 'page-dashboard') {
-                if (typeof loadDashboard === 'function') loadDashboard();
-            }
-            if (targetTab === 'tab-schedule') {
-                if (typeof schedCurrentPage !== 'undefined') schedCurrentPage = 1;
-                if (typeof loadScheduleList === 'function') loadScheduleList();
-            }
-            if (targetTab === 'tab-stats' && typeof renderStats === 'function') {
-                renderStats(window.lastUnscheduledData);
-            }
-            if (targetTab === 'tab-chamcong') {
-                if (typeof loadChamCongData === 'function') loadChamCongData();
-            }
-            if (targetTab === 'tab-thongke') {
-                if (typeof loadThongKeData === 'function') loadThongKeData();
-            }
-            if (targetTab === 'tab-tenants') {
-                if (typeof loadTenantsList === 'function') loadTenantsList();
-            }
-            if ((targetTab === 'tab-staff' || targetTab === 'tab-patients') && typeof renderProcedureCheckboxes === 'function') {
-                renderProcedureCheckboxes();
-            }
-        };
 
         document.addEventListener('DOMContentLoaded', function () {
+
+            // Override logic chuyển tab cũ
+
             const tabs = document.querySelectorAll('.nav-tab, .nav-item');
 
-            // 1. Lắng nghe Hash Change từ browser back/forward
-            window.addEventListener('hashchange', function () {
-                const targetTab = window.location.hash ? window.location.hash.substring(1) : 'tab-home';
-                window.switchTab(targetTab, false);
-            });
+
+
+            // 1. Lắng nghe Hash Change
+
+            window.addEventListener('hashchange', handleHashChange);
+
+
 
             // 2. Chạy lần đầu khi load trang
-            const sessionStr = localStorage.getItem('meds_session');
-            const sess = sessionStr ? JSON.parse(sessionStr) : {};
-            let initialTab = window.location.hash ? window.location.hash.substring(1) : '';
-            if (!initialTab) {
-                initialTab = (sess.role === 'SUPER_ADMIN') ? 'tab-tenants' : 'tab-home';
-            }
-            window.switchTab(initialTab, true);
 
-            // 3. Sửa lại event click của các tab
+            if (window.location.hash) {
+
+                handleHashChange();
+
+            } else {
+
+                // Mặc định mở tab-home
+
+                window.location.hash = '#tab-home';
+
+            }
+
+
+
+            // 3. Sửa lại event click của các tab để chỉ đổi hash
+
             tabs.forEach(tab => {
+
+                // Bỏ event click cũ bằng cách clone node nếu cần, nhưng tốt nhất là ngăn chặn hành vi mặc định
+
                 tab.addEventListener('click', function (e) {
+
                     e.preventDefault();
-                    e.stopPropagation();
+
+                    e.stopPropagation(); // Ngăn event cũ (đã gán trước đó) chạy
+
                     const targetTab = tab.getAttribute('data-tab');
-                    if (targetTab) {
-                        window.switchTab(targetTab, true);
-                    }
-                }, true);
+
+                    window.location.hash = '#' + targetTab;
+
+                }, true); // Use capture phase to intercept
+
             });
+
+
+
+            function handleHashChange() {
+
+                let hash = window.location.hash;
+
+                if (!hash) hash = '#tab-home';
+
+
+
+                let targetTab = hash.substring(1); // Xóa dấu #
+
+
+
+                // Cập nhật giao diện
+
+                tabs.forEach(t => t.classList.remove('active'));
+
+                let activeBtn = document.querySelector(`[data-tab="${targetTab}"]`);
+
+                if (activeBtn) activeBtn.classList.add('active');
+
+
+
+                document.querySelectorAll('.tab-content, .page').forEach(c => c.classList.remove('active'));
+
+                let targetEl = document.getElementById(targetTab);
+
+                if (targetEl) targetEl.classList.add('active');
+
+
+
+                // Điều chỉnh class body như logic cũ
+
+                document.body.classList.toggle('tab-sat-active', targetTab === 'tab-sat');
+
+                document.body.classList.toggle('tab-schedule-active', targetTab === 'tab-schedule');
+
+
+
+                // Kích hoạt load dữ liệu riêng
+
+                if (targetTab === 'tab-sat' && typeof satCache !== 'undefined' && Object.keys(satCache).length === 0) {
+
+                    if (typeof taiDsSat === 'function') taiDsSat();
+
+                }
+
+                if (targetTab === 'tab-home' || targetTab === 'page-dashboard') {
+
+                    if (typeof loadDashboard === 'function') loadDashboard();
+
+                }
+
+                if (targetTab === 'tab-schedule') {
+
+                    if (typeof schedCurrentPage !== 'undefined') schedCurrentPage = 1;
+
+                    if (typeof loadScheduleList === 'function') loadScheduleList();
+
+                }
+
+                if (targetTab === 'tab-stats' && typeof renderStats === 'function') {
+
+                    renderStats(window.lastUnscheduledData);
+
+                }
+
+                if (targetTab === 'tab-chamcong') {
+
+                    if (typeof loadChamCongData === 'function') loadChamCongData();
+
+                }
+
+                if (targetTab === 'tab-thongke') {
+
+                    if (typeof loadThongKeData === 'function') loadThongKeData();
+
+                }
+
+                if ((targetTab === 'tab-staff' || targetTab === 'tab-patients') && typeof renderProcedureCheckboxes === 'function') {
+
+                    renderProcedureCheckboxes();
+
+                }
+
+            }
+
         });
 
         // --- USER MENU DROPDOWN LOGIC ---
@@ -12357,15 +12359,7 @@ window.loadTenantsList = function () {
 
     if (typeof callApi === 'function') {
         callApi('getTenantsList', [], res => {
-            let list = [];
-            if (Array.isArray(res)) {
-                list = res;
-            } else if (res && Array.isArray(res.data)) {
-                list = res.data;
-            } else if (res && res.status === 'success' && Array.isArray(res.data)) {
-                list = res.data;
-            }
-
+            const list = Array.isArray(res) ? res : (res?.data || []);
             if (!list || list.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#94a3b8;">Chưa có đơn vị nào được tạo.</td></tr>';
                 return;
@@ -12374,19 +12368,16 @@ window.loadTenantsList = function () {
             // Thống kê
             let activeCount = 0, enterpriseCount = 0;
             list.forEach(t => {
-                if (t.is_active === 1 || t.is_active === true) activeCount++;
+                if (t.is_active) activeCount++;
                 if (t.plan_tier === 'ENTERPRISE') enterpriseCount++;
             });
-            const statTotal = document.getElementById('stat-total-tenants');
-            const statActive = document.getElementById('stat-active-tenants');
-            const statEnt = document.getElementById('stat-enterprise-tenants');
-            if (statTotal) statTotal.innerText = list.length;
-            if (statActive) statActive.innerText = activeCount;
-            if (statEnt) statEnt.innerText = enterpriseCount;
+            document.getElementById('stat-total-tenants').innerText = list.length;
+            document.getElementById('stat-active-tenants').innerText = activeCount;
+            document.getElementById('stat-enterprise-tenants').innerText = enterpriseCount;
 
             // Render bảng
             tbody.innerHTML = list.map(t => {
-                const isActive = t.is_active === 1 || t.is_active === true;
+                const isActive = t.is_active === 1;
                 const statusBadge = isActive
                     ? '<span style="background:#dcfce7; color:#15803d; padding:4px 8px; border-radius:6px; font-weight:700; font-size:11px;">🟢 Hoạt Động</span>'
                     : '<span style="background:#fee2e2; color:#b91c1c; padding:4px 8px; border-radius:6px; font-weight:700; font-size:11px;">🔴 Tạm Khóa</span>';
@@ -12406,15 +12397,15 @@ window.loadTenantsList = function () {
                             <div style="display:flex; justify-content:center; gap:6px;">
                                 <button class="btn btn-sm btn-secondary" onclick="openEditTenantModal('${t.unit_code}', '${encodeURIComponent(t.unit_name)}', '${t.plan_tier}', '${t.expires_at}', ${t.max_staff}, ${t.max_patients}, '${t.phone || ''}')" title="Chỉnh sửa / Gia hạn">✏️ Sửa</button>
                                 <button class="btn btn-sm btn-warning" onclick="resetTenantPasswordPrompt('${t.unit_code}')" title="Đặt lại mật khẩu Admin">🔑 Pass</button>
-                                <button class="btn btn-sm ${isActive ? 'btn-danger' : 'btn-success'}" onclick="toggleTenantStatusAction('${t.unit_code}', ${isActive ? 0 : 1})" title="${isActive ? 'Khóa đơn vị' : 'Mở khóa đơn vị'}">${isActive ? '🔒 Khóa' : '🔓 Mở'}</button>
-                                <button class="btn btn-sm btn-danger" onclick="deleteTenantAction('${t.unit_code}')" title="Xóa đơn vị">🗑️ Xóa</button>
+                                <button class="btn btn-sm ${isActive ? 'btn-danger' : 'btn-success'}" onclick="toggleTenantStatus('${t.unit_code}', ${isActive ? 0 : 1})" title="${isActive ? 'Khóa đơn vị' : 'Mở khóa đơn vị'}">${isActive ? '🔒 Khóa' : '🔓 Mở'}</button>
+                                ${t.unit_code !== 'bvtks_cs2' ? `<button class="btn btn-sm btn-danger" onclick="deleteTenantPrompt('${t.unit_code}', '${encodeURIComponent(t.unit_name)}')" title="Xóa vĩnh viễn">🗑️ Xóa</button>` : ''}
                             </div>
                         </td>
                     </tr>
                 `;
             }).join('');
         }, err => {
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:#ef4444;">❌ Lỗi khi tải danh sách: ${err && err.message ? err.message : err}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:#e11d48;">Lỗi khi tải danh sách: ${err && err.message ? err.message : 'Không xác định'}</td></tr>`;
         });
     }
 };
@@ -12561,7 +12552,7 @@ window.closeChangePasswordModal = function() {
     if (modal) modal.style.display = 'none';
 };
 
-window.submitChangePassword = function() {
+window.submitChangePassword = async function() {
     const uName = (document.getElementById('cpw-username')?.value || '').trim();
     const oldPass = (document.getElementById('cpw-old-password')?.value || '').trim();
     const newPass = (document.getElementById('cpw-new-password')?.value || '').trim();
@@ -12586,28 +12577,28 @@ window.submitChangePassword = function() {
         btn.innerHTML = '<span>⏳</span> Đang lưu...';
     }
 
-    const currentUnit = localStorage.getItem('pm_unit_code') || 'bvtks_cs2';
-    callApi('changePassword', [{
-        username: uName,
-        old_password: oldPass,
-        new_password: newPass,
-        unit_code: currentUnit
-    }], res => {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<span>💾</span> Lưu Mật Khẩu';
-        }
-        if (res && (res.status === 'success' || res.success)) {
-            alert('🎉 ' + (res.data?.message || res.message || 'Đã đổi mật khẩu thành công!'));
+    try {
+        const currentUnit = localStorage.getItem('pm_unit_code') || 'bvtks_cs2';
+        const res = await executeApiTask('changePassword', [{
+            username: uName,
+            old_password: oldPass,
+            new_password: newPass,
+            unit_code: currentUnit
+        }]);
+
+        if (res && res.status === 'success') {
+            alert('🎉 ' + (res.data?.message || 'Đã đổi mật khẩu thành công!'));
             closeChangePasswordModal();
         } else {
-            alert('❌ ' + (res?.message || res?.error || 'Không thể đổi mật khẩu. Vui lòng thử lại!'));
+            alert('❌ ' + (res?.error || 'Không thể đổi mật khẩu. Vui lòng thử lại!'));
         }
-    }, err => {
+    } catch(err) {
+        console.error('Change password error:', err);
+        alert('❌ Lỗi kết nối: ' + (err.message || String(err)));
+    } finally {
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = '<span>💾</span> Lưu Mật Khẩu';
         }
-        alert('❌ Lỗi kết nối: ' + (err && err.message ? err.message : String(err)));
-    });
+    }
 };
