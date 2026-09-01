@@ -852,6 +852,58 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       return success({ message: `Đã xóa toàn bộ dữ liệu đơn vị '${uCode}'!` });
     }
 
+    
+    case "changePassword": {
+      const payload = args[0] || {};
+      const uName = String(payload.username || "").trim();
+      const oldPass = String(payload.old_password || payload.oldPassword || "").trim();
+      const newPass = String(payload.new_password || payload.newPassword || "").trim();
+      const uCode = String(payload.unit_code || unitCode || "bvtks_cs2").trim().toLowerCase();
+
+      if (!uName || !oldPass || !newPass) {
+        return error("Vui lòng điền đầy đủ tên đăng nhập, mật khẩu cũ và mật khẩu mới!", 400);
+      }
+      if (newPass.length < 6) {
+        return error("Mật khẩu mới phải có tối thiểu 6 ký tự!", 400);
+      }
+
+      // 1. Đổi mật khẩu Super Admin
+      if (uName.toLowerCase() === "superadmin" || uName.toLowerCase() === "master") {
+        const passHash = await hashPassword(oldPass);
+        const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = 'MASTER' AND key = 'superadmin_password_hash'").first();
+        let isOldValid = false;
+        if (rec && rec.value) {
+          isOldValid = (rec.value === passHash);
+        } else {
+          isOldValid = (oldPass === "Master@2026!" || oldPass === "admin@123" || oldPass === "admin123");
+        }
+
+        if (!isOldValid) {
+          return error("Mật khẩu cũ của Super Admin không chính xác!", 400);
+        }
+
+        const newHash = await hashPassword(newPass);
+        await db.prepare("INSERT INTO cai_dat (unit_code, key, value) VALUES ('MASTER', 'superadmin_password_hash', ?) ON CONFLICT(unit_code, key) DO UPDATE SET value = excluded.value")
+          .bind(newHash).run();
+        return success({ message: "Đã đổi mật khẩu Super Admin thành công!" });
+      }
+
+      // 2. Đổi mật khẩu tài khoản đơn vị
+      const userRec = await db.prepare("SELECT id, password_hash FROM tai_khoan WHERE unit_code = ? AND username = ?").bind(uCode, uName).first();
+      if (!userRec) {
+        return error("Không tìm thấy tài khoản trong đơn vị này!", 404);
+      }
+
+      const oldHash = await hashPassword(oldPass);
+      if (userRec.password_hash !== oldHash) {
+        return error("Mật khẩu cũ không chính xác!", 400);
+      }
+
+      const newHash = await hashPassword(newPass);
+      await db.prepare("UPDATE tai_khoan SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(newHash, userRec.id).run();
+      return success({ message: "Đã đổi mật khẩu thành công!" });
+    }
+
     case "resetTenantAdminPassword": {
       const uCode = String(args[0] || "").trim().toLowerCase();
       const newPass = String(args[1] || "admin123").trim();
@@ -2501,19 +2553,28 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       if (!reqUnit) reqUnit = "bvtks_cs2";
 
       // 👑 1. Master Super Admin Backdoor (dành cho chủ phần mềm quản trị toàn hệ thống)
-      if (
-        (username.toLowerCase() === "superadmin" || username.toLowerCase() === "master") &&
-        (password === "Master@2026!" || password === "admin@123" || password === "admin123")
-      ) {
-        return success({
-          username: username,
-          role: "SUPER_ADMIN",
-          name: "Chủ Sở Hữu Phần Mềm SaaS",
-          unit_code: "MASTER",
-          unit_name: "Hệ Thống Quản Trị Trung Tâm SaaS",
-          plan_tier: "MASTER",
-          permissions: "SUPER_ADMIN"
-        });
+      if (username.toLowerCase() === "superadmin" || username.toLowerCase() === "master") {
+        const passHash = await hashPassword(password);
+        const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = 'MASTER' AND key = 'superadmin_password_hash'").first();
+        let isSuperValid = false;
+        if (rec && rec.value) {
+          isSuperValid = (rec.value === passHash);
+        } else {
+          isSuperValid = (password === "Master@2026!" || password === "admin@123" || password === "admin123");
+        }
+
+        if (isSuperValid) {
+          return success({
+            username: username,
+            role: "SUPER_ADMIN",
+            name: "Chủ Sở Hữu Phần Mềm SaaS",
+            unit_code: "MASTER",
+            unit_name: "Hệ Thống Quản Trị Trung Tâm SaaS",
+            plan_tier: "MASTER",
+            permissions: "SUPER_ADMIN"
+          });
+        }
+        return error("Mật khẩu tài khoản Super Admin không chính xác!", 401);
       }
 
       // 🏥 2. Kiểm tra Đơn Vị (Tenant Validation)

@@ -3215,7 +3215,7 @@
 
                     <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 3.2.6</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 14:32 01/09/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 14:40 01/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -3653,25 +3653,64 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.0.0-rev14"></script>
-    <script src="js/ai-scheduler.js?v=4.0.0-rev14"></script>
-    <script src="js/cp-solver.js?v=4.0.0-rev14"></script>
-    <script src="js/scheduler-engine.js?v=4.0.0-rev14"></script>
-    <script src="js/app.js?v=4.0.0-rev14"></script>
-    <script src="js/init.js?v=4.0.0-rev14"></script>
-    <script src="js/sync.js?v=4.0.0-rev14"></script>
-    <script src="js/thongke.js?v=4.0.0-rev14"></script>
+    <script src="js/offline-sync-engine.js?v=4.0.0-rev15"></script>
+    <script src="js/ai-scheduler.js?v=4.0.0-rev15"></script>
+    <script src="js/cp-solver.js?v=4.0.0-rev15"></script>
+    <script src="js/scheduler-engine.js?v=4.0.0-rev15"></script>
+    <script src="js/app.js?v=4.0.0-rev15"></script>
+    <script src="js/init.js?v=4.0.0-rev15"></script>
+    <script src="js/sync.js?v=4.0.0-rev15"></script>
+    <script src="js/thongke.js?v=4.0.0-rev15"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js?v=4.0.0-rev14')
+            navigator.serviceWorker.register('./sw.js?v=4.0.0-rev15')
                 .then(reg => console.log('[PWA] Service Worker đăng ký thành công! Scope:', reg.scope))
                 .catch(err => console.warn('[PWA] Service Worker đăng ký thất bại:', err));
         });
     }
     </script>
+
+
+    <!-- ============================================================ -->
+    <!-- 🔑 MODAL ĐỔI MẬT KHẨU (SUPER ADMIN & ALL USERS)               -->
+    <!-- ============================================================ -->
+    <div id="modal-change-password" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 99999; align-items: center; justify-content: center;">
+        <div style="background: #ffffff; border-radius: 12px; width: 92%; max-width: 420px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); overflow: hidden; border: 1px solid #e2e8f0; animation: modalPop 0.25s ease-out;">
+            <div style="background: linear-gradient(135deg, #1e3a8a, #2563eb); padding: 16px 20px; color: #ffffff; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                    <span>🔑</span> Đổi Mật Khẩu Tài Khoản
+                </h3>
+                <button type="button" onclick="closeChangePasswordModal()" style="background: none; border: none; color: #ffffff; font-size: 22px; cursor: pointer; line-height: 1; opacity: 0.8; transition: opacity 0.2s;" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0.8">&times;</button>
+            </div>
+            <form id="form-change-password" onsubmit="event.preventDefault(); submitChangePassword();" style="padding: 20px; display: flex; flex-direction: column; gap: 14px;">
+                <div>
+                    <label style="display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 4px;">Tài khoản đang đăng nhập:</label>
+                    <input type="text" id="cpw-username" readonly style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f1f5f9; font-weight: 700; color: #1e293b; font-size: 13px; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 4px;">Mật khẩu hiện tại: <span style="color: #e11d48;">*</span></label>
+                    <input type="password" id="cpw-old-password" required placeholder="Nhập mật khẩu đang dùng" style="width: 100%; padding: 9px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13px; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 4px;">Mật khẩu mới: <span style="color: #e11d48;">*</span></label>
+                    <input type="password" id="cpw-new-password" required minlength="6" placeholder="Tối thiểu 6 ký tự" style="width: 100%; padding: 9px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13px; box-sizing: border-box;">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 4px;">Xác nhận mật khẩu mới: <span style="color: #e11d48;">*</span></label>
+                    <input type="password" id="cpw-confirm-password" required minlength="6" placeholder="Nhập lại mật khẩu mới" style="width: 100%; padding: 9px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 13px; box-sizing: border-box;">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;">
+                    <button type="button" onclick="closeChangePasswordModal()" style="padding: 9px 16px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc; color: #475569; font-weight: 600; font-size: 13px; cursor: pointer;">Hủy</button>
+                    <button type="submit" id="btn-save-change-password" style="padding: 9px 20px; border-radius: 6px; border: none; background: #2563eb; color: #ffffff; font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                        <span>💾</span> Lưu Mật Khẩu
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
 </body>
 

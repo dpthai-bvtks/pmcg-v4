@@ -12517,3 +12517,88 @@ window.deleteTenantPrompt = function (code, encName) {
         alert('Lỗi: ' + (err && err.message ? err.message : 'Không thể xóa đơn vị'));
     });
 };
+
+
+// ============================================================
+// 🔑 ĐỔI MẬT KHẨU TÀI KHOẢN (SUPER ADMIN & ALL USERS)
+// ============================================================
+window.openChangePasswordModal = function() {
+    const userMenu = document.getElementById('user-dropdown-menu');
+    if (userMenu) userMenu.style.display = 'none';
+
+    let currentUsername = 'admin';
+    try {
+        const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
+        currentUsername = sess.username || currentUsername;
+    } catch(e) {}
+
+    const uInput = document.getElementById('cpw-username');
+    if (uInput) uInput.value = currentUsername;
+
+    const oldInput = document.getElementById('cpw-old-password');
+    const newInput = document.getElementById('cpw-new-password');
+    const confInput = document.getElementById('cpw-confirm-password');
+
+    if (oldInput) oldInput.value = '';
+    if (newInput) newInput.value = '';
+    if (confInput) confInput.value = '';
+
+    const modal = document.getElementById('modal-change-password');
+    if (modal) modal.style.display = 'flex';
+};
+
+window.closeChangePasswordModal = function() {
+    const modal = document.getElementById('modal-change-password');
+    if (modal) modal.style.display = 'none';
+};
+
+window.submitChangePassword = async function() {
+    const uName = (document.getElementById('cpw-username')?.value || '').trim();
+    const oldPass = (document.getElementById('cpw-old-password')?.value || '').trim();
+    const newPass = (document.getElementById('cpw-new-password')?.value || '').trim();
+    const confPass = (document.getElementById('cpw-confirm-password')?.value || '').trim();
+
+    if (!oldPass) {
+        alert('⚠️ Vui lòng nhập mật khẩu hiện tại!');
+        return;
+    }
+    if (!newPass || newPass.length < 6) {
+        alert('⚠️ Mật khẩu mới phải có tối thiểu 6 ký tự!');
+        return;
+    }
+    if (newPass !== confPass) {
+        alert('⚠️ Mật khẩu xác nhận không khớp với mật khẩu mới!');
+        return;
+    }
+
+    const btn = document.getElementById('btn-save-change-password');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳</span> Đang lưu...';
+    }
+
+    try {
+        const currentUnit = localStorage.getItem('pm_unit_code') || 'bvtks_cs2';
+        const res = await executeApiTask('changePassword', [{
+            username: uName,
+            old_password: oldPass,
+            new_password: newPass,
+            unit_code: currentUnit
+        }]);
+
+        if (res && res.status === 'success') {
+            alert('🎉 ' + (res.data?.message || 'Đã đổi mật khẩu thành công!'));
+            closeChangePasswordModal();
+        } else {
+            alert('❌ ' + (res?.error || 'Không thể đổi mật khẩu. Vui lòng thử lại!'));
+        }
+    } catch(err) {
+        console.error('Change password error:', err);
+        alert('❌ Lỗi kết nối: ' + (err.message || String(err)));
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>💾</span> Lưu Mật Khẩu';
+        }
+    }
+};
