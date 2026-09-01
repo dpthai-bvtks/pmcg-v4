@@ -344,15 +344,19 @@
                             </div>
 
                             <div class="user-menu-dropdown-container" id="user-menu-container"
-                                style="position: relative; display: none; margin-left: 10px;">
+                                style="position: relative; display: flex; align-items: center; gap: 6px; margin-left: 8px;">
                                 <button id="nav-btn-user"
-                                    style="display: flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; cursor: pointer; border: 1px solid #cbd5e1; background: #e2e8f0; color: #1e293b; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                                    style="display: flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 20px; font-size: 11px; font-weight: 700; cursor: pointer; border: 1px solid #cbd5e1; background: #f1f5f9; color: #1e293b; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                                     <span id="user-display-name">👤 admin</span>
                                     <span style="font-size: 8px; transition: transform 0.2s; display: inline-block;"
                                         id="user-dropdown-arrow">▼</span>
                                 </button>
+                                <button id="btn-quick-logout" onclick="triggerLogout()" title="Đăng xuất tài khoản"
+                                    style="display: flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; cursor: pointer; border: 1px solid #fecdd3; background: #fff1f2; color: #e11d48; transition: all 0.2s; box-shadow: 0 1px 2px rgba(225,29,72,0.1);">
+                                    <span>🚪</span> Đăng xuất
+                                </button>
                                 <div class="user-dropdown-menu" id="user-dropdown-menu"
-                                    style="display: none; position: absolute; right: 0; top: 100%; margin-top: 6px; background: white; min-width: 140px; box-shadow: 0 10px 25px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.05); border-radius: 8px; z-index: 10000; overflow: hidden; border: 1px solid rgba(0,0,0,0.06); padding: 4px 0; text-align: left;">
+                                    style="display: none; position: absolute; right: 0; top: 100%; margin-top: 6px; background: white; min-width: 150px; box-shadow: 0 10px 25px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.05); border-radius: 8px; z-index: 10000; overflow: hidden; border: 1px solid rgba(0,0,0,0.06); padding: 4px 0; text-align: left;">
                                     <a href="javascript:void(0)" id="user-menu-admin-btn"
                                         style="display: none; align-items: center; gap: 8px; padding: 10px 14px; font-size: 11.5px; color: #2c3e50; text-decoration: none; font-weight: 700; transition: background 0.15s;"
                                         onclick="goToAdminTab()">
@@ -3226,7 +3230,7 @@
 
                     <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 3.2.6</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 14:26 30/08/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 13:10 01/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -3664,20 +3668,20 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=3.2.6-rev13"></script>
-    <script src="js/ai-scheduler.js?v=3.2.6-rev13"></script>
-    <script src="js/cp-solver.js?v=3.2.6-rev13"></script>
-    <script src="js/scheduler-engine.js?v=3.2.6-rev13"></script>
-    <script src="js/app.js?v=3.2.6-rev13"></script>
-    <script src="js/init.js?v=3.2.6-rev13"></script>
-    <script src="js/sync.js?v=3.2.6-rev13"></script>
-    <script src="js/thongke.js?v=3.2.6-rev13"></script>
+    <script src="js/offline-sync-engine.js?v=4.0.0-rev2"></script>
+    <script src="js/ai-scheduler.js?v=4.0.0-rev2"></script>
+    <script src="js/cp-solver.js?v=4.0.0-rev2"></script>
+    <script src="js/scheduler-engine.js?v=4.0.0-rev2"></script>
+    <script src="js/app.js?v=4.0.0-rev2"></script>
+    <script src="js/init.js?v=4.0.0-rev2"></script>
+    <script src="js/sync.js?v=4.0.0-rev2"></script>
+    <script src="js/thongke.js?v=4.0.0-rev2"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js?v=3.2.6-rev13')
+            navigator.serviceWorker.register('./sw.js?v=4.0.0-rev2')
                 .then(reg => console.log('[PWA] Service Worker đăng ký thành công! Scope:', reg.scope))
                 .catch(err => console.warn('[PWA] Service Worker đăng ký thất bại:', err));
         });

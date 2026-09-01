@@ -1135,6 +1135,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     document.querySelectorAll('.app-user-name').forEach(el => el.innerText = uName);
                     document.querySelectorAll('.app-user-role').forEach(el => el.innerText = uRole);
+                    if (typeof updateLogoutButton === 'function') updateLogoutButton(uName);
 
                     let targetTab = 'tab-home';
                     if (window.location.hash) {
@@ -8888,17 +8889,20 @@ window.renderSttOrderControl = function (type, i, total) {
         function updateLogoutButton(username) {
             const container = document.getElementById('user-menu-container');
             const displayName = document.getElementById('user-display-name');
-            if (container && displayName) {
-                displayName.innerText = `👤 ${username}`;
-                container.style.display = 'inline-block';
-            }
+            if (container) container.style.display = 'flex';
+            if (displayName) displayName.innerText = `👤 ${username}`;
         }
 
         function doLogout() {
             localStorage.removeItem('meds_session');
-            document.getElementById('login-overlay').style.display = 'flex';
-            document.getElementById('user-menu-container').style.display = 'none';
-            document.getElementById('login-user').focus();
+            const overlay = document.getElementById('login-overlay');
+            if (overlay) overlay.style.display = 'flex';
+            const container = document.getElementById('user-menu-container');
+            if (container) container.style.display = 'none';
+            const userInp = document.getElementById('login-user');
+            if (userInp) { userInp.value = ''; userInp.focus(); }
+            const passInp = document.getElementById('login-pass');
+            if (passInp) passInp.value = '';
             if (typeof window.stopAutoSync === 'function') window.stopAutoSync();
         }
 
@@ -10694,12 +10698,18 @@ window.renderSttOrderControl = function (type, i, total) {
             if (arrow) arrow.style.transform = 'rotate(0deg)';
         }
 
-        function triggerLogout() {
-            document.getElementById('user-dropdown-menu').style.display = 'none';
+        window.triggerLogout = function () {
+            const dropMenu = document.getElementById('user-dropdown-menu');
+            if (dropMenu) dropMenu.style.display = 'none';
             const arrow = document.getElementById('user-dropdown-arrow');
             if (arrow) arrow.style.transform = 'rotate(0deg)';
-            showCustomConfirm('Đăng xuất tài khoản', 'Bạn có chắc chắn muốn đăng xuất không?', doLogout);
-        }
+
+            if (typeof showCustomConfirm === 'function') {
+                showCustomConfirm('Đăng xuất tài khoản', 'Bạn có chắc chắn muốn đăng xuất khỏi hệ thống không?', doLogout);
+            } else if (confirm('Bạn có chắc chắn muốn đăng xuất khỏi hệ thống không?')) {
+                doLogout();
+            }
+        };
 
         // Event Listeners for toggle
         document.addEventListener('DOMContentLoaded', () => {

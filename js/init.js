@@ -151,6 +151,10 @@ window.doLogin = function () {
 
                 const overlay = document.getElementById('login-overlay');
                 if (overlay) overlay.style.display = 'none';
+                const userMenu = document.getElementById('user-menu-container');
+                const displayName = document.getElementById('user-display-name');
+                if (userMenu) userMenu.style.display = 'flex';
+                if (displayName) displayName.innerText = '👤 ' + uName;
 
                 if (typeof initUI === 'function') initUI();
             } else {
