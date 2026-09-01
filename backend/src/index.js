@@ -1039,11 +1039,11 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         s.bed || ""
       ]));
 
-      const tenantInfo = tenantRes?.results?.[0] || { unit_code: unitCode, unit_name: "Bệnh viện Than - Khoáng sản Cơ sở 2", plan_tier: "ENTERPRISE" };
+      const tenantInfo = tenantRes?.results?.[0] || { unit_code: unitCode, unit_name: unitCode, plan_tier: "PRO" };
       return success({
         tenant: tenantInfo,
         settings: settingsObj,
-        marquee: settingsObj.marquee_text || "PHẦN MỀM XẾP LỊCH THỦ THUẬT - KHOA YHCT - PHCN BVTKS CS2",
+        marquee: settingsObj.marquee_text || ("PHẦN MỀM XẾP LỊCH THỦ THUẬT - " + (tenantInfo.unit_name || unitCode).toUpperCase()),
         links: links,
         machines: may_moc,
         may_moc: may_moc,

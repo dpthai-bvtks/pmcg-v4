@@ -7,13 +7,33 @@
 window.OfflineSyncEngine = (function () {
   'use strict';
 
-  const DB_NAME = 'PMCG_Offline_DB';
+  function getDbName(u) {
+    const code = u || localStorage.getItem('pm_unit_code') || 'bvtks_cs2';
+    return 'PMCG_Offline_DB_' + code;
+  }
   let dexieDb = null;
 
-  // Khởi tạo Dexie IndexedDB Store
-  try {
-    if (typeof window.Dexie !== 'undefined') {
-      dexieDb = new window.Dexie(DB_NAME);
+  function initDexie(u) {
+    try {
+      if (typeof window.Dexie !== 'undefined') {
+        dexieDb = new window.Dexie(getDbName(u));
+        dexieDb.version(1).stores({
+          cache: 'key, timestamp',
+          patients: '++id, name, age, room, status, order_idx',
+          history: '++id, date, patient_name, procedure_name, staff_name',
+          schedules: 'date, created_at',
+          chamcong: 'month_year, updated_at',
+          thongke: 'month_year, updated_at',
+          syncQueue: '++id, action, timestamp'
+        });
+        console.log('[Dexie.js] Khởi tạo bộ nhớ đệm Offline IndexedDB (' + getDbName(u) + ') thành công!');
+      }
+    } catch (e) {
+      console.warn('[Dexie.js] Khởi tạo Dexie thất bại:', e);
+    }
+  }
+
+  initDexie();
       dexieDb.version(1).stores({
         cache: 'key, timestamp',
         patients: '++id, name, age, room, status, order_idx',

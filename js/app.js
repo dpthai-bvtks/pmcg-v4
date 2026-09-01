@@ -2312,7 +2312,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         function restoreOfflineCache() {
             try {
-                const cachedStr = localStorage.getItem('times_bootstrap_cache');
+                const cachedStr = localStorage.getItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache");
                 if (cachedStr) {
                     const b = JSON.parse(cachedStr);
                     if (b && typeof dataCache !== 'undefined') {
@@ -2347,7 +2347,7 @@ window.renderSttOrderControl = function (type, i, total) {
                             b.patients = [];
                             b.schedule = [];
                             // Cập nhật lại localStorage để lần sau không bị lỗi nữa
-                            try { localStorage.setItem('times_bootstrap_cache', JSON.stringify(b)); } catch(e) {}
+                            try { localStorage.setItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache", JSON.stringify(b)); } catch(e) {}
                         }
 
                         if (b.machines && Array.isArray(b.machines)) {
@@ -2421,7 +2421,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 .withSuccessHandler(function (b) {
                     if (!b) return;
                     try {
-                        localStorage.setItem('times_bootstrap_cache', JSON.stringify(b));
+                        localStorage.setItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache", JSON.stringify(b));
                     } catch (e) { }
 
                     const now = Date.now();
@@ -3008,7 +3008,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             if (!loadedProtocols) {
                 try {
-                    const bStr = localStorage.getItem('times_bootstrap_cache');
+                    const bStr = localStorage.getItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache");
                     if (bStr) {
                         const b = JSON.parse(bStr);
                         const raw = (b.settings && b.settings.clinical_protocols) || b.protocols || b.phac_do;
@@ -3066,7 +3066,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             if (!allProcs || !allProcs.length) {
                 try {
-                    const bStr = localStorage.getItem('times_bootstrap_cache');
+                    const bStr = localStorage.getItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache");
                     if (bStr) {
                         const b = JSON.parse(bStr);
                         if (b && (b.proc || b.procedures)) {
@@ -3168,7 +3168,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             // 2. Cập nhật trực tiếp vào times_bootstrap_cache
             try {
-                const cachedStr = localStorage.getItem('times_bootstrap_cache');
+                const cachedStr = localStorage.getItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache");
                 if (cachedStr) {
                     const b = JSON.parse(cachedStr);
                     if (b) {
@@ -3176,7 +3176,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         b.phac_do = newList;
                         if (!b.settings) b.settings = {};
                         b.settings.clinical_protocols = JSON.stringify(newList);
-                        localStorage.setItem('times_bootstrap_cache', JSON.stringify(b));
+                        localStorage.setItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache", JSON.stringify(b));
                     }
                 }
             } catch (e) {}
@@ -5784,11 +5784,11 @@ window.renderSttOrderControl = function (type, i, total) {
                     if (typeof loadDashboard === 'function') loadDashboard();
 
                     try {
-                        const cachedStr = localStorage.getItem('times_bootstrap_cache');
+                        const cachedStr = localStorage.getItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache");
                         if (cachedStr) {
                             const b = JSON.parse(cachedStr);
                             b.schedule = sched;
-                            localStorage.setItem('times_bootstrap_cache', JSON.stringify(b));
+                            localStorage.setItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache", JSON.stringify(b));
                         }
                     } catch(e) {}
                 }, 50);
@@ -6118,11 +6118,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
             localStorage.setItem('meds_success', JSON.stringify(window.currentScheduleData));
             try {
-                const cachedStr = localStorage.getItem('times_bootstrap_cache');
+                const cachedStr = localStorage.getItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache");
                 if (cachedStr) {
                     const b = JSON.parse(cachedStr);
                     b.schedule = window.currentScheduleData;
-                    localStorage.setItem('times_bootstrap_cache', JSON.stringify(b));
+                    localStorage.setItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache", JSON.stringify(b));
                 }
             } catch(e) {}
 
@@ -8349,11 +8349,11 @@ window.renderSttOrderControl = function (type, i, total) {
                     
                     // Đồng bộ ngay vào offline cache để F5 không bị mất dữ liệu
                     try {
-                        const cachedStr = localStorage.getItem('times_bootstrap_cache');
+                        const cachedStr = localStorage.getItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache");
                         if (cachedStr) {
                             const b = JSON.parse(cachedStr);
                             b.schedule = sched;
-                            localStorage.setItem('times_bootstrap_cache', JSON.stringify(b));
+                            localStorage.setItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache", JSON.stringify(b));
                         }
                     } catch(e) {}
 
@@ -9391,7 +9391,7 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         function loadSystemSettings() {
-            const cachedStr = localStorage.getItem('times_bootstrap_cache');
+            const cachedStr = localStorage.getItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache");
             if (cachedStr) {
                 try {
                     const b = JSON.parse(cachedStr);
