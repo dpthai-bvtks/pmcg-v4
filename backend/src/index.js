@@ -35,7 +35,7 @@ function normalizeMonthKeys(inputStr) {
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, x-unit-code, X-Unit-Code, *",
   "Access-Control-Max-Age": "86400"
 };
 
@@ -67,7 +67,7 @@ app.use('*', async (c, next) => {
   await next();
   c.header("Access-Control-Allow-Origin", "*");
   c.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  c.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+  c.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, x-unit-code, X-Unit-Code, *");
 });
 
 // Root & Health Check
