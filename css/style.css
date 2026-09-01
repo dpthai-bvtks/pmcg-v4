@@ -5664,3 +5664,112 @@ transition: box-shadow 0.3s;
     cursor: grabbing !important;
     background: #cbd5e1 !important;
 }
+
+
+/* ── ROCK-SOLID ROOT VIEWPORT & GRID SIZING ── */
+html, body {
+    height: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+
+.container {
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    display: grid !important;
+    grid-template-columns: 65px 1fr !important;
+    grid-template-rows: 1fr !important;
+}
+
+.sidebar {
+    grid-column: 1 / 2 !important;
+    grid-row: 1 / -1 !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+}
+
+.main-wrapper {
+    grid-column: 2 / 3 !important;
+    grid-row: 1 / -1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+    min-height: 0 !important;
+}
+
+.header-fixed-section {
+    flex: 0 0 auto !important;
+    z-index: 100 !important;
+    background: #ffffff !important;
+    border-bottom: 2px solid #e67e22 !important;
+}
+
+.tab-scroll-content {
+    flex: 1 1 0% !important;
+    overflow-y: auto !important;
+    padding: 15px !important;
+    min-height: 0 !important;
+}
+
+
+/* ── LOCK ROOT VIEWPORT & PREVENT ANCHOR JUMP ── */
+html, body {
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.container {
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    display: grid !important;
+    grid-template-columns: 65px 1fr !important;
+    grid-template-rows: 100vh !important;
+}
+
+.sidebar {
+    grid-column: 1 / 2 !important;
+    grid-row: 1 / -1 !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
+}
+
+.main-wrapper {
+    grid-column: 2 / 3 !important;
+    grid-row: 1 / -1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
+    min-height: 0 !important;
+}
+
+.header-fixed-section {
+    flex: 0 0 auto !important;
+    z-index: 100 !important;
+    background: #ffffff !important;
+    border-bottom: 2px solid #e67e22 !important;
+}
+
+.tab-scroll-content {
+    flex: 1 1 0% !important;
+    overflow-y: auto !important;
+    padding: 15px !important;
+    min-height: 0 !important;
+}
