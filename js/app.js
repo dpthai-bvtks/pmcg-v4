@@ -9281,7 +9281,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-        window.onload = function () {
+                window.onload = function () {
 
             const sessionStr = localStorage.getItem('meds_session');
 
@@ -9293,12 +9293,28 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 updateLogoutButton(session.username);
 
-                applyPermissions(session.role, session.permissions);
+                // Áp dụng quyền - sau một tick nhỏ để DOM/tab listeners kịp khởi tạo
+                setTimeout(() => {
+                    applyPermissions(session.role, session.permissions);
 
-                if (session.role === 'Admin' && typeof loadAccounts === 'function') {
-                    loadAccounts();
-                }
-                
+                    if (session.role === 'SUPER_ADMIN') {
+                        // Kích hoạt tab-tenants thủ công nếu click chưa chạy được
+                        setTimeout(() => {
+                            const tenantTab = document.getElementById('tab-tenants');
+                            const isActive = tenantTab && tenantTab.classList.contains('active');
+                            if (!isActive) {
+                                document.querySelectorAll('.tab-content, .page').forEach(c => c.classList.remove('active'));
+                                if (tenantTab) tenantTab.classList.add('active');
+                            }
+                            if (typeof loadTenantsList === 'function') loadTenantsList();
+                        }, 200);
+                    }
+
+                    if ((session.role === 'Admin' || session.role === 'admin') && typeof loadAccounts === 'function') {
+                        loadAccounts();
+                    }
+                }, 80);
+
                 startAutoSync();
 
             } else {
