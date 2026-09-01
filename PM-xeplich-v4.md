@@ -240,3 +240,22 @@ git add . && git commit -m "..." && git push origin main
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+### [v4.0.0-rev37] - 01/09/2026: Sửa Lỗi Super Admin Sidebar Sau Đăng Nhập & Mở Modal Đổi Mật Khẩu
+- **Yêu cầu của người dùng**:
+  + Đăng nhập tài khoản Super Admin thì hiện tất cả tab ở sidebar, phải F5 lại mới lọc đúng.
+  + Bấm nút Đổi Mật Khẩu không hiện modal.
+- **Phân tích nguyên nhân & Giải pháp**:
+  + `js/init.js`: Hàm `window.doLogin` được định nghĩa trong cả `init.js` và `app.js`. Do `init.js` nạp sau nên ghi đè `doLogin` nhưng thiếu logic gọi `applyPermissions(uRole, uPerms)`, `updateAppHeader(uUnit, uRole)` và chuyển tab tự động sang `tab-tenants`. Đã cập nhật `doLogin` trong `init.js` đầy đủ chu trình phân quyền tức thì mà không cần F5.
+  + `js/app.js`: Cập nhật `applyPermissions` ẩn toàn bộ các nhóm tiêu đề (`.group-title`) ở sidebar trừ nhóm `⚙️ Hệ Thống` cho Super Admin. Xuất `window.applyPermissions`. Cập nhật `window.openChangePasswordModal` nhận event để `stopPropagation()`.
+  + `index.html`: Cập nhật nút Đổi Mật Khẩu gọi `window.openChangePasswordModal(event)`, gắn sự kiện đóng khi bấm backdrop trên modal `#modal-change-password`.
+  + `css/style.css`: Bổ sung `@keyframes modalPop` mượt mà cho modal đổi mật khẩu.
+  + Đồng bộ phiên bản `v4.0.0-rev37`, cập nhật footer timestamp `22:35 01/09/2026` và cache buster cho `sw.js`.
+- **File sửa đổi**:
+  + `js/init.js`
+  + `js/app.js`
+  + `index.html`
+  + `css/style.css`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+

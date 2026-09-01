@@ -168,7 +168,7 @@ window.doLogin = function () {
                 const uRole = res.role || 'Admin';
                 const uPerms = res.permissions || 'all';
                 const uUnit = res.unit_code || unit;
-                const uUnitName = res.unit_name || 'Bệnh viện Than - Khoáng sản Cơ sở 2';
+                const uUnitName = res.unit_name || (uRole === 'SUPER_ADMIN' ? 'Hệ Thống Quản Trị Trung Tâm SaaS' : 'Bệnh viện Than - Khoáng sản Cơ sở 2');
 
                 localStorage.setItem('pm_unit_code', uUnit);
                 localStorage.setItem('pm_unit_name', uUnitName);
@@ -189,7 +189,36 @@ window.doLogin = function () {
                 if (userMenu) userMenu.style.display = 'flex';
                 if (displayName) displayName.innerText = '👤 ' + uName;
 
-                if (typeof initUI === 'function') initUI();
+                document.querySelectorAll('.app-user-name').forEach(el => el.innerText = uName);
+                document.querySelectorAll('.app-user-role').forEach(el => el.innerText = uRole);
+
+                if (typeof window.applyPermissions === 'function') {
+                    window.applyPermissions(uRole, uPerms);
+                }
+                if (typeof window.updateAppHeader === 'function') {
+                    window.updateAppHeader(uUnit, uRole);
+                }
+
+                if (uRole === 'SUPER_ADMIN') {
+                    const superTab = document.getElementById('nav-tab-tenants');
+                    if (superTab) superTab.style.display = 'flex';
+                    if (typeof window.loadTenantsList === 'function') {
+                        try { window.loadTenantsList(); } catch(e) {}
+                    }
+                    const targetBtn = document.querySelector('.nav-tab[data-tab="tab-tenants"]') || superTab;
+                    if (targetBtn) targetBtn.click();
+                    try { history.replaceState(null, '', '#tab-tenants'); } catch(e) {}
+                } else {
+                    const superTab = document.getElementById('nav-tab-tenants');
+                    if (superTab) superTab.style.display = 'none';
+                    const homeTab = document.querySelector('.nav-tab[data-tab="tab-home"]');
+                    if (homeTab) homeTab.click();
+                    try { history.replaceState(null, '', '#tab-home'); } catch(e) {}
+                }
+
+                if ((uRole === 'Admin' || uRole === 'admin' || uRole === 'SUPER_ADMIN') && typeof loadAccounts === 'function') {
+                    try { loadAccounts(); } catch(e) {}
+                }
             } else {
                 if (errDiv) {
                     errDiv.innerText = (res && (res.message || res.error)) ? (res.message || res.error) : 'Tài khoản hoặc mật khẩu không chính xác!';

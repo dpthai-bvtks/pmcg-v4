@@ -12,7 +12,11 @@ window.toggleUserDropdown = function(e) {
     if (arrow) arrow.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(180deg)';
 };
 
-window.openChangePasswordModal = function() {
+window.openChangePasswordModal = function(e) {
+    if (e) {
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+        if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    }
     const userMenu = document.getElementById('user-dropdown-menu');
     if (userMenu) userMenu.style.display = 'none';
     const arrow = document.getElementById('user-dropdown-arrow');
@@ -37,6 +41,7 @@ window.openChangePasswordModal = function() {
 
     const modal = document.getElementById('modal-change-password');
     if (modal) {
+        modal.style.display = 'flex';
         modal.style.setProperty('display', 'flex', 'important');
     }
     setTimeout(() => { if (oldInput) oldInput.focus(); }, 100);
@@ -45,6 +50,7 @@ window.openChangePasswordModal = function() {
 window.closeChangePasswordModal = function() {
     const modal = document.getElementById('modal-change-password');
     if (modal) {
+        modal.style.display = 'none';
         modal.style.setProperty('display', 'none', 'important');
     }
 };
@@ -9005,7 +9011,16 @@ window.renderSttOrderControl = function (type, i, total) {
             const btnBackup = document.getElementById('nav-btn-backup');
             const btnQuicklinks = document.getElementById('nav-btn-quicklinks');
 
-            if (role === 'SUPER_ADMIN') {
+            // Ẩn/Hiện tiêu đề nhóm danh mục sidebar
+            document.querySelectorAll('.sidebar-menu .group-title').forEach(gt => {
+                if (role === 'SUPER_ADMIN' || role === 'superadmin') {
+                    gt.style.display = gt.innerText.includes('Hệ Thống') ? 'block' : 'none';
+                } else {
+                    gt.style.display = 'block';
+                }
+            });
+
+            if (role === 'SUPER_ADMIN' || role === 'superadmin') {
                 // 👑 SUPER ADMIN:
                 allTabs.forEach(t => {
                     const tabId = t.getAttribute('data-tab');
@@ -9070,6 +9085,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 window.updateAppHeader(localStorage.getItem('pm_unit_code'), role);
             }
         }
+        window.applyPermissions = applyPermissions;
 
         function togglePermissionsBox() {
 
