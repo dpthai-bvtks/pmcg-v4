@@ -1121,7 +1121,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     if (appHosp) appHosp.innerText = uUnitName.toUpperCase();
                     const mobTitle = document.getElementById('mobile-header-date');
                     if (mobTitle) mobTitle.innerText = uUnitName;
-                    document.title = uUnitName + ' - T.I.M.E.S System';
+                    document.title = 'T.I.M.E.S System - Phần mềm xếp lịch thủ thuật thông minh';
 
                     // Super Admin UI handling
                     if (uRole === 'SUPER_ADMIN') {
@@ -7246,7 +7246,7 @@ window.renderSttOrderControl = function (type, i, total) {
             dataCache.pat = window._liveDataCacheBackup.pat;
             dataCache.staff = window._liveDataCacheBackup.staff;
             window._liveDataCacheBackup = null;
-            document.title = 'T.I.M.E.S. System';
+            document.title = 'T.I.M.E.S System - Phần mềm xếp lịch thủ thuật thông minh';
             if (typeof renderPatientsTable === 'function') renderPatientsTable(true);
             if (typeof renderBusyPat === 'function') renderBusyPat();
             if (typeof renderBusyStaff === 'function') renderBusyStaff();

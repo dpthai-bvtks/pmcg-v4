@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (appHosp) appHosp.innerText = savedUnitName.toUpperCase();
         const mobTitle = document.getElementById('mobile-header-date');
         if (mobTitle) mobTitle.innerText = savedUnitName;
-        document.title = savedUnitName + ' - T.I.M.E.S System';
+        document.title = 'T.I.M.E.S System - Phần mềm xếp lịch thủ thuật thông minh';
     }
 
     try {
