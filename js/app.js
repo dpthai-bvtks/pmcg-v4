@@ -9011,15 +9011,6 @@ window.renderSttOrderControl = function (type, i, total) {
             const btnBackup = document.getElementById('nav-btn-backup');
             const btnQuicklinks = document.getElementById('nav-btn-quicklinks');
 
-            // Ẩn/Hiện tiêu đề nhóm danh mục sidebar
-            document.querySelectorAll('.sidebar-menu .group-title').forEach(gt => {
-                if (role === 'SUPER_ADMIN' || role === 'superadmin') {
-                    gt.style.display = gt.innerText.includes('Hệ Thống') ? 'block' : 'none';
-                } else {
-                    gt.style.display = 'block';
-                }
-            });
-
             if (role === 'SUPER_ADMIN' || role === 'superadmin') {
                 // 👑 SUPER ADMIN:
                 allTabs.forEach(t => {

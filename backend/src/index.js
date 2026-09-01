@@ -2516,25 +2516,25 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
       let existing = null;
       if (id) {
-        existing = await db.prepare("SELECT id, username FROM tai_khoan WHERE id = ?").bind(id).first();
+        existing = await db.prepare("SELECT id, username FROM tai_khoan WHERE unit_code = ? AND id = ?").bind(unitCode, id).first();
       }
       if (!existing && username) {
-        existing = await db.prepare("SELECT id, username FROM tai_khoan WHERE username = ?").bind(username).first();
+        existing = await db.prepare("SELECT id, username FROM tai_khoan WHERE unit_code = ? AND username = ?").bind(unitCode, username).first();
       }
 
       if (existing) {
         if (password) {
           const passHash = await hashPassword(password);
-          await db.prepare("UPDATE tai_khoan SET username = ?, password_hash = ?, role = ?, permissions = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-            .bind(username, passHash, normRole, permissions, existing.id).run();
+          await db.prepare("UPDATE tai_khoan SET username = ?, password_hash = ?, role = ?, permissions = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ? AND id = ?")
+            .bind(username, passHash, normRole, permissions, unitCode, existing.id).run();
         } else {
-          await db.prepare("UPDATE tai_khoan SET username = ?, role = ?, permissions = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-            .bind(username, normRole, permissions, existing.id).run();
+          await db.prepare("UPDATE tai_khoan SET username = ?, role = ?, permissions = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ? AND id = ?")
+            .bind(username, normRole, permissions, unitCode, existing.id).run();
         }
       } else {
         const passHash = await hashPassword(password || "123456");
-        await db.prepare("INSERT INTO tai_khoan (username, password_hash, role, permissions, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)")
-          .bind(username, passHash, normRole, permissions).run();
+        await db.prepare("INSERT INTO tai_khoan (unit_code, username, password_hash, role, permissions, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)")
+          .bind(unitCode, username, passHash, normRole, permissions).run();
       }
       return success({ message: "Đã lưu tài khoản thành công!" });
     }

@@ -246,7 +246,7 @@ git add . && git commit -m "..." && git push origin main
   + Bấm nút Đổi Mật Khẩu không hiện modal.
 - **Phân tích nguyên nhân & Giải pháp**:
   + `js/init.js`: Hàm `window.doLogin` được định nghĩa trong cả `init.js` và `app.js`. Do `init.js` nạp sau nên ghi đè `doLogin` nhưng thiếu logic gọi `applyPermissions(uRole, uPerms)`, `updateAppHeader(uUnit, uRole)` và chuyển tab tự động sang `tab-tenants`. Đã cập nhật `doLogin` trong `init.js` đầy đủ chu trình phân quyền tức thì mà không cần F5.
-  + `js/app.js`: Cập nhật `applyPermissions` ẩn toàn bộ các nhóm tiêu đề (`.group-title`) ở sidebar trừ nhóm `⚙️ Hệ Thống` cho Super Admin. Xuất `window.applyPermissions`. Cập nhật `window.openChangePasswordModal` nhận event để `stopPropagation()`.
+  + `js/app.js`: Cập nhật `applyPermissions` xuất `window.applyPermissions`. Cập nhật `window.openChangePasswordModal` nhận event để `stopPropagation()`.
   + `index.html`: Cập nhật nút Đổi Mật Khẩu gọi `window.openChangePasswordModal(event)`, gắn sự kiện đóng khi bấm backdrop trên modal `#modal-change-password`.
   + `css/style.css`: Bổ sung `@keyframes modalPop` mượt mà cho modal đổi mật khẩu.
   + Đồng bộ phiên bản `v4.0.0-rev37`, cập nhật footer timestamp `22:35 01/09/2026` và cache buster cho `sw.js`.
@@ -257,5 +257,21 @@ git add . && git commit -m "..." && git push origin main
   + `css/style.css`
   + `sw.js`
   + `PM-xeplich-v4.md`
+
+### [v4.0.0-rev38] - 01/09/2026: Ẩn Tiêu Đề Group Sidebar Thu Gọn & Bảo Vệ Tài Khoản Super Admin
+- **Yêu cầu của người dùng**:
+  + Sidebar thu gọn của Super Admin bị hiện dòng chữ `⚙️ Hệ Thống` xuống dòng xấu xí.
+  + Làm rõ việc Quản lý tài khoản trong Tab Admin ở các bệnh viện/phòng khám khác có ảnh hưởng đến tài khoản Super Admin không.
+- **Phân tích nguyên nhân & Giải pháp**:
+  + `js/app.js`: Xóa bỏ việc gán inline `display: block` cho `.group-title`, đảm bảo sidebar thu gọn luôn giữ nguyên giao diện icon-only gọn gàng theo chuẩn CSS `.group-title { display: none; }`.
+  + `backend/src/index.js`: Khóa chặt truy vấn và lưu tài khoản `saveAccount` luôn đi kèm điều kiện `WHERE unit_code = ?`. Tài khoản Super Admin lưu độc lập tại bảng `cai_dat` với `unit_code = 'MASTER'`, hoàn toàn cách ly 100% khỏi bảng `tai_khoan` của các đơn vị.
+  + Đồng bộ phiên bản `v4.0.0-rev38`, cập nhật footer timestamp `22:45 01/09/2026` và cache buster cho `sw.js`.
+- **File sửa đổi**:
+  + `js/app.js`
+  + `backend/src/index.js`
+  + `index.html`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
 
 
