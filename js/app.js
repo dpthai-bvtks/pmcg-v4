@@ -2104,7 +2104,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // Event Listeners for toggle
         document.addEventListener('DOMContentLoaded', () => {
-            loadSystemSettings();
+            if (typeof loadSystemSettings === 'function') loadSystemSettings();
 
             const btnUser = document.getElementById('nav-btn-user');
             const menu = document.getElementById('user-dropdown-menu');
