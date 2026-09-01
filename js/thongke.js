@@ -121,34 +121,35 @@
         } catch(e) {}
 
         function getOrLoadChamCongEmployees(callback) {
+            const isDefault = (localStorage.getItem('pm_unit_code') || 'bvtks_cs2') === 'bvtks_cs2';
+            
             // 1. Kiểm tra cache / dataCache / default
             if (adminChamCongEmployees.length === 0) {
-                if (typeof dataCache !== 'undefined' && dataCache.staff && dataCache.staff.length > 0) {
-                    adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
-                } else {
+                const cachedEmpStr = localStorage.getItem(getChamCongStorageKey('med_chamcong_employees'));
+                if (cachedEmpStr) {
+                    try { adminChamCongEmployees = JSON.parse(cachedEmpStr); } catch(e){}
+                } else if (isDefault) {
                     adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
                 }
             }
 
             if (callback) callback(adminChamCongEmployees);
 
-            // 2. Tải đồng bộ ngầm từ Google Drive
+            // 2. Tải đồng bộ ngầm từ API Cloudflare
             google.script.run.withSuccessHandler(empRes => {
                 let list = [];
-                if (empRes && empRes.status === 'success' && empRes.data) {
+                if (empRes && empRes.status === 'success') {
                     if (Array.isArray(empRes.data)) list = empRes.data;
-                    else if (empRes.data.employees) list = empRes.data.employees;
-                    else list = Object.keys(empRes.data);
-                } else if (Array.isArray(empRes) && empRes.length > 0) {
+                    else if (empRes.data && empRes.data.employees) list = empRes.data.employees;
+                    else if (empRes.data && typeof empRes.data === 'object') list = Object.keys(empRes.data);
+                } else if (Array.isArray(empRes)) {
                     list = empRes;
                 }
 
-                if (list.length > 0) {
-                    // Extract names if list contains objects
-                    adminChamCongEmployees = list.map(item => typeof item === 'object' && item !== null ? (item.ten || item.name || item.his_name) : item).filter(Boolean);
-                    try { localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees)); } catch(e){}
-                    if (callback) callback(adminChamCongEmployees);
-                }
+                adminChamCongEmployees = list.map(item => typeof item === 'object' && item !== null ? (item.ten || item.name || item.his_name) : item).filter(Boolean);
+                try { localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees)); } catch(e){}
+                if (callback) callback(adminChamCongEmployees);
+                if (typeof renderChamCongTable === 'function') renderChamCongTable();
             }).withFailureHandler(err => {
                 console.warn("getEmployees fallback:", err);
             }).getEmployees();
@@ -507,6 +508,14 @@ function renderAdminChamCongTable() {
 
             tbody.innerHTML = '';
             let grandTotalChamCong = 0;
+
+            if (!adminChamCongEmployees || adminChamCongEmployees.length === 0) {
+                const colSpan = daysInMonth + 3;
+                tbody.innerHTML = '<tr><td colspan="' + colSpan + '" style="text-align:center; padding:30px; color:#64748b; font-size:13px; font-weight:500;">' +
+                    '⚠️ Đơn vị này chưa có danh sách nhân sự chấm công. Vui lòng vào <b>Quản trị ➔ Nhân sự chấm công</b> để thêm nhân viên.' +
+                    '</td></tr>';
+                return;
+            }
 
             adminChamCongEmployees.forEach(emp => {
                 if (!chamCongData[emp]) chamCongData[emp] = {};
