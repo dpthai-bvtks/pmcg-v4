@@ -5825,3 +5825,26 @@ html, body {
     display: block !important;
     padding: 10px 0 30px 0 !important;
 }
+
+
+/* ── UNIVERSAL TAB VISIBILITY & FLEX FIX ── */
+.tab-content {
+    display: none !important;
+}
+
+.tab-content.active {
+    display: block !important;
+    min-height: calc(100vh - 200px) !important;
+    animation: fadeIn 0.25s ease-in-out !important;
+}
+
+#tab-schedule.active, #tab-stats.active, #tab-sat.active, #tab-chamcong.active, #tab-utils.active, #tab-kiemtra.active {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 !important;
+    min-height: 0 !important;
+}
+
+#tab-home.active, #tab-tenants.active, #tab-admin.active, #tab-patients.active, #tab-machines.active, #tab-procedures.active, #tab-staff.active, #tab-rooms.active, #tab-busy.active, #tab-thongke.active {
+    display: block !important;
+}

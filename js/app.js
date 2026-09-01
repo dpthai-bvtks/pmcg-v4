@@ -8924,7 +8924,6 @@ window.renderSttOrderControl = function (type, i, total) {
 
             if (role === 'SUPER_ADMIN') {
                 // 👑 SUPER ADMIN:
-                // 1. Menu chính: Chỉ hiện Tab Quản Lý Đơn Vị SaaS & Tab Cài Đặt / Sao Lưu Toàn Cục
                 allTabs.forEach(t => {
                     const tabId = t.getAttribute('data-tab');
                     if (tabId === 'tab-tenants' || tabId === 'tab-admin') {
@@ -8939,22 +8938,17 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (dropdownDivider) dropdownDivider.style.display = 'block';
                 document.body.classList.remove('read-only-user');
 
-                // 2. Menu con trong Tab Admin:
-                // GIỮ: Sao Lưu & Khôi Phục, Quản Lý Liên Kết Nhanh
                 if (btnBackup) btnBackup.style.display = 'block';
                 if (btnQuicklinks) btnQuicklinks.style.display = 'block';
-                // ẨN: Cài đặt hệ thống, Quản lý tài khoản, Nhân sự chấm công, Huấn luyện AI
                 if (btnSettings) btnSettings.style.display = 'none';
                 if (btnAccounts) btnAccounts.style.display = 'none';
                 if (btnEmployees) btnEmployees.style.display = 'none';
                 if (btnAi) btnAi.style.display = 'none';
 
-                // Mặc định kích hoạt mục Sao Lưu & Khôi Phục khi vào tab Admin
                 if (btnBackup && typeof switchAdminSection === 'function') {
                     switchAdminSection('admin-sec-backup', btnBackup);
                 }
 
-                // Tự động kích hoạt trực tiếp tab Quản lý đơn vị SaaS
                 let currentHash = window.location.hash ? window.location.hash.substring(1) : '';
                 if (currentHash !== 'tab-admin' && currentHash !== 'tab-tenants') {
                     currentHash = 'tab-tenants';
@@ -8963,11 +8957,12 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 document.querySelectorAll('.tab-content, .page').forEach(c => {
                     c.classList.remove('active');
+                    c.style.display = '';
                 });
                 const targetEl = document.getElementById(currentHash);
                 if (targetEl) {
                     targetEl.classList.add('active');
-                    targetEl.style.display = 'block';
+                    targetEl.style.display = '';
                 }
                 allTabs.forEach(t => t.classList.remove('active'));
                 const activeNavBtn = document.querySelector(`.nav-tab[data-tab="${currentHash}"]`) || superTab;
@@ -8980,16 +8975,12 @@ window.renderSttOrderControl = function (type, i, total) {
             }
 
             // 🏥 ADMIN & NHÂN VIÊN BỆNH VIỆN / ĐƠN VỊ:
-            // TUYỆT ĐỐI ẨN TAB SAAS TENANTS
             if (superTab) superTab.style.display = 'none';
 
-            // Menu con trong Tab Admin của Đơn Vị:
-            // GIỮ: Cài đặt hệ thống, Quản lý tài khoản, Nhân sự chấm công, Huấn luyện AI
             if (btnSettings) btnSettings.style.display = 'block';
             if (btnAccounts) btnAccounts.style.display = 'block';
             if (btnEmployees) btnEmployees.style.display = 'block';
             if (btnAi) btnAi.style.display = 'block';
-            // ẨN: Sao Lưu & Khôi Phục, Quản Lý Liên Kết Nhanh
             if (btnBackup) btnBackup.style.display = 'none';
             if (btnQuicklinks) btnQuicklinks.style.display = 'none';
 
@@ -8997,7 +8988,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 switchAdminSection('admin-sec-settings', btnSettings);
             }
 
-            if (role === 'Admin' || permsStr === 'ALL') {
+            if (role === 'Admin' || role === 'admin' || permsStr === 'ALL') {
                 allTabs.forEach(t => {
                     const tabId = t.getAttribute('data-tab');
                     if (tabId === 'tab-tenants') {
@@ -9026,6 +9017,25 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (adminBtn) adminBtn.style.display = 'none';
                 document.body.classList.add('read-only-user');
             }
+
+            // Kích hoạt tab cho Admin / Nhân viên
+            let currentHash = window.location.hash ? window.location.hash.substring(1) : '';
+            if (!currentHash || currentHash === 'tab-tenants') {
+                currentHash = 'tab-home';
+                window.location.hash = '#tab-home';
+            }
+            document.querySelectorAll('.tab-content, .page').forEach(c => {
+                c.classList.remove('active');
+                c.style.display = '';
+            });
+            const targetEl = document.getElementById(currentHash);
+            if (targetEl) {
+                targetEl.classList.add('active');
+                targetEl.style.display = '';
+            }
+            allTabs.forEach(t => t.classList.remove('active'));
+            const activeNavBtn = document.querySelector(`.nav-tab[data-tab="${currentHash}"]`);
+            if (activeNavBtn) activeNavBtn.classList.add('active');
         }
 
         function togglePermissionsBox() {
@@ -12551,7 +12561,7 @@ window.closeChangePasswordModal = function() {
     if (modal) modal.style.display = 'none';
 };
 
-window.submitChangePassword = async function() {
+window.submitChangePassword = function() {
     const uName = (document.getElementById('cpw-username')?.value || '').trim();
     const oldPass = (document.getElementById('cpw-old-password')?.value || '').trim();
     const newPass = (document.getElementById('cpw-new-password')?.value || '').trim();
@@ -12576,28 +12586,28 @@ window.submitChangePassword = async function() {
         btn.innerHTML = '<span>⏳</span> Đang lưu...';
     }
 
-    try {
-        const currentUnit = localStorage.getItem('pm_unit_code') || 'bvtks_cs2';
-        const res = await executeApiTask('changePassword', [{
-            username: uName,
-            old_password: oldPass,
-            new_password: newPass,
-            unit_code: currentUnit
-        }]);
-
-        if (res && res.status === 'success') {
-            alert('🎉 ' + (res.data?.message || 'Đã đổi mật khẩu thành công!'));
-            closeChangePasswordModal();
-        } else {
-            alert('❌ ' + (res?.error || 'Không thể đổi mật khẩu. Vui lòng thử lại!'));
-        }
-    } catch(err) {
-        console.error('Change password error:', err);
-        alert('❌ Lỗi kết nối: ' + (err.message || String(err)));
-    } finally {
+    const currentUnit = localStorage.getItem('pm_unit_code') || 'bvtks_cs2';
+    callApi('changePassword', [{
+        username: uName,
+        old_password: oldPass,
+        new_password: newPass,
+        unit_code: currentUnit
+    }], res => {
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = '<span>💾</span> Lưu Mật Khẩu';
         }
-    }
+        if (res && (res.status === 'success' || res.success)) {
+            alert('🎉 ' + (res.data?.message || res.message || 'Đã đổi mật khẩu thành công!'));
+            closeChangePasswordModal();
+        } else {
+            alert('❌ ' + (res?.message || res?.error || 'Không thể đổi mật khẩu. Vui lòng thử lại!'));
+        }
+    }, err => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>💾</span> Lưu Mật Khẩu';
+        }
+        alert('❌ Lỗi kết nối: ' + (err && err.message ? err.message : String(err)));
+    });
 };
