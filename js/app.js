@@ -2076,9 +2076,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         }
 
                         // Cập nhật URL hash để hỗ trợ chia sẻ / mở trực tiếp tab
-                        try {
-                            history.replaceState(null, '', '#tab=' + targetTab);
-                        } catch(e) {}
+                        window.location.hash = '#' + targetTab;
 
 
 
@@ -10664,7 +10662,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     const targetTab = tab.getAttribute('data-tab');
 
-                    try { history.replaceState(null, '', '#tab=' + targetTab); } catch(e) {}
+                    window.location.hash = '#' + targetTab;
 
                 }, true); // Use capture phase to intercept
 
@@ -10744,6 +10742,24 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 }
 
+                if (targetTab === 'tab-tenants') {
+                    if (typeof loadTenantsList === 'function') loadTenantsList();
+                }
+                if (targetTab === 'tab-procedures') {
+                    if (typeof renderProceduresTable === 'function') renderProceduresTable();
+                    if (typeof renderProtoProcsFormCheckboxes === 'function') renderProtoProcsFormCheckboxes();
+                    if (typeof renderProtocolsTable === 'function') renderProtocolsTable();
+                }
+                if (targetTab === 'tab-rooms' && typeof renderDynamicMachineInputs === 'function') {
+                    renderDynamicMachineInputs();
+                }
+                if (targetTab === 'tab-admin') {
+                    if (typeof loadSystemSettings === 'function') loadSystemSettings();
+                    if (typeof switchAdminSection === 'function') {
+                        const activeSubBtn = document.querySelector('.admin-nav-btn.active') || document.getElementById('nav-btn-settings');
+                        switchAdminSection('admin-sec-settings', activeSubBtn);
+                    }
+                }
                 if (targetTab === 'tab-thongke') {
 
                     if (typeof loadThongKeData === 'function') loadThongKeData();
