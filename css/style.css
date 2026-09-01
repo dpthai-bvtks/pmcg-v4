@@ -626,7 +626,7 @@
         }
 
         /* Chỉ hiển thị footer ở 4 tab: Trang Chủ, Chấm Công, Thống Kê, Admin */
-        body:not(:has(#tab-home.active)):not(:has(#tab-chamcong.active)):not(:has(#tab-thongke.active)):not(:has(#tab-admin.active)) .main-footer {
+        body:not(:has(#tab-home.active)):not(:has(#tab-chamcong.active)):not(:has(#tab-thongke.active)):not(:has(#tab-admin.active)):not(:has(#tab-tenants.active)) .main-footer {
             display: none !important;
         }
 
