@@ -5666,11 +5666,14 @@ transition: box-shadow 0.3s;
 }
 
 
-/* ── ROCK-SOLID ROOT VIEWPORT & GRID SIZING ── */
+/* ════════════════════════════════════════════════════════════
+   LAYOUT LOCK & SPLIT-LAYOUT FIX — thêm vào sau rev17
+   ════════════════════════════════════════════════════════════ */
+
+/* 1. Lock viewport: ngăn anchor scroll khi chuyển tab */
 html, body {
-    height: 100%;
-    margin: 0 !important;
-    padding: 0 !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
     overflow: hidden !important;
 }
 
@@ -5678,68 +5681,13 @@ html, body {
     height: 100vh !important;
     max-height: 100vh !important;
     overflow: hidden !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    display: grid !important;
-    grid-template-columns: 65px 1fr !important;
-    grid-template-rows: 1fr !important;
-}
-
-.sidebar {
-    grid-column: 1 / 2 !important;
-    grid-row: 1 / -1 !important;
-    height: 100vh !important;
-    overflow-y: auto !important;
-}
-
-.main-wrapper {
-    grid-column: 2 / 3 !important;
-    grid-row: 1 / -1 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    height: 100vh !important;
-    max-height: 100vh !important;
-    overflow: hidden !important;
-    min-height: 0 !important;
-}
-
-.header-fixed-section {
-    flex: 0 0 auto !important;
-    z-index: 100 !important;
-    background: #ffffff !important;
-    border-bottom: 2px solid #e67e22 !important;
-}
-
-.tab-scroll-content {
-    flex: 1 1 0% !important;
-    overflow-y: auto !important;
-    padding: 15px !important;
-    min-height: 0 !important;
-}
-
-
-/* ── LOCK ROOT VIEWPORT & PREVENT ANCHOR JUMP ── */
-html, body {
-    height: 100vh !important;
-    max-height: 100vh !important;
-    overflow: hidden !important;
-    margin: 0 !important;
-    padding: 0 !important;
-}
-
-.container {
-    height: 100vh !important;
-    max-height: 100vh !important;
-    overflow: hidden !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
     display: grid !important;
     grid-template-columns: 65px 1fr !important;
     grid-template-rows: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
 }
 
 .sidebar {
@@ -5762,9 +5710,6 @@ html, body {
 
 .header-fixed-section {
     flex: 0 0 auto !important;
-    z-index: 100 !important;
-    background: #ffffff !important;
-    border-bottom: 2px solid #e67e22 !important;
 }
 
 .tab-scroll-content {
@@ -5772,23 +5717,12 @@ html, body {
     overflow-y: auto !important;
     padding: 15px !important;
     min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
 }
 
-
-
-/* ════════════════════════════════════════════════════════════
-   FINAL SPLIT-LAYOUT FIX [v4.0.0-rev28]
-   KHÔNG đụng đến height của .tab-scroll-content
-   tab-scroll-content đã có flex:1 1 0% + min-height:0 → tự fill đúng
-   ════════════════════════════════════════════════════════════ */
+/* 2. Split-layout: form + bảng song song trên desktop */
 @media (min-width: 769px) {
-    /* Bên trong .tab-scroll-content: .split-layout phải dùng height:100%
-       vì .tab-scroll-content là flex container (column) nên cần min-height:0 */
-    .tab-scroll-content {
-        display: flex !important;
-        flex-direction: column !important;
-    }
-
     .split-layout {
         display: flex !important;
         flex-direction: row !important;
@@ -5808,10 +5742,6 @@ html, body {
         display: flex !important;
         flex-direction: column !important;
         min-height: 0 !important;
-        background: #f8fafc !important;
-        padding: 12px 14px 0 14px !important;
-        border-radius: 8px !important;
-        border: 1px solid #dcdde1 !important;
         overflow: hidden !important;
         box-sizing: border-box !important;
     }
@@ -5820,16 +5750,10 @@ html, body {
         flex: 1 1 0% !important;
         overflow-y: auto !important;
         min-height: 0 !important;
-        padding-right: 4px !important;
-        padding-bottom: 10px !important;
     }
 
     .form-pinned-footer {
         flex-shrink: 0 !important;
-        background: #f1f2f6 !important;
-        padding: 10px 14px !important;
-        margin: 0 -14px 0 -14px !important;
-        border-top: 1px solid #dcdde1 !important;
     }
 
     .main-table {
@@ -5837,22 +5761,30 @@ html, body {
         min-width: 0 !important;
         min-height: 0 !important;
         overflow: auto !important;
-        background: #ffffff !important;
-        border-radius: 8px !important;
-        border: 1px solid #cbd5e1 !important;
         box-sizing: border-box !important;
     }
 
     .main-table table {
         width: 100% !important;
         border-collapse: collapse !important;
-        min-width: max-content !important;
     }
 
     .main-table thead th {
         position: sticky !important;
         top: 0 !important;
         z-index: 10 !important;
-        background: #f1f5f9 !important;
+    }
+}
+
+/* 3. Mobile: split-layout về dạng dọc */
+@media (max-width: 768px) {
+    .tab-scroll-content {
+        display: block !important;
+        flex: 1 1 0% !important;
+        overflow-y: auto !important;
+    }
+
+    .split-layout {
+        flex-direction: column !important;
     }
 }
