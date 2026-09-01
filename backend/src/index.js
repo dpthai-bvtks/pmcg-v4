@@ -788,15 +788,15 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const uCode = String(payload.unit_code || payload.code || "").trim().toLowerCase();
       if (!uCode) return error("Thiếu mã đơn vị cần cập nhật!", 400);
 
-      const uName = payload.unit_name || payload.name;
-      const uPlan = payload.plan_tier || payload.plan;
-      const uExp = payload.expires_at;
-      const uStaff = payload.max_staff;
-      const uPats = payload.max_patients;
-      const uPhone = payload.phone;
-      const uEmail = payload.email;
-      const uActive = payload.is_active !== undefined ? (payload.is_active ? 1 : 0) : undefined;
-      const uLogo = payload.logo_url;
+      const uName = payload.unit_name !== undefined && payload.unit_name !== null ? String(payload.unit_name).trim() : null;
+      const uPlan = payload.plan_tier !== undefined && payload.plan_tier !== null ? String(payload.plan_tier).trim() : null;
+      const uExp = payload.expires_at !== undefined && payload.expires_at !== null ? String(payload.expires_at).trim() : null;
+      const uStaff = payload.max_staff !== undefined && payload.max_staff !== null ? parseInt(payload.max_staff, 10) : null;
+      const uPats = payload.max_patients !== undefined && payload.max_patients !== null ? parseInt(payload.max_patients, 10) : null;
+      const uPhone = payload.phone !== undefined && payload.phone !== null ? String(payload.phone).trim() : null;
+      const uEmail = payload.email !== undefined && payload.email !== null ? String(payload.email).trim() : null;
+      const uActive = payload.is_active !== undefined && payload.is_active !== null ? (payload.is_active ? 1 : 0) : null;
+      const uLogo = payload.logo_url !== undefined && payload.logo_url !== null ? String(payload.logo_url).trim() : null;
 
       await db.prepare(`
         UPDATE tenants SET
@@ -812,6 +812,12 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           updated_at = CURRENT_TIMESTAMP
         WHERE unit_code = ?
       `).bind(uName, uPlan, uExp, uStaff, uPats, uPhone, uEmail, uLogo, uActive, uCode).run();
+
+      // Nếu có cập nhật mật khẩu admin
+      if (payload.admin_password && String(payload.admin_password).trim()) {
+        const passHash = await hashPassword(String(payload.admin_password).trim());
+        await db.prepare("INSERT OR REPLACE INTO tai_khoan (unit_code, username, password_hash, role, permissions) VALUES (?, 'admin', ?, 'Admin', 'ALL')").bind(uCode, passHash).run();
+      }
 
       return success({ message: `Đã cập nhật thông tin đơn vị '${uCode}' thành công!` });
     }
