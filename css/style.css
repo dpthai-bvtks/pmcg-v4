@@ -5664,3 +5664,58 @@ transition: box-shadow 0.3s;
     cursor: grabbing !important;
     background: #cbd5e1 !important;
 }
+
+
+/* ── CRISP HEADER & MARQUEE LAYOUT ── */
+.header-fixed-section {
+    flex: 0 0 auto !important;
+    min-height: auto !important;
+    background: #ffffff !important;
+    border-bottom: 2px solid #e67e22 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    z-index: 100 !important;
+    position: relative !important;
+}
+
+.hospital-banner-global {
+    min-height: 80px !important;
+    padding: 8px 18px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+}
+
+.global-marquee-container {
+    background: #f1f8e9 !important;
+    border-top: 1px solid #dcdde1 !important;
+    padding: 0 14px !important;
+    min-height: 28px !important;
+    height: 28px !important;
+    display: flex !important;
+    align-items: center !important;
+    overflow: hidden !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+#thong-bao-chay {
+    flex: 1 !important;
+    font-weight: 700 !important;
+    color: #c0392b !important;
+    font-size: 12.5px !important;
+    line-height: 28px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+}
+
+#tab-tenants.active {
+    display: block !important;
+    animation: fadeIn 0.3s ease-in-out;
+    padding: 15px 20px;
+    background: #fdfaf1;
+    min-height: calc(100vh - 200px);
+}
