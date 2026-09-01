@@ -10648,148 +10648,104 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // -----------------------------------------------------------
 
-        // 📌 HASH ROUTING LOGIC
-
         // -----------------------------------------------------------
+        // 📌 SMOOTH TAB ROUTING LOGIC (NO NATIVE ANCHOR JUMP)
+        // -----------------------------------------------------------
+        window.switchTab = function (targetTab, updateUrl = true) {
+            if (!targetTab) targetTab = 'tab-home';
+            const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
+            if (sess.role === 'SUPER_ADMIN' && (targetTab === 'tab-home' || !targetTab)) {
+                targetTab = 'tab-tenants';
+            }
+
+            if (updateUrl && window.history && window.history.replaceState) {
+                history.replaceState(null, '', '#' + targetTab);
+            }
+
+            // Cập nhật giao diện tabs
+            document.querySelectorAll('.nav-tab, .nav-item').forEach(t => t.classList.remove('active'));
+            let activeBtn = document.querySelector(`[data-tab="${targetTab}"]`);
+            if (activeBtn) activeBtn.classList.add('active');
+
+            // Ẩn tất cả tab và chỉ kích hoạt tab mục tiêu
+            document.querySelectorAll('.tab-content, .page').forEach(c => {
+                c.classList.remove('active');
+                c.style.display = 'none';
+            });
+            let targetEl = document.getElementById(targetTab);
+            if (targetEl) {
+                targetEl.classList.add('active');
+                targetEl.style.display = 'block';
+            }
+
+            // Reset scroll về đỉnh
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+            const sc = document.querySelector('.tab-scroll-content');
+            if (sc) sc.scrollTop = 0;
+
+            // Điều chỉnh class body
+            document.body.classList.toggle('tab-sat-active', targetTab === 'tab-sat');
+            document.body.classList.toggle('tab-schedule-active', targetTab === 'tab-schedule');
+
+            // Kích hoạt load dữ liệu riêng
+            if (targetTab === 'tab-sat' && typeof satCache !== 'undefined' && Object.keys(satCache).length === 0) {
+                if (typeof taiDsSat === 'function') taiDsSat();
+            }
+            if (targetTab === 'tab-home' || targetTab === 'page-dashboard') {
+                if (typeof loadDashboard === 'function') loadDashboard();
+            }
+            if (targetTab === 'tab-schedule') {
+                if (typeof schedCurrentPage !== 'undefined') schedCurrentPage = 1;
+                if (typeof loadScheduleList === 'function') loadScheduleList();
+            }
+            if (targetTab === 'tab-stats' && typeof renderStats === 'function') {
+                renderStats(window.lastUnscheduledData);
+            }
+            if (targetTab === 'tab-chamcong') {
+                if (typeof loadChamCongData === 'function') loadChamCongData();
+            }
+            if (targetTab === 'tab-thongke') {
+                if (typeof loadThongKeData === 'function') loadThongKeData();
+            }
+            if (targetTab === 'tab-tenants') {
+                if (typeof loadTenantsList === 'function') loadTenantsList();
+            }
+            if ((targetTab === 'tab-staff' || targetTab === 'tab-patients') && typeof renderProcedureCheckboxes === 'function') {
+                renderProcedureCheckboxes();
+            }
+        };
 
         document.addEventListener('DOMContentLoaded', function () {
-
-            // Override logic chuyển tab cũ
-
             const tabs = document.querySelectorAll('.nav-tab, .nav-item');
 
-
-
-            // 1. Lắng nghe Hash Change
-
-            window.addEventListener('hashchange', handleHashChange);
-
-
-
-            // 2. Chạy lần đầu khi load trang
-
-            if (window.location.hash) {
-
-                handleHashChange();
-
-            } else {
-
-                // Mặc định mở tab-home
-
-                window.location.hash = '#tab-home';
-
-            }
-
-
-
-            // 3. Sửa lại event click của các tab để chỉ đổi hash
-
-            tabs.forEach(tab => {
-
-                // Bỏ event click cũ bằng cách clone node nếu cần, nhưng tốt nhất là ngăn chặn hành vi mặc định
-
-                tab.addEventListener('click', function (e) {
-
-                    e.preventDefault();
-
-                    e.stopPropagation(); // Ngăn event cũ (đã gán trước đó) chạy
-
-                    const targetTab = tab.getAttribute('data-tab');
-
-                    window.location.hash = '#' + targetTab;
-
-                }, true); // Use capture phase to intercept
-
+            // 1. Lắng nghe Hash Change từ browser back/forward
+            window.addEventListener('hashchange', function () {
+                const targetTab = window.location.hash ? window.location.hash.substring(1) : 'tab-home';
+                window.switchTab(targetTab, false);
             });
 
-
-
-            function handleHashChange() {
-
-                let hash = window.location.hash;
-
-                if (!hash) hash = '#tab-home';
-
-
-
-                let targetTab = hash.substring(1); // Xóa dấu #
-
-
-
-                // Cập nhật giao diện
-
-                tabs.forEach(t => t.classList.remove('active'));
-
-                let activeBtn = document.querySelector(`[data-tab="${targetTab}"]`);
-
-                if (activeBtn) activeBtn.classList.add('active');
-
-
-
-                document.querySelectorAll('.tab-content, .page').forEach(c => c.classList.remove('active'));
-
-                let targetEl = document.getElementById(targetTab);
-
-                if (targetEl) targetEl.classList.add('active');
-
-
-
-                // Điều chỉnh class body như logic cũ
-
-                document.body.classList.toggle('tab-sat-active', targetTab === 'tab-sat');
-
-                document.body.classList.toggle('tab-schedule-active', targetTab === 'tab-schedule');
-
-
-
-                // Kích hoạt load dữ liệu riêng
-
-                if (targetTab === 'tab-sat' && typeof satCache !== 'undefined' && Object.keys(satCache).length === 0) {
-
-                    if (typeof taiDsSat === 'function') taiDsSat();
-
-                }
-
-                if (targetTab === 'tab-home' || targetTab === 'page-dashboard') {
-
-                    if (typeof loadDashboard === 'function') loadDashboard();
-
-                }
-
-                if (targetTab === 'tab-schedule') {
-
-                    if (typeof schedCurrentPage !== 'undefined') schedCurrentPage = 1;
-
-                    if (typeof loadScheduleList === 'function') loadScheduleList();
-
-                }
-
-                if (targetTab === 'tab-stats' && typeof renderStats === 'function') {
-
-                    renderStats(window.lastUnscheduledData);
-
-                }
-
-                if (targetTab === 'tab-chamcong') {
-
-                    if (typeof loadChamCongData === 'function') loadChamCongData();
-
-                }
-
-                if (targetTab === 'tab-thongke') {
-
-                    if (typeof loadThongKeData === 'function') loadThongKeData();
-
-                }
-
-                if ((targetTab === 'tab-staff' || targetTab === 'tab-patients') && typeof renderProcedureCheckboxes === 'function') {
-
-                    renderProcedureCheckboxes();
-
-                }
-
+            // 2. Chạy lần đầu khi load trang
+            const sessionStr = localStorage.getItem('meds_session');
+            const sess = sessionStr ? JSON.parse(sessionStr) : {};
+            let initialTab = window.location.hash ? window.location.hash.substring(1) : '';
+            if (!initialTab) {
+                initialTab = (sess.role === 'SUPER_ADMIN') ? 'tab-tenants' : 'tab-home';
             }
+            window.switchTab(initialTab, true);
 
+            // 3. Sửa lại event click của các tab
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const targetTab = tab.getAttribute('data-tab');
+                    if (targetTab) {
+                        window.switchTab(targetTab, true);
+                    }
+                }, true);
+            });
         });
 
         // --- USER MENU DROPDOWN LOGIC ---
@@ -12391,7 +12347,15 @@ window.loadTenantsList = function () {
 
     if (typeof callApi === 'function') {
         callApi('getTenantsList', [], res => {
-            const list = Array.isArray(res) ? res : (res?.data || []);
+            let list = [];
+            if (Array.isArray(res)) {
+                list = res;
+            } else if (res && Array.isArray(res.data)) {
+                list = res.data;
+            } else if (res && res.status === 'success' && Array.isArray(res.data)) {
+                list = res.data;
+            }
+
             if (!list || list.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#94a3b8;">Chưa có đơn vị nào được tạo.</td></tr>';
                 return;
@@ -12400,16 +12364,19 @@ window.loadTenantsList = function () {
             // Thống kê
             let activeCount = 0, enterpriseCount = 0;
             list.forEach(t => {
-                if (t.is_active) activeCount++;
+                if (t.is_active === 1 || t.is_active === true) activeCount++;
                 if (t.plan_tier === 'ENTERPRISE') enterpriseCount++;
             });
-            document.getElementById('stat-total-tenants').innerText = list.length;
-            document.getElementById('stat-active-tenants').innerText = activeCount;
-            document.getElementById('stat-enterprise-tenants').innerText = enterpriseCount;
+            const statTotal = document.getElementById('stat-total-tenants');
+            const statActive = document.getElementById('stat-active-tenants');
+            const statEnt = document.getElementById('stat-enterprise-tenants');
+            if (statTotal) statTotal.innerText = list.length;
+            if (statActive) statActive.innerText = activeCount;
+            if (statEnt) statEnt.innerText = enterpriseCount;
 
             // Render bảng
             tbody.innerHTML = list.map(t => {
-                const isActive = t.is_active === 1;
+                const isActive = t.is_active === 1 || t.is_active === true;
                 const statusBadge = isActive
                     ? '<span style="background:#dcfce7; color:#15803d; padding:4px 8px; border-radius:6px; font-weight:700; font-size:11px;">🟢 Hoạt Động</span>'
                     : '<span style="background:#fee2e2; color:#b91c1c; padding:4px 8px; border-radius:6px; font-weight:700; font-size:11px;">🔴 Tạm Khóa</span>';
@@ -12429,15 +12396,15 @@ window.loadTenantsList = function () {
                             <div style="display:flex; justify-content:center; gap:6px;">
                                 <button class="btn btn-sm btn-secondary" onclick="openEditTenantModal('${t.unit_code}', '${encodeURIComponent(t.unit_name)}', '${t.plan_tier}', '${t.expires_at}', ${t.max_staff}, ${t.max_patients}, '${t.phone || ''}')" title="Chỉnh sửa / Gia hạn">✏️ Sửa</button>
                                 <button class="btn btn-sm btn-warning" onclick="resetTenantPasswordPrompt('${t.unit_code}')" title="Đặt lại mật khẩu Admin">🔑 Pass</button>
-                                <button class="btn btn-sm ${isActive ? 'btn-danger' : 'btn-success'}" onclick="toggleTenantStatus('${t.unit_code}', ${isActive ? 0 : 1})" title="${isActive ? 'Khóa đơn vị' : 'Mở khóa đơn vị'}">${isActive ? '🔒 Khóa' : '🔓 Mở'}</button>
-                                ${t.unit_code !== 'bvtks_cs2' ? `<button class="btn btn-sm btn-danger" onclick="deleteTenantPrompt('${t.unit_code}', '${encodeURIComponent(t.unit_name)}')" title="Xóa vĩnh viễn">🗑️ Xóa</button>` : ''}
+                                <button class="btn btn-sm ${isActive ? 'btn-danger' : 'btn-success'}" onclick="toggleTenantStatusAction('${t.unit_code}', ${isActive ? 0 : 1})" title="${isActive ? 'Khóa đơn vị' : 'Mở khóa đơn vị'}">${isActive ? '🔒 Khóa' : '🔓 Mở'}</button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteTenantAction('${t.unit_code}')" title="Xóa đơn vị">🗑️ Xóa</button>
                             </div>
                         </td>
                     </tr>
                 `;
             }).join('');
         }, err => {
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:#e11d48;">Lỗi khi tải danh sách: ${err && err.message ? err.message : 'Không xác định'}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:#ef4444;">❌ Lỗi khi tải danh sách: ${err && err.message ? err.message : err}</td></tr>`;
         });
     }
 };
