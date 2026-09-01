@@ -1,3 +1,38 @@
+
+window.updateAppHeader = function(unitCode, role) {
+    const uCode = (unitCode || localStorage.getItem('pm_unit_code') || 'bvtks_cs2').toLowerCase();
+    let sessRole = role;
+    if (!sessRole) {
+        try {
+            const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
+            sessRole = sess.role || '';
+        } catch(e) {}
+    }
+
+    const appHosp = document.getElementById('app-hospital-name');
+    const appSub = document.getElementById('app-sub-title');
+    const appSlogan = document.getElementById('app-slogan');
+    const mobSub = document.getElementById('mobile-header-date');
+
+    if (sessRole === 'SUPER_ADMIN') {
+        if (appHosp) appHosp.innerText = 'T.I.M.E.S SYSTEM';
+        if (appSub) appSub.innerText = 'HỆ THỐNG QUẢN LÝ ĐƠN VỊ & BẢN QUYỀN SAAS';
+        if (appSlogan) appSlogan.innerText = 'TRUNG TÂM ĐIỀU HÀNH TOÀN CỤC';
+        if (mobSub) mobSub.innerText = 'Super Admin Portal';
+    } else if (uCode === 'bvtks_cs2') {
+        if (appHosp) appHosp.innerText = 'BỆNH VIỆN THAN - KHOÁNG SẢN CS2';
+        if (appSub) appSub.innerText = 'KHOA Y HỌC CỔ TRUYỀN - PHỤC HỒI CHỨC NĂNG';
+        if (appSlogan) appSlogan.innerText = 'Y HỌC TỐT, PHỤC HỒI NHANH';
+        if (mobSub) mobSub.innerText = 'Khoa YHCT - PHCN';
+    } else {
+        const uName = localStorage.getItem('pm_unit_name') || 'T.I.M.E.S SYSTEM';
+        if (appHosp) appHosp.innerText = uName;
+        if (appSub) appSub.innerText = 'Hệ thống xếp lịch thủ thuật YHCT- PHCN thông minh';
+        if (appSlogan) appSlogan.innerText = 'Nhanh gọn, tối ưu, chính xác';
+        if (mobSub) mobSub.innerText = 'YHCT - PHCN';
+    }
+};
+
 // =========================================================
 // TURBO CLOUDFLARE API BRIDGE & GLOBAL INITIALIZATION
 // =========================================================
@@ -8912,7 +8947,6 @@ window.renderSttOrderControl = function (type, i, total) {
             const dropdownDivider = document.getElementById('user-menu-divider');
             const superTab = document.getElementById('nav-tab-tenants');
 
-            // Các nút danh mục trong Tab Quản Trị (Admin)
             const btnSettings = document.getElementById('nav-btn-settings');
             const btnAccounts = document.getElementById('nav-btn-accounts');
             const btnEmployees = document.getElementById('nav-btn-employees');
@@ -8922,7 +8956,6 @@ window.renderSttOrderControl = function (type, i, total) {
 
             if (role === 'SUPER_ADMIN') {
                 // 👑 SUPER ADMIN:
-                // 1. Menu chính: Chỉ hiện Tab Quản Lý Đơn Vị SaaS & Tab Cài Đặt / Sao Lưu Toàn Cục
                 allTabs.forEach(t => {
                     const tabId = t.getAttribute('data-tab');
                     if (tabId === 'tab-tenants' || tabId === 'tab-admin') {
@@ -8933,80 +8966,57 @@ window.renderSttOrderControl = function (type, i, total) {
                 });
                 if (superTab) superTab.style.display = 'flex';
                 if (adminBtn) adminBtn.style.display = 'block';
-                if (dropdownAdminBtn) dropdownAdminBtn.style.display = 'flex';
-                if (dropdownDivider) dropdownDivider.style.display = 'block';
+                if (dropdownAdminBtn) dropdownAdminBtn.style.display = 'none'; // SuperAdmin uses direct sidebar
+                if (dropdownDivider) dropdownDivider.style.display = 'none';
                 document.body.classList.remove('read-only-user');
 
-                // 2. Menu con trong Tab Admin:
-                // GIỮ: Sao Lưu & Khôi Phục, Quản Lý Liên Kết Nhanh
                 if (btnBackup) btnBackup.style.display = 'block';
                 if (btnQuicklinks) btnQuicklinks.style.display = 'block';
-                // ẨN: Cài đặt hệ thống, Quản lý tài khoản, Nhân sự chấm công, Huấn luyện AI
                 if (btnSettings) btnSettings.style.display = 'none';
                 if (btnAccounts) btnAccounts.style.display = 'none';
                 if (btnEmployees) btnEmployees.style.display = 'none';
                 if (btnAi) btnAi.style.display = 'none';
 
-                // Mặc định kích hoạt mục Sao Lưu & Khôi Phục khi vào tab Admin
-                if (btnBackup && typeof switchAdminSection === 'function') {
-                    switchAdminSection('admin-sec-backup', btnBackup);
+                if (typeof window.updateAppHeader === 'function') {
+                    window.updateAppHeader('MASTER', 'SUPER_ADMIN');
                 }
-
-                // Tự động mở tab Quản lý đơn vị SaaS
-                const targetBtn = document.querySelector('.nav-tab[data-tab="tab-tenants"]') || superTab;
-                if (targetBtn) {
-                    targetBtn.click();
-                }
-                if (typeof loadTenantsList === 'function') loadTenantsList();
                 return;
             }
 
-            // 🏥 ADMIN & NHÂN VIÊN BỆNH VIỆN / ĐƠN VỊ:
-            // TUYỆT ĐỐI ẨN TAB SAAS TENANTS
+            // 🏢 HOSPITAL ADMIN / REGULAR USERS:
             if (superTab) superTab.style.display = 'none';
 
-            // Menu con trong Tab Admin của Đơn Vị:
-            // GIỮ: Cài đặt hệ thống, Quản lý tài khoản, Nhân sự chấm công, Huấn luyện AI
-            if (btnSettings) btnSettings.style.display = 'block';
-            if (btnAccounts) btnAccounts.style.display = 'block';
-            if (btnEmployees) btnEmployees.style.display = 'block';
-            if (btnAi) btnAi.style.display = 'block';
-            // ẨN: Sao Lưu & Khôi Phục, Quản Lý Liên Kết Nhanh
-            if (btnBackup) btnBackup.style.display = 'none';
-            if (btnQuicklinks) btnQuicklinks.style.display = 'none';
-
-            if (btnSettings && typeof switchAdminSection === 'function') {
-                switchAdminSection('admin-sec-settings', btnSettings);
-            }
-
-            if (role === 'Admin' || permsStr === 'ALL') {
+            if (role === 'Admin' || role === 'admin') {
                 allTabs.forEach(t => {
-                    const tabId = t.getAttribute('data-tab');
-                    if (tabId === 'tab-tenants') {
-                        t.style.display = 'none';
-                    } else {
-                        t.style.display = '';
-                    }
+                    if (t.getAttribute('data-tab') !== 'tab-tenants') t.style.display = 'flex';
+                    else t.style.display = 'none';
                 });
                 if (adminBtn) adminBtn.style.display = 'block';
                 if (dropdownAdminBtn) dropdownAdminBtn.style.display = 'flex';
                 if (dropdownDivider) dropdownDivider.style.display = 'block';
                 document.body.classList.remove('read-only-user');
+
+                if (btnSettings) btnSettings.style.display = 'block';
+                if (btnAccounts) btnAccounts.style.display = 'block';
+                if (btnEmployees) btnEmployees.style.display = 'block';
+                if (btnAi) btnAi.style.display = 'block';
+                if (btnBackup) btnBackup.style.display = 'none';
+                if (btnQuicklinks) btnQuicklinks.style.display = 'none';
             } else {
-                const allowed = (permsStr || '').split(',').map(s => s.trim());
-                allowed.push('tab-home');
+                // Read-only user
                 allTabs.forEach(t => {
                     const tabId = t.getAttribute('data-tab');
-                    if (tabId === 'tab-tenants') {
-                        t.style.display = 'none';
-                    } else {
-                        t.style.display = allowed.includes(tabId) ? '' : 'none';
-                    }
+                    if (tabId === 'tab-admin' || tabId === 'tab-tenants') t.style.display = 'none';
+                    else t.style.display = 'flex';
                 });
+                if (adminBtn) adminBtn.style.display = 'none';
                 if (dropdownAdminBtn) dropdownAdminBtn.style.display = 'none';
                 if (dropdownDivider) dropdownDivider.style.display = 'none';
-                if (adminBtn) adminBtn.style.display = 'none';
                 document.body.classList.add('read-only-user');
+            }
+
+            if (typeof window.updateAppHeader === 'function') {
+                window.updateAppHeader(localStorage.getItem('pm_unit_code'), role);
             }
         }
 
