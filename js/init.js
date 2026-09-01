@@ -22,6 +22,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sess.role === 'SUPER_ADMIN') {
             const superTab = document.getElementById('nav-tab-tenants');
             if (superTab) superTab.style.display = 'flex';
+            if (typeof applyPermissions === 'function') applyPermissions('SUPER_ADMIN', 'ALL');
+        } else if (sess.role) {
+            const superTab = document.getElementById('nav-tab-tenants');
+            if (superTab) superTab.style.display = 'none';
         }
     } catch(e) {}
 

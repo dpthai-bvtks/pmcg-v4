@@ -1135,9 +1135,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     document.querySelectorAll('.app-user-name').forEach(el => el.innerText = uName);
                     document.querySelectorAll('.app-user-role').forEach(el => el.innerText = uRole);
+                    if (typeof applyPermissions === 'function') applyPermissions(uRole, uPerms);
+                    if (typeof updateLogoutButton === 'function') updateLogoutButton(uName);
                     if (typeof updateLogoutButton === 'function') updateLogoutButton(uName);
 
-                    let targetTab = 'tab-home';
+                    let targetTab = (uRole === 'SUPER_ADMIN') ? 'tab-tenants' : 'tab-home';
                     if (window.location.hash) {
                         targetTab = window.location.hash.substring(1);
                     }
@@ -8911,9 +8913,45 @@ window.renderSttOrderControl = function (type, i, total) {
             const adminBtn = document.getElementById('nav-btn-admin');
             const dropdownAdminBtn = document.getElementById('user-menu-admin-btn');
             const dropdownDivider = document.getElementById('user-menu-divider');
+            const superTab = document.getElementById('nav-tab-tenants');
+
+            if (role === 'SUPER_ADMIN') {
+                // 👑 SUPER ADMIN: Chỉ hiển thị Tab Quản Lý Đơn Vị SaaS & Tab Cài Đặt Hệ Thống
+                allTabs.forEach(t => {
+                    const tabId = t.getAttribute('data-tab');
+                    if (tabId === 'tab-tenants' || tabId === 'tab-admin') {
+                        t.style.display = 'flex';
+                    } else {
+                        t.style.display = 'none';
+                    }
+                });
+                if (superTab) superTab.style.display = 'flex';
+                if (adminBtn) adminBtn.style.display = 'block';
+                if (dropdownAdminBtn) dropdownAdminBtn.style.display = 'flex';
+                if (dropdownDivider) dropdownDivider.style.display = 'block';
+                document.body.classList.remove('read-only-user');
+
+                // Tự động kích hoạt tab Quản lý đơn vị
+                const targetBtn = document.querySelector('.nav-tab[data-tab="tab-tenants"]') || superTab;
+                if (targetBtn) {
+                    targetBtn.click();
+                }
+                if (typeof loadTenantsList === 'function') loadTenantsList();
+                return;
+            }
+
+            // 🏥 ADMIN & NHÂN VIÊN BỆNH VIỆN: TUYỆT ĐỐI ẨN TAB SAAS TENANTS
+            if (superTab) superTab.style.display = 'none';
 
             if (role === 'Admin' || permsStr === 'ALL') {
-                allTabs.forEach(t => t.style.display = '');
+                allTabs.forEach(t => {
+                    const tabId = t.getAttribute('data-tab');
+                    if (tabId === 'tab-tenants') {
+                        t.style.display = 'none';
+                    } else {
+                        t.style.display = '';
+                    }
+                });
                 if (adminBtn) adminBtn.style.display = 'block';
                 if (dropdownAdminBtn) dropdownAdminBtn.style.display = 'flex';
                 if (dropdownDivider) dropdownDivider.style.display = 'block';
@@ -8921,7 +8959,14 @@ window.renderSttOrderControl = function (type, i, total) {
             } else {
                 const allowed = (permsStr || '').split(',').map(s => s.trim());
                 allowed.push('tab-home');
-                allTabs.forEach(t => { t.style.display = allowed.includes(t.getAttribute('data-tab')) ? '' : 'none'; });
+                allTabs.forEach(t => {
+                    const tabId = t.getAttribute('data-tab');
+                    if (tabId === 'tab-tenants') {
+                        t.style.display = 'none';
+                    } else {
+                        t.style.display = allowed.includes(tabId) ? '' : 'none';
+                    }
+                });
                 if (dropdownAdminBtn) dropdownAdminBtn.style.display = 'none';
                 if (dropdownDivider) dropdownDivider.style.display = 'none';
                 if (adminBtn) adminBtn.style.display = 'none';
