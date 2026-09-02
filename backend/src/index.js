@@ -40,7 +40,15 @@ function createTursoAdapter(env) {
     const obj = {};
     columns.forEach((col, i) => {
       const cell = row[i];
-      obj[col] = (cell && cell.type !== 'null') ? cell.value : null;
+      if (!cell || cell.type === 'null') {
+        obj[col] = null;
+      } else if (cell.type === 'integer') {
+        obj[col] = parseInt(cell.value, 10);
+      } else if (cell.type === 'float') {
+        obj[col] = parseFloat(cell.value);
+      } else {
+        obj[col] = cell.value;
+      }
     });
     return obj;
   }

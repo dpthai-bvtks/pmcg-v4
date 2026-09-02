@@ -12458,7 +12458,7 @@ window.loadTenantsList = function () {
 
             // Render bảng
             tbody.innerHTML = list.map(t => {
-                const isActive = t.is_active === 1;
+                const isActive = t.is_active === 1 || t.is_active === '1' || t.is_active === true;
                 const statusBadge = isActive
                     ? '<span style="background:#dcfce7; color:#15803d; padding:4px 8px; border-radius:6px; font-weight:700; font-size:11px;">🟢 Hoạt Động</span>'
                     : '<span style="background:#fee2e2; color:#b91c1c; padding:4px 8px; border-radius:6px; font-weight:700; font-size:11px;">🔴 Tạm Khóa</span>';
