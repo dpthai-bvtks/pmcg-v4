@@ -475,3 +475,26 @@ git add . && git commit -m "..." && git push origin main
 ---
 
 
+### [v4.0.0-rev62] - 02/09/2026: Ẩn Icon Bánh Răng Sidebar & Super Admin Đồng Bộ Toàn Bộ Dữ Liệu Tất Cả Đơn Vị Sang Google Sheets
+
+- **Yêu cầu của người dùng**:
+  + Bỏ icon hình bánh răng Cài Đặt Hệ Thống ở sidebar vì người dùng đã có mục 🔒 Quản Trị trong User Menu dropdown.
+  + Khi tài khoản Super Admin thực hiện đồng bộ Google Sheets, hệ thống sẽ trích xuất và đồng bộ toàn bộ dữ liệu của **TẤT CẢ các đơn vị** từ Turso Cloud sang Google Sheets.
+- **Giải pháp**:
+  + **Sidebar UI**: Xóa bỏ nút `<button class="nav-tab" data-tab="tab-admin">⚙️ Cài Đặt Hệ Thống</button>` trên thanh điều hướng sidebar. Khi người dùng bấm `🔒 Quản Trị` trong User Menu góc trên bên phải, hệ thống tự động điều hướng vào trang quản trị cài đặt.
+  + **Backend API (`backend/src/index.js`)**:
+    - Thêm action `exportAllDatabaseForSuperAdmin` / `exportAllDatabase`: Truy vấn trọn bộ 16 bảng dữ liệu của toàn bộ tất cả các đơn vị (`tenants`, `cai_dat`, `tai_khoan`, `nhan_su`, `may_moc`, `phong`, `thu_thuat`, `benh_nhan`, `lich_trinh`, `lich_su`, `gio_ban_cu`, `cham_cong`, `thong_ke`, `tim_ranh`, `tai_lieu`, `phac_do`) từ Turso libSQL Cloud.
+    - Đã deploy Worker API mới nhất lên Cloudflare Workers (`https://pmcg-api.dpthai-ttytmk.workers.dev`).
+  + **Frontend Logic (`js/app.js`)**:
+    - Nâng cấp `syncAllD1DataToBackupSheets`: Tự động nhận diện quyền Super Admin, gọi action `exportAllDatabaseForSuperAdmin` để lấy trọn gói dữ liệu tất cả đơn vị và truyền sang Google Apps Script.
+    - Cập nhật tiêu đề tiến trình và thông báo kết quả: *"Đồng bộ CSDL Toàn Cục (Tất Cả Các Đơn Vị) ➔ Google Sheets"*.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `index.html`
+  + `js/app.js`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+---
+
+
