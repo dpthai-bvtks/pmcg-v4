@@ -523,6 +523,7 @@ async function ensureSchema(db) {
     // Multi-tenant Migration safe column additions & Indexes
     const migrations = [
       "INSERT OR IGNORE INTO tenants (unit_code, unit_name, plan_tier, expires_at, is_active) VALUES ('bvtks_cs2', 'Bệnh viện Than - Khoáng sản Cơ sở 2', 'ENTERPRISE', '2099-12-31', 1)",
+      "INSERT OR IGNORE INTO tenants (unit_code, unit_name, plan_tier, expires_at, is_active) VALUES ('master', 'Hệ Thống Quản Trị Trung Tâm SaaS', 'MASTER', '2099-12-31', 1)",
       "ALTER TABLE cai_dat ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2'",
       "ALTER TABLE tai_khoan ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2'",
       "ALTER TABLE nhan_su ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2'",
@@ -924,7 +925,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           return error(`Mã đơn vị mới '${newCode}' đã tồn tại trên hệ thống! Vui lòng chọn mã khác.`, 400);
         }
 
-        // Cập nhật cascade trên toàn bộ các bảng dữ liệu
+        // Cập nhật cascade trên toàn bộ các bảng dữ liệu thực tế tồn tại trong DB
         const cascadeQueries = [
           db.prepare("UPDATE cai_dat SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
           db.prepare("UPDATE tai_khoan SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
@@ -934,14 +935,15 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           db.prepare("UPDATE thu_thuat SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
           db.prepare("UPDATE benh_nhan SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
           db.prepare("UPDATE lich_trinh SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
-          db.prepare("UPDATE phac_do SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode)
+          db.prepare("UPDATE lich_su SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
+          db.prepare("UPDATE gio_ban_cu SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
+          db.prepare("UPDATE cham_cong SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
+          db.prepare("UPDATE thong_ke SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
+          db.prepare("UPDATE tim_ranh SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
+          db.prepare("UPDATE tai_lieu SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
+          db.prepare("UPDATE phac_do SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
+          db.prepare("UPDATE audit_logs SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode)
         ];
-
-        try { cascadeQueries.push(db.prepare("UPDATE history_records SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode)); } catch(e) {}
-        try { cascadeQueries.push(db.prepare("UPDATE history_busy SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode)); } catch(e) {}
-        try { cascadeQueries.push(db.prepare("UPDATE chamcong_records SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode)); } catch(e) {}
-        try { cascadeQueries.push(db.prepare("UPDATE thongke_records SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode)); } catch(e) {}
-        try { cascadeQueries.push(db.prepare("UPDATE documents SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode)); } catch(e) {}
 
         await db.batch(cascadeQueries);
       }
@@ -2768,6 +2770,10 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       }
 
       // 🏥 2. Kiểm tra Đơn Vị (Tenant Validation)
+      if (reqUnit === "master" || reqUnit === "MASTER") {
+        return error("Đơn vị 'MASTER' chỉ dành riêng cho tài khoản Super Admin!", 400);
+      }
+
       let tenant = await db.prepare("SELECT * FROM tenants WHERE unit_code = ?").bind(reqUnit).first();
       
       // Nếu là đơn vị gốc bvtks_cs2 mà chưa có trong DB tenants thì tự tạo
