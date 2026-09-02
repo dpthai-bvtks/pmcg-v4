@@ -1,6 +1,6 @@
 
 window.updateAppHeader = function(unitCode, role) {
-    const uCode = (unitCode || localStorage.getItem('pm_unit_code') || 'bvtks_cs2').toLowerCase();
+    const uCode = (unitCode || localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
     let sessRole = role;
     if (!sessRole) {
         try {
@@ -19,7 +19,7 @@ window.updateAppHeader = function(unitCode, role) {
         if (appSub) appSub.innerText = 'HỆ THỐNG QUẢN LÝ ĐƠN VỊ & BẢN QUYỀN SAAS';
         if (appSlogan) appSlogan.innerText = 'TRUNG TÂM ĐIỀU HÀNH TOÀN CỤC';
         if (mobSub) mobSub.innerText = 'Super Admin Portal';
-    } else if (uCode === 'bvtks_cs2') {
+    } else if (uCode === 'bvtks-cs2') {
         if (appHosp) appHosp.innerText = 'BỆNH VIỆN THAN - KHOÁNG SẢN CS2';
         if (appSub) appSub.innerText = 'KHOA Y HỌC CỔ TRUYỀN - PHỤC HỒI CHỨC NĂNG';
         if (appSlogan) appSlogan.innerText = 'Y HỌC TỐT, PHỤC HỒI NHANH';
@@ -38,7 +38,7 @@ window.updateAppHeader = function(unitCode, role) {
 
 document.addEventListener('DOMContentLoaded', () => {
     // 🏢 Khôi phục thông tin Mã Đơn Vị & Thương Hiệu đa bệnh viện
-    const savedUnit = localStorage.getItem('pm_unit_code') || 'bvtks_cs2';
+    const savedUnit = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
     const unitInput = document.getElementById('login-unit');
     if (unitInput) unitInput.value = savedUnit;
 
@@ -137,7 +137,7 @@ window.loadTimRanhDataFromServer = function () {
 };
 
 window.doLogin = function () {
-    const unit = (document.getElementById('login-unit')?.value || '').trim().toLowerCase() || 'bvtks_cs2';
+    const unit = (document.getElementById('login-unit')?.value || '').trim().toLowerCase() || 'bvtks-cs2';
     const user = (document.getElementById('login-user')?.value || '').trim();
     const pass = (document.getElementById('login-pass')?.value || '').trim();
     const errDiv = document.getElementById('login-error');

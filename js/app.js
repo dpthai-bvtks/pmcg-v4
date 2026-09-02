@@ -63,7 +63,7 @@ window.closeChangePasswordModal = function() {
 
 
 window.updateAppHeader = function(unitCode, role) {
-    const uCode = (unitCode || localStorage.getItem('pm_unit_code') || 'bvtks_cs2').toLowerCase();
+    const uCode = (unitCode || localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
     let sessRole = role;
     if (!sessRole) {
         try {
@@ -82,7 +82,7 @@ window.updateAppHeader = function(unitCode, role) {
         if (appSub) appSub.innerText = 'HỆ THỐNG QUẢN LÝ ĐƠN VỊ & BẢN QUYỀN SAAS';
         if (appSlogan) appSlogan.innerText = 'TRUNG TÂM ĐIỀU HÀNH TOÀN CỤC';
         if (mobSub) mobSub.innerText = 'Super Admin Portal';
-    } else if (uCode === 'bvtks_cs2') {
+    } else if (uCode === 'bvtks-cs2') {
         if (appHosp) appHosp.innerText = 'BỆNH VIỆN THAN - KHOÁNG SẢN CS2';
         if (appSub) appSub.innerText = 'KHOA Y HỌC CỔ TRUYỀN - PHỤC HỒI CHỨC NĂNG';
         if (appSlogan) appSlogan.innerText = 'Y HỌC TỐT, PHỤC HỒI NHANH';
@@ -832,7 +832,7 @@ window.renderSttOrderControl = function (type, i, total) {
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 15000);
-                const currentUnit = localStorage.getItem('pm_unit_code') || 'bvtks_cs2';
+                const currentUnit = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
 
                 const response = await fetch(getApiUrl(), {
                     method: 'POST',
@@ -1170,7 +1170,7 @@ window.renderSttOrderControl = function (type, i, total) {
         console.log('--- JS Block: Auth & Permissions started ---');
 
         window.doLogin = function () {
-            const unit = (document.getElementById('login-unit')?.value || '').trim().toLowerCase() || 'bvtks_cs2';
+            const unit = (document.getElementById('login-unit')?.value || '').trim().toLowerCase() || 'bvtks-cs2';
             const user = (document.getElementById('login-user')?.value || '').trim();
             const pass = (document.getElementById('login-pass')?.value || '').trim();
             const errDiv = document.getElementById('login-error');
@@ -12479,7 +12479,7 @@ window.loadTenantsList = function () {
                                 <button class="btn btn-sm btn-secondary" onclick="openEditTenantModal('${t.unit_code}', '${encodeURIComponent(t.unit_name)}', '${t.plan_tier}', '${t.expires_at}', ${t.max_staff}, ${t.max_patients}, '${t.phone || ''}')" title="Chỉnh sửa / Gia hạn">✏️ Sửa</button>
                                 <button class="btn btn-sm btn-warning" onclick="resetTenantPasswordPrompt('${t.unit_code}')" title="Đặt lại mật khẩu Admin">🔑 Pass</button>
                                 <button class="btn btn-sm ${isActive ? 'btn-danger' : 'btn-success'}" onclick="toggleTenantStatus('${t.unit_code}', ${isActive ? 0 : 1})" title="${isActive ? 'Khóa đơn vị' : 'Mở khóa đơn vị'}">${isActive ? '🔒 Khóa' : '🔓 Mở'}</button>
-                                ${t.unit_code !== 'bvtks_cs2' ? `<button class="btn btn-sm btn-danger" onclick="deleteTenantPrompt('${t.unit_code}', '${encodeURIComponent(t.unit_name)}')" title="Xóa vĩnh viễn">🗑️ Xóa</button>` : ''}
+                                ${t.unit_code !== 'bvtks-cs2' ? `<button class="btn btn-sm btn-danger" onclick="deleteTenantPrompt('${t.unit_code}', '${encodeURIComponent(t.unit_name)}')" title="Xóa vĩnh viễn">🗑️ Xóa</button>` : ''}
                             </div>
                         </td>
                     </tr>
@@ -12662,7 +12662,7 @@ window.submitChangePassword = function() {
         btn.innerHTML = '<span>⏳</span> Đang lưu...';
     }
 
-    const currentUnit = localStorage.getItem('pm_unit_code') || 'bvtks_cs2';
+    const currentUnit = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
     callApi('changePassword', [{
         username: uName,
         old_password: oldPass,

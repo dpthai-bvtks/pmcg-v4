@@ -8,7 +8,7 @@ window.OfflineSyncEngine = (function () {
   'use strict';
 
   function getDbName(u) {
-    const code = u || localStorage.getItem('pm_unit_code') || 'bvtks_cs2';
+    const code = u || localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
     return 'PMCG_Offline_DB_' + code;
   }
   let dexieDb = null;

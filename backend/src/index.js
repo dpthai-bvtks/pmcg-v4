@@ -263,7 +263,7 @@ async function processApiRequest(c) {
   }
 
   // Chuẩn hóa unit_code mặc định
-  unitCode = String(unitCode || "bvtks_cs2").trim().toLowerCase();
+  unitCode = String(unitCode || "bvtks-cs2").trim().toLowerCase();
 
   if (!action || action === "ping") {
     return success({
@@ -335,7 +335,7 @@ async function ensureSchema(db) {
       )`),
       db.prepare(`CREATE TABLE IF NOT EXISTS cai_dat (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+        unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
         key TEXT NOT NULL,
         value TEXT NOT NULL,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -343,7 +343,7 @@ async function ensureSchema(db) {
       )`),
       db.prepare(`CREATE TABLE IF NOT EXISTS tai_khoan (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+        unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
         username TEXT NOT NULL,
         password_hash TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'user',
@@ -353,7 +353,7 @@ async function ensureSchema(db) {
       )`),
       db.prepare(`CREATE TABLE IF NOT EXISTS nhan_su (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+        unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
         name TEXT NOT NULL,
         role TEXT NOT NULL DEFAULT 'KTV',
         system TEXT NOT NULL DEFAULT 'PHCN',
@@ -372,7 +372,7 @@ async function ensureSchema(db) {
       )`),
       db.prepare(`CREATE TABLE IF NOT EXISTS may_moc (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+        unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
         ten_loai TEXT NOT NULL,
         ma_may TEXT NOT NULL,
         trang_thai TEXT DEFAULT 'Sẵn sàng',
@@ -383,7 +383,7 @@ async function ensureSchema(db) {
       )`),
       db.prepare(`CREATE TABLE IF NOT EXISTS phong (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+        unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
         ten_phong TEXT NOT NULL,
         bac_si TEXT DEFAULT '',
         ktv TEXT DEFAULT '',
@@ -397,7 +397,7 @@ async function ensureSchema(db) {
       )`),
       db.prepare(`CREATE TABLE IF NOT EXISTS thu_thuat (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+        unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
         ten_thu_thuat TEXT NOT NULL,
         viet_tat TEXT DEFAULT '',
         he TEXT DEFAULT 'PHCN',
@@ -419,7 +419,7 @@ async function ensureSchema(db) {
       )`),
       db.prepare(`CREATE TABLE IF NOT EXISTS benh_nhan (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+        unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
         name TEXT NOT NULL,
         age INTEGER DEFAULT 0,
         gender TEXT DEFAULT 'Nam',
@@ -440,7 +440,7 @@ async function ensureSchema(db) {
       )`),
       db.prepare(`CREATE TABLE IF NOT EXISTS lich_trinh (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+        unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
         date TEXT NOT NULL,
         patient_name TEXT NOT NULL,
         dob TEXT DEFAULT '',
@@ -458,7 +458,7 @@ async function ensureSchema(db) {
       )`),
       db.prepare(`CREATE TABLE IF NOT EXISTS lich_su (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+        unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
         date TEXT NOT NULL,
         patient_name TEXT NOT NULL,
         dob TEXT DEFAULT '',
@@ -474,7 +474,7 @@ async function ensureSchema(db) {
       )`),
       db.prepare(`CREATE TABLE IF NOT EXISTS gio_ban_cu (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+        unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
         date TEXT NOT NULL,
         staff_name TEXT NOT NULL,
         busy_ranges TEXT DEFAULT '',
@@ -482,7 +482,7 @@ async function ensureSchema(db) {
       )`),
       db.prepare(`CREATE TABLE IF NOT EXISTS cham_cong (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+        unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
         month_year TEXT NOT NULL,
         data_json TEXT NOT NULL DEFAULT '{}',
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -490,7 +490,7 @@ async function ensureSchema(db) {
       )`),
       db.prepare(`CREATE TABLE IF NOT EXISTS thong_ke (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+        unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
         month_year TEXT NOT NULL,
         data_json TEXT NOT NULL DEFAULT '{}',
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -498,7 +498,7 @@ async function ensureSchema(db) {
       )`),
       db.prepare(`CREATE TABLE IF NOT EXISTS tim_ranh (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+        unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
         procedure_name TEXT DEFAULT '',
         start_time TEXT DEFAULT '',
         end_time TEXT DEFAULT '',
@@ -508,7 +508,7 @@ async function ensureSchema(db) {
       )`),
       db.prepare(`CREATE TABLE IF NOT EXISTS tai_lieu (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+        unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
         doc_number TEXT DEFAULT '',
         title TEXT DEFAULT '',
         agency TEXT DEFAULT '',
@@ -519,7 +519,7 @@ async function ensureSchema(db) {
       )`),
       db.prepare(`CREATE TABLE IF NOT EXISTS phac_do (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+        unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
         ten_phac_do TEXT NOT NULL,
         danh_sach_thu_thuat TEXT NOT NULL DEFAULT '[]',
         order_idx INTEGER DEFAULT 0,
@@ -530,7 +530,7 @@ async function ensureSchema(db) {
       )`),
       db.prepare(`CREATE TABLE IF NOT EXISTS audit_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+        unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
         timestamp TEXT NOT NULL,
         username TEXT NOT NULL,
         action TEXT NOT NULL,
@@ -542,24 +542,24 @@ async function ensureSchema(db) {
 
     // Multi-tenant Migration safe column additions & Indexes
     const migrations = [
-      "INSERT OR IGNORE INTO tenants (unit_code, unit_name, plan_tier, expires_at, is_active) VALUES ('bvtks_cs2', 'Bệnh viện Than - Khoáng sản Cơ sở 2', 'ENTERPRISE', '2099-12-31', 1)",
+      "INSERT OR IGNORE INTO tenants (unit_code, unit_name, plan_tier, expires_at, is_active) VALUES ('bvtks-cs2', 'Bệnh viện Than - Khoáng sản Cơ sở 2', 'ENTERPRISE', '2099-12-31', 1)",
       "INSERT OR IGNORE INTO tenants (unit_code, unit_name, plan_tier, expires_at, is_active) VALUES ('master', 'Hệ Thống Quản Trị Trung Tâm SaaS', 'MASTER', '2099-12-31', 1)",
-      "ALTER TABLE cai_dat ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2'",
-      "ALTER TABLE tai_khoan ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2'",
-      "ALTER TABLE nhan_su ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2'",
-      "ALTER TABLE may_moc ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2'",
-      "ALTER TABLE phong ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2'",
-      "ALTER TABLE thu_thuat ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2'",
-      "ALTER TABLE benh_nhan ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2'",
-      "ALTER TABLE lich_trinh ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2'",
-      "ALTER TABLE lich_su ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2'",
-      "ALTER TABLE gio_ban_cu ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2'",
-      "ALTER TABLE cham_cong ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2'",
-      "ALTER TABLE thong_ke ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2'",
-      "ALTER TABLE tim_ranh ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2'",
-      "ALTER TABLE tai_lieu ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2'",
-      "ALTER TABLE phac_do ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2'",
-      "ALTER TABLE audit_logs ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2'",
+      "ALTER TABLE cai_dat ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
+      "ALTER TABLE tai_khoan ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
+      "ALTER TABLE nhan_su ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
+      "ALTER TABLE may_moc ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
+      "ALTER TABLE phong ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
+      "ALTER TABLE thu_thuat ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
+      "ALTER TABLE benh_nhan ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
+      "ALTER TABLE lich_trinh ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
+      "ALTER TABLE lich_su ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
+      "ALTER TABLE gio_ban_cu ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
+      "ALTER TABLE cham_cong ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
+      "ALTER TABLE thong_ke ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
+      "ALTER TABLE tim_ranh ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
+      "ALTER TABLE tai_lieu ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
+      "ALTER TABLE phac_do ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
+      "ALTER TABLE audit_logs ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_tenants_code ON tenants(unit_code)",
       "CREATE INDEX IF NOT EXISTS idx_benh_nhan_unit ON benh_nhan(unit_code, is_saturday, order_idx)",
       "CREATE INDEX IF NOT EXISTS idx_nhan_su_unit ON nhan_su(unit_code, is_active, priority)",
@@ -604,7 +604,7 @@ async function ensureSchema(db) {
         await db.prepare(`
           CREATE TABLE IF NOT EXISTS tai_khoan_v4 (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+            unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
             username TEXT NOT NULL,
             password_hash TEXT NOT NULL,
             role TEXT NOT NULL DEFAULT 'user',
@@ -615,7 +615,7 @@ async function ensureSchema(db) {
         `).run();
         await db.prepare(`
           INSERT OR IGNORE INTO tai_khoan_v4 (id, unit_code, username, password_hash, role, permissions, updated_at)
-          SELECT id, COALESCE(unit_code, 'bvtks_cs2'), username, password_hash, role, permissions, updated_at FROM tai_khoan
+          SELECT id, COALESCE(unit_code, 'bvtks-cs2'), username, password_hash, role, permissions, updated_at FROM tai_khoan
         `).run();
         await db.prepare("DROP TABLE tai_khoan").run();
         await db.prepare("ALTER TABLE tai_khoan_v4 RENAME TO tai_khoan").run();
@@ -632,7 +632,7 @@ async function ensureSchema(db) {
         await db.prepare(`
           CREATE TABLE IF NOT EXISTS cai_dat_v4 (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+            unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
             key TEXT NOT NULL,
             value TEXT NOT NULL,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -641,7 +641,7 @@ async function ensureSchema(db) {
         `).run();
         await db.prepare(`
           INSERT OR IGNORE INTO cai_dat_v4 (id, unit_code, key, value, updated_at)
-          SELECT id, COALESCE(unit_code, 'bvtks_cs2'), key, value, updated_at FROM cai_dat
+          SELECT id, COALESCE(unit_code, 'bvtks-cs2'), key, value, updated_at FROM cai_dat
         `).run();
         await db.prepare("DROP TABLE cai_dat").run();
         await db.prepare("ALTER TABLE cai_dat_v4 RENAME TO cai_dat").run();
@@ -658,7 +658,7 @@ async function ensureSchema(db) {
         await db.prepare(`
           CREATE TABLE IF NOT EXISTS nhan_su_v4 (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+            unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
             name TEXT NOT NULL,
             role TEXT NOT NULL DEFAULT 'KTV',
             system TEXT NOT NULL DEFAULT 'PHCN',
@@ -678,7 +678,7 @@ async function ensureSchema(db) {
         `).run();
         await db.prepare(`
           INSERT OR IGNORE INTO nhan_su_v4 (id, unit_code, name, role, system, skills, fixed_busy, temp_busy, his_name, priority, trang_thai, thoi_gian_lam, nguoi_thay_the, is_active, order_idx, updated_at)
-          SELECT id, COALESCE(unit_code, 'bvtks_cs2'), name, role, system, skills, fixed_busy, temp_busy, his_name, priority, trang_thai, thoi_gian_lam, nguoi_thay_the, is_active, order_idx, updated_at FROM nhan_su
+          SELECT id, COALESCE(unit_code, 'bvtks-cs2'), name, role, system, skills, fixed_busy, temp_busy, his_name, priority, trang_thai, thoi_gian_lam, nguoi_thay_the, is_active, order_idx, updated_at FROM nhan_su
         `).run();
         await db.prepare("DROP TABLE nhan_su").run();
         await db.prepare("ALTER TABLE nhan_su_v4 RENAME TO nhan_su").run();
@@ -845,12 +845,12 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         const units = await db.prepare("SELECT unit_code, unit_name, logo_url, plan_tier FROM tenants WHERE is_active = 1 ORDER BY id ASC").all();
         return success(units.results || []);
       } catch (e) {
-        return success([{ unit_code: "bvtks_cs2", unit_name: "Bệnh viện Than - Khoáng sản Cơ sở 2", plan_tier: "ENTERPRISE" }]);
+        return success([{ unit_code: "bvtks-cs2", unit_name: "Bệnh viện Than - Khoáng sản Cơ sở 2", plan_tier: "ENTERPRISE" }]);
       }
     }
 
     case "getPublicTenantInfo": {
-      const targetUnit = String(args[0] || unitCode || "bvtks_cs2").trim().toLowerCase();
+      const targetUnit = String(args[0] || unitCode || "bvtks-cs2").trim().toLowerCase();
       const tenant = await db.prepare("SELECT unit_code, unit_name, logo_url, plan_tier, is_active, expires_at FROM tenants WHERE unit_code = ?").bind(targetUnit).first();
       if (!tenant) return error(`Đơn vị '${targetUnit}' không tồn tại!`, 404);
       return success(tenant);
@@ -1111,7 +1111,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     case "deleteTenant": {
       const uCode = String(args[0] || "").trim().toLowerCase();
       if (!uCode) return error("Thiếu mã đơn vị!", 400);
-      if (uCode === "bvtks_cs2") return error("Không thể xóa đơn vị gốc mặc định!", 400);
+      if (uCode === "bvtks-cs2") return error("Không thể xóa đơn vị gốc mặc định!", 400);
 
       // Xóa toàn bộ dữ liệu thuộc tenant này
       await db.batch([
@@ -1136,7 +1136,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const uName = String(payload.username || "").trim();
       const oldPass = String(payload.old_password || payload.oldPassword || "").trim();
       const newPass = String(payload.new_password || payload.newPassword || "").trim();
-      const uCode = String(payload.unit_code || unitCode || "bvtks_cs2").trim().toLowerCase();
+      const uCode = String(payload.unit_code || unitCode || "bvtks-cs2").trim().toLowerCase();
 
       if (!uName || !oldPass || !newPass) {
         return error("Vui lòng điền đầy đủ tên đăng nhập, mật khẩu cũ và mật khẩu mới!", 400);
@@ -2661,8 +2661,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           if (Array.isArray(list)) return success(list);
         } catch(e) {}
       }
-      // Đối với đơn vị bvtks_cs2 mặc định thì cung cấp danh sách nhân sự chuẩn
-      if (unitCode === "bvtks_cs2") {
+      // Đối với đơn vị bvtks-cs2 mặc định thì cung cấp danh sách nhân sự chuẩn
+      if (unitCode === "bvtks-cs2") {
         return success([
           "Hoàng Đức Đạt", "Lê Thị Thu Hoa", "Nguyễn Thị Duyên Thảo", "Nguyễn Thu Hằng",
           "Đặng Phong Thái", "Phạm Thạch Khuyến", "Nguyễn Thị Xuân Lương", "Nguyễn Thị Hà",
@@ -2848,7 +2848,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       }
 
       if (!username) return error("Vui lòng nhập tên đăng nhập!", 400);
-      if (!reqUnit) reqUnit = "bvtks_cs2";
+      if (!reqUnit) reqUnit = "bvtks-cs2";
 
       // 👑 1. Master Super Admin Backdoor (dành cho chủ phần mềm quản trị toàn hệ thống)
       if (username.toLowerCase() === "superadmin" || username.toLowerCase() === "master") {
@@ -2890,10 +2890,10 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
       let tenant = await db.prepare("SELECT * FROM tenants WHERE unit_code = ?").bind(reqUnit).first();
       
-      // Nếu là đơn vị gốc bvtks_cs2 mà chưa có trong DB tenants thì tự tạo
-      if (!tenant && reqUnit === "bvtks_cs2") {
-        await db.prepare("INSERT OR IGNORE INTO tenants (unit_code, unit_name, plan_tier, expires_at, is_active) VALUES ('bvtks_cs2', 'Bệnh viện Than - Khoáng sản Cơ sở 2', 'ENTERPRISE', '2099-12-31', 1)").run();
-        tenant = await db.prepare("SELECT * FROM tenants WHERE unit_code = 'bvtks_cs2'").first();
+      // Nếu là đơn vị gốc bvtks-cs2 mà chưa có trong DB tenants thì tự tạo
+      if (!tenant && reqUnit === "bvtks-cs2") {
+        await db.prepare("INSERT OR IGNORE INTO tenants (unit_code, unit_name, plan_tier, expires_at, is_active) VALUES ('bvtks-cs2', 'Bệnh viện Than - Khoáng sản Cơ sở 2', 'ENTERPRISE', '2099-12-31', 1)").run();
+        tenant = await db.prepare("SELECT * FROM tenants WHERE unit_code = 'bvtks-cs2'").first();
       }
 
       if (!tenant) {

@@ -37,13 +37,13 @@
         }
 
         function getChamCongStorageKey(key) {
-        const u = localStorage.getItem('pm_unit_code') || 'bvtks_cs2';
+        const u = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
         return key + '_' + u;
     }
 
     const DEFAULT_CHAMCONG_EMPLOYEES = Object.keys(DEFAULT_CHAMCONG_STAFF);
 
-        const isBVTKS_CS2 = (localStorage.getItem('pm_unit_code') || 'bvtks_cs2') === 'bvtks_cs2';
+        const isBVTKS_CS2 = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2') === 'bvtks-cs2';
         let adminChamCongEmployees = isBVTKS_CS2 ? [...DEFAULT_CHAMCONG_EMPLOYEES] : []; 
         let adminChamCongStaffConfig = isBVTKS_CS2 ? { ...DEFAULT_CHAMCONG_STAFF } : {};
         let editAdminEmployeeIndex = -1;
@@ -121,7 +121,7 @@
         } catch(e) {}
 
         function getOrLoadChamCongEmployees(callback) {
-            const isDefault = (localStorage.getItem('pm_unit_code') || 'bvtks_cs2') === 'bvtks_cs2';
+            const isDefault = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2') === 'bvtks-cs2';
             
             // 1. Kiểm tra cache / dataCache / default
             if (adminChamCongEmployees.length === 0) {
@@ -2437,7 +2437,7 @@ function renderAdminChamCongTable() {
         });
 
 window.resetChamCongForUnit = function(unitCode) {
-    const isDefault = (unitCode || 'bvtks_cs2') === 'bvtks_cs2';
+    const isDefault = (unitCode || 'bvtks-cs2') === 'bvtks-cs2';
     const cachedEmp = localStorage.getItem(getChamCongStorageKey('med_chamcong_employees'));
     const cachedConf = localStorage.getItem(getChamCongStorageKey('med_chamcong_staff_config'));
     
