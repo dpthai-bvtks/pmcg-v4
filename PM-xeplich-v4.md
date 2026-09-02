@@ -450,3 +450,28 @@ git add . && git commit -m "..." && git push origin main
 ---
 
 
+### [v4.0.0-rev61] - 02/09/2026: Phân Quyền Chặt Chẽ Tính Năng Đồng Bộ CSDL / Backup & Tinh Gọn Menu Người Dùng
+
+- **Yêu cầu của người dùng**:
+  + Chức năng đồng bộ Google Sheets, xuất tệp dự phòng, nạp tệp dự phòng chỉ dành riêng cho tài khoản Super Admin.
+  + Các tài khoản của các đơn vị khác:
+    - Khi bấm vào nút trạng thái màu xanh `🟢 Cloudflare & Turso`, chỉ hiển thị thông tin máy chủ & nút Kiểm tra kết nối (Ping API).
+    - Trong User Menu dropdown khi bấm vào tên tài khoản: tinh gọn chỉ hiển thị đúng 3 mục: 🔒 **Quản Trị**, 🔑 **Đổi Mật Khẩu Nhanh**, 🚪 **Đăng Xuất**.
+- **Giải pháp**:
+  + **Modal `#modal-server-status`**:
+    - Bọc toàn bộ các chức năng quản trị cấp cao (*Đồng Bộ Toàn Bộ CSDL → Google Sheets*, *Xuất Tệp Sao Lưu Khẩn Cấp .json*, *Cấu Hình URL Google Apps Script*) vào container `#modal-server-super-admin-actions`.
+    - Kiểm tra `role === 'SUPER_ADMIN'`: Chỉ Super Admin mới nhìn thấy khối này; tài khoản đơn vị khác sẽ tự động ẩn hoàn toàn, chỉ thấy thông tin trạng thái & nút Ping API.
+  + **User Menu Dropdown (`#user-dropdown-menu`)**:
+    - Bọc các mục nhạy cảm (*Máy Chủ & CSDL*, *Xuất Dự Phòng Offline*, *Nạp File Dự Phòng*) vào `#user-menu-super-section`.
+    - Phân quyền: Tài khoản đơn vị thông thường chỉ nhìn thấy đúng 3 mục: **Quản Trị** (nếu là Admin đơn vị), **Đổi Mật Khẩu**, và **Đăng Xuất**.
+  + Tự động áp dụng phân quyền ngay khi khởi động ứng dụng (`DOMContentLoaded` trong `js/init.js`) và khi đăng nhập thành công (`applyPermissions`).
+- **File sửa đổi**:
+  + `index.html`
+  + `js/app.js`
+  + `js/init.js`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+---
+
+
