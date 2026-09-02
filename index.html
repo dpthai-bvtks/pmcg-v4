@@ -72,7 +72,7 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=4.0.0-rev60">
+    <link rel="stylesheet" href="css/style.css?v=4.0.0-rev61">
     <!-- PWA & Mobile Web App Meta Tags -->
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
@@ -80,7 +80,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.0.0-rev60">
+    <link rel="stylesheet" href="css/mobile.css?v=4.0.0-rev61">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
     <script src="js/dexie.min.js?v=3.2.6"></script>
@@ -344,6 +344,8 @@
                                 </button>
                                 <div class="user-dropdown-menu" id="user-dropdown-menu"
                                     style="display: none; position: absolute; right: 0; top: 100%; margin-top: 6px; background: white; min-width: 175px; box-shadow: 0 10px 25px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.05); border-radius: 8px; z-index: 10000; overflow: hidden; border: 1px solid rgba(0,0,0,0.06); padding: 4px 0; text-align: left;">
+                                    
+                                    <!-- 🔒 1. NÚT QUẢN TRỊ (Admin đơn vị & Super Admin) -->
                                     <a href="javascript:void(0)" id="user-menu-admin-btn"
                                         style="display: none; align-items: center; gap: 8px; padding: 10px 14px; font-size: 11.5px; color: #2c3e50; text-decoration: none; font-weight: 700; transition: background 0.15s;"
                                         onclick="goToAdminTab()">
@@ -351,32 +353,40 @@
                                     </a>
                                     <div id="user-menu-divider"
                                         style="display: none; height: 1px; background: #edf2f7; margin: 4px 0;"></div>
-                                    <a href="javascript:void(0)" id="user-menu-server-status-btn"
-                                        style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; font-size: 11.5px; color: #059669; text-decoration: none; font-weight: 700; transition: background 0.15s;"
-                                        onclick="window.openServerStatusModal(event)">
-                                        <span style="font-size: 13px;">☁️</span> Máy Chủ & CSDL
-                                    </a>
-                                    <div style="height: 1px; background: #edf2f7; margin: 4px 0;"></div>
+                                    
+                                    <!-- 🔑 2. ĐỔI MẬT KHẨU NHANH (Tất cả tài khoản) -->
                                     <a href="javascript:void(0)" id="user-menu-change-pw-btn"
                                         style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; font-size: 11.5px; color: #2c3e50; text-decoration: none; font-weight: 700; transition: background 0.15s;"
                                         onclick="window.openChangePasswordModal(event)">
                                         <span style="font-size: 13px;">🔑</span> Đổi Mật Khẩu
                                     </a>
+
+                                    <!-- 👑 3. KHỐI CHỨC NĂNG DÀNH RIÊNG CHO SUPER ADMIN (Máy chủ, Backup Offline, Nạp File) -->
+                                    <div id="user-menu-super-section" style="display: none; flex-direction: column;">
+                                        <div style="height: 1px; background: #edf2f7; margin: 4px 0;"></div>
+                                        <a href="javascript:void(0)" id="user-menu-server-status-btn"
+                                            style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; font-size: 11.5px; color: #059669; text-decoration: none; font-weight: 700; transition: background 0.15s;"
+                                            onclick="window.openServerStatusModal(event)">
+                                            <span style="font-size: 13px;">☁️</span> Máy Chủ & CSDL
+                                        </a>
+                                        <div style="height: 1px; background: #edf2f7; margin: 4px 0;"></div>
+                                        <a href="javascript:void(0)" id="user-menu-export-backup-btn"
+                                            style="display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 11.5px; color: #0f766e; text-decoration: none; font-weight: 600; transition: background 0.15s;"
+                                            onclick="window.OfflineSyncEngine?.exportEmergencyBackupData()">
+                                            <span style="font-size: 13px;">⚡</span> Xuất Dự Phòng (Offline)
+                                        </a>
+                                        <a href="javascript:void(0)" id="user-menu-import-backup-btn"
+                                            style="display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 11.5px; color: #c2410c; text-decoration: none; font-weight: 600; transition: background 0.15s;"
+                                            onclick="document.getElementById('emergency-import-input').click()">
+                                            <span style="font-size: 13px;">📥</span> Nạp File Dự Phòng
+                                        </a>
+                                        <input type="file" id="emergency-import-input" accept=".json" style="display: none;"
+                                            onchange="window.OfflineSyncEngine?.importEmergencyBackupData(this)">
+                                    </div>
+
+                                    <!-- 🚪 4. ĐĂNG XUẤT (Tất cả tài khoản) -->
                                     <div style="height: 1px; background: #edf2f7; margin: 4px 0;"></div>
-                                    <a href="javascript:void(0)"
-                                        style="display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 11.5px; color: #0f766e; text-decoration: none; font-weight: 600; transition: background 0.15s;"
-                                        onclick="window.OfflineSyncEngine?.exportEmergencyBackupData()">
-                                        <span style="font-size: 13px;">⚡</span> Xuất Dự Phòng (Offline)
-                                    </a>
-                                    <a href="javascript:void(0)"
-                                        style="display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 11.5px; color: #c2410c; text-decoration: none; font-weight: 600; transition: background 0.15s;"
-                                        onclick="document.getElementById('emergency-import-input').click()">
-                                        <span style="font-size: 13px;">📥</span> Nạp File Dự Phòng
-                                    </a>
-                                    <input type="file" id="emergency-import-input" accept=".json" style="display: none;"
-                                        onchange="window.OfflineSyncEngine?.importEmergencyBackupData(this)">
-                                    <div style="height: 1px; background: #edf2f7; margin: 4px 0;"></div>
-                                    <a href="javascript:void(0)"
+                                    <a href="javascript:void(0)" id="user-menu-logout-btn"
                                         style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; font-size: 11.5px; color: #e74c3c; text-decoration: none; font-weight: 700; transition: background 0.15s;"
                                         onclick="triggerLogout()">
                                         <span style="font-size: 13px;">🚪</span> Đăng Xuất
@@ -3245,7 +3255,7 @@
 
                     <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 4.0.0</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 12:11 02/09/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 12:20 02/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -3683,18 +3693,18 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.0.0-rev60"></script>
-    <script src="js/ai-scheduler.js?v=4.0.0-rev60"></script>
-    <script src="js/cp-solver.js?v=4.0.0-rev60"></script>
-    <script src="js/scheduler-engine.js?v=4.0.0-rev60"></script>
-    <script src="js/app.js?v=4.0.0-rev60"></script>
-    <script src="js/init.js?v=4.0.0-rev60"></script>
-    <script src="js/sync.js?v=4.0.0-rev60"></script>
-    <script src="js/thongke.js?v=4.0.0-rev60"></script>
+    <script src="js/offline-sync-engine.js?v=4.0.0-rev61"></script>
+    <script src="js/ai-scheduler.js?v=4.0.0-rev61"></script>
+    <script src="js/cp-solver.js?v=4.0.0-rev61"></script>
+    <script src="js/scheduler-engine.js?v=4.0.0-rev61"></script>
+    <script src="js/app.js?v=4.0.0-rev61"></script>
+    <script src="js/init.js?v=4.0.0-rev61"></script>
+    <script src="js/sync.js?v=4.0.0-rev61"></script>
+    <script src="js/thongke.js?v=4.0.0-rev61"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>
-    const APP_VERSION = '4.0.0-rev60';
+    const APP_VERSION = '4.0.0-rev61';
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             // Unregister old service workers if version changed
@@ -3763,6 +3773,18 @@
         const uCode = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
         const unitEl = document.getElementById('modal-server-unit-name');
         if (unitEl) unitEl.innerText = `${uName} (${uCode})`;
+
+        // Phân quyền: Chỉ Super Admin mới thấy các nút Sync Google Sheets, Xuất JSON, Cấu hình GAS
+        let sessRole = '';
+        try {
+            const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
+            sessRole = String(sess.role || '').toUpperCase();
+        } catch (e2) {}
+        const isSuperAdmin = (sessRole === 'SUPER_ADMIN' || sessRole === 'SUPERADMIN');
+        const superAdminActions = document.getElementById('modal-server-super-admin-actions');
+        if (superAdminActions) {
+            superAdminActions.style.display = isSuperAdmin ? 'flex' : 'none';
+        }
 
         modal.style.cssText = 'display:flex !important; position:fixed !important; top:0 !important; left:0 !important; width:100vw !important; height:100vh !important; background:rgba(15,23,42,0.65) !important; backdrop-filter:blur(5px) !important; z-index:2147483647 !important; align-items:center !important; justify-content:center !important;';
     };
@@ -3885,17 +3907,21 @@
                 </button>
                 <!-- Kết quả ping hiển thị inline trong modal -->
                 <div id="ping-result-area" style="display:none; padding: 10px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; line-height: 1.6;"></div>
-                <!-- Đường kẻ phân cách -->
-                <div style="border-top: 1px solid #e2e8f0; margin: 2px 0;"></div>
-                <button type="button" onclick="window.closeServerStatusModal(); setTimeout(()=>window.syncAllD1DataToBackupSheets(), 150);" class="btn" style="width: 100%; padding: 10px 14px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 8px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;">
-                    <span>📊</span> Đồng Bộ Toàn Bộ CSDL → Google Sheets
-                </button>
-                <button type="button" onclick="window.OfflineSyncEngine?.exportEmergencyBackupData(); window.closeServerStatusModal();" class="btn" style="width: 100%; padding: 10px 14px; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; border-radius: 8px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;">
-                    <span>⚡</span> Xuất Tệp Sao Lưu Khẩn Cấp (.json)
-                </button>
-                <button type="button" onclick="window.configureBackupGoogleScript()" class="btn" style="width: 100%; padding: 10px 14px; background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; border-radius: 8px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;">
-                    <span>🌐</span> Cấu Hình URL Google Apps Script Dự Phòng
-                </button>
+                
+                <!-- 👑 KHỐI CHỨC NĂNG DÀNH RIÊNG CHO SUPER ADMIN (Sync Google Sheets, Xuất JSON, Cấu hình GAS) -->
+                <div id="modal-server-super-admin-actions" style="display: none; flex-direction: column; gap: 10px;">
+                    <!-- Đường kẻ phân cách -->
+                    <div style="border-top: 1px solid #e2e8f0; margin: 2px 0;"></div>
+                    <button type="button" onclick="window.closeServerStatusModal(); setTimeout(()=>window.syncAllD1DataToBackupSheets(), 150);" class="btn" style="width: 100%; padding: 10px 14px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 8px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;">
+                        <span>📊</span> Đồng Bộ Toàn Bộ CSDL → Google Sheets
+                    </button>
+                    <button type="button" onclick="window.OfflineSyncEngine?.exportEmergencyBackupData(); window.closeServerStatusModal();" class="btn" style="width: 100%; padding: 10px 14px; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; border-radius: 8px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;">
+                        <span>⚡</span> Xuất Tệp Sao Lưu Khẩn Cấp (.json)
+                    </button>
+                    <button type="button" onclick="window.configureBackupGoogleScript()" class="btn" style="width: 100%; padding: 10px 14px; background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; border-radius: 8px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;">
+                        <span>🌐</span> Cấu Hình URL Google Apps Script Dự Phòng
+                    </button>
+                </div>
             </div>
 
 

@@ -55,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (sess.role) {
             const superTab = document.getElementById('nav-tab-tenants');
             if (superTab) superTab.style.display = 'none';
+            if (typeof applyPermissions === 'function') applyPermissions(sess.role, sess.permissions || 'all');
         }
     } catch(e) {}
 

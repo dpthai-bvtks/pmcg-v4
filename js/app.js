@@ -122,6 +122,18 @@ window.openServerStatusModal = function (e) {
     const unitEl = document.getElementById('modal-server-unit-name');
     if (unitEl) unitEl.innerText = `${uName} (${uCode})`;
 
+    // Phân quyền: Chỉ Super Admin mới thấy các nút Sync Google Sheets, Xuất JSON, Cấu hình GAS
+    let sessRole = '';
+    try {
+        const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
+        sessRole = String(sess.role || '').toUpperCase();
+    } catch (e2) {}
+    const isSuperAdmin = (sessRole === 'SUPER_ADMIN' || sessRole === 'SUPERADMIN');
+    const superAdminActions = document.getElementById('modal-server-super-admin-actions');
+    if (superAdminActions) {
+        superAdminActions.style.display = isSuperAdmin ? 'flex' : 'none';
+    }
+
     // Hiển thị modal — dùng cssText !important (pattern đáng tin cậy nhất)
     modal.style.cssText = 'display:flex !important; position:fixed !important; top:0 !important; left:0 !important; width:100vw !important; height:100vh !important; background:rgba(15,23,42,0.65) !important; backdrop-filter:blur(5px) !important; z-index:2147483647 !important; align-items:center !important; justify-content:center !important;';
 };
@@ -9226,8 +9238,19 @@ window.renderSttOrderControl = function (type, i, total) {
             const btnAi = document.getElementById('nav-btn-ai');
             const btnBackup = document.getElementById('nav-btn-backup');
             const btnQuicklinks = document.getElementById('nav-btn-quicklinks');
+            const userMenuSuperSection = document.getElementById('user-menu-super-section');
+            const modalSuperAdminActions = document.getElementById('modal-server-super-admin-actions');
 
-            if (role === 'SUPER_ADMIN' || role === 'superadmin') {
+            const isSuper = (role === 'SUPER_ADMIN' || role === 'superadmin' || role === 'SUPERADMIN');
+
+            if (userMenuSuperSection) {
+                userMenuSuperSection.style.display = isSuper ? 'flex' : 'none';
+            }
+            if (modalSuperAdminActions) {
+                modalSuperAdminActions.style.display = isSuper ? 'flex' : 'none';
+            }
+
+            if (isSuper) {
                 // 👑 SUPER ADMIN:
                 allTabs.forEach(t => {
                     const tabId = t.getAttribute('data-tab');
