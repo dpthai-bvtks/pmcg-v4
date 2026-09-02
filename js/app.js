@@ -2605,9 +2605,13 @@ window.renderSttOrderControl = function (type, i, total) {
                 .getBootstrapData();
         }
 
-        function loadAllData() {
-            loadBootstrapData();
-        }
+        window.loadBootstrapData = loadBootstrapData;
+        window.loadAllData = loadAllData;
+        window.restoreOfflineCache = restoreOfflineCache;
+        window.getBootstrapCacheKey = function () {
+            const u = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
+            return 'times_bootstrap_cache_' + u;
+        };
 
         // =================================================================
 
@@ -8992,6 +8996,16 @@ window.renderSttOrderControl = function (type, i, total) {
 
         function doLogout() {
             localStorage.removeItem('meds_session');
+            if (window.dataCache) {
+                window.dataCache.pat = [];
+                window.dataCache.staff = [];
+                window.dataCache.machine = [];
+                window.dataCache.room = [];
+                window.dataCache.proc = [];
+                window.dataCache.schedule = [];
+                window.dataCache.protocols = [];
+            }
+            if (window.dataCacheTime) window.dataCacheTime = {};
             const overlay = document.getElementById('login-overlay');
             if (overlay) overlay.style.display = 'flex';
             const container = document.getElementById('user-menu-container');

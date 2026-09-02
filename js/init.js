@@ -199,6 +199,27 @@ window.doLogin = function () {
                     window.updateAppHeader(uUnit, uRole);
                 }
 
+                // Xóa sạch bộ đệm dữ liệu của đơn vị trước đó trong RAM
+                if (window.dataCache) {
+                    window.dataCache.pat = [];
+                    window.dataCache.staff = [];
+                    window.dataCache.machine = [];
+                    window.dataCache.room = [];
+                    window.dataCache.proc = [];
+                    window.dataCache.schedule = [];
+                    window.dataCache.protocols = [];
+                }
+                if (window.dataCacheTime) {
+                    window.dataCacheTime = {};
+                }
+
+                // Tải dữ liệu Bootstrap mới nhất của đơn vị này ngay lập tức (forceRefresh = true)
+                if (typeof window.loadBootstrapData === 'function') {
+                    try { window.loadBootstrapData(true); } catch(e) { console.warn('Lỗi loadBootstrapData:', e); }
+                } else if (typeof window.loadAllData === 'function') {
+                    try { window.loadAllData(); } catch(e) {}
+                }
+
                 if (uRole === 'SUPER_ADMIN') {
                     const superTab = document.getElementById('nav-tab-tenants');
                     if (superTab) superTab.style.display = 'flex';
