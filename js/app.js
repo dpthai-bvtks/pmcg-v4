@@ -96,6 +96,107 @@ window.updateAppHeader = function(unitCode, role) {
     }
 };
 
+window.openServerStatusModal = function (e) {
+    if (e) {
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+        if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    }
+
+    let modal = document.getElementById('modal-server-status');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modal-server-status';
+        modal.className = 'modal-backdrop';
+        modal.style.cssText = 'display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.65); backdrop-filter:blur(5px); z-index:99999; justify-content:center; align-items:center;';
+        modal.onclick = function (evt) { if (evt.target === modal) window.closeServerStatusModal(); };
+        modal.innerHTML = `
+        <div style="background:#ffffff; width:480px; max-width:92%; border-radius:16px; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.25); font-family:sans-serif; border:1px solid #e2e8f0; animation:modalPop 0.2s ease;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; border-bottom:1px solid #f1f5f9; padding-bottom:12px;">
+                <h3 style="margin:0; font-size:16px; font-weight:800; color:#1e293b; display:flex; align-items:center; gap:8px;">
+                    <span>☁️</span> Trạng Thái Máy Chủ & Cơ Sở Dữ Liệu
+                </h3>
+                <button type="button" onclick="window.closeServerStatusModal()" style="border:none; background:none; font-size:18px; color:#94a3b8; cursor:pointer; font-weight:bold;">✕</button>
+            </div>
+
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px; margin-bottom:18px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <span style="font-size:12px; color:#64748b; font-weight:600;">Trạng thái hệ thống:</span>
+                    <span style="background:#dcfce7; color:#15803d; padding:4px 10px; border-radius:12px; font-size:11.5px; font-weight:800; display:inline-flex; align-items:center; gap:5px;">
+                        <span style="width:6px; height:6px; background:#22c55e; border-radius:50%;"></span> Hoạt động ổn định
+                    </span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px;">
+                    <span style="color:#64748b;">API Engine:</span>
+                    <span style="font-weight:700; color:#0f172a;">Cloudflare Edge Workers (pmcg-api)</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px;">
+                    <span style="color:#64748b;">Cơ sở dữ liệu:</span>
+                    <span style="font-weight:700; color:#0f172a;">Turso libSQL Cloud (Tokyo, aws-ap-ne-1)</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px;">
+                    <span style="color:#64748b;">Đơn vị hiện hành:</span>
+                    <span style="font-weight:700; color:#2563eb;" id="modal-server-unit-name">Đang tải...</span>
+                </div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <button type="button" onclick="window.pingServerConnection()" class="btn" style="width:100%; padding:10px 14px; background:#f1f5f9; color:#1e293b; border:1px solid #cbd5e1; border-radius:8px; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer;">
+                    <span>🔄</span> Kiểm Tra Tốc Độ Phản Hồi (Ping API)
+                </button>
+                <button type="button" onclick="window.OfflineSyncEngine?.exportEmergencyBackupData(); window.closeServerStatusModal();" class="btn" style="width:100%; padding:10px 14px; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; border-radius:8px; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer;">
+                    <span>⚡</span> Xuất Tệp Sao Lưu Khẩn Cấp (.json)
+                </button>
+                <button type="button" onclick="window.configureBackupGoogleScript()" class="btn" style="width:100%; padding:10px 14px; background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; border-radius:8px; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer;">
+                    <span>🌐</span> Cấu Hình URL Google Apps Script Dự Phòng
+                </button>
+            </div>
+
+            <div style="margin-top:16px; text-align:right;">
+                <button type="button" onclick="window.closeServerStatusModal()" class="btn btn-secondary" style="padding:8px 18px; font-size:12px; font-weight:600;">Đóng</button>
+            </div>
+        </div>`;
+        document.body.appendChild(modal);
+    }
+
+    const uName = localStorage.getItem('pm_unit_name') || 'Bệnh viện Than - Khoáng sản Cơ sở 2';
+    const uCode = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
+    const unitEl = document.getElementById('modal-server-unit-name');
+    if (unitEl) unitEl.innerText = `${uName} (${uCode})`;
+
+    modal.style.display = 'flex';
+};
+
+window.closeServerStatusModal = function () {
+    const modal = document.getElementById('modal-server-status');
+    if (modal) modal.style.display = 'none';
+};
+
+window.toggleEmergencyBackupMenu = function (e) {
+    window.openServerStatusModal(e);
+};
+
+window.pingServerConnection = function () {
+    const t0 = performance.now();
+    callApi('ping', [], res => {
+        const pingTime = Math.round(performance.now() - t0);
+        alert(`⚡ Kết nối máy chủ Cloudflare Edge & Turso Cloud phản hồi cực nhanh: ${pingTime} ms!\n\n• Trạng thái: 🟢 Hoạt động hoàn hảo\n• CSDL: Turso libSQL Cloud\n• Mã đơn vị: ${res && res.unit_code ? res.unit_code : (localStorage.getItem('pm_unit_code') || 'bvtks-cs2')}`);
+    }, err => {
+        alert('⚠️ Lỗi phản hồi API: ' + (err && err.message ? err.message : 'Không thể kết nối'));
+    });
+};
+
+window.configureBackupGoogleScript = function () {
+    let backupUrl = (localStorage.getItem('times_backup_api_url') || '').trim();
+    const url = prompt('Nhập URL Google Apps Script WebApp dự phòng (Dạng: https://script.google.com/macros/s/.../exec):', backupUrl);
+    if (url && url.trim()) {
+        localStorage.setItem('times_backup_api_url', url.trim());
+        if (typeof callApi === 'function') {
+            callApi('saveSystemSettings', ['gdrive_webhook_url', url.trim()]);
+        }
+        alert('Đã lưu URL máy chủ dự phòng Google Apps Script!');
+    }
+};
+
 // =========================================================
 // TURBO CLOUDFLARE API BRIDGE & GLOBAL INITIALIZATION
 // =========================================================
@@ -497,11 +598,14 @@ window.showGlobalLoading = function (text) {
             const badge = document.getElementById('server-status-badge');
             if (!badge) return;
             if (mode === 'primary') {
-                badge.style.background = '#27ae60'; badge.innerText = '🟢 Cloudflare Main';
+                badge.style.background = '#059669';
+                badge.innerHTML = '<span style="display:inline-block; width:6px; height:6px; background:#4ade80; border-radius:50%; box-shadow:0 0 6px #4ade80;"></span> Cloudflare & Turso';
             } else if (mode === 'backup') {
-                badge.style.background = '#f39c12'; badge.innerText = '🟡 Google Sheets Backup';
+                badge.style.background = '#f39c12';
+                badge.innerHTML = '<span style="display:inline-block; width:6px; height:6px; background:#fde047; border-radius:50%;"></span> Google Sheets Backup';
             } else {
-                badge.style.background = '#e74c3c'; badge.innerText = '⚡️ Mode Ngoại Tuyến';
+                badge.style.background = '#e11d48';
+                badge.innerHTML = '⚡️ Mode Ngoại Tuyến';
             }
         }
         window.updateServerStatusBadge = updateServerStatusBadge;
@@ -520,54 +624,11 @@ window.showGlobalLoading = function (text) {
         }
         window.getApiUrl = getApiUrl;
 
-        window.setCustomApiUrl = function(newUrl) {
+        window.setCustomApiUrl = function (newUrl) {
             if (!newUrl || newUrl.trim() === '' || newUrl.trim() === DEFAULT_API_URL) {
                 localStorage.removeItem('times_custom_api_url');
             } else {
                 localStorage.setItem('times_custom_api_url', newUrl.trim());
-            }
-        };
-
-
-        window.toggleEmergencyBackupMenu = function () {
-            window.openServerStatusModal();
-        };
-
-        window.openServerStatusModal = function () {
-            const modal = document.getElementById('modal-server-status');
-            if (modal) {
-                const uName = localStorage.getItem('pm_unit_name') || 'Bệnh viện Than - Khoáng sản Cơ sở 2';
-                const uCode = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
-                const unitEl = document.getElementById('modal-server-unit-name');
-                if (unitEl) unitEl.innerText = `${uName} (${uCode})`;
-                modal.style.display = 'flex';
-            }
-        };
-
-        window.closeServerStatusModal = function () {
-            const modal = document.getElementById('modal-server-status');
-            if (modal) modal.style.display = 'none';
-        };
-
-        window.pingServerConnection = function () {
-            const t0 = performance.now();
-            callApi('ping', [], res => {
-                const pingTime = Math.round(performance.now() - t0);
-                alert(`⚡ Kết nối máy chủ Cloudflare Edge & Turso Cloud phản hồi cực nhanh: ${pingTime} ms!\n\n• Trạng thái: 🟢 Hoạt động hoàn hảo\n• CSDL: Turso libSQL Cloud\n• Mã đơn vị: ${res && res.unit_code ? res.unit_code : (localStorage.getItem('pm_unit_code') || 'bvtks-cs2')}`);
-            }, err => {
-                alert('⚠️ Lỗi phản hồi API: ' + (err && err.message ? err.message : 'Không thể kết nối'));
-            });
-        };
-
-        window.configureBackupGoogleScript = function () {
-            let backupUrl = (localStorage.getItem('times_backup_api_url') || '').trim();
-            const url = prompt('Nhập URL Google Apps Script WebApp dự phòng (Dạng: https://script.google.com/macros/s/.../exec):', backupUrl);
-            if (url && url.trim()) {
-                localStorage.setItem('times_backup_api_url', url.trim());
-                if (typeof callApi === 'function') {
-                    callApi('saveSystemSettings', ['gdrive_webhook_url', url.trim()]);
-                }
-                alert('Đã lưu URL máy chủ dự phòng Google Apps Script!');
             }
         };
 
