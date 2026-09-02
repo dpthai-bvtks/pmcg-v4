@@ -273,21 +273,23 @@ git add . && git commit -m "..." && git push origin main
   + `sw.js`
   + `PM-xeplich-v4.md`
 
-### [v4.0.0-rev39] - 01/09/2026: Sửa Triệt Để Modal Đổi Mật Khẩu Không Hiện Khi Bấm
+### [v4.0.0-rev40] - 02/09/2026: Sửa Chiều Cao Footer Tab Tenants & Hỗ Trợ Đổi Mã Đơn Vị Linh Hoạt
 - **Yêu cầu của người dùng**:
-  + Bấm "Đổi Mật Khẩu" ở tài khoản superadmin không hiện popup, cũng không có lỗi console.
-- **Phân tích nguyên nhân**:
-  + Modal `#modal-change-password` nằm trong body nhưng `<div class="container">` có `overflow: hidden` và `position: relative`. Trình duyệt hiện đại (Chrome/Firefox) sẽ clip `position: fixed` nếu phần tử tổ tiên trực tiếp/gián tiếp có `overflow: hidden` (ngay cả body), khiến modal dù có z-index cao vẫn không hiện ra.
-  + Ngoài ra, `style.setProperty('display', 'flex', 'important')` không phải luôn có độ ưu tiên cao hơn inline `style="display: none"` trong mọi trình duyệt.
-- **Giải pháp**:
-  + `js/app.js`: Viết lại hoàn toàn `openChangePasswordModal`. Khi mở, kiểm tra nếu modal chưa là con trực tiếp của `document.body` thì gọi `document.body.appendChild(modal)` để re-parent nó. Sau đó gán `style.cssText` đặt toàn bộ inline styles với `!important` để đảm bảo vượt qua mọi quy tắc CSS. z-index được nâng lên `2147483647` (giá trị tối đa).
-  + `closeChangePasswordModal`: Đơn giản hóa dùng `style.cssText = 'display:none !important'`.
-  + Đồng bộ phiên bản `v4.0.0-rev39`, cập nhật footer timestamp `23:10 01/09/2026` và cache buster cho `sw.js`.
+  + Footer ở tab `tab-tenants` bị nổi cao lên lơ lửng giữa màn hình khi ít đơn vị.
+  + Cho phép chỉnh sửa/đổi mã đơn vị của `bvtks_cs2` hoặc bất kỳ đơn vị nào khác trên hệ thống.
+- **Phân tích nguyên nhân & Giải pháp**:
+  + `css/style.css`: Bổ sung rule CSS co giãn chiều cao `min-height: 100%` cho `.tab-scroll-content:has(#tab-tenants.active)` và `#tab-tenants.active`, kết hợp `margin-top: auto` cho `.main-footer` để ghim cố định footer ở đáy màn hình ngay cả khi bảng danh sách đơn vị chỉ có 1-2 dòng.
+  + `backend/src/index.js`: Cập nhật API `updateTenant` hỗ trợ đổi `unit_code` sang mã mới. Khi phát hiện mã đơn vị thay đổi, hệ thống kiểm tra tính duy nhất và tự động thực hiện CASCADE đồng bộ cập nhật `unit_code` trên toàn bộ các bảng dữ liệu liên quan (`cai_dat`, `tai_khoan`, `nhan_su`, `may_moc`, `phong`, `thu_thuat`, `benh_nhan`, `lich_trinh`, `phac_do`, `chamcong_records`, `thongke_records`...).
+  + `js/app.js` & `index.html`: Mở khóa ô nhập Mã Đơn Vị trong form Sửa đơn vị, thêm trường ẩn lưu mã cũ và cảnh báo xác nhận khi thực hiện đổi mã.
+  + Đồng bộ phiên bản `v4.0.0-rev40`, cập nhật footer timestamp `07:30 02/09/2026` và cache buster cho `sw.js`.
 - **File sửa đổi**:
+  + `backend/src/index.js`
   + `js/app.js`
   + `index.html`
+  + `css/style.css`
   + `sw.js`
   + `PM-xeplich-v4.md`
+
 
 
 

@@ -12493,6 +12493,7 @@ window.loadTenantsList = function () {
 
 window.openAddTenantModal = function () {
     document.getElementById('modal-tenant-title').innerText = '➕ Thêm Bệnh Viện / Đơn Vị Mới';
+    if (document.getElementById('tenant-form-old-code')) document.getElementById('tenant-form-old-code').value = '';
     document.getElementById('tenant-form-code').value = '';
     document.getElementById('tenant-form-code').disabled = false;
     document.getElementById('tenant-form-name').value = '';
@@ -12507,8 +12508,9 @@ window.openAddTenantModal = function () {
 
 window.openEditTenantModal = function (code, encName, plan, expires, maxStaff, maxPatients, phone) {
     document.getElementById('modal-tenant-title').innerText = '✏️ Chỉnh Sửa & Gia Hạn Đơn Vị: ' + code;
+    if (document.getElementById('tenant-form-old-code')) document.getElementById('tenant-form-old-code').value = code;
     document.getElementById('tenant-form-code').value = code;
-    document.getElementById('tenant-form-code').disabled = true;
+    document.getElementById('tenant-form-code').disabled = false;
     document.getElementById('tenant-form-name').value = decodeURIComponent(encName);
     document.getElementById('tenant-form-plan').value = plan || 'PRO';
     document.getElementById('tenant-form-expires').value = expires || '2099-12-31';
@@ -12524,7 +12526,8 @@ window.closeTenantModal = function () {
 };
 
 window.saveTenantData = function () {
-    const isEdit = document.getElementById('tenant-form-code').disabled;
+    const oldCode = (document.getElementById('tenant-form-old-code')?.value || '').trim().toLowerCase();
+    const isEdit = !!oldCode;
     const code = document.getElementById('tenant-form-code').value.trim().toLowerCase();
     const name = document.getElementById('tenant-form-name').value.trim();
     const plan = document.getElementById('tenant-form-plan').value;
@@ -12539,15 +12542,22 @@ window.saveTenantData = function () {
         return;
     }
 
+    if (isEdit && oldCode && code !== oldCode) {
+        const confirmMsg = `⚠️ BẠN ĐANG ĐỔI MÃ ĐƠN VỊ:\n\nTừ mã cũ: "${oldCode}" ➔ Sang mã mới: "${code}"\n\nToàn bộ dữ liệu (Bệnh nhân, Nhân sự, Lịch trình, Tài khoản, Cài đặt...) sẽ tự động được chuyển sang mã mới.\n\nBạn có chắc chắn muốn tiếp tục không?`;
+        if (!confirm(confirmMsg)) return;
+    }
+
     const payload = {
+        old_unit_code: oldCode,
         unit_code: code,
+        new_unit_code: code,
         unit_name: name,
         plan_tier: plan,
         expires_at: expires,
         max_staff: maxStaff,
         max_patients: maxPatients,
         phone: phone,
-        admin_password: password || 'admin123'
+        admin_password: password || ''
     };
 
     const action = isEdit ? 'updateTenant' : 'addTenant';
@@ -12557,6 +12567,15 @@ window.saveTenantData = function () {
     callApi(action, [payload], res => {
         if (btn) { btn.innerText = '💾 Lưu Đơn Vị'; btn.disabled = false; }
         closeTenantModal();
+
+        if (isEdit && oldCode && code !== oldCode) {
+            if (localStorage.getItem('pm_unit_code') === oldCode) {
+                localStorage.setItem('pm_unit_code', code);
+                localStorage.setItem('pm_unit_name', name);
+                if (typeof window.updateAppHeader === 'function') window.updateAppHeader(code, 'SUPER_ADMIN');
+            }
+        }
+
         alert(isEdit ? 'Đã cập nhật thông tin đơn vị thành công!' : 'Đã tạo mới đơn vị thành công!');
         loadTenantsList();
     }, err => {

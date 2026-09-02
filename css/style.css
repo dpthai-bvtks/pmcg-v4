@@ -668,6 +668,24 @@
             min-height: 0 !important;
         }
 
+        /* Đảm bảo tab-tenants co giãn full chiều cao và ghim footer sát đáy */
+        .tab-scroll-content:has(#tab-tenants.active) {
+            display: flex !important;
+            flex-direction: column !important;
+            min-height: 100% !important;
+        }
+
+        #tab-tenants.active {
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 0 auto !important;
+            min-height: 100% !important;
+        }
+
+        #tab-tenants .main-footer {
+            margin-top: auto !important;
+        }
+
 
 
         @keyframes fadeIn {

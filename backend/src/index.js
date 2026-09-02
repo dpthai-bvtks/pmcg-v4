@@ -785,8 +785,43 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
     case "updateTenant": {
       const payload = args[0] || {};
-      const uCode = String(payload.unit_code || payload.code || "").trim().toLowerCase();
-      if (!uCode) return error("Thiếu mã đơn vị cần cập nhật!", 400);
+      const oldCode = String(payload.old_unit_code || payload.old_code || payload.unit_code || payload.code || "").trim().toLowerCase();
+      let newCode = String(payload.new_unit_code || payload.unit_code || payload.code || "").trim().toLowerCase();
+      if (!oldCode) return error("Thiếu mã đơn vị cần cập nhật!", 400);
+      if (!newCode) newCode = oldCode;
+
+      // Nếu người dùng đổi mã đơn vị sang mã mới
+      if (newCode !== oldCode) {
+        // Kiểm tra xem newCode đã tồn tại trong tenants chưa
+        const checkExist = await db.prepare("SELECT unit_code FROM tenants WHERE unit_code = ?").bind(newCode).first();
+        if (checkExist) {
+          return error(`Mã đơn vị mới '${newCode}' đã tồn tại trên hệ thống! Vui lòng chọn mã khác.`, 400);
+        }
+
+        // Cập nhật cascade trên toàn bộ các bảng dữ liệu
+        const cascadeQueries = [
+          db.prepare("UPDATE cai_dat SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
+          db.prepare("UPDATE tai_khoan SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
+          db.prepare("UPDATE nhan_su SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
+          db.prepare("UPDATE may_moc SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
+          db.prepare("UPDATE phong SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
+          db.prepare("UPDATE thu_thuat SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
+          db.prepare("UPDATE benh_nhan SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
+          db.prepare("UPDATE lich_trinh SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
+          db.prepare("UPDATE phac_do SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode)
+        ];
+
+        try { cascadeQueries.push(db.prepare("UPDATE history_records SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode)); } catch(e) {}
+        try { cascadeQueries.push(db.prepare("UPDATE history_busy SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode)); } catch(e) {}
+        try { cascadeQueries.push(db.prepare("UPDATE chamcong_records SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode)); } catch(e) {}
+        try { cascadeQueries.push(db.prepare("UPDATE thongke_records SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode)); } catch(e) {}
+        try { cascadeQueries.push(db.prepare("UPDATE documents SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode)); } catch(e) {}
+
+        await db.batch(cascadeQueries);
+      }
+
+      const uCode = newCode;
+      const targetOldCode = oldCode;
 
       const uName = payload.unit_name !== undefined && payload.unit_name !== null ? String(payload.unit_name).trim() : null;
       const uPlan = payload.plan_tier !== undefined && payload.plan_tier !== null ? String(payload.plan_tier).trim() : null;
@@ -800,6 +835,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
       await db.prepare(`
         UPDATE tenants SET
+          unit_code = ?,
           unit_name = COALESCE(?, unit_name),
           plan_tier = COALESCE(?, plan_tier),
           expires_at = COALESCE(?, expires_at),
@@ -811,7 +847,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           is_active = COALESCE(?, is_active),
           updated_at = CURRENT_TIMESTAMP
         WHERE unit_code = ?
-      `).bind(uName, uPlan, uExp, uStaff, uPats, uPhone, uEmail, uLogo, uActive, uCode).run();
+      `).bind(uCode, uName, uPlan, uExp, uStaff, uPats, uPhone, uEmail, uLogo, uActive, targetOldCode).run();
 
       // Nếu có cập nhật mật khẩu admin
       if (payload.admin_password && String(payload.admin_password).trim()) {
@@ -819,7 +855,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         await db.prepare("INSERT OR REPLACE INTO tai_khoan (unit_code, username, password_hash, role, permissions) VALUES (?, 'admin', ?, 'Admin', 'ALL')").bind(uCode, passHash).run();
       }
 
-      return success({ message: `Đã cập nhật thông tin đơn vị '${uCode}' thành công!` });
+      return success({ message: `Đã cập nhật thông tin đơn vị '${uCode}' thành công!`, unit_code: uCode, old_unit_code: oldCode });
     }
 
     case "toggleTenantStatus": {
