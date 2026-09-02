@@ -412,3 +412,23 @@ git add . && git commit -m "..." && git push origin main
 ---
 
 
+### [v4.0.0-rev59] - 02/09/2026: Tích Hợp Nút Đồng Bộ Toàn Bộ CSDL Turso Cloud ➔ Google Sheets Trực Tiếp Trong Modal
+
+- **Yêu cầu của người dùng**:
+  + Thêm chức năng đồng bộ toàn bộ cơ sở dữ liệu từ Turso Cloud sang Google Sheets ngay trên giao diện modal Trạng thái máy chủ.
+- **Giải pháp**:
+  + Bổ sung nút `📊 Đồng Bộ Toàn Bộ CSDL → Google Sheets` trực tiếp vào `#modal-server-status` trong `index.html`.
+  + Nâng cấp hàm `syncAllD1DataToBackupSheets` trong `js/app.js`:
+    - Chuẩn hóa theo kiến trúc Multi-Tenant SaaS (tự động gắn `x-unit-code` và `unit_code`).
+    - Đóng gói đầy đủ 12 bảng dữ liệu: Bệnh nhân, Nhân sự, Máy móc, Phòng, Thủ thuật, Phác đồ, Lịch trình, Lịch sử, Tài khoản, Chấm công, Thống kê, Cài đặt.
+    - Hiển thị tiến trình trực quan 4 bước (`[1/4] Xuất CSDL` ➔ `[2/4] Đóng gói` ➔ `[3/4] Truyền tải` ➔ `[4/4] Hoàn tất`) với thanh phần trăm và thông báo kết quả chi tiết.
+    - Khi cấu hình URL Apps Script, tự động lưu cả vào `localStorage` lẫn đồng bộ vào bảng `cai_dat` máy chủ (`gdrive_webhook_url`) để phục vụ sao lưu tự động qua Cloudflare Worker CRON.
+- **File sửa đổi**:
+  + `index.html`
+  + `js/app.js`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+---
+
+
