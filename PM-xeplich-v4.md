@@ -393,3 +393,22 @@ git add . && git commit -m "..." && git push origin main
 ---
 
 
+### [v4.0.0-rev58] - 02/09/2026: Kết Quả Ping Hiển Thị Inline Trong Modal (Không Bị Overlay Che)
+
+- **Yêu cầu của người dùng**:
+  + Khi bấm "Kiểm tra tốc độ phản hồi" trong modal, kết quả bị che mờ bởi overlay của chính modal đó (phải bấm Đóng mới thấy).
+- **Nguyên nhân**:
+  + `pingServerConnection` dùng `alert()` — native browser dialog bị che bởi `backdrop-filter:blur(5px)` và `z-index:2147483647` của modal overlay trên một số trình duyệt/nền tảng.
+- **Giải pháp**:
+  + Thêm `<div id="ping-result-area">` vào modal HTML tĩnh (giữa nút ping và nút backup).
+  + Sửa `pingServerConnection` hiển thị kết quả inline trong `#ping-result-area` thay vì `alert()`.
+  + Nút ping chuyển sang `⏳ Đang kiểm tra...` và disable trong lúc chờ, restore về text gốc sau khi có kết quả.
+  + Kết quả hiển thị: xanh lá (thành công) hoặc đỏ (lỗi) với đầy đủ thông tin: ping ms, trạng thái, CSDL, mã đơn vị.
+- **File sửa đổi**:
+  + `js/app.js`
+  + `index.html`
+  + `sw.js`
+
+---
+
+

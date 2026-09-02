@@ -630,6 +630,9 @@ window.showGlobalLoading = function (text) {
                 backupUrl = prompt('Vui lòng nhập URL Google Apps Script WebApp dự phòng (Dạng: https://script.google.com/macros/s/.../exec):');
                 if (backupUrl && backupUrl.trim()) {
                     localStorage.setItem('times_backup_api_url', backupUrl.trim());
+                    if (typeof callApi === 'function') {
+                        callApi('saveSystemSettings', ['gdrive_webhook_url', backupUrl.trim()]);
+                    }
                 } else {
                     return alert('Vui lòng cung cấp URL Google Apps Script để đồng bộ!');
                 }
@@ -641,6 +644,9 @@ window.showGlobalLoading = function (text) {
                 if (fixUrl && fixUrl.trim()) {
                     backupUrl = fixUrl.trim();
                     localStorage.setItem('times_backup_api_url', backupUrl);
+                    if (typeof callApi === 'function') {
+                        callApi('saveSystemSettings', ['gdrive_webhook_url', backupUrl]);
+                    }
                 } else {
                     return;
                 }
@@ -650,18 +656,21 @@ window.showGlobalLoading = function (text) {
             if (!modal) {
                 modal = document.createElement('div');
                 modal.id = 'sync-progress-modal';
-                modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:999999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(3px);';
+                modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.65); z-index:2147483647; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(5px);';
                 modal.innerHTML = `
-                <div style="background:#fff; width:520px; max-width:92%; border-radius:12px; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,0.3); text-align:center; font-family:sans-serif;">
+                <div style="background:#fff; width:520px; max-width:92%; border-radius:16px; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.3); text-align:center; font-family:sans-serif; border:1px solid #e2e8f0;">
                     <div style="font-size:36px; margin-bottom:10px;">🔄</div>
-                    <h3 style="margin:0 0 10px 0; color:#2c3e50; font-size:18px;">Đồng bộ Trọn bộ CSDL Cloudflare D1 ➔ Google Sheets</h3>
-                    <p id="sync-step-text" style="color:#7f8c8d; font-size:13px; margin:0 0 16px 0; line-height:1.5;">Đang khởi tạo kết nối...</p>
-                    <div style="background:#ecf0f1; border-radius:10px; height:16px; overflow:hidden; margin-bottom:16px; position:relative;">
-                        <div id="sync-progress-bar" style="background:linear-gradient(90deg, #27ae60, #2ecc71); width:5%; height:100%; transition:width 0.3s ease; border-radius:10px;"></div>
+                    <h3 style="margin:0 0 10px 0; color:#1e293b; font-size:18px; font-weight:800;">Đồng bộ Trọn bộ CSDL Turso Cloud ➔ Google Sheets</h3>
+                    <p id="sync-step-text" style="color:#64748b; font-size:13px; margin:0 0 16px 0; line-height:1.5;">Đang khởi tạo kết nối...</p>
+                    <div style="background:#f1f5f9; border-radius:10px; height:16px; overflow:hidden; margin-bottom:16px; position:relative; border:1px solid #e2e8f0;">
+                        <div id="sync-progress-bar" style="background:linear-gradient(90deg, #10b981, #059669); width:5%; height:100%; transition:width 0.3s ease; border-radius:10px;"></div>
                     </div>
-                    <div id="sync-percentage" style="font-size:14px; font-weight:bold; color:#27ae60;">5%</div>
-                    <button id="sync-close-btn" style="display:none; margin-top:16px; padding:10px 24px; background:#27ae60; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;" onclick="document.getElementById('sync-progress-modal').style.display='none'">Hoàn tất / Đóng</button>
+                    <div id="sync-percentage" style="font-size:14px; font-weight:800; color:#059669;">5%</div>
+                    <button id="sync-close-btn" style="display:none; margin-top:16px; padding:10px 24px; background:#059669; color:#fff; border:none; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;" onclick="document.getElementById('sync-progress-modal').style.display='none'">Hoàn tất / Đóng</button>
                 </div>`;
+                document.body.appendChild(modal);
+            }
+            if (modal.parentElement !== document.body) {
                 document.body.appendChild(modal);
             }
             modal.style.display = 'flex';
@@ -678,33 +687,39 @@ window.showGlobalLoading = function (text) {
             }
 
             try {
-                updateProgress(15, '[1/4] 📡 Đang xuất trọn bộ CSDL & Lịch Sử từ Cloudflare D1...');
+                updateProgress(15, '[1/4] 📡 Đang xuất trọn bộ CSDL & Lịch Sử từ Turso libSQL Cloud...');
                 
+                const curUnitCode = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
                 let dbPayload = null;
                 try {
-                    const respExport = await fetch(DEFAULT_API_URL, {
+                    const apiUrl = typeof getApiUrl === 'function' ? getApiUrl() : DEFAULT_API_URL;
+                    const respExport = await fetch(apiUrl, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'exportDatabase', args: [] })
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'x-unit-code': curUnitCode
+                        },
+                        body: JSON.stringify({ action: 'getBootstrapData', args: [], unit_code: curUnitCode })
                     });
                     const resExport = await respExport.json();
-                    if (resExport && resExport.status === 'success' && resExport.data) {
-                        const d = resExport.data;
+                    if (resExport && (resExport.status === 'success' || resExport.data)) {
+                        const d = resExport.data || resExport;
                         dbPayload = {
-                            benh_nhan: d.pat || [],
-                            nhan_su: d.staff || [],
-                            may_moc: d.machines || [],
-                            phong: d.rooms || [],
-                            thu_thuat: d.procedures || [],
-                            lich_trinh: d.schedule || [],
-                            lich_su: d.history || [],
-                            tai_khoan: d.accounts || [],
-                            cham_cong: d.chamCong || [],
-                            thong_ke: d.thongKe || [],
-                            cai_dat: d.caiDat || []
+                            benh_nhan: d.pat || d.benh_nhan || [],
+                            nhan_su: d.staff || d.nhan_su || [],
+                            may_moc: d.machine || d.machines || d.may_moc || [],
+                            phong: d.room || d.rooms || d.phong || [],
+                            thu_thuat: d.proc || d.procedures || d.thu_thuat || [],
+                            phac_do: d.protocols || d.phac_do || [],
+                            lich_trinh: d.schedule || d.lich_trinh || [],
+                            lich_su: d.history || d.lich_su || [],
+                            tai_khoan: d.accounts || d.tai_khoan || [],
+                            cham_cong: d.chamCong || d.cham_cong || [],
+                            thong_ke: d.thongKe || d.thong_ke || [],
+                            cai_dat: d.caiDat || d.cai_dat || []
                         };
                     }
-                } catch(e) { console.warn('Could not fetch exportDatabase from D1, fallback to local cache:', e); }
+                } catch(e) { console.warn('Could not fetch bootstrap data from API, fallback to local cache:', e); }
 
                 const cache = window.dataCache || {};
 
@@ -714,9 +729,10 @@ window.showGlobalLoading = function (text) {
                 const payload = dbPayload || {
                     benh_nhan: cache.pat || [],
                     nhan_su: cache.staff || [],
-                    may_moc: cache.machines || [],
-                    phong: cache.rooms || [],
-                    thu_thuat: cache.procedures || [],
+                    may_moc: cache.machine || cache.machines || [],
+                    phong: cache.room || cache.rooms || [],
+                    thu_thuat: cache.proc || cache.procedures || [],
+                    phac_do: cache.protocols || [],
                     lich_trinh: cache.schedule || window.currentScheduleData || [],
                     lich_su: cache.history || [],
                     tai_khoan: JSON.parse(localStorage.getItem('times_accounts_cache') || '[]'),
@@ -746,15 +762,15 @@ window.showGlobalLoading = function (text) {
                 }
 
                 if (res && res.status === 'success') {
-                    updateProgress(100, '✅ Đồng bộ hoàn tất 100%! Đã lưu trọn bộ tất cả các trang Bệnh nhân, Nhân sự, Máy móc, Phòng, Thủ thuật, Lịch trình, Lịch sử, Tài khoản vào Google Sheets!');
-                    if (percentText) percentText.innerHTML = '<span style="color:#27ae60">🎉 ĐỒNG BỘ TRỌN BỘ THÀNH CÔNG!</span>';
+                    updateProgress(100, '✅ Đồng bộ hoàn tất 100%! Đã lưu trọn bộ tất cả các trang Bệnh nhân, Nhân sự, Máy móc, Phòng, Thủ thuật, Phác đồ, Lịch trình, Lịch sử, Tài khoản vào Google Sheets!');
+                    if (percentText) percentText.innerHTML = '<span style="color:#059669">🎉 ĐỒNG BỘ TRỌN BỘ THÀNH CÔNG!</span>';
                 } else {
                     updateProgress(100, '⚠️ Kết quả: ' + (res.error || res.data || res.message || 'Đã gửi'));
                 }
                 closeBtn.style.display = 'inline-block';
             } catch (err) {
                 updateProgress(100, '❌ Lỗi kết nối Google Apps Script dự phòng: ' + err.message);
-                if (percentText) percentText.innerHTML = '<span style="color:#e74c3c">❌ LỖI ĐỒNG BỘ</span>';
+                if (percentText) percentText.innerHTML = '<span style="color:#e11d48">❌ LỖI ĐỒNG BỘ</span>';
                 closeBtn.style.display = 'inline-block';
             }
         };
