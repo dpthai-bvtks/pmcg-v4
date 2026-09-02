@@ -772,6 +772,13 @@ window.showGlobalLoading = function (text) {
                 localStorage.setItem('times_backup_api_url', backupUrl);
             }
 
+            let sessRole = '';
+            try {
+                const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
+                sessRole = String(sess.role || '').toUpperCase();
+            } catch (e2) {}
+            const isSuperAdmin = (sessRole === 'SUPER_ADMIN' || sessRole === 'SUPERADMIN');
+
             let modal = document.getElementById('sync-progress-modal');
             if (!modal) {
                 modal = document.createElement('div');
@@ -780,7 +787,7 @@ window.showGlobalLoading = function (text) {
                 modal.innerHTML = `
                 <div style="background:#fff; width:520px; max-width:92%; border-radius:16px; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.3); text-align:center; font-family:sans-serif; border:1px solid #e2e8f0;">
                     <div style="font-size:36px; margin-bottom:10px;">🔄</div>
-                    <h3 style="margin:0 0 10px 0; color:#1e293b; font-size:18px; font-weight:800;">Đồng bộ Trọn bộ CSDL Turso Cloud ➔ Google Sheets</h3>
+                    <h3 id="sync-modal-title" style="margin:0 0 10px 0; color:#1e293b; font-size:18px; font-weight:800;">Đồng bộ Trọn bộ CSDL Turso Cloud ➔ Google Sheets</h3>
                     <p id="sync-step-text" style="color:#64748b; font-size:13px; margin:0 0 16px 0; line-height:1.5;">Đang khởi tạo kết nối...</p>
                     <div style="background:#f1f5f9; border-radius:10px; height:16px; overflow:hidden; margin-bottom:16px; position:relative; border:1px solid #e2e8f0;">
                         <div id="sync-progress-bar" style="background:linear-gradient(90deg, #10b981, #059669); width:5%; height:100%; transition:width 0.3s ease; border-radius:10px;"></div>
@@ -793,6 +800,14 @@ window.showGlobalLoading = function (text) {
             if (modal.parentElement !== document.body) {
                 document.body.appendChild(modal);
             }
+
+            const titleEl = document.getElementById('sync-modal-title');
+            if (titleEl) {
+                titleEl.innerText = isSuperAdmin
+                    ? 'Đồng bộ CSDL Toàn Cục (Tất Cả Các Đơn Vị) ➔ Google Sheets'
+                    : 'Đồng bộ Trọn bộ CSDL Turso Cloud ➔ Google Sheets';
+            }
+
             modal.style.display = 'flex';
             const stepText = document.getElementById('sync-step-text');
             const progressBar = document.getElementById('sync-progress-bar');
@@ -807,39 +822,62 @@ window.showGlobalLoading = function (text) {
             }
 
             try {
-                updateProgress(15, '[1/4] 📡 Đang xuất trọn bộ CSDL & Lịch Sử từ Turso libSQL Cloud...');
-                
                 const curUnitCode = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
                 let dbPayload = null;
-                try {
-                    const apiUrl = typeof getApiUrl === 'function' ? getApiUrl() : DEFAULT_API_URL;
-                    const respExport = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'x-unit-code': curUnitCode
-                        },
-                        body: JSON.stringify({ action: 'getBootstrapData', args: [], unit_code: curUnitCode })
-                    });
-                    const resExport = await respExport.json();
-                    if (resExport && (resExport.status === 'success' || resExport.data)) {
-                        const d = resExport.data || resExport;
-                        dbPayload = {
-                            benh_nhan: d.pat || d.benh_nhan || [],
-                            nhan_su: d.staff || d.nhan_su || [],
-                            may_moc: d.machine || d.machines || d.may_moc || [],
-                            phong: d.room || d.rooms || d.phong || [],
-                            thu_thuat: d.proc || d.procedures || d.thu_thuat || [],
-                            phac_do: d.protocols || d.phac_do || [],
-                            lich_trinh: d.schedule || d.lich_trinh || [],
-                            lich_su: d.history || d.lich_su || [],
-                            tai_khoan: d.accounts || d.tai_khoan || [],
-                            cham_cong: d.chamCong || d.cham_cong || [],
-                            thong_ke: d.thongKe || d.thong_ke || [],
-                            cai_dat: d.caiDat || d.cai_dat || []
-                        };
+
+                if (isSuperAdmin) {
+                    updateProgress(15, '[1/4] 📡 Đang xuất trọn bộ CSDL của TẤT CẢ các đơn vị từ Turso libSQL Cloud...');
+                    try {
+                        const apiUrl = typeof getApiUrl === 'function' ? getApiUrl() : DEFAULT_API_URL;
+                        const respExport = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'x-unit-code': 'master'
+                            },
+                            body: JSON.stringify({ action: 'exportAllDatabaseForSuperAdmin', args: [], unit_code: 'master' })
+                        });
+                        const resExport = await respExport.json();
+                        if (resExport && (resExport.status === 'success' || resExport.data)) {
+                            dbPayload = resExport.data || resExport;
+                        }
+                    } catch (e) {
+                        console.warn('[SyncSuperAdmin] Không thể exportAllDatabase, fallback:', e);
                     }
-                } catch(e) { console.warn('Could not fetch bootstrap data from API, fallback to local cache:', e); }
+                } else {
+                    updateProgress(15, `[1/4] 📡 Đang xuất CSDL đơn vị '${curUnitCode}' từ Turso libSQL Cloud...`);
+                    try {
+                        const apiUrl = typeof getApiUrl === 'function' ? getApiUrl() : DEFAULT_API_URL;
+                        const respExport = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'x-unit-code': curUnitCode
+                            },
+                            body: JSON.stringify({ action: 'getBootstrapData', args: [], unit_code: curUnitCode })
+                        });
+                        const resExport = await respExport.json();
+                        if (resExport && (resExport.status === 'success' || resExport.data)) {
+                            const d = resExport.data || resExport;
+                            dbPayload = {
+                                benh_nhan: d.pat || d.benh_nhan || [],
+                                nhan_su: d.staff || d.nhan_su || [],
+                                may_moc: d.machine || d.machines || d.may_moc || [],
+                                phong: d.room || d.rooms || d.phong || [],
+                                thu_thuat: d.proc || d.procedures || d.thu_thuat || [],
+                                phac_do: d.protocols || d.phac_do || [],
+                                lich_trinh: d.schedule || d.lich_trinh || [],
+                                lich_su: d.history || d.lich_su || [],
+                                tai_khoan: d.accounts || d.tai_khoan || [],
+                                cham_cong: d.chamCong || d.cham_cong || [],
+                                thong_ke: d.thongKe || d.thong_ke || [],
+                                cai_dat: d.caiDat || d.cai_dat || []
+                            };
+                        }
+                    } catch (e) {
+                        console.warn('[SyncTenant] Không thể fetch bootstrap data, fallback cache:', e);
+                    }
+                }
 
                 const cache = window.dataCache || {};
 
@@ -882,7 +920,10 @@ window.showGlobalLoading = function (text) {
                 }
 
                 if (res && res.status === 'success') {
-                    updateProgress(100, '✅ Đồng bộ hoàn tất 100%! Đã lưu trọn bộ tất cả các trang Bệnh nhân, Nhân sự, Máy móc, Phòng, Thủ thuật, Phác đồ, Lịch trình, Lịch sử, Tài khoản vào Google Sheets!');
+                    const successMsg = isSuperAdmin
+                        ? '✅ Đồng bộ hoàn tất 100%! Đã lưu trọn bộ toàn bộ dữ liệu của TẤT CẢ các đơn vị vào Google Sheets!'
+                        : '✅ Đồng bộ hoàn tất 100%! Đã lưu trọn bộ tất cả các trang Bệnh nhân, Nhân sự, Máy móc, Phòng, Thủ thuật, Phác đồ, Lịch trình, Lịch sử, Tài khoản vào Google Sheets!';
+                    updateProgress(100, successMsg);
                     if (percentText) percentText.innerHTML = '<span style="color:#059669">🎉 ĐỒNG BỘ TRỌN BỘ THÀNH CÔNG!</span>';
                 } else {
                     updateProgress(100, '⚠️ Kết quả: ' + (res.error || res.data || res.message || 'Đã gửi'));

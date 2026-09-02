@@ -1163,6 +1163,43 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       return success(exportPackage);
     }
 
+    case "exportAllDatabaseForSuperAdmin":
+    case "exportAllDatabase": {
+      // Dành riêng cho Super Admin: Xuất toàn bộ CSDL của tất cả các đơn vị
+      const tables = [
+        'tenants', 'cai_dat', 'tai_khoan', 'nhan_su', 'may_moc', 'phong',
+        'thu_thuat', 'benh_nhan', 'lich_trinh', 'lich_su', 'gio_ban_cu',
+        'cham_cong', 'thong_ke', 'tim_ranh', 'tai_lieu', 'phac_do'
+      ];
+
+      const queries = tables.map(t => db.prepare(`SELECT * FROM ${t} ORDER BY id ASC`));
+      const results = await db.batch(queries);
+
+      const dbPayload = {
+        app: "PM-XepLich T.I.M.E.S SaaS - All Tenants Master Export",
+        version: "4.0.0",
+        exported_at: new Date().toISOString(),
+        tenants: results[0]?.results || [],
+        cai_dat: results[1]?.results || [],
+        tai_khoan: results[2]?.results || [],
+        nhan_su: results[3]?.results || [],
+        may_moc: results[4]?.results || [],
+        phong: results[5]?.results || [],
+        thu_thuat: results[6]?.results || [],
+        benh_nhan: results[7]?.results || [],
+        lich_trinh: results[8]?.results || [],
+        lich_su: results[9]?.results || [],
+        gio_ban_cu: results[10]?.results || [],
+        cham_cong: results[11]?.results || [],
+        thong_ke: results[12]?.results || [],
+        tim_ranh: results[13]?.results || [],
+        tai_lieu: results[14]?.results || [],
+        phac_do: results[15]?.results || []
+      };
+
+      return success(dbPayload);
+    }
+
     case "importTenantData": {
       const payload = args[0] || {};
       const targetUnit = String(payload.unit_code || "").trim().toLowerCase();
