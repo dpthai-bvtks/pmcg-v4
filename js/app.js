@@ -163,17 +163,31 @@ window.openServerStatusModal = function (e) {
     const unitEl = document.getElementById('modal-server-unit-name');
     if (unitEl) unitEl.innerText = `${uName} (${uCode})`;
 
-    modal.style.display = 'flex';
+    modal.style.setProperty('display', 'flex', 'important');
+    modal.style.zIndex = '999999';
 };
 
 window.closeServerStatusModal = function () {
     const modal = document.getElementById('modal-server-status');
-    if (modal) modal.style.display = 'none';
+    if (modal) modal.style.setProperty('display', 'none', 'important');
 };
 
 window.toggleEmergencyBackupMenu = function (e) {
     window.openServerStatusModal(e);
 };
+
+// Đảm bảo gắn sự kiện click cho badge
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () {
+            const b = document.getElementById('server-status-badge');
+            if (b) b.onclick = function (e) { window.openServerStatusModal(e); };
+        });
+    } else {
+        const b = document.getElementById('server-status-badge');
+        if (b) b.onclick = function (e) { window.openServerStatusModal(e); };
+    }
+}
 
 window.pingServerConnection = function () {
     const t0 = performance.now();

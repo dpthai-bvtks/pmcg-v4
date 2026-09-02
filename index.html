@@ -72,7 +72,7 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=4.0.0-rev51">
+    <link rel="stylesheet" href="css/style.css?v=4.0.0-rev53">
     <!-- PWA & Mobile Web App Meta Tags -->
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
@@ -80,7 +80,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.0.0-rev51">
+    <link rel="stylesheet" href="css/mobile.css?v=4.0.0-rev53">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
     <script src="js/dexie.min.js?v=3.2.6"></script>
@@ -327,11 +327,11 @@
                                 <div id="clock-date">Thứ Hai, 01/01/2026</div>
                             </div>
                             <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
-                                <div id="server-status-badge" class="status-badge status-primary"
-                                    title="Trạng thái kết nối Cloudflare Worker & Turso Cloud DB" onclick="window.toggleEmergencyBackupMenu()"
-                                    style="cursor: pointer; padding: 3px 10px; border-radius: 14px; font-size: 11px; font-weight: 700; background: #059669; color: white; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 1px 3px rgba(5,150,105,0.25);">
+                                <button id="server-status-badge" type="button" class="status-badge status-primary"
+                                    title="Trạng thái kết nối Cloudflare Worker & Turso Cloud DB" onclick="window.openServerStatusModal(event)"
+                                    style="cursor: pointer; padding: 3px 10px; border-radius: 14px; font-size: 11px; font-weight: 700; background: #059669; color: white; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 1px 3px rgba(5,150,105,0.25); border: none; outline: none; z-index: 100; pointer-events: auto;">
                                     <span style="display:inline-block; width:6px; height:6px; background:#4ade80; border-radius:50%; box-shadow:0 0 6px #4ade80;"></span> Cloudflare & Turso
-                                </div>
+                                </button>
                             </div>
 
                             <div class="user-menu-dropdown-container" id="user-menu-container"
@@ -3726,18 +3726,18 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.0.0-rev51"></script>
-    <script src="js/ai-scheduler.js?v=4.0.0-rev51"></script>
-    <script src="js/cp-solver.js?v=4.0.0-rev51"></script>
-    <script src="js/scheduler-engine.js?v=4.0.0-rev51"></script>
-    <script src="js/app.js?v=4.0.0-rev51"></script>
-    <script src="js/init.js?v=4.0.0-rev51"></script>
-    <script src="js/sync.js?v=4.0.0-rev51"></script>
-    <script src="js/thongke.js?v=4.0.0-rev51"></script>
+    <script src="js/offline-sync-engine.js?v=4.0.0-rev53"></script>
+    <script src="js/ai-scheduler.js?v=4.0.0-rev53"></script>
+    <script src="js/cp-solver.js?v=4.0.0-rev53"></script>
+    <script src="js/scheduler-engine.js?v=4.0.0-rev53"></script>
+    <script src="js/app.js?v=4.0.0-rev53"></script>
+    <script src="js/init.js?v=4.0.0-rev53"></script>
+    <script src="js/sync.js?v=4.0.0-rev53"></script>
+    <script src="js/thongke.js?v=4.0.0-rev53"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>
-    const APP_VERSION = '4.0.0-rev51';
+    const APP_VERSION = '4.0.0-rev53';
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             // Unregister old service workers if version changed
@@ -3782,6 +3782,30 @@
             });
         });
     }
+
+    // Modal Trạng Thái Máy Chủ
+    window.openServerStatusModal = function (e) {
+        if (e) {
+            if (typeof e.preventDefault === 'function') e.preventDefault();
+            if (typeof e.stopPropagation === 'function') e.stopPropagation();
+        }
+        const modal = document.getElementById('modal-server-status');
+        if (!modal) return;
+        const uName = localStorage.getItem('pm_unit_name') || 'Bệnh viện Than - Khoáng sản Cơ sở 2';
+        const uCode = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
+        const unitEl = document.getElementById('modal-server-unit-name');
+        if (unitEl) unitEl.innerText = `${uName} (${uCode})`;
+        modal.style.setProperty('display', 'flex', 'important');
+    };
+
+    window.closeServerStatusModal = function () {
+        const modal = document.getElementById('modal-server-status');
+        if (modal) modal.style.setProperty('display', 'none', 'important');
+    };
+
+    window.toggleEmergencyBackupMenu = function (e) {
+        window.openServerStatusModal(e);
+    };
     </script>
 
 
@@ -3820,6 +3844,57 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- ☁️ MODAL TRẠNG THÁI MÁY CHỦ (CLOUDFLARE & TURSO CLOUD)        -->
+    <!-- ============================================================ -->
+    <div id="modal-server-status" onclick="if(event.target===this) window.closeServerStatusModal()" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(5px); z-index: 999999; align-items: center; justify-content: center;">
+        <div style="background: #ffffff; width: 480px; max-width: 92%; border-radius: 16px; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.25); font-family: sans-serif; border: 1px solid #e2e8f0; animation: modalPop 0.25s ease-out;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                    <span>☁️</span> Trạng Thái Máy Chủ & Cơ Sở Dữ Liệu
+                </h3>
+                <button type="button" onclick="window.closeServerStatusModal()" style="border: none; background: none; font-size: 20px; color: #94a3b8; cursor: pointer; font-weight: bold; line-height: 1;">✕</button>
+            </div>
+
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 18px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span style="font-size: 12px; color: #64748b; font-weight: 600;">Trạng thái hệ thống:</span>
+                    <span style="background: #dcfce7; color: #15803d; padding: 4px 10px; border-radius: 12px; font-size: 11.5px; font-weight: 800; display: inline-flex; align-items: center; gap: 5px;">
+                        <span style="width: 6px; height: 6px; background: #22c55e; border-radius: 50%;"></span> Hoạt động ổn định
+                    </span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px;">
+                    <span style="color: #64748b;">API Engine:</span>
+                    <span style="font-weight: 700; color: #0f172a;">Cloudflare Edge Workers (pmcg-api)</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px;">
+                    <span style="color: #64748b;">Cơ sở dữ liệu:</span>
+                    <span style="font-weight: 700; color: #0f172a;">Turso libSQL Cloud (Tokyo, aws-ap-ne-1)</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                    <span style="color: #64748b;">Đơn vị hiện hành:</span>
+                    <span style="font-weight: 700; color: #2563eb;" id="modal-server-unit-name">Bệnh viện Than - Khoáng sản Cơ sở 2 (bvtks-cs2)</span>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button type="button" onclick="window.pingServerConnection()" class="btn" style="width: 100%; padding: 10px 14px; background: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;">
+                    <span>🔄</span> Kiểm Tra Tốc Độ Phản Hồi (Ping API)
+                </button>
+                <button type="button" onclick="window.OfflineSyncEngine?.exportEmergencyBackupData(); window.closeServerStatusModal();" class="btn" style="width: 100%; padding: 10px 14px; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; border-radius: 8px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;">
+                    <span>⚡</span> Xuất Tệp Sao Lưu Khẩn Cấp (.json)
+                </button>
+                <button type="button" onclick="window.configureBackupGoogleScript()" class="btn" style="width: 100%; padding: 10px 14px; background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; border-radius: 8px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;">
+                    <span>🌐</span> Cấu Hình URL Google Apps Script Dự Phòng
+                </button>
+            </div>
+
+            <div style="margin-top: 16px; text-align: right;">
+                <button type="button" onclick="window.closeServerStatusModal()" class="btn btn-secondary" style="padding: 8px 18px; font-size: 12px; font-weight: 600; cursor: pointer;">Đóng</button>
+            </div>
         </div>
     </div>
 
