@@ -175,16 +175,135 @@ window.pingServerConnection = function () {
 };
 
 
-window.configureBackupGoogleScript = function () {
-    let backupUrl = (localStorage.getItem('times_backup_api_url') || '').trim();
-    const url = prompt('Nhập URL Google Apps Script WebApp dự phòng (Dạng: https://script.google.com/macros/s/.../exec):', backupUrl);
-    if (url && url.trim()) {
-        localStorage.setItem('times_backup_api_url', url.trim());
-        if (typeof callApi === 'function') {
-            callApi('saveSystemSettings', ['gdrive_webhook_url', url.trim()]);
-        }
-        alert('Đã lưu URL máy chủ dự phòng Google Apps Script!');
+let _gasCallbackOnSave = null;
+
+window.openConfigGoogleScriptModal = function (callback) {
+    _gasCallbackOnSave = typeof callback === 'function' ? callback : null;
+
+    // Đóng dropdown và modal trạng thái nếu đang mở
+    const userMenu = document.getElementById('user-dropdown-menu');
+    if (userMenu) userMenu.style.display = 'none';
+
+    const modal = document.getElementById('modal-config-gas');
+    if (!modal) {
+        console.error('[ConfigGAS] Không tìm thấy modal-config-gas!');
+        return;
     }
+
+    if (modal.parentElement !== document.body) {
+        document.body.appendChild(modal);
+    }
+
+    const input = document.getElementById('gas-webhook-url-input');
+    const msg = document.getElementById('gas-url-validation-msg');
+    if (msg) { msg.style.display = 'none'; msg.innerHTML = ''; }
+
+    const savedUrl = (localStorage.getItem('times_backup_api_url') || '').trim();
+    if (input) {
+        input.value = savedUrl;
+        setTimeout(() => { input.focus(); input.select(); }, 100);
+    }
+
+    modal.style.cssText = 'display:flex !important; position:fixed !important; top:0 !important; left:0 !important; width:100vw !important; height:100vh !important; background:rgba(15,23,42,0.65) !important; backdrop-filter:blur(5px) !important; z-index:2147483647 !important; align-items:center !important; justify-content:center !important;';
+};
+
+window.closeConfigGoogleScriptModal = function () {
+    const modal = document.getElementById('modal-config-gas');
+    if (modal) modal.style.cssText = 'display:none !important;';
+    _gasCallbackOnSave = null;
+};
+
+window.saveConfigGoogleScript = function () {
+    const input = document.getElementById('gas-webhook-url-input');
+    const msg = document.getElementById('gas-url-validation-msg');
+    let url = (input ? input.value : '').trim();
+
+    if (!url) {
+        if (msg) {
+            msg.style.cssText = 'display:block; background:#fef2f2; border:1px solid #fecaca; color:#991b1b;';
+            msg.innerHTML = '⚠️ Vui lòng nhập đường dẫn URL WebApp!';
+        }
+        return;
+    }
+
+    if (url.endsWith('/edit') || url.includes('/edit?') || url.includes('drive.google.com')) {
+        url = url.replace(/\/edit.*$/, '/exec');
+        if (input) input.value = url;
+    }
+
+    if (!url.startsWith('https://script.google.com/') || !url.endsWith('/exec')) {
+        if (msg) {
+            msg.style.cssText = 'display:block; background:#fffbeb; border:1px solid #fde68a; color:#92400e;';
+            msg.innerHTML = '⚠️ URL WebApp chuẩn thường có dạng: <code>https://script.google.com/macros/s/.../exec</code>. Hệ thống vẫn sẽ lưu URL này.';
+        }
+    }
+
+    localStorage.setItem('times_backup_api_url', url);
+    if (typeof callApi === 'function') {
+        callApi('saveSystemSettings', ['gdrive_webhook_url', url]);
+    }
+
+    window.closeConfigGoogleScriptModal();
+    if (typeof window.showToast === 'function') {
+        window.showToast('✅ Đã lưu URL Google Apps Script thành công!', 'success');
+    } else {
+        alert('✅ Đã lưu URL Google Apps Script thành công!');
+    }
+
+    if (typeof _gasCallbackOnSave === 'function') {
+        const cb = _gasCallbackOnSave;
+        _gasCallbackOnSave = null;
+        setTimeout(() => cb(url), 200);
+    }
+};
+
+window.testGasConnection = async function () {
+    const input = document.getElementById('gas-webhook-url-input');
+    const msg = document.getElementById('gas-url-validation-msg');
+    const btn = document.getElementById('btn-test-gas-conn');
+    let url = (input ? input.value : '').trim();
+
+    if (!url) {
+        if (msg) {
+            msg.style.cssText = 'display:block; background:#fef2f2; border:1px solid #fecaca; color:#991b1b;';
+            msg.innerHTML = '⚠️ Vui lòng nhập URL trước khi kiểm tra!';
+        }
+        return;
+    }
+
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span>⏳</span> Đang test...'; }
+    if (msg) { msg.style.cssText = 'display:block; background:#f8fafc; border:1px solid #e2e8f0; color:#475569;'; msg.innerHTML = '🔄 Đang gửi tín hiệu kiểm tra tới Google Apps Script...'; }
+
+    try {
+        const t0 = performance.now();
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'ping', args: [] })
+        });
+        const elapsed = Math.round(performance.now() - t0);
+        const text = await resp.text();
+
+        if (text.includes('<!DOCTYPE') || text.includes('<html') || text.includes('ServiceLogin')) {
+            throw new Error("Chưa cấp quyền 'Anyone' tại mục 'Who has access' khi deploy WebApp.");
+        }
+
+        if (msg) {
+            msg.style.cssText = 'display:block; background:#f0fdf4; border:1px solid #bbf7d0; color:#166534;';
+            msg.innerHTML = `🟢 <strong>Kết nối thành công!</strong> (Phản hồi: ${elapsed} ms)<br>WebApp Google Apps Script đã sẵn sàng nhận dữ liệu.`;
+        }
+    } catch (err) {
+        if (msg) {
+            msg.style.cssText = 'display:block; background:#fef2f2; border:1px solid #fecaca; color:#991b1b;';
+            msg.innerHTML = `❌ <strong>Lỗi kết nối:</strong> ${err.message || 'Không phản hồi'}<br><small>Kiểm tra lại quyền truy cập hoặc URL kết thúc bằng /exec.</small>`;
+        }
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<span>🧪</span> Kiểm Tra Kết Nối'; }
+    }
+};
+
+window.configureBackupGoogleScript = function () {
+    window.openConfigGoogleScriptModal();
 };
 
 // =========================================================
@@ -627,29 +746,18 @@ window.showGlobalLoading = function (text) {
         window.syncAllD1DataToBackupSheets = async function() {
             let backupUrl = (localStorage.getItem('times_backup_api_url') || '').trim();
             if (!backupUrl) {
-                backupUrl = prompt('Vui lòng nhập URL Google Apps Script WebApp dự phòng (Dạng: https://script.google.com/macros/s/.../exec):');
-                if (backupUrl && backupUrl.trim()) {
-                    localStorage.setItem('times_backup_api_url', backupUrl.trim());
-                    if (typeof callApi === 'function') {
-                        callApi('saveSystemSettings', ['gdrive_webhook_url', backupUrl.trim()]);
-                    }
-                } else {
-                    return alert('Vui lòng cung cấp URL Google Apps Script để đồng bộ!');
+                if (typeof window.openConfigGoogleScriptModal === 'function') {
+                    window.openConfigGoogleScriptModal(() => {
+                        window.syncAllD1DataToBackupSheets();
+                    });
+                    return;
                 }
             }
 
             backupUrl = backupUrl.trim();
             if (backupUrl.endsWith('/edit') || backupUrl.includes('/edit?') || backupUrl.includes('drive.google.com')) {
-                const fixUrl = prompt('URL bạn nhập có vẻ là link chỉnh sửa script hoặc link thư mục Drive, không phải link Web App kết thúc bằng /exec.\nVui lòng nhập lại URL Google Apps Script WebApp:', backupUrl.replace(/\/edit.*$/, '/exec'));
-                if (fixUrl && fixUrl.trim()) {
-                    backupUrl = fixUrl.trim();
-                    localStorage.setItem('times_backup_api_url', backupUrl);
-                    if (typeof callApi === 'function') {
-                        callApi('saveSystemSettings', ['gdrive_webhook_url', backupUrl]);
-                    }
-                } else {
-                    return;
-                }
+                backupUrl = backupUrl.replace(/\/edit.*$/, '/exec');
+                localStorage.setItem('times_backup_api_url', backupUrl);
             }
 
             let modal = document.getElementById('sync-progress-modal');

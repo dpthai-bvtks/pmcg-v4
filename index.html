@@ -72,7 +72,7 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=4.0.0-rev59">
+    <link rel="stylesheet" href="css/style.css?v=4.0.0-rev60">
     <!-- PWA & Mobile Web App Meta Tags -->
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
@@ -80,7 +80,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.0.0-rev59">
+    <link rel="stylesheet" href="css/mobile.css?v=4.0.0-rev60">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
     <script src="js/dexie.min.js?v=3.2.6"></script>
@@ -3245,7 +3245,7 @@
 
                     <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 4.0.0</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 12:07 02/09/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 12:11 02/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -3683,18 +3683,18 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.0.0-rev59"></script>
-    <script src="js/ai-scheduler.js?v=4.0.0-rev59"></script>
-    <script src="js/cp-solver.js?v=4.0.0-rev59"></script>
-    <script src="js/scheduler-engine.js?v=4.0.0-rev59"></script>
-    <script src="js/app.js?v=4.0.0-rev59"></script>
-    <script src="js/init.js?v=4.0.0-rev59"></script>
-    <script src="js/sync.js?v=4.0.0-rev59"></script>
-    <script src="js/thongke.js?v=4.0.0-rev59"></script>
+    <script src="js/offline-sync-engine.js?v=4.0.0-rev60"></script>
+    <script src="js/ai-scheduler.js?v=4.0.0-rev60"></script>
+    <script src="js/cp-solver.js?v=4.0.0-rev60"></script>
+    <script src="js/scheduler-engine.js?v=4.0.0-rev60"></script>
+    <script src="js/app.js?v=4.0.0-rev60"></script>
+    <script src="js/init.js?v=4.0.0-rev60"></script>
+    <script src="js/sync.js?v=4.0.0-rev60"></script>
+    <script src="js/thongke.js?v=4.0.0-rev60"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>
-    const APP_VERSION = '4.0.0-rev59';
+    const APP_VERSION = '4.0.0-rev60';
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             // Unregister old service workers if version changed
@@ -3774,6 +3774,36 @@
 
     window.toggleEmergencyBackupMenu = function (e) {
         window.openServerStatusModal(e);
+    };
+
+    window.openConfigGoogleScriptModal = function (callback) {
+        window._gasCallbackOnSave = typeof callback === 'function' ? callback : null;
+        const userMenu = document.getElementById('user-dropdown-menu');
+        if (userMenu) userMenu.style.display = 'none';
+
+        const modal = document.getElementById('modal-config-gas');
+        if (!modal) return;
+        if (modal.parentElement !== document.body) {
+            document.body.appendChild(modal);
+        }
+
+        const input = document.getElementById('gas-webhook-url-input');
+        const msg = document.getElementById('gas-url-validation-msg');
+        if (msg) { msg.style.display = 'none'; msg.innerHTML = ''; }
+
+        const savedUrl = (localStorage.getItem('times_backup_api_url') || '').trim();
+        if (input) {
+            input.value = savedUrl;
+            setTimeout(() => { input.focus(); input.select(); }, 100);
+        }
+
+        modal.style.cssText = 'display:flex !important; position:fixed !important; top:0 !important; left:0 !important; width:100vw !important; height:100vh !important; background:rgba(15,23,42,0.65) !important; backdrop-filter:blur(5px) !important; z-index:2147483647 !important; align-items:center !important; justify-content:center !important;';
+    };
+
+    window.closeConfigGoogleScriptModal = function () {
+        const modal = document.getElementById('modal-config-gas');
+        if (modal) modal.style.cssText = 'display:none !important;';
+        window._gasCallbackOnSave = null;
     };
     </script>
 
@@ -3871,6 +3901,52 @@
 
             <div style="margin-top: 16px; text-align: right;">
                 <button type="button" onclick="window.closeServerStatusModal()" class="btn btn-secondary" style="padding: 8px 18px; font-size: 12px; font-weight: 600; cursor: pointer;">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- 🌐 MODAL CẤU HÌNH WEBAPP GOOGLE APPS SCRIPT DỰ PHÒNG          -->
+    <!-- ============================================================ -->
+    <div id="modal-config-gas" onclick="if(event.target===this) window.closeConfigGoogleScriptModal()" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(5px); z-index: 2147483647; align-items: center; justify-content: center;">
+        <div style="background: #ffffff; width: 540px; max-width: 92%; border-radius: 16px; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.25); font-family: sans-serif; border: 1px solid #e2e8f0; animation: modalPop 0.25s ease-out;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #f1f5f9; padding-bottom: 12px;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                    <span>🌐</span> Cấu Hình Google Apps Script Dự Phòng
+                </h3>
+                <button type="button" onclick="window.closeConfigGoogleScriptModal()" style="border: none; background: none; font-size: 20px; color: #94a3b8; cursor: pointer; font-weight: bold; line-height: 1;">✕</button>
+            </div>
+
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 14px; margin-bottom: 16px; font-size: 12.5px; line-height: 1.6; color: #1e40af;">
+                <div style="font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                    <span>💡</span> Hướng dẫn thiết lập:
+                </div>
+                <div>• Nhập URL WebApp được Deploy từ Google Apps Script (phải kết thúc bằng <code>/exec</code>).</div>
+                <div>• Đảm bảo chọn <strong>"Anyone"</strong> tại mục <em>Who has access</em> để cho phép Cloudflare D1 & Trình duyệt đồng bộ.</div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
+                <label for="gas-webhook-url-input" style="font-size: 12px; font-weight: 700; color: #475569;">Đường dẫn WebApp URL (/exec):</label>
+                <div style="position: relative;">
+                    <input type="url" id="gas-webhook-url-input" placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+                        style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 12.5px; font-family: monospace; outline: none; transition: all 0.2s; box-sizing: border-box; color: #0f172a; background: #f8fafc;"
+                        onfocus="this.style.borderColor='#2563eb'; this.style.background='#ffffff'; this.style.boxShadow='0 0 0 3px rgba(37,99,235,0.1)';"
+                        onblur="this.style.borderColor='#cbd5e1'; this.style.background='#f8fafc'; this.style.boxShadow='none';"
+                    />
+                </div>
+                <div id="gas-url-validation-msg" style="display: none; font-size: 11.5px; font-weight: 600; padding: 6px 10px; border-radius: 6px; line-height: 1.5;"></div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 18px; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+                <button type="button" id="btn-test-gas-conn" onclick="window.testGasConnection()" style="padding: 9px 16px; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                    <span>🧪</span> Kiểm Tra Kết Nối
+                </button>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" onclick="window.closeConfigGoogleScriptModal()" class="btn btn-secondary" style="padding: 9px 16px; font-size: 12px; font-weight: 600; cursor: pointer; border-radius: 8px;">Hủy</button>
+                    <button type="button" id="btn-save-gas-config" onclick="window.saveConfigGoogleScript()" class="btn btn-primary" style="padding: 9px 20px; font-size: 12px; font-weight: 700; cursor: pointer; background: #2563eb; color: #ffffff; border: none; border-radius: 8px; display: flex; align-items: center; gap: 6px;">
+                        <span>💾</span> Lưu Cấu Hình
+                    </button>
+                </div>
             </div>
         </div>
     </div>
