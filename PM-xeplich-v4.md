@@ -288,9 +288,68 @@ git add . && git commit -m "..." && git push origin main
   + `index.html`
   + `css/style.css`
   + `sw.js`
+  + `PM-xeplich-v4.md`### [v4.0.0-rev41~rev45] - 02/09/2026: Sửa Lỗi Trạng Thái "Tạm Khóa" & Mã Đơn Vị Tự Thêm Lại
+
+- **Yêu cầu của người dùng**:
+  + Giải thích trạng thái `Tạm khóa` trên bảng danh sách đơn vị là gì.
+  + Sau khi đổi mã đơn vị từ `bvtks_cs2` → `bvtks-cs2`, một lúc sau hệ thống lại tự động tạo thêm bản ghi với mã cũ `bvtks_cs2`.
+  + Khi đăng nhập vào tài khoản đơn vị mới, phải F5 lại lần nữa thì mới hiển thị đúng dữ liệu.
+- **Phân tích nguyên nhân & Giải pháp**:
+  + **Trạng thái "Tạm Khóa"**: Là trạng thái khi đơn vị hết hạn hoặc bị Admin khoá thủ công (`is_active = 0`). Hệ thống vẫn tồn tại dữ liệu nhưng không cho phép đăng nhập.
+  + **Tự thêm mã cũ**: Nguyên nhân do hàm khởi tạo mẫu (`initProtocolsData`, `initDefaultStaff`...) ở phía frontend hoặc trong backend `bootstrap` đọc `unit_code` từ `localStorage` cũ (chưa được cập nhật sau khi đổi mã) rồi ghi lại vào Turso DB bằng mã cũ. **Giải pháp**: Đảm bảo toàn bộ hàm khởi tạo mẫu kiểm tra và đọc `pm_unit_code` từ session mới nhất, không dùng giá trị cache cũ.
+  + **F5 mới ra dữ liệu đúng**: Do Service Worker cache phiên bản `index.html` cũ. Đã bump version lên để SW tự huỷ và nạp lại.
+
+---
+
+### [v4.0.0-rev46~rev48] - 02/09/2026: Bước 3 - Xuất Dữ Liệu Độc Lập Theo Đơn Vị (Export Tenant Data)
+
+- **Yêu cầu của người dùng**:
+  + Thêm nút **📥 Xuất dữ liệu đơn vị (Backup JSON)** cho từng đơn vị trong Tab Quản lý Đơn vị của Super Admin.
+  + Giúp bàn giao toàn bộ dữ liệu cho khách hàng hoặc lưu trữ backup riêng từng bệnh viện.
+- **Phân tích nguyên nhân & Giải pháp**:
+  + `backend/src/index.js`: Thêm 2 action `exportTenantData` và `importTenantData`. Action export đọc toàn bộ 16 bảng dữ liệu của một đơn vị theo `unit_code` và trả về JSON gộp.
+  + `js/app.js`: Thêm nút **📥 Xuất** trong bảng danh sách đơn vị (`loadTenantsList`) và hàm `window.exportTenantDataPrompt(code, encName)` kích hoạt download file JSON.
+  + Sửa 2 lỗi JS ReferenceError: khai báo lại `function loadAllData()` và đưa `var DEFAULT_PROTOCOLS` lên đầu file trước khi `DOMContentLoaded` kích hoạt `initProtocolsData()`.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `js/app.js`
+  + `index.html`
+  + `sw.js`
+
+---
+
+### [v4.0.0-rev49~rev50] - 02/09/2026: Dọn Header & Tối Giản Hóa Nút Bấm
+
+- **Yêu cầu của người dùng**:
+  + Dọn dẹp 3 nút xuất hiện lộn xộn trên header: `🟢 Cloudflare Main`, `⚡ Xuất Dự Phòng`, `📥 Nạp File`.
+- **Phân tích nguyên nhân & Giải pháp**:
+  + Chuyển `⚡ Xuất Dự Phòng (Offline)` và `📥 Nạp File Dự Phòng` vào dropdown menu `👤 admin ▼`.
+  + Tinh chỉnh badge `#server-status-badge` trên header thành đèn xanh nhỏ gọn `🟢 Cloudflare & Turso` (button với style inline).
+- **File sửa đổi**:
+  + `index.html`
+  + `sw.js`
+
+---
+
+### [v4.0.0-rev51~rev55] - 02/09/2026: Sửa Dứt Điểm Modal Trạng Thái Máy Chủ Không Hiển Thị
+
+- **Yêu cầu của người dùng**:
+  + Bấm vào nút `🟢 Cloudflare & Turso` trên header nhưng không có phản hồi gì, modal không mở ra.
+- **Phân tích nguyên nhân gốc rễ**:
+  + Trong `index.html` tồn tại **2 thẻ cùng mang ID `#modal-server-status`** ở 2 vị trí khác nhau.
+  + Thẻ thứ nhất bị nằm lồng sâu bên trong một container tab cài đặt đang ẩn (`display: none`). Do container cha bị ẩn, `document.getElementById('modal-server-status')` luôn chọn trúng thẻ đầu tiên, dù được đổi sang `display: flex` vẫn không thể hiển thị lên màn hình vì bị container cha che khuất.
+- **Giải pháp triệt để**:
+  + **Xóa thẻ trùng bị kẹt**: Toàn bộ trang chỉ còn duy nhất 1 thẻ `#modal-server-status` nằm độc lập ở cấp cao nhất của `<body>` với `z-index: 999999`.
+  + **Nâng cấp badge**: Chuyển từ thẻ `<div>` sang `<button type="button" id="server-status-badge">` với `onclick="window.openServerStatusModal(event)"` trực tiếp.
+  + **Hàm `openServerStatusModal` inline**: Định nghĩa thẳng trong `<script>` ở cuối `index.html` (sau khi toàn bộ JS module đã load), đảm bảo hàm luôn tìm thấy modal DOM trước khi thực thi.
+  + **Thêm lối tắt**: Trong dropdown menu `👤 admin ▼`, thêm mục `☁️ Máy Chủ & CSDL` để mở modal trạng thái nhanh hơn.
+  + **Nội dung Modal**: Thông tin Trạng thái hệ thống (Cloudflare Edge Workers, Turso libSQL Cloud Tokyo), đơn vị hiện hành, 3 nút chức năng: Kiểm tra Ping API, Xuất Sao Lưu Khẩn Cấp (.json), Cấu hình URL Google Apps Script Dự Phòng.
+- **File sửa đổi**:
+  + `index.html`
+  + `js/app.js`
+  + `sw.js`
   + `PM-xeplich-v4.md`
 
-
-
+---
 
 
