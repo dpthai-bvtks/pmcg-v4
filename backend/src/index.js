@@ -50,13 +50,16 @@ function createTursoAdapter(env) {
     const pipelineStmt = {
       sql,
       args: boundArgs.map(v => {
-        if (v === null || v === undefined) return { type: 'null', value: null };
-        if (typeof v === 'number') return { type: Number.isInteger(v) ? 'integer' : 'float', value: v };
+        if (v === null || v === undefined) return { type: 'null' };
+        if (typeof v === 'number') return { type: Number.isInteger(v) ? 'integer' : 'float', value: String(v) };
+        if (typeof v === 'boolean') return { type: 'integer', value: v ? '1' : '0' };
         return { type: 'text', value: String(v) };
       })
     };
 
     return {
+      _pipelineStmt: pipelineStmt,
+
       // Hỗ trợ .bind(...args) như D1
       bind(...args) { return makeStmt(sql, args); },
 
@@ -90,37 +93,39 @@ function createTursoAdapter(env) {
     // db.prepare(sql) — giống D1
     prepare(sql) { return makeStmt(sql); },
 
-    // db.batch([stmt1, stmt2, ...]) — giống D1
+    // db.batch([stmt1, stmt2, ...]) — Gửi tất cả trong 1 HTTP request duy nhất qua Turso Pipeline
     async batch(stmts) {
-      const requests = stmts.map(s => ({
-        type: 'execute',
-        stmt: {
-          sql: s._tursoSql || s._sql || (s.source ? s.source : ''),
-          args: s._tursoArgs || []
+      if (!stmts || !stmts.length) return [];
+      const requests = stmts.map(s => {
+        if (s && s._pipelineStmt) {
+          return { type: 'execute', stmt: s._pipelineStmt };
         }
-      }));
-      // Fallback: nếu stmt là PreparedStatement từ makeStmt, chạy tuần tự
-      const batchResults = [];
-      for (const stmt of stmts) {
-        try {
-          const r = await stmt.run();
-          batchResults.push(r);
-        } catch(e) {
-          batchResults.push({ success: false, error: e.message });
-        }
-      }
-      return batchResults;
+        return { type: 'execute', stmt: { sql: typeof s === 'string' ? s : (s?.sql || ''), args: [] } };
+      });
+      const results = await runPipeline(requests);
+      return results.map(r => {
+        if (r.type === 'error') return { success: false, error: r.error };
+        return { success: true, meta: { changes: r.response?.result?.affected_row_count ?? 0 } };
+      });
     },
 
-    // db.exec(sql) — chạy nhiều câu raw (dùng ít)
+    // db.exec(sql) — chạy nhiều câu raw trong 1 pipeline
     async exec(sql) {
       const stmts = sql.split(';').map(s => s.trim()).filter(s => s.length > 0);
-      for (const s of stmts) {
-        await runPipeline([{ type: 'execute', stmt: { sql: s, args: [] } }]);
-      }
+      if (!stmts.length) return;
+      const requests = stmts.map(s => ({ type: 'execute', stmt: { sql: s, args: [] } }));
+      await runPipeline(requests);
     }
   };
 }
+function getDatabase(env) {
+  if (!env) return null;
+  if (env.TURSO_URL && env.TURSO_TOKEN) {
+    return createTursoAdapter(env);
+  }
+  return env.DB || null;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 
 
@@ -215,8 +220,8 @@ app.get('/api/ping', (c) => {
 // RESTful Route Shortcuts
 app.get('/api/bootstrap', async (c) => {
   const env = c.env;
-  if (!env || (!env.DB && (!env.TURSO_URL || !env.TURSO_TOKEN))) return error("Database không được cấu hình!", 500);
-  const _bootstrapDb = env.TURSO_URL ? createTursoAdapter(env) : env.DB;
+  const _bootstrapDb = getDatabase(env);
+  if (!_bootstrapDb) return error("Database không được cấu hình!", 500);
   await ensureSchema(_bootstrapDb);
   return handleApiAction("getBootstrapData", [], env, c.req.raw, c.executionCtx);
 });
@@ -255,8 +260,7 @@ async function processApiRequest(c) {
 
   const env = c.env;
   const ctx = c.executionCtx;
-  // Ưu tiên Turso nếu có TURSO_URL, nếu không fallback về D1
-  const db = env ? (env.TURSO_URL ? createTursoAdapter(env) : env.DB) : null;
+  const db = getDatabase(env);
   if (!db) {
     return error("Database chưa được cấu hình (cần TURSO_URL hoặc D1 binding DB)!", 500);
   }
@@ -570,13 +574,11 @@ async function ensureSchema(db) {
       "ALTER TABLE benh_nhan ADD COLUMN ngay_vao TEXT DEFAULT ''",
       "ALTER TABLE benh_nhan ADD COLUMN gio_ban TEXT DEFAULT ''",
       "ALTER TABLE benh_nhan ADD COLUMN is_saturday INTEGER DEFAULT 0",
-      "ALTER TABLE benh_nhan ADD COLUMN order_idx INTEGER DEFAULT 0",
-      "ALTER TABLE benh_nhan ADD COLUMN loai_bn TEXT DEFAULT 'NoiTru'",
-      "ALTER TABLE benh_nhan ADD COLUMN buoi_dieu_tri TEXT DEFAULT 'Sang'"
     ];
-    for (const sql of migrations) {
-      try { await db.prepare(sql).run(); } catch(e) {}
-    }
+    try {
+      await db.batch(migrations.map(sql => db.prepare(sql)));
+    } catch(e) {}
+    schemaEnsured = true;
     
     // Multi-tenant table unique constraint migrations
     try {
@@ -698,7 +700,7 @@ export default {
   async scheduled(event, env, ctx) {
     console.log("[Worker CRON]: Executing daily automated backup trigger...");
     try {
-      const db = env.DB;
+      const db = getDatabase(env);
       if (!db) return;
       await ensureSchema(db);
 
@@ -787,7 +789,7 @@ function dispatchBackgroundSync(action, args, env, ctx) {
 
   ctx.waitUntil((async () => {
     try {
-      const db = env.DB;
+      const db = getDatabase(env);
       if (!db) return;
       const rec = await db.prepare("SELECT value FROM cai_dat WHERE key = 'gdrive_webhook_url'").first();
       const webhookUrl = rec ? String(rec.value).trim() : "";
@@ -810,9 +812,9 @@ function dispatchBackgroundSync(action, args, env, ctx) {
 }
 
 async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtks_cs2") {
-  const db = env.DB;
+  const db = getDatabase(env);
   if (!db) {
-    return error("Database D1 chưa được cấu hình hoặc binding DB bị thiếu.", 500);
+    return error("Database chưa được cấu hình (cần TURSO_URL hoặc D1 binding DB).", 500);
   }
 
   await ensureSchema(db);
