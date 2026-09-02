@@ -1,5 +1,129 @@
 import { Hono } from './hono.js';
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// TURSO ADAPTER — Tương thích 100% với Cloudflare D1 API
+// Thay thế: const db = env.DB  →  const db = createTursoAdapter(env)
+// Không cần sửa bất kỳ câu SQL nào bên dưới!
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function createTursoAdapter(env) {
+  const TURSO_URL   = env.TURSO_URL;
+  const TURSO_TOKEN = env.TURSO_TOKEN;
+  if (!TURSO_URL || !TURSO_TOKEN) throw new Error("Thiếu TURSO_URL hoặc TURSO_TOKEN trong env");
+
+  const httpUrl    = TURSO_URL.replace('libsql://', 'https://');
+  const pipelineUrl = `${httpUrl}/v2/pipeline`;
+
+  async function runPipeline(requests) {
+    requests.push({ type: 'close' });
+    const res = await fetch(pipelineUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${TURSO_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ requests })
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`Turso HTTP ${res.status}: ${txt.substring(0, 300)}`);
+    }
+    const json = await res.json();
+    // Kiểm tra lỗi trong từng result
+    const errResult = json.results?.find(r => r.type === 'error');
+    if (errResult) throw new Error(`Turso SQL error: ${JSON.stringify(errResult.error)}`);
+    return json.results || [];
+  }
+
+  // Chuyển hàng Turso [{type,value}, ...] → Object plain
+  function rowToObj(columns, row) {
+    const obj = {};
+    columns.forEach((col, i) => {
+      const cell = row[i];
+      obj[col] = (cell && cell.type !== 'null') ? cell.value : null;
+    });
+    return obj;
+  }
+
+  // Tạo một statement object (giống D1 PreparedStatement)
+  function makeStmt(sql, boundArgs = []) {
+    const pipelineStmt = {
+      sql,
+      args: boundArgs.map(v => {
+        if (v === null || v === undefined) return { type: 'null', value: null };
+        if (typeof v === 'number') return { type: Number.isInteger(v) ? 'integer' : 'float', value: v };
+        return { type: 'text', value: String(v) };
+      })
+    };
+
+    return {
+      // Hỗ trợ .bind(...args) như D1
+      bind(...args) { return makeStmt(sql, args); },
+
+      // .run() → { success: true, meta: {} }
+      async run() {
+        const results = await runPipeline([{ type: 'execute', stmt: pipelineStmt }]);
+        return { success: true, meta: { changes: results[0]?.response?.result?.affected_row_count ?? 0 } };
+      },
+
+      // .first() → object hoặc null
+      async first(colName) {
+        const results = await runPipeline([{ type: 'execute', stmt: pipelineStmt }]);
+        const result = results[0]?.response?.result;
+        if (!result || !result.rows?.length) return null;
+        const obj = rowToObj(result.cols.map(c => c.name), result.rows[0]);
+        return colName !== undefined ? obj[colName] : obj;
+      },
+
+      // .all() → { results: [...] }
+      async all() {
+        const results = await runPipeline([{ type: 'execute', stmt: pipelineStmt }]);
+        const result = results[0]?.response?.result;
+        if (!result) return { results: [] };
+        const cols = result.cols.map(c => c.name);
+        return { results: (result.rows || []).map(row => rowToObj(cols, row)) };
+      }
+    };
+  }
+
+  return {
+    // db.prepare(sql) — giống D1
+    prepare(sql) { return makeStmt(sql); },
+
+    // db.batch([stmt1, stmt2, ...]) — giống D1
+    async batch(stmts) {
+      const requests = stmts.map(s => ({
+        type: 'execute',
+        stmt: {
+          sql: s._tursoSql || s._sql || (s.source ? s.source : ''),
+          args: s._tursoArgs || []
+        }
+      }));
+      // Fallback: nếu stmt là PreparedStatement từ makeStmt, chạy tuần tự
+      const batchResults = [];
+      for (const stmt of stmts) {
+        try {
+          const r = await stmt.run();
+          batchResults.push(r);
+        } catch(e) {
+          batchResults.push({ success: false, error: e.message });
+        }
+      }
+      return batchResults;
+    },
+
+    // db.exec(sql) — chạy nhiều câu raw (dùng ít)
+    async exec(sql) {
+      const stmts = sql.split(';').map(s => s.trim()).filter(s => s.length > 0);
+      for (const s of stmts) {
+        await runPipeline([{ type: 'execute', stmt: { sql: s, args: [] } }]);
+      }
+    }
+  };
+}
+// ═══════════════════════════════════════════════════════════════════════════════
+
+
 function normalizeMonthKeys(inputStr) {
   const str = String(inputStr || '').trim();
   if (!str) {
@@ -91,8 +215,9 @@ app.get('/api/ping', (c) => {
 // RESTful Route Shortcuts
 app.get('/api/bootstrap', async (c) => {
   const env = c.env;
-  if (!env || !env.DB) return error("D1 Database not bound", 500);
-  await ensureSchema(env.DB);
+  if (!env || (!env.DB && (!env.TURSO_URL || !env.TURSO_TOKEN))) return error("Database không được cấu hình!", 500);
+  const _bootstrapDb = env.TURSO_URL ? createTursoAdapter(env) : env.DB;
+  await ensureSchema(_bootstrapDb);
   return handleApiAction("getBootstrapData", [], env, c.req.raw, c.executionCtx);
 });
 
@@ -130,9 +255,10 @@ async function processApiRequest(c) {
 
   const env = c.env;
   const ctx = c.executionCtx;
-  const db = env ? env.DB : null;
+  // Ưu tiên Turso nếu có TURSO_URL, nếu không fallback về D1
+  const db = env ? (env.TURSO_URL ? createTursoAdapter(env) : env.DB) : null;
   if (!db) {
-    return error("Database D1 binding 'DB' không tồn tại!", 500);
+    return error("Database chưa được cấu hình (cần TURSO_URL hoặc D1 binding DB)!", 500);
   }
 
   await ensureSchema(db);

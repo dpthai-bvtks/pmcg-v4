@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "pmcg-backend-v4",
   "version": "4.0.0",
   "type": "module",
@@ -15,6 +15,7 @@
     "wrangler": "^3.72.0"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.4",
     "hono": "^4.6.0",
     "puppeteer": "^25.8.0",
     "xlsx": "^0.18.5"
