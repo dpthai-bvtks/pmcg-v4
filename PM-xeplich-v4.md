@@ -432,3 +432,21 @@ git add . && git commit -m "..." && git push origin main
 ---
 
 
+### [v4.0.0-rev60] - 02/09/2026: Thay Thế Hộp Thoại Prompt() Mặc Định Bằng Custom Modal Popup UI Sang Trọng
+
+- **Yêu cầu của người dùng**:
+  + Hộp thoại `prompt()` mặc định của trình duyệt khi nhập URL Google Apps Script nhìn xấu và không đồng bộ với giao diện hiện đại của hệ thống. Yêu cầu chuyển thành dạng Popup/Modal đồng bộ, đẹp mắt.
+- **Giải pháp**:
+  + Xây dựng **Modal `#modal-config-gas`** độc lập, thiết kế chuẩn thẩm mỹ cao cấp (Glassmorphism, viền bo góc tinh tế, box hướng dẫn xanh dương trực quan, input font monospace hiện đại có hiệu ứng focus glow).
+  + Thêm tính năng **`🧪 Kiểm Tra Kết Nối` (Ping WebApp)** trực tiếp ngay trong Modal để người dùng có thể test URL và quyền truy cập WebApp trước khi lưu.
+  + Tự động lọc và chuyển đổi link nhầm dạng `/edit` thành `/exec`.
+  + Thay thế toàn bộ các lệnh `prompt()` tại `configureBackupGoogleScript()` và `syncAllD1DataToBackupSheets()` bằng Modal này, hỗ trợ callback tự động chạy tiếp luồng đồng bộ ngay sau khi bấm Lưu.
+- **File sửa đổi**:
+  + `index.html`
+  + `js/app.js`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+---
+
+
