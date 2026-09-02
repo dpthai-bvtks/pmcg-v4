@@ -12503,6 +12503,12 @@ window.openAddTenantModal = function () {
     document.getElementById('tenant-form-max-patients').value = '150';
     document.getElementById('tenant-form-phone').value = '';
     document.getElementById('tenant-form-password').value = 'admin123';
+    if (document.getElementById('tenant-form-seed-group')) {
+        document.getElementById('tenant-form-seed-group').style.display = 'block';
+    }
+    if (document.getElementById('tenant-form-seed-sample')) {
+        document.getElementById('tenant-form-seed-sample').checked = true;
+    }
     document.getElementById('modal-tenant-form').style.display = 'flex';
 };
 
@@ -12518,6 +12524,9 @@ window.openEditTenantModal = function (code, encName, plan, expires, maxStaff, m
     document.getElementById('tenant-form-max-patients').value = maxPatients || 150;
     document.getElementById('tenant-form-phone').value = phone || '';
     document.getElementById('tenant-form-password').value = '';
+    if (document.getElementById('tenant-form-seed-group')) {
+        document.getElementById('tenant-form-seed-group').style.display = 'none';
+    }
     document.getElementById('modal-tenant-form').style.display = 'flex';
 };
 
@@ -12536,6 +12545,7 @@ window.saveTenantData = function () {
     const maxPatients = parseInt(document.getElementById('tenant-form-max-patients').value || 150, 10);
     const phone = document.getElementById('tenant-form-phone').value.trim();
     const password = document.getElementById('tenant-form-password').value.trim();
+    const seedSample = document.getElementById('tenant-form-seed-sample')?.checked !== false;
 
     if (!code || !name) {
         alert('Vui lòng nhập đầy đủ Mã đơn vị và Tên đơn vị!');
@@ -12557,7 +12567,8 @@ window.saveTenantData = function () {
         max_staff: maxStaff,
         max_patients: maxPatients,
         phone: phone,
-        admin_password: password || ''
+        admin_password: password || '',
+        seed_sample_data: seedSample
     };
 
     const action = isEdit ? 'updateTenant' : 'addTenant';

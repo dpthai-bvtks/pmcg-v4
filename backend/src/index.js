@@ -104,8 +104,15 @@ function createTursoAdapter(env) {
       });
       const results = await runPipeline(requests);
       return results.map(r => {
-        if (r.type === 'error') return { success: false, error: r.error };
-        return { success: true, meta: { changes: r.response?.result?.affected_row_count ?? 0 } };
+        if (r.type === 'error') return { success: false, error: r.error, results: [] };
+        const result = r.response?.result;
+        const cols = result?.cols ? result.cols.map(c => c.name) : [];
+        const rows = (result?.rows || []).map(row => rowToObj(cols, row));
+        return {
+          success: true,
+          results: rows,
+          meta: { changes: result?.affected_row_count ?? 0 }
+        };
       });
     },
 
@@ -223,7 +230,8 @@ app.get('/api/bootstrap', async (c) => {
   const _bootstrapDb = getDatabase(env);
   if (!_bootstrapDb) return error("Database không được cấu hình!", 500);
   await ensureSchema(_bootstrapDb);
-  return handleApiAction("getBootstrapData", [], env, c.req.raw, c.executionCtx);
+  let unitCode = c.req.header("x-unit-code") || c.req.query("unit_code") || c.req.query("unitCode") || "bvtks-cs2";
+  return handleApiAction("getBootstrapData", [], env, c.req.raw, c.executionCtx, unitCode);
 });
 
 // Universal API Action Bridge (POST / and POST /api/action)
@@ -811,7 +819,7 @@ function dispatchBackgroundSync(action, args, env, ctx) {
   })());
 }
 
-async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtks_cs2") {
+async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtks-cs2") {
   const db = getDatabase(env);
   if (!db) {
     return error("Database chưa được cấu hình (cần TURSO_URL hoặc D1 binding DB).", 500);
@@ -861,6 +869,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const uPhone = String(payload.phone || "").trim();
       const uEmail = String(payload.email || "").trim();
       const uPass = String(payload.admin_password || payload.password || "admin123").trim();
+      const seedSample = payload.seed_sample_data !== false;
 
       if (!uCode || !uName) return error("Mã đơn vị và Tên đơn vị là bắt buộc!", 400);
 
@@ -868,48 +877,143 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const exist = await db.prepare("SELECT id FROM tenants WHERE unit_code = ?").bind(uCode).first();
       if (exist) return error(`Mã đơn vị '${uCode}' đã tồn tại! Vui lòng chọn mã khác.`, 400);
 
+      // 1. Tạo đơn vị trong bảng tenants
       await db.prepare(`
         INSERT INTO tenants (unit_code, unit_name, phone, email, plan_tier, max_staff, max_patients, expires_at, is_active)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
       `).bind(uCode, uName, uPhone, uEmail, uPlan, uStaff, uPats, uExp).run();
 
-      // Tạo tài khoản admin mặc định cho đơn vị mới
+      // 2. Tạo tài khoản admin mặc định cho đơn vị mới
       const passHash = await hashPassword(uPass);
       await db.prepare(`
         INSERT INTO tai_khoan (unit_code, username, password_hash, role, permissions)
         VALUES (?, 'admin', ?, 'Admin', 'ALL')
       `).bind(uCode, passHash).run();
 
-      // Khởi tạo bộ cài đặt mẫu cho đơn vị mới
+      // 3. Chuẩn bị danh sách câu lệnh Batch Seed mẫu (1-Click Onboarding)
+      const seedBatch = [];
+
+      // A. Cài đặt hệ thống chuẩn (cai_dat)
       const defaultSettings = [
         ["hospital_name", uName],
-        ["app_title", uName + " - Quản Lý Xếp Lịch"],
-        ["system_theme", "glass-dark"]
+        ["app_title", uName + " - Quản Lý Xếp Lịch T.I.M.E.S"],
+        ["system_theme", "glass-dark"],
+        ["thoi_gian_lam_viec", "07:30-11:30, 13:00-16:30"],
+        ["so_ca_toi_da_ktv", "12"],
+        ["tg_nghi_chuyen_ca", "5"],
+        ["cho_phep_xep_thu_7", "1"],
+        ["gio_chieu_sang_sang", "13:00"],
+        ["gio_chieu_sang_chieu", "16:30"],
+        ["ai_auto_learning", "1"],
+        ["ai_active_engine", "CP_SOLVER"],
+        ["gio_mo_cua", "07:30"],
+        ["gio_dong_cua", "16:30"]
       ];
       for (const [k, v] of defaultSettings) {
-        try {
-          await db.prepare("INSERT INTO cai_dat (unit_code, key, value) VALUES (?, ?, ?)").bind(uCode, k, v).run();
-        } catch(e) {}
+        seedBatch.push(db.prepare("INSERT OR REPLACE INTO cai_dat (unit_code, key, value) VALUES (?, ?, ?)").bind(uCode, k, v));
       }
 
-      // Sao chép danh mục thủ thuật mẫu từ bvtks_cs2
-      try {
-        const sampleProcs = await db.prepare("SELECT ten_thu_thuat, viet_tat, he, phan_loai, may, tg_thuc_hien, tg_thuc_hien_max, tg_thu_thuat, tg_thu_thuat_max, khoang_cach, can_rut_may, can_nguoi_phu, ds_nguoi_phu, lien_tuc, order_idx FROM thu_thuat WHERE unit_code = 'bvtks_cs2'").all();
-        if (sampleProcs && sampleProcs.results && sampleProcs.results.length > 0) {
-          for (const p of sampleProcs.results) {
-            try {
-              await db.prepare(`
-                INSERT INTO thu_thuat (unit_code, ten_thu_thuat, viet_tat, he, phan_loai, may, tg_thuc_hien, tg_thuc_hien_max, tg_thu_thuat, tg_thu_thuat_max, khoang_cach, can_rut_may, can_nguoi_phu, ds_nguoi_phu, lien_tuc, order_idx)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-              `).bind(uCode, p.ten_thu_thuat, p.viet_tat, p.he, p.phan_loai, p.may, p.tg_thuc_hien, p.tg_thuc_hien_max, p.tg_thu_thuat, p.tg_thu_thuat_max, p.khoang_cach, p.can_rut_may, p.can_nguoi_phu, p.ds_nguoi_phu, p.lien_tuc, p.order_idx).run();
-            } catch(e) {}
-          }
-        }
-      } catch(e) {
-        console.warn("Init sample procedures error:", e);
+      if (seedSample) {
+        // B. Phòng điều trị mẫu (phong)
+        const sampleRooms = [
+          { name: "Phòng Điện trị liệu (Phòng 1)", bs: "BS. Quản Lý Khoa", ktv: "KTV. Nguyễn Văn A", beds: 6 },
+          { name: "Phòng Kéo giãn cột sống (Phòng 2)", bs: "", ktv: "KTV. Nguyễn Văn A", beds: 4 },
+          { name: "Phòng Vận động trị liệu (Phòng 3)", bs: "", ktv: "KTV. Trần Thị B", beds: 5 },
+          { name: "Phòng Châm cứu & Cấy chỉ (Phòng 4)", bs: "BS. Quản Lý Khoa", ktv: "KTV. Trần Thị B", beds: 6 },
+          { name: "Phòng Xoa bóp bấm huyệt (Phòng 5)", bs: "", ktv: "KTV. Trần Thị B", beds: 4 }
+        ];
+        sampleRooms.forEach((r, idx) => {
+          seedBatch.push(db.prepare(`
+            INSERT OR IGNORE INTO phong (unit_code, ten_phong, bac_si, ktv, so_giuong, order_idx, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, 1)
+          `).bind(uCode, r.name, r.bs, r.ktv, r.beds, idx + 1));
+        });
+
+        // C. Máy móc điều trị mẫu (may_moc)
+        const sampleMachines = [
+          { type: "Máy Siêu âm điều trị", code: "SA-01" },
+          { type: "Máy Siêu âm điều trị", code: "SA-02" },
+          { type: "Máy Điện xung đa năng", code: "DX-01" },
+          { type: "Máy Điện xung đa năng", code: "DX-02" },
+          { type: "Máy Điện xung đa năng", code: "DX-03" },
+          { type: "Máy Laser công suất thấp", code: "LS-01" },
+          { type: "Máy Laser công suất thấp", code: "LS-02" },
+          { type: "Máy Kéo giãn cột sống cổ/lưng", code: "KG-01" },
+          { type: "Máy Kéo giãn cột sống cổ/lưng", code: "KG-02" },
+          { type: "Máy Sóng ngắn trị liệu", code: "SN-01" },
+          { type: "Đèn Hồng ngoại", code: "HN-01" },
+          { type: "Đèn Hồng ngoại", code: "HN-02" },
+          { type: "Đèn Hồng ngoại", code: "HN-03" },
+          { type: "Đèn Hồng ngoại", code: "HN-04" }
+        ];
+        sampleMachines.forEach((m, idx) => {
+          seedBatch.push(db.prepare(`
+            INSERT OR IGNORE INTO may_moc (unit_code, ten_loai, ma_may, order_idx, is_active)
+            VALUES (?, ?, ?, ?, 1)
+          `).bind(uCode, m.type, m.code, idx + 1));
+        });
+
+        // D. 13 Thủ thuật mẫu YHCT & PHCN chuẩn Bộ Y Tế (thu_thuat)
+        const sampleProcs = [
+          { name: "Siêu âm điều trị", vt: "SA", he: "PHCN", may: "SA", tg: 30, lien_tuc: 0 },
+          { name: "Điện xung điều trị", vt: "DX", he: "PHCN", may: "DX", tg: 30, lien_tuc: 0 },
+          { name: "Điện phân dẫn thuốc", vt: "DP", he: "PHCN", may: "DX", tg: 30, lien_tuc: 0 },
+          { name: "Kéo giãn cột sống bằng máy", vt: "KG", he: "PHCN", may: "KG", tg: 30, lien_tuc: 0 },
+          { name: "Chiếu đèn hồng ngoại", vt: "HN", he: "PHCN", may: "HN", tg: 30, lien_tuc: 0 },
+          { name: "Laser điều trị", vt: "LS", he: "PHCN", may: "LS", tg: 20, lien_tuc: 0 },
+          { name: "Sóng ngắn điều trị", vt: "SN", he: "PHCN", may: "SN", tg: 20, lien_tuc: 0 },
+          { name: "Tập vận động thụ động", vt: "VĐ-TD", he: "PHCN", may: "", tg: 30, lien_tuc: 0 },
+          { name: "Tập vận động có trợ giúp", vt: "VĐ-TG", he: "PHCN", may: "", tg: 30, lien_tuc: 0 },
+          { name: "Xoa bóp bấm huyệt điều trị", vt: "XBBH", he: "YHCT", may: "", tg: 30, lien_tuc: 0 },
+          { name: "Điện châm điều trị", vt: "ĐC", he: "YHCT", may: "", tg: 30, lien_tuc: 0 },
+          { name: "Cứu ngải điều trị", vt: "CN", he: "YHCT", may: "", tg: 20, lien_tuc: 0 },
+          { name: "Thủy châm điều trị", vt: "TC", he: "YHCT", may: "", tg: 15, lien_tuc: 0 }
+        ];
+        sampleProcs.forEach((p, idx) => {
+          seedBatch.push(db.prepare(`
+            INSERT OR IGNORE INTO thu_thuat (unit_code, ten_thu_thuat, viet_tat, he, may, tg_thuc_hien, tg_thu_thuat, lien_tuc, order_idx, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+          `).bind(uCode, p.name, p.vt, p.he, p.may, p.tg, p.tg, p.lien_tuc, idx + 1));
+        });
+
+        // E. Phác đồ điều trị mẫu (phac_do)
+        const sampleProtocols = [
+          { name: "Phác đồ Thoái hóa cột sống thắt lưng", procs: JSON.stringify(["Kéo giãn cột sống bằng máy", "Điện xung điều trị", "Chiếu đèn hồng ngoại"]) },
+          { name: "Phác đồ Đau vai gáy / Cột sống cổ", procs: JSON.stringify(["Siêu âm điều trị", "Điện xung điều trị", "Xoa bóp bấm huyệt điều trị"]) },
+          { name: "Phác đồ Di chứng tai biến / Liệt nửa người", procs: JSON.stringify(["Tập vận động thụ động", "Điện châm điều trị", "Xoa bóp bấm huyệt điều trị"]) },
+          { name: "Phác đồ Hội chứng ống cổ tay", procs: JSON.stringify(["Laser điều trị", "Siêu âm điều trị", "Tập vận động có trợ giúp"]) }
+        ];
+        sampleProtocols.forEach((proto, idx) => {
+          seedBatch.push(db.prepare(`
+            INSERT OR IGNORE INTO phac_do (unit_code, ten_phac_do, danh_sach_thu_thuat, order_idx, is_active)
+            VALUES (?, ?, ?, ?, 1)
+          `).bind(uCode, proto.name, proto.procs, idx + 1));
+        });
+
+        // F. Nhân sự mẫu (nhan_su)
+        const sampleStaff = [
+          { name: "KTV. Nguyễn Văn A", role: "KTV", system: "PHCN", priority: 1, time: "07:30-11:30, 13:00-16:30" },
+          { name: "KTV. Trần Thị B", role: "KTV", system: "YHCT", priority: 2, time: "07:30-11:30, 13:00-16:30" },
+          { name: "BS. Quản Lý Khoa", role: "BS", system: "ALL", priority: 0, time: "07:30-11:30, 13:00-16:30" }
+        ];
+        sampleStaff.forEach((s, idx) => {
+          seedBatch.push(db.prepare(`
+            INSERT OR IGNORE INTO nhan_su (unit_code, name, role, system, priority, thoi_gian_lam, trang_thai, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, 'Đi làm', 1)
+          `).bind(uCode, s.name, s.role, s.system, s.priority, s.time));
+        });
       }
 
-      return success({ message: `Đã khởi tạo thành công đơn vị '${uName}' (${uCode})!`, unit_code: uCode });
+      // Thực thi toàn bộ batch trong 1 request Turso duy nhất!
+      if (seedBatch.length > 0) {
+        await db.batch(seedBatch);
+      }
+
+      return success({
+        message: `Đã khởi tạo thành công đơn vị '${uName}' (${uCode}) với bộ danh mục mẫu 1-Click Onboarding!`,
+        unit_code: uCode,
+        seed_sample: seedSample
+      });
     }
 
     case "updateTenant": {

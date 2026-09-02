@@ -72,7 +72,7 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=4.0.0-rev42">
+    <link rel="stylesheet" href="css/style.css?v=4.0.0-rev43">
     <!-- PWA & Mobile Web App Meta Tags -->
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
@@ -80,7 +80,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.0.0-rev42">
+    <link rel="stylesheet" href="css/mobile.css?v=4.0.0-rev43">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
     <script src="js/dexie.min.js?v=3.2.6"></script>
@@ -2931,8 +2931,16 @@
                                     <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">Mật Khẩu Admin Ban Đầu:</label>
                                     <input type="text" id="tenant-form-password" class="form-control" value="admin123" placeholder="admin123" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #cbd5e1;">
                                 </div>
+                            <div id="tenant-form-seed-group" style="margin-bottom:14px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:10px; padding:12px 14px;">
+                                <label style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:#0369a1; cursor:pointer; margin-bottom:0;">
+                                    <input type="checkbox" id="tenant-form-seed-sample" checked style="width:17px; height:17px; accent-color:#0284c7; cursor:pointer;">
+                                    <span>✨ Tự động khởi tạo dữ liệu mẫu (1-Click Onboarding)</span>
+                                </label>
+                                <small style="display:block; font-size:11px; color:#0c4a6e; margin-top:4px; margin-left:25px; line-height:1.4;">
+                                    Tự động nạp sẵn 5 phòng khám, 13 thủ thuật chuẩn Bộ Y Tế, 14 máy móc, 4 phác đồ điều trị và 3 nhân sự mẫu để cơ sở có thể dùng thử và tự động xếp lịch được ngay!
+                                </small>
                             </div>
-                            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px; border-top:1px solid #e2e8f0; padding-top:16px;">
+                            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px; border-top:1px solid #e2e8f0; padding-top:16px;">
                                 <button type="button" onclick="closeTenantModal()" class="btn btn-secondary" style="padding:9px 16px;">Hủy Bỏ</button>
                                 <button type="submit" class="btn btn-primary" id="btn-save-tenant" style="padding:9px 20px; background:linear-gradient(135deg, #2563eb, #1d4ed8); font-weight:700;">💾 Lưu Đơn Vị</button>
                             </div>
@@ -3228,7 +3236,7 @@
 
                     <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 4.0.0</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 07:40 02/09/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 08:35 02/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -3666,18 +3674,18 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.0.0-rev42"></script>
-    <script src="js/ai-scheduler.js?v=4.0.0-rev42"></script>
-    <script src="js/cp-solver.js?v=4.0.0-rev42"></script>
-    <script src="js/scheduler-engine.js?v=4.0.0-rev42"></script>
-    <script src="js/app.js?v=4.0.0-rev42"></script>
-    <script src="js/init.js?v=4.0.0-rev42"></script>
-    <script src="js/sync.js?v=4.0.0-rev42"></script>
-    <script src="js/thongke.js?v=4.0.0-rev42"></script>
+    <script src="js/offline-sync-engine.js?v=4.0.0-rev43"></script>
+    <script src="js/ai-scheduler.js?v=4.0.0-rev43"></script>
+    <script src="js/cp-solver.js?v=4.0.0-rev43"></script>
+    <script src="js/scheduler-engine.js?v=4.0.0-rev43"></script>
+    <script src="js/app.js?v=4.0.0-rev43"></script>
+    <script src="js/init.js?v=4.0.0-rev43"></script>
+    <script src="js/sync.js?v=4.0.0-rev43"></script>
+    <script src="js/thongke.js?v=4.0.0-rev43"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>
-    const APP_VERSION = '4.0.0-rev42';
+    const APP_VERSION = '4.0.0-rev43';
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             // Unregister old service workers if version changed
