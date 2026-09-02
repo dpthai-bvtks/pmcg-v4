@@ -148,20 +148,14 @@ Cập nhật file `backend/schema.sql` và chạy migration tự động bổ su
 
 ---
 
-## 📅 Bảng Kế Hoạch Tiến Độ Thực Hiện Dự Kiến
+## 📅 Bảng Kế Hoạch Tiến Độ Thực Hiện & Trạng Thái Hoàn Thành
 
-| Bước | Hạng mục công việc | Dự kiến hoàn thành | Kết quả đầu ra |
+| Bước | Hạng mục công việc | Trạng thái | Kết quả đầu ra |
 | :---: | :--- | :---: | :--- |
-| **1** | Nâng cấp SQL Schema D1 & Bổ sung bảng `tenants`, trường `unit_code` | Ngày 1 | Dữ liệu cũ giữ nguyên (`BV_TKS`), sẵn sàng đa đơn vị |
-| **2** | Nâng cấp Backend Hono API (Auth JWT, tenantGuard, CRUD Tenants) | Ngày 2 | Toàn bộ API được bảo vệ cách ly 100% |
-| **3** | Nâng cấp Giao diện Đăng nhập (Chọn Đơn vị, nhớ cấu hình, White-labeling) | Ngày 3 | Người dùng chọn đơn vị và đăng nhập mượt mà |
-| **4** | Xây dựng Tab/Modal Super-Admin quản lý danh sách khách hàng & gia hạn | Ngày 4 | Bạn có thể tự tạo khách mới, gia hạn ngày dùng |
-| **5** | Kiểm thử bảo mật chéo (Cross-tenant security test) & Deploy Production | Ngày 5 | Bản thương mại hóa chính thức lên sóng `xeplichthuthuat.io.vn` |
+| **1** | Nâng cấp SQL Schema Multi-Tenant & Chuyển sang Turso Database | ✅ Hoàn thành | 100% 16 bảng dữ liệu độc lập theo `unit_code`, 21.000+ bản ghi |
+| **2** | Nâng cấp Backend Worker API (Turso Adapter, TenantGuard, CRUD Tenants) | ✅ Hoàn thành | API cách ly 100%, tốc độ cao, bypass giới hạn D1 |
+| **3** | Nâng cấp Giao diện Đăng nhập (Chọn Đơn vị, nhớ cấu hình, White-labeling) | ✅ Hoàn thành | Form đăng nhập linh hoạt, giao diện đổi theo đơn vị |
+| **4** | Xây dựng Tab Super-Admin Quản lý Đơn vị & Gia hạn bản quyền | ✅ Hoàn thành | Thêm, sửa, đổi mã đơn vị (Cascade), gia hạn ngày dùng |
+| **5** | Tính năng **1-Click Onboarding**: Tự động nạp bộ danh mục mẫu chuẩn | ✅ Hoàn thành | Tạo cơ sở mới có sẵn 5 phòng, 14 máy, 13 thủ thuật, 4 phác đồ, 3 KTV |
+| **6** | Kiểm thử bảo mật chéo (Cross-tenant test) & Deploy Production | ✅ Hoàn thành | Hệ thống v4.0.0 chính thức hoạt động trên `xeplichthuthuat.io.vn` |
 
----
-
-## 🙋‍♂️ Quyết Định & Phản Hồi Từ Bạn
-
-1. Bạn có muốn đặt mã đơn vị mặc định cho bệnh viện hiện tại của bạn là **`BV_TKS`** (Bệnh viện Đa khoa Triệu Sơn) không?
-2. Ở màn hình đăng nhập, bạn muốn người dùng **Chọn từ danh sách thả xuống (Dropdown)** các bệnh viện, hay **Nhập mã đơn vị (Text input)** để bảo mật hơn (tránh việc các bệnh viện nhìn thấy tên nhau trong danh sách)?
-3. Khi bạn đồng ý với kế hoạch trên, mình sẽ bắt đầu triển khai ngay từ **Bước 1 (Schema & Backend Migration)**!
