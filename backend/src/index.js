@@ -1130,7 +1130,83 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       return success({ message: `Đã xóa toàn bộ dữ liệu đơn vị '${uCode}'!` });
     }
 
-    
+    case "exportTenantData": {
+      const uCode = String(args[0] || unitCode || "").trim().toLowerCase();
+      if (!uCode) return error("Thiếu mã đơn vị cần xuất dữ liệu!", 400);
+
+      const tables = [
+        'tenants', 'cai_dat', 'tai_khoan', 'nhan_su', 'may_moc', 'phong',
+        'thu_thuat', 'benh_nhan', 'lich_trinh', 'lich_su', 'gio_ban_cu',
+        'cham_cong', 'thong_ke', 'tim_ranh', 'tai_lieu', 'phac_do'
+      ];
+
+      const queries = tables.map(t => db.prepare(`SELECT * FROM ${t} WHERE unit_code = ?`).bind(uCode));
+      const results = await db.batch(queries);
+
+      const exportPackage = {
+        app: "PM-XepLich T.I.M.E.S SaaS",
+        version: "4.0.0",
+        unit_code: uCode,
+        exported_at: new Date().toISOString(),
+        tables: {}
+      };
+
+      tables.forEach((tableName, idx) => {
+        const rows = results[idx]?.results || [];
+        exportPackage.tables[tableName] = rows;
+      });
+
+      const tenantRow = exportPackage.tables.tenants?.[0];
+      exportPackage.unit_name = tenantRow?.unit_name || uCode;
+      exportPackage.plan_tier = tenantRow?.plan_tier || 'PRO';
+
+      return success(exportPackage);
+    }
+
+    case "importTenantData": {
+      const payload = args[0] || {};
+      const targetUnit = String(payload.unit_code || "").trim().toLowerCase();
+      const backupData = payload.data || payload;
+
+      if (!targetUnit) return error("Thiếu mã đơn vị cần nạp dữ liệu!", 400);
+      if (!backupData || !backupData.tables) return error("Dữ liệu sao lưu không đúng định dạng JSON chuẩn!", 400);
+
+      const tables = [
+        'cai_dat', 'tai_khoan', 'nhan_su', 'may_moc', 'phong',
+        'thu_thuat', 'benh_nhan', 'lich_trinh', 'lich_su', 'gio_ban_cu',
+        'cham_cong', 'thong_ke', 'tim_ranh', 'tai_lieu', 'phac_do'
+      ];
+
+      const batchStmts = [];
+      // Xóa dữ liệu cũ của tenant (trừ bảng tenants)
+      tables.forEach(t => {
+        batchStmts.push(db.prepare(`DELETE FROM ${t} WHERE unit_code = ?`).bind(targetUnit));
+      });
+
+      // Nạp dữ liệu mới
+      for (const t of tables) {
+        const rows = backupData.tables[t] || [];
+        if (Array.isArray(rows) && rows.length > 0) {
+          for (const row of rows) {
+            const cols = Object.keys(row).filter(k => k !== 'id');
+            const placeholders = cols.map(() => '?').join(', ');
+            const values = cols.map(c => (c === 'unit_code' ? targetUnit : row[c]));
+            const sql = `INSERT INTO ${t} (${cols.join(', ')}) VALUES (${placeholders})`;
+            batchStmts.push(db.prepare(sql).bind(...values));
+          }
+        }
+      }
+
+      if (batchStmts.length > 0) {
+        await db.batch(batchStmts);
+      }
+
+      return success({
+        message: `Đã khôi phục thành công toàn bộ dữ liệu cho đơn vị '${targetUnit}'!`,
+        unit_code: targetUnit
+      });
+    }
+
     case "changePassword": {
       const payload = args[0] || {};
       const uName = String(payload.username || "").trim();

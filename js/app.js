@@ -12491,6 +12491,7 @@ window.loadTenantsList = function () {
                         <td style="padding:12px 14px; text-align:center;">
                             <div style="display:flex; justify-content:center; gap:6px;">
                                 <button class="btn btn-sm btn-secondary" onclick="openEditTenantModal('${t.unit_code}', '${encodeURIComponent(t.unit_name)}', '${t.plan_tier}', '${t.expires_at}', ${t.max_staff}, ${t.max_patients}, '${t.phone || ''}')" title="Chỉnh sửa / Gia hạn">✏️ Sửa</button>
+                                <button class="btn btn-sm btn-info" onclick="exportTenantDataPrompt('${t.unit_code}', '${encodeURIComponent(t.unit_name)}')" title="Xuất dữ liệu sao lưu (JSON) riêng cho đơn vị này">📥 Xuất</button>
                                 <button class="btn btn-sm btn-warning" onclick="resetTenantPasswordPrompt('${t.unit_code}')" title="Đặt lại mật khẩu Admin">🔑 Pass</button>
                                 <button class="btn btn-sm ${isActive ? 'btn-danger' : 'btn-success'}" onclick="toggleTenantStatus('${t.unit_code}', ${isActive ? 0 : 1})" title="${isActive ? 'Khóa đơn vị' : 'Mở khóa đơn vị'}">${isActive ? '🔒 Khóa' : '🔓 Mở'}</button>
                                 ${t.unit_code !== 'bvtks-cs2' ? `<button class="btn btn-sm btn-danger" onclick="deleteTenantPrompt('${t.unit_code}', '${encodeURIComponent(t.unit_name)}')" title="Xóa vĩnh viễn">🗑️ Xóa</button>` : ''}
@@ -12641,6 +12642,74 @@ window.deleteTenantPrompt = function (code, encName) {
     }, err => {
         alert('Lỗi: ' + (err && err.message ? err.message : 'Không thể xóa đơn vị'));
     });
+};
+
+window.exportTenantDataPrompt = function (code, encName) {
+    const name = decodeURIComponent(encName || code);
+    const loadingToast = document.createElement('div');
+    loadingToast.style.cssText = 'position:fixed; bottom:20px; right:20px; background:#1e293b; color:#fff; padding:12px 20px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:99999; font-size:13px; font-weight:600;';
+    loadingToast.innerHTML = `⏳ Đang đóng gói dữ liệu đơn vị <b>${name}</b>...`;
+    document.body.appendChild(loadingToast);
+
+    callApi('exportTenantData', [code], res => {
+        if (loadingToast) loadingToast.remove();
+        if (!res || !res.tables) {
+            alert('Không nhận được dữ liệu hợp lệ từ máy chủ!');
+            return;
+        }
+
+        const jsonStr = JSON.stringify(res, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+        const fileName = `PMCG_Backup_${code}_${dateStr}.json`;
+
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        alert(`✅ Đã xuất dữ liệu sao lưu thành công!\n\n• Đơn vị: ${name} (${code})\n• Tên tệp: ${fileName}\n• Tổng số bảng: ${Object.keys(res.tables).length} bảng dữ liệu.`);
+    }, err => {
+        if (loadingToast) loadingToast.remove();
+        alert('Lỗi xuất dữ liệu: ' + (err && err.message ? err.message : 'Không xác định'));
+    });
+};
+
+window.importTenantDataPrompt = function (code) {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.json';
+    fileInput.onchange = function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (evt) {
+            try {
+                const backupJson = JSON.parse(evt.target.result);
+                if (!backupJson.tables) {
+                    alert('Tệp JSON này không phải là tệp sao lưu dữ liệu hợp lệ của hệ thống!');
+                    return;
+                }
+
+                if (!confirm(`⚠️ BẠN CÓ CHẮC CHẮN MUỐN KHÔI PHỤC DỮ LIỆU CHO ĐƠN VỊ '${code}'?\n\nToàn bộ dữ liệu hiện tại của đơn vị này sẽ được thay thế bằng dữ liệu trong tệp sao lưu: "${file.name}".`)) return;
+
+                callApi('importTenantData', [{ unit_code: code, data: backupJson }], res => {
+                    alert(`✅ Khôi phục dữ liệu thành công cho đơn vị '${code}'!`);
+                    loadTenantsList();
+                }, err => {
+                    alert('Lỗi khôi phục: ' + (err && err.message ? err.message : 'Không xác định'));
+                });
+            } catch(err) {
+                alert('Tệp JSON bị lỗi định dạng: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+    };
+    fileInput.click();
 };
 
 
