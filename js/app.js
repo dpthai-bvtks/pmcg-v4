@@ -529,27 +529,45 @@ window.showGlobalLoading = function (text) {
         };
 
 
-        window.toggleEmergencyBackupMenu = function() {
-            const current = window._serverMode || 'primary';
-            const msg = `Trạng thái máy chủ hiện tại: ${current === 'primary' ? '🟢 Cloudflare Main (Chính)' : (current === 'backup' ? '🟡 Google Sheets Backup (Dự phòng)' : '⚡️ Ngoại tuyến')}\n\nNhập 1: Kết nối lại Cloudflare Main\nNhập 2: Xuất file dự phòng khẩn cấp (.json)\nNhập 3: Nhập URL Google Apps Script dự phòng\nNhập 4: 🔄 Đồng bộ toàn bộ dữ liệu & Lịch sử D1 sang Google Sheets ngay`;
-            const choice = prompt(msg);
-            if (choice === '1') {
-                _consecutiveApiErrors = 0;
-                updateServerStatusBadge('primary');
-                alert('Đã kết nối lại Máy chủ chính Cloudflare Main!');
-            } else if (choice === '2') {
-                if (window.OfflineSyncEngine) window.OfflineSyncEngine.exportEmergencyBackupData();
-            } else if (choice === '3') {
-                const url = prompt('Nhập URL Google Apps Script WebApp dự phòng (Dạng: https://script.google.com/macros/s/.../exec):');
-                if (url && url.trim()) {
-                    localStorage.setItem('times_backup_api_url', url.trim());
-                    if (typeof callApi === 'function') {
-                        callApi('saveSystemSettings', ['gdrive_webhook_url', url.trim()]);
-                    }
-                    alert('Đã lưu URL máy chủ dự phòng Google Apps Script!');
+        window.toggleEmergencyBackupMenu = function () {
+            window.openServerStatusModal();
+        };
+
+        window.openServerStatusModal = function () {
+            const modal = document.getElementById('modal-server-status');
+            if (modal) {
+                const uName = localStorage.getItem('pm_unit_name') || 'Bệnh viện Than - Khoáng sản Cơ sở 2';
+                const uCode = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
+                const unitEl = document.getElementById('modal-server-unit-name');
+                if (unitEl) unitEl.innerText = `${uName} (${uCode})`;
+                modal.style.display = 'flex';
+            }
+        };
+
+        window.closeServerStatusModal = function () {
+            const modal = document.getElementById('modal-server-status');
+            if (modal) modal.style.display = 'none';
+        };
+
+        window.pingServerConnection = function () {
+            const t0 = performance.now();
+            callApi('ping', [], res => {
+                const pingTime = Math.round(performance.now() - t0);
+                alert(`⚡ Kết nối máy chủ Cloudflare Edge & Turso Cloud phản hồi cực nhanh: ${pingTime} ms!\n\n• Trạng thái: 🟢 Hoạt động hoàn hảo\n• CSDL: Turso libSQL Cloud\n• Mã đơn vị: ${res && res.unit_code ? res.unit_code : (localStorage.getItem('pm_unit_code') || 'bvtks-cs2')}`);
+            }, err => {
+                alert('⚠️ Lỗi phản hồi API: ' + (err && err.message ? err.message : 'Không thể kết nối'));
+            });
+        };
+
+        window.configureBackupGoogleScript = function () {
+            let backupUrl = (localStorage.getItem('times_backup_api_url') || '').trim();
+            const url = prompt('Nhập URL Google Apps Script WebApp dự phòng (Dạng: https://script.google.com/macros/s/.../exec):', backupUrl);
+            if (url && url.trim()) {
+                localStorage.setItem('times_backup_api_url', url.trim());
+                if (typeof callApi === 'function') {
+                    callApi('saveSystemSettings', ['gdrive_webhook_url', url.trim()]);
                 }
-            } else if (choice === '4') {
-                window.syncAllD1DataToBackupSheets();
+                alert('Đã lưu URL máy chủ dự phòng Google Apps Script!');
             }
         };
 
