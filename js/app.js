@@ -149,14 +149,31 @@ if (typeof document !== 'undefined') {
 }
 
 window.pingServerConnection = function () {
+    const btn = document.getElementById('btn-ping-server');
+    const resultArea = document.getElementById('ping-result-area');
+
+    // Hiển thị trạng thái đang ping
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span>⏳</span> Đang kiểm tra...'; }
+    if (resultArea) { resultArea.style.display = 'none'; resultArea.innerHTML = ''; }
+
     const t0 = performance.now();
     callApi('ping', [], res => {
         const pingTime = Math.round(performance.now() - t0);
-        alert(`⚡ Kết nối máy chủ Cloudflare Edge & Turso Cloud phản hồi cực nhanh: ${pingTime} ms!\n\n• Trạng thái: 🟢 Hoạt động hoàn hảo\n• CSDL: Turso libSQL Cloud\n• Mã đơn vị: ${res && res.unit_code ? res.unit_code : (localStorage.getItem('pm_unit_code') || 'bvtks-cs2')}`);
+        const unitCode = res && res.unit_code ? res.unit_code : (localStorage.getItem('pm_unit_code') || 'bvtks-cs2');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<span>🔄</span> Kiểm Tra Tốc Độ Phản Hồi (Ping API)'; }
+        if (resultArea) {
+            resultArea.style.cssText = 'display:block; padding:10px 14px; border-radius:8px; font-size:12px; font-weight:600; line-height:1.8; background:#f0fdf4; border:1px solid #bbf7d0; color:#166534;';
+            resultArea.innerHTML = `⚡ <strong>Phản hồi: ${pingTime} ms</strong><br>🟢 Trạng thái: Hoạt động hoàn hảo<br>🗄️ CSDL: Turso libSQL Cloud<br>🏥 Mã đơn vị: ${unitCode}`;
+        }
     }, err => {
-        alert('⚠️ Lỗi phản hồi API: ' + (err && err.message ? err.message : 'Không thể kết nối'));
+        if (btn) { btn.disabled = false; btn.innerHTML = '<span>🔄</span> Kiểm Tra Tốc Độ Phản Hồi (Ping API)'; }
+        if (resultArea) {
+            resultArea.style.cssText = 'display:block; padding:10px 14px; border-radius:8px; font-size:12px; font-weight:600; line-height:1.8; background:#fef2f2; border:1px solid #fecaca; color:#991b1b;';
+            resultArea.innerHTML = `⚠️ <strong>Lỗi kết nối</strong><br>${err && err.message ? err.message : 'Không thể kết nối tới máy chủ'}`;
+        }
     });
 };
+
 
 window.configureBackupGoogleScript = function () {
     let backupUrl = (localStorage.getItem('times_backup_api_url') || '').trim();

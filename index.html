@@ -72,7 +72,7 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=4.0.0-rev57">
+    <link rel="stylesheet" href="css/style.css?v=4.0.0-rev58">
     <!-- PWA & Mobile Web App Meta Tags -->
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
@@ -80,7 +80,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.0.0-rev57">
+    <link rel="stylesheet" href="css/mobile.css?v=4.0.0-rev58">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
     <script src="js/dexie.min.js?v=3.2.6"></script>
@@ -3683,18 +3683,18 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.0.0-rev57"></script>
-    <script src="js/ai-scheduler.js?v=4.0.0-rev57"></script>
-    <script src="js/cp-solver.js?v=4.0.0-rev57"></script>
-    <script src="js/scheduler-engine.js?v=4.0.0-rev57"></script>
-    <script src="js/app.js?v=4.0.0-rev57"></script>
-    <script src="js/init.js?v=4.0.0-rev57"></script>
-    <script src="js/sync.js?v=4.0.0-rev57"></script>
-    <script src="js/thongke.js?v=4.0.0-rev57"></script>
+    <script src="js/offline-sync-engine.js?v=4.0.0-rev58"></script>
+    <script src="js/ai-scheduler.js?v=4.0.0-rev58"></script>
+    <script src="js/cp-solver.js?v=4.0.0-rev58"></script>
+    <script src="js/scheduler-engine.js?v=4.0.0-rev58"></script>
+    <script src="js/app.js?v=4.0.0-rev58"></script>
+    <script src="js/init.js?v=4.0.0-rev58"></script>
+    <script src="js/sync.js?v=4.0.0-rev58"></script>
+    <script src="js/thongke.js?v=4.0.0-rev58"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>
-    const APP_VERSION = '4.0.0-rev57';
+    const APP_VERSION = '4.0.0-rev58';
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             // Unregister old service workers if version changed
@@ -3850,9 +3850,11 @@
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 10px;">
-                <button type="button" onclick="window.pingServerConnection()" class="btn" style="width: 100%; padding: 10px 14px; background: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;">
+                <button type="button" id="btn-ping-server" onclick="window.pingServerConnection()" class="btn" style="width: 100%; padding: 10px 14px; background: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;">
                     <span>🔄</span> Kiểm Tra Tốc Độ Phản Hồi (Ping API)
                 </button>
+                <!-- Kết quả ping hiển thị inline trong modal -->
+                <div id="ping-result-area" style="display:none; padding: 10px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; line-height: 1.6;"></div>
                 <button type="button" onclick="window.OfflineSyncEngine?.exportEmergencyBackupData(); window.closeServerStatusModal();" class="btn" style="width: 100%; padding: 10px 14px; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; border-radius: 8px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;">
                     <span>⚡</span> Xuất Tệp Sao Lưu Khẩn Cấp (.json)
                 </button>

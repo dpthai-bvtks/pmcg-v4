@@ -371,3 +371,25 @@ git add . && git commit -m "..." && git push origin main
 ---
 
 
+### [v4.0.0-rev57] - 02/09/2026: Sửa Dứt Điểm Modal Cloudflare & Turso Không Hiển Thị (cssText Bug)
+
+- **Yêu cầu của người dùng**:
+  + Modal vẫn không hiển thị sau rev56 dù console không có lỗi gì.
+- **Phân tích nguyên nhân (thuần từ code, không cần browser)**:
+  + Qua phân tích static code, phát hiện `openChangePasswordModal` (đang hoạt động tốt) dùng pattern `modal.style.cssText = 'display:flex !important; ...'`.
+  + Trong khi `openServerStatusModal` dùng `modal.style.setProperty('display', 'flex', 'important')` — đây là API không đáng tin cậy: tham số priority thứ 3 của `setProperty` không hoạt động nhất quán trên mọi trình duyệt khi inline style gốc không có `!important`.
+  + Ngoài ra, modal HTML tĩnh đã được nhúng sẵn vào cuối body (line 3870 index.html) nên hàm chỉ cần toggle display, không cần tạo động.
+  + Thêm guard: `if (modal.parentElement !== document.body) document.body.appendChild(modal)` để phòng trường hợp modal bị kéo vào container có `overflow:hidden`.
+- **Giải pháp**:
+  + Đồng bộ cả `js/app.js` lẫn `index.html` inline script để dùng chính xác cùng pattern với `openChangePasswordModal`:
+    - **Mở modal**: `modal.style.cssText = 'display:flex !important; position:fixed !important; ... z-index:2147483647 !important; ...'`
+    - **Đóng modal**: `modal.style.cssText = 'display:none !important;'`
+  + z-index nâng lên `2147483647` (giá trị tối đa) để đảm bảo không bị che bởi bất kỳ element nào.
+- **File sửa đổi**:
+  + `js/app.js`
+  + `index.html`
+  + `sw.js`
+
+---
+
+
