@@ -101,70 +101,29 @@ window.openServerStatusModal = function (e) {
         if (typeof e.preventDefault === 'function') e.preventDefault();
         if (typeof e.stopPropagation === 'function') e.stopPropagation();
     }
+    // Đóng dropdown nếu đang mở
+    const userMenu = document.getElementById('user-dropdown-menu');
+    if (userMenu) userMenu.style.display = 'none';
+    const arrow = document.getElementById('user-dropdown-arrow');
+    if (arrow) arrow.style.transform = 'rotate(0deg)';
 
-    let modal = document.getElementById('modal-server-status');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'modal-server-status';
-        modal.className = 'modal-backdrop';
-        modal.style.cssText = 'display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.65); backdrop-filter:blur(5px); z-index:99999; justify-content:center; align-items:center;';
-        modal.onclick = function (evt) { if (evt.target === modal) window.closeServerStatusModal(); };
-        modal.innerHTML = `
-        <div style="background:#ffffff; width:480px; max-width:92%; border-radius:16px; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.25); font-family:sans-serif; border:1px solid #e2e8f0; animation:modalPop 0.2s ease;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; border-bottom:1px solid #f1f5f9; padding-bottom:12px;">
-                <h3 style="margin:0; font-size:16px; font-weight:800; color:#1e293b; display:flex; align-items:center; gap:8px;">
-                    <span>☁️</span> Trạng Thái Máy Chủ & Cơ Sở Dữ Liệu
-                </h3>
-                <button type="button" onclick="window.closeServerStatusModal()" style="border:none; background:none; font-size:18px; color:#94a3b8; cursor:pointer; font-weight:bold;">✕</button>
-            </div>
+    // Tìm modal tĩnh trong DOM (đã có sẵn ở cuối body)
+    const modal = document.getElementById('modal-server-status');
+    if (!modal) { console.error('[ServerStatus] Không tìm thấy modal-server-status trong DOM!'); return; }
 
-            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px; margin-bottom:18px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <span style="font-size:12px; color:#64748b; font-weight:600;">Trạng thái hệ thống:</span>
-                    <span style="background:#dcfce7; color:#15803d; padding:4px 10px; border-radius:12px; font-size:11.5px; font-weight:800; display:inline-flex; align-items:center; gap:5px;">
-                        <span style="width:6px; height:6px; background:#22c55e; border-radius:50%;"></span> Hoạt động ổn định
-                    </span>
-                </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px;">
-                    <span style="color:#64748b;">API Engine:</span>
-                    <span style="font-weight:700; color:#0f172a;">Cloudflare Edge Workers (pmcg-api)</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px;">
-                    <span style="color:#64748b;">Cơ sở dữ liệu:</span>
-                    <span style="font-weight:700; color:#0f172a;">Turso libSQL Cloud (Tokyo, aws-ap-ne-1)</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px;">
-                    <span style="color:#64748b;">Đơn vị hiện hành:</span>
-                    <span style="font-weight:700; color:#2563eb;" id="modal-server-unit-name">Đang tải...</span>
-                </div>
-            </div>
-
-            <div style="display:flex; flex-direction:column; gap:10px;">
-                <button type="button" onclick="window.pingServerConnection()" class="btn" style="width:100%; padding:10px 14px; background:#f1f5f9; color:#1e293b; border:1px solid #cbd5e1; border-radius:8px; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer;">
-                    <span>🔄</span> Kiểm Tra Tốc Độ Phản Hồi (Ping API)
-                </button>
-                <button type="button" onclick="window.OfflineSyncEngine?.exportEmergencyBackupData(); window.closeServerStatusModal();" class="btn" style="width:100%; padding:10px 14px; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; border-radius:8px; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer;">
-                    <span>⚡</span> Xuất Tệp Sao Lưu Khẩn Cấp (.json)
-                </button>
-                <button type="button" onclick="window.configureBackupGoogleScript()" class="btn" style="width:100%; padding:10px 14px; background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; border-radius:8px; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:8px; cursor:pointer;">
-                    <span>🌐</span> Cấu Hình URL Google Apps Script Dự Phòng
-                </button>
-            </div>
-
-            <div style="margin-top:16px; text-align:right;">
-                <button type="button" onclick="window.closeServerStatusModal()" class="btn btn-secondary" style="padding:8px 18px; font-size:12px; font-weight:600;">Đóng</button>
-            </div>
-        </div>`;
+    // Đảm bảo modal là con trực tiếp của body để tránh bị clip bởi container cha
+    if (modal.parentElement !== document.body) {
         document.body.appendChild(modal);
     }
 
+    // Cập nhật thông tin đơn vị
     const uName = localStorage.getItem('pm_unit_name') || 'Bệnh viện Than - Khoáng sản Cơ sở 2';
     const uCode = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
     const unitEl = document.getElementById('modal-server-unit-name');
     if (unitEl) unitEl.innerText = `${uName} (${uCode})`;
 
-    modal.style.setProperty('display', 'flex', 'important');
-    modal.style.zIndex = '999999';
+    // Hiển thị modal — dùng cssText !important (pattern đáng tin cậy nhất)
+    modal.style.cssText = 'display:flex !important; position:fixed !important; top:0 !important; left:0 !important; width:100vw !important; height:100vh !important; background:rgba(15,23,42,0.65) !important; backdrop-filter:blur(5px) !important; z-index:2147483647 !important; align-items:center !important; justify-content:center !important;';
 };
 
 window.closeServerStatusModal = function () {

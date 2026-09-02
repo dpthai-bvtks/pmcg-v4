@@ -353,3 +353,21 @@ git add . && git commit -m "..." && git push origin main
 ---
 
 
+### [v4.0.0-rev56] - 02/09/2026: Sửa Lại Nút Cloudflare & Turso Vẫn Không Phản Hồi (Override Bug)
+
+- **Yêu cầu của người dùng**:
+  + Nút `🟢 Cloudflare & Turso` trên header vẫn không phản hồi sau lần sửa trước.
+- **Phân tích nguyên nhân gốc rễ**:
+  + Hàm `window.openServerStatusModal` bị **định nghĩa 2 lần**: một lần đúng trong `js/app.js` (tự tạo modal động bằng `createElement`), và một lần sai trong `<script>` inline cuối `index.html`.
+  + Vì `index.html` được parse sau `app.js`, phiên bản trong `index.html` **override** (ghi đè) hàm đúng từ `app.js`.
+  + Phiên bản sai trong `index.html` có logic lỗi: `const modal = document.getElementById('modal-server-status'); if (!modal) return;` — modal chưa tồn tại trong DOM → hàm `return` ngay lập tức → nút câm hoàn toàn.
+- **Giải pháp**:
+  + Cập nhật hàm `openServerStatusModal` trong `index.html` để **tự tạo modal động** (bằng `createElement`, `innerHTML`, `appendChild`) nếu chưa tồn tại, thay vì `return`. Logic đồng nhất với phiên bản trong `app.js`.
+  + Đồng thời giữ lại phần đóng menu dropdown người dùng khi mở modal (hành vi đúng).
+- **File sửa đổi**:
+  + `index.html`
+  + `sw.js`
+
+---
+
+
