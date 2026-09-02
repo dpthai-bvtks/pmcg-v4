@@ -102,6 +102,22 @@ window.updateAppHeader = function(unitCode, role) {
 window.dataCache = window.dataCache || { pat: [], staff: [], machine: [], room: [], proc: [] };
 var dataCache = window.dataCache;
 
+var DEFAULT_PROTOCOLS = [
+    { id: '1', name: 'Phác đồ 1', procs: ['Điện châm', 'Thủy châm', 'Điện xung'] },
+    { id: '2', name: 'Phác đồ 2', procs: ['Điện châm', 'Thủy châm', 'Điện xung', 'Parafin'] },
+    { id: '3', name: 'Phác đồ 3', procs: ['Điện châm', 'Thủy châm', 'Điện xung', 'Sóng ngắn'] },
+    { id: '4', name: 'Phác đồ 4', procs: ['Điện châm', 'Thủy châm', 'Chiếu đèn hồng ngoại', 'Xoa bóp vùng'] },
+    { id: '5', name: 'Phác đồ 5', procs: ['Thủy châm', 'Điện xung', 'Sóng ngắn'] },
+    { id: '6', name: 'Phác đồ 6', procs: ['Điện châm', 'Thủy châm', 'Chiếu đèn hồng ngoại', 'Xoa bóp bấm huyệt'] },
+    { id: '7', name: 'Phác đồ 7', procs: ['Điện châm liệt', 'Thủy châm', 'Điện xung', 'Tập vận động trợ giúp'] },
+    { id: '8', name: 'Phác đồ 8', procs: ['Điện châm liệt', 'Thủy châm', 'Chiếu đèn hồng ngoại', 'Tập vận động trợ giúp'] },
+    { id: '9', name: 'Phác đồ 9', procs: ['Thủy châm', 'Điện xung', 'Siêu âm điều trị'] },
+    { id: '10', name: 'Phác đồ 10', procs: ['Chiếu đèn hồng ngoại', 'Tập vận động trợ giúp'] },
+    { id: '11', name: 'Phác đồ 11', procs: ['Chiếu đèn hồng ngoại', 'Tập vận động có kháng trở'] },
+    { id: '12', name: 'Phác đồ 12', procs: ['Chiếu đèn hồng ngoại', 'Tập thở PHCN'] },
+    { id: '13', name: 'Phác đồ 13', procs: ['Điện xung', 'Tập thở PHCN'] }
+];
+
 window.google = window.google || {};
 window.google.script = window.google.script || {};
 window.google.script.run = window.google.script.run || new Proxy({}, {
@@ -2605,6 +2621,9 @@ window.renderSttOrderControl = function (type, i, total) {
                 .getBootstrapData();
         }
 
+        function loadAllData() {
+            loadBootstrapData();
+        }
         window.loadBootstrapData = loadBootstrapData;
         window.loadAllData = loadAllData;
         window.restoreOfflineCache = restoreOfflineCache;
@@ -3076,22 +3095,6 @@ window.renderSttOrderControl = function (type, i, total) {
         // ============================================================
         // 🎯 DYNAMIC CLINICAL PROTOCOLS ENGINE (Quản lý Phác đồ Riêng)
         // ============================================================
-        const DEFAULT_PROTOCOLS = [
-            { id: '1', name: 'Phác đồ 1', procs: ['Điện châm', 'Thủy châm', 'Điện xung'] },
-            { id: '2', name: 'Phác đồ 2', procs: ['Điện châm', 'Thủy châm', 'Điện xung', 'Parafin'] },
-            { id: '3', name: 'Phác đồ 3', procs: ['Điện châm', 'Thủy châm', 'Điện xung', 'Sóng ngắn'] },
-            { id: '4', name: 'Phác đồ 4', procs: ['Điện châm', 'Thủy châm', 'Chiếu đèn hồng ngoại', 'Xoa bóp vùng'] },
-            { id: '5', name: 'Phác đồ 5', procs: ['Thủy châm', 'Điện xung', 'Sóng ngắn'] },
-            { id: '6', name: 'Phác đồ 6', procs: ['Điện châm', 'Thủy châm', 'Chiếu đèn hồng ngoại', 'Xoa bóp bấm huyệt'] },
-            { id: '7', name: 'Phác đồ 7', procs: ['Điện châm liệt', 'Thủy châm', 'Điện xung', 'Tập vận động trợ giúp'] },
-            { id: '8', name: 'Phác đồ 8', procs: ['Điện châm liệt', 'Thủy châm', 'Chiếu đèn hồng ngoại', 'Tập vận động trợ giúp'] },
-            { id: '9', name: 'Phác đồ 9', procs: ['Thủy châm', 'Điện xung', 'Siêu âm điều trị'] },
-            { id: '10', name: 'Phác đồ 10', procs: ['Chiếu đèn hồng ngoại', 'Tập vận động trợ giúp'] },
-            { id: '11', name: 'Phác đồ 11', procs: ['Chiếu đèn hồng ngoại', 'Tập vận động có kháng trở'] },
-            { id: '12', name: 'Phác đồ 12', procs: ['Chiếu đèn hồng ngoại', 'Tập thở PHCN'] },
-            { id: '13', name: 'Phác đồ 13', procs: ['Điện xung', 'Tập thở PHCN'] }
-        ];
-
         function initProtocolsData() {
             if (!window.dataCache) window.dataCache = {};
             if (typeof dataCache === 'undefined') window.dataCache = window.dataCache || {};
