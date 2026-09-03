@@ -490,13 +490,19 @@ function renderAdminChamCongTable() {
         let chamCongSaveTimeout = null;
 
         function getChamCongMonthYear() {
-            const tkM = document.getElementById('thongke-month-picker');
-            const tkY = document.getElementById('thongke-year-picker');
             const ccM = document.getElementById('chamcong-month-picker');
             const ccY = document.getElementById('chamcong-year-picker');
+            const tkM = document.getElementById('thongke-month-picker');
+            const tkY = document.getElementById('thongke-year-picker');
             const now = new Date();
-            const m = String((tkM && tkM.value) ? tkM.value : ((ccM && ccM.value) ? ccM.value : (now.getMonth() + 1))).padStart(2, '0');
-            const y = String((tkY && tkY.value) ? tkY.value : ((ccY && ccY.value) ? ccY.value : now.getFullYear()));
+            const curM = now.getMonth() + 1;
+            const curY = now.getFullYear();
+
+            const mVal = (ccM && ccM.value) ? ccM.value : ((tkM && tkM.value) ? tkM.value : curM);
+            const yVal = (ccY && ccY.value) ? ccY.value : ((tkY && tkY.value) ? tkY.value : curY);
+
+            const m = String(mVal).padStart(2, '0');
+            const y = String(yVal);
             return `${y}-${m}`;
         }
 
@@ -860,10 +866,16 @@ function renderAdminChamCongTable() {
         // Tự động set tháng hiện tại & render sẵn bảng khi load
         document.addEventListener('DOMContentLoaded', () => {
             const today = new Date();
+            const curM = today.getMonth() + 1;
+            const curY = today.getFullYear();
             const monthEl = document.getElementById('chamcong-month-picker');
             const yearEl = document.getElementById('chamcong-year-picker');
-            if (monthEl) monthEl.value = today.getMonth() + 1;
-            if (yearEl) yearEl.value = today.getFullYear();
+            const tkM = document.getElementById('thongke-month-picker');
+            const tkY = document.getElementById('thongke-year-picker');
+            if (monthEl) monthEl.value = curM;
+            if (yearEl) yearEl.value = curY;
+            if (tkM) tkM.value = curM;
+            if (tkY) tkY.value = curY;
 
             // Pre-render sẵn bảng Chấm Công và Thống Kê
             try { renderChamCongTable(); } catch(e) { console.error(e); }
@@ -1518,8 +1530,9 @@ function renderAdminChamCongTable() {
 
         function getThongKeTimeLabel() {
             const mode = document.getElementById('thongke-mode')?.value || 'current';
-            const year = parseInt(document.getElementById('chamcong-year-picker')?.value || '2026');
-            const month = parseInt(document.getElementById('chamcong-month-picker')?.value || '8');
+            const now = new Date();
+            const year = parseInt(document.getElementById('chamcong-year-picker')?.value || document.getElementById('thongke-year-picker')?.value || now.getFullYear());
+            const month = parseInt(document.getElementById('chamcong-month-picker')?.value || document.getElementById('thongke-month-picker')?.value || (now.getMonth() + 1));
             
             let endYear = year;
             let endMonth = month;
@@ -2652,14 +2665,10 @@ function renderAdminChamCongTable() {
             const tkM = document.getElementById('thongke-month-picker');
             const tkY = document.getElementById('thongke-year-picker');
 
-            if (ccM && !ccM.value) {
-                ccM.value = curM;
-            }
-            if (ccY && !ccY.value) {
-                ccY.value = curY;
-            }
-            if (tkM && ccM && !tkM.value) tkM.value = ccM.value;
-            if (tkY && ccY && !tkY.value) tkY.value = ccY.value;
+            if (ccM) ccM.value = curM;
+            if (ccY) ccY.value = curY;
+            if (tkM) tkM.value = curM;
+            if (tkY) tkY.value = curY;
 
             if (tkM) {
                 tkM.addEventListener('change', () => {
@@ -2701,8 +2710,20 @@ function renderAdminChamCongTable() {
             btn.addEventListener('click', (e) => {
                 const targetTab = btn.getAttribute('data-tab');
                 if (targetTab === 'tab-chamcong') {
+                    const ccM = document.getElementById('chamcong-month-picker');
+                    const tkM = document.getElementById('thongke-month-picker');
+                    const ccY = document.getElementById('chamcong-year-picker');
+                    const tkY = document.getElementById('thongke-year-picker');
+                    if (tkM && ccM && tkM.value) ccM.value = tkM.value;
+                    if (tkY && ccY && tkY.value) ccY.value = tkY.value;
                     loadChamCongData();
                 } else if (targetTab === 'tab-thongke') {
+                    const ccM = document.getElementById('chamcong-month-picker');
+                    const tkM = document.getElementById('thongke-month-picker');
+                    const ccY = document.getElementById('chamcong-year-picker');
+                    const tkY = document.getElementById('thongke-year-picker');
+                    if (ccM && tkM && ccM.value) tkM.value = ccM.value;
+                    if (ccY && tkY && ccY.value) tkY.value = ccY.value;
                     loadThongKeData();
                 }
             });

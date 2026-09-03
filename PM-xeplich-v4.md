@@ -737,3 +737,28 @@ git add . && git commit -m "..." && git push origin main
   + `sw.js`
   + `index.html`
   + `PM-xeplich-v4.md`
+
+---
+
+### [v4.0.1-rev15] - 15:30 03/09/2026: Khắc phục lỗi mặc định Tháng 8 thay vì Tháng 9 trong tab Thống Kê Tổng Hợp
+- **Bối cảnh & Phản hồi người dùng**:
+  + Khi người dùng chuyển sang tab Thống Kê Tổng Hợp & Báo Cáo, ô chọn Tháng mặc định lại hiện số 8 và nạp dữ liệu tháng 8/2026, trong khi thời gian thực tế của hệ thống là tháng 9/2026 (`03/09/2026`).
+- **Phân tích nguyên nhân gốc rễ**:
+  1. Trong file `index.html`: Cả hai thẻ input `#chamcong-month-picker` và `#thongke-month-picker` đều bị gán cứng thuộc tính `value="8"`.
+  2. Trong hàm `initMonthYearSync()` (`js/thongke.js`): Điều kiện khởi tạo kiểm tra `if (ccM && !ccM.value)`, vì input đã có sẵn chuỗi `"8"` từ HTML nên điều kiện này không kích hoạt, dẫn đến giá trị tháng hiện tại (`9`) không được gán vào.
+  3. Trong sự kiện `DOMContentLoaded` (`js/thongke.js`): Chỉ cập nhật giá trị cho `#chamcong-month-picker`, hoàn toàn bỏ sót `#thongke-month-picker`.
+  4. Trong hàm `getChamCongMonthYear()` (`js/thongke.js`): Ưu tiên đọc giá trị từ `thongke-month-picker` trước. Do input này giữ nguyên giá trị `"8"`, toàn bộ truy vấn và hiển thị thống kê đều bị cố định vào tháng 8.
+- **Giải pháp xử lý**:
+  1. Xóa bỏ giá trị cứng `value="8"` trong cả hai input `#chamcong-month-picker` và `#thongke-month-picker` tại `index.html`.
+  2. Cập nhật `initMonthYearSync()` (`js/thongke.js`): Luôn tự động lấy tháng/năm hiện tại (`curM = now.getMonth() + 1`, `curY = now.getFullYear()`) để gán cho cả hai bộ chọn Chấm công và Thống kê.
+  3. Cập nhật sự kiện `DOMContentLoaded`: Đồng bộ đồng thời cả 4 input (`chamcong-month-picker`, `chamcong-year-picker`, `thongke-month-picker`, `thongke-year-picker`) theo thời gian thực tế.
+  4. Cập nhật `getChamCongMonthYear()` và `getThongKeTimeLabel()`: Ưu tiên bộ chọn có giá trị hợp lệ và luôn fallback về tháng/năm hiện tại của máy tính nếu chưa có giá trị.
+  5. Đồng bộ khi nhấp chuyển tab: Khi người dùng nhấp vào tab Chấm công hoặc Thống kê, tự động sao chép giá trị tháng/năm giữa hai tab để đảm bảo tính nhất quán 100%.
+  6. **Đồng bộ Footer Timestamp & Cache (RULES.md)**:
+     - Cập nhật Footer `sys-last-update` thành `15:30 03/09/2026`.
+     - Nâng số phiên bản lên `v4.0.1-rev15` trên `index.html` và `sw.js`.
+- **File sửa đổi**:
+  + `index.html`
+  + `js/thongke.js`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
