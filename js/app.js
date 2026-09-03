@@ -675,11 +675,23 @@ window.showGlobalLoading = function (text) {
                 console.warn('[Notice] Bỏ qua thông báo cross-origin script:', msg);
                 return true;
             }
+            // Bỏ qua lỗi từ extension/Web Vitals/Cloudflare beacon bên ngoài (reportAllChanges / startTime)
+            const msgStr = String(msg || '');
+            const urlStr = String(url || '');
+            if (msgStr.includes('startTime') || msgStr.includes('reportAllChanges') || urlStr.includes('VM')) {
+                console.warn('[Notice] Bỏ qua lỗi đo lường hiệu năng bên ngoài (Web Vitals / Extension):', msg);
+                return true;
+            }
             console.error('JS ERROR:', msg, 'at', url, 'line', lineNo, error);
             return false;
         };
 
         window.addEventListener('unhandledrejection', function (event) {
+            const reasonStr = String(event.reason || '');
+            if (reasonStr.includes('startTime') || reasonStr.includes('reportAllChanges')) {
+                event.preventDefault();
+                return;
+            }
             console.warn('[Unhandled Rejection]:', event.reason);
         });
 
