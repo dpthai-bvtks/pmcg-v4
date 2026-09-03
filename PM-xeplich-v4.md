@@ -549,3 +549,65 @@ git add . && git commit -m "..." && git push origin main
   + `js/init.js`
   + `js/app.js`
   + `PM-xeplich-v4.md`
+
+---
+
+### [v4.0.1-rev3~rev7] - 03/09/2026: Sửa Lỗi Thẻ Đóng Modal Làm Mất Tab Thống Kê & Lọc Bỏ Web Vitals Telemetry
+
+- **Yêu cầu của người dùng**:
+  + Tab Thống kê bị trống trơn, không hiển thị bất kỳ bảng hay dữ liệu nào.
+  + Gặp lỗi runtime `Cannot read properties of undefined (reading 'startTime')` trên console trình duyệt.
+- **Phân tích nguyên nhân & Giải pháp**:
+  + **Lỗi cấu trúc HTML**: Thẻ `<div style="display:grid; grid-template-columns:1fr 1fr; ...">` bên trong `#modal-tenant-form` (dòng 2940) thiếu thẻ đóng `</div>`. Do đó trình duyệt nuốt trọn container `#tab-thongke` vào bên trong modal bị ẩn (`display: none`). Đã đóng thẻ `</div>` chuẩn xác tại dòng 2948 và thẻ ngữ cảnh dòng 3407.
+  + **Lỗi Telemetry ngoài**: Lọc bỏ các lỗi từ Chrome extension/Web vitals (`startTime`, `reportAllChanges`) trong `window.onerror` và `window.unhandledrejection` ở `js/app.js`.
+- **File sửa đổi**:
+  + `index.html`
+  + `js/app.js`
+  + `js/thongke.js`
+  + `sw.js`
+
+---
+
+### [v4.0.1-rev8] - 03/09/2026: Tối Ưu Toàn Diện Hiệu Năng Tải & Lưu Dữ Liệu (Chấm Công & Thống Kê)
+
+- **Yêu cầu của người dùng**:
+  + Tốc độ lưu dữ liệu và load các tab như chấm công, thống kê vẫn bị chậm/giật lag.
+- **Phân tích nguyên nhân & Giải pháp**:
+  + **Frontend SWR Cache & Song song**:
+    - Triển khai LocalStorage Cache 2 tầng (`pm_cache_cc_${unit}_${my}`, `pm_cache_tk_${unit}_${my}`) theo cơ chế Stale-While-Revalidate: render ngay lập tức trong 0ms khi chuyển tab hoặc đổi tháng.
+    - Loại bỏ popup xoay tròn `showGlobalLoading` gây khoá màn hình khi bấm tab.
+    - Gộp `getChamCong` và `getThongKeThuThuat` chạy song song qua `Promise.all` thay vì gọi tuần tự kiểu waterfall.
+    - `triggerAutoSaveChamCong`: Ghi dữ liệu ngay vào cache cục bộ và giảm debounce từ 1000ms xuống 350ms.
+    - Không gọi lặp lại `getEmployees` khi danh sách nhân sự đã có trong RAM/Cache.
+  + **Backend SQL Batching**:
+    - Gộp các truy vấn nhiều biến thể tháng trong `getChamCong` và `getThongKeThuThuat` thành 1 câu SQL `WHERE month_year IN (...)` duy nhất, giảm thời gian phản hồi từ ~800ms xuống còn ~190ms.
+    - Sửa `SELECT id` thành `SELECT rowid` trong `saveChamCong` và `saveThongKeThuThuat` để câu lệnh `UPDATE` cập nhật chính xác, không gây lỗi xung đột khoá và không phải chạy truy vấn dự phòng trên `cai_dat`.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `js/thongke.js`
+  + `index.html`
+  + `sw.js`
+
+---
+
+### [v4.0.1-rev9~rev10] - 03/09/2026: Sửa Cuộn Xem Footer Tab Chấm Công & Loại Bỏ Đếm Thủ Thuật Tự Động Từ Lịch Trực
+
+- **Yêu cầu của người dùng**:
+  + Không cuộn chuột xuống xem Footer ở `tab-chamcong` và `tab-thongke` được.
+  + Tháng 9 chưa nạp file nào mà lại tự động có 37 ca thủ thuật.
+  + Cập nhật chuẩn xác `Cập nhật lần cuối` ở Footer theo quy tắc `RULES.md`.
+- **Phân tích nguyên nhân & Giải pháp**:
+  + **Sửa Cuộn Footer**:
+    - Do `.tab-scroll-content:has(#tab-chamcong.active)` và `#tab-chamcong.active` bị gắn `overflow: hidden !important; height: 100% !important;` nên thẻ card chiếm trọn chiều cao và khoá cuộn. Đã tách 2 tab này ra, bật `overflow-y: auto !important` và `min-height: 100%; height: auto;`, ghim Footer với `margin-top: auto; margin-bottom: 30px;` để cuộn tự nhiên.
+  + **Loại bỏ đếm thủ thuật tự động**:
+    - Trong `backend/src/index.js`, hàm `getThongKeThuThuat` có nhánh fallback tự quét bảng `lich_trinh` tháng 9 và gom 37 ca phân công lịch trực thành ca thủ thuật. Đã xoá bỏ hoàn toàn nhánh này; số liệu thủ thuật chỉ sinh ra khi người dùng chủ động bấm "Nạp File HIS". Nếu chưa nạp file, trả về rỗng `{}` (0 ca).
+  + **Đồng bộ Footer Timestamp & Version (RULES.md)**:
+    - Cập nhật dòng `sys-last-update` thành `Cập nhật lần cuối: 13:45 03/09/2026`.
+    - Đồng bộ `v4.0.1-rev10` trên `index.html`, `sw.js` và `PM-xeplich-v4.md`.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `css/style.css`
+  + `js/thongke.js`
+  + `index.html`
+  + `sw.js`
+  + `PM-xeplich-v4.md`

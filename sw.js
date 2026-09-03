@@ -3,7 +3,7 @@
  * Quản lý Cache đệm tĩnh, cho phép mở App ngoại tuyến (Offline-first) và tải tức thì.
  */
 
-const CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev9';
+const CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev10';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -37,7 +37,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[Service Worker] Đang nạp bộ nhớ đệm tĩnh v4.0.1-rev9...');
+      console.log('[Service Worker] Đang nạp bộ nhớ đệm tĩnh v4.0.1-rev10...');
       return cache.addAll(STATIC_ASSETS).catch((err) => {
         console.warn('[Service Worker] Một số tài sản chưa nạp được vào cache:', err);
       });
