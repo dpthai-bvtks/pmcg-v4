@@ -642,3 +642,35 @@ git add . && git commit -m "..." && git push origin main
   + `index.html`
   + `sw.js`
   + `PM-xeplich-v4.md`
+
+---
+
+### [v4.0.1-rev12] - 14:55 03/09/2026: Khắc phục rò rỉ dữ liệu Dashboard khi đăng nhập đơn vị khác & Làm trống hoàn toàn màn hình đăng nhập khi đăng xuất
+- **Bối cảnh & Phản hồi người dùng**:
+  + Khi đăng nhập vào đơn vị khác trên cùng trình duyệt để test thử thì đều bị load lại dashboard của đơn vị cũ chỗ tab-home.
+  + Màn hình đăng nhập khi đăng xuất tài khoản cũ đều hiện lại mã đơn vị cũ, người dùng muốn để trống luôn để nhập đơn vị mới.
+- **Phân tích nguyên nhân gốc rễ**:
+  1. Khi người dùng đăng nhập tài khoản đơn vị mới (`doLogin`), mã nguồn chưa xóa sạch cache toàn cục trong RAM (`dataCache`, `currentScheduleData`, `chamCongData`, `thongKeData`, `adminChamCongEmployees`) và chưa hủy biểu đồ cũ (`_dashWorkdaysChart`, `_dashProcsChart`).
+  2. Cache lịch trình cục bộ `meds_success`, `meds_unscheduled`, `meds_schedule_date` trong `localStorage` chưa được phân lập theo mã đơn vị (`meds_schedule_unit`), dẫn đến việc `loadDashboard()` đọc lại lịch của đơn vị cũ gán vào đơn vị mới.
+  3. Trong `loadBootstrapData`, nếu đơn vị mới chưa có lịch trình trên server (`b.schedule` rỗng), hàm không gán lại `dataCache.schedule = []` mà giữ nguyên giá trị cũ.
+  4. Màn hình đăng nhập có input `login-unit` chứa giá trị mặc định cứng `value="bvtks-cs2"` trong `index.html`, đồng thời `doLogout()` và sự kiện khởi tạo trang chưa xóa trắng ô mã đơn vị khi đăng xuất.
+- **Giải pháp xử lý**:
+  + **Phân lập và dọn dẹp cache đa đơn vị (Tenant Isolation)**:
+    - Trong `doLogout()` (`js/app.js`): Xóa sạch `meds_session`, `meds_success`, `meds_unscheduled`, `meds_schedule_date`, `meds_schedule_unit`, `pm_unit_code`, `pm_unit_name`. Reset toàn bộ RAM (`dataCache`, `currentScheduleData = null`, `chamCongData = {}`, `thongKeData = {}`, `adminChamCongEmployees = []`), hủy các biểu đồ Chart.js và đặt lại số liệu Dashboard về 0.
+    - Trong `doLogin()` (`js/app.js` & `js/init.js`): Xóa sạch cache của đơn vị trước đó, reset giao diện Dashboard về trạng thái loading (`...`), gọi `loadBootstrapData(true)` để nạp mới dữ liệu cho đơn vị vừa đăng nhập.
+    - Trong `loadDashboard()` (`js/app.js`): Ràng buộc kiểm tra `meds_schedule_unit` khớp với đơn vị hiện tại (`pm_unit_code`) mới sử dụng cache `meds_success` và `meds_unscheduled`. Đảo thứ tự ưu tiên trong `renderDashboardMonthlyCharts` để lấy danh sách nhân viên từ `dataCache.staff` của đơn vị hiện tại trước.
+    - Trong `loadBootstrapData()` (`js/app.js`): Đảm bảo khi `b.schedule` hoặc `b.patients` rỗng, `dataCache.schedule` và `dataCache.pat` được đặt thành `[]` sạch sẽ.
+  + **Làm trống màn hình đăng nhập**:
+    - Trong `index.html`: Xóa bỏ thuộc tính cứng `value="bvtks-cs2"` trên input `#login-unit` (chỉ để placeholder gợi ý).
+    - Trong `doLogout()`: Đặt `unitInp.value = ''`, `userInp.value = ''`, `passInp.value = ''` và tự động focus con trỏ vào ô nhập mã đơn vị.
+    - Trong `js/init.js`: Sự kiện khởi tạo `DOMContentLoaded` chỉ điền mã đơn vị nếu đã có phiên đăng nhập hợp lệ (`meds_session`), khi đã đăng xuất hoặc vào mới sẽ để trống hoàn toàn.
+    - Trong `doLogin()`: Bắt buộc người dùng nhập đầy đủ cả mã đơn vị, tên đăng nhập và mật khẩu (không tự động fallback về `bvtks-cs2` nếu bỏ trống).
+  + **Đồng bộ Footer Timestamp & Cache (RULES.md)**:
+    - Cập nhật Footer `sys-last-update` thành `14:55 03/09/2026`.
+    - Nâng số phiên bản lên `v4.0.1-rev12` trên `index.html` và `sw.js`.
+- **File sửa đổi**:
+  + `index.html`
+  + `js/app.js`
+  + `js/init.js`
+  + `sw.js`
+  + `PM-xeplich-v4.md`

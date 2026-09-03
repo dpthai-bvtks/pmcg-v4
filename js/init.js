@@ -38,11 +38,17 @@ window.updateAppHeader = function(unitCode, role) {
 
 document.addEventListener('DOMContentLoaded', () => {
     // 🏢 Khôi phục thông tin Mã Đơn Vị & Thương Hiệu đa bệnh viện
-    const savedUnit = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
+    let hasValidSession = false;
+    try {
+        const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
+        if (sess && (sess.username || sess.role)) hasValidSession = true;
+    } catch(e) {}
+
+    const savedUnit = hasValidSession ? (localStorage.getItem('pm_unit_code') || '') : '';
     const unitInput = document.getElementById('login-unit');
     if (unitInput) unitInput.value = savedUnit;
 
-    if (typeof window.updateAppHeader === 'function') {
+    if (typeof window.updateAppHeader === 'function' && savedUnit) {
         window.updateAppHeader(savedUnit);
     }
 
@@ -138,13 +144,13 @@ window.loadTimRanhDataFromServer = function () {
 };
 
 window.doLogin = function () {
-    const unit = (document.getElementById('login-unit')?.value || '').trim().toLowerCase() || 'bvtks-cs2';
+    const unit = (document.getElementById('login-unit')?.value || '').trim().toLowerCase();
     const user = (document.getElementById('login-user')?.value || '').trim();
     const pass = (document.getElementById('login-pass')?.value || '').trim();
     const errDiv = document.getElementById('login-error');
     const btn = document.getElementById('btn-do-login');
 
-    if (!user || !pass) {
+    if (!unit || !user || !pass) {
         if (errDiv) {
             errDiv.innerText = 'Vui lòng nhập đầy đủ mã đơn vị, tên đăng nhập và mật khẩu!';
             errDiv.style.display = 'block';
@@ -168,7 +174,7 @@ window.doLogin = function () {
                 const uName = res.username || user || 'admin';
                 const uRole = res.role || 'Admin';
                 const uPerms = res.permissions || 'all';
-                const uUnit = res.unit_code || unit;
+                const uUnit = (res.unit_code || unit).toLowerCase();
                 const uUnitName = res.unit_name || (uRole === 'SUPER_ADMIN' ? 'Hệ Thống Quản Trị Trung Tâm SaaS' : 'Bệnh viện Than - Khoáng sản Cơ sở 2');
 
                 localStorage.setItem('pm_unit_code', uUnit);
@@ -182,6 +188,55 @@ window.doLogin = function () {
                     plan_tier: res.plan_tier || 'PRO',
                     sessionId: res.sessionId || ('sess_' + Date.now())
                 }));
+
+                // ✅ 1. Xóa sạch bộ đệm lịch trình cục bộ của đơn vị trước đó
+                localStorage.removeItem('meds_success');
+                localStorage.removeItem('meds_unscheduled');
+                localStorage.removeItem('meds_schedule_date');
+                localStorage.removeItem('meds_schedule_unit');
+
+                // ✅ 2. Xóa sạch dữ liệu trong RAM của đơn vị cũ
+                window.currentScheduleData = null;
+                window.chamCongData = {};
+                window.thongKeData = {};
+                window.adminChamCongEmployees = [];
+
+                if (window._dashWorkdaysChart) {
+                    try { window._dashWorkdaysChart.destroy(); } catch(e){}
+                    window._dashWorkdaysChart = null;
+                }
+                if (window._dashProcsChart) {
+                    try { window._dashProcsChart.destroy(); } catch(e){}
+                    window._dashProcsChart = null;
+                }
+
+                if (window.dataCache) {
+                    window.dataCache.pat = [];
+                    window.dataCache.staff = [];
+                    window.dataCache.machine = [];
+                    window.dataCache.room = [];
+                    window.dataCache.proc = [];
+                    window.dataCache.schedule = [];
+                    window.dataCache.protocols = [];
+                }
+                if (window.dataCacheTime) {
+                    window.dataCacheTime = {};
+                }
+
+                // ✅ 3. Reset các chỉ số trên Dashboard về trạng thái đang tải
+                const elBN = document.getElementById('statBN'); if (elBN) elBN.textContent = '...';
+                const elStaff = document.getElementById('statStaff'); if (elStaff) elStaff.textContent = '...';
+                const elSched = document.getElementById('statScheduled'); if (elSched) elSched.textContent = '...';
+                const elDrop = document.getElementById('statDropped'); if (elDrop) elDrop.textContent = '...';
+                const elTotal = document.getElementById('statTotalProcs'); if (elTotal) elTotal.textContent = '...';
+                const previewTbody = document.getElementById('dashboard-preview-body');
+                if (previewTbody) {
+                    previewTbody.innerHTML = '<tr><td colspan="8" align="center" style="padding:24px;"><div class="spinner"></div><div style="font-size:12px; color:#64748b; margin-top:8px;">Đang tải dữ liệu đơn vị...</div></td></tr>';
+                }
+
+                if (typeof window.resetChamCongForUnit === 'function') {
+                    window.resetChamCongForUnit(uUnit);
+                }
 
                 const overlay = document.getElementById('login-overlay');
                 if (overlay) overlay.style.display = 'none';
@@ -199,26 +254,11 @@ window.doLogin = function () {
                 if (typeof window.updateAppHeader === 'function') {
                     window.updateAppHeader(uUnit, uRole);
                 }
-
-                // Xóa sạch bộ đệm dữ liệu của đơn vị trước đó trong RAM
-                if (window.dataCache) {
-                    window.dataCache.pat = [];
-                    window.dataCache.staff = [];
-                    window.dataCache.machine = [];
-                    window.dataCache.room = [];
-                    window.dataCache.proc = [];
-                    window.dataCache.schedule = [];
-                    window.dataCache.protocols = [];
-                }
-                if (window.dataCacheTime) {
-                    window.dataCacheTime = {};
+                if (typeof updateLogoutButton === 'function') {
+                    updateLogoutButton(uName);
                 }
 
-                if (typeof window.resetChamCongForUnit === 'function') {
-                    window.resetChamCongForUnit(uUnit);
-                }
-
-                // Tải dữ liệu Bootstrap mới nhất của đơn vị này ngay lập tức (forceRefresh = true)
+                // ✅ 4. Tải dữ liệu Bootstrap mới nhất của đơn vị này ngay lập tức (forceRefresh = true)
                 if (typeof window.loadBootstrapData === 'function') {
                     try { window.loadBootstrapData(true); } catch(e) { console.warn('Lỗi loadBootstrapData:', e); }
                 } else if (typeof window.loadAllData === 'function') {
