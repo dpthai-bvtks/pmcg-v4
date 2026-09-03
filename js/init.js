@@ -48,6 +48,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const unitInput = document.getElementById('login-unit');
     if (unitInput) unitInput.value = savedUnit;
 
+    // 🧹 Dọn dẹp cache rò rỉ giữa các đơn vị (Multi-Tenant Cache Sanitization)
+    const currentUnitCode = (localStorage.getItem('pm_unit_code') || '').toLowerCase();
+    const scheduleUnitTag = (localStorage.getItem('meds_schedule_unit') || '').toLowerCase();
+    if (!scheduleUnitTag || (currentUnitCode && scheduleUnitTag !== currentUnitCode)) {
+        localStorage.removeItem('meds_success');
+        localStorage.removeItem('meds_unscheduled');
+        localStorage.removeItem('meds_schedule_date');
+        localStorage.removeItem('times_bootstrap_cache');
+    }
+
     if (typeof window.updateAppHeader === 'function' && savedUnit) {
         window.updateAppHeader(savedUnit);
     }

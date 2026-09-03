@@ -717,6 +717,23 @@ window.showGlobalLoading = function (text) {
         }
 
         // ============================================================
+        // 🏢 MULTI-TENANT STORAGE KEY HELPERS
+        // ============================================================
+        function getCurrentUnitCode() {
+            return (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').trim().toLowerCase();
+        }
+        function getUnitStorageKey(baseKey) {
+            const u = getCurrentUnitCode();
+            return `${baseKey}_${u}`;
+        }
+        function getBootstrapCacheKey() {
+            return 'times_bootstrap_cache_' + getCurrentUnitCode();
+        }
+        window.getCurrentUnitCode = getCurrentUnitCode;
+        window.getUnitStorageKey = getUnitStorageKey;
+        window.getBootstrapCacheKey = getBootstrapCacheKey;
+
+        // ============================================================
         // GITHUB PAGES API CONFIGURATION (SELF-HEALING)
         // ============================================================
         const DEFAULT_API_URL = 'https://pmcg-api.dpthai-ttytmk.workers.dev';
@@ -2750,10 +2767,17 @@ window.renderSttOrderControl = function (type, i, total) {
 
         function restoreOfflineCache() {
             try {
-                const cachedStr = localStorage.getItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache");
+                const curUnit = getCurrentUnitCode();
+                const cacheKey = getBootstrapCacheKey();
+                const cachedStr = localStorage.getItem(cacheKey);
                 if (cachedStr) {
                     const b = JSON.parse(cachedStr);
                     if (b && typeof dataCache !== 'undefined') {
+                        // Phân lập: tuyệt đối không nạp cache của đơn vị khác
+                        const bUnit = (b.unit_code || b.unit || '').toLowerCase();
+                        if (bUnit && bUnit !== curUnit) {
+                            return;
+                        }
 
                         // ✅ Tính ngày hôm nay theo múi giờ VN (UTC+7)
                         const nowVN = new Date(Date.now() + 7 * 60 * 60 * 1000);
@@ -2763,7 +2787,6 @@ window.renderSttOrderControl = function (type, i, total) {
                         const todaySlash = `${dd}/${mm}/${nowVN.getUTCFullYear()}`; // VD: 21/08/2026
 
                         // Kiểm tra cache có phải của ngày hôm nay không
-                        // (dựa vào ngày của bệnh nhân đầu tiên, hoặc timestamp cache)
                         let cacheIsStale = false;
                         if (b.patients && Array.isArray(b.patients) && b.patients.length > 0) {
                             const firstPatDate = b.patients[0].ngayVao || b.patients[0].ngay_vao || '';
@@ -2771,7 +2794,6 @@ window.renderSttOrderControl = function (type, i, total) {
                                 cacheIsStale = true;
                             }
                         }
-                        // Kiểm tra thêm theo schedule
                         if (!cacheIsStale && b.schedule && Array.isArray(b.schedule) && b.schedule.length > 0) {
                             const firstSchedDate = b.schedule[0][0] || b.schedule[0].date || '';
                             if (firstSchedDate && firstSchedDate !== todayYMD && firstSchedDate !== todaySlash) {
@@ -2780,44 +2802,55 @@ window.renderSttOrderControl = function (type, i, total) {
                         }
 
                         if (cacheIsStale) {
-                            // Cache lỗi thời: xóa patients và schedule cũ, chỉ giữ lại cấu hình (staff, máy, phòng...)
-                            console.warn(`⚠️ [Offline Cache] Cache cũ (không phải hôm nay ${todaySlash}), bỏ qua bệnh nhân & lịch cũ.`);
                             b.patients = [];
                             b.schedule = [];
-                            // Cập nhật lại localStorage để lần sau không bị lỗi nữa
-                            try { localStorage.setItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache", JSON.stringify(b)); } catch(e) {}
+                            try { localStorage.setItem(cacheKey, JSON.stringify(b)); } catch(e) {}
                         }
 
                         if (b.machines && Array.isArray(b.machines)) {
                             b.machines.forEach((m, i) => { if (m) m.sheetIndex = i; });
                             dataCache.machine = b.machines.filter(m => m && (m.tenLoai || m[1]));
                             if (typeof renderMachinesTable === 'function') renderMachinesTable();
+                        } else {
+                            dataCache.machine = [];
                         }
                         if (b.rooms && Array.isArray(b.rooms)) {
                             b.rooms.forEach((r, i) => { if (r) r.sheetIndex = i; });
                             dataCache.room = b.rooms.filter(r => r && (r.tenPhong || r[1]));
                             if (typeof renderRoomsTable === 'function') renderRoomsTable();
+                        } else {
+                            dataCache.room = [];
                         }
                         if (b.procedures && Array.isArray(b.procedures)) {
                             b.procedures.forEach((p, i) => { if (p) p.sheetIndex = i; });
                             dataCache.proc = b.procedures;
                             if (typeof renderProceduresTable === 'function') renderProceduresTable();
                             if (typeof renderProcedureCheckboxes === 'function') renderProcedureCheckboxes();
+                        } else {
+                            dataCache.proc = [];
                         }
                         if (b.staff && Array.isArray(b.staff)) {
                             b.staff.forEach((st, i) => { if (st) st.sheetIndex = i; });
                             dataCache.staff = b.staff.filter(st => st && st.ten);
                             if (typeof renderStaffTable === 'function') renderStaffTable();
+                        } else {
+                            dataCache.staff = [];
                         }
-                        if (b.schedule && Array.isArray(b.schedule) && b.schedule.length) {
+                        if (b && Array.isArray(b.schedule)) {
                             dataCache.schedule = b.schedule;
+                            window.currentScheduleData = (b.schedule.length > 0 && typeof markDischargedInSchedule === 'function') ? markDischargedInSchedule(b.schedule) : (b.schedule || []);
+                        } else {
+                            dataCache.schedule = [];
+                            window.currentScheduleData = [];
                         }
                         if (typeof loadScheduleList === 'function') loadScheduleList();
 
-                        if (b.patients && Array.isArray(b.patients)) {
+                        if (b && Array.isArray(b.patients)) {
                             b.patients.forEach((pt, i) => { if (pt) pt.sheetIndex = i; });
                             dataCache.pat = b.patients.filter(pt => pt && pt.ten);
                             if (typeof renderPatientsTable === 'function') renderPatientsTable();
+                        } else {
+                            dataCache.pat = [];
                         }
                         // Nạp phác đồ từ cache hoặc cài đặt máy chủ
                         const rawCachedProto = (b.settings && b.settings.clinical_protocols) || b.protocols;
@@ -2858,7 +2891,9 @@ window.renderSttOrderControl = function (type, i, total) {
                 .withSuccessHandler(function (b) {
                     if (!b) return;
                     try {
-                        localStorage.setItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache", JSON.stringify(b));
+                        const curUnit = getCurrentUnitCode();
+                        b.unit_code = curUnit;
+                        localStorage.setItem(getBootstrapCacheKey(), JSON.stringify(b));
                     } catch (e) { }
 
                     const now = Date.now();
@@ -2969,10 +3004,6 @@ window.renderSttOrderControl = function (type, i, total) {
         window.loadBootstrapData = loadBootstrapData;
         window.loadAllData = loadAllData;
         window.restoreOfflineCache = restoreOfflineCache;
-        window.getBootstrapCacheKey = function () {
-            const u = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
-            return 'times_bootstrap_cache_' + u;
-        };
 
         // =================================================================
 
@@ -5730,28 +5761,35 @@ window.renderSttOrderControl = function (type, i, total) {
         function loadScheduleList() {
             if (window.viewingImportedScheduleFile) return;
 
+            const curUnit = getCurrentUnitCode();
             let data = (typeof dataCache !== 'undefined' && dataCache.schedule) ? dataCache.schedule : [];
             if (!data.length) {
                 try {
-                    const localSched = JSON.parse(localStorage.getItem('meds_success') || '[]');
-                    if (Array.isArray(localSched) && localSched.length) {
-                        // ✅ Kiểm tra ngày trước khi dùng lịch từ localStorage
-                        const savedDate = localStorage.getItem('meds_schedule_date') || '';
-                        const nowVN3 = new Date(Date.now() + 7 * 60 * 60 * 1000);
-                        const todayYMD3 = `${nowVN3.getUTCFullYear()}-${String(nowVN3.getUTCMonth() + 1).padStart(2, '0')}-${String(nowVN3.getUTCDate()).padStart(2, '0')}`;
-                        const toYMD3 = (s) => { if (!s) return ''; if (String(s).includes('/')) { const p = String(s).split('/'); return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`; } return String(s); };
-                        const schedDate3 = savedDate ? toYMD3(savedDate) : toYMD3(localSched[0]?.[0] || localSched[0]?.ngay || localSched[0]?.NGAY || '');
-                        if (!schedDate3 || schedDate3 === todayYMD3) {
-                            data = localSched;
-                            if (typeof dataCache !== 'undefined') dataCache.schedule = localSched;
-                            if (window.dataCache) window.dataCache.schedule = localSched;
-                        } else {
-                            console.warn(`⚠️ [loadScheduleList] Bỏ qua lịch cũ ngày ${schedDate3} (hôm nay: ${todayYMD3})`);
-                            localStorage.removeItem('meds_success');
-                            localStorage.removeItem('meds_schedule_date');
+                    const savedUnit = (localStorage.getItem('meds_schedule_unit') || '').toLowerCase();
+                    // Chỉ dùng cache local NẾU có savedUnit VÀ đúng đơn vị hiện hành!
+                    if (savedUnit && savedUnit === curUnit) {
+                        const localSched = JSON.parse(localStorage.getItem(getUnitStorageKey('meds_success')) || localStorage.getItem('meds_success') || '[]');
+                        if (Array.isArray(localSched) && localSched.length) {
+                            const savedDate = localStorage.getItem(getUnitStorageKey('meds_schedule_date')) || localStorage.getItem('meds_schedule_date') || '';
+                            const nowVN3 = new Date(Date.now() + 7 * 60 * 60 * 1000);
+                            const todayYMD3 = `${nowVN3.getUTCFullYear()}-${String(nowVN3.getUTCMonth() + 1).padStart(2, '0')}-${String(nowVN3.getUTCDate()).padStart(2, '0')}`;
+                            const toYMD3 = (s) => { if (!s) return ''; if (String(s).includes('/')) { const p = String(s).split('/'); return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`; } return String(s); };
+                            const schedDate3 = savedDate ? toYMD3(savedDate) : toYMD3(localSched[0]?.[0] || localSched[0]?.ngay || localSched[0]?.NGAY || '');
+                            if (!schedDate3 || schedDate3 === todayYMD3) {
+                                data = localSched;
+                                if (typeof dataCache !== 'undefined') dataCache.schedule = localSched;
+                                if (window.dataCache) window.dataCache.schedule = localSched;
+                            } else {
+                                localStorage.removeItem(getUnitStorageKey('meds_success'));
+                                localStorage.removeItem(getUnitStorageKey('meds_schedule_date'));
+                                localStorage.removeItem('meds_success');
+                                localStorage.removeItem('meds_schedule_date');
+                            }
                         }
+                    } else {
+                        data = [];
                     }
-                } catch (e) { }
+                } catch (e) { data = []; }
             }
 
             const rows = data.map(normalizeScheduleRow);
@@ -5764,7 +5802,10 @@ window.renderSttOrderControl = function (type, i, total) {
 
             let localDropped = [];
             try {
-                localDropped = JSON.parse(localStorage.getItem('meds_unscheduled') || '[]');
+                const savedUnit = (localStorage.getItem('meds_schedule_unit') || '').toLowerCase();
+                if (savedUnit && savedUnit === curUnit) {
+                    localDropped = JSON.parse(localStorage.getItem(getUnitStorageKey('meds_unscheduled')) || localStorage.getItem('meds_unscheduled') || '[]');
+                }
             } catch (e) { }
 
             const cleanedDropped = reconcileUnscheduledData([...droppedFromSheet, ...localDropped]);
@@ -6192,10 +6233,13 @@ window.renderSttOrderControl = function (type, i, total) {
                 const dashboardDate = document.getElementById('dashboard-date-filter');
                 if (dashboardDate) dashboardDate.value = dateVal;
 
-                const curSchedUnit = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
+                const curSchedUnit = getCurrentUnitCode();
                 localStorage.setItem('meds_schedule_unit', curSchedUnit);
+                localStorage.setItem(getUnitStorageKey('meds_schedule_date'), dateVal);
                 localStorage.setItem('meds_schedule_date', dateVal);
+                localStorage.setItem(getUnitStorageKey('meds_success'), JSON.stringify(sched));
                 localStorage.setItem('meds_success', JSON.stringify(sched));
+                localStorage.setItem(getUnitStorageKey('meds_unscheduled'), JSON.stringify(unsch));
                 localStorage.setItem('meds_unscheduled', JSON.stringify(unsch));
 
                 if (window.OfflineSyncEngine && typeof window.OfflineSyncEngine.saveCache === 'function') {
@@ -6284,9 +6328,11 @@ window.renderSttOrderControl = function (type, i, total) {
                     if (typeof dataCache !== 'undefined') dataCache.schedule = mergedSched;
                     if (window.dataCache) window.dataCache.schedule = mergedSched;
 
-                    const curSchedUnit = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
+                    const curSchedUnit = getCurrentUnitCode();
                     localStorage.setItem('meds_schedule_unit', curSchedUnit);
+                    localStorage.setItem(getUnitStorageKey('meds_schedule_date'), dateVal);
                     localStorage.setItem('meds_schedule_date', dateVal);
+                    localStorage.setItem(getUnitStorageKey('meds_success'), JSON.stringify(mergedSched));
                     localStorage.setItem('meds_success', JSON.stringify(mergedSched));
 
                     if (window.OfflineSyncEngine && typeof window.OfflineSyncEngine.saveCache === 'function') {
@@ -6564,14 +6610,19 @@ window.renderSttOrderControl = function (type, i, total) {
             unscheduled.splice(rotIndex, 1);
             setUnscheduledData(unscheduled, targetDate);
 
-            localStorage.setItem('meds_schedule_unit', (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase());
+            const curSchedUnit = getCurrentUnitCode();
+            localStorage.setItem('meds_schedule_unit', curSchedUnit);
+            localStorage.setItem(getUnitStorageKey('meds_schedule_date'), targetDate);
+            localStorage.setItem('meds_schedule_date', targetDate);
+            localStorage.setItem(getUnitStorageKey('meds_success'), JSON.stringify(window.currentScheduleData));
             localStorage.setItem('meds_success', JSON.stringify(window.currentScheduleData));
             try {
-                const cachedStr = localStorage.getItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache");
+                const cachedStr = localStorage.getItem(getBootstrapCacheKey());
                 if (cachedStr) {
                     const b = JSON.parse(cachedStr);
+                    b.unit_code = curSchedUnit;
                     b.schedule = window.currentScheduleData;
-                    localStorage.setItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache", JSON.stringify(b));
+                    localStorage.setItem(getBootstrapCacheKey(), JSON.stringify(b));
                 }
             } catch(e) {}
 
@@ -8793,17 +8844,23 @@ window.renderSttOrderControl = function (type, i, total) {
                     if (typeof dataCache !== 'undefined') dataCache.schedule = sched;
                     if (window.dataCache) window.dataCache.schedule = sched;
 
-                    localStorage.setItem('meds_schedule_unit', (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase());
+                    const curSchedUnit = getCurrentUnitCode();
+                    localStorage.setItem('meds_schedule_unit', curSchedUnit);
+                    localStorage.setItem(getUnitStorageKey('meds_schedule_date'), dateVal);
+                    localStorage.setItem('meds_schedule_date', dateVal);
+                    localStorage.setItem(getUnitStorageKey('meds_success'), JSON.stringify(window.currentScheduleData));
                     localStorage.setItem('meds_success', JSON.stringify(window.currentScheduleData));
+                    localStorage.setItem(getUnitStorageKey('meds_unscheduled'), JSON.stringify(window.lastUnscheduledData));
                     localStorage.setItem('meds_unscheduled', JSON.stringify(window.lastUnscheduledData));
                     
                     // Đồng bộ ngay vào offline cache để F5 không bị mất dữ liệu
                     try {
-                        const cachedStr = localStorage.getItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache");
+                        const cachedStr = localStorage.getItem(getBootstrapCacheKey());
                         if (cachedStr) {
                             const b = JSON.parse(cachedStr);
+                            b.unit_code = curSchedUnit;
                             b.schedule = sched;
-                            localStorage.setItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache", JSON.stringify(b));
+                            localStorage.setItem(getBootstrapCacheKey(), JSON.stringify(b));
                         }
                     } catch(e) {}
 
@@ -10344,14 +10401,14 @@ window.renderSttOrderControl = function (type, i, total) {
                 let rawSched = (dataCache && dataCache.schedule && dataCache.schedule.length) ? dataCache.schedule : (window.currentScheduleData || []);
                 if (!rawSched.length) {
                     try {
-                        const curUnit = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
+                        const curUnit = getCurrentUnitCode();
                         const savedUnit = (localStorage.getItem('meds_schedule_unit') || '').toLowerCase();
-                        // Chỉ dùng cache local nếu thuộc đúng đơn vị hiện hành
-                        if (!savedUnit || savedUnit === curUnit) {
-                            const localSched = JSON.parse(localStorage.getItem('meds_success') || '[]');
+                        // Chỉ dùng cache local NẾU có savedUnit VÀ đúng đơn vị hiện hành!
+                        if (savedUnit && savedUnit === curUnit) {
+                            const localSched = JSON.parse(localStorage.getItem(getUnitStorageKey('meds_success')) || localStorage.getItem('meds_success') || '[]');
                             if (Array.isArray(localSched) && localSched.length) {
                                 // ✅ Kiểm tra ngày của lịch cũ trước khi dùng
-                                const savedDate = localStorage.getItem('meds_schedule_date') || '';
+                                const savedDate = localStorage.getItem(getUnitStorageKey('meds_schedule_date')) || localStorage.getItem('meds_schedule_date') || '';
                                 const nowVN2 = new Date(Date.now() + 7 * 60 * 60 * 1000);
                                 const todayYMD2 = `${nowVN2.getUTCFullYear()}-${String(nowVN2.getUTCMonth() + 1).padStart(2, '0')}-${String(nowVN2.getUTCDate()).padStart(2, '0')}`;
                                 const toYMD2 = (s) => {
@@ -10367,8 +10424,8 @@ window.renderSttOrderControl = function (type, i, total) {
                                     if (window.dataCache) window.dataCache.schedule = localSched;
                                     window.currentScheduleData = (typeof markDischargedInSchedule === 'function') ? markDischargedInSchedule(localSched) : localSched;
                                 } else {
-                                    // Lịch ngày cũ → bỏ qua, xóa để không ảnh hưởng lần sau
-                                    console.warn(`⚠️ [meds_success] Lịch cũ ngày ${schedDate}, bỏ qua (hôm nay: ${todayYMD2})`);
+                                    localStorage.removeItem(getUnitStorageKey('meds_success'));
+                                    localStorage.removeItem(getUnitStorageKey('meds_schedule_date'));
                                     localStorage.removeItem('meds_success');
                                     localStorage.removeItem('meds_schedule_date');
                                     localStorage.removeItem('meds_schedule_unit');
@@ -10377,7 +10434,9 @@ window.renderSttOrderControl = function (type, i, total) {
                         } else {
                             rawSched = [];
                         }
-                    } catch(e) {}
+                    } catch(e) {
+                        rawSched = [];
+                    }
                 }
 
                 const toYMD = (dateStr) => {
@@ -10427,19 +10486,19 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 let rotDataLocal = [];
                 try {
-                    const curUnit = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
+                    const curUnit = getCurrentUnitCode();
                     const savedUnit = (localStorage.getItem('meds_schedule_unit') || '').toLowerCase();
-                    if (!savedUnit || savedUnit === curUnit) {
-                        const activeDate = localStorage.getItem('meds_schedule_date') || '';
+                    if (savedUnit && savedUnit === curUnit) {
+                        const activeDate = localStorage.getItem(getUnitStorageKey('meds_schedule_date')) || localStorage.getItem('meds_schedule_date') || '';
                         if (toYMD(activeDate) === toYMD(selectedDate) || !activeDate) {
-                            rotDataLocal = (JSON.parse(localStorage.getItem('meds_unscheduled') || '[]')).map(u => [
+                            rotDataLocal = (JSON.parse(localStorage.getItem(getUnitStorageKey('meds_unscheduled')) || localStorage.getItem('meds_unscheduled') || '[]')).map(u => [
                                 selectedDate, u.bn || u.tenBN || '', u.ns || u.namSinh || '',
                                 u.room || u.phong || '', u.tt || u.thuThuat || '',
                                 '❌ Rớt', '--', '--', '--', '--', '--', u.reason || 'Quá tải/Hết giờ'
                             ]);
                         }
                     }
-                } catch (e) { }
+                } catch (e) { rotDataLocal = []; }
 
                 const rotData = rotDataSheets.length > 0 ? rotDataSheets : rotDataLocal;
 

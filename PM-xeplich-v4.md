@@ -696,3 +696,44 @@ git add . && git commit -m "..." && git push origin main
   + `sw.js`
   + `index.html`
   + `PM-xeplich-v4.md`
+
+---
+
+### [v4.0.1-rev14] - 15:25 03/09/2026: Khắc phục triệt để rò rỉ dữ liệu Dashboard và Bảng lịch trình giữa các đơn vị (Multi-Tenant Schedule Isolation)
+- **Bối cảnh & Phản hồi người dùng**:
+  + Người dùng đăng nhập vào đơn vị khác (ví dụ: `test`), trên giao diện có banner `PHẦN MỀM XẾP LỊCH THỦ THUẬT - TEST`.
+  + Số lượng Bác sĩ/KTV đi làm (3) và Bệnh nhân (0) đúng với đơn vị `test`, nhưng phần Tổng số ca thủ thuật (37), Ca đã xếp lịch (37), Tải trọng nhân viên (Bs Thái 7, BS Thảo 6, BS Đạt 3...) và Phân bố thủ thuật (điện xung 13, điện châm 9...) cùng Bảng lịch trình vẫn hiển thị dữ liệu của đơn vị cũ (`bvtks-cs2`), mặc dù trên Turso bảng `lich_trinh` đã phân lập mã đơn vị.
+- **Phân tích nguyên nhân gốc rễ**:
+  1. Trên Database máy chủ (Turso), dữ liệu `lich_trinh` đã được phân lập hoàn toàn chính xác theo `unit_code` (đơn vị `test` có 0 dòng, đơn vị `bvtks-cs2` có 37 dòng). Máy chủ trả về `schedule: []` cho đơn vị `test`.
+  2. Tuy nhiên tại Client:
+     - Trong `loadScheduleList()` (`js/app.js`): Khi đơn vị `test` có lịch trình rỗng từ server (`dataCache.schedule = []`), điều kiện `!data.length` được kích hoạt. Hàm tự động đọc lại `localStorage.getItem('meds_success')` mà không kiểm tra xem lịch đó có thuộc về đơn vị hiện hành hay không. Khóa `meds_success` trước đó đang lưu 37 ca của `bvtks-cs2` nên bị nạp ngược lại vào `dataCache.schedule`, render ra bảng và kích hoạt `loadDashboard()`.
+     - Trong `loadDashboard()` (`js/app.js`): Điều kiện fallback đọc cache local trước đây là `if (!savedUnit || savedUnit === curUnit)`. Vì các phiên bản cũ không lưu `meds_schedule_unit` nên `savedUnit` bị rỗng (`null`/`""`), dẫn đến `!savedUnit` bằng `true`, ép đọc tiếp 37 ca và ca rớt từ `meds_success` và `meds_unscheduled` của đơn vị cũ.
+     - Trong `restoreOfflineCache()` (`js/app.js`): Hàm này được gọi trước khi `window.getBootstrapCacheKey` được gán định nghĩa ở cuối file, dẫn đến việc đọc fallback về khóa chung `"times_bootstrap_cache"` chứa dữ liệu của đơn vị cũ.
+     - Trong `backend/src/index.js`: Câu lệnh SQL trong `getBootstrapData` chỉ tìm theo `date = todayVN` (`YYYY-MM-DD`). Nếu ngày lưu theo dạng `DD/MM/YYYY` thì sẽ không khớp.
+- **Giải pháp xử lý**:
+  1. **Tạo bộ Helper phân lập khóa lưu trữ theo đơn vị ngay đầu `js/app.js`**:
+     - `getCurrentUnitCode()`: Trả về mã đơn vị hiện hành chuẩn hóa.
+     - `getUnitStorageKey(baseKey)`: Trả về khóa riêng biệt cho từng đơn vị (ví dụ `meds_success_test`, `meds_unscheduled_test`, `meds_schedule_date_test`).
+     - `getBootstrapCacheKey()`: Đảm bảo luôn sẵn sàng từ đầu vòng đời ứng dụng.
+  2. **Cách ly tuyệt đối trong `loadScheduleList()` & `loadDashboard()`**:
+     - Đổi điều kiện kiểm tra thành `if (savedUnit && savedUnit === curUnit)` (bắt buộc phải có `savedUnit` và phải trùng khớp 100% với đơn vị hiện tại mới cho phép đọc cache).
+     - Ưu tiên đọc từ `getUnitStorageKey('meds_success')` và `getUnitStorageKey('meds_unscheduled')`. Nếu không trùng khớp, thiết lập ngay `data = []`, `rawSched = []`, `rotDataLocal = []`.
+  3. **Cách ly trong `restoreOfflineCache()`**:
+     - Kiểm tra `b.unit_code` của cache, nếu khác `curUnit` thì hủy bỏ ngay lập tức, không nạp vào RAM.
+     - Nếu `b.schedule` hoặc `b.patients` rỗng, gán sạch sẽ `dataCache.schedule = []` và `dataCache.pat = []`.
+  4. **Lưu lịch trình đa đơn vị an toàn**:
+     - Trong `executeScheduling`, `runExtraScheduling`, `executeRescueAdvice`, và `Xếp lịch Thứ 7`: Luôn ghi nhận `meds_schedule_unit = curUnit` và lưu đồng thời vào khóa định danh theo đơn vị.
+  5. **Tự động dọn dẹp cache không hợp lệ khi khởi động (`js/init.js`)**:
+     - Tại sự kiện `DOMContentLoaded`, kiểm tra nếu `meds_schedule_unit` không trùng khớp với đơn vị hiện hành thì xóa sạch các khóa cục bộ rò rỉ (`meds_success`, `meds_unscheduled`, `meds_schedule_date`, `times_bootstrap_cache`).
+  6. **Hỗ trợ đa định dạng ngày trên Backend (`backend/src/index.js`)**:
+     - Cập nhật truy vấn `getBootstrapData` và `getSchedule` để tìm kiếm đồng thời cả định dạng `YYYY-MM-DD` và `DD/MM/YYYY`.
+  7. **Đồng bộ Footer Timestamp & Cache (RULES.md)**:
+     - Cập nhật Footer `sys-last-update` thành `15:25 03/09/2026`.
+     - Nâng số phiên bản lên `v4.0.1-rev14` trên `index.html` và `sw.js`.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `js/app.js`
+  + `js/init.js`
+  + `sw.js`
+  + `index.html`
+  + `PM-xeplich-v4.md`

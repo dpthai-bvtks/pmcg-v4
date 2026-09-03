@@ -1559,7 +1559,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         db.prepare("SELECT * FROM phong WHERE unit_code = ? ORDER BY order_idx ASC, id ASC").bind(unitCode),
         db.prepare("SELECT * FROM thu_thuat WHERE unit_code = ? ORDER BY order_idx ASC, id ASC").bind(unitCode),
         db.prepare("SELECT * FROM benh_nhan WHERE unit_code = ? AND is_saturday = 0 ORDER BY order_idx ASC, id ASC").bind(unitCode),
-        db.prepare("SELECT * FROM lich_trinh WHERE unit_code = ? AND date = ? ORDER BY order_idx ASC, start_time ASC").bind(unitCode, todayVN),
+        db.prepare("SELECT * FROM lich_trinh WHERE unit_code = ? AND (date = ? OR date = ?) ORDER BY order_idx ASC, start_time ASC").bind(unitCode, todayVN, todayVNSlash),
         db.prepare("SELECT id, username, role, permissions FROM tai_khoan WHERE unit_code = ?").bind(unitCode),
         db.prepare("SELECT * FROM phac_do WHERE unit_code = ? AND is_active = 1 ORDER BY order_idx ASC, id ASC").bind(unitCode),
         db.prepare("SELECT * FROM tenants WHERE unit_code = ?").bind(unitCode)
@@ -2435,7 +2435,15 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     case "getSchedule":
     case "getLichTrinh": {
       const date = args[0] || new Date().toISOString().slice(0, 10);
-      const res = await db.prepare("SELECT * FROM lich_trinh WHERE unit_code = ? AND date = ? ORDER BY order_idx ASC, start_time ASC").bind(unitCode, date).all();
+      let ymd = date, dmy = date;
+      if (date.includes("/")) {
+        const [d, m, y] = date.split("/");
+        ymd = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+      } else if (date.includes("-")) {
+        const [y, m, d] = date.split("-");
+        dmy = `${d.padStart(2, "0")}/${m.padStart(2, "0")}/${y}`;
+      }
+      const res = await db.prepare("SELECT * FROM lich_trinh WHERE unit_code = ? AND (date = ? OR date = ?) ORDER BY order_idx ASC, start_time ASC").bind(unitCode, ymd, dmy).all();
       const rows = (res.results || []).map(s => [
         s.date, s.patient_name, s.dob || "", s.room || "", s.procedure_name, s.start_time, s.end_time, s.staff_name || "", s.sub_staff_name || "", s.machine_name || "", s.bed || ""
       ]);
