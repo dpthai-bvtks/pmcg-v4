@@ -503,7 +503,16 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         return (staffLoad[a]?.used_mins || 0) - (staffLoad[b]?.used_mins || 0);
       });
 
-      const possibleMachines = loaiMay === "Thủ công" ? [loaiMay] : (machineTypes[loaiMay] || []);
+      let possibleMachines = [];
+      const loaiMayKey = loaiMay.toLowerCase();
+      const roomSpecific = (db.roomMachines?.[targetRoom]?.[loaiMayKey]) || (db.roomMachines?.[targetRoom]?.[loaiMay]) || [];
+      if (loaiMay === 'Thủ công') {
+        possibleMachines = [loaiMay];
+      } else if (roomSpecific.length > 0) {
+        possibleMachines = roomSpecific;
+      } else {
+        possibleMachines = machineTypes[loaiMay] || [];
+      }
       const availableMachines = scenario === 3 ? possibleMachines.filter(m => !reservedMachines.has(m)) : possibleMachines;
       const finalMachines = availableMachines.length === 0 ? possibleMachines : availableMachines;
       const selectedMachine = finalMachines.find(m => !(machineTimeline[m] || []).some(slot => is_overlap(tNow, gioKetThuc, slot[0], slot[1])));
@@ -624,7 +633,9 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
       let hasMachine = true;
       if (loaiMay !== "Thủ công") {
-        const macList = machineTypes[loaiMay];
+        const loaiMayKey = loaiMay.toLowerCase();
+        const roomSpecific = (db.roomMachines?.[patient.room]?.[loaiMayKey]) || (db.roomMachines?.[patient.room]?.[loaiMay]) || [];
+        const macList = roomSpecific.length > 0 ? roomSpecific : (machineTypes[loaiMay] || []);
         if (macList && macList.length > 0) {
           hasMachine = false;
           for (let m = 0; m < macList.length; m++) {
@@ -998,6 +1009,8 @@ function getSafeCache() {
 
     const database = {
       machineTypes: {},
+      roomMachines: {},
+      machineToRoom: {},
       thuThuatInfo: {},
       replacementMap: {},
       roomStaff: {},
@@ -1097,6 +1110,20 @@ function getSafeCache() {
       database.roomBeds[roomName] = (bedStr && bedStr !== 'None')
         ? bedStr.split(",").map(x => x.trim()).filter(Boolean)
         : Array.from({ length: soGiuong }, (_, i) => "Giường " + (i + 1));
+
+      const dsMayStr = String(r.danhSachMay || r[4] || "").trim();
+      database.roomMachines[roomName] = {};
+      if (dsMayStr) {
+        dsMayStr.split(',').map(x => x.trim()).filter(Boolean).forEach(code => {
+          database.machineToRoom[code] = roomName;
+          const mObj = (cache.machine || cache.machines || []).find(m => String(m.maMay || m.ma_may || (Array.isArray(m) ? m[2] : '') || m.ma || m.code || '').trim().toLowerCase() === code.toLowerCase());
+          const mType = (mObj ? String(mObj.tenLoai || mObj.ten_loai || (Array.isArray(mObj) ? mObj[1] : '') || mObj.ten || mObj.name || '') : '').trim().toLowerCase();
+          if (mType) {
+            if (!database.roomMachines[roomName][mType]) database.roomMachines[roomName][mType] = [];
+            database.roomMachines[roomName][mType].push(code);
+          }
+        });
+      }
 
       const bsStr = String(r.bacSi || r[2] || "");
       const ktvStr = String(r.ktv || r[3] || "");
@@ -1458,6 +1485,8 @@ function getSafeCache() {
     });
     baseDb.roomBeds["PHONG_CHUNG_T7"] = allBeds;
     baseDb.roomStaff["PHONG_CHUNG_T7"] = [];
+    if (!baseDb.roomMachines) baseDb.roomMachines = {};
+    baseDb.roomMachines["PHONG_CHUNG_T7"] = baseDb.machineTypes || {};
 
     const allStaff = (typeof dataCache !== 'undefined' && dataCache.staff) ? dataCache.staff : [];
     baseDb.rawStaff = [];
@@ -1616,7 +1645,9 @@ const UnscheduledDiagnosticEngine = (function () {
     const loaiBN = (patientObj && patientObj.loaiBN) || 'NoiTru';
     const buoiDieuTri = (patientObj && patientObj.buoiDieuTri) || 'Sang';
 
-    const machinesOfCategory = (db && db.machineTypes && db.machineTypes[loaiMay]) || [];
+    const loaiMayKey = loaiMay.toLowerCase();
+    const roomSpecific = (db && db.roomMachines && (db.roomMachines[room]?.[loaiMayKey] || db.roomMachines[room]?.[loaiMay])) || [];
+    const machinesOfCategory = roomSpecific.length > 0 ? roomSpecific : ((db && db.machineTypes && db.machineTypes[loaiMay]) || []);
     const qualifiedStaff = [];
     if (db && db.rawStaff) {
       db.rawStaff.forEach(r => {

@@ -89,6 +89,10 @@ window.MedicalCPSolver = (function () {
 
     // 3. Ràng buộc máy móc không trùng
     if (machine && machine !== 'Thủ công') {
+      const assignedRoom = db.machineToRoom?.[machine];
+      if (assignedRoom && patRoom && assignedRoom !== patRoom) {
+        return false;
+      }
       for (const item of currentSched) {
         const iMay = item.may || item.MAY;
         if (iMay === machine) {
@@ -153,8 +157,10 @@ window.MedicalCPSolver = (function () {
       const tgNhanVien = parseInt(ttInfo[2]) || 5;
 
       // Danh sách máy khả dụng
-      const machineCandidates = (loaiMay !== "Thủ công" && db.machineTypes && db.machineTypes[loaiMay])
-        ? db.machineTypes[loaiMay]
+      const loaiMayKey = loaiMay.toLowerCase();
+      const roomSpecific = (db.roomMachines?.[patRoom]?.[loaiMayKey]) || (db.roomMachines?.[patRoom]?.[loaiMay]) || [];
+      const machineCandidates = (loaiMay !== "Thủ công")
+        ? (roomSpecific.length > 0 ? roomSpecific : (db.machineTypes && db.machineTypes[loaiMay]) || [])
         : ["Thủ công"];
 
       // Danh sách giường khả dụng

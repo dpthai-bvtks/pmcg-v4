@@ -611,3 +611,34 @@ git add . && git commit -m "..." && git push origin main
   + `index.html`
   + `sw.js`
   + `PM-xeplich-v4.md`
+
+---
+
+### [v4.0.1-rev11] - 03/09/2026: Khắc Phục Lỗi Trùng Máy Móc & Ràng Buộc Phân Bổ Máy Theo Đúng Phòng Điều Trị
+
+- **Yêu cầu của người dùng**:
+  + Đang xảy ra tình trạng trùng máy móc khi xếp lịch (kèm ảnh chụp bảng xếp lịch đã sort cột Máy: Máy `Máy DC MS: 0972`, `0973`, `1090` bị gán điều trị cho các bệnh nhân ở nhiều phòng khác nhau như Hiền Phan, Hà Chip, Xuân Lương, Lê Hiền; hai bệnh nhân ở hai phòng khác nhau vừa xong 08:43 thì ca phòng khác bắt đầu ngay 08:43 trên cùng một máy).
+- **Phân tích nguyên nhân gốc rễ**:
+  1. Trong cấu hình hệ thống bệnh viện, mỗi phòng bệnh đều có một danh sách máy móc cố định (`danhSachMay`, ví dụ: Phòng Hà Chip sở hữu các máy `0972, 0973, 1090, 1091, 1169`; Phòng Hiền Phan sở hữu các máy `1177, 1178, 1179, 1180, 1247`; Phòng Lê Hiền sở hữu các máy `1172-1176`; Phòng Xuân Lương sở hữu các máy `1266-1300`).
+  2. Tuy nhiên, trong hàm `buildDbFromCache` của `js/scheduler-engine.js`, hệ thống chỉ trích xuất danh sách giường (`roomBeds`) và nhân sự (`roomStaff`) theo phòng, nhưng **hoàn toàn bỏ qua trường `danhSachMay` của phòng**, không lưu trữ vào `database.roomMachines` hay `database.machineToRoom`.
+  3. Khi thuật toán xếp lịch `_turbo_core_logic` tìm máy cho bệnh nhân, dòng code `const possibleMachines = machineTypes[loaiMay] || []` lấy toàn bộ danh sách máy trên toàn viện và luôn chọn máy rảnh đầu tiên trong mảng (`0972`, `0973`, `1090` của phòng Hà Chip).
+  4. Hậu quả là bệnh nhân nằm ở phòng Hiền Phan, Xuân Lương hay Lê Hiền đều bị hệ thống phân công dùng máy của phòng Hà Chip, trong khi 15 máy điện châm và các máy điện xung, đèn hồng ngoại ở chính các phòng đó lại bị bỏ không. Điều này tạo ra xung đột vật lý trực tiếp: máy không thể vừa ở phòng này vừa lập tức xuất hiện ở phòng khác.
+- **Giải pháp xử lý**:
+  + **`js/scheduler-engine.js`**:
+    - Nâng cấp `buildDbFromCache`: Đọc và phân tách chi tiết chuỗi `danhSachMay` của từng phòng để xây dựng từ điển `database.roomMachines[roomName][loaiMay]` và `database.machineToRoom[maMay]`.
+    - Nâng cấp `_turbo_core_logic`: Khi chọn máy cho bệnh nhân tại phòng `targetRoom`, hệ thống **ưu tiên tuyệt đối chọn máy thuộc `roomMachines[targetRoom][loaiMay]`**. Chỉ khi phòng bệnh nhân không có máy loại này (các thủ thuật làm tại phòng chức năng riêng như Sóng ngắn, Kéo giãn, Siêu âm...), hệ thống mới sử dụng máy dùng chung toàn viện.
+    - Cập nhật `countFeasibleSlots`: Kiểm tra tính khả dụng của máy móc theo đúng phòng bệnh nhân.
+    - Cập nhật `runSaturdayScheduling`: Gán `roomMachines["PHONG_CHUNG_T7"] = machineTypes` cho ngày Thứ 7.
+    - Cập nhật `UnscheduledDiagnosticEngine`: Chẩn đoán nguyên nhân rớt máy dựa trên máy của chính phòng đó.
+  + **`js/cp-solver.js`**:
+    - Trong `solveBranchAndBound`: Ưu tiên chọn máy thuộc `db.roomMachines[patRoom][loaiMay]`.
+    - Trong `isFeasibleAssignment`: Bổ sung điều kiện kiểm tra ràng buộc phòng `assignedRoom && patRoom && assignedRoom !== patRoom` để cấm tuyệt đối việc mượn máy chéo giữa các phòng điều trị có máy riêng.
+  + **Đồng bộ Footer Timestamp & Cache (RULES.md)**:
+    - Cập nhật Footer `sys-last-update` thành `14:15 03/09/2026`.
+    - Nâng số phiên bản lên `v4.0.1-rev11` trên `index.html` và `sw.js`.
+- **File sửa đổi**:
+  + `js/scheduler-engine.js`
+  + `js/cp-solver.js`
+  + `index.html`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
