@@ -1236,54 +1236,78 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         function callApi(functionName, args, onSuccess, onError) {
-            const isSilentMutation = functionName === 'saveChamCong' || functionName === 'saveReorderedData' || functionName === 'saveReorder'
-                || functionName === 'editBenhNhan' || functionName === 'editNhanSu' || functionName === 'editMayMoc' || functionName === 'editThuThuat' || functionName === 'editPhong';
-            const isMutation = functionName.startsWith('add') || functionName.startsWith('edit') || functionName.startsWith('delete') || functionName.startsWith('bulkUpdate') || functionName.startsWith('save') || functionName.startsWith('chotSo') || functionName.startsWith('runScheduling') || functionName.startsWith('chuyenNgayMoi');
-            
-            // In-flight deduplication for non-mutation queries (getSchedule, getSystemSettings, getDataVersion...)
-            if (!isMutation) {
-                const reqKey = functionName + ':' + JSON.stringify(args || []);
-                if (inFlightRequests.has(reqKey)) {
-                    inFlightRequests.get(reqKey).then(
-                        data => { if (onSuccess) onSuccess(data); },
-                        err => { if (onError) onError(err); }
-                    );
-                    return;
+            return new Promise((resolve, reject) => {
+                const isSilentMutation = functionName === 'saveChamCong' || functionName === 'saveReorderedData' || functionName === 'saveReorder'
+                    || functionName === 'editBenhNhan' || functionName === 'editNhanSu' || functionName === 'editMayMoc' || functionName === 'editThuThuat' || functionName === 'editPhong';
+                const isMutation = functionName.startsWith('add') || functionName.startsWith('edit') || functionName.startsWith('delete') || functionName.startsWith('bulkUpdate') || functionName.startsWith('save') || functionName.startsWith('chotSo') || functionName.startsWith('runScheduling') || functionName.startsWith('chuyenNgayMoi');
+                
+                // In-flight deduplication for non-mutation queries (getSchedule, getSystemSettings, getDataVersion...)
+                if (!isMutation) {
+                    const reqKey = functionName + ':' + JSON.stringify(args || []);
+                    if (inFlightRequests.has(reqKey)) {
+                        inFlightRequests.get(reqKey).then(
+                            data => {
+                                if (onSuccess) onSuccess(data);
+                                resolve(data);
+                            },
+                            err => {
+                                if (onError) onError(err);
+                                reject(err);
+                            }
+                        );
+                        return;
+                    }
+
+                    let resolveInFlight, rejectInFlight;
+                    const inFlightPromise = new Promise((res, rej) => {
+                        resolveInFlight = res;
+                        rejectInFlight = rej;
+                    });
+                    inFlightRequests.set(reqKey, inFlightPromise);
+
+                    const origOnSuccess = onSuccess;
+                    const origOnError = onError;
+
+                    onSuccess = (data) => {
+                        inFlightRequests.delete(reqKey);
+                        resolveInFlight(data);
+                        if (origOnSuccess) origOnSuccess(data);
+                        resolve(data);
+                    };
+
+                    onError = (err) => {
+                        inFlightRequests.delete(reqKey);
+                        rejectInFlight(err);
+                        if (origOnError) origOnError(err);
+                        reject(err);
+                    };
+                } else {
+                    const origOnSuccess = onSuccess;
+                    const origOnError = onError;
+
+                    onSuccess = (data) => {
+                        if (origOnSuccess) origOnSuccess(data);
+                        resolve(data);
+                    };
+
+                    onError = (err) => {
+                        if (origOnError) origOnError(err);
+                        reject(err);
+                    };
                 }
 
-                let resolveInFlight, rejectInFlight;
-                const inFlightPromise = new Promise((res, rej) => {
-                    resolveInFlight = res;
-                    rejectInFlight = rej;
-                });
-                inFlightRequests.set(reqKey, inFlightPromise);
+                const shouldShowLoading = isMutation && !isSilentMutation;
+                if (shouldShowLoading) {
+                    mutationCount++;
+                    checkMutationLoading();
+                }
 
-                const origOnSuccess = onSuccess;
-                const origOnError = onError;
-
-                onSuccess = (data) => {
-                    inFlightRequests.delete(reqKey);
-                    resolveInFlight(data);
-                    if (origOnSuccess) origOnSuccess(data);
-                };
-
-                onError = (err) => {
-                    inFlightRequests.delete(reqKey);
-                    rejectInFlight(err);
-                    if (origOnError) origOnError(err);
-                };
-            }
-
-            const shouldShowLoading = isMutation && !isSilentMutation;
-            if (shouldShowLoading) {
-                mutationCount++;
-                checkMutationLoading();
-            }
-
-            const task = { functionName, args: args || [], onSuccess, onError, isMutation: shouldShowLoading, retries: 0 };
-            apiQueue.push(task);
-            scheduleNextApiRequest();
+                const task = { functionName, args: args || [], onSuccess, onError, isMutation: shouldShowLoading, retries: 0 };
+                apiQueue.push(task);
+                scheduleNextApiRequest();
+            });
         }
+        window.callApi = callApi;
 
         function escapeHtml(string) {
             if (string === null || string === undefined) return '';

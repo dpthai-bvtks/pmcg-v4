@@ -822,24 +822,34 @@ function renderAdminChamCongTable() {
                 if (mode === 'current') {
                     const my = getChamCongMonthYear();
                     window.showGlobalLoading('Đang tải dữ liệu thống kê tháng ' + my + '...');
-                    callApi('getChamCong', [my]).then(resCC => {
+                    const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
+                    if (!apiFn) {
+                        window.hideGlobalLoading();
+                        return;
+                    }
+
+                    apiFn('getChamCong', [my], resCC => {
                         let rawCC = {};
                         if (resCC && resCC.status === 'success' && resCC.data) rawCC = resCC.data;
                         else if (resCC && typeof resCC === 'object' && !resCC.status) rawCC = resCC;
                         chamCongData = normalizeChamCongData(rawCC);
 
-                        return callApi('getThongKeThuThuat', [my]);
-                    }).then(resTT => {
-                        let rawTT = {};
-                        if (resTT && resTT.status === 'success' && resTT.data) rawTT = resTT.data;
-                        else if (resTT && typeof resTT === 'object' && !resTT.status) rawTT = resTT;
-                        thongKeData = normalizeThongKeData(rawTT);
+                        apiFn('getThongKeThuThuat', [my], resTT => {
+                            let rawTT = {};
+                            if (resTT && resTT.status === 'success' && resTT.data) rawTT = resTT.data;
+                            else if (resTT && typeof resTT === 'object' && !resTT.status) rawTT = resTT;
+                            thongKeData = normalizeThongKeData(rawTT);
+                            window.hideGlobalLoading();
+                            renderThongKeTable();
+                        }, err => {
+                            window.hideGlobalLoading();
+                            console.error('[ThongKe] getThongKeThuThuat error:', err);
+                            thongKeData = normalizeThongKeData({});
+                            renderThongKeTable();
+                        });
+                    }, err => {
                         window.hideGlobalLoading();
-                        renderThongKeTable();
-                    }).catch(err => {
-                        window.hideGlobalLoading();
-                        console.error('[ThongKe] loadThongKeData error:', err);
-                        thongKeData = normalizeThongKeData({});
+                        console.error('[ThongKe] getChamCong error:', err);
                         renderThongKeTable();
                     });
                 } else if (mode === 'custom') {
@@ -880,51 +890,57 @@ function renderAdminChamCongTable() {
         }
 
         function fetchSingleMonthData(my) {
-            return callApi('getChamCong', [my]).then(resCC => {
+            return new Promise((resolve) => {
+                const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
+                if (!apiFn) {
+                    resolve({ month: my, data: { chamcong: {}, thuthuat: {} } });
+                    return;
+                }
                 let rawCC = {};
-                if (resCC && resCC.status === 'success' && resCC.data) rawCC = resCC.data;
-                else if (resCC && typeof resCC === 'object' && !resCC.status) rawCC = resCC;
+                let rawTT = {};
+                apiFn('getChamCong', [my], resCC => {
+                    if (resCC && resCC.status === 'success' && resCC.data) rawCC = resCC.data;
+                    else if (resCC && typeof resCC === 'object' && !resCC.status) rawCC = resCC;
 
-                return callApi('getThongKeThuThuat', [my]).then(resTT => {
-                    let rawTT = {};
-                    if (resTT && resTT.status === 'success' && resTT.data) rawTT = resTT.data;
-                    else if (resTT && typeof resTT === 'object' && !resTT.status) rawTT = resTT;
-                    return { 
-                        month: my, 
-                        data: { 
-                            chamcong: normalizeChamCongData(rawCC), 
-                            thuthuat: normalizeThongKeData(rawTT) 
-                        } 
-                    };
-                }).catch(() => {
-                    return { 
-                        month: my, 
-                        data: { 
-                            chamcong: normalizeChamCongData(rawCC), 
-                            thuthuat: normalizeThongKeData({}) 
-                        } 
-                    };
-                });
-            }).catch(() => {
-                return callApi('getThongKeThuThuat', [my]).then(resTT => {
-                    let rawTT = {};
-                    if (resTT && resTT.status === 'success' && resTT.data) rawTT = resTT.data;
-                    else if (resTT && typeof resTT === 'object' && !resTT.status) rawTT = resTT;
-                    return { 
-                        month: my, 
-                        data: { 
-                            chamcong: normalizeChamCongData({}), 
-                            thuthuat: normalizeThongKeData(rawTT) 
-                        } 
-                    };
-                }).catch(() => {
-                    return { 
-                        month: my, 
-                        data: { 
-                            chamcong: normalizeChamCongData({}), 
-                            thuthuat: normalizeThongKeData({}) 
-                        } 
-                    };
+                    apiFn('getThongKeThuThuat', [my], resTT => {
+                        if (resTT && resTT.status === 'success' && resTT.data) rawTT = resTT.data;
+                        else if (resTT && typeof resTT === 'object' && !resTT.status) rawTT = resTT;
+                        resolve({ 
+                            month: my, 
+                            data: { 
+                                chamcong: normalizeChamCongData(rawCC), 
+                                thuthuat: normalizeThongKeData(rawTT) 
+                            } 
+                        });
+                    }, () => {
+                        resolve({ 
+                            month: my, 
+                            data: { 
+                                chamcong: normalizeChamCongData(rawCC), 
+                                thuthuat: normalizeThongKeData({}) 
+                            } 
+                        });
+                    });
+                }, () => {
+                    apiFn('getThongKeThuThuat', [my], resTT => {
+                        if (resTT && resTT.status === 'success' && resTT.data) rawTT = resTT.data;
+                        else if (resTT && typeof resTT === 'object' && !resTT.status) rawTT = resTT;
+                        resolve({ 
+                            month: my, 
+                            data: { 
+                                chamcong: normalizeChamCongData({}), 
+                                thuthuat: normalizeThongKeData(rawTT) 
+                            } 
+                        });
+                    }, () => {
+                        resolve({ 
+                            month: my, 
+                            data: { 
+                                chamcong: normalizeChamCongData({}), 
+                                thuthuat: normalizeThongKeData({}) 
+                            } 
+                        });
+                    });
                 });
             });
         }
@@ -2658,3 +2674,9 @@ window.resetChamCongForUnit = function(unitCode) {
         renderThongKeTable();
     }
 };
+
+window.loadThongKeData = loadThongKeData;
+window.renderThongKeTable = renderThongKeTable;
+window.loadChamCongData = loadChamCongData;
+window.renderChamCongTable = renderChamCongTable;
+
