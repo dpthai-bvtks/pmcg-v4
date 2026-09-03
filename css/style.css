@@ -603,7 +603,6 @@
         #tab-schedule.active,
         #tab-stats.active,
         #tab-sat.active,
-        #tab-chamcong.active,
         #tab-utils.active,
         #tab-kiemtra.active {
             display: flex;
@@ -614,18 +613,46 @@
             overflow: hidden;
         }
 
-        #tab-thongke.active {
-            display: flex;
-            flex-direction: column;
+        /* Cho phép cuộn trang để xem Footer ở Tab Chấm Công và Thống Kê */
+        .tab-scroll-content:has(#tab-chamcong.active),
+        .tab-scroll-content:has(#tab-thongke.active) {
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
             display: flex !important;
             flex-direction: column !important;
-            flex: 1 !important;
+            padding: 6px 8px !important;
             height: 100% !important;
             min-height: 0 !important;
-            overflow: hidden !important;
+            -webkit-overflow-scrolling: touch;
         }
 
-        /* Chỉ hiển thị footer ở 4 tab: Trang Chủ, Chấm Công, Thống Kê, Admin */
+        #tab-chamcong.active,
+        #tab-thongke.active {
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 0 auto !important;
+            min-height: 100% !important;
+            height: auto !important;
+            overflow: visible !important;
+        }
+
+        #tab-chamcong.active .chamcong-card-wrapper,
+        #tab-thongke.active .thongke-card-wrapper {
+            flex-shrink: 0 !important;
+            height: auto !important;
+            min-height: 480px !important;
+            margin-bottom: 20px !important;
+        }
+
+        #tab-chamcong.active .main-footer,
+        #tab-thongke.active .main-footer {
+            margin-top: auto !important;
+            margin-bottom: 30px !important;
+            flex-shrink: 0 !important;
+            display: block !important;
+        }
+
+        /* Chỉ hiển thị footer ở 4 tab: Trang Chủ, Chấm Công, Thống Kê, Admin, Quản lý đơn vị */
         body:not(:has(#tab-home.active)):not(:has(#tab-chamcong.active)):not(:has(#tab-thongke.active)):not(:has(#tab-admin.active)):not(:has(#tab-tenants.active)) .main-footer {
             display: none !important;
         }
@@ -642,8 +669,6 @@
         /* Ép các tab chiếm đúng phần nội dung còn lại, không để tab-scroll-content cuộn ngoài */
         .tab-scroll-content:has(#tab-schedule.active),
         .tab-scroll-content:has(#tab-sat.active),
-        .tab-scroll-content:has(#tab-chamcong.active),
-        .tab-scroll-content:has(#tab-thongke.active),
         .tab-scroll-content:has(#tab-utils.active),
         .tab-scroll-content:has(#tab-kiemtra.active) {
             overflow: hidden !important;
@@ -654,15 +679,11 @@
             min-height: 0 !important;
         }
 
-
-
         /* Tab fill toàn bộ chiều cao container cha */
         #tab-schedule.active,
         #tab-sat.active,
         #tab-utils.active,
-        #tab-kiemtra.active,
-        #tab-chamcong.active,
-        #tab-thongke.active {
+        #tab-kiemtra.active {
             flex: 1 !important;
             height: 100% !important;
             min-height: 0 !important;

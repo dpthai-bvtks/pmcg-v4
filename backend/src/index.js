@@ -3444,71 +3444,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           } catch(e) {}
         }
 
-        // 3. Fallback calculate from lich_su and lich_trinh
-        let ymdPrefix = myRaw;
-        let dmySuffix = "";
-        if (myRaw.includes("-")) {
-          const parts = myRaw.split("-");
-          dmySuffix = "/" + parts[1] + "/" + parts[0];
-        } else if (myRaw.includes("/")) {
-          const parts = myRaw.split("/");
-          ymdPrefix = parts[1] + "-" + parts[0];
-          dmySuffix = "/" + parts[0] + "/" + parts[1];
-        }
-
-        const procTypeMap = {};
-        try {
-          const procRes = await db.prepare("SELECT ten_thu_thuat, phan_loai FROM thu_thuat WHERE unit_code = ?").bind(unitCode).all();
-          (procRes.results || []).forEach(p => {
-            const name = p.ten_thu_thuat || "";
-            const typeStr = String(p.phan_loai || "").toLowerCase();
-            if (typeStr.includes("1") || typeStr.includes("i") || typeStr.includes("loại 1")) procTypeMap[name] = "loai1";
-            else if (typeStr.includes("2") || typeStr.includes("ii") || typeStr.includes("loại 2")) procTypeMap[name] = "loai2";
-            else if (typeStr.includes("3") || typeStr.includes("iii") || typeStr.includes("loại 3")) procTypeMap[name] = "loai3";
-            else procTypeMap[name] = "khac";
-          });
-        } catch (e) {}
-
-        let histRows = [];
-        let schedRows = [];
-        try {
-          const qHist = await db.prepare(
-            "SELECT staff_name, sub_staff_name, procedure_name FROM lich_su WHERE unit_code = ? AND (date LIKE ? OR date LIKE ?)"
-          ).bind(unitCode, ymdPrefix + "%", "%" + dmySuffix).all();
-          histRows = qHist.results || [];
-        } catch(e) {}
-
-        try {
-          const qSched = await db.prepare(
-            "SELECT staff_name, sub_staff_name, procedure_name FROM lich_trinh WHERE unit_code = ? AND (date LIKE ? OR date LIKE ?)"
-          ).bind(unitCode, ymdPrefix + "%", "%" + dmySuffix).all();
-          schedRows = qSched.results || [];
-        } catch(e) {}
-
-        const allRows = [...histRows, ...schedRows];
-        const stats = {};
-
-        allRows.forEach(r => {
-          const mainStaff = r.staff_name || "";
-          const subStaff = r.sub_staff_name || "";
-          const proc = r.procedure_name || "";
-          const category = procTypeMap[proc] || "khac";
-
-          [mainStaff, subStaff].filter(Boolean).forEach(st => {
-            const stName = st.trim();
-            if (!stName) return;
-            if (!stats[stName]) {
-              stats[stName] = { loai1: 0, loai2: 0, loai3: 0, khac: 0, tong: 0, details: [] };
-            }
-            if (category === "loai1") stats[stName].loai1++;
-            else if (category === "loai2") stats[stName].loai2++;
-            else if (category === "loai3") stats[stName].loai3++;
-            else stats[stName].khac++;
-            stats[stName].tong++;
-          });
-        });
-
-        return success(stats);
+        // Không tự động đếm thủ thuật từ lịch trực (lich_trinh/lich_su)
+        // Số liệu thống kê thủ thuật chỉ được tính khi người dùng nạp file HIS thực tế
+        return success({});
       } catch (err) {
         console.error("getThongKeThuThuat error:", err);
         return success({});
