@@ -3,7 +3,7 @@
  * Quản lý Cache đệm tĩnh, cho phép mở App ngoại tuyến (Offline-first) và tải tức thì.
  */
 
-const CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev2';
+const CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev3';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -37,7 +37,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[Service Worker] Đang nạp bộ nhớ đệm tĩnh v3.2.0...');
+      console.log('[Service Worker] Đang nạp bộ nhớ đệm tĩnh v4.0.1-rev3...');
       return cache.addAll(STATIC_ASSETS).catch((err) => {
         console.warn('[Service Worker] Một số tài sản chưa nạp được vào cache:', err);
       });
@@ -61,7 +61,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// 3. Xử lý yêu cầu nạp tài nguyên (Fetch Strategy)
+// 3. Xử lý yêu cầu nạp tài nguyên (Fetch Strategy: Network-First cho HTML & JS/CSS để luôn nạp bản mới nhất)
 self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
 
@@ -76,28 +76,26 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Chiến lược Stale-While-Revalidate cho tài sản tĩnh
+  // Network-First: Luôn tải từ máy chủ để lấy bản mới nhất, nếu mất mạng mới trả về Cache
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(() => {
-          // Khi mất mạng, nếu là yêu cầu HTML trang chính thì trả về index.html từ cache
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) return cachedResponse;
           if (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html')) {
             return caches.match('./index.html');
           }
         });
-
-      return cachedResponse || fetchPromise;
-    })
+      })
   );
 });
 
