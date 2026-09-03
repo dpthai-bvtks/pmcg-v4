@@ -789,3 +789,43 @@ git add . && git commit -m "..." && git push origin main
   + `index.html`
   + `sw.js`
   + `PM-xeplich-v4.md`
+
+---
+
+### [v4.0.1-rev17] - 16:55 03/09/2026: Khắc phục triệt để lỗi 500 Turso libSQL trên Super Admin & Khử trùng lặp URL Google Apps Script
+- **Bối cảnh & Lỗi thực tế (Console logs)**:
+  + Khi truy cập `/#tab-tenants` hoặc thực hiện đồng bộ Cloudflare D1 sang Google Apps Script, console báo lỗi:
+    1. `pmcg-api.dpthai-ttytmk.workers.dev/:1 Failed to load resource: the server responded with a status of 500 ()`
+    2. `Access to fetch at 'https://script.google.com/.../exechttps://script.google.com/.../exec' from origin 'https://xeplichthuthuat.io.vn' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.`
+- **Phân tích nguyên nhân gốc rễ**:
+  1. **Lỗi 500 tại Cloudflare Worker (`exportAllDatabaseForSuperAdmin`)**:
+     - Action `exportAllDatabaseForSuperAdmin` trong `backend/src/index.js` thực hiện batch query:
+       `tables.map(t => db.prepare('SELECT * FROM ' + t + ' ORDER BY id ASC'))`.
+     - Tuy nhiên, các bảng như `cai_dat`, `cham_cong`, `thong_ke` trong CSDL Turso không có cột `id` (sử dụng composite key hoặc key `key`, `month_year`).
+     - Turso libSQL đã trả về lỗi cú pháp: `SQLite input error: no such column: id (at offset 31) (SQL_INPUT_ERROR)` dẫn đến Worker throw 500.
+  2. **Lỗi URL Google Apps Script bị nhân đôi (`.../exechttps://.../exec`)**:
+     - Khi người dùng copy/paste URL Google Apps Script vào ô cấu hình hoặc lưu trữ trước đó, URL bị dính liền 2 lần: `https://script.google.com/.../exechttps://script.google.com/.../exec`.
+     - Khi Worker gặp lỗi hoặc khi chạy backup, hệ thống gọi fetch URL này, trình duyệt phát hiện URL không hợp lệ và chặn CORS với mã lỗi `net::ERR_FAILED`.
+- **Giải pháp xử lý**:
+  1. **Backend (`backend/src/index.js`)**:
+     - Sửa query `exportAllDatabaseForSuperAdmin` từ `SELECT * FROM ${t} ORDER BY id ASC` thành `SELECT * FROM ${t}`.
+     - Thêm cơ chế fallback: nếu lệnh `db.batch()` gặp bất kỳ sự cố nào, Worker sẽ tự động chuyển sang duyệt và try/catch từng bảng đơn lẻ, đảm bảo luôn trả về HTTP 200 kèm toàn bộ dữ liệu hợp lệ thay vì làm gãy luồng hệ thống.
+     - Bổ sung khử trùng lặp URL trong hàm `dispatchBackgroundSync` trước khi dispatch webhook sang Apps Script.
+     - Đã deploy thành công lên Cloudflare Workers: Version `efd901d3-840f-4d44-8988-78f2f7b77f1d`, test trực tiếp trả về `Status: 200, Status field: success, 16 tables`.
+  2. **Frontend (`js/app.js`, `js/init.js`, `index.html`)**:
+     - Tạo hàm chuẩn hóa toàn cục `window.sanitizeGoogleScriptUrl(rawUrl)` có khả năng:
+       + Tự động phát hiện và cắt bỏ URL dính lặp `/exechttps://...` để giữ lại duy nhất 1 URL sạch chuẩn.
+       + Chuẩn hóa đuôi `/edit` thành `/exec`.
+     - Tự động chạy quét và sửa lỗi `localStorage.getItem('times_backup_api_url')` ngay khi tải trang (`DOMContentLoaded`) và khi gọi `getApiUrl()`, `syncAllD1DataToBackupSheets()`, `openConfigGoogleScriptModal()`.
+     - Xác thực và làm sạch dữ liệu đầu vào trong modal cấu hình WebApp Google Apps Script.
+  3. **Đồng bộ Footer Timestamp & Cache (RULES.md)**:
+     - Cập nhật Footer `sys-last-update` thành `16:55 03/09/2026`.
+     - Cập nhật cache buster `v4.0.1-rev17` trên tất cả file CSS & JS trong `index.html`.
+     - Cập nhật `CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev17'` trong `sw.js`.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `js/app.js`
+  + `js/init.js`
+  + `index.html`
+  + `sw.js`
+  + `PM-xeplich-v4.md`

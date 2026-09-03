@@ -187,6 +187,29 @@ window.pingServerConnection = function () {
 };
 
 
+window.sanitizeGoogleScriptUrl = function (rawUrl) {
+    if (!rawUrl || typeof rawUrl !== 'string') return '';
+    let url = rawUrl.trim();
+    if (!url) return '';
+
+    // Khắc phục trường hợp dính liền 2 URL /exechttps://...
+    const duplicateExecIdx = url.indexOf('/exechttps://');
+    if (duplicateExecIdx !== -1) {
+        url = url.substring(0, duplicateExecIdx + 5);
+    } else {
+        const matches = url.match(/https:\/\/script\.google\.com\/macros\/s\/[^\s/]+\/exec/g);
+        if (matches && matches.length > 0) {
+            url = matches[0];
+        }
+    }
+
+    if (url.endsWith('/edit') || url.includes('/edit?') || url.includes('drive.google.com')) {
+        url = url.replace(/\/edit.*$/, '/exec');
+    }
+
+    return url.trim();
+};
+
 let _gasCallbackOnSave = null;
 
 window.openConfigGoogleScriptModal = function (callback) {
@@ -210,7 +233,10 @@ window.openConfigGoogleScriptModal = function (callback) {
     const msg = document.getElementById('gas-url-validation-msg');
     if (msg) { msg.style.display = 'none'; msg.innerHTML = ''; }
 
-    const savedUrl = (localStorage.getItem('times_backup_api_url') || '').trim();
+    let savedUrl = window.sanitizeGoogleScriptUrl(localStorage.getItem('times_backup_api_url') || '');
+    if (savedUrl && savedUrl !== localStorage.getItem('times_backup_api_url')) {
+        localStorage.setItem('times_backup_api_url', savedUrl);
+    }
     if (input) {
         input.value = savedUrl;
         setTimeout(() => { input.focus(); input.select(); }, 100);
@@ -228,20 +254,17 @@ window.closeConfigGoogleScriptModal = function () {
 window.saveConfigGoogleScript = function () {
     const input = document.getElementById('gas-webhook-url-input');
     const msg = document.getElementById('gas-url-validation-msg');
-    let url = (input ? input.value : '').trim();
+    let url = window.sanitizeGoogleScriptUrl(input ? input.value : '');
 
     if (!url) {
         if (msg) {
             msg.style.cssText = 'display:block; background:#fef2f2; border:1px solid #fecaca; color:#991b1b;';
-            msg.innerHTML = '⚠️ Vui lòng nhập đường dẫn URL WebApp!';
+            msg.innerHTML = '⚠️ Vui lòng nhập đường dẫn URL WebApp hợp lệ!';
         }
         return;
     }
 
-    if (url.endsWith('/edit') || url.includes('/edit?') || url.includes('drive.google.com')) {
-        url = url.replace(/\/edit.*$/, '/exec');
-        if (input) input.value = url;
-    }
+    if (input) input.value = url;
 
     if (!url.startsWith('https://script.google.com/') || !url.endsWith('/exec')) {
         if (msg) {
@@ -273,7 +296,7 @@ window.testGasConnection = async function () {
     const input = document.getElementById('gas-webhook-url-input');
     const msg = document.getElementById('gas-url-validation-msg');
     const btn = document.getElementById('btn-test-gas-conn');
-    let url = (input ? input.value : '').trim();
+    let url = window.sanitizeGoogleScriptUrl(input ? input.value : '');
 
     if (!url) {
         if (msg) {
@@ -759,7 +782,12 @@ window.showGlobalLoading = function (text) {
         window.updateServerStatusBadge = updateServerStatusBadge;
 
         function getApiUrl() {
-            const backupUrl = (localStorage.getItem('times_backup_api_url') || '').trim();
+            let backupUrl = (typeof window.sanitizeGoogleScriptUrl === 'function')
+                ? window.sanitizeGoogleScriptUrl(localStorage.getItem('times_backup_api_url') || '')
+                : (localStorage.getItem('times_backup_api_url') || '').trim();
+            if (backupUrl && backupUrl !== localStorage.getItem('times_backup_api_url')) {
+                localStorage.setItem('times_backup_api_url', backupUrl);
+            }
             if (window._serverMode === 'backup' && backupUrl) {
                 return backupUrl;
             }
@@ -780,10 +808,10 @@ window.showGlobalLoading = function (text) {
             }
         };
 
-
-        
         window.syncAllD1DataToBackupSheets = async function() {
-            let backupUrl = (localStorage.getItem('times_backup_api_url') || '').trim();
+            let backupUrl = (typeof window.sanitizeGoogleScriptUrl === 'function')
+                ? window.sanitizeGoogleScriptUrl(localStorage.getItem('times_backup_api_url') || '')
+                : (localStorage.getItem('times_backup_api_url') || '').trim();
             if (!backupUrl) {
                 if (typeof window.openConfigGoogleScriptModal === 'function') {
                     window.openConfigGoogleScriptModal(() => {
@@ -793,11 +821,7 @@ window.showGlobalLoading = function (text) {
                 }
             }
 
-            backupUrl = backupUrl.trim();
-            if (backupUrl.endsWith('/edit') || backupUrl.includes('/edit?') || backupUrl.includes('drive.google.com')) {
-                backupUrl = backupUrl.replace(/\/edit.*$/, '/exec');
-                localStorage.setItem('times_backup_api_url', backupUrl);
-            }
+            localStorage.setItem('times_backup_api_url', backupUrl);
 
             let sessRole = '';
             try {

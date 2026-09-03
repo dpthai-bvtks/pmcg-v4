@@ -58,6 +58,19 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('times_bootstrap_cache');
     }
 
+    // 🧹 Tự động làm sạch URL Google Apps Script nếu bị dính lặp
+    try {
+        const rawBackup = localStorage.getItem('times_backup_api_url') || '';
+        if (rawBackup) {
+            const cleanBackup = (typeof window.sanitizeGoogleScriptUrl === 'function')
+                ? window.sanitizeGoogleScriptUrl(rawBackup)
+                : (rawBackup.includes('/exechttps://') ? rawBackup.substring(0, rawBackup.indexOf('/exechttps://') + 5) : rawBackup);
+            if (cleanBackup && cleanBackup !== rawBackup) {
+                localStorage.setItem('times_backup_api_url', cleanBackup);
+            }
+        }
+    } catch(e) {}
+
     if (typeof window.updateAppHeader === 'function' && savedUnit) {
         window.updateAppHeader(savedUnit);
     }

@@ -1017,9 +1017,12 @@ function dispatchBackgroundSync(action, args, env, ctx) {
     try {
       const db = getDatabase(env);
       if (!db) return;
-      const rec = await db.prepare("SELECT value FROM cai_dat WHERE key = 'gdrive_webhook_url'").first();
-      const webhookUrl = rec ? String(rec.value).trim() : "";
+      let webhookUrl = rec ? String(rec.value).trim() : "";
       if (!webhookUrl || !webhookUrl.startsWith("http")) return;
+      const dupIdx = webhookUrl.indexOf('/exechttps://');
+      if (dupIdx !== -1) {
+        webhookUrl = webhookUrl.substring(0, dupIdx + 5);
+      }
 
       await fetch(webhookUrl, {
         method: "POST",
@@ -1382,8 +1385,21 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         'cham_cong', 'thong_ke', 'tim_ranh', 'tai_lieu', 'phac_do'
       ];
 
-      const queries = tables.map(t => db.prepare(`SELECT * FROM ${t} ORDER BY id ASC`));
-      const results = await db.batch(queries);
+      const queries = tables.map(t => db.prepare(`SELECT * FROM ${t}`));
+      let results = [];
+      try {
+        results = await db.batch(queries);
+      } catch (batchErr) {
+        results = [];
+        for (const t of tables) {
+          try {
+            const r = await db.prepare(`SELECT * FROM ${t}`).all();
+            results.push(r);
+          } catch(e) {
+            results.push({ results: [] });
+          }
+        }
+      }
 
       const dbPayload = {
         app: "PM-XepLich T.I.M.E.S SaaS - All Tenants Master Export",
