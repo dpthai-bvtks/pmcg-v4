@@ -569,8 +569,9 @@ async function ensureSchema(db) {
       "CREATE INDEX IF NOT EXISTS idx_phac_do_unit ON phac_do(unit_code, is_active, order_idx)",
       "CREATE INDEX IF NOT EXISTS idx_lich_trinh_unit ON lich_trinh(unit_code, date)",
       "CREATE INDEX IF NOT EXISTS idx_lich_su_unit ON lich_su(unit_code, date)",
-      "CREATE INDEX IF NOT EXISTS idx_gio_ban_unit ON gio_ban_cu(unit_code, date)",
       "CREATE INDEX IF NOT EXISTS idx_tai_khoan_unit ON tai_khoan(unit_code, username)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_cham_cong_unit_my ON cham_cong(unit_code, month_year)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_thong_ke_unit_my ON thong_ke(unit_code, month_year)",
       "ALTER TABLE may_moc ADD COLUMN is_active INTEGER DEFAULT 1",
       "ALTER TABLE may_moc ADD COLUMN order_idx INTEGER DEFAULT 0",
       "ALTER TABLE phong ADD COLUMN is_active INTEGER DEFAULT 1",
@@ -816,6 +817,58 @@ async function ensureSchema(db) {
       }
     } catch(e) {
       console.warn("[Migrate phac_do error]:", e);
+    }
+
+    try {
+      // 8. cham_cong
+      const ccSql = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='cham_cong'").first();
+      if (ccSql && ccSql.sql && (ccSql.sql.includes("month_year TEXT UNIQUE") || ccSql.sql.includes("UNIQUE (month_year)") || ccSql.sql.includes("UNIQUE(month_year)"))) {
+        await db.prepare(`
+          CREATE TABLE IF NOT EXISTS cham_cong_v4 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
+            month_year TEXT NOT NULL,
+            data_json TEXT NOT NULL DEFAULT '{}',
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(unit_code, month_year)
+          )
+        `).run();
+        await db.prepare(`
+          INSERT OR IGNORE INTO cham_cong_v4 (id, unit_code, month_year, data_json, updated_at)
+          SELECT id, COALESCE(unit_code, 'bvtks-cs2'), month_year, data_json, updated_at FROM cham_cong
+        `).run();
+        await db.prepare("DROP TABLE cham_cong").run();
+        await db.prepare("ALTER TABLE cham_cong_v4 RENAME TO cham_cong").run();
+        await db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_cham_cong_unit_my ON cham_cong(unit_code, month_year)").run();
+      }
+    } catch(e) {
+      console.warn("[Migrate cham_cong error]:", e);
+    }
+
+    try {
+      // 9. thong_ke
+      const tkSql = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='thong_ke'").first();
+      if (tkSql && tkSql.sql && (tkSql.sql.includes("month_year TEXT UNIQUE") || tkSql.sql.includes("UNIQUE (month_year)") || tkSql.sql.includes("UNIQUE(month_year)"))) {
+        await db.prepare(`
+          CREATE TABLE IF NOT EXISTS thong_ke_v4 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
+            month_year TEXT NOT NULL,
+            data_json TEXT NOT NULL DEFAULT '{}',
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(unit_code, month_year)
+          )
+        `).run();
+        await db.prepare(`
+          INSERT OR IGNORE INTO thong_ke_v4 (id, unit_code, month_year, data_json, updated_at)
+          SELECT id, COALESCE(unit_code, 'bvtks-cs2'), month_year, data_json, updated_at FROM thong_ke
+        `).run();
+        await db.prepare("DROP TABLE thong_ke").run();
+        await db.prepare("ALTER TABLE thong_ke_v4 RENAME TO thong_ke").run();
+        await db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_thong_ke_unit_my ON thong_ke(unit_code, month_year)").run();
+      }
+    } catch(e) {
+      console.warn("[Migrate thong_ke error]:", e);
     }
 
     schemaEnsured = true;
@@ -3303,8 +3356,12 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       }
 
       try {
-        await db.prepare("INSERT INTO cham_cong (unit_code, month_year, data_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, month_year) DO UPDATE SET data_json = excluded.data_json, updated_at = CURRENT_TIMESTAMP")
-          .bind(unitCode, myStandard, jsonStr).run();
+        const exist = await db.prepare("SELECT id FROM cham_cong WHERE unit_code = ? AND month_year = ?").bind(unitCode, myStandard).first();
+        if (exist && exist.id) {
+          await db.prepare("UPDATE cham_cong SET data_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(jsonStr, exist.id).run();
+        } else {
+          await db.prepare("INSERT INTO cham_cong (unit_code, month_year, data_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)").bind(unitCode, myStandard, jsonStr).run();
+        }
       } catch(e) {
         console.warn("saveChamCong D1 error:", e);
       }
@@ -3449,8 +3506,12 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       }
 
       try {
-        await db.prepare("INSERT INTO thong_ke (unit_code, month_year, data_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, month_year) DO UPDATE SET data_json = excluded.data_json, updated_at = CURRENT_TIMESTAMP")
-          .bind(unitCode, myStandard, jsonStr).run();
+        const exist = await db.prepare("SELECT id FROM thong_ke WHERE unit_code = ? AND month_year = ?").bind(unitCode, myStandard).first();
+        if (exist && exist.id) {
+          await db.prepare("UPDATE thong_ke SET data_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(jsonStr, exist.id).run();
+        } else {
+          await db.prepare("INSERT INTO thong_ke (unit_code, month_year, data_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)").bind(unitCode, myStandard, jsonStr).run();
+        }
       } catch(e) {
         console.warn("saveThongKeThuThuat D1 error:", e);
       }
