@@ -762,3 +762,30 @@ git add . && git commit -m "..." && git push origin main
   + `js/thongke.js`
   + `sw.js`
   + `PM-xeplich-v4.md`
+
+---
+
+### [v4.0.1-rev16] - 16:05 03/09/2026: Căn giữa 3 dòng chữ Header theo trục dọc cho tất cả đơn vị & Super Admin
+- **Bối cảnh & Phản hồi người dùng**:
+  + Người dùng muốn 3 dòng chữ trên header (Tên đơn vị/viện, Tên khoa/hệ thống, Slogan/Pill badge) được căn giữa tâm với nhau (`align-items: center`, `text-align: center`) ở tất cả các đơn vị và tài khoản Super Admin, thay vì bị căn lệch trái (`flex-start`).
+- **Phân tích nguyên nhân**:
+  + Trong `css/style.css`, khối CSS tại dòng 3419 có thuộc tính `align-items: flex-start !important; text-align: left !important;` đã ghi đè cấu hình căn giữa trước đó, kéo cả 3 dòng chữ h1, h2 và pill badge p về phía bên trái logo.
+- **Giải pháp xử lý**:
+  1. Cập nhật `.banner-text` trong `css/style.css`:
+     - Thiết lập `display: flex !important; flex-direction: column !important; justify-content: center !important; align-items: center !important; text-align: center !important;`.
+  2. Cập nhật `.banner-text h1` (Dòng 1 - Tên đơn vị / T.I.M.E.S SYSTEM):
+     - `text-align: center !important; width: 100% !important;`.
+  3. Cập nhật `.banner-text h2` (Dòng 2 - Khoa / Phân hệ):
+     - `text-align: center !important; width: 100% !important; border-bottom: none !important;`.
+  4. Cập nhật `.banner-text p` (Dòng 3 - Khẩu hiệu Slogan / Pill badge):
+     - `text-align: center !important; align-self: center !important; margin: 0 auto !important; display: inline-block !important;`.
+  5. Đồng bộ hiển thị trên tất cả đơn vị (CS2, Test, Bệnh viện mới...) và Super Admin: cả 3 dòng luôn căn giữa tâm tuyệt đối theo trục dọc cạnh logo.
+  6. **Đồng bộ Footer Timestamp & Cache (RULES.md)**:
+     - Cập nhật Footer `sys-last-update` thành `16:05 03/09/2026`.
+     - Cập nhật cache buster `css/style.css?v=4.0.1-rev16` và `css/mobile.css?v=4.0.1-rev16` trong `index.html`.
+     - Nâng số phiên bản lên `v4.0.1-rev16` trên `index.html` và `sw.js`.
+- **File sửa đổi**:
+  + `css/style.css`
+  + `index.html`
+  + `sw.js`
+  + `PM-xeplich-v4.md`

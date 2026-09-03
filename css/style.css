@@ -958,7 +958,7 @@
 
             opacity: 0.9;
 
-            border-bottom: 2px solid #2c3e50;
+            border-bottom: none;
 
         }
 
@@ -3417,62 +3417,45 @@
 
 
         .banner-text {
-
             min-width: 0 !important;
-
-            align-items: flex-start !important;
-
-            text-align: left !important;
-
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            align-items: center !important;
+            text-align: center !important;
             overflow: visible !important;
-
         }
-
-
 
         .banner-text h1 {
-
             font-size: 16px !important;
-
             line-height: 1.18 !important;
-
             margin: 0 0 3px !important;
-
             white-space: normal !important;
-
+            text-align: center !important;
+            width: 100% !important;
         }
-
-
 
         .banner-text h2 {
-
             font-size: 13px !important;
-
             line-height: 1.18 !important;
-
             margin: 0 0 5px !important;
-
             padding-bottom: 3px !important;
-
             white-space: normal !important;
-
+            text-align: center !important;
+            width: 100% !important;
+            border-bottom: none !important;
         }
-
-
 
         .banner-text p {
-
             font-size: 11px !important;
-
             line-height: 1.25 !important;
-
             padding: 3px 10px !important;
-
             white-space: normal !important;
-
+            text-align: center !important;
+            align-self: center !important;
+            margin: 0 auto !important;
+            display: inline-block !important;
         }
-
-
 
         .banner-right {
 
