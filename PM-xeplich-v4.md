@@ -497,4 +497,30 @@ git add . && git commit -m "..." && git push origin main
 
 ---
 
+### [v4.0.0-rev63] - 03/09/2026: Khắc Phục Triệt Để Lỗi Rò Rỉ Dữ Liệu Nhân Sự & Cách Ly Multi-Tenant 100%
+
+- **Yêu cầu của người dùng**:
+  + Khi đăng nhập tài khoản thuộc đơn vị `bvtks-cs2`, trong tab Nhân sự lại hiển thị cả dữ liệu nhân sự của đơn vị `test` (dù trên Turso/D1 các nhân sự đó thuộc đơn vị `test`). Yêu cầu rà soát và khắc phục triệt để.
+- **Phân tích nguyên nhân & Giải pháp**:
+  + **Backend API (`backend/src/index.js`)**:
+    - Phát hiện `case "getNhanSu"` thiếu hoàn toàn mệnh đề `WHERE unit_code = ?`, khiến hệ thống truy vấn và trả về toàn bộ nhân sự từ mọi đơn vị. Đã sửa lại thành `SELECT * FROM nhan_su WHERE unit_code = ? AND name NOT GLOB '[0-9]*' ORDER BY priority ASC, id ASC`.
+    - Các action CRUD `addNhanSu`, `editNhanSu`, `deleteNhanSu`: Đã thêm cột `unit_code`, chuyển xung đột sang composite constraint `ON CONFLICT(unit_code, name)`, và thêm `WHERE unit_code = ?`.
+    - Rà soát và chuẩn hóa 100% tất cả các bảng và action khác: `may_moc`, `phong`, `thu_thuat`, `benh_nhan`, `lich_trinh`, `lich_su`, `gio_ban_cu`, `phac_do`, `cham_cong`, `thong_ke`, `cai_dat`, `tai_khoan`, `tim_ranh` đều được bổ sung ràng buộc và điều kiện lọc `unit_code = ?`.
+    - Cập nhật hàm `bumpDataVersion(db, unitCode)` để tăng version phân lập theo từng đơn vị cụ thể.
+    - Bổ sung migration tự động trong `ensureSchema` cho các bảng `nhan_su`, `may_moc`, `phong`, `thu_thuat`, `phac_do` với ràng buộc composite unique `UNIQUE(unit_code, ...)`.
+  + **Frontend Logic & Caching**:
+    - Cập nhật [scheduler-engine.js](file:///g:/Other%20computers/Laptop%20Th%C3%A1i/PM-DPT/PM-xeplich/khung_pm/ban_web/v4-thuongmai/js/scheduler-engine.js) và [ai-scheduler.js](file:///g:/Other%20computers/Laptop%20Th%C3%A1i/PM-DPT/PM-xeplich/khung_pm/ban_web/v4-thuongmai/js/ai-scheduler.js) để hàm `getSafeCache()` và nạp dữ liệu luôn sử dụng khóa cache scoped theo đơn vị: `getBootstrapCacheKey()` (`times_bootstrap_cache_{unit_code}`).
+    - Cập nhật [offline-sync-engine.js](file:///g:/Other%20computers/Laptop%20Th%C3%A1i/PM-DPT/PM-xeplich/khung_pm/ban_web/v4-thuongmai/js/offline-sync-engine.js) để lưu trữ bản sao localStorage đồng bộ chính xác theo khóa đơn vị tương ứng.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `js/scheduler-engine.js`
+  + `js/ai-scheduler.js`
+  + `js/offline-sync-engine.js`
+  + `index.html`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+---
+
+
 

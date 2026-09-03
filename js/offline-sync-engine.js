@@ -82,8 +82,15 @@ window.OfflineSyncEngine = (function () {
 
     // Luôn duy trì đồng bộ bản sao nhẹ trên LocalStorage cho các hàm đọc đồng bộ tức thì
     try {
-      if (key === 'times_bootstrap_cache' || key === 'meds_success') {
-        localStorage.setItem(key, typeof data === 'string' ? data : JSON.stringify(data));
+      if (key === 'times_bootstrap_cache' || key.startsWith('times_bootstrap_cache') || key === 'meds_success') {
+        const payloadStr = typeof data === 'string' ? data : JSON.stringify(data);
+        localStorage.setItem(key, payloadStr);
+        if (key === 'times_bootstrap_cache') {
+          const unitKey = typeof window !== 'undefined' && typeof window.getBootstrapCacheKey === 'function'
+            ? window.getBootstrapCacheKey()
+            : ('times_bootstrap_cache_' + (localStorage.getItem('pm_unit_code') || 'bvtks-cs2'));
+          localStorage.setItem(unitKey, payloadStr);
+        }
       }
     } catch (e) {
       // LocalStorage đầy thì bỏ qua, dữ liệu đã an toàn trong IndexedDB

@@ -972,7 +972,10 @@ function getSafeCache() {
     let cache = (typeof dataCache !== 'undefined' && dataCache) ? dataCache : (window.dataCache || null);
     if (!cache || !cache.staff || !cache.staff.length) {
       try {
-        const str = localStorage.getItem('times_bootstrap_cache');
+        const cacheKey = typeof window !== 'undefined' && typeof window.getBootstrapCacheKey === 'function'
+          ? window.getBootstrapCacheKey()
+          : ('times_bootstrap_cache_' + (localStorage.getItem('pm_unit_code') || 'bvtks-cs2'));
+        const str = localStorage.getItem(cacheKey) || localStorage.getItem('times_bootstrap_cache');
         if (str) {
           const parsed = JSON.parse(str);
           if (parsed) {
