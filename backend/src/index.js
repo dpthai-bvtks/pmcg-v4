@@ -268,7 +268,7 @@ async function processApiRequest(c) {
   if (!action || action === "ping") {
     return success({
       message: "PM-XepLich v4 Multi-Tenant SaaS API is running perfectly!",
-      version: "4.0.0-PRO",
+      version: "4.0.1-PRO",
       unit_code: unitCode,
       timestamp: new Date().toISOString()
     });
@@ -1283,7 +1283,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
       const exportPackage = {
         app: "PM-XepLich T.I.M.E.S SaaS",
-        version: "4.0.0",
+        version: "4.0.1",
         unit_code: uCode,
         exported_at: new Date().toISOString(),
         tables: {}
@@ -1315,7 +1315,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
       const dbPayload = {
         app: "PM-XepLich T.I.M.E.S SaaS - All Tenants Master Export",
-        version: "4.0.0",
+        version: "4.0.1",
         exported_at: new Date().toISOString(),
         tenants: results[0]?.results || [],
         cai_dat: results[1]?.results || [],

@@ -497,7 +497,7 @@ git add . && git commit -m "..." && git push origin main
 
 ---
 
-### [v4.0.0-rev63] - 03/09/2026: Khắc Phục Triệt Để Lỗi Rò Rỉ Dữ Liệu Nhân Sự & Cách Ly Multi-Tenant 100%
+### [v4.0.1-rev1] - 03/09/2026: Khắc Phục Triệt Để Lỗi Rò Rỉ Dữ Liệu Nhân Sự & Cách Ly Multi-Tenant 100% (Phiên Bản Nâng Cấp v4.0.1)
 
 - **Yêu cầu của người dùng**:
   + Khi đăng nhập tài khoản thuộc đơn vị `bvtks-cs2`, trong tab Nhân sự lại hiển thị cả dữ liệu nhân sự của đơn vị `test` (dù trên Turso/D1 các nhân sự đó thuộc đơn vị `test`). Yêu cầu rà soát và khắc phục triệt để.
