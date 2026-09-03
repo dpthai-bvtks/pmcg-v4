@@ -3289,16 +3289,22 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         if (typeof data === "string") { try { data = JSON.parse(data); } catch(e) {} }
       }
       const jsonStr = typeof data === "string" ? data : JSON.stringify(data);
-      const myStandard = my || new Date().toISOString().substring(0, 7);
-      const myUnderscore = myStandard.replace('-', '_');
+      
+      // Chuẩn hoá month_year về duy nhất định dạng chuẩn YYYY-MM (VD: 2026-08)
+      let myStandard = my || new Date().toISOString().substring(0, 7);
+      const cleanS = myStandard.replace('/', '-').replace('_', '-');
+      const parts = cleanS.split('-');
+      if (parts.length === 2) {
+        if (parts[0].length === 4) {
+          myStandard = `${parts[0]}-${parts[1].padStart(2, '0')}`;
+        } else if (parts[1].length === 4) {
+          myStandard = `${parts[1]}-${parts[0].padStart(2, '0')}`;
+        }
+      }
 
       try {
         await db.prepare("INSERT INTO cham_cong (unit_code, month_year, data_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, month_year) DO UPDATE SET data_json = excluded.data_json, updated_at = CURRENT_TIMESTAMP")
           .bind(unitCode, myStandard, jsonStr).run();
-        if (myUnderscore !== myStandard) {
-          await db.prepare("INSERT INTO cham_cong (unit_code, month_year, data_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, month_year) DO UPDATE SET data_json = excluded.data_json, updated_at = CURRENT_TIMESTAMP")
-            .bind(unitCode, myUnderscore, jsonStr).run();
-        }
       } catch(e) {
         console.warn("saveChamCong D1 error:", e);
       }
@@ -3429,16 +3435,22 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const my = String(args[0] || "").trim();
       const data = args[1] || {};
       const jsonStr = typeof data === "string" ? data : JSON.stringify(data);
-      const myStandard = my || new Date().toISOString().substring(0, 7);
-      const myUnderscore = myStandard.replace('-', '_');
+      
+      // Chuẩn hoá month_year về duy nhất định dạng chuẩn YYYY-MM (VD: 2026-08)
+      let myStandard = my || new Date().toISOString().substring(0, 7);
+      const cleanS = myStandard.replace('/', '-').replace('_', '-');
+      const parts = cleanS.split('-');
+      if (parts.length === 2) {
+        if (parts[0].length === 4) {
+          myStandard = `${parts[0]}-${parts[1].padStart(2, '0')}`;
+        } else if (parts[1].length === 4) {
+          myStandard = `${parts[1]}-${parts[0].padStart(2, '0')}`;
+        }
+      }
 
       try {
         await db.prepare("INSERT INTO thong_ke (unit_code, month_year, data_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, month_year) DO UPDATE SET data_json = excluded.data_json, updated_at = CURRENT_TIMESTAMP")
           .bind(unitCode, myStandard, jsonStr).run();
-        if (myUnderscore !== myStandard) {
-          await db.prepare("INSERT INTO thong_ke (unit_code, month_year, data_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, month_year) DO UPDATE SET data_json = excluded.data_json, updated_at = CURRENT_TIMESTAMP")
-            .bind(unitCode, myUnderscore, jsonStr).run();
-        }
       } catch(e) {
         console.warn("saveThongKeThuThuat D1 error:", e);
       }
