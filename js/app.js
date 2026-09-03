@@ -2805,6 +2805,9 @@ window.renderSttOrderControl = function (type, i, total) {
                             b.staff.forEach((st, i) => { if (st) st.sheetIndex = i; });
                             dataCache.staff = b.staff.filter(st => st && st.ten);
                             if (typeof renderStaffTable === 'function') renderStaffTable();
+                            if (typeof window.resetChamCongForUnit === 'function') {
+                                window.resetChamCongForUnit(localStorage.getItem('pm_unit_code'));
+                            }
                         }
                         if (b.schedule && Array.isArray(b.schedule) && b.schedule.length) {
                             dataCache.schedule = b.schedule;

@@ -214,6 +214,10 @@ window.doLogin = function () {
                     window.dataCacheTime = {};
                 }
 
+                if (typeof window.resetChamCongForUnit === 'function') {
+                    window.resetChamCongForUnit(uUnit);
+                }
+
                 // Tải dữ liệu Bootstrap mới nhất của đơn vị này ngay lập tức (forceRefresh = true)
                 if (typeof window.loadBootstrapData === 'function') {
                     try { window.loadBootstrapData(true); } catch(e) { console.warn('Lỗi loadBootstrapData:', e); }

@@ -522,5 +522,30 @@ git add . && git commit -m "..." && git push origin main
 
 ---
 
+### [v4.0.1-rev2] - 03/09/2026: Khắc Phục Lỗi Mất Nội Dung Tab Thống Kê Tổng Hợp Ở Các Tài Khoản Đơn Vị
 
-
+- **Yêu cầu của người dùng**:
+  + Tab Thống Kê Tổng Hợp ở các tài khoản đơn vị bị mất nội dung, không hiển thị dữ liệu nhân sự và thống kê.
+- **Nguyên nhân cốt lõi**:
+  1. Trong `js/thongke.js`, danh sách nhân sự chấm công/thống kê `adminChamCongEmployees` mặc định là rỗng `[]` đối với các đơn vị mới (khác `bvtks-cs2`). Khi gọi API `getEmployees` ngầm, server trả về `[]` nếu đơn vị chưa cấu hình riêng trong mục Quản trị. Kết quả là mảng bị gán thành rỗng `[]` và không tự động fallback về danh sách nhân sự chính `dataCache.staff` của đơn vị.
+  2. Khi `adminChamCongEmployees` rỗng, bảng Thống kê duyệt mảng 0 lần và chỉ hiển thị 1 dòng Tổng Cộng 0 mà không hiển thị danh sách nhân viên của đơn vị.
+  3. Khi nạp file Excel từ hệ thống HIS, hàm `processThuThuatExcelData` không khớp được tên nhân viên vì mảng rỗng và chỉ so sánh chuỗi chính xác trong `staff.keys`, dẫn đến dữ liệu thủ thuật không thể gán vào nhân viên nào.
+  4. Thiếu bộ chọn Tháng/Năm trực quan trên tab Thống Kê và thiếu sự kiện reset/đồng bộ dữ liệu khi đổi đơn vị đăng nhập.
+- **Giải pháp xử lý**:
+  + **`js/thongke.js`**:
+    - Nâng cấp `getOrLoadChamCongEmployees` & `renderThongKeTable`: Tự động fallback lấy danh sách từ `dataCache.staff` khi `adminChamCongEmployees` rỗng, đảm bảo nhân sự đơn vị luôn hiển thị đầy đủ ngay lập tức.
+    - Thêm hàm `ensureStaffConfigForEmployees`: Tự động khởi tạo và sinh từ khóa thông minh (keys, vai trò, kỹ năng, hệ số) cho tất cả nhân sự của đơn vị.
+    - Nâng cấp `findStaffDataByKey` & `processThuThuatExcelData`: Hỗ trợ lọc bỏ tiền tố danh xưng (`BS.`, `KTV.`, `ĐD.`, `BS`, `KTV`, `ĐD`), khớp tên linh hoạt và chính xác khi nạp file HIS.
+    - Bổ sung kiểm tra fallback tự động trong các hàm xuất file `exportChamCongExcel`, `exportThongKeExcel`, `exportThucLinhExcel`.
+    - Thêm hàm `initMonthYearSync`: Đồng bộ 2 chiều bộ chọn Tháng/Năm giữa tab Chấm công và Thống kê; tự động khởi tạo theo Tháng/Năm thực tế hiện tại.
+    - Cập nhật `window.resetChamCongForUnit`: Làm sạch dữ liệu chấm công / thủ thuật trong bộ nhớ và tự động đồng bộ theo đơn vị mới.
+  + **`index.html`**:
+    - Thêm cụm điều khiển Tháng/Năm `#thongke-month-year-container` trên thanh công cụ của tab Thống Kê Tổng Hợp.
+  + **`js/init.js` & `js/app.js`**:
+    - Tự động gọi `window.resetChamCongForUnit` khi người dùng đăng nhập thành công hoặc nạp dữ liệu Bootstrap của đơn vị.
+- **File sửa đổi**:
+  + `js/thongke.js`
+  + `index.html`
+  + `js/init.js`
+  + `js/app.js`
+  + `PM-xeplich-v4.md`

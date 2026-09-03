@@ -51,21 +51,60 @@
         // ==========================================
         // SMART RESOLVER & DATA NORMALIZATION
         // ==========================================
+        function ensureStaffConfigForEmployees() {
+            if (!adminChamCongStaffConfig || typeof adminChamCongStaffConfig !== 'object') {
+                adminChamCongStaffConfig = {};
+            }
+            adminChamCongEmployees.forEach(emp => {
+                if (!emp) return;
+                const empName = String(emp).trim();
+                if (!empName) return;
+                if (!adminChamCongStaffConfig[empName]) {
+                    const role = getEmployeeRole(empName);
+                    const lower = empName.toLowerCase().trim();
+                    const keys = [lower];
+                    const words = lower.split(/\s+/);
+                    if (words.length > 1) {
+                        const shortName = words[words.length - 1];
+                        keys.push(shortName);
+                        if (role === 'Bác sĩ') {
+                            keys.push('bs ' + shortName, 'bs. ' + shortName, 'bs ' + lower, 'bs. ' + lower);
+                        } else if (role === 'Điều dưỡng') {
+                            keys.push('đd ' + shortName, 'đd. ' + shortName, 'dd ' + shortName, 'dd. ' + shortName, 'đd ' + lower);
+                        } else {
+                            keys.push('ktv ' + shortName, 'ktv. ' + shortName, 'ktv ' + lower, 'ktv. ' + lower);
+                        }
+                    }
+                    adminChamCongStaffConfig[empName] = {
+                        keys: keys,
+                        skills: 'Cả hai',
+                        role: role,
+                        heSo: 1.0
+                    };
+                }
+            });
+        }
+
         function findStaffDataByKey(dataObj, empName) {
             if (!dataObj || typeof dataObj !== 'object') return null;
             if (dataObj[empName]) return dataObj[empName];
 
             const staffConf = (adminChamCongStaffConfig && adminChamCongStaffConfig[empName]) || DEFAULT_CHAMCONG_STAFF[empName];
             const keys = (staffConf && staffConf.keys) ? staffConf.keys : [empName.toLowerCase()];
+            const empLower = empName.toLowerCase().trim();
 
             for (const dKey of Object.keys(dataObj)) {
                 const lowerDKey = dKey.toLowerCase().trim();
-                if (lowerDKey === empName.toLowerCase().trim()) return dataObj[dKey];
+                if (lowerDKey === empLower) return dataObj[dKey];
                 for (const k of keys) {
                     const lowerK = k.toLowerCase().trim();
                     if (lowerDKey === lowerK || lowerDKey.includes(lowerK) || lowerK.includes(lowerDKey)) {
                         return dataObj[dKey];
                     }
+                }
+                const cleanDKey = lowerDKey.replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd|dd\.|dd)\s+/, '').trim();
+                if (cleanDKey === empLower || cleanDKey.includes(empLower) || empLower.includes(cleanDKey)) {
+                    return dataObj[dKey];
                 }
             }
             return null;
@@ -123,15 +162,26 @@
         function getOrLoadChamCongEmployees(callback) {
             const isDefault = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2') === 'bvtks-cs2';
             
-            // 1. Kiểm tra cache / dataCache / default
-            if (adminChamCongEmployees.length === 0) {
+            // 1. Kiểm tra RAM -> Cache LocalStorage -> dataCache.staff -> default (nếu bvtks-cs2)
+            if (!adminChamCongEmployees || adminChamCongEmployees.length === 0) {
                 const cachedEmpStr = localStorage.getItem(getChamCongStorageKey('med_chamcong_employees'));
                 if (cachedEmpStr) {
-                    try { adminChamCongEmployees = JSON.parse(cachedEmpStr); } catch(e){}
-                } else if (isDefault) {
-                    adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
+                    try {
+                        const parsed = JSON.parse(cachedEmpStr);
+                        if (Array.isArray(parsed) && parsed.length > 0) adminChamCongEmployees = parsed;
+                    } catch(e){}
                 }
             }
+
+            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
+                adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
+            }
+
+            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && isDefault) {
+                adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
+            }
+
+            ensureStaffConfigForEmployees();
 
             if (callback) callback(adminChamCongEmployees);
 
@@ -146,12 +196,30 @@
                     list = empRes;
                 }
 
-                adminChamCongEmployees = list.map(item => typeof item === 'object' && item !== null ? (item.ten || item.name || item.his_name) : item).filter(Boolean);
+                const mappedList = list.map(item => typeof item === 'object' && item !== null ? (item.ten || item.name || item.his_name) : item).filter(Boolean);
+                if (mappedList.length > 0) {
+                    adminChamCongEmployees = mappedList;
+                } else if (typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
+                    adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
+                } else if (isDefault) {
+                    adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
+                }
+
+                ensureStaffConfigForEmployees();
+
                 try { localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees)); } catch(e){}
                 if (callback) callback(adminChamCongEmployees);
                 if (typeof renderChamCongTable === 'function') renderChamCongTable();
+                if (typeof renderThongKeTable === 'function') renderThongKeTable();
             }).withFailureHandler(err => {
                 console.warn("getEmployees fallback:", err);
+                if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
+                    adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
+                    ensureStaffConfigForEmployees();
+                    if (callback) callback(adminChamCongEmployees);
+                    if (typeof renderChamCongTable === 'function') renderChamCongTable();
+                    if (typeof renderThongKeTable === 'function') renderThongKeTable();
+                }
             }).getEmployees();
         }
         
@@ -168,15 +236,19 @@
                     }
                 } else if (Array.isArray(res)) {
                     adminChamCongEmployees = res;
-                } else {
+                } else if (res && typeof res === 'object') {
                     adminChamCongEmployees = Object.keys(res);
                 }
                 if (Array.isArray(adminChamCongEmployees)) {
                     adminChamCongEmployees = adminChamCongEmployees.map(item => typeof item === 'object' && item !== null ? (item.ten || item.name || item.his_name) : item).filter(Boolean);
                 }
+                if (adminChamCongEmployees.length === 0 && typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
+                    adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
+                }
                 if (adminChamCongEmployees.length > 0) {
                     try { localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees)); } catch(e){}
                 }
+                ensureStaffConfigForEmployees();
                 google.script.run.withSuccessHandler(resConfig => {
                     window.hideGlobalLoading();
                     if(resConfig && resConfig.status === 'success' && resConfig.data) {
@@ -184,14 +256,16 @@
                     } else if (resConfig && resConfig.staff) {
                         adminChamCongStaffConfig = resConfig.staff;
                     }
+                    ensureStaffConfigForEmployees();
                     renderAdminChamCongTable();
                 }).getErrorConfig();
             }).withFailureHandler(err => {
                 window.hideGlobalLoading();
                 console.error("Lỗi loadAdminChamCongData:", err);
-                if (adminChamCongEmployees.length === 0 && typeof dataCache !== 'undefined' && dataCache.staff && dataCache.staff.length > 0) {
+                if (adminChamCongEmployees.length === 0 && typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
                     adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
                 }
+                ensureStaffConfigForEmployees();
                 renderAdminChamCongTable();
             }).getEmployees();
         }
@@ -376,8 +450,13 @@ function renderAdminChamCongTable() {
         let chamCongSaveTimeout = null;
 
         function getChamCongMonthYear() {
-            const m = String(document.getElementById('chamcong-month-picker').value || '1').padStart(2, '0');
-            const y = String(document.getElementById('chamcong-year-picker').value || '2026');
+            const tkM = document.getElementById('thongke-month-picker');
+            const tkY = document.getElementById('thongke-year-picker');
+            const ccM = document.getElementById('chamcong-month-picker');
+            const ccY = document.getElementById('chamcong-year-picker');
+            const now = new Date();
+            const m = String((tkM && tkM.value) ? tkM.value : ((ccM && ccM.value) ? ccM.value : (now.getMonth() + 1))).padStart(2, '0');
+            const y = String((tkY && tkY.value) ? tkY.value : ((ccY && ccY.value) ? ccY.value : now.getFullYear()));
             return `${y}-${m}`;
         }
 
@@ -903,6 +982,21 @@ function renderAdminChamCongTable() {
             if(!tbody) return;
             tbody.innerHTML = '';
             
+            // Auto fallback to dataCache.staff if adminChamCongEmployees is empty
+            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
+                adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
+                ensureStaffConfigForEmployees();
+            }
+
+            if (!adminChamCongEmployees || adminChamCongEmployees.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:35px 20px; color:#64748b; font-size:13px; font-weight:500; background:#f8fafc;">
+                    <div style="font-size:24px; margin-bottom:8px;">👥</div>
+                    <div>Đơn vị chưa có danh sách nhân sự.</div>
+                    <div style="font-size:11.5px; color:#94a3b8; margin-top:4px;">Vui lòng thêm nhân sự tại mục <b>Quản lý nhân sự</b> hoặc vào <b>Quản trị ➔ Cài đặt hệ thống ➔ Nhân sự chấm công</b>.</div>
+                </td></tr>`;
+                return;
+            }
+
             const isQ = (thongKeMode !== 'current');
             const sourceChamCong = isQ ? thongKeQuarterData.chamcong : null;
             const sourceThuThuat = isQ ? thongKeQuarterData.thuthuat : thongKeData;
@@ -916,18 +1010,20 @@ function renderAdminChamCongTable() {
 
             adminChamCongEmployees.forEach(emp => {
                 const tr = document.createElement('tr');
-                const t = (sourceThuThuat && sourceThuThuat[emp]) ? sourceThuThuat[emp] : { loai1: 0, loai2: 0, loai3: 0, khac: 0 };
+                const t = (sourceThuThuat && sourceThuThuat[emp]) ? sourceThuThuat[emp] : (sourceThuThuat ? (findStaffDataByKey(sourceThuThuat, emp) || { loai1: 0, loai2: 0, loai3: 0, khac: 0 }) : { loai1: 0, loai2: 0, loai3: 0, khac: 0 });
                 
                 let tongCong = 0;
                 if (isQ) {
-                    tongCong = (sourceChamCong && sourceChamCong[emp] !== undefined) ? Math.round(sourceChamCong[emp] * 100) / 100 : 0;
+                    tongCong = (sourceChamCong && sourceChamCong[emp] !== undefined) ? Math.round(sourceChamCong[emp] * 100) / 100 : (sourceChamCong ? Math.round((findStaffDataByKey(sourceChamCong, emp) || 0) * 100) / 100 : 0);
                 } else {
-                    if (chamCongData[emp]) {
-                        const daysInMonth = new Date(getChamCongMonthYear().split('-')[0], getChamCongMonthYear().split('-')[1], 0).getDate();
+                    const empCC = chamCongData[emp] || findStaffDataByKey(chamCongData, emp);
+                    if (empCC) {
+                        const myParts = getChamCongMonthYear().split('-');
+                        const daysInMonth = new Date(parseInt(myParts[0]), parseInt(myParts[1]), 0).getDate();
                         for (let d = 1; d <= daysInMonth; d++) {
-                            tongCong += calcDayValue(chamCongData[emp][d] || '');
+                            tongCong += calcDayValue(empCC[d] || '');
                         }
-                        const heSo = chamCongData[emp].heSo !== undefined ? parseFloat(chamCongData[emp].heSo) : 1.0;
+                        const heSo = empCC.heSo !== undefined ? parseFloat(empCC.heSo) : 1.0;
                         tongCong = Math.round((tongCong * heSo) * 100) / 100;
                     }
                 }
@@ -997,6 +1093,11 @@ function renderAdminChamCongTable() {
         });
 
         function processThuThuatExcelData(dataRows) {
+            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
+                adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
+                ensureStaffConfigForEmployees();
+            }
+
             tempThuThuatData = {};
             adminChamCongEmployees.forEach(emp => {
                 tempThuThuatData[emp] = { 
@@ -1024,12 +1125,28 @@ function renderAdminChamCongTable() {
                 if (rawEmpNameNormalized.includes('thủ thuật viên') || rawEmpNameNormalized.includes('tên nhân viên')) continue;
 
                 let matchedEmp = null;
+                const cleanRaw = rawEmpNameNormalized.replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd|dd\.|dd)\s+/, '').trim();
+                
                 for (const emp of adminChamCongEmployees) {
-                    const staff = adminChamCongStaffConfig[emp] || { keys: [emp.toLowerCase()] };
-                    if (staff.keys && staff.keys.includes(rawEmpNameNormalized)) {
+                    const staff = adminChamCongStaffConfig[emp] || { keys: [emp.toLowerCase().trim()] };
+                    const empLower = emp.toLowerCase().trim();
+                    
+                    if (rawEmpNameNormalized === empLower || cleanRaw === empLower) {
                         matchedEmp = emp;
                         break;
                     }
+                    if (staff.keys && (staff.keys.includes(rawEmpNameNormalized) || staff.keys.includes(cleanRaw))) {
+                        matchedEmp = emp;
+                        break;
+                    }
+                    for (const k of (staff.keys || [])) {
+                        const lk = k.toLowerCase().trim();
+                        if (rawEmpNameNormalized === lk || cleanRaw === lk || rawEmpNameNormalized.includes(lk) || lk.includes(rawEmpNameNormalized)) {
+                            matchedEmp = emp;
+                            break;
+                        }
+                    }
+                    if (matchedEmp) break;
                 }
                 
                 if (!matchedEmp) continue;
@@ -1417,6 +1534,10 @@ function renderAdminChamCongTable() {
                 alert("Thư viện ExcelJS đang nạp, vui lòng thử lại sau giây lát!");
                 return;
             }
+            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
+                adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
+                ensureStaffConfigForEmployees();
+            }
             if (adminChamCongEmployees.length === 0) {
                 alert("Chưa có danh sách nhân sự chấm công để xuất!");
                 return;
@@ -1648,6 +1769,10 @@ function renderAdminChamCongTable() {
             if (typeof ExcelJS === 'undefined') {
                 alert("Thư viện ExcelJS đang nạp, vui lòng thử lại sau giây lát!");
                 return;
+            }
+            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
+                adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
+                ensureStaffConfigForEmployees();
             }
             if (adminChamCongEmployees.length === 0) {
                 alert("Chưa có danh sách nhân sự để xuất báo cáo!");
@@ -2149,6 +2274,10 @@ function renderAdminChamCongTable() {
                 alert("Thư viện ExcelJS đang nạp, vui lòng thử lại sau giây lát!");
                 return;
             }
+            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
+                adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
+                ensureStaffConfigForEmployees();
+            }
             if (adminChamCongEmployees.length === 0) {
                 alert("Chưa có danh sách nhân sự để tính thực lĩnh!");
                 return;
@@ -2413,17 +2542,61 @@ function renderAdminChamCongTable() {
         // Khởi tạo UI cấu hình đơn giá
         initPriceConfigUI();
 
-        // Event for month/year change in Cham Cong
-        document.getElementById('chamcong-month-picker').addEventListener('change', () => {
-            loadChamCongData();
-            const mode = document.getElementById('thongke-mode').value;
-            if (mode === 'current') loadThongKeData();
-        });
-        document.getElementById('chamcong-year-picker').addEventListener('change', () => {
-            loadChamCongData();
-            const mode = document.getElementById('thongke-mode').value;
-            if (mode === 'current') loadThongKeData();
-        });
+        // Đồng bộ và gán sự kiện cho bộ chọn Tháng/Năm giữa Chấm công & Thống kê
+        function initMonthYearSync() {
+            const now = new Date();
+            const curM = now.getMonth() + 1;
+            const curY = now.getFullYear();
+
+            const ccM = document.getElementById('chamcong-month-picker');
+            const ccY = document.getElementById('chamcong-year-picker');
+            const tkM = document.getElementById('thongke-month-picker');
+            const tkY = document.getElementById('thongke-year-picker');
+
+            if (ccM && (!ccM.value || ccM.value === '8')) {
+                ccM.value = curM;
+            }
+            if (ccY && (!ccY.value || ccY.value === '2026')) {
+                ccY.value = curY;
+            }
+            if (tkM && ccM) tkM.value = ccM.value;
+            if (tkY && ccY) tkY.value = ccY.value;
+
+            if (tkM) {
+                tkM.addEventListener('change', () => {
+                    if (ccM) ccM.value = tkM.value;
+                    const mode = document.getElementById('thongke-mode')?.value;
+                    if (mode === 'current') loadThongKeData();
+                    if (typeof loadChamCongData === 'function') loadChamCongData();
+                });
+            }
+            if (tkY) {
+                tkY.addEventListener('change', () => {
+                    if (ccY) ccY.value = tkY.value;
+                    const mode = document.getElementById('thongke-mode')?.value;
+                    if (mode === 'current') loadThongKeData();
+                    if (typeof loadChamCongData === 'function') loadChamCongData();
+                });
+            }
+
+            if (ccM) {
+                ccM.addEventListener('change', () => {
+                    if (tkM) tkM.value = ccM.value;
+                    loadChamCongData();
+                    const mode = document.getElementById('thongke-mode')?.value;
+                    if (mode === 'current') loadThongKeData();
+                });
+            }
+            if (ccY) {
+                ccY.addEventListener('change', () => {
+                    if (tkY) tkY.value = ccY.value;
+                    loadChamCongData();
+                    const mode = document.getElementById('thongke-mode')?.value;
+                    if (mode === 'current') loadThongKeData();
+                });
+            }
+        }
+        initMonthYearSync();
 
         document.querySelectorAll('.nav-tab').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -2437,12 +2610,21 @@ function renderAdminChamCongTable() {
         });
 
 window.resetChamCongForUnit = function(unitCode) {
-    const isDefault = (unitCode || 'bvtks-cs2') === 'bvtks-cs2';
+    const isDefault = (unitCode || localStorage.getItem('pm_unit_code') || 'bvtks-cs2') === 'bvtks-cs2';
     const cachedEmp = localStorage.getItem(getChamCongStorageKey('med_chamcong_employees'));
     const cachedConf = localStorage.getItem(getChamCongStorageKey('med_chamcong_staff_config'));
     
+    chamCongData = {};
+    thongKeData = {};
+    thongKeQuarterData = { chamcong: {}, thuthuat: {} };
+
     if (cachedEmp) {
-        try { adminChamCongEmployees = JSON.parse(cachedEmp); } catch(e){ adminChamCongEmployees = isDefault ? [...DEFAULT_CHAMCONG_EMPLOYEES] : []; }
+        try { 
+            const parsed = JSON.parse(cachedEmp);
+            adminChamCongEmployees = (Array.isArray(parsed) && parsed.length > 0) ? parsed : (isDefault ? [...DEFAULT_CHAMCONG_EMPLOYEES] : []);
+        } catch(e){ adminChamCongEmployees = isDefault ? [...DEFAULT_CHAMCONG_EMPLOYEES] : []; }
+    } else if (typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
+        adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
     } else {
         adminChamCongEmployees = isDefault ? [...DEFAULT_CHAMCONG_EMPLOYEES] : [];
     }
@@ -2453,7 +2635,15 @@ window.resetChamCongForUnit = function(unitCode) {
         adminChamCongStaffConfig = isDefault ? { ...DEFAULT_CHAMCONG_STAFF } : {};
     }
 
+    ensureStaffConfigForEmployees();
+
     if (typeof renderAdminChamCongTable === 'function') {
         renderAdminChamCongTable();
+    }
+    if (typeof renderChamCongTable === 'function') {
+        renderChamCongTable();
+    }
+    if (typeof renderThongKeTable === 'function') {
+        renderThongKeTable();
     }
 };
