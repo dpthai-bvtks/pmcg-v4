@@ -1282,10 +1282,18 @@ function renderAdminChamCongTable() {
         }
 
         document.getElementById('thongke-mode').addEventListener('change', (e) => {
+            const tkContainer = document.getElementById('thongke-month-year-container');
+            const customContainer = document.getElementById('custom-range-picker-container');
             if (e.target.value === 'custom') {
-                document.getElementById('custom-range-picker-container').style.display = 'flex';
+                if (customContainer) customContainer.style.display = 'flex';
+                if (tkContainer) tkContainer.style.display = 'none';
+            } else if (e.target.value === 'current') {
+                if (customContainer) customContainer.style.display = 'none';
+                if (tkContainer) tkContainer.style.display = 'inline-flex';
+                loadThongKeData();
             } else {
-                document.getElementById('custom-range-picker-container').style.display = 'none';
+                if (customContainer) customContainer.style.display = 'none';
+                if (tkContainer) tkContainer.style.display = 'none';
                 loadThongKeData();
             }
         });
