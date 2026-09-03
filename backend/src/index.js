@@ -3296,22 +3296,45 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           myVariants.push(p[1] + '-' + p[0]);
         }
       }
+      const uniqueVariants = [...new Set(myVariants)].filter(Boolean);
 
-      // 1. Check table cham_cong in D1
-      for (const v of myVariants) {
+      if (uniqueVariants.length > 0) {
+        // 1. Single SQL query on cham_cong with IN (...)
         try {
-          const rec = await db.prepare("SELECT data_json FROM cham_cong WHERE unit_code = ? AND month_year = ?").bind(unitCode, v).first();
-          if (rec && rec.data_json) {
-            const parsed = JSON.parse(rec.data_json);
-            if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
-              return success(parsed);
+          const placeholders = uniqueVariants.map(() => '?').join(',');
+          const res = await db.prepare(`SELECT month_year, data_json FROM cham_cong WHERE unit_code = ? AND month_year IN (${placeholders})`).bind(unitCode, ...uniqueVariants).all();
+          if (res && res.results && res.results.length > 0) {
+            for (const v of uniqueVariants) {
+              const row = res.results.find(r => r.month_year === v);
+              if (row && row.data_json) {
+                const parsed = JSON.parse(row.data_json);
+                if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
+                  return success(parsed);
+                }
+              }
             }
           }
         } catch(e) {}
-      }
 
-      // 2. Check latest in table cham_cong if no specific month
-      if (!myRaw) {
+        // 2. Single fallback query on cai_dat with IN (...)
+        try {
+          const cdKeys = uniqueVariants.map(v => "chamcong_" + v);
+          const placeholdersCd = cdKeys.map(() => '?').join(',');
+          const resCd = await db.prepare(`SELECT key, value FROM cai_dat WHERE unit_code = ? AND key IN (${placeholdersCd})`).bind(unitCode, ...cdKeys).all();
+          if (resCd && resCd.results && resCd.results.length > 0) {
+            for (const k of cdKeys) {
+              const row = resCd.results.find(r => r.key === k);
+              if (row && row.value) {
+                const parsed = JSON.parse(row.value);
+                if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
+                  return success(parsed);
+                }
+              }
+            }
+          }
+        } catch(e) {}
+      } else {
+        // No specific month: query latest
         try {
           const latest = await db.prepare("SELECT data_json FROM cham_cong WHERE unit_code = ? ORDER BY updated_at DESC LIMIT 1").bind(unitCode).first();
           if (latest && latest.data_json) {
@@ -3320,15 +3343,6 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         } catch(e) {}
       }
 
-      // 3. Fallback to cai_dat
-      for (const v of myVariants) {
-        try {
-          const recCd = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = ?").bind(unitCode, "chamcong_" + v).first();
-          if (recCd && recCd.value) {
-            return success(JSON.parse(recCd.value));
-          }
-        } catch(e) {}
-      }
       return success({});
     }
 
@@ -3358,9 +3372,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       }
 
       try {
-        const exist = await db.prepare("SELECT id FROM cham_cong WHERE unit_code = ? AND month_year = ?").bind(unitCode, myStandard).first();
-        if (exist && exist.id) {
-          await db.prepare("UPDATE cham_cong SET data_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(jsonStr, exist.id).run();
+        const exist = await db.prepare("SELECT rowid FROM cham_cong WHERE unit_code = ? AND month_year = ?").bind(unitCode, myStandard).first();
+        if (exist && exist.rowid) {
+          await db.prepare("UPDATE cham_cong SET data_json = ?, updated_at = CURRENT_TIMESTAMP WHERE rowid = ?").bind(jsonStr, exist.rowid).run();
         } else {
           await db.prepare("INSERT INTO cham_cong (unit_code, month_year, data_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)").bind(unitCode, myStandard, jsonStr).run();
         }
@@ -3391,28 +3405,40 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
             myVariants.push(p[1] + '-' + p[0]);
           }
         }
+        const uniqueVariants = [...new Set(myVariants)].filter(Boolean);
 
-        // 1. Query table thong_ke in D1
-        for (const v of myVariants) {
+        if (uniqueVariants.length > 0) {
+          // 1. Single SQL query on thong_ke with IN (...)
           try {
-            const rec = await db.prepare("SELECT data_json FROM thong_ke WHERE unit_code = ? AND month_year = ?").bind(unitCode, v).first();
-            if (rec && rec.data_json) {
-              const parsed = JSON.parse(rec.data_json);
-              if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
-                return success(parsed);
+            const placeholders = uniqueVariants.map(() => '?').join(',');
+            const res = await db.prepare(`SELECT month_year, data_json FROM thong_ke WHERE unit_code = ? AND month_year IN (${placeholders})`).bind(unitCode, ...uniqueVariants).all();
+            if (res && res.results && res.results.length > 0) {
+              for (const v of uniqueVariants) {
+                const row = res.results.find(r => r.month_year === v);
+                if (row && row.data_json) {
+                  const parsed = JSON.parse(row.data_json);
+                  if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
+                    return success(parsed);
+                  }
+                }
               }
             }
           } catch(e) {}
-        }
 
-        // 2. Query cai_dat
-        for (const v of myVariants) {
+          // 2. Single fallback query on cai_dat with IN (...)
           try {
-            const recCd = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = ?").bind(unitCode, "thongke_" + v).first();
-            if (recCd && recCd.value) {
-              const parsed = JSON.parse(recCd.value);
-              if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
-                return success(parsed);
+            const cdKeys = uniqueVariants.map(v => "thongke_" + v);
+            const placeholdersCd = cdKeys.map(() => '?').join(',');
+            const resCd = await db.prepare(`SELECT key, value FROM cai_dat WHERE unit_code = ? AND key IN (${placeholdersCd})`).bind(unitCode, ...cdKeys).all();
+            if (resCd && resCd.results && resCd.results.length > 0) {
+              for (const k of cdKeys) {
+                const row = resCd.results.find(r => r.key === k);
+                if (row && row.value) {
+                  const parsed = JSON.parse(row.value);
+                  if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
+                    return success(parsed);
+                  }
+                }
               }
             }
           } catch(e) {}
@@ -3507,9 +3533,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       }
 
       try {
-        const exist = await db.prepare("SELECT id FROM thong_ke WHERE unit_code = ? AND month_year = ?").bind(unitCode, myStandard).first();
-        if (exist && exist.id) {
-          await db.prepare("UPDATE thong_ke SET data_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(jsonStr, exist.id).run();
+        const exist = await db.prepare("SELECT rowid FROM thong_ke WHERE unit_code = ? AND month_year = ?").bind(unitCode, myStandard).first();
+        if (exist && exist.rowid) {
+          await db.prepare("UPDATE thong_ke SET data_json = ?, updated_at = CURRENT_TIMESTAMP WHERE rowid = ?").bind(jsonStr, exist.rowid).run();
         } else {
           await db.prepare("INSERT INTO thong_ke (unit_code, month_year, data_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)").bind(unitCode, myStandard, jsonStr).run();
         }

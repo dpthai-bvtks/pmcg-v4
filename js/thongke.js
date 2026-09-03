@@ -47,9 +47,46 @@ var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi
         }
 
         function getChamCongStorageKey(key) {
-        const u = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
-        return key + '_' + u;
-    }
+            const u = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
+            return key + '_' + u;
+        }
+
+        function getLocalCCKey(my) {
+            const u = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
+            return `pm_cache_cc_${u}_${my}`;
+        }
+        function getLocalTKKey(my) {
+            const u = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
+            return `pm_cache_tk_${u}_${my}`;
+        }
+        function getCachedChamCong(my) {
+            try {
+                const raw = localStorage.getItem(getLocalCCKey(my));
+                if (raw) return JSON.parse(raw);
+            } catch(e) {}
+            return null;
+        }
+        function setCachedChamCong(my, data) {
+            try {
+                if (data && typeof data === 'object') {
+                    localStorage.setItem(getLocalCCKey(my), JSON.stringify(data));
+                }
+            } catch(e) {}
+        }
+        function getCachedThongKe(my) {
+            try {
+                const raw = localStorage.getItem(getLocalTKKey(my));
+                if (raw) return JSON.parse(raw);
+            } catch(e) {}
+            return null;
+        }
+        function setCachedThongKe(my, data) {
+            try {
+                if (data && typeof data === 'object') {
+                    localStorage.setItem(getLocalTKKey(my), JSON.stringify(data));
+                }
+            } catch(e) {}
+        }
 
     const DEFAULT_CHAMCONG_EMPLOYEES = Object.keys(DEFAULT_CHAMCONG_STAFF);
 
@@ -169,7 +206,7 @@ var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi
             }
         } catch(e) {}
 
-        function getOrLoadChamCongEmployees(callback) {
+        function getOrLoadChamCongEmployees(callback, forceRefresh = false) {
             const isDefault = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2') === 'bvtks-cs2';
             
             // 1. Kiểm tra RAM -> Cache LocalStorage -> dataCache.staff -> default (nếu bvtks-cs2)
@@ -195,7 +232,12 @@ var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi
 
             if (callback) callback(adminChamCongEmployees);
 
-            // 2. Tải đồng bộ ngầm từ API Cloudflare
+            // Nếu đã có danh sách nhân sự và không yêu cầu forceRefresh -> không gọi API lặp lại
+            if (!forceRefresh && adminChamCongEmployees && adminChamCongEmployees.length > 0) {
+                return;
+            }
+
+            // 2. Chỉ tải từ API Cloudflare khi chưa có dữ liệu hoặc khi forceRefresh
             callApi('getEmployees', []).then(empRes => {
                 let list = [];
                 if (empRes && empRes.status === 'success') {
@@ -209,27 +251,14 @@ var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi
                 const mappedList = list.map(item => typeof item === 'object' && item !== null ? (item.ten || item.name || item.his_name) : item).filter(Boolean);
                 if (mappedList.length > 0) {
                     adminChamCongEmployees = mappedList;
-                } else if (typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
-                    adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
-                } else if (isDefault) {
-                    adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
                 }
-
                 ensureStaffConfigForEmployees();
 
                 try { localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees)); } catch(e){}
-                if (callback) callback(adminChamCongEmployees);
                 if (typeof renderChamCongTable === 'function') renderChamCongTable();
                 if (typeof renderThongKeTable === 'function') renderThongKeTable();
             }).catch(err => {
                 console.warn('getEmployees fallback:', err);
-                if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
-                    adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
-                    ensureStaffConfigForEmployees();
-                    if (callback) callback(adminChamCongEmployees);
-                    if (typeof renderChamCongTable === 'function') renderChamCongTable();
-                    if (typeof renderThongKeTable === 'function') renderThongKeTable();
-                }
             });
         }
         
@@ -474,21 +503,40 @@ function renderAdminChamCongTable() {
         function loadChamCongData() {
             const my = getChamCongMonthYear();
             
+            // 1. Tải tức thì 0ms từ Local Cache nếu có
+            const cached = getCachedChamCong(my);
+            let hasCached = false;
+            if (cached && typeof cached === 'object' && Object.keys(cached).length > 0) {
+                chamCongData = normalizeChamCongData(cached);
+                renderChamCongTable();
+                hasCached = true;
+            }
+
             getOrLoadChamCongEmployees(() => {
-                renderChamCongTable(); // Hiển thị ngay lập tức không để bảng trống trơn
+                if (!hasCached) {
+                    renderChamCongTable(); // Hiển thị khung bảng ngay lập tức không để trống
+                }
                 
-                callApi('getChamCong', [my]).then(res => {
+                const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
+                if (!apiFn) return;
+
+                apiFn('getChamCong', [my]).then(res => {
                     let raw = {};
                     if (res && res.status === 'success' && res.data) {
                         raw = res.data;
                     } else if (res && typeof res === 'object' && !res.status) {
                         raw = res;
                     }
-                    chamCongData = normalizeChamCongData(raw);
-                    renderChamCongTable();
+                    const fresh = normalizeChamCongData(raw);
+                    const oldStr = JSON.stringify(chamCongData);
+                    const newStr = JSON.stringify(fresh);
+                    chamCongData = fresh;
+                    setCachedChamCong(my, fresh);
+                    if (oldStr !== newStr) {
+                        renderChamCongTable();
+                    }
                 }).catch(err => {
-                    console.error('Lỗi khi tải chấm công:', err);
-                    renderChamCongTable();
+                    console.warn('[ChamCong] background fetch err:', err);
                 });
             });
         }
@@ -786,18 +834,27 @@ function renderAdminChamCongTable() {
         }
 
         function triggerAutoSaveChamCong() {
+            const my = getChamCongMonthYear();
+            // Lưu lạc quan ngay lập tức vào Local Cache để không bị mất khi chuyển tab/reload
+            setCachedChamCong(my, chamCongData);
+
             if (chamCongSaveTimeout) clearTimeout(chamCongSaveTimeout);
+            const thead = document.getElementById('chamcong-thead');
+            if (thead) thead.style.opacity = '0.7';
+
             chamCongSaveTimeout = setTimeout(() => {
-                const my = getChamCongMonthYear();
-                const thead = document.getElementById('chamcong-thead');
-                if (thead) thead.style.opacity = '0.7';
-                callApi('saveChamCong', [my, chamCongData]).then(() => {
+                const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
+                if (!apiFn) {
+                    if (thead) thead.style.opacity = '1';
+                    return;
+                }
+                apiFn('saveChamCong', [my, chamCongData]).then(() => {
                     if (thead) thead.style.opacity = '1';
                 }).catch(err => {
                     console.error('[ChamCong] auto-save error:', err);
                     if (thead) thead.style.opacity = '1';
                 });
-            }, 1000);
+            }, 350);
         }
 
         // Tự động set tháng hiện tại & render sẵn bảng khi load
@@ -827,39 +884,51 @@ function renderAdminChamCongTable() {
             thongKeMode = mode;
             
             getOrLoadChamCongEmployees(() => {
-                renderThongKeTable(); // Render table ngay lập tức với dữ liệu hiện có
-
                 if (mode === 'current') {
                     const my = getChamCongMonthYear();
-                    window.showGlobalLoading('Đang tải dữ liệu thống kê tháng ' + my + '...');
-                    const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
-                    if (!apiFn) {
-                        window.hideGlobalLoading();
-                        return;
+                    
+                    // 1. Tải tức thì 0ms từ Local Cache nếu có
+                    const cachedCC = getCachedChamCong(my);
+                    const cachedTK = getCachedThongKe(my);
+                    let hasCached = false;
+                    if (cachedCC || cachedTK) {
+                        if (cachedCC) chamCongData = normalizeChamCongData(cachedCC);
+                        if (cachedTK) thongKeData = normalizeThongKeData(cachedTK);
+                        renderThongKeTable();
+                        hasCached = true;
                     }
 
-                    apiFn('getChamCong', [my], resCC => {
-                        let rawCC = {};
-                        if (resCC && resCC.status === 'success' && resCC.data) rawCC = resCC.data;
-                        else if (resCC && typeof resCC === 'object' && !resCC.status) rawCC = resCC;
-                        chamCongData = normalizeChamCongData(rawCC);
+                    if (!hasCached) {
+                        renderThongKeTable(); // Hiển thị khung bảng ngay lập tức
+                    }
 
-                        apiFn('getThongKeThuThuat', [my], resTT => {
-                            let rawTT = {};
-                            if (resTT && resTT.status === 'success' && resTT.data) rawTT = resTT.data;
-                            else if (resTT && typeof resTT === 'object' && !resTT.status) rawTT = resTT;
-                            thongKeData = normalizeThongKeData(rawTT);
-                            window.hideGlobalLoading();
-                            renderThongKeTable();
-                        }, err => {
-                            window.hideGlobalLoading();
-                            console.error('[ThongKe] getThongKeThuThuat error:', err);
-                            thongKeData = normalizeThongKeData({});
-                            renderThongKeTable();
-                        });
-                    }, err => {
-                        window.hideGlobalLoading();
-                        console.error('[ThongKe] getChamCong error:', err);
+                    const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
+                    if (!apiFn) return;
+
+                    // 2. Chạy đồng bộ ngầm song song cả Chấm Công & Thống Kê (Parallel Execution)
+                    const pCC = new Promise(resolve => {
+                        apiFn('getChamCong', [my], 
+                            res => resolve((res && res.data) ? res.data : (res || {})),
+                            () => resolve(cachedCC || {})
+                        );
+                    });
+                    const pTT = new Promise(resolve => {
+                        apiFn('getThongKeThuThuat', [my], 
+                            res => resolve((res && res.data) ? res.data : (res || {})),
+                            () => resolve(cachedTK || {})
+                        );
+                    });
+
+                    Promise.all([pCC, pTT]).then(([rawCC, rawTT]) => {
+                        const freshCC = normalizeChamCongData(rawCC);
+                        const freshTT = normalizeThongKeData(rawTT);
+                        chamCongData = freshCC;
+                        thongKeData = freshTT;
+                        setCachedChamCong(my, freshCC);
+                        setCachedThongKe(my, freshTT);
+                        renderThongKeTable();
+                    }).catch(err => {
+                        console.warn('[ThongKe] Background load error:', err);
                         renderThongKeTable();
                     });
                 } else if (mode === 'custom') {
@@ -900,58 +969,45 @@ function renderAdminChamCongTable() {
         }
 
         function fetchSingleMonthData(my) {
-            return new Promise((resolve) => {
-                const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
-                if (!apiFn) {
-                    resolve({ month: my, data: { chamcong: {}, thuthuat: {} } });
-                    return;
-                }
-                let rawCC = {};
-                let rawTT = {};
-                apiFn('getChamCong', [my], resCC => {
-                    if (resCC && resCC.status === 'success' && resCC.data) rawCC = resCC.data;
-                    else if (resCC && typeof resCC === 'object' && !resCC.status) rawCC = resCC;
+            const cachedCC = getCachedChamCong(my);
+            const cachedTK = getCachedThongKe(my);
 
-                    apiFn('getThongKeThuThuat', [my], resTT => {
-                        if (resTT && resTT.status === 'success' && resTT.data) rawTT = resTT.data;
-                        else if (resTT && typeof resTT === 'object' && !resTT.status) rawTT = resTT;
-                        resolve({ 
-                            month: my, 
-                            data: { 
-                                chamcong: normalizeChamCongData(rawCC), 
-                                thuthuat: normalizeThongKeData(rawTT) 
-                            } 
-                        });
-                    }, () => {
-                        resolve({ 
-                            month: my, 
-                            data: { 
-                                chamcong: normalizeChamCongData(rawCC), 
-                                thuthuat: normalizeThongKeData({}) 
-                            } 
-                        });
-                    });
-                }, () => {
-                    apiFn('getThongKeThuThuat', [my], resTT => {
-                        if (resTT && resTT.status === 'success' && resTT.data) rawTT = resTT.data;
-                        else if (resTT && typeof resTT === 'object' && !resTT.status) rawTT = resTT;
-                        resolve({ 
-                            month: my, 
-                            data: { 
-                                chamcong: normalizeChamCongData({}), 
-                                thuthuat: normalizeThongKeData(rawTT) 
-                            } 
-                        });
-                    }, () => {
-                        resolve({ 
-                            month: my, 
-                            data: { 
-                                chamcong: normalizeChamCongData({}), 
-                                thuthuat: normalizeThongKeData({}) 
-                            } 
-                        });
-                    });
+            const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
+            if (!apiFn) {
+                return Promise.resolve({
+                    month: my,
+                    data: {
+                        chamcong: normalizeChamCongData(cachedCC || {}),
+                        thuthuat: normalizeThongKeData(cachedTK || {})
+                    }
                 });
+            }
+
+            const pCC = new Promise(resolve => {
+                apiFn('getChamCong', [my], 
+                    res => resolve((res && res.data) ? res.data : (res || {})),
+                    () => resolve(cachedCC || {})
+                );
+            });
+            const pTT = new Promise(resolve => {
+                apiFn('getThongKeThuThuat', [my], 
+                    res => resolve((res && res.data) ? res.data : (res || {})),
+                    () => resolve(cachedTK || {})
+                );
+            });
+
+            return Promise.all([pCC, pTT]).then(([rawCC, rawTT]) => {
+                const normCC = normalizeChamCongData(rawCC);
+                const normTT = normalizeThongKeData(rawTT);
+                setCachedChamCong(my, normCC);
+                setCachedThongKe(my, normTT);
+                return {
+                    month: my,
+                    data: {
+                        chamcong: normCC,
+                        thuthuat: normTT
+                    }
+                };
             });
         }
         window.calcDayValue = calcDayValue;
@@ -1299,8 +1355,14 @@ function renderAdminChamCongTable() {
 
         function saveThuThuatToServer() {
             const my = getChamCongMonthYear();
+            setCachedThongKe(my, thongKeData);
             window.showGlobalLoading("Đang lưu dữ liệu thủ thuật...");
-            callApi('saveThongKeThuThuat', [my, thongKeData]).then(() => {
+            const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
+            if (!apiFn) {
+                window.hideGlobalLoading();
+                return;
+            }
+            apiFn('saveThongKeThuThuat', [my, thongKeData]).then(() => {
                 window.hideGlobalLoading();
                 alert("Đã lưu dữ liệu thủ thuật lên máy chủ!");
             }).catch(err => {
@@ -2651,8 +2713,11 @@ window.resetChamCongForUnit = function(unitCode) {
     const cachedEmp = localStorage.getItem(getChamCongStorageKey('med_chamcong_employees'));
     const cachedConf = localStorage.getItem(getChamCongStorageKey('med_chamcong_staff_config'));
     
-    chamCongData = {};
-    thongKeData = {};
+    const my = getChamCongMonthYear();
+    const cachedCC = getCachedChamCong(my);
+    const cachedTK = getCachedThongKe(my);
+    chamCongData = cachedCC ? normalizeChamCongData(cachedCC) : {};
+    thongKeData = cachedTK ? normalizeThongKeData(cachedTK) : {};
     thongKeQuarterData = { chamcong: {}, thuthuat: {} };
 
     if (cachedEmp) {
