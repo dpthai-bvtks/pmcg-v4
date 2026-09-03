@@ -2,6 +2,16 @@
    T.I.M.E.S SYSTEM - THỐNG KÊ HIS & EXCEL EXPORT
    ========================================== */
 
+var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi : (typeof callApi === 'function' ? callApi : function(name, args, cb, err) {
+    if (typeof window !== 'undefined' && window.callApi) return window.callApi(name, args, cb, err);
+    if (typeof window !== 'undefined' && window.google?.script?.run) {
+        return new Promise((res, rej) => {
+            window.google.script.run.withSuccessHandler(r => { if (cb) cb(r); res(r); }).withFailureHandler(e => { if (err) err(e); rej(e); })[name](...(args || []));
+        });
+    }
+    return Promise.reject(new Error("API not available"));
+});
+
         // ==========================================
         // QUẢN LÝ NHÂN SỰ CHẤM CÔNG (HỌ VÀ TÊN ĐẦY ĐỦ CHUẨN BVTKS CS2)
         // ==========================================
@@ -2580,14 +2590,14 @@ function renderAdminChamCongTable() {
             const tkM = document.getElementById('thongke-month-picker');
             const tkY = document.getElementById('thongke-year-picker');
 
-            if (ccM && (!ccM.value || ccM.value === '8')) {
+            if (ccM && !ccM.value) {
                 ccM.value = curM;
             }
-            if (ccY && (!ccY.value || ccY.value === '2026')) {
+            if (ccY && !ccY.value) {
                 ccY.value = curY;
             }
-            if (tkM && ccM) tkM.value = ccM.value;
-            if (tkY && ccY) tkY.value = ccY.value;
+            if (tkM && ccM && !tkM.value) tkM.value = ccM.value;
+            if (tkY && ccY && !tkY.value) tkY.value = ccY.value;
 
             if (tkM) {
                 tkM.addEventListener('change', () => {
