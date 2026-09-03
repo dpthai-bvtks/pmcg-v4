@@ -186,7 +186,7 @@
             if (callback) callback(adminChamCongEmployees);
 
             // 2. Tải đồng bộ ngầm từ API Cloudflare
-            google.script.run.withSuccessHandler(empRes => {
+            callApi('getEmployees', []).then(empRes => {
                 let list = [];
                 if (empRes && empRes.status === 'success') {
                     if (Array.isArray(empRes.data)) list = empRes.data;
@@ -211,8 +211,8 @@
                 if (callback) callback(adminChamCongEmployees);
                 if (typeof renderChamCongTable === 'function') renderChamCongTable();
                 if (typeof renderThongKeTable === 'function') renderThongKeTable();
-            }).withFailureHandler(err => {
-                console.warn("getEmployees fallback:", err);
+            }).catch(err => {
+                console.warn('getEmployees fallback:', err);
                 if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
                     adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
                     ensureStaffConfigForEmployees();
@@ -220,12 +220,12 @@
                     if (typeof renderChamCongTable === 'function') renderChamCongTable();
                     if (typeof renderThongKeTable === 'function') renderThongKeTable();
                 }
-            }).getEmployees();
+            });
         }
         
         function loadAdminChamCongData() {
-            window.showGlobalLoading("Đang tải danh sách nhân sự từ Google Drive...");
-            google.script.run.withSuccessHandler(res => {
+            window.showGlobalLoading("Đang tải danh sách nhân sự từ máy chủ...");
+            callApi('getEmployees', []).then(res => {
                 if(res && res.status === 'success' && res.data) {
                     if (Array.isArray(res.data)) {
                         adminChamCongEmployees = res.data;
@@ -249,25 +249,25 @@
                     try { localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees)); } catch(e){}
                 }
                 ensureStaffConfigForEmployees();
-                google.script.run.withSuccessHandler(resConfig => {
-                    window.hideGlobalLoading();
-                    if(resConfig && resConfig.status === 'success' && resConfig.data) {
-                        adminChamCongStaffConfig = resConfig.data.staff || {};
-                    } else if (resConfig && resConfig.staff) {
-                        adminChamCongStaffConfig = resConfig.staff;
-                    }
-                    ensureStaffConfigForEmployees();
-                    renderAdminChamCongTable();
-                }).getErrorConfig();
-            }).withFailureHandler(err => {
+                return callApi('getErrorConfig', []);
+            }).then(resConfig => {
                 window.hideGlobalLoading();
-                console.error("Lỗi loadAdminChamCongData:", err);
+                if(resConfig && resConfig.status === 'success' && resConfig.data) {
+                    adminChamCongStaffConfig = resConfig.data.staff || {};
+                } else if (resConfig && resConfig.staff) {
+                    adminChamCongStaffConfig = resConfig.staff;
+                }
+                ensureStaffConfigForEmployees();
+                renderAdminChamCongTable();
+            }).catch(err => {
+                window.hideGlobalLoading();
+                console.error('Lỗi loadAdminChamCongData:', err);
                 if (adminChamCongEmployees.length === 0 && typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
                     adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
                 }
                 ensureStaffConfigForEmployees();
                 renderAdminChamCongTable();
-            }).getEmployees();
+            });
         }
 
         
@@ -282,10 +282,7 @@
             renderAdminChamCongTable();
 
             // Save to server
-            if (window.google && window.google.script && window.google.script.run) {
-                window.google.script.run.saveEmployees(adminChamCongEmployees);
-                window.google.script.run.saveErrorConfig({ staff: adminChamCongStaffConfig });
-            } else if (typeof callApi === 'function') {
+            if (typeof callApi === 'function') {
                 callApi('saveEmployees', [adminChamCongEmployees]);
                 callApi('saveErrorConfig', [{ staff: adminChamCongStaffConfig }]);
             }
@@ -424,14 +421,18 @@ function renderAdminChamCongTable() {
         }
 
         function saveAdminChamCongData() {
-            window.showGlobalLoading("Đang lưu danh sách nhân sự lên Google Drive...");
-            google.script.run.withSuccessHandler(() => {
-                google.script.run.withSuccessHandler(() => {
-                    window.hideGlobalLoading();
-                    renderAdminChamCongTable();
-                    alert("Đã lưu danh sách nhân sự chấm công lên Google Drive!");
-                }).saveErrorConfig({ staff: adminChamCongStaffConfig });
-            }).saveEmployees(adminChamCongEmployees);
+            window.showGlobalLoading("Đang lưu danh sách nhân sự lên máy chủ...");
+            callApi('saveEmployees', [adminChamCongEmployees]).then(() => {
+                return callApi('saveErrorConfig', [{ staff: adminChamCongStaffConfig }]);
+            }).then(() => {
+                window.hideGlobalLoading();
+                renderAdminChamCongTable();
+                alert("Đã lưu danh sách nhân sự chấm công lên máy chủ!");
+            }).catch(err => {
+                window.hideGlobalLoading();
+                console.error(err);
+                alert('Lỗi khi lưu nhân sự: ' + (err.message || err));
+            });
         }
 
         // Auto load when opening Admin Tab
@@ -466,7 +467,7 @@ function renderAdminChamCongTable() {
             getOrLoadChamCongEmployees(() => {
                 renderChamCongTable(); // Hiển thị ngay lập tức không để bảng trống trơn
                 
-                google.script.run.withSuccessHandler(res => {
+                callApi('getChamCong', [my]).then(res => {
                     let raw = {};
                     if (res && res.status === 'success' && res.data) {
                         raw = res.data;
@@ -475,10 +476,10 @@ function renderAdminChamCongTable() {
                     }
                     chamCongData = normalizeChamCongData(raw);
                     renderChamCongTable();
-                }).withFailureHandler(err => {
-                    console.error("Lỗi khi tải chấm công:", err);
+                }).catch(err => {
+                    console.error('Lỗi khi tải chấm công:', err);
                     renderChamCongTable();
-                }).getChamCong(my);
+                });
             });
         }
 
@@ -778,10 +779,14 @@ function renderAdminChamCongTable() {
             if (chamCongSaveTimeout) clearTimeout(chamCongSaveTimeout);
             chamCongSaveTimeout = setTimeout(() => {
                 const my = getChamCongMonthYear();
-                document.getElementById('chamcong-thead').style.opacity = '0.7';
-                google.script.run.withSuccessHandler(() => {
-                    document.getElementById('chamcong-thead').style.opacity = '1';
-                }).saveChamCong(my, chamCongData);
+                const thead = document.getElementById('chamcong-thead');
+                if (thead) thead.style.opacity = '0.7';
+                callApi('saveChamCong', [my, chamCongData]).then(() => {
+                    if (thead) thead.style.opacity = '1';
+                }).catch(err => {
+                    console.error('[ChamCong] auto-save error:', err);
+                    if (thead) thead.style.opacity = '1';
+                });
             }, 1000);
         }
 
@@ -816,28 +821,27 @@ function renderAdminChamCongTable() {
 
                 if (mode === 'current') {
                     const my = getChamCongMonthYear();
-                    google.script.run.withSuccessHandler(resCC => {
+                    window.showGlobalLoading('Đang tải dữ liệu thống kê tháng ' + my + '...');
+                    callApi('getChamCong', [my]).then(resCC => {
                         let rawCC = {};
                         if (resCC && resCC.status === 'success' && resCC.data) rawCC = resCC.data;
                         else if (resCC && typeof resCC === 'object' && !resCC.status) rawCC = resCC;
                         chamCongData = normalizeChamCongData(rawCC);
 
-                        google.script.run.withSuccessHandler(resTT => {
-                            let rawTT = {};
-                            if (resTT && resTT.status === 'success' && resTT.data) rawTT = resTT.data;
-                            else if (resTT && typeof resTT === 'object' && !resTT.status) rawTT = resTT;
-                            thongKeData = normalizeThongKeData(rawTT);
-
-                            renderThongKeTable();
-                        }).withFailureHandler(err => {
-                            console.error(err);
-                            thongKeData = normalizeThongKeData({});
-                            renderThongKeTable();
-                        }).getThongKeThuThuat(my);
-                    }).withFailureHandler(err => {
-                        console.error(err);
+                        return callApi('getThongKeThuThuat', [my]);
+                    }).then(resTT => {
+                        let rawTT = {};
+                        if (resTT && resTT.status === 'success' && resTT.data) rawTT = resTT.data;
+                        else if (resTT && typeof resTT === 'object' && !resTT.status) rawTT = resTT;
+                        thongKeData = normalizeThongKeData(rawTT);
+                        window.hideGlobalLoading();
                         renderThongKeTable();
-                    }).getChamCong(my);
+                    }).catch(err => {
+                        window.hideGlobalLoading();
+                        console.error('[ThongKe] loadThongKeData error:', err);
+                        thongKeData = normalizeThongKeData({});
+                        renderThongKeTable();
+                    });
                 } else if (mode === 'custom') {
                     const startVal = document.getElementById('custom-start-date').value;
                     const endVal = document.getElementById('custom-end-date').value;
@@ -863,7 +867,7 @@ function renderAdminChamCongTable() {
                     fetchMultiMonthsData(months, `khoảng thời gian từ ${startVal} đến ${endVal}`);
                 } else {
                     // Quý (q1, q2, q3, q4)
-                    const year = document.getElementById('chamcong-year-picker').value || '2026';
+                    const year = document.getElementById('chamcong-year-picker') ? document.getElementById('chamcong-year-picker').value : new Date().getFullYear().toString();
                     let months = [];
                     let qName = '';
                     if (mode === 'q1') { months = [`${year}-01`, `${year}-02`, `${year}-03`]; qName = 'Quý I (' + year + ')'; }
@@ -876,53 +880,52 @@ function renderAdminChamCongTable() {
         }
 
         function fetchSingleMonthData(my) {
-            return new Promise((resolve) => {
+            return callApi('getChamCong', [my]).then(resCC => {
                 let rawCC = {};
-                let rawTT = {};
-                google.script.run.withSuccessHandler(resCC => {
-                    if (resCC && resCC.status === 'success' && resCC.data) rawCC = resCC.data;
-                    else if (resCC && typeof resCC === 'object' && !resCC.status) rawCC = resCC;
-                    
-                    google.script.run.withSuccessHandler(resTT => {
-                        if (resTT && resTT.status === 'success' && resTT.data) rawTT = resTT.data;
-                        else if (resTT && typeof resTT === 'object' && !resTT.status) rawTT = resTT;
-                        resolve({ 
-                            month: my, 
-                            data: { 
-                                chamcong: normalizeChamCongData(rawCC), 
-                                thuthuat: normalizeThongKeData(rawTT) 
-                            } 
-                        });
-                    }).withFailureHandler(() => {
-                        resolve({ 
-                            month: my, 
-                            data: { 
-                                chamcong: normalizeChamCongData(rawCC), 
-                                thuthuat: normalizeThongKeData({}) 
-                            } 
-                        });
-                    }).getThongKeThuThuat(my);
-                }).withFailureHandler(() => {
-                    google.script.run.withSuccessHandler(resTT => {
-                        if (resTT && resTT.status === 'success' && resTT.data) rawTT = resTT.data;
-                        else if (resTT && typeof resTT === 'object' && !resTT.status) rawTT = resTT;
-                        resolve({ 
-                            month: my, 
-                            data: { 
-                                chamcong: normalizeChamCongData({}), 
-                                thuthuat: normalizeThongKeData(rawTT) 
-                            } 
-                        });
-                    }).withFailureHandler(() => {
-                        resolve({ 
-                            month: my, 
-                            data: { 
-                                chamcong: normalizeChamCongData({}), 
-                                thuthuat: normalizeThongKeData({}) 
-                            } 
-                        });
-                    }).getThongKeThuThuat(my);
-                }).getChamCong(my);
+                if (resCC && resCC.status === 'success' && resCC.data) rawCC = resCC.data;
+                else if (resCC && typeof resCC === 'object' && !resCC.status) rawCC = resCC;
+
+                return callApi('getThongKeThuThuat', [my]).then(resTT => {
+                    let rawTT = {};
+                    if (resTT && resTT.status === 'success' && resTT.data) rawTT = resTT.data;
+                    else if (resTT && typeof resTT === 'object' && !resTT.status) rawTT = resTT;
+                    return { 
+                        month: my, 
+                        data: { 
+                            chamcong: normalizeChamCongData(rawCC), 
+                            thuthuat: normalizeThongKeData(rawTT) 
+                        } 
+                    };
+                }).catch(() => {
+                    return { 
+                        month: my, 
+                        data: { 
+                            chamcong: normalizeChamCongData(rawCC), 
+                            thuthuat: normalizeThongKeData({}) 
+                        } 
+                    };
+                });
+            }).catch(() => {
+                return callApi('getThongKeThuThuat', [my]).then(resTT => {
+                    let rawTT = {};
+                    if (resTT && resTT.status === 'success' && resTT.data) rawTT = resTT.data;
+                    else if (resTT && typeof resTT === 'object' && !resTT.status) rawTT = resTT;
+                    return { 
+                        month: my, 
+                        data: { 
+                            chamcong: normalizeChamCongData({}), 
+                            thuthuat: normalizeThongKeData(rawTT) 
+                        } 
+                    };
+                }).catch(() => {
+                    return { 
+                        month: my, 
+                        data: { 
+                            chamcong: normalizeChamCongData({}), 
+                            thuthuat: normalizeThongKeData({}) 
+                        } 
+                    };
+                });
             });
         }
         window.calcDayValue = calcDayValue;
@@ -1271,14 +1274,14 @@ function renderAdminChamCongTable() {
         function saveThuThuatToServer() {
             const my = getChamCongMonthYear();
             window.showGlobalLoading("Đang lưu dữ liệu thủ thuật...");
-            google.script.run.withSuccessHandler(() => {
+            callApi('saveThongKeThuThuat', [my, thongKeData]).then(() => {
                 window.hideGlobalLoading();
                 alert("Đã lưu dữ liệu thủ thuật lên máy chủ!");
-            }).withFailureHandler((err) => {
+            }).catch(err => {
                 window.hideGlobalLoading();
                 console.error(err);
                 alert("Lỗi khi lưu dữ liệu thủ thuật!");
-            }).saveThongKeThuThuat(my, thongKeData);
+            });
         }
 
         document.getElementById('thongke-mode').addEventListener('change', (e) => {
