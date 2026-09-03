@@ -674,3 +674,25 @@ git add . && git commit -m "..." && git push origin main
   + `js/init.js`
   + `sw.js`
   + `PM-xeplich-v4.md`
+
+---
+
+### [v4.0.1-rev13] - 15:15 03/09/2026: Tối ưu & Tinh gọn Console Log khởi động thành 1 dòng duy nhất
+- **Bối cảnh & Phản hồi người dùng**:
+  + Console trình duyệt xuất hiện quá nhiều dòng log chi tiết debug khi khởi động (`[Dexie.js]`, `[LiveSync Bus]`, `MAIN SCRIPT STARTING...`, `--- JS Block: ...`, `[Offline Cache]`, `[Bootstrap API]`, `[PWA]`, `[Service Worker]`), người dùng muốn rút gọn thành 1 dòng duy nhất thông báo mọi thứ đã thành công để giao diện console chuyên nghiệp, gọn gàng và không gây rối mắt.
+- **Phân tích & Giải pháp xử lý**:
+  1. Tắt các log khởi tạo nội bộ trong `js/offline-sync-engine.js` (Dexie DB và LiveSync Bus).
+  2. Tắt các log debug luồng thực thi trong `js/app.js` (`MAIN SCRIPT STARTING`, các log `--- JS Block: ...`, và log cache cục bộ tức thì).
+  3. Tắt log thông báo nạp tĩnh trong `sw.js` và log đăng ký PWA trong `index.html`.
+  4. Rút gọn toàn bộ thông báo khởi tạo thành 1 dòng log duy nhất:
+     `✅ Hệ thống T.I.M.E.S đã tải và đồng bộ dữ liệu thành công! Sẵn sàng hoạt động.`
+     (Có cờ bảo vệ `window._systemReadyLogged` để chỉ xuất hiện đúng 1 lần duy nhất trong suốt vòng đời phiên làm việc).
+  5. **Đồng bộ Footer Timestamp & Cache (RULES.md)**:
+     - Cập nhật Footer `sys-last-update` thành `15:15 03/09/2026`.
+     - Nâng số phiên bản lên `v4.0.1-rev13` trên `index.html` và `sw.js`.
+- **File sửa đổi**:
+  + `js/offline-sync-engine.js`
+  + `js/app.js`
+  + `sw.js`
+  + `index.html`
+  + `PM-xeplich-v4.md`

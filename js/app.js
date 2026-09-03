@@ -695,8 +695,6 @@ window.showGlobalLoading = function (text) {
             console.warn('[Unhandled Rejection]:', event.reason);
         });
 
-        console.log('MAIN SCRIPT STARTING...');
-
         function formatSlotDisplay(slot) {
             if (!slot || typeof slot !== 'string' || !slot.includes('-')) return slot;
             const parts = slot.split('-');
@@ -1463,10 +1461,6 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // --- Block Merged ---
 
-
-
-        console.log('--- JS Block: Auth & Permissions started ---');
-
         window.doLogin = function () {
             const unit = (document.getElementById('login-unit')?.value || '').trim().toLowerCase();
             const user = (document.getElementById('login-user')?.value || '').trim();
@@ -1620,11 +1614,7 @@ window.renderSttOrderControl = function (type, i, total) {
             callApi('verifyLogin', [user, pass, unit], handleSuccess, handleError);
         };
 
-        console.log('--- JS Block: Main Logic started ---');
-
         // ============================================================
-
-        console.log('--- JS Block: Foundation started ---');
 
         // 🔧 HELPER UTILITIES
 
@@ -2852,7 +2842,6 @@ window.renderSttOrderControl = function (type, i, total) {
                         const now = Date.now();
                         window.dataCacheTime = { pat: now, staff: now, machine: now, room: now, proc: now, sched: now };
                         if (typeof loadDashboard === 'function') loadDashboard();
-                        console.log('⚡ [Offline Cache] Đã hiển thị dữ liệu tức thì từ bộ nhớ máy tính (0ms)!');
                     }
                 }
             } catch (e) {
@@ -2958,9 +2947,16 @@ window.renderSttOrderControl = function (type, i, total) {
                     if (typeof renderScheduleCalendar === 'function') renderScheduleCalendar();
                     if (typeof loadDashboard === 'function') loadDashboard();
 
-                    console.log('🚀 [Bootstrap API] Đã đồng bộ toàn bộ dữ liệu mới nhất từ máy chủ trong 1 request!');
+                    if (!window._systemReadyLogged) {
+                        window._systemReadyLogged = true;
+                        console.log('✅ Hệ thống T.I.M.E.S đã tải và đồng bộ dữ liệu thành công! Sẵn sàng hoạt động.');
+                    }
                 })
                 .withFailureHandler(function (err) {
+                    if (!window._systemReadyLogged) {
+                        window._systemReadyLogged = true;
+                        console.log('✅ Hệ thống T.I.M.E.S đã sẵn sàng hoạt động (Chế độ ngoại tuyến).');
+                    }
                     console.warn('[Bootstrap API] Máy chủ bận, đang sử dụng dữ liệu đã lưu trong máy:', err);
                     [loadMachines, loadRooms, loadScheduleList, loadProcedures, loadPatients, loadStaff].forEach(fn => fn());
                 })

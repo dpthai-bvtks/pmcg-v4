@@ -26,7 +26,6 @@ window.OfflineSyncEngine = (function () {
           thongke: 'month_year, updated_at',
           syncQueue: '++id, action, timestamp'
         });
-        console.log('[Dexie.js] Khởi tạo bộ nhớ đệm Offline IndexedDB (' + getDbName(u) + ') thành công!');
       }
     } catch (e) {
       console.warn('[Dexie.js] Khởi tạo Dexie thất bại:', e);
@@ -255,7 +254,6 @@ window.OfflineSyncEngine = (function () {
           }
         });
       };
-      console.log('[LiveSync Bus] Kênh phát sóng thời gian thực BroadcastChannel đã kích hoạt!');
     }
   } catch (e) {
     console.warn('[LiveSync Bus] Trình duyệt không hỗ trợ BroadcastChannel:', e);
