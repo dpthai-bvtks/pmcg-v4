@@ -931,5 +931,28 @@ git add . && git commit -m "..." && git push origin main
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.1-rev21] - 10:15 04/09/2026: Tối ưu phân bổ không gian Tab Giờ Bận - Bảng Nhân Sự chiếm ưu tiên to nhất
+- **Yêu cầu của người dùng**: Bảng giờ bận bệnh nhân và danh sách ra viện bị to quá (thừa khoảng trắng), trong khi mong muốn bảng chứa giờ bận của nhân sự phải là to nhất.
+- **Phân tích**:
+  - Bảng giờ bận bệnh nhân (`#busy-pat-table`) và Bảng ra viện (`#leave-pat-table`) có số lượng cột cố định (5 cột: STT, Tên BN, Năm sinh, Phòng, Giờ). Bảng này chỉ cần khoảng 350px - 395px là vừa khít 100% nội dung, không bị cụt và không có khoảng trống thừa thãi.
+  - Bảng giờ bận nhân sự (`#busy-staff-table`) phát triển theo chiều ngang: mỗi nhân sự báo bận là một cột riêng (`STT`, `BS ĐẠT`, `BS THÁI`, ...). Khi khoa phòng có nhiều y bác sĩ, bảng này cần không gian bề ngang lớn nhất (50% - 65% màn hình) để hiển thị đồng thời nhiều nhân viên mà không phải cuộn ngang quá sớm.
+- **Giải pháp xử lý**:
+  1. **Tái phân bổ độ rộng 3 thẻ (Card Layout)**:
+     - Thẻ Nhân Sự Bận (`.card-staff`): Đặt `flex: 1 1 auto; min-width: 360px;`. Chiếm trọn toàn bộ phần màn hình còn lại, luôn luôn là **TO NHẤT** trên mọi kích thước màn hình desktop/laptop.
+     - Thẻ Bệnh Nhân Bận (`.card-pat`): Đặt cố định vừa khít `flex: 0 0 395px; width: 395px; max-width: 395px;`. Vừa vặn hoàn hảo 5 cột dữ liệu, triệt tiêu toàn bộ khoảng trắng thừa.
+     - Thẻ Ra Viện (`.card-leave`): Đặt cố định vừa khít `flex: 0 0 350px; width: 350px; max-width: 350px;`. Vừa vặn hoàn hảo 5 cột dữ liệu.
+  2. **Đồng bộ Footer Timestamp & Cache Busters**:
+     - Cập nhật Footer `sys-last-update` thành `10:15 04/09/2026`.
+     - Cập nhật cache buster `?v=4.0.1-rev21` trên toàn bộ thẻ CSS và JS trong `index.html`.
+     - Cập nhật `CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev21'` trong `sw.js`.
+- **File sửa đổi**:
+  + `css/style.css`
+  + `index.html`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+
 
 

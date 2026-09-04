@@ -4717,6 +4717,28 @@ transition: box-shadow 0.3s;
             overflow: hidden !important;
         }
 
+        /* Bảng nhân sự bận luôn là TO NHẤT, co giãn tự do theo toàn bộ phần màn hình còn lại */
+        #tab-busy .busy-col-card.card-staff {
+            flex: 1 1 auto !important;
+            min-width: 360px !important;
+        }
+
+        /* Bảng bệnh nhân bận gọn gàng vừa vặn nội dung 5 cột, không bị phình to thừa khoảng trắng */
+        #tab-busy .busy-col-card.card-pat {
+            flex: 0 0 395px !important;
+            width: 395px !important;
+            min-width: 395px !important;
+            max-width: 395px !important;
+        }
+
+        /* Bảng danh sách ra viện gọn gàng vừa vặn */
+        #tab-busy .busy-col-card.card-leave {
+            flex: 0 0 350px !important;
+            width: 350px !important;
+            min-width: 350px !important;
+            max-width: 350px !important;
+        }
+
         #tab-busy .busy-form-header {
             flex-shrink: 0 !important;
             position: sticky !important;
