@@ -8745,7 +8745,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\u0111/g, 'd').trim();
                     let isHIS = false;
-                    let colTen = 6, colDichVu = 13, startRow = 1;
+                    let colTen = 6, colNamSinh = 7, colDichVu = 13, startRow = 1, colLoaiDieuTri = -1;
 
                     // Kiểm tra file HIS hay file T7 nội bộ
                     for (let i = 0; i < Math.min(15, roa.length); i++) {
@@ -8760,7 +8760,9 @@ window.renderSttOrderControl = function (type, i, total) {
                             roa[i].forEach((cell, idx) => {
                                 const cn = norm(cell);
                                 if (cn.includes('ho ten') || cn.includes('ten bn') || cn.includes('ten benh') || cn === 'ten_bn' || cn === 'hoten' || cn.includes('fullname')) colTen = idx;
-                                else if (cn.includes('dich vu') || cn.includes('thu thuat') || cn.includes('ten dvkt') || cn === 'dichvu' || cn === 'dich_vu' || cn.includes('service')) colDichVu = idx;
+                                else if (cn.includes('nam sinh') || cn.includes('sinh nam') || cn === 'ns' || cn === 'nam_sinh' || cn.includes('birth')) colNamSinh = idx;
+                                else if (cn.includes('dich vu') || cn.includes('thu thuat') || cn.includes('ten dvkt') || cn === 'dichvu' || cn === 'dich_vu' || cn.includes('service') || cn.includes('procedure')) colDichVu = idx;
+                                else if (cn.includes('doi tuong') || cn.includes('loai dt') || cn.includes('loai dieu tri') || cn.includes('hinh thuc') || cn.includes('noi/ngoai') || cn === 'loai_bn') colLoaiDieuTri = idx;
                             });
                             break;
                         }
@@ -8771,6 +8773,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     if (isHIS) {
                         const hisMap = {};
+                        const hisLoaiMap = {};
                         const dataRows = roa.slice(startRow);
                         dataRows.forEach(row => {
                             const ten = String(row[colTen] || '').trim();
@@ -8778,7 +8781,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                             let loaiBn = 'NoiTru';
                             let buoiDieuTri = 'TuDong';
-                            if (colLoaiDieuTri >= 0) {
+                            if (colLoaiDieuTri >= 0 && row[colLoaiDieuTri] !== undefined) {
                                 const val = norm(row[colLoaiDieuTri]);
                                 if (val.includes('ngoai tru') || val.includes('kham benh') || val.includes('ngoaitru') || val.includes('kham')) {
                                     loaiBn = 'NgoaiTru';
@@ -8790,24 +8793,33 @@ window.renderSttOrderControl = function (type, i, total) {
 
                             const properTen = ten.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
                             if (!hisMap[properTen]) hisMap[properTen] = new Set();
+                            if (loaiBn) hisLoaiMap[properTen] = loaiBn;
 
                             const lines = dichVu.split(/\r?\n/).map(l => l.trim()).filter(l => l);
                             lines.forEach(line => {
                                 const cleaned = line.replace(/^\d+\.\s*/, '').replace(/\s*-\s*\d+\s*\(lần\)/i, '').trim();
-                                const mapped = mapHISToProcedure(cleaned || line) || mapHISToProcedure(line);
+                                const mapped = (typeof mapHISToProcedure === 'function' ? mapHISToProcedure(cleaned || line) || mapHISToProcedure(line) : null);
                                 if (mapped) hisMap[properTen].add(mapped);
                             });
                         });
 
                         Object.keys(hisMap).forEach(ten => {
                             const searchTen = ten.toLowerCase();
-                            let targetBid = Object.keys(satCache).find(k => satCache[k].info.ten.trim().toLowerCase() === searchTen);
+                            let targetBid = Object.keys(satCache).find(k => {
+                                const info = satCache[k]?.info;
+                                if (!info) return false;
+                                return norm(info.ten) === norm(searchTen) || info.ten.trim().toLowerCase() === searchTen;
+                            });
                             if (!targetBid) return;
+
+                            if (hisLoaiMap[ten] && satCache[targetBid].info) {
+                                satCache[targetBid].info.loaiBn = hisLoaiMap[ten];
+                            }
 
                             const available = satCache[targetBid].items.map((item, idx) => ({ ...item, idx })).filter(x => !x.checked);
 
                             [...hisMap[ten]].forEach(tt => {
-                                const match = available.find(x => x.name.toLowerCase() === tt.toLowerCase());
+                                const match = available.find(x => norm(x.name) === norm(tt) || x.name.toLowerCase() === tt.toLowerCase());
                                 if (match) {
                                     satCache[targetBid].items[match.idx].checked = true;
                                     const cb = document.getElementById(`cb-sat-${targetBid}-${match.idx}`);

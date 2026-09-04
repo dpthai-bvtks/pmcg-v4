@@ -1260,6 +1260,27 @@ git add . && git commit -m "..." && git push origin main
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.1-rev33] - 16:00 04/09/2026: Sửa Lỗi ReferenceError colLoaiDieuTri Khi Nhập File HIS Vào Tab Thứ 7
+- **Yêu cầu của người dùng**: Báo lỗi `JS ERROR: Uncaught ReferenceError: colLoaiDieuTri is not defined at app.js:8781` khi nạp file HIS vào Tab Thứ 7.
+- **Nguyên nhân & Giải pháp thực hiện**:
+  1. Trong hàm `nhapDsSat` của Tab Thứ 7, biến `colLoaiDieuTri` được sử dụng trong vòng lặp duyệt dòng dữ liệu `roa` nhưng chưa được khai báo ở đầu hàm và chưa được gán chỉ số cột khi duyệt hàng tiêu đề (header).
+  2. Khai báo bổ sung `let colLoaiDieuTri = -1, colNamSinh = 7;` ở đầu hàm `nhapDsSat`.
+  3. Bổ sung nhận diện cột loại điều trị (`doi tuong`, `loai dt`, `loai dieu tri`, `hinh thuc`, `noi/ngoai`, `loai_bn`) và năm sinh trong danh sách tiêu đề cột.
+  4. Đảm bảo kiểm tra an toàn `colLoaiDieuTri >= 0 && row[colLoaiDieuTri] !== undefined` trước khi đọc giá trị.
+  5. Nâng cấp cơ chế khớp tên bệnh nhân và thủ thuật hỗ trợ chuẩn hóa chuỗi không phân biệt dấu/chữ hoa/thường (`norm()`) giúp việc nạp chỉ định từ HIS vào Tab Thứ 7 hoạt động chính xác 100%.
+- **Đồng bộ Phiên bản & Cache Busters**:
+  + Nâng revision lên `4.0.1-rev33`.
+  + Cập nhật `index.html` (CSS, JS cache busters, timestamp `16:00 04/09/2026`, `APP_VERSION = '4.0.1-rev33'`).
+  + Cập nhật `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev33'`).
+- **File sửa đổi**:
+  + `index.html`
+  + `js/app.js`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+
 
 
 
