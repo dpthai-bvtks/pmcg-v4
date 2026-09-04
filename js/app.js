@@ -911,7 +911,7 @@ window.showGlobalLoading = function (text) {
                 modal.id = 'sync-progress-modal';
                 modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.65); z-index:2147483647; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(5px);';
                 modal.innerHTML = `
-                <div style="background:#fff; width:520px; max-width:92%; border-radius:16px; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.3); text-align:center; font-family:sans-serif; border:1px solid #e2e8f0;">
+                <div class="modal-dialog" style="width:520px; max-width:92%; border-radius:16px; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.3); text-align:center; font-family:sans-serif; border:1px solid #e2e8f0;">
                     <div style="font-size:36px; margin-bottom:10px;">🔄</div>
                     <h3 id="sync-modal-title" style="margin:0 0 10px 0; color:#1e293b; font-size:18px; font-weight:800;">Đồng bộ Trọn bộ CSDL Turso Cloud ➔ Google Sheets</h3>
                     <p id="sync-step-text" style="color:#64748b; font-size:13px; margin:0 0 16px 0; line-height:1.5;">Đang khởi tạo kết nối...</p>
@@ -6217,9 +6217,8 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-            // 📌 Bơm trực tiếp thuốc "Đóng đinh xuống đáy" bằng JS
-
-            container.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:12px; background:#fdfaf1; border-top:2px solid #27ae60; font-size:13px; position:-webkit-sticky; position:sticky; bottom:0; z-index:950; box-shadow:0 -4px 12px rgba(0,0,0,0.1); margin:0; border-radius:0 0 8px 8px;';
+            container.className = 'pagination-container';
+            container.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:12px; font-size:13px; position:-webkit-sticky; position:sticky; bottom:0; z-index:950; box-shadow:0 -4px 12px rgba(0,0,0,0.1); margin:0; border-radius:0 0 8px 8px;';
 
 
 
@@ -12369,7 +12368,7 @@ window.renderAdminQuickLinksUI = function(links) {
     list.forEach(item => {
         const div = document.createElement('div');
         div.className = 'quicklink-admin-item';
-        div.style.cssText = 'display: flex; gap: 8px; align-items: center; background: #fff; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;';
+        div.style.cssText = 'display: flex; gap: 8px; align-items: center; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;';
         div.innerHTML = `
             <input type="text" value="${item.icon || '🔗'}" class="ql-icon" placeholder="Icon" style="width: 45px; text-align: center; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
             <input type="text" value="${item.ten || item.name || ''}" class="ql-ten" placeholder="Tên hiển thị" style="flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
@@ -12385,7 +12384,7 @@ window.addAdminQuickLinkRow = function() {
     if (!container) return;
     const div = document.createElement('div');
     div.className = 'quicklink-admin-item';
-    div.style.cssText = 'display: flex; gap: 8px; align-items: center; background: #fff; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;';
+    div.style.cssText = 'display: flex; gap: 8px; align-items: center; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;';
     div.innerHTML = `
         <input type="text" value="🔗" class="ql-icon" placeholder="Icon" style="width: 45px; text-align: center; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
         <input type="text" value="" class="ql-ten" placeholder="Tên hiển thị" style="flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">

@@ -698,7 +698,7 @@ function renderAdminChamCongTable() {
         function enableHolidayCell(td, emp, day) {
             td.onclick = null;
             td.innerHTML = `
-                <input type="text" class="cc-input-text" data-emp="${emp}" data-day="${day}" value="" style="background:#fff; border: 1px solid #fef08a;">
+                <input type="text" class="cc-input-text" data-emp="${emp}" data-day="${day}" value="" style="border: 1px solid #fef08a;">
             `;
             const input = td.querySelector('input');
             input.focus();

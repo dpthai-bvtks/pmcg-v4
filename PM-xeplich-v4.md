@@ -1205,6 +1205,33 @@ git add . && git commit -m "..." && git push origin main
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.1-rev31] - 15:40 04/09/2026: Triệt Tiêu Toàn Bộ Khoảng Nền Trắng / Sáng Trong Chế Độ Tối (Universal Dark Mode Overhaul)
+- **Yêu cầu của người dùng**: Tìm kiếm lại tất cả những khoảng nền trắng và sửa lại để phù hợp với chế độ tối.
+- **Nguyên nhân & Giải pháp thực hiện**:
+  1. **Quét và xử lý toàn diện mọi phần tử có nền sáng / trắng inline**:
+     - *Toàn bộ Modal*: Các modal `#modal-unscheduled-advisor` (`#advisor-modal-body`), `#modal-rescue-case`, `#modal-doc-lookup`, `#modal-hdsd-viewer`, `#modal-server-status`, `#modal-config-gas`, `#sync-progress-modal` trước đây có các vùng con giữ màu nền trắng hoặc xám nhạt (`#fff`, `#f8fafc`). Đã chuẩn hóa toàn bộ thân modal, đầu modal, chân modal và bảng tra cứu bên trong chuyển sang slate đen sâu `#0f172a` / `#1e293b` và viền `#334155`.
+     - *Tab Quản trị (#tab-admin)*: Menu bên `.admin-sidebar-menu`, các nút `.admin-nav-btn`, khung nội dung chính `.admin-content-pane`, các thẻ cấu hình thuật toán, thẻ báo cáo, thẻ đơn giá, bảng nhân sự `#table-admin-employees`, và các thẻ liên kết nhanh `.quicklink-admin-item` chuyển sang tone tối đồng bộ, chữ sáng rõ ràng.
+     - *Tab Tiện ích (#tab-utils) & Tab Kiểm tra (#tab-kiemtra)*: Các khung chia cột `.split-layout-left`, `.split-layout-right`, các bảng cuộn `.utils-table-scroll` (bảng tổng số, lỗi giờ, lỗi khác, bác sĩ/máy rảnh), các thẻ card chẩn đoán chuyển nền tối `#1e293b` với viền `#334155`.
+     - *Tab Xếp lịch (#tab-schedule)*: Khung bọc bảng xếp lịch, thanh phân trang `.pagination-container`, các nút bấm lọc ngày tháng và điều khiển ở chân trang được chuyển sang nền `#1e293b`.
+     - *Tab Giờ bận (#tab-busy)*: Đã sửa `.busy-col-card.card-pat` (`#e8f8f5`), `.card-staff` (`#fdfefe`), `.card-leave` (`#f5eef8`) thành các sắc độ tối tương ứng tinh tế, viền phát sáng nhẹ, không còn lóa mắt.
+     - *Header & Menu tài khoản*: Hộp lọc ngày tháng `#header-date-filter-box`, menu thả xuống `#user-dropdown-menu`, vạch phân cách được đồng bộ mượt mà sang giao diện tối.
+  2. **Bộ chọn dự phòng toàn cục (Universal Fallback Attributes)**:
+     - Bổ sung quy tắc CSS đa tầng chọn tự động `[data-theme="dark"] div[style*="background: #fff"]`, `[data-theme="dark"] div[style*="background: white"]`, `[data-theme="dark"] div[style*="background: #f8fafc"]`, v.v... đảm bảo triệt tiêu 100% mọi đốm trắng phát sinh bất ngờ mà không ảnh hưởng tới các nhãn trạng thái (`:not(.badge):not(.status-badge)`).
+- **Đồng bộ Phiên bản & Cache Busters**:
+  + Nâng revision lên `4.0.1-rev31`.
+  + Cập nhật `index.html` (CSS, JS cache busters, timestamp `15:40 04/09/2026`, `APP_VERSION = '4.0.1-rev31'`).
+  + Cập nhật `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev31'`).
+- **File sửa đổi**:
+  + `css/style.css`
+  + `index.html`
+  + `js/app.js`
+  + `js/thongke.js`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+
 
 
 

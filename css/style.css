@@ -7068,6 +7068,376 @@ transition: box-shadow 0.3s;
     color: #fbbf24 !important;
 }
 
+/* --------------------------------------------------------------------------
+   🌙 TOÀN DIỆN: TRIỆT TIÊU 100% KHOẢNG NỀN TRẮNG & SÁNG TRÊN MỌI TAB, MODAL, CARD
+   -------------------------------------------------------------------------- */
+
+/* 1. Header, User Dropdown & Login Box */
+[data-theme="dark"] #user-dropdown-menu {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6) !important;
+}
+[data-theme="dark"] #user-dropdown-menu a {
+    color: #f8fafc !important;
+}
+[data-theme="dark"] #user-dropdown-menu a:hover {
+    background: #334155 !important;
+    color: #38bdf8 !important;
+}
+[data-theme="dark"] #nav-btn-user {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+}
+[data-theme="dark"] div[style*="background: #edf2f7"],
+[data-theme="dark"] div[style*="background:#edf2f7"] {
+    background: #334155 !important;
+}
+[data-theme="dark"] .login-box {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #f8fafc !important;
+}
+
+/* 2. Dashboard / Trang Chủ (#tab-home) */
+[data-theme="dark"] .page-header div[style*="background: #fff"],
+[data-theme="dark"] .page-header div[style*="background:#fff"],
+[data-theme="dark"] .page-header div[style*="border-radius: 25px"] {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+}
+[data-theme="dark"] input#dashboard-date-filter {
+    color: #38bdf8 !important;
+    background: transparent !important;
+}
+[data-theme="dark"] .dash-chart-card,
+[data-theme="dark"] div[style*="background: #ffffff; border-radius: 12px; padding: 18px 20px"],
+[data-theme="dark"] div[style*="background:#ffffff; border-radius: 12px; padding: 18px 20px"] {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4) !important;
+}
+[data-theme="dark"] #dash-chart-workdays-subtitle,
+[data-theme="dark"] #dash-chart-procs-subtitle {
+    color: #cbd5e1 !important;
+}
+
+/* 3. Tab Xếp Lịch (#tab-schedule) & Thanh Phân Trang */
+[data-theme="dark"] .schedule-table-wrap,
+[data-theme="dark"] div[style*="background:white; position:relative"],
+[data-theme="dark"] div[style*="background: white; position: relative"],
+[data-theme="dark"] div[style*="border:1px solid #bdc3c7; border-radius:5px; background:white"] {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+}
+[data-theme="dark"] .schedule-compact-header {
+    background: #1e293b !important;
+    border-bottom-color: #334155 !important;
+}
+[data-theme="dark"] #sched-pagination-container,
+[data-theme="dark"] .pagination-container,
+[data-theme="dark"] div[style*="background:#fdfaf1"],
+[data-theme="dark"] div[style*="background: #fdfaf1"] {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] .pagination-container b,
+[data-theme="dark"] div[style*="background:#fdfaf1"] b {
+    color: #38bdf8 !important;
+}
+[data-theme="dark"] span[style*="background:#e8f8f5"],
+[data-theme="dark"] span[style*="background: #e8f8f5"] {
+    background: rgba(16, 185, 129, 0.2) !important;
+    color: #34d399 !important;
+}
+[data-theme="dark"] #tab-schedule div[style*="background: #ecf0f1"],
+[data-theme="dark"] #tab-schedule div[style*="background:#ecf0f1"] {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    border-top-color: #10b981 !important;
+}
+[data-theme="dark"] #tab-schedule div[style*="background: #ecf0f1"] label {
+    color: #38bdf8 !important;
+}
+
+/* 4. Tab Giờ Bận & Ra Viện (#tab-busy) */
+[data-theme="dark"] .busy-col-card,
+[data-theme="dark"] .card-staff,
+[data-theme="dark"] .card-pat,
+[data-theme="dark"] .card-patient,
+[data-theme="dark"] .card-leave {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] .busy-col-card.card-staff,
+[data-theme="dark"] .busy-col-card.card-pat,
+[data-theme="dark"] .busy-col-card.card-leave {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+/* 5. Tab Kiểm Tra (#tab-kiemtra) */
+[data-theme="dark"] #tab-kiemtra .utils-compact-header,
+[data-theme="dark"] #tab-kiemtra div[style*="background:#ecf0f1"],
+[data-theme="dark"] #tab-kiemtra div[style*="background: #ecf0f1"] {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+}
+[data-theme="dark"] #tab-kiemtra .utils-split-layout > div,
+[data-theme="dark"] #tab-kiemtra div[style*="background: #eafaf1"],
+[data-theme="dark"] #tab-kiemtra div[style*="background:#eafaf1"],
+[data-theme="dark"] #tab-kiemtra div[style*="background: #fdf2e9"],
+[data-theme="dark"] #tab-kiemtra div[style*="background:#fdf2e9"],
+[data-theme="dark"] #tab-kiemtra div[style*="background: #fef5e7"],
+[data-theme="dark"] #tab-kiemtra div[style*="background:#fef5e7"],
+[data-theme="dark"] #tab-kiemtra div[style*="background: #e8f8f5"],
+[data-theme="dark"] #tab-kiemtra div[style*="background:#e8f8f5"] {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+}
+[data-theme="dark"] #tab-kiemtra .utils-table-scroll,
+[data-theme="dark"] #tab-kiemtra div[style*="background: white; overflow-y: auto"],
+[data-theme="dark"] #tab-kiemtra div[style*="background:white; overflow-y:auto"] {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+}
+[data-theme="dark"] #tab-kiemtra thead tr {
+    background: #0f172a !important;
+}
+[data-theme="dark"] #tab-kiemtra thead th {
+    background: #0f172a !important;
+    color: #38bdf8 !important;
+    border-bottom: 2px solid #334155 !important;
+}
+
+/* 6. Tab Tiện Ích & Quản Trị (#tab-utils, #tab-admin) */
+[data-theme="dark"] .admin-sidebar-menu,
+[data-theme="dark"] div[style*="background: #fff; border: 1px solid #dcdde1"],
+[data-theme="dark"] div[style*="background:#fff; border:1px solid #dcdde1"] {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+}
+[data-theme="dark"] .admin-sidebar-heading {
+    color: #38bdf8 !important;
+    border-bottom-color: #334155 !important;
+}
+[data-theme="dark"] .admin-nav-btn {
+    background: #0f172a !important;
+    color: #cbd5e1 !important;
+    border-color: transparent !important;
+}
+[data-theme="dark"] .admin-nav-btn:hover {
+    background: #334155 !important;
+    color: #38bdf8 !important;
+}
+[data-theme="dark"] .admin-nav-btn.active {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    border-left-color: #38bdf8 !important;
+}
+[data-theme="dark"] .admin-content-pane,
+[data-theme="dark"] .admin-section {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+}
+[data-theme="dark"] .admin-section .tab-header-title {
+    background: #0f172a !important;
+    color: #38bdf8 !important;
+    border: 1px solid #334155 !important;
+}
+[data-theme="dark"] .admin-section div[style*="background: #ffffff"],
+[data-theme="dark"] .admin-section div[style*="background:#ffffff"],
+[data-theme="dark"] .admin-section div[style*="background: #fff"],
+[data-theme="dark"] .admin-section div[style*="background:#fff"],
+[data-theme="dark"] .admin-section div[style*="background: #f8fafc"],
+[data-theme="dark"] .admin-section div[style*="background:#f8fafc"],
+[data-theme="dark"] .admin-section div[style*="background: #f1f2f6"],
+[data-theme="dark"] .admin-section div[style*="background:#f1f2f6"],
+[data-theme="dark"] .admin-section div[style*="background: white"],
+[data-theme="dark"] .admin-section div[style*="background:white"] {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+}
+[data-theme="dark"] .admin-section div[style*="background: #fff8f0"] {
+    background: rgba(234, 88, 12, 0.15) !important;
+    border-color: rgba(234, 88, 12, 0.35) !important;
+}
+[data-theme="dark"] .admin-section div[style*="background: #f0fdf4"] {
+    background: rgba(16, 185, 129, 0.12) !important;
+    border-color: rgba(16, 185, 129, 0.35) !important;
+}
+[data-theme="dark"] .admin-section div[style*="background: #f0fdf4"] ul,
+[data-theme="dark"] .admin-section div[style*="background: #f0fdf4"] li {
+    color: #a7f3d0 !important;
+}
+[data-theme="dark"] .admin-section h3,
+[data-theme="dark"] .admin-section h4,
+[data-theme="dark"] .admin-section h5 {
+    color: #38bdf8 !important;
+}
+[data-theme="dark"] .admin-section label {
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] .admin-section small {
+    color: #94a3b8 !important;
+}
+[data-theme="dark"] .admin-section code[style*="background: #f1f5f9"],
+[data-theme="dark"] .admin-section code[style*="background:#f1f5f9"] {
+    background: #1e293b !important;
+    color: #f43f5e !important;
+    border: 1px solid #334155 !important;
+}
+[data-theme="dark"] .quicklink-admin-item {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+}
+[data-theme="dark"] #acc-perms-box {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+}
+[data-theme="dark"] #table-admin-employees {
+    background: #0f172a !important;
+}
+
+/* 7. Tab Chấm Công & Thống Kê (#tab-chamcong, #tab-thongke) */
+[data-theme="dark"] div[style*="min-height: 380px; background: #ffffff"],
+[data-theme="dark"] div[style*="min-height: 0; background: #ffffff"],
+[data-theme="dark"] div[style*="background: #ffffff; border-radius: 6px; border: 1px solid #e2e8f0"],
+[data-theme="dark"] div[style*="flex: 1; background: white; border: 1px solid #bdc3c7"],
+[data-theme="dark"] div[style*="flex: 1.5; background: white; border: 1px solid #bdc3c7"] {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+}
+[data-theme="dark"] tr[style*="background: #f1f5f9"],
+[data-theme="dark"] tr[style*="background:#f1f5f9"] {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: #38bdf8 !important;
+}
+
+/* 8. Toàn Bộ Modals, Popups, Cố Vấn, Cứu Ca, Đổi Mật Khẩu, Máy Chủ */
+[data-theme="dark"] div[style*="position: fixed; z-index: 100000; background: #ffffff"],
+[data-theme="dark"] div[style*="position: fixed; z-index: 100000; background:#ffffff"] {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #f8fafc !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.7) !important;
+}
+[data-theme="dark"] div[id^="modal-"] > div,
+[data-theme="dark"] div[id*="Modal"] > div,
+[data-theme="dark"] #sync-progress-modal > div,
+[data-theme="dark"] #modal-unscheduled-advisor > div,
+[data-theme="dark"] #modal-rescue-case > div,
+[data-theme="dark"] #modal-doc-lookup > div,
+[data-theme="dark"] #modal-hdsd-viewer > div,
+[data-theme="dark"] #modal-change-password > div,
+[data-theme="dark"] #modal-server-status > div,
+[data-theme="dark"] #modal-config-gas > div,
+[data-theme="dark"] #modal-tenant-form > div {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #f8fafc !important;
+}
+[data-theme="dark"] #advisor-modal-body,
+[data-theme="dark"] #advisor-modal-body > div,
+[data-theme="dark"] #modal-unscheduled-advisor div[style*="background: #f8fafc"],
+[data-theme="dark"] #modal-unscheduled-advisor div[style*="background: #ffffff"],
+[data-theme="dark"] #modal-unscheduled-advisor div[style*="background:#f8fafc"],
+[data-theme="dark"] #modal-unscheduled-advisor div[style*="background:#ffffff"] {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] #modal-hdsd-viewer div[style*="background: #f8fafc"],
+[data-theme="dark"] #modal-hdsd-viewer div[style*="background:#f8fafc"] {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+}
+[data-theme="dark"] #modal-doc-lookup div[style*="background: #f8fafc"],
+[data-theme="dark"] #modal-doc-lookup div[style*="background:#f8fafc"],
+[data-theme="dark"] #modal-doc-lookup div[style*="background: #ffffff"],
+[data-theme="dark"] #modal-doc-lookup div[style*="background:#ffffff"] {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] #modal-server-status div[style*="background: #f8f9fa"],
+[data-theme="dark"] #modal-server-status div[style*="background:#f8f9fa"] {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] #modal-config-gas div[style*="background: #eff6ff"],
+[data-theme="dark"] #modal-config-gas div[style*="background:#eff6ff"] {
+    background: rgba(37, 99, 235, 0.15) !important;
+    border-color: rgba(37, 99, 235, 0.35) !important;
+    color: #93c5fd !important;
+}
+[data-theme="dark"] div[style*="background:#fdfaf1; padding:25px"],
+[data-theme="dark"] div[style*="background: #fdfaf1; padding: 25px"] {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+}
+[data-theme="dark"] div[style*="background: #eaf6fb"],
+[data-theme="dark"] div[style*="background:#eaf6fb"] {
+    background: rgba(37, 99, 235, 0.15) !important;
+    border-color: rgba(37, 99, 235, 0.35) !important;
+    color: #93c5fd !important;
+}
+
+/* 9. Universal Fallback - Quét sạch mọi thẻ mang nền sáng inline còn sót lại */
+[data-theme="dark"] div[style*="background: #fff"]:not(.badge):not(.status-badge):not([class*="badge"]),
+[data-theme="dark"] div[style*="background:#fff"]:not(.badge):not(.status-badge):not([class*="badge"]),
+[data-theme="dark"] div[style*="background: #ffffff"]:not(.badge):not(.status-badge):not([class*="badge"]),
+[data-theme="dark"] div[style*="background:#ffffff"]:not(.badge):not(.status-badge):not([class*="badge"]),
+[data-theme="dark"] div[style*="background: white"]:not(.badge):not(.status-badge):not([class*="badge"]),
+[data-theme="dark"] div[style*="background:white"]:not(.badge):not(.status-badge):not([class*="badge"]),
+[data-theme="dark"] div[style*="background: #f8fafc"]:not(.badge):not(.status-badge):not([class*="badge"]),
+[data-theme="dark"] div[style*="background:#f8fafc"]:not(.badge):not(.status-badge):not([class*="badge"]),
+[data-theme="dark"] div[style*="background: #f1f5f9"]:not(.badge):not(.status-badge):not([class*="badge"]),
+[data-theme="dark"] div[style*="background:#f1f5f9"]:not(.badge):not(.status-badge):not([class*="badge"]),
+[data-theme="dark"] div[style*="background: #f1f2f6"]:not(.badge):not(.status-badge):not([class*="badge"]),
+[data-theme="dark"] div[style*="background:#f1f2f6"]:not(.badge):not(.status-badge):not([class*="badge"]),
+[data-theme="dark"] div[style*="background: #f8f9fa"]:not(.badge):not(.status-badge):not([class*="badge"]),
+[data-theme="dark"] div[style*="background:#f8f9fa"]:not(.badge):not(.status-badge):not([class*="badge"]),
+[data-theme="dark"] div[style*="background: #fdfefe"]:not(.badge):not(.status-badge):not([class*="badge"]),
+[data-theme="dark"] div[style*="background:#fdfefe"]:not(.badge):not(.status-badge):not([class*="badge"]) {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+}
+
+[data-theme="dark"] button[style*="background: #f8fafc"],
+[data-theme="dark"] button[style*="background:#f8fafc"],
+[data-theme="dark"] button[style*="background: #f1f5f9"],
+[data-theme="dark"] button[style*="background:#f1f5f9"],
+[data-theme="dark"] button[style*="background: #fff"],
+[data-theme="dark"] button[style*="background:#fff"],
+[data-theme="dark"] button[style*="background: white"],
+[data-theme="dark"] button[style*="background:white"] {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: #cbd5e1 !important;
+}
+[data-theme="dark"] button[style*="background: #f8fafc"]:hover,
+[data-theme="dark"] button[style*="background: #f1f5f9"]:hover,
+[data-theme="dark"] button[style*="background: #fff"]:hover {
+    background: #334155 !important;
+    color: #38bdf8 !important;
+}
+
+
 
 
 
