@@ -5790,39 +5790,43 @@ transition: box-shadow 0.3s;
     transform: scale(1.08);
 }
 
-[data-theme="dark"] .theme-toggle-btn {
-    background: #1e293b;
-    border-color: #334155;
-    color: #f8fafc;
-}
-
-[data-theme="dark"] .theme-toggle-btn:hover {
-    background: #334155;
-}
-
+/* --------------------------------------------------------------------------
+   🌙 DARK THEME ROOT & BASE LAYOUT OVERRIDES
+   -------------------------------------------------------------------------- */
 [data-theme="dark"] {
     --bg-app: #0b1120;
     --bg-surface: #0f172a;
     --bg-card: #1e293b;
-    --bg-input: #111827;
+    --bg-input: #0f172a;
     --border-color: #334155;
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
     --text-muted: #64748b;
+    color-scheme: dark;
 }
 
 [data-theme="dark"] body {
     background: linear-gradient(135deg, #090d16 0%, #111827 100%) !important;
-    color: #e2e8f0 !important;
+    color: #f1f5f9 !important;
 }
 
 [data-theme="dark"] .container {
     background: #0f172a !important;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7) !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8) !important;
 }
 
+[data-theme="dark"] .main-wrapper,
+[data-theme="dark"] .tab-scroll-content,
+[data-theme="dark"] .tab-content {
+    background: #0f172a !important;
+    color: #f1f5f9 !important;
+}
+
+/* --------------------------------------------------------------------------
+   🌙 SIDEBAR NAVIGATION
+   -------------------------------------------------------------------------- */
 [data-theme="dark"] .sidebar {
-    background: #111827 !important;
+    background: #0b1120 !important;
     border-right: 1px solid #1e293b !important;
 }
 
@@ -5846,6 +5850,19 @@ transition: box-shadow 0.3s;
     background: #38bdf8 !important;
 }
 
+[data-theme="dark"] .theme-toggle-btn {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+}
+
+[data-theme="dark"] .theme-toggle-btn:hover {
+    background: #334155 !important;
+}
+
+/* --------------------------------------------------------------------------
+   🌙 HEADER BANNER & MARQUEE
+   -------------------------------------------------------------------------- */
 [data-theme="dark"] .header-fixed-section {
     background: #0f172a !important;
     border-bottom: 1px solid #1e293b !important;
@@ -5855,16 +5872,34 @@ transition: box-shadow 0.3s;
     background: #0f172a !important;
 }
 
+[data-theme="dark"] .banner-logo {
+    background: transparent !important;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+}
+
+[data-theme="dark"] .banner-text h1,
 [data-theme="dark"] #app-hospital-name {
-    color: #f8fafc !important;
-}
-
-[data-theme="dark"] #app-sub-title {
+    background: none !important;
+    -webkit-background-clip: unset !important;
+    -webkit-text-fill-color: #38bdf8 !important;
     color: #38bdf8 !important;
+    text-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
 }
 
+[data-theme="dark"] .banner-text h2,
+[data-theme="dark"] #app-sub-title {
+    background: none !important;
+    -webkit-background-clip: unset !important;
+    -webkit-text-fill-color: #34d399 !important;
+    color: #34d399 !important;
+}
+
+[data-theme="dark"] .banner-text p,
 [data-theme="dark"] #app-slogan {
-    color: #94a3b8 !important;
+    background: #d97706 !important;
+    color: #ffffff !important;
+    box-shadow: 0 1px 4px rgba(217, 119, 6, 0.4);
 }
 
 [data-theme="dark"] #clock-time {
@@ -5884,7 +5919,7 @@ transition: box-shadow 0.3s;
 [data-theme="dark"] .user-dropdown-menu {
     background: #1e293b !important;
     border-color: #334155 !important;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.6) !important;
 }
 
 [data-theme="dark"] .user-dropdown-menu a {
@@ -5896,60 +5931,313 @@ transition: box-shadow 0.3s;
     color: #f8fafc !important;
 }
 
-[data-theme="dark"] .card,
+[data-theme="dark"] .global-marquee-container {
+    background: #111827 !important;
+    border-top: 1px solid #1e293b !important;
+    border-bottom: 1px solid #1e293b !important;
+}
+
+[data-theme="dark"] #thong-bao-chay,
+[data-theme="dark"] .hamburger-in-marquee {
+    color: #fb7185 !important;
+}
+
+/* --------------------------------------------------------------------------
+   🌙 DASHBOARD: HEADINGS, PANELS, STATS & CHARTS
+   -------------------------------------------------------------------------- */
+[data-theme="dark"] .page-header h2,
+[data-theme="dark"] .tab-header-title {
+    color: #38bdf8 !important;
+}
+
+[data-theme="dark"] #display-date {
+    color: #f8fafc !important;
+}
+
+/* Date filter container in page header */
+[data-theme="dark"] .page-header > div[style*="background"],
+[data-theme="dark"] .page-header div[style*="background: #fff"],
+[data-theme="dark"] .page-header div[style*="background:#fff"] {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"] #dashboard-date-filter,
+[data-theme="dark"] .dashboard-date {
+    background: transparent !important;
+    color: #f8fafc !important;
+    color-scheme: dark !important;
+}
+
+[data-theme="dark"] .btn-refresh {
+    color: #f8fafc !important;
+    filter: brightness(1.4);
+}
+
+/* 3 Dashboard Columns */
+[data-theme="dark"] .dash-panel {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4) !important;
+    color: #f8fafc !important;
+}
+
+[data-theme="dark"] .dash-panel-title {
+    color: #38bdf8 !important;
+    border-bottom: 1px solid #334155 !important;
+}
+
+/* Sub-headers in panel 2 & 3 (Bác sĩ, KTV, YHCT, PHCN) */
+[data-theme="dark"] .dash-panel div[style*="color:#1e3d2b"],
+[data-theme="dark"] .dash-panel div[style*="color: #1e3d2b"] {
+    color: #34d399 !important;
+    border-bottom-color: #334155 !important;
+}
+
+[data-theme="dark"] .dash-panel div[style*="background:#e8ecee"],
+[data-theme="dark"] .dash-panel div[style*="background: #e8ecee"] {
+    background: #334155 !important;
+}
+
+/* Mini stat cards in Dashboard column 1 */
+[data-theme="dark"] .stat-mini-card {
+    background: #0f172a !important;
+    border-top: 1px solid #1e293b !important;
+    border-right: 1px solid #1e293b !important;
+    border-bottom: 1px solid #1e293b !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme="dark"] .stat-mini-card:hover {
+    background: #162032 !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-theme="dark"] .stat-mini-card .s-label {
+    color: #cbd5e1 !important;
+}
+
+/* Horizontal chart rows in Dashboard panels 2 & 3 */
+[data-theme="dark"] .dash-chart-row > div:nth-child(1),
+[data-theme="dark"] .dash-chart-row div[style*="color:#2c3e50"],
+[data-theme="dark"] .dash-chart-row div[style*="color: #2c3e50"] {
+    color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .dash-chart-row > div:nth-child(2),
+[data-theme="dark"] .dash-chart-row div[style*="background:#f1f3f5"],
+[data-theme="dark"] .dash-chart-row div[style*="background: #f1f3f5"] {
+    background: #334155 !important;
+}
+
+[data-theme="dark"] .dash-chart-row > div:nth-child(3) {
+    color: #f8fafc !important;
+}
+
+/* Monthly chart cards */
+[data-theme="dark"] .dash-chart-card {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4) !important;
+}
+
+[data-theme="dark"] .dash-chart-card h3 {
+    color: #38bdf8 !important;
+}
+
+[data-theme="dark"] #dash-chart-workdays-subtitle,
+[data-theme="dark"] #dash-chart-procs-subtitle {
+    color: #94a3b8 !important;
+}
+
+/* --------------------------------------------------------------------------
+   🌙 SCHEDULE TAB (XẾP LỊCH)
+   -------------------------------------------------------------------------- */
+[data-theme="dark"] .schedule-compact-header {
+    background: #0f172a !important;
+    border-bottom: 2px solid #334155 !important;
+    box-shadow: 0 8px 15px -10px rgba(0,0,0,0.4) !important;
+}
+
+[data-theme="dark"] .schedule-compact-header label,
+[data-theme="dark"] .schedule-title-inline {
+    color: #38bdf8 !important;
+}
+
+[data-theme="dark"] .schedule-compact-header div[style*="background:#f5eef8"],
+[data-theme="dark"] .schedule-compact-header div[style*="background: #f5eef8"] {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+}
+
+[data-theme="dark"] .schedule-table-wrap {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+[data-theme="dark"] #schedule-table {
+    background: #1e293b !important;
+    color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] #schedule-table th {
+    background: #111827 !important;
+    color: #94a3b8 !important;
+    border-color: #334155 !important;
+}
+
+[data-theme="dark"] #schedule-table td {
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] #schedule-table tr:hover td {
+    background: rgba(51, 65, 85, 0.4) !important;
+}
+
+/* --------------------------------------------------------------------------
+   🌙 BUSY & DISCHARGE TAB (GIỜ BẬN & RA VIỆN)
+   -------------------------------------------------------------------------- */
+[data-theme="dark"] .busy-col-card,
+[data-theme="dark"] .card-staff,
+[data-theme="dark"] .card-patient,
 [data-theme="dark"] .card-leave,
-[data-theme="dark"] .busy-card,
-[data-theme="dark"] .stat-card,
-[data-theme="dark"] .setting-card,
-[data-theme="dark"] .table-card,
-[data-theme="dark"] .table-container,
-[data-theme="dark"] .sidebar-form,
-[data-theme="dark"] .main-table {
+[data-theme="dark"] .busy-card {
     background: #1e293b !important;
     border-color: #334155 !important;
     color: #e2e8f0 !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
 }
 
-[data-theme="dark"] .page-content,
-[data-theme="dark"] .tab-content {
+[data-theme="dark"] .busy-form-header {
+    border-bottom-color: #334155 !important;
+}
+
+[data-theme="dark"] .busy-container {
     background: #0f172a !important;
+}
+
+[data-theme="dark"] .busy-container table,
+[data-theme="dark"] #busy-staff-table,
+[data-theme="dark"] #busy-pat-table,
+[data-theme="dark"] #leave-pat-table {
+    background: #1e293b !important;
     color: #e2e8f0 !important;
 }
 
-[data-theme="dark"] table.data-table,
-[data-theme="dark"] .table-responsive table {
-    background: #1e293b !important;
-    color: #e2e8f0 !important;
+[data-theme="dark"] .busy-container th {
+    background: #111827 !important;
+    color: #94a3b8 !important;
     border-color: #334155 !important;
 }
 
+[data-theme="dark"] .busy-container td {
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+/* --------------------------------------------------------------------------
+   🌙 CATEGORIES & SPLIT LAYOUT (MÁY MÓC, THỦ THUẬT, NHÂN SỰ, BỆNH NHÂN)
+   -------------------------------------------------------------------------- */
+[data-theme="dark"] .sidebar-form {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .sidebar-form label {
+    color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .main-table,
+[data-theme="dark"] .table-container,
+[data-theme="dark"] .table-responsive-wrapper {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+}
+
+[data-theme="dark"] table.data-table,
+[data-theme="dark"] .main-table table {
+    background: #1e293b !important;
+    color: #e2e8f0 !important;
+}
+
 [data-theme="dark"] table.data-table th,
-[data-theme="dark"] .table-responsive table th {
+[data-theme="dark"] .main-table table th {
     background: #111827 !important;
     color: #94a3b8 !important;
     border-color: #334155 !important;
 }
 
 [data-theme="dark"] table.data-table td,
-[data-theme="dark"] .table-responsive table td {
+[data-theme="dark"] .main-table table td {
     border-color: #334155 !important;
     color: #e2e8f0 !important;
 }
 
-[data-theme="dark"] table.data-table tr:hover td {
+[data-theme="dark"] table.data-table tr:hover td,
+[data-theme="dark"] .main-table table tr:hover td {
     background: rgba(51, 65, 85, 0.4) !important;
 }
 
+/* --------------------------------------------------------------------------
+   🌙 ATTENDANCE & STATISTICS (CHẤM CÔNG & THỐNG KÊ)
+   -------------------------------------------------------------------------- */
+[data-theme="dark"] .chamcong-card-wrapper,
+[data-theme="dark"] .thongke-card-wrapper,
+[data-theme="dark"] #table-chamcong-container,
+[data-theme="dark"] #table-thongke-container {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .chamcong-card-wrapper h2,
+[data-theme="dark"] .thongke-card-wrapper h2 {
+    color: #38bdf8 !important;
+}
+
+[data-theme="dark"] .chamcong-card-wrapper span,
+[data-theme="dark"] .thongke-card-wrapper span {
+    color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] #table-chamcong th,
+[data-theme="dark"] #table-thongke th {
+    background: #111827 !important;
+    color: #94a3b8 !important;
+    border-color: #334155 !important;
+}
+
+[data-theme="dark"] #table-chamcong td,
+[data-theme="dark"] #table-thongke td {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .cc-input-text,
+[data-theme="dark"] .heso-input {
+    background: #0f172a !important;
+    color: #f8fafc !important;
+    border-color: #334155 !important;
+}
+
+/* --------------------------------------------------------------------------
+   🌙 INPUTS, SELECTS, MODALS, MOBILE & FOOTER
+   -------------------------------------------------------------------------- */
 [data-theme="dark"] input[type="text"],
 [data-theme="dark"] input[type="search"],
 [data-theme="dark"] input[type="password"],
 [data-theme="dark"] input[type="number"],
+[data-theme="dark"] input[type="date"],
 [data-theme="dark"] select,
 [data-theme="dark"] textarea {
-    background: #111827 !important;
+    background: #0f172a !important;
     border-color: #334155 !important;
     color: #f8fafc !important;
+    color-scheme: dark !important;
 }
 
 [data-theme="dark"] input:focus,
@@ -5959,12 +6247,25 @@ transition: box-shadow 0.3s;
     box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25) !important;
 }
 
+[data-theme="dark"] input::placeholder {
+    color: #64748b !important;
+}
+
 [data-theme="dark"] .modal-content,
 [data-theme="dark"] .modal-dialog,
-[data-theme="dark"] .popup-content {
+[data-theme="dark"] .popup-content,
+[data-theme="dark"] div[id^="modal-"] > div,
+[data-theme="dark"] div[id*="Modal"] > div,
+[data-theme="dark"] #modal-hdsd-viewer > div,
+[data-theme="dark"] #modal-change-password > div,
+[data-theme="dark"] #modal-server-status > div,
+[data-theme="dark"] #modal-config-gas > div,
+[data-theme="dark"] #modal-doc-lookup > div,
+[data-theme="dark"] #modal-unscheduled-advisor > div {
     background: #1e293b !important;
     color: #e2e8f0 !important;
     border: 1px solid #334155 !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7) !important;
 }
 
 [data-theme="dark"] .modal-header {
@@ -5977,10 +6278,22 @@ transition: box-shadow 0.3s;
     background: #111827 !important;
 }
 
+[data-theme="dark"] .main-footer,
 [data-theme="dark"] .app-footer-bar {
-    background: #0b1120 !important;
-    border-top: 1px solid #1e293b !important;
+    background-color: #0b1120 !important;
+    border-top: 2px solid #3b82f6 !important;
     color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .main-footer h4,
+[data-theme="dark"] .app-footer-bar h4 {
+    color: #38bdf8 !important;
+}
+
+[data-theme="dark"] .main-footer p,
+[data-theme="dark"] .main-footer span,
+[data-theme="dark"] .main-footer a {
+    color: #cbd5e1 !important;
 }
 
 [data-theme="dark"] .mobile-header-bar {
@@ -6002,5 +6315,6 @@ transition: box-shadow 0.3s;
     background: #111827 !important;
     border-bottom: 1px solid #334155 !important;
 }
+
 
 

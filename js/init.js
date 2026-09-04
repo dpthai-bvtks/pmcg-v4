@@ -56,6 +56,11 @@ window.applyAppTheme = function(theme) {
 
     const dropText = document.getElementById('dropdown-theme-text');
     if (dropText) dropText.innerText = text;
+
+    // Tự động vẽ lại biểu đồ Dashboard nếu đang hiển thị
+    if (typeof window.loadDashboard === 'function') {
+        try { window.loadDashboard(); } catch(e) {}
+    }
 };
 
 window.initAppTheme = function() {

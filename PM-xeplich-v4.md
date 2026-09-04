@@ -1083,6 +1083,45 @@ git add . && git commit -m "..." && git push origin main
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.1-rev26] - 14:22 04/09/2026: Tối ưu hóa triệt để Chế độ Tối (Dark Mode) cho Dashboard, Thẻ Thống Kê, Marquee, Biểu đồ Chart.js & Khung lọc ngày
+- **Yêu cầu của người dùng**:
+  + Chế độ tối không ổn (ảnh chụp màn hình cho thấy các mảng trắng chói ở 3 thẻ Dashboard, thanh thông báo chạy màu trắng/xanh lá nhạt chữ đỏ, tên bệnh viện trên header bị chìm tối do gradient nền cũ, ô lọc ngày nền trắng chói, biểu đồ Chart.js giữ nguyên nhãn và lưới tối màu khó đọc).
+- **Phân tích nguyên nhân & Giải pháp**:
+  1. **Tên bệnh viện trên Header (`#app-hospital-name`)**:
+     - Do CSS ban đầu sử dụng `-webkit-background-clip: text` với dải gradient màu xanh navy đậm (#1e3d2b, #2d5a27), khi bật nền tối gradient hòa lẫn vào nền làm chữ gần như biến mất.
+     - *Khắc phục*: Trong Dark Mode, hủy bỏ gradient clip và đặt màu chữ phát sáng rõ nét (#38bdf8 - xanh cyan y tế cao cấp), tiêu đề phụ chuyển sang xanh ngọc lục bảo tươi (#34d399), khẩu hiệu chuyển sang vàng cam (#d97706).
+  2. **Thanh thông báo chạy Marquee (`.global-marquee-container`)**:
+     - Nền cũ dùng màu xanh nhạt cứng `#f1f8e9` và chữ đỏ đô `#c0392b`.
+     - *Khắc phục*: Tối ưu nền tối sang đen xám mềm `#111827`, viền xám tro `#1f2937`, chữ chuyển động đổi thành hồng san hô dịu mắt `#fb7185`.
+  3. **Tiêu đề Dashboard & Khung lọc ngày**:
+     - Tiêu đề `📊 DASHBOARD NGÀY` có mã màu nội dòng `#1e3d2b`, khung chọn ngày nền `#fff`.
+     - *Khắc phục*: Tiêu đề đổi sang xanh ngọc `#38bdf8`, khung chọn ngày bọc thẻ tối `#1e293b`, chữ ngày tháng màu sáng `#f8fafc`.
+  4. **3 Khối Thẻ Dashboard (`.dash-panel`) & Mini Cards (`.stat-mini-card`)**:
+     - Do thuộc tính inline và class dùng nền trắng `#fff`, gây hiện tượng chói mắt tương phản gắt.
+     - *Khắc phục*: Chuyển toàn bộ 3 panel sang màu nền `#1e293b` viền `#334155`, thẻ mini thống kê chuyển sang `#0f172a`, nhãn chỉ số `#94a3b8`, thanh đo tải trọng và phân bố kỹ thuật viên có nền rãnh tối `#334155` và chữ trắng `#cbd5e1` / `#f8fafc`.
+  5. **Biểu đồ Thống kê Chart.js (Tháng & Ngày)**:
+     - Thẻ biểu đồ tháng `.dash-chart-card` chuyển sang nền `#1e293b`.
+     - Trong `js/app.js`: Tự động nhận diện theme hiện hành (`document.documentElement.getAttribute('data-theme') === 'dark'`), chuyển trục tọa độ, nhãn (ticks) và đường lưới (grid) từ xám đậm sang màu sáng `#cbd5e1` / `#94a3b8` / `#334155`.
+     - Plugin hiển thị giá trị đầu cột `dashDrawValuePlugin` tự động chuyển màu vẽ chữ sang `#f8fafc` khi ở Dark Mode.
+     - Trong `js/init.js`: Hàm `window.applyAppTheme()` tự động kích hoạt `loadDashboard()` để vẽ lại biểu đồ Chart.js ngay khi người dùng bấm chuyển theme mà không cần reload trang.
+  6. **Đồng bộ Modals, Footer & Form Controls**:
+     - Thiết lập quy tắc phủ toàn bộ các modal (`modal-server-status`, `modal-config-gas`, `modal-doc-lookup`, `modal-unscheduled-advisor`, `modal-admin-employee`...) sang bảng màu Dark Slate `#1e293b`.
+     - `.main-footer` chuyển sang màu xanh than đậm `#0b1120` với viền `#3b82f6` và chữ `#cbd5e1`.
+  7. **Đồng bộ Phiên bản & Cache Busters**:
+     - Nâng số revision từ `4.0.1-rev25` lên `4.0.1-rev26`.
+     - Cập nhật `index.html` (CSS, JS cache busters, timestamp `14:22 04/09/2026`, `APP_VERSION`).
+     - Cập nhật `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev26'`).
+- **File sửa đổi**:
+  + `css/style.css`
+  + `js/app.js`
+  + `js/init.js`
+  + `index.html`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+
 
 
 

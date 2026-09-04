@@ -10669,13 +10669,14 @@ window.renderSttOrderControl = function (type, i, total) {
                 id: 'dashDrawValuePlugin',
                 afterDatasetsDraw(chart) {
                     const { ctx } = chart;
+                    const isDarkChart = (document.documentElement.getAttribute('data-theme') === 'dark');
                     chart.data.datasets.forEach((dataset, i) => {
                         const meta = chart.getDatasetMeta(i);
                         meta.data.forEach((bar, index) => {
                             const val = dataset.data[index];
                             if (val !== undefined && val !== null && val > 0) {
                                 ctx.save();
-                                ctx.fillStyle = '#334155';
+                                ctx.fillStyle = isDarkChart ? '#f8fafc' : '#334155';
                                 ctx.font = 'bold 11px Inter, sans-serif';
                                 ctx.textAlign = 'center';
                                 ctx.textBaseline = 'bottom';
@@ -10727,6 +10728,11 @@ window.renderSttOrderControl = function (type, i, total) {
                     return { name: emp, val: totalTT };
                 }).filter(x => x.val > 0).sort((a, b) => b.val - a.val);
 
+                const isDarkTheme = (document.documentElement.getAttribute('data-theme') === 'dark');
+                const chartLabelColor = isDarkTheme ? '#cbd5e1' : '#334155';
+                const chartSubColor = isDarkTheme ? '#94a3b8' : '#64748b';
+                const chartGridColor = isDarkTheme ? '#334155' : '#f1f5f9';
+
                 // Biểu đồ 1: Ngày công
                 const canvas1 = document.getElementById('canvas-dash-workdays');
                 if (canvas1) {
@@ -10760,7 +10766,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                         boxWidth: 20,
                                         boxHeight: 10,
                                         font: { size: 12, weight: '600' },
-                                        color: '#334155'
+                                        color: chartLabelColor
                                     }
                                 },
                                 tooltip: {
@@ -10773,7 +10779,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                 x: {
                                     ticks: {
                                         font: { size: 10.5, weight: '600' },
-                                        color: '#334155',
+                                        color: chartLabelColor,
                                         maxRotation: 45,
                                         minRotation: 35
                                     },
@@ -10784,10 +10790,10 @@ window.renderSttOrderControl = function (type, i, total) {
                                     suggestedMax: Math.ceil(maxVal1 * 1.15),
                                     ticks: {
                                         font: { size: 11 },
-                                        color: '#64748b',
+                                        color: chartSubColor,
                                         stepSize: 2
                                     },
-                                    grid: { color: '#f1f5f9' }
+                                    grid: { color: chartGridColor }
                                 }
                             }
                         },
@@ -10828,7 +10834,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                         boxWidth: 20,
                                         boxHeight: 10,
                                         font: { size: 12, weight: '600' },
-                                        color: '#334155'
+                                        color: chartLabelColor
                                     }
                                 },
                                 tooltip: {
@@ -10841,7 +10847,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                 x: {
                                     ticks: {
                                         font: { size: 10.5, weight: '600' },
-                                        color: '#334155',
+                                        color: chartLabelColor,
                                         maxRotation: 45,
                                         minRotation: 35
                                     },
@@ -10852,9 +10858,10 @@ window.renderSttOrderControl = function (type, i, total) {
                                     suggestedMax: Math.ceil(maxVal2 * 1.15),
                                     ticks: {
                                         font: { size: 11 },
-                                        color: '#64748b'
+                                        color: chartSubColor,
+                                        stepSize: 10
                                     },
-                                    grid: { color: '#f1f5f9' }
+                                    grid: { color: chartGridColor }
                                 }
                             }
                         },
