@@ -901,4 +901,35 @@ git add . && git commit -m "..." && git push origin main
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.1-rev20] - 10:05 04/09/2026: Khắc phục lỗi cắt cụt khoảng giờ bận bệnh nhân và tiêu đề bảng
+- **Yêu cầu của người dùng**: Bảng giờ bận của bệnh nhân không nhìn thấy hết các khoảng giờ (bị cụt mất ký tự cuối ví dụ `07:28-07:3`).
+- **Nguyên nhân**:
+  1. Trong `css/style.css`, cột thứ 5 (`GIỜ BẬN`) của `#busy-pat-table` bị ràng buộc cứng: `width: 55px !important; min-width: 50px !important; max-width: 60px !important;`. Trong khi đó, một khoảng thời gian dạng `HH:mm-HH:mm` (VD: `07:28-07:35`) dài 11 ký tự, với font chữ đậm chiếm khoảng 85px - 95px, dẫn đến việc bị tràn khung và cắt cụt số cuối thành `07:28-07:3`.
+  2. Cột `NĂM SINH` bị giới hạn `max-width: 48px !important;` khiến tiêu đề bảng bị ép cắt thành `NĂM SIN`.
+  3. Thẻ `<td>` và `<th>` trong `js/app.js` (`renderBusyPat`) và `index.html` cũng bị gán cứng `width: 55px;`.
+  4. Trong layout 3 cột của `#tab-busy`, cột Nhân viên bận chiếm tới `flex: 1.8`, trong khi cột Bệnh nhân bận chỉ có `flex: 1`, khiến bảng bệnh nhân bận bị co hẹp trên màn hình laptop/máy tính để bàn tiêu chuẩn.
+- **Giải pháp xử lý**:
+  1. **Nới rộng độ rộng cột Giờ Bận**:
+     - Trong `css/style.css`: Đặt `#busy-pat-table th:nth-child(5), td:nth-child(5)` có `width: 110px !important; min-width: 100px !important;` và xóa bỏ giới hạn `max-width: 60px`, sử dụng font chữ monospace rõ nét.
+     - Trong `js/app.js` (`renderBusyPat`): Cập nhật `<td>` giờ bận thành `width: 110px; min-width: 100px;`.
+     - Trong `index.html`: Cập nhật `<th>` giờ bận thành `width: 110px; min-width: 100px;`.
+  2. **Khắc phục tiêu đề NĂM SINH**:
+     - Nới rộng cột Năm Sinh lên `width: 65px !important; min-width: 60px !important;`, đảm bảo hiển thị trọn vẹn chữ `NĂM SINH` không bao giờ bị cắt cụt.
+  3. **Cân đối tỉ lệ cột & Chống co méo (`split-layout`)**:
+     - Điều chỉnh flex: Cột Nhân viên bận `flex: 1.1; min-width: 320px;`, Cột Bệnh nhân bận `flex: 1.5; min-width: 380px;`, Cột Ra viện `flex: 1.1; min-width: 300px;`.
+     - Đặt `#busy-pat-table` có `min-width: 370px;` và cho phép `.split-layout` cuộn ngang êm ái trên màn hình nhỏ.
+  4. **Đồng bộ Footer Timestamp & Cache Busters**:
+     - Cập nhật Footer `sys-last-update` thành `10:05 04/09/2026`.
+     - Cập nhật cache buster `?v=4.0.1-rev20` trên toàn bộ thẻ CSS và JS trong `index.html`.
+     - Cập nhật `CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev20'` trong `sw.js`.
+- **File sửa đổi**:
+  + `css/style.css`
+  + `index.html`
+  + `js/app.js`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+
 

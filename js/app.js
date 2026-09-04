@@ -5282,11 +5282,11 @@ window.renderSttOrderControl = function (type, i, total) {
                 const phong = p.phong || '';
                 p.gioBan.split(',').map(s => s.trim()).filter(s => s).forEach(slot => {
                     html += `<tr class="editable-row" onclick="editBusyPat('${p.ten}', '${ns}', '${slot}', ${idx})" title="Bấm để sửa/xóa">
-                        <td align="center" style="font-weight: 600; color: #475569; width: 28px;">${stt++}</td>
+                        <td align="center" style="font-weight: 600; color: #475569; width: 32px;">${stt++}</td>
                         <td style="white-space: nowrap; font-weight: 600; text-align: left;">${escapedTen}</td>
-                        <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11px; width: 45px;">${ns}</td>
-                        <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11px; width: 55px;">${phong}</td>
-                        <td align="center" style="color:#d35400; font-weight:bold; white-space: nowrap; width: 55px;">${formatSlotDisplay(slot)}</td>
+                        <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 65px;">${ns}</td>
+                        <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 75px;">${phong}</td>
+                        <td align="center" style="color:#d35400; font-weight:bold; white-space: nowrap; width: 110px; min-width: 100px; font-family: monospace, sans-serif;">${formatSlotDisplay(slot)}</td>
                     </tr>`;
                 });
             });
@@ -5450,11 +5450,11 @@ window.renderSttOrderControl = function (type, i, total) {
                 const ns = p.namSinh || '';
                 const phong = p.phong || '';
                 html += `<tr class="editable-row" onclick="editLeavePat('${p.ten}', '${ns}', '${p.gioRa}', ${idx})" title="Bấm để sửa/xóa">
-                    <td align="center" style="font-weight: 600; color: #475569; width: 28px;">${stt++}</td>
+                    <td align="center" style="font-weight: 600; color: #475569; width: 32px;">${stt++}</td>
                     <td style="white-space: nowrap; font-weight: 600; text-align: left;">${escapedTen}</td>
-                    <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11px; width: 45px;">${ns}</td>
-                    <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11px; width: 55px;">${phong}</td>
-                    <td align="center" style="color:#8e44ad; font-weight:bold; white-space: nowrap; width: 55px;">${p.gioRa}</td>
+                    <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 65px;">${ns}</td>
+                    <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 75px;">${phong}</td>
+                    <td align="center" style="color:#8e44ad; font-weight:bold; white-space: nowrap; width: 75px;">${p.gioRa}</td>
                 </tr>`;
             });
             tbody.innerHTML = html || `<tr><td colspan="5" align="center" style="color:gray; padding:10px;">Chưa có bệnh nhân ra viện</td></tr>`;

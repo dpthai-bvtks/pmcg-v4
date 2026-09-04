@@ -4625,56 +4625,74 @@ transition: box-shadow 0.3s;
         /* ── BẢNG BẬN & RA VIỆN: TÊN BỆNH NHÂN TRÊN 1 DÒNG ── */
         #busy-pat-table, #leave-pat-table {
             width: 100%;
+            min-width: 370px;
             table-layout: auto;
         }
 
         #busy-pat-table th:nth-child(1), #leave-pat-table th:nth-child(1),
         #busy-pat-table td:nth-child(1), #leave-pat-table td:nth-child(1) {
-            width: 28px !important;
-            min-width: 28px !important;
-            max-width: 32px !important;
+            width: 32px !important;
+            min-width: 30px !important;
+            max-width: 36px !important;
             text-align: center !important;
-            padding: 2px 2px !important;
+            padding: 4px 2px !important;
         }
 
         #busy-pat-table th:nth-child(2), #leave-pat-table th:nth-child(2),
         #busy-pat-table td:nth-child(2), #leave-pat-table td:nth-child(2) {
             white-space: nowrap !important;
             text-align: left !important;
-            padding: 2px 8px !important;
+            padding: 4px 8px !important;
             font-weight: 600 !important;
         }
 
         #busy-pat-table th:nth-child(3), #leave-pat-table th:nth-child(3),
         #busy-pat-table td:nth-child(3), #leave-pat-table td:nth-child(3) {
-            width: 45px !important;
-            min-width: 42px !important;
-            max-width: 48px !important;
+            width: 65px !important;
+            min-width: 60px !important;
+            max-width: 72px !important;
             text-align: center !important;
-            padding: 2px 2px !important;
+            padding: 4px 2px !important;
             white-space: nowrap !important;
-            font-size: 11px !important;
+            font-size: 11.5px !important;
         }
 
         #busy-pat-table th:nth-child(4), #leave-pat-table th:nth-child(4),
         #busy-pat-table td:nth-child(4), #leave-pat-table td:nth-child(4) {
-            width: 55px !important;
-            min-width: 48px !important;
-            max-width: 60px !important;
+            width: 75px !important;
+            min-width: 68px !important;
+            max-width: 90px !important;
             text-align: center !important;
-            padding: 2px 3px !important;
+            padding: 4px 4px !important;
             white-space: nowrap !important;
-            font-size: 11px !important;
+            font-size: 11.5px !important;
         }
 
-        #busy-pat-table th:nth-child(5), #leave-pat-table th:nth-child(5),
-        #busy-pat-table td:nth-child(5), #leave-pat-table td:nth-child(5) {
-            width: 55px !important;
-            min-width: 50px !important;
-            max-width: 60px !important;
+        /* Cột Giờ Bận BN: rộng từ 100px trở lên để hiển thị đầy đủ khoảng giờ dạng HH:mm-HH:mm */
+        #busy-pat-table th:nth-child(5),
+        #busy-pat-table td:nth-child(5) {
+            width: 110px !important;
+            min-width: 100px !important;
             text-align: center !important;
-            padding: 2px 2px !important;
+            padding: 4px 6px !important;
             white-space: nowrap !important;
+            font-size: 12.5px !important;
+            font-weight: 700 !important;
+            font-family: 'Consolas', 'Roboto Mono', monospace, sans-serif !important;
+            color: #d35400 !important;
+        }
+
+        /* Cột Giờ Ra Viện */
+        #leave-pat-table th:nth-child(5),
+        #leave-pat-table td:nth-child(5) {
+            width: 75px !important;
+            min-width: 68px !important;
+            text-align: center !important;
+            padding: 4px 4px !important;
+            white-space: nowrap !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            color: #8e44ad !important;
         }
 
         /* ── TAB GIỜ BẬN & RA VIỆN: GHIM FORM NHẬP VÀ TIÊU ĐỀ BẢNG ── */
@@ -4684,6 +4702,7 @@ transition: box-shadow 0.3s;
             align-items: stretch !important;
             height: calc(100vh - 160px) !important;
             min-height: 480px !important;
+            overflow-x: auto !important;
         }
 
         #tab-busy .busy-col-card {
