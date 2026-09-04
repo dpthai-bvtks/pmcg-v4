@@ -83,7 +83,7 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=4.0.1-rev29">
+    <link rel="stylesheet" href="css/style.css?v=4.0.1-rev30">
     <!-- PWA & Mobile Web App Meta Tags -->
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
@@ -91,7 +91,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.0.1-rev29">
+    <link rel="stylesheet" href="css/mobile.css?v=4.0.1-rev30">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
     <script src="js/dexie.min.js?v=3.2.6"></script>
@@ -1697,7 +1697,7 @@
                         <div style="display: flex; align-items: center; gap: 15px; flex: 1; min-width: 0;">
                             <span style="font-weight: bold;">📅 XẾP LỊCH NGÀY THỨ 7</span>
                             <input type="date" id="sat-schedule-date"
-                                style="padding: 4px 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; font-weight: normal; color: #333; outline: none; cursor: pointer; height: 32px;">
+                                style="padding: 4px 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; font-weight: normal; outline: none; cursor: pointer; height: 32px;">
 
                             <div
                                 style="display: flex; align-items: center; gap: 8px; flex: 0 1 300px; min-width: 150px; margin-left: 10px;">
@@ -1728,8 +1728,8 @@
 
 
 
-                        <div id="sat-staff-container"
-                            style="display: none; flex: 0 0 25%; background: #fdfefe; border: 1px solid #dcdde1; border-radius: 8px; padding: 15px; flex-direction: column;">
+                        <div id="sat-staff-container" class="sat-col-panel"
+                            style="display: none; flex: 0 0 25%; border-radius: 8px; padding: 15px; flex-direction: column;">
 
                             <h4 style="text-align: center; color: #2c3e50; margin-bottom: 10px;">👨‍⚕️ Nhân sự đi làm
 
@@ -1737,8 +1737,8 @@
 
 
 
-                            <div
-                                style="display: flex; justify-content: center; gap: 15px; margin-bottom: 10px; font-size: 13px; background: #ecf0f1; padding: 8px; border-radius: 5px;">
+                            <div class="sat-season-wrap"
+                                style="display: flex; justify-content: center; gap: 15px; margin-bottom: 10px; font-size: 13px; padding: 8px; border-radius: 5px;">
 
                                 <label style="cursor: pointer; font-weight: bold; color: #d35400;"><input type="radio"
                                         name="sat-season" value="summer" checked onchange="updateSatDefaultTime()"> 🌞
@@ -1760,13 +1760,13 @@
 
 
 
-                        <div
-                            style="flex: 1; background: #fff; border: 1px solid #dcdde1; border-radius: 8px; padding: 15px; display: flex; flex-direction: column;">
+                        <div class="sat-col-panel sat-patient-panel"
+                            style="flex: 1; border-radius: 8px; padding: 15px; display: flex; flex-direction: column;">
 
 
 
-                            <div id="sat-patient-list"
-                                style="flex: 1; background: #f1f2f6; padding: 10px; border-radius: 5px; display: flex; gap: 8px; overflow: hidden;">
+                            <div id="sat-patient-list" class="sat-patient-list"
+                                style="flex: 1; padding: 10px; border-radius: 5px; display: flex; gap: 8px; overflow: hidden;">
                                 <div id="sat-patient-list-left"
                                     style="flex: 1; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; padding-right: 4px;">
                                 </div>
@@ -1776,10 +1776,10 @@
 
                             </div>
 
-                            <div
-                                style="flex-shrink: 0; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px; background: #ecf0f1; border-top: 2px solid #27ae60; border-radius: 0 0 8px 8px;">
+                            <div class="sat-footer-actions"
+                                style="flex-shrink: 0; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px; border-radius: 0 0 8px 8px;">
 
-                                <label style="font-weight:bold; color:#2c3e50; font-size:13px; margin-bottom:0;">Chức
+                                <label style="font-weight:bold; font-size:13px; margin-bottom:0;">Chức
 
                                     năng:</label>
 
@@ -1797,8 +1797,8 @@
 
 
 
-                        <div id="sat-summary-container"
-                            style="display: none; flex: 0 0 20%; background: #f8f9fa; border: 1px solid #dcdde1; border-radius: 8px; padding: 15px; flex-direction: column;">
+                        <div id="sat-summary-container" class="sat-col-panel sat-summary-panel"
+                            style="display: none; flex: 0 0 20%; border-radius: 8px; padding: 15px; flex-direction: column;">
 
                             <h4 style="text-align: center; color: #2c3e50; margin-bottom: 10px;">📊 Thống kê Thủ thuật
 
@@ -3271,7 +3271,7 @@
 
                     <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 4.0.1</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 15:20 04/09/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 15:35 04/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -3712,18 +3712,18 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.0.1-rev29"></script>
-    <script src="js/ai-scheduler.js?v=4.0.1-rev29"></script>
-    <script src="js/cp-solver.js?v=4.0.1-rev29"></script>
-    <script src="js/scheduler-engine.js?v=4.0.1-rev29"></script>
-    <script src="js/app.js?v=4.0.1-rev29"></script>
-    <script src="js/init.js?v=4.0.1-rev29"></script>
-    <script src="js/sync.js?v=4.0.1-rev29"></script>
-    <script src="js/thongke.js?v=4.0.1-rev29"></script>
+    <script src="js/offline-sync-engine.js?v=4.0.1-rev30"></script>
+    <script src="js/ai-scheduler.js?v=4.0.1-rev30"></script>
+    <script src="js/cp-solver.js?v=4.0.1-rev30"></script>
+    <script src="js/scheduler-engine.js?v=4.0.1-rev30"></script>
+    <script src="js/app.js?v=4.0.1-rev30"></script>
+    <script src="js/init.js?v=4.0.1-rev30"></script>
+    <script src="js/sync.js?v=4.0.1-rev30"></script>
+    <script src="js/thongke.js?v=4.0.1-rev30"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>
-    const APP_VERSION = '4.0.1-rev29';
+    const APP_VERSION = '4.0.1-rev30';
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             // Unregister old service workers if version changed

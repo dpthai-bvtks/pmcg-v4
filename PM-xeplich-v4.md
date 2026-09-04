@@ -1181,24 +1181,30 @@ git add . && git commit -m "..." && git push origin main
 
 ---
 
-### [v4.0.1-rev29] - 15:20 04/09/2026: Tối Ưu Menu Tài Khoản & Loại Bỏ Nút Chuyển Theme Trùng Lặp
+### [v4.0.1-rev30] - 15:35 04/09/2026: Nâng Cấp Tương Phản Nội Dung Bảng Toàn Diện & Đồng Bộ Dark Mode Tab Thứ 7
 - **Yêu cầu của người dùng**:
-  + Đã có nút bấm chuyển chế độ sáng/tối trực tiếp trên Header rồi thì không cần mục chuyển chế độ sáng/tối trong menu dropdown tài khoản nữa.
-- **Phân tích & Giải pháp**:
-  + Nút bấm chuyển Sáng/Tối (`#theme-toggle-btn` trên Desktop Header và `#mobile-theme-toggle-btn` trên Mobile Header) đã được bố trí ở vị trí trực quan, thuận tiện thao tác 1 chạm.
-  + Việc để thêm 1 mục `Chế độ Sáng / Chế độ Tối` (`#user-menu-theme-btn`) bên trong menu người dùng `#user-dropdown-menu` gây trùng lặp tính năng và làm menu dài thêm không cần thiết.
-  + Đã loại bỏ hoàn toàn thẻ `<a>` chuyển theme `#user-menu-theme-btn` và đường phân cách `divider` tương ứng trong `#user-dropdown-menu` (`index.html`).
-  + Dọn dẹp các dòng code cập nhật trạng thái `dropdown-theme-icon` và `dropdown-theme-text` trong `js/init.js`.
-  + Giao diện dropdown menu tài khoản trở nên gọn gàng, tinh tế: tập trung vào Quản trị (nếu có quyền), Đổi mật khẩu và Đăng xuất.
+  1. Không thể nhìn rõ nội dung trong bảng trong các tab ở chế độ tối, nhất là tab Thủ thuật và tab Bệnh nhân.
+  2. Tab thứ 7 bảng danh sách bệnh nhân vẫn nền trắng, không đồng bộ với chế độ tối.
+- **Nguyên nhân & Giải pháp thực hiện**:
+  1. **Độ tương phản nội dung bảng ở chế độ tối (Table Text Contrast in Dark Mode)**:
+     - *Tab Bệnh nhân*: Nguyên nhân do `#patients-table tbody td strong` bị cố định màu đen `#0f172a !important` ở cấp độ toàn cục làm cho Tên bệnh nhân và Viết tắt thủ thuật bị đen chìm trên nền tối `#1e293b`/`#151f2e`. Đã gỡ bỏ `!important` và định nghĩa màu xanh Cyan sáng rực rỡ (`#38bdf8 !important`) cho tất cả thẻ `strong` trong chế độ tối. Đồng thời tinh chỉnh các thẻ loại bệnh nhân Ngoại trú (`#fb923c`), Nội trú (`#4ade80`), Giờ Y lệnh (`#fbbf24`), Giờ Ra viện (`#f87171`), cùng nền hàng ra viện chuyển sang đỏ mờ cao cấp (`rgba(239, 68, 68, 0.22)`).
+     - *Tab Thủ thuật*: Thời gian đơn lẻ `.proc-time-single` trước đây mang màu xám tối `#334155` bị tàng hình trong chế độ tối, huy hiệu dải thời gian `.proc-time-range-badge` có nền xanh nhạt `#e0f2fe` chói mắt. Đã nâng cấp `.proc-time-single` lên màu trắng bạc sáng `#f8fafc !important`, huy hiệu thời gian chuyển sang nền mờ hiện đại `rgba(56, 189, 248, 0.2)` với chữ xanh neon `#38bdf8 !important`.
+     - *Toàn bộ bảng khác (Phác đồ, Nhân sự, Xếp lịch, Giờ bận / Ra viện, Phòng, Thiết bị)*: Chuẩn hóa chữ dữ liệu (`#f1f5f9`), tên nổi bật (`#38bdf8`), các thẻ huy hiệu mềm mại dịu mắt, độ tương phản đạt chuẩn WCAG AAA.
+  2. **Đồng bộ Dark Theme 100% cho Tab Thứ 7 (#tab-sat)**:
+     - Trước đây các khung và thẻ bệnh nhân trong tab Thứ 7 có nền cứng inline `#fff`, `#f1f2f6`, `#fdfefe`.
+     - Thêm hệ thống CSS class chuẩn hóa: `.sat-col-panel`, `.sat-season-wrap`, `.sat-patient-list`, `.sat-bn-card`, `.sat-bn-header`, `.sat-bn-name`, `.sat-bn-room`, `.sat-proc-name`, `.sat-ready-time-wrap`, `.sat-ready-label`, `.sat-footer-actions`, `.sat-staff-item`, `.sat-staff-name`.
+     - Xây dựng bộ quy tắc Dark Mode hoàn chỉnh cho `#tab-sat`: nền slate đen sâu (`#0b1120`, `#1e293b`), viền sắc nét (`#334155`), thẻ bệnh nhân chuyển nền `#1e293b` với hover viền xanh neon, tên bệnh nhân màu `#38bdf8`, nhãn phòng viền cam `#fbbf24`, ô giờ sẵn sàng và chân trang đồng bộ liền mạch, không còn bất kỳ vệt trắng nào.
 - **Đồng bộ Phiên bản & Cache Busters**:
-  + Nâng revision lên `4.0.1-rev29`.
-  + Cập nhật `index.html` (CSS, JS cache busters, timestamp `15:20 04/09/2026`, `APP_VERSION = '4.0.1-rev29'`).
-  + Cập nhật `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev29'`).
+  + Nâng revision lên `4.0.1-rev30`.
+  + Cập nhật `index.html` (CSS, JS cache busters, timestamp `15:35 04/09/2026`, `APP_VERSION = '4.0.1-rev30'`).
+  + Cập nhật `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev30'`).
 - **File sửa đổi**:
+  + `css/style.css`
   + `index.html`
-  + `js/init.js`
+  + `js/app.js`
   + `sw.js`
   + `PM-xeplich-v4.md`
+
 
 
 

@@ -8391,35 +8391,26 @@ window.renderSttOrderControl = function (type, i, total) {
                     t8_ns_vars[ten] = false; satStaffIndices[ten] = idx;
 
                     const fItem = document.createElement('div');
-
+                    fItem.className = 'sat-staff-item';
                     fItem.style.cssText = 'margin-bottom:10px; border-bottom:1px solid #ecf0f1; padding-bottom:8px;';
 
                     const cbLabel = document.createElement('label');
-
                     cbLabel.style.cssText = 'cursor:pointer; display:flex; align-items:center; gap:8px;';
 
                     const cbInput = document.createElement('input');
-
                     cbInput.type = 'checkbox'; cbInput.style.width = '18px'; cbInput.style.height = '18px';
-
                     cbInput.onchange = function () {
-
                         t8_ns_vars[ten] = this.checked;
-
                         const timeDiv = document.getElementById(`sat-time-${idx}`);
-
                         if (timeDiv) timeDiv.style.display = this.checked ? 'block' : 'none';
-
                     };
 
                     const spanName = document.createElement('span');
-
-                    spanName.style.cssText = 'font-size:14px; font-weight:bold; color:#2980b9;';
-
+                    spanName.className = 'sat-staff-name';
+                    spanName.style.cssText = 'font-size:14px; font-weight:bold;';
                     spanName.innerText = ten;
 
                     cbLabel.append(cbInput, spanName);
-
                     fItem.appendChild(cbLabel);
 
 
@@ -8479,80 +8470,65 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     const fBn = document.createElement('div');
                     fBn.id = `sat-bn-${bn_id}`;
-                    fBn.style.cssText = 'background:white; border:1px solid #bdc3c7; padding:6px 10px; margin-bottom:6px; border-radius:5px; display:flex; flex-direction:column; gap:4px; ';
+                    fBn.className = 'sat-bn-card';
+                    fBn.style.cssText = 'padding:6px 10px; margin-bottom:6px; border-radius:5px; display:flex; flex-direction:column; gap:4px;';
 
                     const tDiv = document.createElement('div');
+                    tDiv.className = 'sat-bn-header';
                     tDiv.style.cssText = 'display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed #ecf0f1; padding-bottom:3px;';
-                    tDiv.innerHTML = `<b style="font-size:12px; color:#2c3e50;">${pIdx + 1}. ${r.ten.toUpperCase()} (${r.namSinh})</b> <span style="font-size:11px; color:#e67e22; background:#fef5e7; padding:1px 6px; border-radius:3px; border:1px solid #fadbd8; white-space:nowrap;">P. ${r.phong}</span>`;
+                    tDiv.innerHTML = `<b class="sat-bn-name" style="font-size:12px;">${pIdx + 1}. ${r.ten.toUpperCase()} (${r.namSinh})</b> <span class="sat-bn-room" style="font-size:11px; padding:1px 6px; border-radius:3px; white-space:nowrap;">P. ${r.phong}</span>`;
                     fBn.appendChild(tDiv);
 
                     const flexContainer = document.createElement('div');
                     flexContainer.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-top:2px;';
 
                     const ttDiv = document.createElement('div');
-
                     ttDiv.style.cssText = 'display:flex; flex-wrap:wrap; gap:8px;';
 
-                    (r.thuThuat ? r.thuThuat.split(',').map(x => x.trim()).filter(x => x) : []).forEach((tt,
-
-                        tIdx) => {
-
+                    (r.thuThuat ? r.thuThuat.split(',').map(x => x.trim()).filter(x => x) : []).forEach((tt, tIdx) => {
                         satCache[bn_id].items.push({ name: tt, checked: false });
 
                         const cb = document.createElement('label');
-
                         cb.style.cssText = 'font-size:12px; cursor:pointer; display:flex; align-items:center; gap:4px;'; cb.title = tt;
 
                         const input = document.createElement('input');
-
                         input.type = 'checkbox'; input.id = `cb-sat-${bn_id}-${tIdx}`;
-
                         input.style.cssText = 'width:13px; height:13px; margin:0;';
-
                         input.onchange = function () {
                             satCache[bn_id].items[tIdx].checked = this.checked;
-
                             updateSummarySat();
                         };
 
                         const tt_info = dataCache.proc?.find(p => p.ten.toLowerCase() === tt.toLowerCase());
-
                         const span = document.createElement('span');
-
+                        span.className = 'sat-proc-name';
                         span.innerText = (tt_info?.vietTat) || tt;
-
-                        span.style.cssText = 'font-weight:bold; color:#34495e;';
+                        span.style.cssText = 'font-weight:bold;';
 
                         cb.append(input, span); ttDiv.appendChild(cb);
-
                     });
 
-
-
                     const readyTimeDiv = document.createElement('div');
-
-                    readyTimeDiv.style.cssText = 'display:flex; align-items:center; gap:5px; background:#fdf2e9; padding:2px 5px; border-radius:4px; border:1px dashed #e67e22;';
+                    readyTimeDiv.className = 'sat-ready-time-wrap';
+                    readyTimeDiv.style.cssText = 'display:flex; align-items:center; gap:5px; padding:2px 5px; border-radius:4px;';
 
                     const readyLabel = document.createElement('label');
-
-                    readyLabel.innerText = '⏱ Giờ SS:'; readyLabel.style.cssText = 'font-size:11px; color:#d35400; font-weight:bold; margin:0;';
+                    readyLabel.className = 'sat-ready-label';
+                    readyLabel.innerText = '⏱ Giờ SS:';
+                    readyLabel.style.cssText = 'font-size:11px; font-weight:bold; margin:0;';
 
                     const readyInput = document.createElement('input');
-
-                    readyInput.type = 'time'; readyInput.value = '07:30'; readyInput.className =
-
-                        'input-ready-time';
-
-                    readyInput.style.cssText = 'padding:1px 3px; border:1px solid #ccc; border-radius:3px; font-size:12px; outline:none; cursor:pointer; color:#95a5a6; background:#f8f9fa;';
+                    readyInput.type = 'time'; readyInput.value = '07:30';
+                    readyInput.className = 'input-ready-time';
+                    readyInput.style.cssText = 'padding:1px 3px; border-radius:3px; font-size:12px; outline:none; cursor:pointer;';
 
                     readyInput.onchange = function () {
-                        this.style.color = '#c0392b'; this.style.fontWeight =
-
-                            'bold'; this.style.backgroundColor = '#fff'; this.style.borderColor = '#c0392b';
+                        this.style.color = '#c0392b';
+                        this.style.fontWeight = 'bold';
+                        this.style.borderColor = '#c0392b';
                     };
 
                     readyTimeDiv.append(readyLabel, readyInput);
-
                     flexContainer.append(ttDiv, readyTimeDiv);
                     fBn.appendChild(flexContainer);
                     if (pIdx < midPoint) {

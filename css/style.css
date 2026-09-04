@@ -3134,7 +3134,7 @@
 
         #patients-table tbody td strong {
             font-size: 13px !important;
-            color: #0f172a !important;
+            color: #0f172a;
         }
 
         #patients-table tbody td button {
@@ -6215,15 +6215,118 @@ transition: box-shadow 0.3s;
     color: #ffffff !important;
 }
 
-/* 6. Ô Dữ Liệu Chung (td) */
+/* 6. Ô Dữ Liệu Chung & Chữ Nội Dung Bảng (High Contrast Table Content) */
 [data-theme="dark"] td,
 [data-theme="dark"] table td,
 [data-theme="dark"] tbody td,
 [data-theme="dark"] .main-table table td,
-[data-theme="dark"] table.data-table td {
+[data-theme="dark"] table.data-table td,
+[data-theme="dark"] tbody td span:not(.badge):not(.status-badge):not([style*="background"]) {
     border-bottom: 1px solid #334155 !important;
     border-right: 1px solid #283548 !important;
+    color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] tbody td strong,
+[data-theme="dark"] tbody td b,
+[data-theme="dark"] .main-table table tbody td strong,
+[data-theme="dark"] table.data-table tbody td strong {
+    color: #38bdf8 !important;
+}
+
+/* Tab Bệnh Nhân (#patients-table): Chữ sáng rõ nét, triệt tiêu hoàn toàn chữ đen */
+[data-theme="dark"] #patients-table tbody td {
+    color: #f1f5f9 !important;
+}
+[data-theme="dark"] #patients-table tbody td strong {
+    font-size: 13px !important;
+    color: #38bdf8 !important;
+}
+[data-theme="dark"] #patients-table tbody tr[style*="background:#f8d7da"],
+[data-theme="dark"] #patients-table tbody tr[style*="background: #f8d7da"] {
+    background: rgba(239, 68, 68, 0.22) !important;
+    color: #fca5a5 !important;
+}
+[data-theme="dark"] #patients-table td span[style*="color:#d35400"],
+[data-theme="dark"] #patients-table td span[style*="color: #d35400"] {
+    color: #fb923c !important;
+}
+[data-theme="dark"] #patients-table td span[style*="color:#27ae60"],
+[data-theme="dark"] #patients-table td span[style*="color: #27ae60"] {
+    color: #4ade80 !important;
+}
+[data-theme="dark"] #patients-table td strong[style*="color:#e67e22"],
+[data-theme="dark"] #patients-table td strong[style*="color: #e67e22"] {
+    color: #fbbf24 !important;
+}
+[data-theme="dark"] #patients-table td strong[style*="color:#c0392b"],
+[data-theme="dark"] #patients-table td strong[style*="color: #c0392b"] {
+    color: #f87171 !important;
+}
+
+/* Tab Thủ Thuật (#procedures-table): Thời gian & Viết tắt rực sáng */
+[data-theme="dark"] #procedures-table tbody td {
+    color: #f1f5f9 !important;
+}
+[data-theme="dark"] #procedures-table tbody td strong {
+    color: #38bdf8 !important;
+}
+[data-theme="dark"] .proc-time-single {
+    color: #f8fafc !important;
+    font-weight: 600 !important;
+}
+[data-theme="dark"] .proc-time-range-badge {
+    background: rgba(56, 189, 248, 0.2) !important;
+    color: #38bdf8 !important;
+    border: 1px solid rgba(56, 189, 248, 0.5) !important;
+    font-weight: 700 !important;
+}
+
+/* Tab Phác Đồ (#protocols-table) */
+[data-theme="dark"] #protocols-table tbody td strong {
+    color: #38bdf8 !important;
+}
+[data-theme="dark"] #protocols-table .badge {
+    background: rgba(37, 99, 235, 0.22) !important;
+    color: #93c5fd !important;
+    border: 1px solid rgba(59, 130, 246, 0.4) !important;
+}
+
+/* Tab Nhân Sự (#staff-table) */
+[data-theme="dark"] #staff-table tbody td strong {
+    color: #38bdf8 !important;
+}
+[data-theme="dark"] #staff-table tbody tr[style*="background:#f9f9f9"],
+[data-theme="dark"] #staff-table tbody tr[style*="background: #f9f9f9"] {
+    background: #1e293b !important;
+    opacity: 0.55 !important;
+}
+
+/* Tab Phòng Điều Trị (#rooms-table) & Máy Móc (#machines-table) */
+[data-theme="dark"] #rooms-table tbody td strong,
+[data-theme="dark"] #machines-table tbody td b {
+    color: #38bdf8 !important;
+}
+
+/* Tab Giờ Bận & Ra Viện (#busy-pat-table, #busy-staff-table, #leave-pat-table) */
+[data-theme="dark"] #busy-pat-table tbody td,
+[data-theme="dark"] #busy-staff-table tbody td,
+[data-theme="dark"] #leave-pat-table tbody td {
     color: #e2e8f0 !important;
+}
+[data-theme="dark"] #busy-pat-table tbody td:nth-child(2),
+[data-theme="dark"] #busy-staff-table tbody td:nth-child(2),
+[data-theme="dark"] #leave-pat-table tbody td:nth-child(2) {
+    color: #38bdf8 !important;
+}
+[data-theme="dark"] #busy-pat-table tbody td:nth-child(5) {
+    color: #fb923c !important;
+}
+[data-theme="dark"] #busy-staff-table tbody td:nth-child(4) {
+    color: #fbbf24 !important;
+}
+[data-theme="dark"] #leave-pat-table tbody td:nth-child(5) {
+    color: #f87171 !important;
 }
 
 /* 7. Tab Xếp Lịch: .row-scheduled & .row-dropped */
@@ -6747,6 +6850,222 @@ transition: box-shadow 0.3s;
     background: #0f172a !important;
     border: 1px solid #334155 !important;
     color: #e2e8f0 !important;
+}
+
+/* --------------------------------------------------------------------------
+   🌙 TAB THỨ 7 (XẾP LỊCH NGÀY THỨ 7) - ĐỒNG BỘ DARK THEME 100%
+   -------------------------------------------------------------------------- */
+.sat-col-panel {
+    background: #fff;
+    border: 1px solid #dcdde1;
+}
+#sat-staff-container.sat-col-panel {
+    background: #fdfefe;
+}
+.sat-season-wrap {
+    background: #ecf0f1;
+}
+.sat-patient-list {
+    background: #f1f2f6;
+}
+.sat-footer-actions {
+    background: #ecf0f1;
+    border-top: 2px solid #27ae60;
+}
+#sat-summary-container.sat-col-panel {
+    background: #f8f9fa;
+}
+.sat-bn-card {
+    background: #fff;
+    border: 1px solid #bdc3c7;
+}
+.sat-bn-name {
+    color: #2c3e50;
+}
+.sat-bn-room {
+    color: #e67e22;
+    background: #fef5e7;
+    border: 1px solid #fadbd8;
+}
+.sat-proc-name {
+    color: #34495e;
+}
+.sat-ready-time-wrap {
+    background: #fdf2e9;
+    border: 1px dashed #e67e22;
+}
+.sat-ready-label {
+    color: #d35400;
+}
+.sat-staff-name {
+    color: #2980b9;
+}
+
+/* Chế độ tối Tab Thứ 7 */
+[data-theme="dark"] #tab-sat {
+    color: #f8fafc !important;
+}
+
+[data-theme="dark"] #tab-sat input#sat-schedule-date,
+[data-theme="dark"] #tab-sat input#sat-search-bn {
+    background: #0f172a !important;
+    border: 1px solid #334155 !important;
+    color: #f8fafc !important;
+    color-scheme: dark !important;
+}
+
+[data-theme="dark"] #sat-staff-container,
+[data-theme="dark"] #sat-summary-container,
+[data-theme="dark"] #tab-sat div[style*="background: #fff"],
+[data-theme="dark"] #tab-sat div[style*="background:#fff"],
+[data-theme="dark"] #tab-sat div[style*="background: #fdfefe"],
+[data-theme="dark"] #tab-sat div[style*="background:#fdfefe"],
+[data-theme="dark"] #tab-sat div[style*="background: #f8f9fa"],
+[data-theme="dark"] #tab-sat div[style*="background:#f8f9fa"],
+[data-theme="dark"] .sat-col-panel {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"] #sat-staff-container h4,
+[data-theme="dark"] #sat-summary-container h4 {
+    color: #38bdf8 !important;
+}
+
+[data-theme="dark"] #tab-sat div[style*="background: #ecf0f1"],
+[data-theme="dark"] #tab-sat div[style*="background:#ecf0f1"],
+[data-theme="dark"] .sat-season-wrap {
+    background: #0f172a !important;
+    border: 1px solid #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] #sat-staff-list > div,
+[data-theme="dark"] .sat-staff-item {
+    border-bottom-color: #334155 !important;
+}
+
+[data-theme="dark"] #sat-staff-list span,
+[data-theme="dark"] .sat-staff-name {
+    color: #38bdf8 !important;
+}
+
+[data-theme="dark"] #sat-staff-list div[id^="sat-time-"] {
+    color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] #sat-staff-list .time-input {
+    background: #0f172a !important;
+    border: 1px solid #334155 !important;
+    color: #f8fafc !important;
+}
+
+/* Danh Sách Bệnh Nhân Tab Thứ 7 */
+[data-theme="dark"] #sat-patient-list,
+[data-theme="dark"] #tab-sat div[style*="background: #f1f2f6"],
+[data-theme="dark"] #tab-sat div[style*="background:#f1f2f6"],
+[data-theme="dark"] .sat-patient-list {
+    background: #0b1120 !important;
+    border: 1px solid #334155 !important;
+}
+
+/* Thẻ Bệnh Nhân Thứ 7 */
+[data-theme="dark"] #sat-patient-list div[id^="sat-bn-"],
+[data-theme="dark"] .sat-bn-card {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #f8fafc !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme="dark"] #sat-patient-list div[id^="sat-bn-"]:hover,
+[data-theme="dark"] .sat-bn-card:hover {
+    border-color: #38bdf8 !important;
+}
+
+[data-theme="dark"] #sat-patient-list div[id^="sat-bn-"] > div:first-child,
+[data-theme="dark"] .sat-bn-header {
+    border-bottom-color: #334155 !important;
+}
+
+[data-theme="dark"] #sat-patient-list b,
+[data-theme="dark"] .sat-bn-name {
+    color: #38bdf8 !important;
+}
+
+[data-theme="dark"] #sat-patient-list div[id^="sat-bn-"] span[style*="background:#fef5e7"],
+[data-theme="dark"] #sat-patient-list div[id^="sat-bn-"] span[style*="background: #fef5e7"],
+[data-theme="dark"] .sat-bn-room {
+    background: rgba(245, 158, 11, 0.18) !important;
+    color: #fbbf24 !important;
+    border: 1px solid rgba(245, 158, 11, 0.4) !important;
+}
+
+[data-theme="dark"] #sat-patient-list label span,
+[data-theme="dark"] .sat-proc-name {
+    color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] #sat-patient-list label:hover span {
+    color: #38bdf8 !important;
+}
+
+/* Khung Giờ Sẵn Sàng (⏱ Giờ SS) */
+[data-theme="dark"] #sat-patient-list div[style*="background:#fdf2e9"],
+[data-theme="dark"] #sat-patient-list div[style*="background: #fdf2e9"],
+[data-theme="dark"] .sat-ready-time-wrap {
+    background: rgba(217, 119, 6, 0.15) !important;
+    border: 1px dashed rgba(245, 158, 11, 0.5) !important;
+}
+
+[data-theme="dark"] #sat-patient-list .sat-ready-label,
+[data-theme="dark"] #sat-patient-list label[style*="color:#d35400"] {
+    color: #fbbf24 !important;
+}
+
+[data-theme="dark"] #sat-patient-list .input-ready-time,
+[data-theme="dark"] #sat-patient-list input[type="time"] {
+    background: #0f172a !important;
+    border: 1px solid #334155 !important;
+    color: #f8fafc !important;
+}
+
+/* Khung Chân Trang Tab Thứ 7 (Nút Làm mới, Xếp lịch) */
+[data-theme="dark"] .sat-footer-actions,
+[data-theme="dark"] #tab-sat div[style*="border-top: 2px solid #27ae60"] {
+    background: #0f172a !important;
+    border-top: 2px solid #10b981 !important;
+    border-left: 1px solid #334155 !important;
+    border-right: 1px solid #334155 !important;
+    border-bottom: 1px solid #334155 !important;
+}
+
+[data-theme="dark"] .sat-footer-actions label,
+[data-theme="dark"] #tab-sat div[style*="border-top: 2px solid #27ae60"] label {
+    color: #38bdf8 !important;
+}
+
+/* Khung Thống Kê Tab Thứ 7 (#sat-summary) */
+[data-theme="dark"] #sat-summary div[style*="background:#2c3e50"] {
+    background: #0f172a !important;
+    border: 1px solid #334155 !important;
+    color: #f8fafc !important;
+}
+
+[data-theme="dark"] #sat-summary div[style*="border-bottom:1px solid #ecf0f1"],
+[data-theme="dark"] #sat-summary div[style*="border-bottom: 1px solid #ecf0f1"] {
+    border-bottom-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] #sat-summary span {
+    color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] #sat-summary b[style*="color:#e67e22"] {
+    color: #fbbf24 !important;
 }
 
 
