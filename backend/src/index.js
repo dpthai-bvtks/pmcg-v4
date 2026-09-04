@@ -1045,6 +1045,10 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
   await checkAutoChotSo(db, unitCode);
 
   switch (action) {
+    case "ping": {
+      return success({ pong: true, time: Date.now(), unit_code: unitCode });
+    }
+
     // ============================================================
     // 🏢 0. MULTI-TENANT & SAAS SUBSCRIPTION HANDLERS
     // ============================================================

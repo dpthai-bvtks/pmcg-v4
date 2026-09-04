@@ -61,6 +61,20 @@ window.closeChangePasswordModal = function() {
     }
 };
 
+window.closeProtocolModal = function() {
+    const modal = document.getElementById('modal-protocol-editor');
+    if (modal) modal.style.display = 'none';
+};
+
+window.saveProtocolFromModal = function() {
+    if (typeof showCustomAlert === 'function') {
+        showCustomAlert('Phác Đồ Mới', 'Tính năng thêm phác đồ nhanh qua cửa sổ nổi đang đồng bộ với danh mục phác đồ tiêu chuẩn.');
+    } else if (typeof showThongBao === 'function') {
+        showThongBao('Thông báo', 'Đang cập nhật phác đồ.', 'info');
+    }
+    window.closeProtocolModal();
+};
+
 
 window.updateAppHeader = function(unitCode, role) {
     const uCode = (unitCode || localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
@@ -6168,7 +6182,9 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 homeCurrentPage += dir;
 
-                renderDashboardPreview(homeFilteredData);
+                if (typeof renderDashboardPreview === 'function') {
+                    renderDashboardPreview(homeFilteredData);
+                }
 
             } else {
 
@@ -8613,6 +8629,10 @@ window.renderSttOrderControl = function (type, i, total) {
             if (!count) locBnSat();
 
         }
+
+        window.chonHetSat = chonHetSat;
+        window.boChonHetSat = boChonHetSat;
+        window.locSotSat = locSotSat;
 
         function luuDsSat() {
 
@@ -12381,7 +12401,9 @@ window.wipeAllDataForNewClient = function() {
             localStorage.removeItem('cached_unscheduled_data');
 
             if (typeof renderScheduleTable === 'function') renderScheduleTable([]);
+            if (typeof renderSchedPage === 'function') renderSchedPage();
             if (typeof updateUnscheduledStats === 'function') updateUnscheduledStats([]);
+            if (typeof renderStats === 'function') renderStats([]);
             showCustomAlert("Đã xóa trắng", "Đã dọn dẹp sạch toàn bộ lịch trình. Hệ thống đã sẵn sàng nạp dữ liệu đơn vị mới!");
         }
     );

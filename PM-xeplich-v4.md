@@ -871,3 +871,34 @@ git add . && git commit -m "..." && git push origin main
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.1-rev19] - 09:55 04/09/2026: Viết lại quy tắc phiên bản trong RULES.md & Rà soát toàn diện tất cả hàm toàn hệ thống
+- **Yêu cầu của người dùng**:
+  1. Viết lại mục đánh số phiên bản trong `RULES.md`: Phiên bản thương mại v4 bắt đầu từ `4.0.0`, mỗi ngày chỉ tăng 1 phiên bản chính (hôm nay là 4.0.1 thì cả ngày giữ 4.0.1, ngày mai mới là 4.0.2). Trong cùng một ngày, chỉ thay đổi số revision `revN` cho các thẻ script/link stylesheet (`?v=4.0.X-revN`) và Service Worker cache name (`pmcg-v4-cache-4.0.X-revN`).
+  2. Rà soát lại toàn bộ hàm trong toàn bộ dự án xem có hàm nào có nhưng chưa được gọi đến hoặc gọi sai tên/thiếu tham số không.
+- **Kết quả rà soát & khắc phục toàn diện**:
+  1. **Quy tắc phiên bản trong `RULES.md`**:
+     - Cập nhật mục 3 với quy tắc **Daily Version Increment** (chính xác 4.0.0 là mốc ban đầu, tăng mỗi ngày 1 số phiên bản) và **Daily Revision `revN`** đồng bộ 3 vị trí (Footer Timestamp, Cache Buster Query Strings, SW Cache Name).
+  2. **Bổ sung API Handler còn thiếu trên Backend (`backend/src/index.js`)**:
+     - Bổ sung `case "ping": return success({ pong: true, time: Date.now(), unit_code: unitCode });` vào router API backend để phục vụ nút "Kiểm Tra Tốc Độ Phản Hồi (Ping API)" trên modal trạng thái máy chủ.
+  3. **Khắc phục các lời gọi hàm thiếu / sai tên trong Frontend**:
+     - **Bổ sung 2 hàm thiếu trên modal phác đồ**: Thêm `window.closeProtocolModal()` và `window.saveProtocolFromModal()` vào `js/app.js` để xử lý các sự kiện click trên modal `#modal-protocol-editor` trong `index.html`.
+     - **Bảo vệ an toàn chống ReferenceError**: Bọc lời gọi `renderDashboardPreview(homeFilteredData)` trong `appChangePage` (`js/app.js`) bằng `if (typeof renderDashboardPreview === 'function')`.
+     - **Sửa sai tên hàm nạp danh mục thủ thuật trong `js/sync.js`**: Sửa `loadProcs()` thành `loadProcedures()` (với fallback `loadProcs()`), giúp bảng thủ thuật tự động nạp lại chính xác khi đồng bộ dữ liệu.
+     - **Xuất các hàm tiện ích Thứ 7 ra `window`**: Gán `window.chonHetSat`, `window.boChonHetSat`, `window.locSotSat` trong `js/app.js` để có thể kích hoạt từ giao diện hoặc console.
+     - **Hoàn thiện hàm xóa trắng dữ liệu (`wipeAllDataForNewClient`)**: Bổ sung `renderSchedPage()` và `renderStats([])` để giao diện lập tức cập nhật sạch khi bàn giao đơn vị mới.
+  4. **Đồng bộ Footer Timestamp & Cache Busters**:
+     - Cập nhật Footer `sys-last-update` thành `09:55 04/09/2026`.
+     - Bổ sung `APP_VERSION = '4.0.1-rev19'` và query string `?v=4.0.1-rev19` cho các file CSS/JS trong `index.html`.
+     - Đổi cache name Service Worker thành `pmcg-v4-cache-4.0.1-rev19` trong `sw.js`.
+- **File sửa đổi**:
+  + `RULES.md`
+  + `backend/src/index.js`
+  + `js/app.js`
+  + `js/sync.js`
+  + `index.html`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+

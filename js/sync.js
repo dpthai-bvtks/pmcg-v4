@@ -175,7 +175,8 @@
             }
             // Reload từng danh mục đang hiển thị
             if (typeof loadPatients === 'function') loadPatients();
-            if (typeof loadProcs === 'function') loadProcs();
+            if (typeof loadProcedures === 'function') loadProcedures();
+            else if (typeof loadProcs === 'function') loadProcs();
             if (typeof loadMachines === 'function') loadMachines();
             if (typeof loadStaff === 'function') loadStaff();
             if (typeof loadRooms === 'function') loadRooms();
