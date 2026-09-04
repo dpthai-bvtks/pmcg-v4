@@ -91,11 +91,12 @@ window.updateAppHeader = function(unitCode, role) {
     const appSlogan = document.getElementById('app-slogan');
     const mobSub = document.getElementById('mobile-header-date');
 
-    if (sessRole === 'SUPER_ADMIN') {
+    const isSuper = (String(sessRole).toUpperCase() === 'SUPER_ADMIN' || String(sessRole).toUpperCase() === 'SUPERADMIN');
+    if (isSuper) {
         if (appHosp) appHosp.innerText = 'T.I.M.E.S SYSTEM';
-        if (appSub) appSub.innerText = 'HỆ THỐNG QUẢN LÝ ĐƠN VỊ & BẢN QUYỀN SAAS';
-        if (appSlogan) appSlogan.innerText = 'TRUNG TÂM ĐIỀU HÀNH TOÀN CỤC';
-        if (mobSub) mobSub.innerText = 'Super Admin Portal';
+        if (appSub) appSub.innerText = 'HỆ THỐNG XẾP LỊCH THỦ THUẬT YHCT- PHCN THÔNG MINH';
+        if (appSlogan) appSlogan.innerText = 'NHANH GỌN, TỐI ƯU, CHÍNH XÁC';
+        if (mobSub) mobSub.innerText = 'YHCT - PHCN';
     } else if (uCode === 'bvtks-cs2') {
         if (appHosp) appHosp.innerText = 'BỆNH VIỆN THAN - KHOÁNG SẢN CS2';
         if (appSub) appSub.innerText = 'KHOA Y HỌC CỔ TRUYỀN - PHỤC HỒI CHỨC NĂNG';
@@ -1608,7 +1609,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     const uRole = res.role || 'Admin';
                     const uPerms = res.permissions || 'all';
                     const uUnit = (res.unit_code || unit).toLowerCase();
-                    const uUnitName = res.unit_name || 'Bệnh viện Than - Khoáng sản Cơ sở 2';
+                    const uUnitName = res.unit_name || (uRole === 'SUPER_ADMIN' ? 'T.I.M.E.S SYSTEM' : 'Bệnh viện Than - Khoáng sản Cơ sở 2');
 
                     localStorage.setItem('pm_unit_code', uUnit);
                     localStorage.setItem('pm_unit_name', uUnitName);

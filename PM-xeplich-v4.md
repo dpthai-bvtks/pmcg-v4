@@ -36,7 +36,7 @@
 |:---|:---|:---|:---|
 | **Đơn vị mới** | T.I.M.E.S SYSTEM | Hệ thống xếp lịch thủ thuật YHCT- PHCN thông minh | Nhanh gọn, tối ưu, chính xác |
 | **bvtks_cs2** | BỆNH VIỆN THAN - KHOÁNG SẢN CS2 | KHOA Y HỌC CỔ TRUYỀN - PHỤC HỒI CHỨC NĂNG | Y HỌC TỐT, PHỤC HỒI NHANH |
-| **SUPER_ADMIN** | T.I.M.E.S SYSTEM | HỆ THỐNG QUẢN LÝ ĐƠN VỊ & BẢN QUYỀN SAAS | TRUNG TÂM ĐIỀU HÀNH TOÀN CỤC |
+| **SUPER_ADMIN** | T.I.M.E.S SYSTEM | HỆ THỐNG XẾP LỊCH THỦ THUẬT YHCT- PHCN THÔNG MINH | NHANH GỌN, TỐI ƯU, CHÍNH XÁC |
 
 Hàm cập nhật: `window.updateAppHeader(unitCode, role)` — gọi ở `init.js` (DOMContentLoaded) và `app.js` (doLogin).
 
@@ -1230,6 +1230,36 @@ git add . && git commit -m "..." && git push origin main
   + `js/thongke.js`
   + `sw.js`
   + `PM-xeplich-v4.md`
+
+---
+
+### [v4.0.1-rev32] - 15:48 04/09/2026: Đồng Bộ Header Cho Tài Khoản Super Admin
+- **Yêu cầu của người dùng**: Tài khoản Super Admin chỉnh lại header giống như hình ảnh cung cấp:
+  + Dòng 1: `T.I.M.E.S SYSTEM`
+  + Dòng 2: `HỆ THỐNG XẾP LỊCH THỦ THUẬT YHCT- PHCN THÔNG MINH`
+  + Dòng 3 (huy hiệu slogan): `NHANH GỌN, TỐI ƯU, CHÍNH XÁC`
+- **Nguyên nhân & Giải pháp thực hiện**:
+  1. Trước đây, khi đăng nhập tài khoản Super Admin, hàm `window.updateAppHeader` thiết lập:
+     - Dòng 2: `HỆ THỐNG QUẢN LÝ ĐƠN VỊ & BẢN QUYỀN SAAS`
+     - Dòng 3: `TRUNG TÂM ĐIỀU HÀNH TOÀN CỤC`
+  2. Cập nhật `js/init.js` và `js/app.js` trong hàm `window.updateAppHeader` để khi vai trò là `SUPER_ADMIN`:
+     - `appHosp.innerText = 'T.I.M.E.S SYSTEM';`
+     - `appSub.innerText = 'HỆ THỐNG XẾP LỊCH THỦ THUẬT YHCT- PHCN THÔNG MINH';`
+     - `appSlogan.innerText = 'NHANH GỌN, TỐI ƯU, CHÍNH XÁC';`
+     - `mobSub.innerText = 'YHCT - PHCN';`
+  3. Cập nhật `uUnitName` mặc định khi đăng nhập Super Admin thành `'T.I.M.E.S SYSTEM'`.
+  4. Cập nhật bảng tài liệu white-labeling ở Mục 3 trong `PM-xeplich-v4.md`.
+- **Đồng bộ Phiên bản & Cache Busters**:
+  + Nâng revision lên `4.0.1-rev32`.
+  + Cập nhật `index.html` (CSS, JS cache busters, timestamp `15:48 04/09/2026`, `APP_VERSION = '4.0.1-rev32'`).
+  + Cập nhật `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev32'`).
+- **File sửa đổi**:
+  + `index.html`
+  + `js/init.js`
+  + `js/app.js`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
 
 
 
