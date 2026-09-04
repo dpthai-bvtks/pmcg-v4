@@ -1345,6 +1345,45 @@ git add . && git commit -m "..." && git push origin main
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.1-rev36] - 16:35 04/09/2026: Tối Ưu Thuật Toán Xếp Lịch Thứ 7 Cho Bác Sĩ (Doctor Scheduling & Role Matching Engine)
+- **Yêu cầu của người dùng**: Xem lại thuật toán xếp lịch của thứ 7 đang không xếp được lịch của bác sĩ.
+- **Nguyên nhân cốt lõi phát hiện**:
+  1. **Backend thiếu trường dữ liệu (`backend/src/index.js`)**:
+     API `getSatData` trước đây chỉ `SELECT name, role FROM nhan_su`, thiếu hoàn toàn các trường quan trọng như `skills`, `system`, `trang_thai`, `thoi_gian_lam`. Khi frontend lấy dữ liệu nhân sự thứ 7, thông tin kỹ năng thủ thuật (`skills`) và hệ thống phân quyền (`system` / `quyen`) của bác sĩ bị rỗng (`undefined`).
+  2. **Thuật toán so khớp kỹ năng (`js/scheduler-engine.js`)**:
+     Trong thực tế lâm sàng tại các bệnh viện / phòng khám, Bác sĩ (BS) có quyền hạn bao trùm (`system: "YHCT"` hoặc `"Cả hai"`), không tích chọn thủ công 50 đầu việc đơn lẻ. Nhưng `staffBySkill[procName]` trước đó lại chỉ so khớp chính xác tên thủ thuật chuỗi literal. Do đó, bác sĩ có 0 thủ thuật hợp lệ trong danh sách ứng viên (`candidatesMain`), dẫn đến bị loại bỏ hoàn toàn khi xếp lịch.
+  3. **Phân loại vai trò quá khắt khe**:
+     Thuật toán dùng so sánh bằng tuyệt đối `staffRole[a] === 'Bác sĩ'`, khiến các vai trò ghi là `"BS"`, `"Bác Sĩ"`, `"Bác sĩ YHCT"`, `"BS CKI"` hoặc viết thường bị trượt, không được hưởng cơ chế ưu tiên bác sĩ cho thủ thuật YHCT.
+  4. **Phòng thứ 7 rỗng nhân sự (`roomStaff`)**:
+     Trong `runSaturdayScheduling`, `baseDb.roomStaff["PHONG_CHUNG_T7"]` được khởi tạo bằng mảng rỗng `[]` và không được gán danh sách nhân sự được chọn, khiến thuật toán kiểm tra phòng coi như phòng không có nhân sự phụ trách.
+  5. **Mất thông tin nhân sự khi có tiền tố danh xưng**:
+     Khi tên bác sĩ trong danh sách thứ 7 có tiền tố như `BS`, `Bác sĩ`, việc tìm kiếm `allStaff.find(s => s.name === name)` bị thất bại, khiến bác sĩ bị bỏ qua khỏi `baseDb.rawStaff`.
+- **Giải pháp & Cải tiến đã thực hiện**:
+  1. **Nâng cấp Backend Worker (`backend/src/index.js`)**:
+     - `case "getSatData"`: Truy vấn đầy đủ các trường `name, role, skills, system, trang_thai, thoi_gian_lam` từ bảng `nhan_su`.
+  2. **Tự động mở rộng kỹ năng lâm sàng cho Bác sĩ (`js/scheduler-engine.js`)**:
+     - Tự động nhận diện vai trò bác sĩ qua biểu thức chính quy `/bác sĩ|bac si|^bs\b/i` hoặc `quyen === 'YHCT'` / `Cả hai`.
+     - Với Bác sĩ, tự động bổ sung toàn bộ các thủ thuật thuộc phân hệ YHCT (và PHCN nếu có quyền cả hai) vào `staffBySkill`.
+     - Ưu tiên Bác sĩ làm các thủ thuật đặc thù YHCT (Điện châm, Cứu ngải, Thủy châm, Xoa bóp bấm huyệt...) khi phân bổ ca.
+     - Khởi tạo đầy đủ `baseDb.roomStaff["PHONG_CHUNG_T7"] = [...payload.allowed_staff]`, đồng thời chuẩn hóa khử tiền tố `BS / KTV / ĐD` khi tra cứu nhân sự.
+  3. **Đồng bộ dữ liệu Frontend (`js/app.js`)**:
+     - `taiDsSat()`: Đồng bộ danh sách nhân sự thứ 7 vào `dataCache.staff`, hiển thị huy hiệu vai trò trực quan (`🩺 Bác sĩ`, `KTV`, `ĐD`).
+     - `getSatPayload()`: Tự động bổ sung ca làm việc mặc định (`07:30-12:00, 13:00-16:30`) nếu ô giờ trống.
+- **Đồng bộ Phiên bản & Cache Busters**:
+  + Nâng revision lên `4.0.1-rev36`.
+  + Cập nhật `index.html` (CSS, JS cache busters, timestamp `16:35 04/09/2026`, `APP_VERSION = '4.0.1-rev36'`).
+  + Cập nhật `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev36'`).
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `js/scheduler-engine.js`
+  + `js/app.js`
+  + `index.html`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+
 
 
 

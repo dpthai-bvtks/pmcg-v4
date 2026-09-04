@@ -8392,10 +8392,27 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
+                if (data && Array.isArray(data.staff) && data.staff.length > 0) {
+                    if (!window.dataCache) window.dataCache = {};
+                    if (!dataCache.staff || dataCache.staff.length === 0) {
+                        dataCache.staff = data.staff;
+                    } else {
+                        data.staff.forEach(s => {
+                            const existing = dataCache.staff.find(st => (st.ten || st.name) === s.ten);
+                            if (!existing) {
+                                dataCache.staff.push(s);
+                            } else {
+                                if (!existing.kyNang && s.kyNang) existing.kyNang = s.kyNang;
+                                if (!existing.vaiTro && s.vaiTro) existing.vaiTro = s.vaiTro;
+                                if (!existing.quyen && s.quyen) existing.quyen = s.quyen;
+                            }
+                        });
+                    }
+                }
+
                 data.staff.forEach((s, idx) => {
-
                     const ten = s.ten;
-
+                    const isDoc = /bác sĩ|bac si|^bs\b/i.test(s.vaiTro || s.role || '') || /^bs\b/i.test(ten);
                     t8_ns_vars[ten] = false; satStaffIndices[ten] = idx;
 
                     const fItem = document.createElement('div');
@@ -8418,7 +8435,19 @@ window.renderSttOrderControl = function (type, i, total) {
                     spanName.style.cssText = 'font-size:14px; font-weight:bold;';
                     spanName.innerText = ten;
 
-                    cbLabel.append(cbInput, spanName);
+                    const roleBadge = document.createElement('span');
+                    if (isDoc) {
+                        roleBadge.style.cssText = 'background:#eff6ff; color:#1d4ed8; font-size:11px; padding:1px 6px; border-radius:3px; font-weight:700; border:1px solid #bfdbfe; margin-left:2px;';
+                        roleBadge.innerText = '🩺 Bác sĩ';
+                    } else if (/điều dưỡng|dieu duong|^đd\b|^dd\b/i.test(s.vaiTro || s.role || '')) {
+                        roleBadge.style.cssText = 'background:#fef3c7; color:#b45309; font-size:11px; padding:1px 6px; border-radius:3px; font-weight:600; border:1px solid #fde68a; margin-left:2px;';
+                        roleBadge.innerText = 'ĐD';
+                    } else {
+                        roleBadge.style.cssText = 'background:#f0fdf4; color:#15803d; font-size:11px; padding:1px 6px; border-radius:3px; font-weight:600; border:1px solid #bbf7d0; margin-left:2px;';
+                        roleBadge.innerText = 'KTV';
+                    }
+
+                    cbLabel.append(cbInput, spanName, roleBadge);
                     fItem.appendChild(cbLabel);
 
 
@@ -9146,8 +9175,10 @@ window.renderSttOrderControl = function (type, i, total) {
                     document.getElementById(`sat-c2-${idx}`)?.value;
 
                 if (s1 && s2) shifts.push([s1, s2]);
-
                 if (c1 && c2) shifts.push([c1, c2]);
+                if (shifts.length === 0) {
+                    shifts.push(["07:30", "12:00"], ["13:00", "16:30"]);
+                }
 
                 staff_shifts_dict[ten] = shifts;
 
