@@ -8731,8 +8731,252 @@ window.renderSttOrderControl = function (type, i, total) {
             XLSX.utils.book_append_sheet(wb, ws, "ThuThuatT7");
 
             XLSX.writeFile(wb, `DS_ThuThuat_T7_${new Date().toISOString().slice(0, 10)}.xlsx`);
-
         }
+
+        // ============================================================
+        // 🏥 BỘ TỪ ĐIỂN & THUẬT TOÁN ÁNH XẠ CHỈ ĐỊNH TỪ FILE HIS
+        // Áp dụng đồng bộ cho cả Tab Bệnh Nhân & Tab Thứ 7
+        // ============================================================
+        const HIS_MAPPING = [
+            // 1. Điện châm
+            { keywords: ['điện châm', 'dien cham', 'dc ', ' dc,', ',dc,', ',dc', 'đc ', ' đc,', ',đc,', ',đc', 'diencham', 'châm điện', 'cham dien'], excludes: ['châm liệt', 'liệt'], target: 'Điện châm' },
+            // 2. Điện châm liệt
+            { keywords: ['điện châm liệt', 'dien cham liet', 'châm liệt', 'cham liet', 'đcl', 'dcl', 'dctb'], target: 'Điện châm liệt' },
+            // 3. Thủy châm
+            { keywords: ['thủy châm', 'thuy cham', 'tc ', ' tc,', ',tc,', ',tc', 'thuycham'], target: 'Thủy châm' },
+            // 4. Xoa bóp bấm huyệt
+            { keywords: ['xoa bóp bấm huyệt', 'xoa bop bam huyet', 'xbbh', 'xbb', 'bấm huyệt', 'bam huyet', 'xoa bop bam'], target: 'Xoa bóp bấm huyệt' },
+            // 5. Xoa bóp vùng
+            { keywords: ['kỹ thuật xoa bóp vùng', 'xoa bóp vùng', 'xbv', 'xoa bop vung', 'xoa bóp cục bộ', 'xoa bop'], target: 'Xoa bóp vùng' },
+            // 6. Hào châm / Châm cứu
+            { keywords: ['hào châm', 'hao cham', ' hc,', ',hc,', ',hc', ' hc ', 'châm cứu', 'cham cuu', 'ôn châm', 'on cham', 'nhĩ châm', 'nhi cham'], target: 'Hào châm' },
+            // 7. Cấy chỉ
+            { keywords: ['cấy chỉ', 'cay chi', ' cc,', ',cc,', ',cc', ' cc ', 'caychi'], target: 'Cấy chỉ' },
+            // 8. Cứu ngải / Cứu ấm
+            { keywords: ['cứu ngải', 'cuu ngai', 'ngải cứu', 'ngai cuu', 'cứu ấm', 'cuu am', ' cn,', ',cn,', ',cn', ' cn '], target: 'Cứu ngải' },
+            // 9. Điện xung
+            { keywords: ['điện xung', 'dien xung', 'dòng điện xung', 'dong dien xung', ' dx,', ',dx,', ',dx', ' dx '], target: 'Điện xung' },
+            // 10. Điện phân / Dẫn thuốc
+            { keywords: ['điện phân', 'dien phan', 'dẫn thuốc', 'dan thuoc', 'điện di', 'dien di', ' dp,', ',dp,', ',dp', ' dp '], target: 'Điện phân dẫn thuốc' },
+            // 11. Chiếu đèn hồng ngoại
+            { keywords: ['hồng ngoại', 'hong ngoai', 'tia hồng', 'tia hong', 'đèn hồng', 'den hong', ' hn,', ',hn,', ',hn', ' hn '], target: 'Chiếu đèn hồng ngoại' },
+            // 12. Laser / Laser điều trị
+            { keywords: ['laser', 'la-de', 'lade', 'ls ', ' ls,', ',ls,', ',ls', 'laser châm', 'laser nội mạch'], target: 'Laser điều trị' },
+            // 13. Sóng ngắn
+            { keywords: ['sóng ngắn', 'song ngan', 'thấu nhiệt sóng ngắn', ' sn,', ',sn,', ',sn', ' sn '], target: 'Sóng ngắn' },
+            // 14. Siêu âm điều trị
+            { keywords: ['siêu âm', 'sieu am', ' sa,', ',sa,', ',sa', ' sa '], excludes: ['ổ bụng', 'o bung', 'tuyến giáp', 'tuyen giap', 'doppler', 'phần phụ', 'phan phu', 'tổng quát', 'tong quat', 'tuyến vú', 'tuyen vu', 'thai', 'tim', 'mạch', 'mach', 'màng phổi', 'mang phoi', 'khớp', 'khop', 'phần mềm', 'phan mem', '4d', '3d', 'nội soi', 'noi soi'], target: 'Siêu âm' },
+            // 15. Kéo giãn cột sống
+            { keywords: ['kéo giãn', 'keo gian', 'kéo cột sống', 'keo cot song', 'cot song', 'kéo cổ', 'keo co', 'kéo lưng', 'keo lung', ' kg,', ',kg,', ',kg', ' kg '], target: 'Kéo giãn' },
+            // 16. Tập vận động có trợ giúp
+            { keywords: ['vận động có trợ giúp', 'van dong co tro giup', 'tập trợ giúp', 'tap tro giup', 'trợ giúp', 'tro giup', 'ttg', 'vđ-tg', 'vdtg'], target: 'Tập vận động có trợ giúp' },
+            // 17. Tập vận động thụ động
+            { keywords: ['vận động thụ động', 'van dong thu dong', 'tập thụ động', 'tap thu dong', 'thụ động', 'thu dong', 'vđ-td', 'vdtd'], target: 'Tập vận động thụ động' },
+            // 18. Tập vận động có kháng trở
+            { keywords: ['kháng trở', 'khang tro', 'có kháng trở', 'tập kháng trở', 'tap khang tro', ' tk,', ',tk,', ',tk', ' tk '], target: 'Tập kháng trở' },
+            // 19. Tập các kiểu thở
+            { keywords: ['tập các kiểu thở', 'kiểu thở', 'kieu tho', 'tập thở', 'tap tho'], target: 'Tập thở' },
+            // 20. Vận động trị liệu
+            { keywords: ['vận động trị liệu', 'van dong tri lieu', 'vđtl', 'vdtl'], target: 'Vận động trị liệu' },
+            // 21. Parafin
+            { keywords: ['parafin', 'paraffine', 'paraffin', 'sáp parafin', 'đắp parafin', ' pa,', ',pa,', ',pa', ' pa '], target: 'Parafin' },
+            // 22. Từ trường
+            { keywords: ['từ trường', 'tu truong', 'từ trường điều trị'], target: 'Từ trường' },
+            // 23. Tắm thuốc / Ngâm thuốc
+            { keywords: ['tắm thuốc', 'tam thuoc', 'ngâm thuốc', 'ngam thuoc', 'ngâm chân'], target: 'Tắm thuốc' },
+            // 24. Chườm nóng / Đắp nóng
+            { keywords: ['chườm nóng', 'chuom nong', 'đắp nóng', 'dap nong', 'chườm ngải', 'chuom ngai'], target: 'Chườm nóng' },
+            // 25. Giác hơi
+            { keywords: ['giác hơi', 'giac hoi', 'hút giác', 'hut giac', 'giác'], target: 'Giác hơi' },
+            // 26. Xông hơi / Xông thuốc
+            { keywords: ['xông hơi', 'xong hoi', 'xông thuốc', 'xong thuoc'], target: 'Xông thuốc' },
+            // 27. Nén ép áp lực hơi
+            { keywords: ['áp lực hơi', 'ap luc hoi', 'nén ép áp lực hơi', 'bơm nén khí', 'nén khí'], target: 'Nén ép áp lực hơi' },
+            // 28. Ngôn ngữ trị liệu / Tập nuốt / Tập nói
+            { keywords: ['tập nuốt', 'tap nuot', 'ngôn ngữ trị liệu', 'ngon ngu tri lieu', 'tập nói', 'tap noi'], target: 'Ngôn ngữ trị liệu' },
+            // 29. Hoạt động trị liệu
+            { keywords: ['hoạt động trị liệu', 'hoat dong tri lieu', 'hđtl', 'hdtl'], target: 'Hoạt động trị liệu' },
+            // 30. Tập thăng bằng / Tập đi
+            { keywords: ['thăng bằng', 'thang bang', 'tập đi', 'tap di', 'tập đứng', 'thanh song song'], target: 'Tập thăng bằng' }
+        ];
+
+        // Chuẩn hóa chuỗi (bỏ dấu, viết thường, KHÔNG trim)
+        function normalizeStrNoTrim(str) {
+            return String(str || '').toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/đ/g, 'd');
+        }
+
+        // Chuẩn hóa chuỗi (bỏ dấu, viết thường, có trim)
+        function normalizeStr(str) {
+            return normalizeStrNoTrim(str).trim();
+        }
+
+        // Làm sạch chuỗi dịch vụ thô từ dòng HIS
+        function cleanHISLine(line) {
+            if (!line) return '';
+            return String(line)
+                .replace(/^\s*(?:\d+[\.\/\-:\)]\s*|[+\-•*]\s*)+/, '') // Bỏ STT đầu dòng
+                .replace(/\s*-\s*\d+\s*(?:lần|lan)?(?:\s*\/\s*(?:ngày|ngay))?/gi, '') // Bỏ - 1 lần/ngày
+                .replace(/\s*\(\s*\d+\s*(?:lần|lan)?\s*\)/gi, '') // Bỏ (1 lần)
+                .replace(/\s*x\s*\d+\s*(?:lần|lan)?/gi, '') // Bỏ x 1 lần
+                .replace(/\s*\([^)]*phòng[^)]*\)/gi, '') // Bỏ (phòng ...)
+                .replace(/\s*\([^)]*khoa[^)]*\)/gi, '') // Bỏ (khoa ...)
+                .replace(/\s*\([^)]*bác sĩ[^)]*\)/gi, '')
+                .replace(/\s*\([^)]*bs[^)]*\)/gi, '')
+                .trim();
+        }
+
+        // Tách đa thủ thuật trong 1 ô y lệnh HIS (hỗ trợ \n, ;, 1. 2., +, -, phẩy)
+        function extractProceduresFromHISCell(dichVuStr) {
+            if (!dichVuStr) return [];
+            const text = String(dichVuStr).trim();
+            if (!text) return [];
+
+            // 1. Tách theo ngắt dòng (newline)
+            let rawParts = text.split(/[\r\n]+/).map(s => s.trim()).filter(Boolean);
+
+            // 2. Tách tiếp theo dấu chấm phẩy ; hoặc đánh số 1. 2. 3. hoặc dấu gạch đầu dòng
+            let subParts = [];
+            rawParts.forEach(part => {
+                if (part.includes(';')) {
+                    subParts.push(...part.split(';').map(s => s.trim()).filter(Boolean));
+                } else if (/(?:^|\s+)\d+[\.\/\-:\)]\s+/.test(part)) {
+                    const splitNum = part.split(/(?:^|\s+)\d+[\.\/\-:\)]\s+/).map(s => s.trim()).filter(Boolean);
+                    if (splitNum.length > 1) {
+                        subParts.push(...splitNum);
+                    } else {
+                        subParts.push(part);
+                    }
+                } else if (/(?:^|\s+)[+\-•*]\s+/.test(part) && part.split(/(?:^|\s+)[+\-•*]\s+/).filter(Boolean).length > 1) {
+                    subParts.push(...part.split(/(?:^|\s+)[+\-•*]\s+/).map(s => s.trim()).filter(Boolean));
+                } else {
+                    subParts.push(part);
+                }
+            });
+
+            // 3. Nếu vẫn còn chuỗi có chứa dấu phẩy mà tách dấu phẩy ra có thủ thuật hợp lệ
+            let result = [];
+            subParts.forEach(item => {
+                if (item.includes(',')) {
+                    const commaParts = item.split(',').map(s => s.trim()).filter(Boolean);
+                    const matchesCount = commaParts.filter(p => mapHISToProcedure(cleanHISLine(p))).length;
+                    if (matchesCount >= 2 || (matchesCount >= 1 && commaParts.length <= 4)) {
+                        result.push(...commaParts);
+                        return;
+                    }
+                }
+                result.push(item);
+            });
+
+            return result.map(s => cleanHISLine(s)).filter(Boolean);
+        }
+
+        // Tìm tên thủ thuật chuẩn (canonical name) từ danh mục đang có trong hệ thống dataCache.proc
+        function getCanonicalProcedureName(targetOrName) {
+            if (!targetOrName) return null;
+            const procs = (window.dataCache && (window.dataCache.proc || window.dataCache.procedures)) || [];
+            if (!procs.length) return targetOrName;
+
+            const nTarget = normalizeStr(targetOrName);
+
+            // Khớp chính xác tên hoặc viết tắt
+            const exact = procs.find(p => normalizeStr(p.ten) === nTarget || (p.vietTat && normalizeStr(p.vietTat) === nTarget));
+            if (exact) return exact.ten;
+
+            // Khớp chứa trọn vẹn
+            const partial = procs.find(p => {
+                const pNorm = normalizeStr(p.ten);
+                return (pNorm.length >= 3 && nTarget.includes(pNorm)) || (nTarget.length >= 3 && pNorm.includes(nTarget));
+            });
+            if (partial) return partial.ten;
+
+            return targetOrName;
+        }
+
+        // Ánh xạ tên dịch vụ HIS → tên thủ thuật chuẩn trong phần mềm
+        function mapHISToProcedure(hisServiceName) {
+            if (!hisServiceName) return null;
+            const clean = cleanHISLine(hisServiceName);
+            if (!clean) return null;
+
+            const procs = (window.dataCache && (window.dataCache.proc || window.dataCache.procedures)) || [];
+            const cleanNorm = normalizeStr(clean);
+
+            // Ưu tiên 1: Khớp trực tiếp với danh mục thủ thuật đang có trong phần mềm (dataCache.proc)
+            if (procs.length > 0) {
+                const direct = procs.find(p => normalizeStr(p.ten) === cleanNorm || (p.vietTat && normalizeStr(p.vietTat) === cleanNorm));
+                if (direct) return direct.ten;
+
+                const contains = procs.find(p => {
+                    const pNorm = normalizeStr(p.ten);
+                    if (pNorm.length >= 4 && cleanNorm.includes(pNorm)) return true;
+                    if (cleanNorm.length >= 4 && pNorm.includes(cleanNorm)) return true;
+                    return false;
+                });
+                if (contains) return contains.ten;
+            }
+
+            // Ưu tiên 2: Khớp qua bảng từ khóa HIS_MAPPING
+            const normalized = ' ' + normalizeStrNoTrim(clean) + ' ';
+            for (const mapping of HIS_MAPPING) {
+                let isExcluded = false;
+                if (mapping.excludes) {
+                    for (const ex of mapping.excludes) {
+                        if (normalized.includes(normalizeStrNoTrim(ex))) {
+                            isExcluded = true;
+                            break;
+                        }
+                    }
+                }
+                if (isExcluded) continue;
+
+                for (const kw of mapping.keywords) {
+                    if (normalized.includes(normalizeStrNoTrim(kw))) {
+                        return getCanonicalProcedureName(mapping.target) || mapping.target;
+                    }
+                }
+            }
+
+            return null; // Không nhận diện được
+        }
+
+        // So khớp thủ thuật thông minh cho Tab Thứ 7
+        function matchProcedureInTab7(itemProcName, hisProcName) {
+            if (!itemProcName || !hisProcName) return false;
+            const normA = normalizeStr(itemProcName);
+            const normB = normalizeStr(hisProcName);
+
+            // 1. Chuẩn hóa bằng nhau
+            if (normA === normB) return true;
+
+            // 2. Chứa nhau (vd: "Chiếu đèn hồng ngoại" chứa "hồng ngoại")
+            if ((normA.length >= 3 && normB.includes(normA)) || (normB.length >= 3 && normA.includes(normB))) return true;
+
+            // 3. Khớp qua danh mục dataCache.proc
+            const procs = (window.dataCache && (window.dataCache.proc || window.dataCache.procedures)) || [];
+            const pA = procs.find(p => normalizeStr(p.ten) === normA || (p.vietTat && normalizeStr(p.vietTat) === normA));
+            const pB = procs.find(p => normalizeStr(p.ten) === normB || (p.vietTat && normalizeStr(p.vietTat) === normB));
+            if (pA && pB && pA.ten === pB.ten) return true;
+            if (pA && (normalizeStr(pA.ten) === normB || (pA.vietTat && normalizeStr(pA.vietTat) === normB))) return true;
+            if (pB && (normalizeStr(pB.ten) === normA || (pB.vietTat && normalizeStr(pB.vietTat) === normA))) return true;
+
+            // 4. Khớp qua HIS_MAPPING keywords & target
+            for (const mapping of HIS_MAPPING) {
+                const targetNorm = normalizeStr(mapping.target);
+                const matchA = normA === targetNorm || mapping.keywords.some(k => normA.includes(normalizeStr(k)));
+                const matchB = normB === targetNorm || mapping.keywords.some(k => normB.includes(normalizeStr(k)));
+                if (matchA && matchB) return true;
+            }
+
+            return false;
+        }
+
+        window.mapHISToProcedure = mapHISToProcedure;
+        window.cleanHISLine = cleanHISLine;
+        window.extractProceduresFromHISCell = extractProceduresFromHISCell;
+        window.getCanonicalProcedureName = getCanonicalProcedureName;
+        window.matchProcedureInTab7 = matchProcedureInTab7;
 
         function nhapDsSat() {
             const input = document.createElement('input');
@@ -8795,10 +9039,10 @@ window.renderSttOrderControl = function (type, i, total) {
                             if (!hisMap[properTen]) hisMap[properTen] = new Set();
                             if (loaiBn) hisLoaiMap[properTen] = loaiBn;
 
-                            const lines = dichVu.split(/\r?\n/).map(l => l.trim()).filter(l => l);
-                            lines.forEach(line => {
-                                const cleaned = line.replace(/^\d+\.\s*/, '').replace(/\s*-\s*\d+\s*\(lần\)/i, '').trim();
-                                const mapped = (typeof mapHISToProcedure === 'function' ? mapHISToProcedure(cleaned || line) || mapHISToProcedure(line) : null);
+                            // Tách nhiều thủ thuật trong 1 ô y lệnh HIS
+                            const items = extractProceduresFromHISCell(dichVu);
+                            items.forEach(line => {
+                                const mapped = mapHISToProcedure(line);
                                 if (mapped) hisMap[properTen].add(mapped);
                             });
                         });
@@ -8819,7 +9063,7 @@ window.renderSttOrderControl = function (type, i, total) {
                             const available = satCache[targetBid].items.map((item, idx) => ({ ...item, idx })).filter(x => !x.checked);
 
                             [...hisMap[ten]].forEach(tt => {
-                                const match = available.find(x => norm(x.name) === norm(tt) || x.name.toLowerCase() === tt.toLowerCase());
+                                const match = available.find(x => matchProcedureInTab7(x.name, tt));
                                 if (match) {
                                     satCache[targetBid].items[match.idx].checked = true;
                                     const cb = document.getElementById(`cb-sat-${targetBid}-${match.idx}`);
@@ -8833,13 +9077,13 @@ window.renderSttOrderControl = function (type, i, total) {
                         roa.forEach((row, i) => {
                             if (i < startRow || !row[2]) return;
                             const bid = String(row[0] || '').trim(), ten = String(row[1] || '').trim().toLowerCase();
-                            let targetBid = (bid && satCache[bid]) ? bid : Object.keys(satCache).find(k => satCache[k].info.ten.trim().toLowerCase() === ten);
+                            let targetBid = (bid && satCache[bid]) ? bid : Object.keys(satCache).find(k => satCache[k].info.ten.trim().toLowerCase() === ten || norm(satCache[k].info.ten) === norm(ten));
                             if (!targetBid) return;
 
                             const available = satCache[targetBid].items.map((item, idx) => ({ ...item, idx })).filter(x => !x.checked);
 
                             row[2].split(',').map(x => x.trim()).forEach(tt => {
-                                const match = available.find(x => x.name.toLowerCase() === tt.toLowerCase());
+                                const match = available.find(x => matchProcedureInTab7(x.name, tt));
                                 if (match) {
                                     satCache[targetBid].items[match.idx].checked = true;
                                     const cb = document.getElementById(`cb-sat-${targetBid}-${match.idx}`);
@@ -9202,74 +9446,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
         // ============================================================
-
         // 🏥 NHẬP TỪ HIS (Y LỆNH) - ĐỌC FILE EXCEL CỦA BỆNH VIỆN
         // Cột G (index 6) = Tên BN, Cột H (index 7) = Năm sinh, Cột N (index 13) = Dịch vụ
         // Bắt đầu từ dòng 11 (index 10)
+        // (Bộ từ điển HIS_MAPPING & hàm mapHISToProcedure đã khai báo ở trên)
         // ============================================================
-
-        // Bảng ánh xạ: Từ khóa nhận diện trong file HIS -> Tên thủ thuật chuẩn trong phần mềm
-        const HIS_MAPPING = [
-            { keywords: ['điện châm', 'dc ', ' dc,', ',dc,', ',dc', 'dien cham'], target: 'điện châm' },
-            { keywords: ['thủy châm', 'thuy cham', 'tc ', ' tc,', ',tc,', ',tc'], target: 'thủy châm' },
-            { keywords: ['xoa bóp bấm huyệt', 'xoa bop bam huyet', 'xbbh', 'xbb', 'bấm huyệt'], target: 'XBBH' },
-            { keywords: ['hào châm', 'hao cham', ' hc,', ',hc,', ',hc', ' hc '], target: 'hào châm' },
-            { keywords: ['cấy chỉ', 'cay chi', ' cc,', ',cc,', ',cc', ' cc '], target: 'cấy chỉ' },
-            { keywords: ['điện xung', 'dien xung', 'dòng điện xung', ' dx,', ',dx,', ',dx', ' dx '], target: 'điện xung' },
-            { keywords: ['parafin', ' pa,', ',pa,', ',pa', ' pa '], target: 'parafin' },
-            { keywords: ['siêu âm', 'sieu am', ' sa,', ',sa,', ',sa', ' sa '], excludes: ['ổ bụng', 'tuyến giáp', 'doppler', 'phần phụ', 'tổng quát', 'tuyến vú', 'thai', 'tim', 'mạch', 'màng phổi', 'khớp', 'phần mềm', '4d', '3d'], target: 'siêu âm' },
-            { keywords: ['sóng ngắn', 'song ngan', ' sn,', ',sn,', ',sn', ' sn '], target: 'sóng ngắn' },
-            { keywords: ['hồng ngoại', 'hong ngoai', 'tia hồng', ' hn,', ',hn,', ',hn', ' hn '], target: 'hồng ngoại' },
-            { keywords: ['kỹ thuật xoa bóp vùng', 'xoa bóp vùng', 'xbv', 'xoa bop vung'], target: 'xoa bóp vùng' },
-            { keywords: ['tập vận động có trợ giúp', 'trợ giúp', 'ttg', 'tap tro giup', ' ttg,', ',ttg'], target: 'tập trợ giúp' },
-            { keywords: ['tập vận động có kháng trở', 'kháng trở', 'tap khang tro', ' tk,', ',tk,', 'khang tro'], target: 'tập kháng trở' },
-            { keywords: ['tập các kiểu thở', 'kiểu thở', 'tap tho', ' tt,', ',tt,', 'kieu tho'], target: 'tập thở' },
-            { keywords: ['kéo giãn cột sống', 'keo gian', ' kg,', ',kg,', ',kg', ' kg ', 'cot song'], target: 'kéo giãn' },
-            { keywords: ['vận động trị liệu', 'vđtl', 'van dong tri lieu'], target: 'vận động trị liệu' },
-            { keywords: ['châm cứu', 'cham cuu', 'cc '], target: 'châm cứu' },
-            { keywords: ['từ trường', 'tu truong'], target: 'từ trường' },
-            { keywords: ['tắm thuốc', 'tam thuoc'], target: 'tắm thuốc' },
-            { keywords: ['chườm nóng', 'chuom nong'], target: 'chườm nóng' },
-            { keywords: ['kéo cột sống cổ', 'keo co', 'cot song co'], target: 'kéo giãn' },
-            { keywords: ['kéo cột sống lưng', 'keo lung', 'cot song lung'], target: 'kéo giãn' }
-        ];
-
-        // Chuẩn hóa chuỗi để so khớp (loại bỏ dấu, viết thường, KHÔNG trim)
-        function normalizeStrNoTrim(str) {
-            return String(str || '').toLowerCase()
-                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-                .replace(/đ/g, 'd');
-        }
-
-        // Chuẩn hóa chuỗi để so khớp (loại bỏ dấu, viết thường và trim ở cuối)
-        function normalizeStr(str) {
-            return normalizeStrNoTrim(str).trim();
-        }
-
-        // Ánh xạ tên dịch vụ HIS → tên thủ thuật trong phần mềm
-        function mapHISToProcedure(hisServiceName) {
-            if (!hisServiceName) return null;
-            const normalized = ' ' + normalizeStrNoTrim(hisServiceName) + ' ';
-            for (const mapping of HIS_MAPPING) {
-                let isExcluded = false;
-                if (mapping.excludes) {
-                    for (const ex of mapping.excludes) {
-                        if (normalized.includes(normalizeStrNoTrim(ex))) {
-                            isExcluded = true;
-                            break;
-                        }
-                    }
-                }
-                if (isExcluded) continue;
-
-                for (const kw of mapping.keywords) {
-                    if (normalized.includes(normalizeStrNoTrim(kw))) {
-                        return mapping.target;
-                    }
-                }
-            }
-            return null; // Không nhận diện được
-        }
 
         function importFromHIS() {
             if (checkUnclosedDay()) return;
@@ -9368,13 +9549,15 @@ window.renderSttOrderControl = function (type, i, total) {
                             const properTen = ten.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
                             if (!hisMap[key]) hisMap[key] = { ten: properTen, namSinh, loaiBn, buoiDieuTri, procs: new Set() };
 
-                            // Tách nhiều thủ thuật trong 1 ô (mỗi dòng 1 thủ thuật)
-                            const lines = dichVu.split(/\r?\n/).map(l => l.trim()).filter(l => l);
-                            lines.forEach(line => {
-                                const cleaned = line.replace(/^\d+\.\s*/, '').replace(/\s*-\s*\d+\s*\(lần\)/i, '').trim();
-                                const mapped = mapHISToProcedure(cleaned || line) || mapHISToProcedure(line);
-                                if (mapped) hisMap[key].procs.add(mapped);
-                                else unrecognized.add(cleaned || line);
+                            // Tách nhiều thủ thuật trong 1 ô y lệnh HIS (hỗ trợ \n, ;, 1. 2., +, -, phẩy)
+                            const items = extractProceduresFromHISCell(dichVu);
+                            items.forEach(line => {
+                                const mapped = mapHISToProcedure(line);
+                                if (mapped) {
+                                    hisMap[key].procs.add(mapped);
+                                } else if (line) {
+                                    unrecognized.add(line);
+                                }
                             });
                         });
 
@@ -9395,9 +9578,9 @@ window.renderSttOrderControl = function (type, i, total) {
                                 updatedCount++;
                                 return { 
                                     ...p, 
-                                    thuThuat: [...hisMap[k].procs].join(','),
-                                    loai_bn: p.loai_bn || p.loaiBN || 'NoiTru',
-                                    buoi_dieu_tri: p.buoi_dieu_tri || p.buoiDieuTri || 'TuDong'
+                                    thuThuat: [...hisMap[k].procs].join(', '),
+                                    loai_bn: p.loai_bn || p.loaiBN || hisMap[k].loaiBn || 'NoiTru',
+                                    buoi_dieu_tri: p.buoi_dieu_tri || p.buoiDieuTri || hisMap[k].buoiDieuTri || 'TuDong'
                                 };
                             }
                             return { 
@@ -9418,7 +9601,9 @@ window.renderSttOrderControl = function (type, i, total) {
                                     gioBan: '',
                                     gioRa: '',
                                     phong: '',
-                                    thuThuat: [...hisPat.procs].join(',')
+                                    thuThuat: [...hisPat.procs].join(', '),
+                                    loai_bn: hisPat.loaiBn || 'NoiTru',
+                                    buoi_dieu_tri: hisPat.buoiDieuTri || 'TuDong'
                                 });
                             }
                         });

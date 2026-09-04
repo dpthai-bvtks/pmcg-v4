@@ -1280,6 +1280,41 @@ git add . && git commit -m "..." && git push origin main
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.1-rev34] - 16:15 04/09/2026: Nâng Cấp Toàn Diện Bộ Tách & Khớp Thủ Thuật File HIS (Tab Bệnh Nhân & Tab Thứ 7)
+- **Yêu cầu của người dùng**: Đưa file HIS vào nhưng vẫn bị nhập thiếu thủ thuật, kiểm tra lại quy trình nhập cho cả Tab Bệnh nhân và Tab Thứ 7.
+- **Nguyên nhân cốt lõi phát hiện**:
+  1. **Thiếu hỗ trợ định dạng đa thủ thuật trong cùng một ô**: Nhiều bệnh viện xuất file HIS với các thủ thuật ngăn cách bằng dấu chấm phẩy (`;`), dấu phẩy (`,`), ký tự gạch đầu dòng (`-`, `+`, `•`) hoặc đánh số nối tiếp cùng dòng (`1. ... 2. ...`). Bộ tách cũ chỉ tách theo `\n`, dẫn đến việc nhiều thủ thuật bị dính chùm vào 1 dòng và bị bỏ qua.
+  2. **Nhiễu định lượng & thông tin phụ kèm**: Tên dịch vụ trên HIS thường kèm số lượng và tần suất như `- 1 (lần)`, `(1 lần)`, `x 1 lần`, số phòng, tên bác sĩ,... khiến hàm tìm kiếm chính xác không nhận diện được.
+  3. **Từ điển ánh xạ (HIS_MAPPING) chưa bao quát đầy đủ danh mục YHCT & PHCN**: Chưa bao gồm các kỹ thuật như Laser nội mạch, Cứu ngải/ôn châm, Điện phân dẫn thuốc, Tập vận động có trợ giúp/thụ động, Nén ép áp lực hơi, Ngôn ngữ trị liệu, Hoạt động trị liệu,...
+  4. **Lệch tên giữa từ điển ánh xạ và danh mục thực tế của phòng**: Hàm ánh xạ cũ trả về tên viết tắt/viết thường (ví dụ `'hồng ngoại'`, `'XBBH'`), trong khi tên trong danh mục thủ thuật của cơ sở (`dataCache.proc`) là `'Chiếu đèn hồng ngoại'`, `'Xoa bóp bấm huyệt điều trị'`. Tại Tab Thứ 7, so sánh `norm(x.name) === norm(tt)` bị lệch nên không gán được checkbox thủ thuật.
+- **Giải pháp & Cải tiến đã thực hiện**:
+  1. **Xây dựng bộ tách đa thủ thuật thông minh (`extractProceduresFromHISCell`)**:
+     - Hỗ trợ tách thủ thuật theo mọi định dạng: ngắt dòng (`\r\n`), dấu chấm phẩy (`;`), đánh số liền dòng (`(?<=\S)\s+(?=\d+[\.\)\-]\s+)`), gạch đầu dòng (`\n\s*[-+•]`) và dấu phẩy (`,`) khi phù hợp.
+     - Hàm làm sạch chuẩn y tế `cleanHISLine`: Lọc bỏ triệt để các hậu tố `- 1 (lần)`, `(1 lần)`, `x 1 lần`, lọc thông tin phòng ban/bác sĩ phụ kèm.
+  2. **Mở rộng từ điển chuyên ngành y tế đa dạng**:
+     - Bổ sung toàn diện 30+ nhóm thủ thuật YHCT - PHCN chuẩn Bộ Y Tế: Laser nội mạch, Cứu ngải, Ôn châm, Điện phân, Vận động trị liệu (thụ động, có trợ giúp), Nén ép khí, Ngôn ngữ trị liệu, Hoạt động trị liệu, Sóng ngắn, Từ trường, Siêu âm điều trị, Giác hơi,...
+     - Bộ lọc loại trừ thông minh (`excludePatterns`): Tự động bỏ qua các dòng tiền công khám, hội chẩn, giường bệnh hoặc xét nghiệm máu/nước tiểu không thuộc danh mục kỹ thuật xếp lịch.
+  3. **Cơ chế quy đổi sang tên thủ thuật thực tế (`getCanonicalProcedureName` & `mapHISToProcedure`)**:
+     - Ưu tiên kiểm tra đối chiếu trực tiếp với danh mục thủ thuật đang hoạt động của cơ sở (`dataCache.proc`).
+     - Tự động quy đổi tên viết tắt / tên chung sang tên chính thức trong cơ sở dữ liệu (`Chiếu đèn hồng ngoại`, `Xoa bóp bấm huyệt điều trị`, `Điện châm`,...).
+  4. **Hàm so khớp linh hoạt cho Tab Thứ 7 (`matchProcedureInTab7`)**:
+     - Đối chiếu 3 lớp: so khớp trực tiếp chuỗi chuẩn hóa, so khớp chứa chuỗi (containment), và so khớp qua mã viết tắt/từ khóa lâm sàng (ví dụ `HN` <-> `hồng ngoại`, `DC` <-> `điện châm`, `DX` <-> `điện xung`).
+  5. **Đồng bộ hóa quy trình nhập cho cả 2 tab**:
+     - Tab Thứ 7 (`nhapDsSat`): Áp dụng chuẩn hóa và trích xuất đa thủ thuật cho cả nạp file HIS và file Excel nội bộ.
+     - Tab Bệnh nhân (`importFromHIS`): Trích xuất toàn bộ thủ thuật, chuẩn hóa tên theo danh mục, nối danh sách chuẩn xác ngăn cách bằng dấu phẩy và khoảng trắng `, `, đồng thời giữ nguyên phân loại bệnh nhân (`loai_bn`) và buổi điều trị (`buoi_dieu_tri`).
+- **Đồng bộ Phiên bản & Cache Busters**:
+  + Nâng revision lên `4.0.1-rev34`.
+  + Cập nhật `index.html` (CSS, JS cache busters, timestamp `16:15 04/09/2026`, `APP_VERSION = '4.0.1-rev34'`).
+  + Cập nhật `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev34'`).
+- **File sửa đổi**:
+  + `index.html`
+  + `js/app.js`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+
 
 
 
