@@ -953,6 +953,34 @@ git add . && git commit -m "..." && git push origin main
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.1-rev22] - 10:25 04/09/2026: Sửa lỗi che khuất giờ ra viện và tự động nhảy con trỏ chuột xuống ô nhập giờ
+- **Yêu cầu của người dùng**:
+  1. Bảng danh sách bệnh nhân ra viện bị che mất giờ ra viện (chỉ hiển thị chữ `G` của tiêu đề `GIỜ RA`).
+  2. Khi nhập/chọn tên bệnh nhân ra viện xong thì con trỏ chuột không tự động nhảy xuống ô nhập giờ ra viện.
+- **Phân tích nguyên nhân**:
+  1. Thẻ danh sách ra viện (`.card-leave`) trước đó đặt `width: 350px`, trừ padding 28px chỉ còn 322px. Nhưng bảng `#leave-pat-table` cần tối thiểu 360px - 380px cho 5 cột (STT, Tên BN, Năm sinh, Phòng, Giờ ra), khiến cột thứ 5 bị tràn lề và che khuất hoàn toàn.
+  2. Trong `index.html`, ô `#leave-pat-input` thiếu sự kiện `onchange`, và trong hàm lắng nghe phím Enter toàn cục (`js/app.js` dòng 2360) nhánh `targetId === 'leave-pat-input'` chỉ gán giá trị `'14:00'` mà thiếu lệnh `t.focus(); t.select(); return;`, dẫn đến việc con trỏ chuột bị blur mất thay vì nhảy xuống ô giờ.
+- **Giải pháp xử lý**:
+  1. **Hiển thị trọn vẹn cột Giờ Ra**:
+     - Cân đối độ rộng thẻ `.card-leave` lên `395px` (bằng với thẻ Bệnh nhân bận), đảm bảo cả 2 thẻ phụ đều cân xứng 395px gọn gàng, thẻ Nhân sự vẫn là thẻ to nhất (chiếm toàn bộ không gian còn lại).
+     - Định dạng cột Giờ ra viện font monospace `Consolas, Roboto Mono` rõ nét và tăng chiều rộng lên `width: 80px !important; min-width: 75px !important;`.
+  2. **Tự động nhảy con trỏ chuột xuống ô nhập giờ (`leave-pat-time`)**:
+     - Trong `js/app.js`: Sửa bộ bắt phím Enter cho `leave-pat-input`, tự động điền `'14:00'` nếu trống và gọi `t.focus(); t.select(); return;`.
+     - Trong `index.html`: Bổ sung `onchange="const t = document.getElementById('leave-pat-time'); if(t) { if(!t.value) t.value = '14:00'; t.focus(); t.select(); }"` và cập nhật `onkeydown` để ngay khi chọn tên bệnh nhân từ danh sách xổ xuống hoặc nhấn Enter, con trỏ chuột lập tức nhảy xuống ô giờ ra viện và bôi đen sẵn thời gian để người dùng xác nhận hoặc gõ giờ mới.
+  3. **Đồng bộ Footer Timestamp & Cache Busters**:
+     - Cập nhật Footer `sys-last-update` thành `10:25 04/09/2026`.
+     - Cập nhật cache buster `?v=4.0.1-rev22` trên toàn bộ thẻ CSS và JS trong `index.html`.
+     - Cập nhật `CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev22'` trong `sw.js`.
+- **File sửa đổi**:
+  + `css/style.css`
+  + `index.html`
+  + `js/app.js`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+
 
 
 

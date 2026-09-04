@@ -4685,13 +4685,14 @@ transition: box-shadow 0.3s;
         /* Cột Giờ Ra Viện */
         #leave-pat-table th:nth-child(5),
         #leave-pat-table td:nth-child(5) {
-            width: 75px !important;
-            min-width: 68px !important;
+            width: 80px !important;
+            min-width: 75px !important;
             text-align: center !important;
-            padding: 4px 4px !important;
+            padding: 4px 6px !important;
             white-space: nowrap !important;
-            font-size: 12px !important;
+            font-size: 12.5px !important;
             font-weight: 700 !important;
+            font-family: 'Consolas', 'Roboto Mono', monospace, sans-serif !important;
             color: #8e44ad !important;
         }
 
@@ -4728,15 +4729,15 @@ transition: box-shadow 0.3s;
             flex: 0 0 395px !important;
             width: 395px !important;
             min-width: 395px !important;
-            max-width: 395px !important;
+            max-width: 400px !important;
         }
 
-        /* Bảng danh sách ra viện gọn gàng vừa vặn */
+        /* Bảng danh sách ra viện gọn gàng vừa vặn cân xứng 395px, hiển thị trọn vẹn 100% cột Giờ Ra */
         #tab-busy .busy-col-card.card-leave {
-            flex: 0 0 350px !important;
-            width: 350px !important;
-            min-width: 350px !important;
-            max-width: 350px !important;
+            flex: 0 0 395px !important;
+            width: 395px !important;
+            min-width: 395px !important;
+            max-width: 400px !important;
         }
 
         #tab-busy .busy-form-header {

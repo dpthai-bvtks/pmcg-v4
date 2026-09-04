@@ -2358,11 +2358,13 @@ window.renderSttOrderControl = function (type, i, total) {
                     if (targetId === 'busy-pat-input') { document.getElementById('busy-pat-from').focus(); return; }
 
                     if (targetId === 'leave-pat-input') {
-
-                        let t = document.getElementById('leave-pat-time');
-
-                        if (!t.value) t.value = '14:00';
-
+                        const t = document.getElementById('leave-pat-time');
+                        if (t) {
+                            if (!t.value) t.value = '14:00';
+                            t.focus();
+                            t.select();
+                        }
+                        return;
                     }
 
                 }
@@ -5454,7 +5456,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     <td style="white-space: nowrap; font-weight: 600; text-align: left;">${escapedTen}</td>
                     <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 65px;">${ns}</td>
                     <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 75px;">${phong}</td>
-                    <td align="center" style="color:#8e44ad; font-weight:bold; white-space: nowrap; width: 75px;">${p.gioRa}</td>
+                    <td align="center" style="color:#8e44ad; font-weight:bold; white-space: nowrap; width: 80px; min-width: 75px; font-family: monospace, sans-serif;">${p.gioRa}</td>
                 </tr>`;
             });
             tbody.innerHTML = html || `<tr><td colspan="5" align="center" style="color:gray; padding:10px;">Chưa có bệnh nhân ra viện</td></tr>`;
@@ -5466,7 +5468,12 @@ window.renderSttOrderControl = function (type, i, total) {
             inputName.value = (namSinh && (dataCache.pat || []).filter(p => p.ten === ten).length > 1) ? `${ten} (${namSinh})` : ten;
             window.lastSelectedPatIdx = (typeof idx === 'number') ? idx : -1;
             lastBusyContext = 'leave';
-            document.getElementById('leave-pat-time').value = gioRa || '';
+            const t = document.getElementById('leave-pat-time');
+            if (t) {
+                t.value = gioRa || '14:00';
+                t.focus();
+                t.select();
+            }
         }
 
         const savePatLeave = withLock(function () {
