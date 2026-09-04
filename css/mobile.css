@@ -640,3 +640,45 @@
     background: transparent !important;
   }
 }
+
+/* --------------------------------------------------------------------------
+   🌙 DARK MODE CHO GIAO DIỆN MOBILE
+   -------------------------------------------------------------------------- */
+@media (max-width: 960px) {
+  [data-theme="dark"] .sidebar-form,
+  [data-theme="dark"] .main-table,
+  [data-theme="dark"] .table-container,
+  [data-theme="dark"] .table-responsive-wrapper {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+  }
+
+  [data-theme="dark"] .mobile-drawer-body {
+    background: #1e293b !important;
+  }
+
+  [data-theme="dark"] .mobile-drawer-item {
+    color: #e2e8f0 !important;
+  }
+
+  [data-theme="dark"] .mobile-drawer-item:hover,
+  [data-theme="dark"] .mobile-drawer-item.active {
+    background: #253347 !important;
+    color: #38bdf8 !important;
+  }
+
+  [data-theme="dark"] .mobile-form-modal-content {
+    background: #1e293b !important;
+    color: #e2e8f0 !important;
+  }
+
+  [data-theme="dark"] .mobile-form-modal-body {
+    background: #0f172a !important;
+  }
+
+  [data-theme="dark"] .mobile-form-modal-header {
+    background: #111827 !important;
+    border-bottom-color: #334155 !important;
+  }
+}

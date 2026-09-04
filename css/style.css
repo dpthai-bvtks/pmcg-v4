@@ -6071,34 +6071,173 @@ transition: box-shadow 0.3s;
     border: 1px solid #334155 !important;
 }
 
-[data-theme="dark"] .schedule-table-wrap {
-    background: #1e293b !important;
-    border-color: #334155 !important;
-}
-
-[data-theme="dark"] #schedule-table {
-    background: #1e293b !important;
-    color: #e2e8f0 !important;
-}
-
-[data-theme="dark"] #schedule-table th {
-    background: #111827 !important;
-    color: #94a3b8 !important;
-    border-color: #334155 !important;
-}
-
-[data-theme="dark"] #schedule-table td {
-    border-color: #334155 !important;
-    color: #e2e8f0 !important;
-}
-
-[data-theme="dark"] #schedule-table tr:hover td {
-    background: rgba(51, 65, 85, 0.4) !important;
-}
-
 /* --------------------------------------------------------------------------
-   🌙 BUSY & DISCHARGE TAB (GIỜ BẬN & RA VIỆN)
+   🌙 UNIVERSAL DARK MODE TABLE SYSTEM (MỌI BẢNG & MỌI TAB)
    -------------------------------------------------------------------------- */
+[data-theme="dark"] table,
+[data-theme="dark"] .main-table,
+[data-theme="dark"] .main-table table,
+[data-theme="dark"] table.data-table,
+[data-theme="dark"] table.table-custom,
+[data-theme="dark"] .table-container,
+[data-theme="dark"] .table-responsive-wrapper,
+[data-theme="dark"] .utils-table-scroll,
+[data-theme="dark"] .schedule-table-wrap,
+[data-theme="dark"] #schedule-table,
+[data-theme="dark"] #machines-table,
+[data-theme="dark"] #procedures-table,
+[data-theme="dark"] #rooms-table,
+[data-theme="dark"] #staff-table,
+[data-theme="dark"] #patients-table,
+[data-theme="dark"] #protocols-table,
+[data-theme="dark"] #busy-staff-table,
+[data-theme="dark"] #busy-pat-table,
+[data-theme="dark"] #leave-pat-table,
+[data-theme="dark"] #table-count,
+[data-theme="dark"] #table-error-time,
+[data-theme="dark"] #table-error-other,
+[data-theme="dark"] #table-admin-employees,
+[data-theme="dark"] #table-chamcong,
+[data-theme="dark"] #table-thongke,
+[data-theme="dark"] #table-preview-thuthuat,
+[data-theme="dark"] #stats-unscheduled-table,
+[data-theme="dark"] #stats-staff-table,
+[data-theme="dark"] #tenants-table,
+[data-theme="dark"] .utils-table-scroll > table {
+    background-color: #1e293b !important;
+    color: #e2e8f0 !important;
+    border-color: #334155 !important;
+}
+
+/* 1. Header Cột Bảng (th) */
+[data-theme="dark"] th,
+[data-theme="dark"] table th,
+[data-theme="dark"] thead th,
+[data-theme="dark"] thead tr,
+[data-theme="dark"] thead tr th,
+[data-theme="dark"] table thead tr th,
+[data-theme="dark"] .main-table table th,
+[data-theme="dark"] table.data-table th,
+[data-theme="dark"] .main-table table th:first-child,
+[data-theme="dark"] .data-table th:first-child,
+[data-theme="dark"] table thead tr:first-child th:first-child,
+[data-theme="dark"] table thead tr:first-child th:last-child {
+    background: #0f172a !important;
+    background-color: #0f172a !important;
+    color: #38bdf8 !important;
+    border-bottom: 2px solid #334155 !important;
+    border-top: none !important;
+    border-left-color: #334155 !important;
+    border-right-color: #334155 !important;
+    box-shadow: none !important;
+}
+
+/* 2. Dòng Lẻ (Odd Rows) */
+[data-theme="dark"] tbody tr,
+[data-theme="dark"] tbody tr:nth-child(odd),
+[data-theme="dark"] tbody tr:nth-child(odd) td,
+[data-theme="dark"] .main-table table tbody tr:nth-child(odd) td,
+[data-theme="dark"] table.data-table tbody tr:nth-child(odd) td {
+    background: #1e293b !important;
+    background-color: #1e293b !important;
+    color: #e2e8f0 !important;
+    border-color: #334155 !important;
+}
+
+/* 3. Dòng Chẵn (Even Rows): Sắc Dark Slate dịu mắt, TRIỆT TIÊU 100% VỆT TRẮNG */
+[data-theme="dark"] tbody tr:nth-child(even),
+[data-theme="dark"] tbody tr:nth-child(even) td,
+[data-theme="dark"] .main-table table tbody tr:nth-child(even),
+[data-theme="dark"] .main-table table tbody tr:nth-child(even) td,
+[data-theme="dark"] table.data-table tbody tr:nth-child(even),
+[data-theme="dark"] table.data-table tbody tr:nth-child(even) td,
+[data-theme="dark"] .timeline-board-row:nth-child(even) {
+    background: #151f2e !important;
+    background-color: #151f2e !important;
+    color: #e2e8f0 !important;
+    border-color: #334155 !important;
+}
+
+/* 4. Cột Ghim Cố Định STT / Tên bên trái */
+[data-theme="dark"] .main-table table td:first-child,
+[data-theme="dark"] table.data-table td:first-child {
+    border-right: 1px solid #334155 !important;
+    box-shadow: 2px 0 6px rgba(0,0,0,0.3) !important;
+}
+[data-theme="dark"] tbody tr:nth-child(odd) td:first-child {
+    background: #1e293b !important;
+    background-color: #1e293b !important;
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] tbody tr:nth-child(even) td:first-child {
+    background: #151f2e !important;
+    background-color: #151f2e !important;
+    color: #e2e8f0 !important;
+}
+
+/* 5. Hiệu Ứng Rê Chuột (Row Hover): Nổi bật sáng đẹp, TRIỆT TIÊU TRẮNG XÓA */
+[data-theme="dark"] tbody tr:hover,
+[data-theme="dark"] tbody tr:hover td,
+[data-theme="dark"] tbody tr.editable-row:hover,
+[data-theme="dark"] tbody tr.editable-row:hover td,
+[data-theme="dark"] td.editable-row:hover,
+[data-theme="dark"] table tbody tr:hover td,
+[data-theme="dark"] .main-table table tr:hover td,
+[data-theme="dark"] table.data-table tr:hover td,
+[data-theme="dark"] tbody tr:hover td:first-child,
+[data-theme="dark"] tbody tr.editable-row:hover td:first-child {
+    background: #253347 !important;
+    background-color: #253347 !important;
+    color: #ffffff !important;
+}
+
+/* 6. Ô Dữ Liệu Chung (td) */
+[data-theme="dark"] td,
+[data-theme="dark"] table td,
+[data-theme="dark"] tbody td,
+[data-theme="dark"] .main-table table td,
+[data-theme="dark"] table.data-table td {
+    border-bottom: 1px solid #334155 !important;
+    border-right: 1px solid #283548 !important;
+    color: #e2e8f0 !important;
+}
+
+/* 7. Tab Xếp Lịch: .row-scheduled & .row-dropped */
+[data-theme="dark"] .schedule-compact-header {
+    background: #0f172a !important;
+    border-bottom: 2px solid #334155 !important;
+    box-shadow: 0 8px 15px -10px rgba(0,0,0,0.4) !important;
+}
+[data-theme="dark"] .schedule-compact-header label,
+[data-theme="dark"] .schedule-title-inline {
+    color: #38bdf8 !important;
+}
+[data-theme="dark"] .schedule-compact-header div[style*="background:#f5eef8"],
+[data-theme="dark"] .schedule-compact-header div[style*="background: #f5eef8"] {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+}
+[data-theme="dark"] .row-scheduled,
+[data-theme="dark"] .row-scheduled td,
+[data-theme="dark"] #schedule-table .row-scheduled td {
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] .row-dropped,
+[data-theme="dark"] .row-dropped td,
+[data-theme="dark"] #schedule-table .row-dropped td {
+    background: rgba(239, 68, 68, 0.15) !important;
+    color: #fca5a5 !important;
+}
+[data-theme="dark"] .row-scheduled:hover td {
+    background: #253347 !important;
+    color: #ffffff !important;
+}
+[data-theme="dark"] .row-dropped:hover td {
+    background: rgba(239, 68, 68, 0.25) !important;
+    color: #fecaca !important;
+}
+
+/* 8. Tab Giờ Bận & Ra Viện */
 [data-theme="dark"] .busy-col-card,
 [data-theme="dark"] .card-staff,
 [data-theme="dark"] .card-patient,
@@ -6109,81 +6248,20 @@ transition: box-shadow 0.3s;
     color: #e2e8f0 !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
 }
-
 [data-theme="dark"] .busy-form-header {
     border-bottom-color: #334155 !important;
 }
-
 [data-theme="dark"] .busy-container {
     background: #0f172a !important;
 }
-
-[data-theme="dark"] .busy-container table,
-[data-theme="dark"] #busy-staff-table,
-[data-theme="dark"] #busy-pat-table,
-[data-theme="dark"] #leave-pat-table {
-    background: #1e293b !important;
-    color: #e2e8f0 !important;
+[data-theme="dark"] #busy-pat-table td:nth-child(5) {
+    color: #fb923c !important;
+}
+[data-theme="dark"] #leave-pat-table td:nth-child(5) {
+    color: #c084fc !important;
 }
 
-[data-theme="dark"] .busy-container th {
-    background: #111827 !important;
-    color: #94a3b8 !important;
-    border-color: #334155 !important;
-}
-
-[data-theme="dark"] .busy-container td {
-    border-color: #334155 !important;
-    color: #e2e8f0 !important;
-}
-
-/* --------------------------------------------------------------------------
-   🌙 CATEGORIES & SPLIT LAYOUT (MÁY MÓC, THỦ THUẬT, NHÂN SỰ, BỆNH NHÂN)
-   -------------------------------------------------------------------------- */
-[data-theme="dark"] .sidebar-form {
-    background: #1e293b !important;
-    border: 1px solid #334155 !important;
-    color: #e2e8f0 !important;
-}
-
-[data-theme="dark"] .sidebar-form label {
-    color: #94a3b8 !important;
-}
-
-[data-theme="dark"] .main-table,
-[data-theme="dark"] .table-container,
-[data-theme="dark"] .table-responsive-wrapper {
-    background: #1e293b !important;
-    border: 1px solid #334155 !important;
-}
-
-[data-theme="dark"] table.data-table,
-[data-theme="dark"] .main-table table {
-    background: #1e293b !important;
-    color: #e2e8f0 !important;
-}
-
-[data-theme="dark"] table.data-table th,
-[data-theme="dark"] .main-table table th {
-    background: #111827 !important;
-    color: #94a3b8 !important;
-    border-color: #334155 !important;
-}
-
-[data-theme="dark"] table.data-table td,
-[data-theme="dark"] .main-table table td {
-    border-color: #334155 !important;
-    color: #e2e8f0 !important;
-}
-
-[data-theme="dark"] table.data-table tr:hover td,
-[data-theme="dark"] .main-table table tr:hover td {
-    background: rgba(51, 65, 85, 0.4) !important;
-}
-
-/* --------------------------------------------------------------------------
-   🌙 ATTENDANCE & STATISTICS (CHẤM CÔNG & THỐNG KÊ)
-   -------------------------------------------------------------------------- */
+/* 9. Tab Chấm Công & Thống Kê Sticky Columns */
 [data-theme="dark"] .chamcong-card-wrapper,
 [data-theme="dark"] .thongke-card-wrapper,
 [data-theme="dark"] #table-chamcong-container,
@@ -6192,36 +6270,159 @@ transition: box-shadow 0.3s;
     border-color: #334155 !important;
     color: #e2e8f0 !important;
 }
-
 [data-theme="dark"] .chamcong-card-wrapper h2,
 [data-theme="dark"] .thongke-card-wrapper h2 {
     color: #38bdf8 !important;
 }
-
 [data-theme="dark"] .chamcong-card-wrapper span,
 [data-theme="dark"] .thongke-card-wrapper span {
     color: #cbd5e1 !important;
 }
-
-[data-theme="dark"] #table-chamcong th,
-[data-theme="dark"] #table-thongke th {
-    background: #111827 !important;
-    color: #94a3b8 !important;
+[data-theme="dark"] #table-chamcong thead tr th,
+[data-theme="dark"] #table-thongke thead tr th {
+    background-color: #0f172a !important;
+    color: #38bdf8 !important;
     border-color: #334155 !important;
 }
-
-[data-theme="dark"] #table-chamcong td,
-[data-theme="dark"] #table-thongke td {
-    background: #1e293b !important;
-    border-color: #334155 !important;
+[data-theme="dark"] #table-chamcong tbody td:first-child,
+[data-theme="dark"] #table-chamcong tbody td:nth-child(2),
+[data-theme="dark"] #table-chamcong tbody td:last-child,
+[data-theme="dark"] #table-thongke tbody td:first-child,
+[data-theme="dark"] #table-thongke tbody td:nth-child(2),
+[data-theme="dark"] #table-thongke tbody td:last-child {
+    background-color: #1e293b !important;
     color: #e2e8f0 !important;
+    border-color: #334155 !important;
 }
-
+[data-theme="dark"] #table-chamcong tbody tr:nth-child(even) td:first-child,
+[data-theme="dark"] #table-chamcong tbody tr:nth-child(even) td:nth-child(2),
+[data-theme="dark"] #table-chamcong tbody tr:nth-child(even) td:last-child,
+[data-theme="dark"] #table-thongke tbody tr:nth-child(even) td:first-child,
+[data-theme="dark"] #table-thongke tbody tr:nth-child(even) td:nth-child(2),
+[data-theme="dark"] #table-thongke tbody tr:nth-child(even) td:last-child {
+    background-color: #151f2e !important;
+}
+[data-theme="dark"] #table-chamcong tbody tr:hover td:first-child,
+[data-theme="dark"] #table-chamcong tbody tr:hover td:nth-child(2),
+[data-theme="dark"] #table-chamcong tbody tr:hover td:last-child,
+[data-theme="dark"] #table-thongke tbody tr:hover td:first-child,
+[data-theme="dark"] #table-thongke tbody tr:hover td:nth-child(2),
+[data-theme="dark"] #table-thongke tbody tr:hover td:last-child {
+    background-color: #253347 !important;
+    color: #ffffff !important;
+}
+[data-theme="dark"] #table-chamcong thead th.bg-holiday,
+[data-theme="dark"] #table-chamcong tbody td.bg-holiday {
+    background-color: rgba(239, 68, 68, 0.15) !important;
+    color: #fca5a5 !important;
+}
+[data-theme="dark"] #table-chamcong th.col-today,
+[data-theme="dark"] #table-chamcong td.col-today {
+    background-color: rgba(37, 99, 235, 0.18) !important;
+    border-left: 2px solid #3b82f6 !important;
+    border-right: 2px solid #3b82f6 !important;
+}
+[data-theme="dark"] #table-chamcong tbody tr.chamcong-total-row td {
+    background-color: #0f172a !important;
+    color: #38bdf8 !important;
+    font-weight: 700 !important;
+    border-top: 2px solid #334155 !important;
+}
 [data-theme="dark"] .cc-input-text,
 [data-theme="dark"] .heso-input {
     background: #0f172a !important;
     color: #f8fafc !important;
     border-color: #334155 !important;
+}
+
+/* 10. Tab Kiểm Tra & Tiện Ích */
+[data-theme="dark"] #tab-kiemtra .utils-split-layout > div,
+[data-theme="dark"] #tab-utils .utils-split-layout > div,
+[data-theme="dark"] div[style*="background: #eafaf1"],
+[data-theme="dark"] div[style*="background: #fdf2e9"],
+[data-theme="dark"] div[style*="background: #fef5e7"],
+[data-theme="dark"] div[style*="background:#eafaf1"],
+[data-theme="dark"] div[style*="background:#fdf2e9"],
+[data-theme="dark"] div[style*="background:#fef5e7"] {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] #tab-kiemtra h4,
+[data-theme="dark"] #tab-utils h4 {
+    color: #38bdf8 !important;
+}
+[data-theme="dark"] tr[style*="background:#cbead9"],
+[data-theme="dark"] tr[style*="background:#fadbd8"],
+[data-theme="dark"] tr[style*="background:#fdebd0"],
+[data-theme="dark"] tr[style*="background:#d1f2eb"],
+[data-theme="dark"] tr[style*="background:#fae5d3"] {
+    background: #0f172a !important;
+    color: #38bdf8 !important;
+}
+[data-theme="dark"] tr[style*="background:#cbead9"] th,
+[data-theme="dark"] tr[style*="background:#fadbd8"] th,
+[data-theme="dark"] tr[style*="background:#fdebd0"] th,
+[data-theme="dark"] tr[style*="background:#d1f2eb"] th,
+[data-theme="dark"] tr[style*="background:#fae5d3"] th {
+    background: #0f172a !important;
+    color: #38bdf8 !important;
+    border-color: #334155 !important;
+}
+
+/* 11. Tab Quản Lý Đơn Vị SaaS (Super Admin) */
+[data-theme="dark"] #tab-tenants .card,
+[data-theme="dark"] #tab-tenants div[style*="background:#fff"],
+[data-theme="dark"] #tab-tenants div[style*="background: #fff"],
+[data-theme="dark"] #tab-tenants div[style*="background:#f8fafc"],
+[data-theme="dark"] #tab-tenants div[style*="background:#f0fdf4"],
+[data-theme="dark"] #tab-tenants div[style*="background:#eff6ff"] {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] #tab-tenants .table-custom thead tr,
+[data-theme="dark"] #tab-tenants .table-custom thead th {
+    background: #0f172a !important;
+    color: #38bdf8 !important;
+    border-color: #334155 !important;
+}
+
+/* 12. Huy Hiệu (Badges), Tags & Nút Kéo Thả Thứ Tự (STT) */
+[data-theme="dark"] .badge,
+[data-theme="dark"] .badge-info {
+    background: #1e3a5f !important;
+    color: #60a5fa !important;
+    border: 1px solid #2563eb !important;
+}
+[data-theme="dark"] .status-badge,
+[data-theme="dark"] .status-ready {
+    background: rgba(16, 185, 129, 0.2) !important;
+    color: #34d399 !important;
+    border: 1px solid rgba(52, 211, 153, 0.4) !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    font-weight: 600 !important;
+}
+[data-theme="dark"] .status-busy {
+    background: rgba(245, 158, 11, 0.2) !important;
+    color: #fbbf24 !important;
+    border: 1px solid rgba(245, 158, 11, 0.4) !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    font-weight: 600 !important;
+}
+[data-theme="dark"] .stt-order-cell {
+    color: #cbd5e1 !important;
+}
+[data-theme="dark"] .drag-handle-btn,
+[data-theme="dark"] .drag-handle {
+    color: #94a3b8 !important;
+}
+[data-theme="dark"] .drag-handle-btn:hover,
+[data-theme="dark"] .drag-handle:hover {
+    color: #38bdf8 !important;
+    background: rgba(255, 255, 255, 0.1) !important;
 }
 
 /* --------------------------------------------------------------------------

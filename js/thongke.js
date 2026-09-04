@@ -336,8 +336,8 @@ function renderAdminChamCongTable() {
                 const tr = document.createElement('tr');
                 tr.style.borderBottom = '1.5px solid #cbd5e1';
                 tr.style.transition = 'background-color 0.15s';
-                tr.onmouseenter = () => tr.style.backgroundColor = '#f1f5f9';
-                tr.onmouseleave = () => tr.style.backgroundColor = '#ffffff';
+                tr.onmouseenter = () => tr.style.backgroundColor = (document.documentElement.getAttribute('data-theme') === 'dark' ? '#253347' : '#f1f5f9');
+                tr.onmouseleave = () => tr.style.backgroundColor = '';
 
                 const staff = adminChamCongStaffConfig[emp] || { keys: [emp.toLowerCase()], skills: 'PHCN' };
                 const keysStr = staff.keys ? staff.keys.join(', ') : emp.toLowerCase();

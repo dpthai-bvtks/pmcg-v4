@@ -1121,6 +1121,40 @@ git add . && git commit -m "..." && git push origin main
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.1-rev27] - 14:50 04/09/2026: Nâng cấp Hệ thống Bảng Dữ Liệu Toàn Diện trong Chế Độ Tối (Universal Dark Mode Table System)
+- **Yêu cầu của người dùng**:
+  + Bảng trong các tab ở chế độ tối vẫn không ổn (ảnh chụp màn hình tab Máy móc cho thấy các dòng chẵn bị dải màu trắng chói mắt, chữ màu trắng trên nền trắng gây tàng hình chữ không thể đọc được, khi rê chuột dòng chuyển màu trắng toát, cột ghim STT và các bảng tab khác cũng bị tình trạng sọc trắng tương tự).
+- **Phân tích nguyên nhân & Giải pháp**:
+  1. **Dải sọc chẵn lẻ Zebra Striping (`tbody tr:nth-child(even)`)**:
+     - Quy tắc mặc định ở chế độ sáng dùng `tbody tr:nth-child(even) { background: #f9fafb; }`. Trong Dark Mode trước đây chỉ override màu chữ `td` sang trắng `#e2e8f0` mà chưa override màu nền của `tr:nth-child(even)`. Do đó các dòng chẵn giữ nguyên màu trắng `#f9fafb`, khiến chữ màu trắng nằm trên nền trắng, hoàn toàn không đọc được.
+     - *Khắc phục*: Thiết lập quy tắc dòng chẵn trong Dark Mode sang màu Dark Slate nhung `#151f2e`, dòng lẻ sang `#1e293b`. Cả hai đều hiển thị chữ sáng `#e2e8f0` rõ nét 100%, tạo hiệu ứng sọc đen sang trọng, êm dịu cho mắt.
+  2. **Hiệu ứng Rê chuột (`tr.editable-row:hover`)**:
+     - Trước đây có quy tắc `tbody tr.editable-row:hover, td.editable-row:hover { background: #f0f4f1 !important; }` (màu trắng ngà). Khi người dùng rê chuột vào bất kỳ dòng nào, dòng đó lập tức biến thành nền trắng toát đè lên chữ trắng.
+     - *Khắc phục*: Override toàn bộ hover các bảng sang màu xanh than công nghệ `#253347 !important` với chữ phát sáng `#ffffff !important`, đem lại trải nghiệm tương tác trực quan cao cấp.
+  3. **Cột ghim cố định STT bên trái (`td:first-child`)**:
+     - Trong CSS mobile/responsive có `.main-table table td:first-child { background: #ffffff !important; }`.
+     - *Khắc phục*: Thiết lập cột STT tự động kế thừa màu nền tương ứng theo dòng chẵn/lẻ (`#151f2e` / `#1e293b`), khi hover chuyển sang `#253347`. Nút kéo thả `☰` đổi sang màu `#94a3b8`, khi hover chuyển thành xanh cyan `#38bdf8`.
+  4. **Các Bảng Nghiệp Vụ Chuyên Sâu Khác**:
+     - **Bảng Xếp Lịch (`#schedule-table`)**: Sửa triệt để quy tắc cũ `.row-scheduled td { color: #111827 !important; }` (chữ màu đen thui trên nền tối) chuyển sang chữ sáng `#e2e8f0`. Các ca không xếp được (`.row-dropped`) đổi sang nền đỏ mờ `rgba(239, 68, 68, 0.15)` với chữ `#fca5a5`.
+     - **Bảng Chấm Công & Thống Kê**: Override 3 cột sticky (Tên nhân viên, Số thứ tự/Hệ số, Tổng ngày công) và dòng tổng kết `.chamcong-total-row` sang tone Dark Slate, loại bỏ hoàn toàn các thuộc tính inline `#ffffff`. Đồng thời trong `js/thongke.js`, hàm hover sự kiện chuột xóa bỏ mã màu cứng `#ffffff`.
+     - **Bảng Giờ Bận & Ra Viện**: Đồng bộ màu chữ giờ bận (#fb923c - cam) và giờ ra viện (#c084fc - tím pastel).
+     - **Bảng Kiểm Tra Lỗi & Tiện Ích (`tab-kiemtra`, `tab-utils`)**: Override các hộp chứa nền pastel inline (`#eafaf1`, `#fdf2e9`, `#fef5e7`) và thead pastel sang màu Dark Slate `#1e293b` với tiêu đề xanh `#38bdf8`.
+     - **Bảng Quản Lý Đơn Vị SaaS (`#tenants-table`)**: Chuyển card bao bọc và header bảng sang bảng màu tối đồng bộ.
+  5. **Đồng bộ Phiên bản & Cache Busters**:
+     - Nâng số revision từ `4.0.1-rev26` lên `4.0.1-rev27`.
+     - Cập nhật `index.html` (CSS, JS cache busters, timestamp `14:50 04/09/2026`, `APP_VERSION`).
+     - Cập nhật `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev27'`).
+- **File sửa đổi**:
+  + `css/style.css`
+  + `css/mobile.css`
+  + `js/thongke.js`
+  + `index.html`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+
 
 
 
