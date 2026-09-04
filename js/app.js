@@ -4396,7 +4396,8 @@ window.renderSttOrderControl = function (type, i, total) {
             const thayThe = document.getElementById('staff-replace').value;
             const quyen = document.getElementById('staff-quyen').value || 'Cả hai';
             const tenHis = document.getElementById('staff-ten-his').value.trim();
-            const gioBan = editIndex.staff > -1 ? (dataCache.staff[editIndex.staff]?.gioBan || '') : '';
+            const busyEl = document.getElementById('staff-busy');
+            const gioBan = busyEl ? busyEl.value.trim() : (editIndex.staff > -1 ? (dataCache.staff[editIndex.staff]?.gioBan || '') : '');
             const kyNang = Array.from(document.querySelectorAll('.skill-checkbox:checked')).map(cb => cb.value).join(', ');
 
             if (!ten) return alert("Nhập tên!");
@@ -5330,6 +5331,7 @@ window.renderSttOrderControl = function (type, i, total) {
             }
             p.gioBan = sortTimeSlots(p.gioBan ? p.gioBan + ', ' + newSlot : newSlot);
             renderPatientsTable();
+            if (typeof renderBusyPat === 'function') renderBusyPat();
             fromObj.value = ''; toObj.value = ''; fromObj.focus();
             const busyInput = document.getElementById('busy-pat-input');
             if (busyInput) busyInput.value = '';
@@ -5342,9 +5344,11 @@ window.renderSttOrderControl = function (type, i, total) {
                 .withFailureHandler(err => {
                     alert("Lỗi lưu giờ bận: " + (err.message || err));
                     if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
-                    loadEntity('getBenhNhan', 'pat', renderPatientsTable, [], true);
+                    loadEntity('getBenhNhan', 'pat', renderPatientsTable, [
+                        () => { if (typeof renderBusyPat === 'function') renderBusyPat(); }
+                    ], true);
                 })
-                .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, p.gioRa, p.phong, p.thuThuat, p.ten, p.namSinh);
+                .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, p.gioRa, p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri);
         });
 
         function deleteSinglePatBusy() {
@@ -5363,6 +5367,7 @@ window.renderSttOrderControl = function (type, i, total) {
             showCustomConfirm("Xóa giờ bận", "Bác sĩ có muốn xóa giờ bận [ " + slotToDelete + " ] của BN: " + p.ten + "?", function () {
                 p.gioBan = p.gioBan.split(',').map(x => x.trim()).filter(x => x && x !== slotToDelete).join(', ');
                 renderPatientsTable();
+                if (typeof renderBusyPat === 'function') renderBusyPat();
                 document.getElementById('busy-pat-from').value = '';
                 document.getElementById('busy-pat-to').value = '';
                 const busyInput = document.getElementById('busy-pat-input');
@@ -5376,9 +5381,11 @@ window.renderSttOrderControl = function (type, i, total) {
                     .withFailureHandler(err => {
                         alert("Lỗi xóa giờ bận: " + (err.message || err));
                         if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
-                        loadEntity('getBenhNhan', 'pat', renderPatientsTable, [], true);
+                        loadEntity('getBenhNhan', 'pat', renderPatientsTable, [
+                            () => { if (typeof renderBusyPat === 'function') renderBusyPat(); }
+                        ], true);
                     })
-                    .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, p.gioRa, p.phong, p.thuThuat, p.ten, p.namSinh);
+                    .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, p.gioRa, p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri);
             });
         }
 
@@ -5390,7 +5397,9 @@ window.renderSttOrderControl = function (type, i, total) {
             const p = dataCache.pat[idx];
             if (!confirm("Xóa toàn bộ giờ bận của BN: " + p.ten + "?")) return;
 
-            p.gioBan = ''; renderPatientsTable();
+            p.gioBan = ''; 
+            renderPatientsTable();
+            if (typeof renderBusyPat === 'function') renderBusyPat();
             const busyInput = document.getElementById('busy-pat-input');
             if (busyInput) busyInput.value = '';
 
@@ -5402,9 +5411,11 @@ window.renderSttOrderControl = function (type, i, total) {
                 .withFailureHandler(err => {
                     alert("Lỗi xóa giờ bận: " + (err.message || err));
                     if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
-                    loadEntity('getBenhNhan', 'pat', renderPatientsTable, [], true);
+                    loadEntity('getBenhNhan', 'pat', renderPatientsTable, [
+                        () => { if (typeof renderBusyPat === 'function') renderBusyPat(); }
+                    ], true);
                 })
-                .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, '', p.gioRa, p.phong, p.thuThuat, p.ten, p.namSinh);
+                .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, '', p.gioRa, p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri);
         }
 
 
@@ -5472,6 +5483,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 });
             }
             renderPatientsTable();
+            if (typeof renderLeavePat === 'function') renderLeavePat();
             leaveObj.value = ''; leaveObj.focus();
             const leaveInput = document.getElementById('leave-pat-input');
             if (leaveInput) leaveInput.value = '';
@@ -5484,9 +5496,11 @@ window.renderSttOrderControl = function (type, i, total) {
                 .withFailureHandler(err => {
                     alert("Lỗi cập nhật giờ ra viện: " + (err.message || err));
                     if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
-                    loadEntity('getBenhNhan', 'pat', renderPatientsTable, [], true);
+                    loadEntity('getBenhNhan', 'pat', renderPatientsTable, [
+                        () => { if (typeof renderLeavePat === 'function') renderLeavePat(); }
+                    ], true);
                 })
-                .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, leaveTime, p.phong, p.thuThuat, p.ten, p.namSinh);
+                .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, leaveTime, p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri);
         });
 
         function clearPatLeave() {
@@ -5514,6 +5528,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 });
             }
             renderPatientsTable();
+            if (typeof renderLeavePat === 'function') renderLeavePat();
             document.getElementById('leave-pat-time').value = '';
             const leaveInput = document.getElementById('leave-pat-input');
             if (leaveInput) leaveInput.value = '';
@@ -5526,9 +5541,11 @@ window.renderSttOrderControl = function (type, i, total) {
                 .withFailureHandler(err => {
                     alert("Lỗi hủy giờ ra viện: " + (err.message || err));
                     if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
-                    loadEntity('getBenhNhan', 'pat', renderPatientsTable, [], true);
+                    loadEntity('getBenhNhan', 'pat', renderPatientsTable, [
+                        () => { if (typeof renderLeavePat === 'function') renderLeavePat(); }
+                    ], true);
                 })
-                .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, '', p.phong, p.thuThuat, p.ten, p.namSinh);
+                .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, '', p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri);
         }
 
 

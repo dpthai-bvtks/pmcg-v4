@@ -887,24 +887,19 @@ async function hashPassword(password, pepper = "TIMES_BVTKS_2026_SECURE_SALT_PEP
 async function setCaiDat(db, unitCode, key, value) {
   const vStr = typeof value === "string" ? value : JSON.stringify(value);
   try {
-    const exist = await db.prepare("SELECT id FROM cai_dat WHERE unit_code = ? AND key = ?").bind(unitCode, key).first();
-    if (exist && exist.id) {
-      return await db.prepare("UPDATE cai_dat SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(vStr, exist.id).run();
-    }
-  } catch(e) {}
-
-  try {
-    const existKey = await db.prepare("SELECT id FROM cai_dat WHERE key = ?").bind(key).first();
-    if (existKey && existKey.id) {
-      return await db.prepare("UPDATE cai_dat SET value = ?, unit_code = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(vStr, unitCode, existKey.id).run();
-    }
-  } catch(e) {}
-
-  try {
-    return await db.prepare("INSERT INTO cai_dat (unit_code, key, value, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)").bind(unitCode, key, vStr).run();
+    return await db.prepare(`
+      INSERT INTO cai_dat (unit_code, key, value, updated_at) 
+      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(unit_code, key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+    `).bind(unitCode, key, vStr).run();
   } catch(e) {
     try {
-      return await db.prepare("INSERT INTO cai_dat (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)").bind(key, vStr).run();
+      const exist = await db.prepare("SELECT key FROM cai_dat WHERE unit_code = ? AND key = ?").bind(unitCode, key).first();
+      if (exist) {
+        return await db.prepare("UPDATE cai_dat SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ? AND key = ?").bind(vStr, unitCode, key).run();
+      } else {
+        return await db.prepare("INSERT INTO cai_dat (unit_code, key, value, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)").bind(unitCode, key, vStr).run();
+      }
     } catch(e2) {
       console.warn("[setCaiDat error]:", e2);
     }
@@ -1047,7 +1042,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
   }
 
   await ensureSchema(db);
-  await checkAutoChotSo(db);
+  await checkAutoChotSo(db, unitCode);
 
   switch (action) {
     // ============================================================
@@ -2245,10 +2240,28 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     const patName = String(p.ten || p.name || "").trim();
     const targetName = String(p.oldTen || patName).trim();
     const targetAge = parseInt(p.oldNamSinh || p.namSinh || p.age) || 0;
+    const patId = parseInt(p.id) || 0;
+    const loaiBnVal = p.loai_bn ? String(p.loai_bn).trim() : "";
+    const buoiVal = p.buoi_dieu_tri ? String(p.buoi_dieu_tri).trim() : "";
 
-    const updateRes = await db.prepare(
-      "UPDATE benh_nhan SET name = ?, age = ?, gender = ?, room = ?, bed = ?, arrive_time = ?, leave_time = ?, thu_thuat = ?, status = ?, ngay_vao = ?, gio_ban = ?, loai_bn = ?, buoi_dieu_tri = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ? AND name = ? AND age = ?"
-    ).bind(
+    const updateRes = await db.prepare(`
+      UPDATE benh_nhan SET 
+        name = ?, 
+        age = ?, 
+        gender = ?, 
+        room = ?, 
+        bed = ?, 
+        arrive_time = ?, 
+        leave_time = ?, 
+        thu_thuat = ?, 
+        status = ?, 
+        ngay_vao = ?, 
+        gio_ban = ?, 
+        loai_bn = CASE WHEN ? != '' THEN ? ELSE loai_bn END, 
+        buoi_dieu_tri = CASE WHEN ? != '' THEN ? ELSE buoi_dieu_tri END, 
+        updated_at = CURRENT_TIMESTAMP 
+      WHERE unit_code = ? AND ((? > 0 AND id = ?) OR (name = ? AND age = ?))
+    `).bind(
       patName,
       parseInt(p.namSinh || p.age) || 0,
       String(p.gender || "Nam"),
@@ -2260,9 +2273,13 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       String(p.status || "Chưa xếp"),
       String(p.ngayVao || ""),
       String(p.gioBan || ""),
-      String(p.loai_bn || "NoiTru"),
-      String(p.buoi_dieu_tri || "TuDong"),
+      loaiBnVal,
+      loaiBnVal,
+      buoiVal,
+      buoiVal,
       unitCode,
+      patId,
+      patId,
       targetName,
       targetAge
     ).run();
@@ -2283,8 +2300,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         String(p.status || "Chưa xếp"),
         String(p.ngayVao || ""),
         String(p.gioBan || ""),
-        String(p.loai_bn || "NoiTru"),
-        String(p.buoi_dieu_tri || "TuDong")
+        loaiBnVal || "NoiTru",
+        buoiVal || "TuDong"
       ).run();
     }
     await bumpDataVersion(db, unitCode);
@@ -3595,7 +3612,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 }
 
 
-async function checkAutoChotSo(db) {
+async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
   try {
     const nowVN = new Date(Date.now() + 7 * 60 * 60 * 1000);
     const hh = String(nowVN.getUTCHours()).padStart(2, '0');
@@ -3607,7 +3624,7 @@ async function checkAutoChotSo(db) {
     const yyyy = nowVN.getUTCFullYear();
     const todayDateStr = `${dd}/${month}/${yyyy}`;
 
-    const keysRes = await db.prepare("SELECT key, value FROM cai_dat WHERE key IN ('chotSoTime', 'lastChotSoDate')").all();
+    const keysRes = await db.prepare("SELECT key, value FROM cai_dat WHERE unit_code = ? AND key IN ('chotSoTime', 'lastChotSoDate')").bind(unitCode).all();
     const settings = {};
     (keysRes.results || []).forEach(r => { settings[r.key] = r.value; });
 
@@ -3618,46 +3635,33 @@ async function checkAutoChotSo(db) {
       return;
     }
 
-    function parseDateDMY(dStr) {
-      if (!dStr || typeof dStr !== 'string') return null;
-      const p = dStr.split('/');
-      if (p.length < 3) return null;
-      return new Date(parseInt(p[2], 10), parseInt(p[1], 10) - 1, parseInt(p[0], 10));
+    // Nếu hôm nay đã chốt sổ rồi thì không chốt lại
+    if (lastChotSoDate === todayDateStr) {
+      return;
     }
 
-    const todayDate = parseDateDMY(todayDateStr);
-    const lastClosedDate = parseDateDMY(lastChotSoDate);
-
+    // Chỉ tự động chốt sổ hôm nay khi đã đến hoặc qua giờ chốt sổ (ví dụ: 17:00)
+    // Trong giờ làm việc buổi sáng/chiều trước giờ chốt sổ, TUYỆT ĐỐI không chốt sổ tự động để tránh xóa nhầm dữ liệu đang nhập!
     let shouldClose = false;
-    if (lastClosedDate && todayDate) {
-      const diffDays = (todayDate.getTime() - lastClosedDate.getTime()) / (1000 * 60 * 60 * 24);
-      if (diffDays > 0) {
-        shouldClose = true;
-      } else if (diffDays === 0) {
-        if (currentHourMin >= chotSoTime) {
-          shouldClose = true;
-        }
-      }
-    } else if (todayDate) {
-      await setCaiDat(db, 'bvtks-cs2', 'lastChotSoDate', todayDateStr);
-      console.log("[Worker Auto-ChotSo]: Initialized lastChotSoDate to " + todayDateStr);
+    if (currentHourMin >= chotSoTime) {
+      shouldClose = true;
     }
 
     if (shouldClose) {
-      console.log(`[Worker Auto-ChotSo]: Triggering auto closure. today=${todayDateStr}, lastClosed=${lastChotSoDate}, time=${currentHourMin}, chotSoTime=${chotSoTime}`);
+      console.log(`[Worker Auto-ChotSo]: Triggering auto closure for unit '${unitCode}'. today=${todayDateStr}, lastClosed=${lastChotSoDate}, time=${currentHourMin}, chotSoTime=${chotSoTime}`);
       
       const statements = [
-        db.prepare("INSERT INTO lich_su (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh"),
-        db.prepare("DELETE FROM lich_trinh"),
-        db.prepare("DELETE FROM benh_nhan WHERE leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'"),
-        db.prepare("UPDATE benh_nhan SET arrive_time = '07:30', gio_ban = '', leave_time = '', status = 'Chưa xếp', updated_at = CURRENT_TIMESTAMP"),
-        db.prepare("UPDATE nhan_su SET temp_busy = '[]', updated_at = CURRENT_TIMESTAMP")
+        db.prepare("INSERT INTO lich_su (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE unit_code = ?").bind(unitCode),
+        db.prepare("DELETE FROM lich_trinh WHERE unit_code = ?").bind(unitCode),
+        db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(unitCode),
+        db.prepare("UPDATE benh_nhan SET arrive_time = '07:30', gio_ban = '', leave_time = '', status = 'Chưa xếp', updated_at = CURRENT_TIMESTAMP WHERE unit_code = ?").bind(unitCode),
+        db.prepare("UPDATE nhan_su SET temp_busy = '[]', updated_at = CURRENT_TIMESTAMP WHERE unit_code = ?").bind(unitCode)
       ];
 
       await db.batch(statements);
-      await setCaiDat(db, 'bvtks-cs2', 'lastChotSoDate', todayDateStr);
-      await bumpDataVersion(db);
-      console.log("[Worker Auto-ChotSo]: Automated day closure executed successfully!");
+      await setCaiDat(db, unitCode, 'lastChotSoDate', todayDateStr);
+      await bumpDataVersion(db, unitCode);
+      console.log(`[Worker Auto-ChotSo]: Automated day closure executed successfully for unit '${unitCode}'!`);
     }
   } catch (err) {
     console.error("[Worker Auto-ChotSo Error]:", err);

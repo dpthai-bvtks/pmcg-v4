@@ -829,3 +829,45 @@ git add . && git commit -m "..." && git push origin main
   + `index.html`
   + `sw.js`
   + `PM-xeplich-v4.md`
+
+---
+
+### [v4.0.1-rev18] - 09:30 04/09/2026: Khắc phục triệt để lỗi không lưu giờ bận nhân sự/bệnh nhân & Triệt tiêu lỗi telemetry reportAllChanges
+- **Yêu cầu của người dùng**:
+  1. Đọc `RULES.md` và `PM-xeplich-v4.md`.
+  2. Kiểm tra và sửa lỗi không lưu được giờ bận của nhân sự và bệnh nhân.
+  3. Xử lý lỗi console: `Uncaught TypeError: Cannot read properties of undefined (reading 'startTime') at et.reportAllChanges...`.
+- **Phân tích nguyên nhân gốc rễ**:
+  1. **Vòng lặp tự động reset ngầm trên Backend (`backend/src/index.js`)**:
+     - Hàm `checkAutoChotSo(db)` chạy trước mỗi action API. Trong đó:
+       + Thuật toán kiểm tra `diffDays = (todayDate - lastClosedDate) / (1 ngày) > 0` dẫn đến việc ngay buổi sáng đầu ngày mới (08:00 AM) khi bác sĩ mở phần mềm xếp lịch, hệ thống đã ngộ nhận hôm nay đã hết ngày và tự động thực hiện: `UPDATE benh_nhan SET gio_ban = ''` và `UPDATE nhan_su SET temp_busy = '[]'`!
+       + Lệnh `setCaiDat` ghi nhận `lastChotSoDate` bị lỗi cú pháp SQLite do truy vấn `SELECT id FROM cai_dat` (bảng `cai_dat` trong Turso/D1 dùng composite key `(unit_code, key)` không có cột `id`), khiến ngày đã chốt không được lưu lại. Kết quả là trên MỌI request API, `checkAutoChotSo` đều kích hoạt và xóa sạch giờ bận vừa lưu.
+       + `checkAutoChotSo` thiếu tham số `unitCode` và thiếu điều kiện `WHERE unit_code = ?`, vi phạm nguyên tắc Tenant Clamping.
+  2. **Lỗi giao diện & Masking giờ bận (`js/app.js`, `index.html`)**:
+     - Các hàm lưu/xóa giờ bận bệnh nhân (`savePatBusy`, `deleteSinglePatBusy`, `clearPatBusy`) chỉ gọi `renderPatientsTable()` mà quên gọi `renderBusyPat()`, khiến bảng danh sách giờ bận của bệnh nhân trên tab `#tab-busy` không vẽ lại dữ liệu mới.
+     - Lời gọi `editBenhNhan` trong `savePatBusy` bị thiếu tham số `loai_bn` và `buoi_dieu_tri`.
+     - Trong modal thông tin nhân sự (`#staff-modal`), ô `#staff-busy` bị gán nhầm class `time-input` (class này tự động lọc bỏ dấu `-` và ép chỉ cho nhập 4 số `HH:mm`), ngăn người dùng nhập khoảng giờ bận dạng `08:00-09:00`. Đồng thời hàm `saveStaff()` trong `app.js` không đọc giá trị từ `document.getElementById('staff-busy')`.
+  3. **Lỗi Telemetry Console `et.reportAllChanges (reading 'startTime')`**:
+     - Đây là lỗi phát sinh từ script đo lường hiệu năng Web Vitals (Cloudflare RUM beacon `/cdn-cgi/rum` hoặc extension) khi duyệt qua mảng `PerformanceObserver` mà một số entry chưa sẵn sàng.
+- **Giải pháp xử lý**:
+  1. **Backend (`backend/src/index.js`)**:
+     - Sửa hàm `setCaiDat(db, unitCode, key, value)` chuẩn hóa dùng `INSERT INTO cai_dat ... ON CONFLICT(unit_code, key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP` và cơ chế fallback an toàn theo `unit_code`.
+     - Cập nhật hàm `checkAutoChotSo(db, unitCode)`: bổ sung ràng buộc tenant isolation 100% `WHERE unit_code = ?`. Sửa logic: chỉ kích hoạt chốt sổ khi đã tới hoặc qua giờ chốt sổ (`currentHourMin >= chotSoTime`), tuyệt đối không chốt sổ tự động trong giờ làm việc ban ngày.
+     - Cập nhật `editBenhNhan`: hỗ trợ match theo cả `id` và `(name, age)`, bảo toàn giá trị `loai_bn` và `buoi_dieu_tri` hiện có nếu không truyền giá trị mới.
+  2. **Frontend (`js/app.js`, `index.html`)**:
+     - Thêm lệnh `if (typeof renderBusyPat === 'function') renderBusyPat();` vào các hàm `savePatBusy`, `deleteSinglePatBusy`, `clearPatBusy`.
+     - Thêm lệnh `if (typeof renderLeavePat === 'function') renderLeavePat();` vào các hàm `savePatLeave`, `clearPatLeave`.
+     - Truyền đủ `p.loai_bn` và `p.buoi_dieu_tri` khi gọi `editBenhNhan`.
+     - Trong modal nhân sự: xóa class `time-input` tại ô `#staff-busy` để cho phép nhập dải giờ bận tự do; sửa hàm `saveStaff()` đọc đúng dữ liệu từ ô `#staff-busy`.
+     - Thêm bộ lắng nghe sự kiện bắt lỗi sớm (`window.addEventListener('error', ..., true)`) ngay đầu thẻ `<head>` trong `index.html` để triệt tiêu triệt để thông báo lỗi `et.reportAllChanges` / `startTime`.
+  3. **Đồng bộ Footer Timestamp & Cache (RULES.md)**:
+     - Cập nhật Footer `sys-last-update` thành `09:30 04/09/2026`.
+     - Bổ sung phiên bản `v4.0.1-rev18` trên toàn bộ thẻ script & CSS trong `index.html`.
+     - Cập nhật `CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev18'` trong `sw.js`.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `js/app.js`
+  + `index.html`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
