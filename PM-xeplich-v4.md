@@ -977,8 +977,43 @@ git add . && git commit -m "..." && git push origin main
   + `css/style.css`
   + `index.html`
   + `js/app.js`
-  + `sw.js`
-  + `PM-xeplich-v4.md`
+---
+
+### [v4.0.1-rev23] - 10:35 04/09/2026: Dọn dẹp tệp tin thừa, tối ưu hóa và quy hoạch lại cây thư mục dự án
+- **Yêu cầu của người dùng**:
+  1. Rà soát toàn bộ thư mục `v4-thuongmai`, xóa bỏ các file thừa không cần thiết.
+  2. Sắp xếp lại cây thư mục cho gọn gàng, đúng quy chuẩn.
+  3. Tạo thư mục riêng để đưa các file lưu trữ/tài liệu vào hợp lý.
+- **Hiện trạng & Rà soát**:
+  1. Phát hiện file backup cũ `js/scheduler-engine.v3.2.5.bak.js` (61.5 KB) nằm trong thư mục `js/` từ bản v3.2.5, không còn được tham chiếu hay sử dụng ở bất kỳ đâu.
+  2. File sao lưu cơ sở dữ liệu `d1_backup.sql` (7.3 MB) nằm tự do tại thư mục gốc, gây nặng thư mục và bị tải lên Cloudflare Pages mỗi khi deploy static web.
+  3. Thư mục `backend-backup/` chỉ chứa 1 file mã nguồn cũ Google Apps Script `code.gs` từ thời kỳ v3.
+  4. Hai tài liệu kỹ thuật `SETUP_CLOUDFLARE.md` và `ke-hoach-v4.md` nằm ở thư mục gốc chưa được quy hoạch vào thư mục tài liệu `docs/`.
+- **Giải pháp thực hiện**:
+  1. **Xóa file thừa**:
+     - Đã xóa hoàn toàn file `js/scheduler-engine.v3.2.5.bak.js`.
+  2. **Tạo thư mục lưu trữ `backups/`**:
+     - Di chuyển `d1_backup.sql` vào `backups/d1_backup.sql`.
+     - Di chuyển file `code.gs` vào `backups/legacy-apps-script/code.gs` và xóa bỏ thư mục rỗng `backend-backup/`.
+  3. **Quy hoạch tài liệu vào `docs/`**:
+     - Di chuyển `SETUP_CLOUDFLARE.md` -> `docs/SETUP_CLOUDFLARE.md`.
+     - Di chuyển `ke-hoach-v4.md` -> `docs/ke-hoach-v4.md`.
+     - Giữ nguyên `RULES.md` và `PM-xeplich-v4.md` tại thư mục gốc phục vụ AI Assistant và quy chuẩn vận hành hệ thống.
+  4. **Tạo `.pagesignore` & Tối ưu `.gitignore`**:
+     - Cập nhật `.gitignore` để tự động bỏ qua toàn bộ thư mục `backups/` và file `.sql`.
+     - Tạo file `.pagesignore` ngăn chặn `wrangler pages deploy` đẩy các file backend, sql, backups lên Cloudflare Pages hosting.
+  5. **Đồng bộ Phiên bản & Cache Busters**:
+     - Nâng số revision từ `4.0.1-rev22` lên `4.0.1-rev23`.
+     - Cập nhật `index.html` (toàn bộ thẻ CSS, JS và `APP_VERSION`).
+     - Cập nhật `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev23'`).
+- **File sửa đổi / Tổ chức lại**:
+  + `deleted`: `js/scheduler-engine.v3.2.5.bak.js`
+  + `moved`: `SETUP_CLOUDFLARE.md` -> `docs/SETUP_CLOUDFLARE.md`
+  + `moved`: `ke-hoach-v4.md` -> `docs/ke-hoach-v4.md`
+  + `moved`: `d1_backup.sql` -> `backups/d1_backup.sql`
+  + `moved`: `backend-backup/code.gs` -> `backups/legacy-apps-script/code.gs`
+  + `new`: `.pagesignore`
+  + `modified`: `.gitignore`, `index.html`, `sw.js`, `PM-xeplich-v4.md`
 
 
 

@@ -5,5 +5,5 @@ backend/node_modules/
 .DS_Store
 scratch_cache_update.js
 scratch/
-backend-backup/
+backups/
 *.sql
