@@ -83,7 +83,7 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=4.0.1-rev28">
+    <link rel="stylesheet" href="css/style.css?v=4.0.1-rev29">
     <!-- PWA & Mobile Web App Meta Tags -->
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
@@ -91,7 +91,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.0.1-rev28">
+    <link rel="stylesheet" href="css/mobile.css?v=4.0.1-rev29">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
     <script src="js/dexie.min.js?v=3.2.6"></script>
@@ -366,15 +366,7 @@
                                     <div id="user-menu-divider"
                                         style="display: none; height: 1px; background: #edf2f7; margin: 4px 0;"></div>
 
-                                    <!-- 🌙 2. CHUYỂN ĐỔI CHẾ ĐỘ SÁNG / TỐI (Tất cả tài khoản) -->
-                                    <a href="javascript:void(0)" id="user-menu-theme-btn"
-                                        style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; font-size: 11.5px; color: #2c3e50; text-decoration: none; font-weight: 700; transition: background 0.15s;"
-                                        onclick="window.toggleAppTheme()">
-                                        <span style="font-size: 13px;" id="dropdown-theme-icon">🌙</span> <span id="dropdown-theme-text">Chế độ Tối</span>
-                                    </a>
-                                    <div style="height: 1px; background: #edf2f7; margin: 4px 0;"></div>
-                                    
-                                    <!-- 🔑 3. ĐỔI MẬT KHẨU NHANH (Tất cả tài khoản) -->
+                                    <!-- 🔑 2. ĐỔI MẬT KHẨU NHANH (Tất cả tài khoản) -->
                                     <a href="javascript:void(0)" id="user-menu-change-pw-btn"
                                         style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; font-size: 11.5px; color: #2c3e50; text-decoration: none; font-weight: 700; transition: background 0.15s;"
                                         onclick="window.openChangePasswordModal(event)">
@@ -3279,7 +3271,7 @@
 
                     <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 4.0.1</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 15:15 04/09/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 15:20 04/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -3720,18 +3712,18 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.0.1-rev28"></script>
-    <script src="js/ai-scheduler.js?v=4.0.1-rev28"></script>
-    <script src="js/cp-solver.js?v=4.0.1-rev28"></script>
-    <script src="js/scheduler-engine.js?v=4.0.1-rev28"></script>
-    <script src="js/app.js?v=4.0.1-rev28"></script>
-    <script src="js/init.js?v=4.0.1-rev28"></script>
-    <script src="js/sync.js?v=4.0.1-rev28"></script>
-    <script src="js/thongke.js?v=4.0.1-rev28"></script>
+    <script src="js/offline-sync-engine.js?v=4.0.1-rev29"></script>
+    <script src="js/ai-scheduler.js?v=4.0.1-rev29"></script>
+    <script src="js/cp-solver.js?v=4.0.1-rev29"></script>
+    <script src="js/scheduler-engine.js?v=4.0.1-rev29"></script>
+    <script src="js/app.js?v=4.0.1-rev29"></script>
+    <script src="js/init.js?v=4.0.1-rev29"></script>
+    <script src="js/sync.js?v=4.0.1-rev29"></script>
+    <script src="js/thongke.js?v=4.0.1-rev29"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>
-    const APP_VERSION = '4.0.1-rev28';
+    const APP_VERSION = '4.0.1-rev29';
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             // Unregister old service workers if version changed

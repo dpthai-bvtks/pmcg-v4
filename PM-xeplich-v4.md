@@ -1179,6 +1179,28 @@ git add . && git commit -m "..." && git push origin main
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.1-rev29] - 15:20 04/09/2026: Tối Ưu Menu Tài Khoản & Loại Bỏ Nút Chuyển Theme Trùng Lặp
+- **Yêu cầu của người dùng**:
+  + Đã có nút bấm chuyển chế độ sáng/tối trực tiếp trên Header rồi thì không cần mục chuyển chế độ sáng/tối trong menu dropdown tài khoản nữa.
+- **Phân tích & Giải pháp**:
+  + Nút bấm chuyển Sáng/Tối (`#theme-toggle-btn` trên Desktop Header và `#mobile-theme-toggle-btn` trên Mobile Header) đã được bố trí ở vị trí trực quan, thuận tiện thao tác 1 chạm.
+  + Việc để thêm 1 mục `Chế độ Sáng / Chế độ Tối` (`#user-menu-theme-btn`) bên trong menu người dùng `#user-dropdown-menu` gây trùng lặp tính năng và làm menu dài thêm không cần thiết.
+  + Đã loại bỏ hoàn toàn thẻ `<a>` chuyển theme `#user-menu-theme-btn` và đường phân cách `divider` tương ứng trong `#user-dropdown-menu` (`index.html`).
+  + Dọn dẹp các dòng code cập nhật trạng thái `dropdown-theme-icon` và `dropdown-theme-text` trong `js/init.js`.
+  + Giao diện dropdown menu tài khoản trở nên gọn gàng, tinh tế: tập trung vào Quản trị (nếu có quyền), Đổi mật khẩu và Đăng xuất.
+- **Đồng bộ Phiên bản & Cache Busters**:
+  + Nâng revision lên `4.0.1-rev29`.
+  + Cập nhật `index.html` (CSS, JS cache busters, timestamp `15:20 04/09/2026`, `APP_VERSION = '4.0.1-rev29'`).
+  + Cập nhật `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev29'`).
+- **File sửa đổi**:
+  + `index.html`
+  + `js/init.js`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+
 
 
 

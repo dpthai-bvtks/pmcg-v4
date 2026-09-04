@@ -51,12 +51,6 @@ window.applyAppTheme = function(theme) {
     const mobileBtn = document.getElementById('mobile-theme-toggle-btn');
     if (mobileBtn) mobileBtn.innerText = icon;
 
-    const dropIcon = document.getElementById('dropdown-theme-icon');
-    if (dropIcon) dropIcon.innerText = icon;
-
-    const dropText = document.getElementById('dropdown-theme-text');
-    if (dropText) dropText.innerText = text;
-
     // Tự động vẽ lại biểu đồ Dashboard nếu đang hiển thị
     if (typeof window.loadDashboard === 'function') {
         try { window.loadDashboard(); } catch(e) {}
