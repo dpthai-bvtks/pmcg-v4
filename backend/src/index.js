@@ -3417,14 +3417,25 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       }
 
       try {
-        const exist = await db.prepare("SELECT rowid FROM cham_cong WHERE unit_code = ? AND month_year = ?").bind(unitCode, myStandard).first();
-        if (exist && exist.rowid) {
-          await db.prepare("UPDATE cham_cong SET data_json = ?, updated_at = CURRENT_TIMESTAMP WHERE rowid = ?").bind(jsonStr, exist.rowid).run();
-        } else {
-          await db.prepare("INSERT INTO cham_cong (unit_code, month_year, data_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)").bind(unitCode, myStandard, jsonStr).run();
-        }
+        await db.prepare(`
+          INSERT INTO cham_cong (unit_code, month_year, data_json, updated_at)
+          VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(unit_code, month_year) DO UPDATE SET
+            data_json = excluded.data_json,
+            updated_at = CURRENT_TIMESTAMP
+        `).bind(unitCode, myStandard, jsonStr).run();
       } catch(e) {
-        console.warn("saveChamCong D1 error:", e);
+        console.warn("saveChamCong D1 error, fallback to 2-step:", e);
+        try {
+          const exist = await db.prepare("SELECT id FROM cham_cong WHERE unit_code = ? AND month_year = ?").bind(unitCode, myStandard).first();
+          if (exist && exist.id) {
+            await db.prepare("UPDATE cham_cong SET data_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(jsonStr, exist.id).run();
+          } else {
+            await db.prepare("INSERT INTO cham_cong (unit_code, month_year, data_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)").bind(unitCode, myStandard, jsonStr).run();
+          }
+        } catch(e2) {
+          console.error("saveChamCong fatal error:", e2);
+        }
       }
 
       await setCaiDat(db, unitCode, "chamcong_" + myStandard, jsonStr);
@@ -3516,14 +3527,25 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       }
 
       try {
-        const exist = await db.prepare("SELECT rowid FROM thong_ke WHERE unit_code = ? AND month_year = ?").bind(unitCode, myStandard).first();
-        if (exist && exist.rowid) {
-          await db.prepare("UPDATE thong_ke SET data_json = ?, updated_at = CURRENT_TIMESTAMP WHERE rowid = ?").bind(jsonStr, exist.rowid).run();
-        } else {
-          await db.prepare("INSERT INTO thong_ke (unit_code, month_year, data_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)").bind(unitCode, myStandard, jsonStr).run();
-        }
+        await db.prepare(`
+          INSERT INTO thong_ke (unit_code, month_year, data_json, updated_at)
+          VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(unit_code, month_year) DO UPDATE SET
+            data_json = excluded.data_json,
+            updated_at = CURRENT_TIMESTAMP
+        `).bind(unitCode, myStandard, jsonStr).run();
       } catch(e) {
-        console.warn("saveThongKeThuThuat D1 error:", e);
+        console.warn("saveThongKeThuThuat D1 error, fallback to 2-step:", e);
+        try {
+          const exist = await db.prepare("SELECT id FROM thong_ke WHERE unit_code = ? AND month_year = ?").bind(unitCode, myStandard).first();
+          if (exist && exist.id) {
+            await db.prepare("UPDATE thong_ke SET data_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(jsonStr, exist.id).run();
+          } else {
+            await db.prepare("INSERT INTO thong_ke (unit_code, month_year, data_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)").bind(unitCode, myStandard, jsonStr).run();
+          }
+        } catch(e2) {
+          console.error("saveThongKeThuThuat fatal error:", e2);
+        }
       }
 
       await setCaiDat(db, unitCode, "thongke_" + myStandard, jsonStr);

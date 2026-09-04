@@ -487,7 +487,10 @@ function renderAdminChamCongTable() {
         // TAB CHẤM CÔNG (TỪ PM CŨ)
         // ==========================================
         let chamCongData = {};
+        window.chamCongData = chamCongData;
         let chamCongSaveTimeout = null;
+        let chamCongIsDirty = false;
+        let chamCongLastEditedTime = 0;
 
         function getChamCongMonthYear() {
             const ccM = document.getElementById('chamcong-month-picker');
@@ -506,6 +509,99 @@ function renderAdminChamCongTable() {
             return `${y}-${m}`;
         }
 
+        function commitChamCongCell(input, daysInMonth, triggerSave = true) {
+            if (!input) return;
+            const emp = input.getAttribute('data-emp');
+            const day = input.getAttribute('data-day');
+            if (!emp || !day) return;
+            const rawVal = input.value;
+            const val = rawVal ? rawVal.trim().toUpperCase() : '';
+
+            if (!chamCongData[emp]) chamCongData[emp] = {};
+            const oldVal = chamCongData[emp][day] || '';
+            if (val) {
+                chamCongData[emp][day] = val;
+            } else {
+                delete chamCongData[emp][day];
+            }
+            window.chamCongData = chamCongData;
+            chamCongIsDirty = true;
+            chamCongLastEditedTime = Date.now();
+
+            if (val !== oldVal) {
+                recalculateRowTotal(emp, daysInMonth);
+            }
+            if (triggerSave) {
+                triggerAutoSaveChamCong();
+            }
+        }
+
+        function commitHeSoCell(input, daysInMonth, triggerSave = true) {
+            if (!input) return;
+            const emp = input.getAttribute('data-emp');
+            if (!emp) return;
+            let val = parseFloat(input.value);
+            if (isNaN(val) || val < 0) val = 1.0;
+            if (val > 1) val = 1.0;
+            input.value = val;
+
+            if (!chamCongData[emp]) chamCongData[emp] = {};
+            chamCongData[emp].heSo = val;
+            window.chamCongData = chamCongData;
+            chamCongIsDirty = true;
+            chamCongLastEditedTime = Date.now();
+
+            recalculateRowTotal(emp, daysInMonth);
+            if (triggerSave) {
+                triggerAutoSaveChamCong();
+            }
+        }
+
+        function flushPendingChamCongSave() {
+            // 1. Commit ngay ô input đang focus (nếu có)
+            const activeEl = document.activeElement;
+            if (activeEl && activeEl.classList) {
+                const my = getChamCongMonthYear();
+                const daysInMonth = new Date(my.split('-')[0], my.split('-')[1], 0).getDate();
+                if (activeEl.classList.contains('cc-input-text')) {
+                    commitChamCongCell(activeEl, daysInMonth, false);
+                } else if (activeEl.classList.contains('heso-input')) {
+                    commitHeSoCell(activeEl, daysInMonth, false);
+                }
+            }
+
+            // 2. Lưu đồng bộ ngay vào LocalStorage
+            const my = getChamCongMonthYear();
+            if (chamCongData && Object.keys(chamCongData).length > 0) {
+                setCachedChamCong(my, chamCongData);
+            }
+
+            // 3. Nếu có lệnh lưu đang chờ hoặc dữ liệu bị sửa đổi (dirty), gọi API lưu ngay lên server
+            if (chamCongSaveTimeout || chamCongIsDirty) {
+                if (chamCongSaveTimeout) {
+                    clearTimeout(chamCongSaveTimeout);
+                    chamCongSaveTimeout = null;
+                }
+                chamCongIsDirty = false;
+                const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
+                if (apiFn && chamCongData) {
+                    apiFn('saveChamCong', [my, chamCongData]).then(() => {
+                        const thead = document.getElementById('chamcong-thead');
+                        if (thead) thead.style.opacity = '1';
+                    }).catch(err => {
+                        console.error('[ChamCong] flush save error:', err);
+                        const thead = document.getElementById('chamcong-thead');
+                        if (thead) thead.style.opacity = '1';
+                    });
+                }
+            }
+        }
+        window.flushPendingChamCongSave = flushPendingChamCongSave;
+        window.addEventListener('beforeunload', flushPendingChamCongSave);
+        window.addEventListener('visibilitychange', () => {
+            if (document.hidden) flushPendingChamCongSave();
+        });
+
         function loadChamCongData() {
             const my = getChamCongMonthYear();
             
@@ -514,6 +610,7 @@ function renderAdminChamCongTable() {
             let hasCached = false;
             if (cached && typeof cached === 'object' && Object.keys(cached).length > 0) {
                 chamCongData = normalizeChamCongData(cached);
+                window.chamCongData = chamCongData;
                 renderChamCongTable();
                 hasCached = true;
             }
@@ -533,10 +630,24 @@ function renderAdminChamCongTable() {
                     } else if (res && typeof res === 'object' && !res.status) {
                         raw = res;
                     }
+
+                    // BẢO VỆ DỮ LIỆU CỤC BỘ: Nếu người dùng vừa chỉnh sửa gần đây hoặc server trả về rỗng trong khi cục bộ có dữ liệu
+                    const hasLocalData = chamCongData && Object.keys(chamCongData).some(k => Object.keys(chamCongData[k] || {}).length > 0);
+                    const isRecentlyEdited = (Date.now() - chamCongLastEditedTime < 8000) || chamCongIsDirty;
+                    const serverIsEmpty = !raw || Object.keys(raw).length === 0;
+
+                    if (hasLocalData && (isRecentlyEdited || serverIsEmpty)) {
+                        console.log('[ChamCong] Giữ dữ liệu cục bộ mới hơn, lưu lên server...');
+                        setCachedChamCong(my, chamCongData);
+                        triggerAutoSaveChamCong();
+                        return;
+                    }
+
                     const fresh = normalizeChamCongData(raw);
                     const oldStr = JSON.stringify(chamCongData);
                     const newStr = JSON.stringify(fresh);
                     chamCongData = fresh;
+                    window.chamCongData = chamCongData;
                     setCachedChamCong(my, fresh);
                     if (oldStr !== newStr) {
                         renderChamCongTable();
@@ -593,13 +704,10 @@ function renderAdminChamCongTable() {
             input.focus();
             
             const daysInMonth = new Date(getChamCongMonthYear().split('-')[0], getChamCongMonthYear().split('-')[1], 0).getDate();
-            input.addEventListener('change', (e) => {
-                const val = e.target.value.trim().toUpperCase();
-                if (!chamCongData[emp]) chamCongData[emp] = {};
-                if (val) chamCongData[emp][day] = val;
-                else delete chamCongData[emp][day];
-                recalculateRowTotal(emp, daysInMonth);
-                triggerAutoSaveChamCong();
+            ['input', 'change', 'blur'].forEach(evtType => {
+                input.addEventListener(evtType, (e) => {
+                    commitChamCongCell(e.target, daysInMonth, true);
+                });
             });
         }
 
@@ -751,17 +859,10 @@ function renderAdminChamCongTable() {
 
         function attachChamCongEvents(daysInMonth) {
             document.querySelectorAll('.cc-input-text').forEach(input => {
-                input.addEventListener('change', (e) => {
-                    const emp = e.target.getAttribute('data-emp');
-                    const day = e.target.getAttribute('data-day');
-                    const val = e.target.value.trim().toUpperCase();
-
-                    if (!chamCongData[emp]) chamCongData[emp] = {};
-                    if (val) chamCongData[emp][day] = val;
-                    else delete chamCongData[emp][day];
-
-                    recalculateRowTotal(emp, daysInMonth);
-                    triggerAutoSaveChamCong();
+                ['input', 'change', 'blur'].forEach(evtType => {
+                    input.addEventListener(evtType, (e) => {
+                        commitChamCongCell(e.target, daysInMonth, true);
+                    });
                 });
 
                 input.addEventListener('keydown', (e) => {
@@ -797,18 +898,10 @@ function renderAdminChamCongTable() {
             });
 
             document.querySelectorAll('.heso-input').forEach(input => {
-                input.addEventListener('change', (e) => {
-                    const emp = e.target.getAttribute('data-emp');
-                    let val = parseFloat(e.target.value);
-                    if (isNaN(val) || val < 0) val = 1.0;
-                    if (val > 1) val = 1.0;
-                    
-                    e.target.value = val;
-                    if (!chamCongData[emp]) chamCongData[emp] = {};
-                    chamCongData[emp].heSo = val;
-                    
-                    recalculateRowTotal(emp, daysInMonth);
-                    triggerAutoSaveChamCong();
+                ['input', 'change', 'blur'].forEach(evtType => {
+                    input.addEventListener(evtType, (e) => {
+                        commitHeSoCell(e.target, daysInMonth, true);
+                    });
                 });
             });
         }
@@ -843,6 +936,8 @@ function renderAdminChamCongTable() {
             const my = getChamCongMonthYear();
             // Lưu lạc quan ngay lập tức vào Local Cache để không bị mất khi chuyển tab/reload
             setCachedChamCong(my, chamCongData);
+            chamCongIsDirty = true;
+            chamCongLastEditedTime = Date.now();
 
             if (chamCongSaveTimeout) clearTimeout(chamCongSaveTimeout);
             const thead = document.getElementById('chamcong-thead');
@@ -855,6 +950,7 @@ function renderAdminChamCongTable() {
                     return;
                 }
                 apiFn('saveChamCong', [my, chamCongData]).then(() => {
+                    chamCongIsDirty = false;
                     if (thead) thead.style.opacity = '1';
                 }).catch(err => {
                     console.error('[ChamCong] auto-save error:', err);
@@ -934,9 +1030,20 @@ function renderAdminChamCongTable() {
                     Promise.all([pCC, pTT]).then(([rawCC, rawTT]) => {
                         const freshCC = normalizeChamCongData(rawCC);
                         const freshTT = normalizeThongKeData(rawTT);
-                        chamCongData = freshCC;
+
+                        const hasLocalCC = chamCongData && Object.keys(chamCongData).some(k => Object.keys(chamCongData[k] || {}).length > 0);
+                        const isRecentlyEditedCC = (Date.now() - chamCongLastEditedTime < 8000) || chamCongIsDirty;
+                        const serverCCIsEmpty = !rawCC || Object.keys(rawCC).length === 0;
+
+                        if (!hasLocalCC || (!isRecentlyEditedCC && !serverCCIsEmpty)) {
+                            chamCongData = freshCC;
+                            window.chamCongData = chamCongData;
+                            setCachedChamCong(my, freshCC);
+                        } else {
+                            setCachedChamCong(my, chamCongData);
+                            triggerAutoSaveChamCong();
+                        }
                         thongKeData = freshTT;
-                        setCachedChamCong(my, freshCC);
                         setCachedThongKe(my, freshTT);
                         renderThongKeTable();
                     }).catch(err => {

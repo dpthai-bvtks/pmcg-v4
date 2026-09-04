@@ -1015,6 +1015,42 @@ git add . && git commit -m "..." && git push origin main
   + `new`: `.pagesignore`
   + `modified`: `.gitignore`, `index.html`, `sw.js`, `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.1-rev24] - 13:40 04/09/2026: Khắc phục triệt để lỗi mất dữ liệu khi nhập chấm công và chuyển tab
+- **Hiện tượng & Báo cáo lỗi**:
+  Khi người dùng nhập ký hiệu chấm công hoặc hệ số công cho nhân sự tại tab Chấm công, nếu vừa nhập xong mà click chuyển ngay sang tab khác (ví dụ: tab Thống kê, Xếp lịch, Cài đặt...) rồi quay lại thì dữ liệu vừa nhập bị biến mất, trở về trạng thái cũ hoặc rỗng.
+- **Phân tích nguyên nhân gốc rễ (Root Causes)**:
+  1. *Thiếu sự kiện bắt thời gian thực (`input`/`blur`)*: Các ô `.cc-input-text` và `.heso-input` trước đó chỉ gán lắng nghe sự kiện `change`. Theo chuẩn HTML, `change` chỉ kích hoạt khi ô input bị `blur` hoặc gõ Enter. Khi người dùng đang nhập mà bấm chuột trực tiếp vào nút chuyển tab trên thanh menu, thanh điều hướng có hàm chặn `e.stopPropagation(); e.preventDefault();` và ngay lập tức ẩn tab `#tab-chamcong` (`display: none`), làm sự kiện `change` bị hủy hoặc không bao giờ kích hoạt, khiến đối tượng `chamCongData` chưa kịp cập nhật giá trị mới.
+  2. *Xung đột bất đồng bộ debounce 350ms & Server ghi đè mù quáng*: Hàm tự động lưu `triggerAutoSaveChamCong()` dùng `setTimeout` 350ms. Khi người dùng click chuyển sang tab khác (như tab Thống kê) hoặc chuyển lại tab Chấm công, các hàm khởi tạo tab `loadThongKeData()` / `loadChamCongData()` lập tức gọi API `getChamCong` lên server. Do lệnh lưu trước đó chưa hoàn tất hoặc còn nằm trong debounce, server trả về dữ liệu cũ (hoặc rỗng `{}`). Hàm nạp client trước đây đã thực hiện gán đè vô điều kiện: `chamCongData = fresh; setCachedChamCong(my, fresh); renderChamCongTable();`, xóa sạch dữ liệu vừa nhập tại máy người dùng.
+  3. *Thiếu cơ chế Flush khi chuyển tab / đóng trang*: Không có cơ chế cam kết (flush) dữ liệu từ ô input đang active trước khi chuyển tab hoặc khi ẩn trang (`visibilitychange` / `beforeunload`).
+  4. *Backend D1 upsert 2 bước có nguy cơ lỗi*: Trong `backend/src/index.js`, hàm `saveChamCong` dùng truy vấn 2 bước (`SELECT rowid ...` rồi `UPDATE` hoặc `INSERT`). Nếu kiểm tra rowid không khớp hoặc bị lỗi thời gian thực, câu lệnh `INSERT` bị chặn bởi ràng buộc `UNIQUE(unit_code, month_year)` gây lỗi ngầm không lưu được vào CSDL.
+- **Giải pháp xử lý toàn diện (Multi-tier Fix)**:
+  1. **Lắng nghe đa sự kiện `['input', 'change', 'blur']` & Cam kết tức thì**:
+     - Viết các hàm cam kết chuẩn hóa `commitChamCongCell()` và `commitHeSoCell()` trong `js/thongke.js`.
+     - Lắng nghe sự kiện `input` ngay từ từng ký tự người dùng gõ vào ô chấm công / hệ số, cập nhật tức thì vào `chamCongData`, đánh dấu cờ `chamCongIsDirty = true`, cập nhật `chamCongLastEditedTime = Date.now()` và lưu tức thời vào LocalStorage (`setCachedChamCong`).
+  2. **Cơ chế Flush đồng bộ trước khi chuyển tab (`window.flushPendingChamCongSave`)**:
+     - Bổ sung hàm `window.flushPendingChamCongSave()`: kiểm tra nếu đang có ô input nào được focus thì commit ngay lập tức, hủy debounce timer và gửi API lưu ngay lên server nếu dữ liệu đang bẩn (`chamCongIsDirty`).
+     - Gắn hàm flush vào tất cả các điểm chuyển tab trong `js/app.js`: sự kiện click tab desktop (cả capture phase và bubble phase), hàm đổi hash `handleHashChange()`, và hàm điều hướng di động `switchMobileNav()`.
+     - Gắn thêm lắng nghe sự kiện `beforeunload` và `visibilitychange` của trình duyệt.
+  3. **Cơ chế Bảo vệ Dữ liệu Cục bộ (Local Data Guard against Stale Server Override)**:
+     - Trong cả `loadChamCongData()` và `loadThongKeData()` tại `js/thongke.js`: kiểm tra nếu máy khách có dữ liệu chấm công cục bộ và vừa được chỉnh sửa gần đây (< 8 giây) hoặc cờ `chamCongIsDirty` đang bật, hoặc server trả về rỗng, hệ thống sẽ **ưu tiên giữ nguyên dữ liệu cục bộ mới hơn**, lưu lại vào cache và tự động đồng bộ đẩy lên server thay vì để server ghi đè mất dữ liệu của người dùng.
+  4. **Nâng cấp Backend SQLite Atomic Upsert**:
+     - Cập nhật cả `saveChamCong` và `saveThongKeThuThuat` trong `backend/src/index.js` sang cú pháp chuẩn:
+       `INSERT INTO ... ON CONFLICT(unit_code, month_year) DO UPDATE SET data_json = excluded.data_json, updated_at = CURRENT_TIMESTAMP`, kèm khối fallback an toàn, loại bỏ triệt để lỗi xung đột khi lưu đồng thời.
+  5. **Đồng bộ Phiên bản & Cache Busters**:
+     - Cập nhật Footer timestamp `13:40 04/09/2026`.
+     - Cập nhật cache busters `?v=4.0.1-rev24` trong `index.html`.
+     - Cập nhật `CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev24'` trong `sw.js`.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `js/app.js`
+  + `js/thongke.js`
+  + `index.html`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+
 
 
 

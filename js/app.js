@@ -2485,6 +2485,10 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     try {
 
+                        if (typeof window.flushPendingChamCongSave === 'function') {
+                            try { window.flushPendingChamCongSave(); } catch(e) {}
+                        }
+
                         tabs.forEach(t => t.classList.remove('active'));
 
                         tab.classList.add('active');
@@ -11280,6 +11284,10 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 tab.addEventListener('click', function (e) {
 
+                    if (typeof window.flushPendingChamCongSave === 'function') {
+                        try { window.flushPendingChamCongSave(); } catch(e) {}
+                    }
+
                     e.preventDefault();
 
                     e.stopPropagation(); // Ngăn event cũ (đã gán trước đó) chạy
@@ -11295,6 +11303,10 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
             function handleHashChange() {
+
+                if (typeof window.flushPendingChamCongSave === 'function') {
+                    try { window.flushPendingChamCongSave(); } catch(e) {}
+                }
 
                 let hash = window.location.hash;
 
@@ -12833,6 +12845,9 @@ window.saveDocListToServer = function() {
 // ============================================================
 
 window.switchMobileNav = function(tabId, el) {
+    if (typeof window.flushPendingChamCongSave === 'function') {
+        try { window.flushPendingChamCongSave(); } catch(e) {}
+    }
     if (tabId === 'tab-settings') tabId = 'tab-admin';
     if (el) {
         document.querySelectorAll('.mobile-nav-item').forEach(btn => btn.classList.remove('active'));
