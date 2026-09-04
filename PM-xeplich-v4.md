@@ -1314,6 +1314,38 @@ git add . && git commit -m "..." && git push origin main
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.1-rev35] - 16:20 04/09/2026: Sửa Lỗi TypeError (items || []).map is not a function Khi Xếp Lịch Thứ 7
+- **Yêu cầu của người dùng**: Báo lỗi `Lỗi: (items || []).map is not a function`.
+- **Nguyên nhân cốt lõi phát hiện**:
+  1. Trong hàm `runSaturdayScheduling` của `js/scheduler-engine.js`, việc chẩn đoán danh sách thủ thuật rớt (unscheduled) được gọi:
+     `const diagnosedRot = UnscheduledDiagnosticEngine.diagnose(rawRot, baseDb);`
+     Tuy nhiên, `UnscheduledDiagnosticEngine.diagnose` vốn được thiết kế để nhận 1 ca rớt (single object) và trả về 1 object chẩn đoán `{ causeCode, causeDetail, advices }`. Khi truyền toàn bộ mảng `rawRot` vào, nó coi cả mảng là 1 ca rớt và trả về duy nhất **1 object** (không phải array).
+  2. Tại `js/app.js` (dòng 9206): `const rot = res.dropped || res.unscheduled || res.rot || [];` đã nhận giá trị là **1 object** `{ ... }` do `res.rot` trả về.
+  3. Hàm `setUnscheduledData(items, dateVal)` thực hiện: `const normalized = (items || []).map(...)`. Trong JavaScript, khi `items` là một object `{ ... }`, biểu thức `({ ... } || [])` trả về chính object đó (vì object là truthy). Kết quả là `{ ... }.map` bị `undefined`, gây ra lỗi:
+     `TypeError: (items || []).map is not a function`.
+- **Giải pháp & Cải tiến đã thực hiện**:
+  1. **Sửa đổi `runSaturdayScheduling` (`js/scheduler-engine.js`)**:
+     - Lập lịch và rút gọn timeline `compactTimelineGaps(formattedSched, baseDb)` trước khi chẩn đoán.
+     - Sử dụng `(rawRot || []).map(item => { ... })` để chẩn đoán từng ca rớt một cách độc lập, đảm bảo kết quả trả về luôn luôn là mảng các ca rớt kèm nguyên nhân (`causeCode`, `causeDetail`, `reason`, `advices`).
+  2. **Bảo vệ nhiều lớp trong `UnscheduledDiagnosticEngine.diagnose`**:
+     - Bổ sung kiểm tra `if (Array.isArray(rotItem)) return rotItem.map(item => diagnose(item, db, currentSched));` để ngăn ngừa triệt để việc trả về object khi nhận mảng.
+  3. **Tăng cường phòng thủ cho `setUnscheduledData` (`js/app.js`)**:
+     - Chuẩn hóa kiểm tra `Array.isArray(items)`. Nếu `items` là object chứa các thuộc tính con (`items.dropped`, `items.unscheduled`, `items.rot`, `items.items`) hoặc là 1 bản ghi ca rớt đơn lẻ, tự động ép kiểu thành mảng an toàn.
+     - Kiểm tra kết quả trả về từ thuật toán xếp lịch Thứ 7, đảm bảo `sched` và `rot` luôn luôn là `Array`.
+- **Đồng bộ Phiên bản & Cache Busters**:
+  + Nâng revision lên `4.0.1-rev35`.
+  + Cập nhật `index.html` (CSS, JS cache busters, timestamp `16:20 04/09/2026`, `APP_VERSION = '4.0.1-rev35'`).
+  + Cập nhật `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev35'`).
+- **File sửa đổi**:
+  + `index.html`
+  + `js/app.js`
+  + `js/scheduler-engine.js`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+
 
 
 

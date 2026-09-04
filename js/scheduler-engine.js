@@ -1542,10 +1542,6 @@ function getSafeCache() {
       return { ...u, ngay: u.ngay || targetDate };
     });
 
-    const diagnosedRot = (typeof UnscheduledDiagnosticEngine !== 'undefined')
-      ? UnscheduledDiagnosticEngine.diagnose(rawRot, baseDb)
-      : rawRot;
-
     const formattedSched = (best.sched || []).map(item => {
       const { realRoom, realBed } = decodeRoom(item);
       return {
@@ -1561,6 +1557,25 @@ function getSafeCache() {
         may: item.MAY,
         giuong: realBed
       };
+    });
+
+    const compactedSched = (typeof compactTimelineGaps === 'function') ? compactTimelineGaps(formattedSched, baseDb) : formattedSched;
+
+    const diagnosedRot = (rawRot || []).map(item => {
+      if (typeof UnscheduledDiagnosticEngine !== 'undefined' && typeof UnscheduledDiagnosticEngine.diagnose === 'function') {
+        const diag = UnscheduledDiagnosticEngine.diagnose(item, baseDb, compactedSched);
+        if (diag) {
+          return {
+            ...item,
+            causeCode: diag.causeCode,
+            causeTitle: diag.causeTitle,
+            causeDetail: diag.causeDetail,
+            reason: diag.causeDetail || diag.causeTitle || item.reason || 'Thiếu nhân sự/Máy hoặc hết giờ',
+            advices: diag.advices
+          };
+        }
+      }
+      return item;
     });
 
     const elapsed = Math.round(performance.now() - startTime);
@@ -1619,6 +1634,9 @@ const UnscheduledDiagnosticEngine = (function () {
 
   function diagnose(rotItem, db, currentSched = []) {
     if (!rotItem) return null;
+    if (Array.isArray(rotItem)) {
+      return rotItem.map(item => diagnose(item, db, currentSched));
+    }
 
     const bnName = String(rotItem.bn || rotItem.tenBN || rotItem.HOTEN || '').toUpperCase().trim();
     const bnNs = String(rotItem.ns || rotItem.namSinh || rotItem.NAMSINH || '').trim();

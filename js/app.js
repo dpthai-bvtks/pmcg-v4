@@ -1917,10 +1917,18 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
         function setUnscheduledData(items, dateVal = '') {
-
+            let list = [];
+            if (Array.isArray(items)) {
+                list = items;
+            } else if (items && typeof items === 'object') {
+                if (Array.isArray(items.dropped)) list = items.dropped;
+                else if (Array.isArray(items.unscheduled)) list = items.unscheduled;
+                else if (Array.isArray(items.rot)) list = items.rot;
+                else if (Array.isArray(items.items)) list = items.items;
+                else if (items.bn || items.tenBN || items.HOTEN || items.tt || items.thuThuat || items.causeDetail || items.reason) list = [items];
+            }
             const seen = new Set();
-
-            const normalized = (items || []).map(item => normalizeDroppedItem(item, dateVal)).filter(item => {
+            const normalized = list.map(item => normalizeDroppedItem(item, dateVal)).filter(item => {
 
                 const key = [item.ngay, item.bn, item.ns, item.tt, item.room || item.phong, item.reason].map(x => String(x || '').trim().toLowerCase()).join('|');
 
@@ -9202,8 +9210,16 @@ window.renderSttOrderControl = function (type, i, total) {
                     const timeTaken = ((performance.now() - startTime) / 1000).toFixed(2);
                     btn.innerText = '▶ XẾP LỊCH THỨ 7'; btn.disabled = false;
 
-                    const sched = res.sched || res.schedule || [];
-                    const rot = res.dropped || res.unscheduled || res.rot || [];
+                    const sched = (res && (Array.isArray(res.sched) ? res.sched : (Array.isArray(res.schedule) ? res.schedule : []))) || [];
+                    let rot = [];
+                    if (res) {
+                        if (Array.isArray(res.dropped)) rot = res.dropped;
+                        else if (Array.isArray(res.unscheduled)) rot = res.unscheduled;
+                        else if (Array.isArray(res.rot)) rot = res.rot;
+                        else if (res.rot && typeof res.rot === 'object') {
+                            rot = Array.isArray(res.rot.rot) ? res.rot.rot : (Array.isArray(res.rot.dropped) ? res.rot.dropped : [res.rot]);
+                        }
+                    }
 
                     window.currentScheduleData = markDischargedInSchedule(sched);
                     setUnscheduledData(rot, dateVal);
