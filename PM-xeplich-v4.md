@@ -1146,13 +1146,39 @@ git add . && git commit -m "..." && git push origin main
      - Nâng số revision từ `4.0.1-rev26` lên `4.0.1-rev27`.
      - Cập nhật `index.html` (CSS, JS cache busters, timestamp `14:50 04/09/2026`, `APP_VERSION`).
      - Cập nhật `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev27'`).
+### [v4.0.1-rev28] - 15:15 04/09/2026: Xử Lý Triệt Để Vệt Trắng Ô Nhập Liệu/Tìm Kiếm Chế Độ Tối & Cách Ly Dữ Liệu Đa Đơn Vị (Multi-Tenant Logout/Login Sanitization)
+- **Yêu cầu của người dùng**:
+  1. Các ô nhập liệu hay ô tìm kiếm ở các tab vẫn có khoảng trắng khi ở chế độ tối (ảnh chụp màn hình cho thấy thanh tìm kiếm bệnh nhân, nút lọc Nội trú/Ngoại trú, khung chọn thủ thuật có nền trắng/xám sáng chọi mắt).
+  2. Bị dính trường hợp khi đang dùng tài khoản đơn vị này mà thoát ra để đăng nhập tài khoản khác thì vẫn còn sót dữ liệu của đơn vị cũ.
+- **Phân tích nguyên nhân & Giải pháp**:
+  1. **Khắc phục Vệt Trắng Ô Nhập Liệu & Tìm Kiếm Chế Độ Tối**:
+     - **Thanh tìm kiếm bệnh nhân (`.patients-search-bar`) & Nút lọc**: Thuộc tính inline `style="background: #f8f9fa;"` và các nút Nội trú/Ngoại trú bị ép `background: white; color: #475569;` cả trong HTML và JS `setPatientTypeFilter`. Đã loại bỏ hoàn toàn các mã màu cứng này; thay bằng class CSS theme-aware. Trong Dark Mode, thanh tìm kiếm chuyển sang nền `#1e293b`, nút lọc inactive mang nền `#0f172a` viền `#334155`, nút active mang màu xanh dương phát sáng `#2563eb`.
+     - **Khung chọn Thủ thuật / Kỹ năng (`.skills-box`, `.skills-header`, `.scrollable-checkbox-list`)**: Các mã màu cứng `#dfe4ea`, `#dcdde1` và `background: white` trên danh sách checkbox đã được chuyển sang Dark Slate `#1e293b` / `#0b1120`, viền `#334155`, chữ nhóm YHCT `#f87171` và PHCN `#60a5fa`.
+     - **Chân trang ghim biểu mẫu (`.form-pinned-footer`, `div[style*="background: #f1f2f6"]`)**: Đã chuẩn hóa chuyển toàn bộ các chân trang ghim (ở tab Bệnh nhân, Nhân sự, Phòng, Máy...) sang nền `#0f172a` viền `#334155` trong Dark Mode, chấm dứt hoàn toàn dải trắng đáy form.
+     - **Bộ chọn ngày Flatpickr**: Bổ sung bộ quy tắc Dark Mode cho input ngày và popup lịch Flatpickr (`.flatpickr-calendar`), chuyển ngày chọn sang `#2563eb`, hover ngày `#334155`, tháng và thứ màu xanh ngọc `#38bdf8`.
+  2. **Cách Ly Tuyệt Đối Dữ Liệu Đa Đơn Vị (Multi-Tenant Data Isolation)**:
+     - **Nguyên nhân rò rỉ dữ liệu cũ**:
+       + Trước đây hàm `doLogout()` chỉ ẩn menu và hiện lại khung đăng nhập `#login-overlay` mà không làm mới DOM các bảng (`#patients-list`, `#machines-list`, `#staff-list`, `#schedule-list`...). Dữ liệu của đơn vị trước vẫn nằm trơ trọi trên giao diện ngầm.
+       + Khi người dùng đăng nhập vào đơn vị mới, trong lúc dữ liệu mới đang tải qua mạng, giao diện vẫn phơi bày toàn bộ dữ liệu đơn vị cũ.
+       + Hàm `getCurrentUnitCode()` trước đây fallback về `'bvtks-cs2'` khi chưa đăng nhập, dẫn tới việc `loadBootstrapData()` tự ý nạp dữ liệu của bệnh viện mặc định ngầm trong background.
+       + Các khóa lưu trữ cục bộ của đơn vị cũ (`times_bootstrap_cache`, `times_*_order`, `staff_his_map`, `meds_protocols`) không được dọn dẹp sạch sẽ khi đăng xuất.
+     - **Giải pháp xử lý triệt để**:
+       + **Hàm dọn sạch toàn diện `clearAllDomTables()`**: Quét và làm sạch 24 tbody trên toàn bộ các tab hệ thống, đưa về trạng thái trống (khi đăng xuất) hoặc hiện spinner "Đang tải dữ liệu đơn vị..." (khi đăng nhập đơn vị mới).
+       + **Tái cấu trúc `doLogout()`**: Dừng auto sync, quét và xóa sạch 100% các key phiên và dữ liệu đơn vị trong `localStorage` (chỉ giữ lại cấu hình giao diện `pm_app_theme`, `doc_theme` và `times_backup_api_url`), xóa toàn bộ RAM, dọn sạch DOM tables, sau đó kích hoạt `window.location.href` reload trang về URL gốc để hủy bỏ toàn bộ closures/state/IndexedDB cũ trong bộ nhớ.
+       + **Bảo vệ `submitLogin()`**: Gọi `clearAllDomTables(true)` ngay lập tức để phủ loading placeholder lên mọi bảng, tuyệt đối không để lộ dữ liệu cũ dù chỉ 1 phần trăm giây.
+       + **Bảo vệ khởi động (`init.js` & `app.js`)**: Kiểm tra `hasValidSession` và `sessionStr` trước khi khôi phục cache hay gọi `loadAllData()`/`loadDashboard()`. Nếu chưa có phiên đăng nhập hợp lệ, hệ thống hoàn toàn không nạp bất kỳ dữ liệu nào của bất kỳ đơn vị nào.
+  3. **Đồng bộ Phiên bản & Cache Busters**:
+     - Nâng số revision từ `4.0.1-rev27` lên `4.0.1-rev28`.
+     - Cập nhật `index.html` (CSS, JS cache busters, timestamp `15:15 04/09/2026`, `APP_VERSION`).
+     - Cập nhật `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev28'`).
 - **File sửa đổi**:
   + `css/style.css`
-  + `css/mobile.css`
-  + `js/thongke.js`
   + `index.html`
+  + `js/app.js`
+  + `js/init.js`
   + `sw.js`
   + `PM-xeplich-v4.md`
+
 
 
 

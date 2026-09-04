@@ -754,21 +754,82 @@ window.showGlobalLoading = function (text) {
         }
 
         // ============================================================
-        // 🏢 MULTI-TENANT STORAGE KEY HELPERS
+        // 🏢 MULTI-TENANT STORAGE KEY & DOM SANITIZATION HELPERS
         // ============================================================
         function getCurrentUnitCode() {
-            return (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').trim().toLowerCase();
+            return (localStorage.getItem('pm_unit_code') || '').trim().toLowerCase();
         }
         function getUnitStorageKey(baseKey) {
             const u = getCurrentUnitCode();
-            return `${baseKey}_${u}`;
+            return u ? `${baseKey}_${u}` : baseKey;
         }
         function getBootstrapCacheKey() {
-            return 'times_bootstrap_cache_' + getCurrentUnitCode();
+            const u = getCurrentUnitCode();
+            return u ? ('times_bootstrap_cache_' + u) : 'times_bootstrap_cache';
         }
         window.getCurrentUnitCode = getCurrentUnitCode;
         window.getUnitStorageKey = getUnitStorageKey;
         window.getBootstrapCacheKey = getBootstrapCacheKey;
+
+        function clearAllDomTables(showLoading = false) {
+            const tableBodyIds = [
+                'machines-list',
+                'procedures-list',
+                'protocols-list',
+                'staff-list',
+                'rooms-list',
+                'patients-list',
+                'busy-staff-tbody',
+                'busy-pat-tbody',
+                'leave-pat-tbody',
+                'schedule-list',
+                'count-body',
+                'error-time-body',
+                'error-other-body',
+                'free-doc-list',
+                'free-machine-list',
+                'acc-list',
+                'admin-employees-body',
+                'chamcong-body',
+                'tenants-table-body',
+                'preview-thuthuat-body',
+                'thongke-body',
+                'stats-unscheduled-list',
+                'stats-staff-list',
+                'doc-lookup-table-body'
+            ];
+
+            const loadingHtml = '<tr><td colspan="12" align="center" style="padding:28px; color:#94a3b8;"><div class="spinner" style="margin:0 auto 10px auto;"></div><div style="font-size:12.5px;">Đang tải dữ liệu đơn vị...</div></td></tr>';
+
+            tableBodyIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.innerHTML = showLoading ? loadingHtml : '';
+                }
+            });
+
+            const previewTbody = document.getElementById('dashboard-preview-body');
+            if (previewTbody) {
+                previewTbody.innerHTML = showLoading 
+                    ? loadingHtml 
+                    : '<tr><td colspan="8" align="center" style="color:#94a3b8; padding:20px;">Chưa có dữ liệu lịch trình</td></tr>';
+            }
+
+            const statVal = showLoading ? '...' : '0';
+            const elBN = document.getElementById('statBN'); if (elBN) elBN.textContent = statVal;
+            const elStaff = document.getElementById('statStaff'); if (elStaff) elStaff.textContent = statVal;
+            const elSched = document.getElementById('statScheduled'); if (elSched) elSched.textContent = statVal;
+            const elDrop = document.getElementById('statDropped'); if (elDrop) elDrop.textContent = statVal;
+            const elTotal = document.getElementById('statTotalProcs'); if (elTotal) elTotal.textContent = statVal;
+
+            if (!showLoading) {
+                ['pat-name', 'nam-sinh', 'pat-search-input', 'schedule-search-input', 'sat-search-bn', 'staff-name', 'room-name', 'proc-name'].forEach(id => {
+                    const inp = document.getElementById(id);
+                    if (inp) inp.value = '';
+                });
+            }
+        }
+        window.clearAllDomTables = clearAllDomTables;
 
         // ============================================================
         // GITHUB PAGES API CONFIGURATION (SELF-HEALING)
@@ -1595,15 +1656,9 @@ window.renderSttOrderControl = function (type, i, total) {
                         window.dataCacheTime = {};
                     }
 
-                    // ✅ 3. Reset các chỉ số trên Dashboard về trạng thái đang tải
-                    const elBN = document.getElementById('statBN'); if (elBN) elBN.textContent = '...';
-                    const elStaff = document.getElementById('statStaff'); if (elStaff) elStaff.textContent = '...';
-                    const elSched = document.getElementById('statScheduled'); if (elSched) elSched.textContent = '...';
-                    const elDrop = document.getElementById('statDropped'); if (elDrop) elDrop.textContent = '...';
-                    const elTotal = document.getElementById('statTotalProcs'); if (elTotal) elTotal.textContent = '...';
-                    const previewTbody = document.getElementById('dashboard-preview-body');
-                    if (previewTbody) {
-                        previewTbody.innerHTML = '<tr><td colspan="8" align="center" style="padding:24px;"><div class="spinner"></div><div style="font-size:12px; color:#64748b; margin-top:8px;">Đang tải dữ liệu đơn vị...</div></td></tr>';
+                    // ✅ 3. Dọn sạch toàn bộ các bảng DOM và hiển thị trạng thái đang tải
+                    if (typeof clearAllDomTables === 'function') {
+                        clearAllDomTables(true);
                     }
 
                     if (typeof window.resetChamCongForUnit === 'function') {
@@ -2812,6 +2867,8 @@ window.renderSttOrderControl = function (type, i, total) {
         function restoreOfflineCache() {
             try {
                 const curUnit = getCurrentUnitCode();
+                const sessionStr = localStorage.getItem('meds_session');
+                if (!sessionStr || !curUnit) return;
                 const cacheKey = getBootstrapCacheKey();
                 const cachedStr = localStorage.getItem(cacheKey);
                 if (cachedStr) {
@@ -2927,6 +2984,13 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         function loadBootstrapData(forceRefresh = false) {
+            const sessionStr = localStorage.getItem('meds_session');
+            const curUnit = getCurrentUnitCode();
+            if (!sessionStr || !curUnit) {
+                console.log('[Bootstrap] Chưa đăng nhập hoặc chưa chọn đơn vị, bỏ qua nạp dữ liệu.');
+                return;
+            }
+
             if (!forceRefresh) {
                 restoreOfflineCache();
             }
@@ -7849,18 +7913,17 @@ window.renderSttOrderControl = function (type, i, total) {
         window.setPatientTypeFilter = function(type) {
             window._patientTypeFilter = type;
             document.querySelectorAll('.btn-filter-pat-type').forEach(btn => {
-                btn.style.background = 'white';
-                btn.style.color = '#475569';
-                btn.style.borderColor = '#cbd5e1';
+                btn.classList.remove('active');
+                btn.style.background = '';
+                btn.style.color = '';
+                btn.style.borderColor = '';
             });
             let activeBtnId = 'btn-filter-all';
             if (type === 'NoiTru') activeBtnId = 'btn-filter-noitru';
             else if (type === 'NgoaiTru') activeBtnId = 'btn-filter-ngoaitru';
             const activeBtn = document.getElementById(activeBtnId);
             if (activeBtn) {
-                activeBtn.style.background = '#1e3d2b';
-                activeBtn.style.color = 'white';
-                activeBtn.style.borderColor = '#1e3d2b';
+                activeBtn.classList.add('active');
             }
             renderPatientsTable();
         };
@@ -9475,12 +9538,24 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         function doLogout() {
-            localStorage.removeItem('meds_session');
-            localStorage.removeItem('meds_success');
-            localStorage.removeItem('meds_unscheduled');
-            localStorage.removeItem('meds_schedule_date');
-            localStorage.removeItem('meds_schedule_unit');
+            if (typeof window.stopAutoSync === 'function') {
+                try { window.stopAutoSync(); } catch(e) {}
+            }
 
+            // 1. Quét sạch tất cả key của phiên & đơn vị trong localStorage, chỉ giữ lại cấu hình giao diện & backup URL
+            const preserveKeys = ['pm_app_theme', 'doc_theme', 'times_backup_api_url'];
+            try {
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && !preserveKeys.includes(key)) {
+                        keysToRemove.push(key);
+                    }
+                }
+                keysToRemove.forEach(k => localStorage.removeItem(k));
+            } catch(e) {}
+
+            // 2. Xóa sạch dữ liệu trong RAM
             window.currentScheduleData = null;
             window.chamCongData = {};
             window.thongKeData = {};
@@ -9506,29 +9581,17 @@ window.renderSttOrderControl = function (type, i, total) {
             }
             if (window.dataCacheTime) window.dataCacheTime = {};
 
-            // Đặt lại các số liệu trên Dashboard về 0
-            const elBN = document.getElementById('statBN'); if (elBN) elBN.textContent = '0';
-            const elStaff = document.getElementById('statStaff'); if (elStaff) elStaff.textContent = '0';
-            const elSched = document.getElementById('statScheduled'); if (elSched) elSched.textContent = '0';
-            const elDrop = document.getElementById('statDropped'); if (elDrop) elDrop.textContent = '0';
-            const elTotal = document.getElementById('statTotalProcs'); if (elTotal) elTotal.textContent = '0';
-            const previewTbody = document.getElementById('dashboard-preview-body');
-            if (previewTbody) previewTbody.innerHTML = '<tr><td colspan="8" align="center" style="color:#94a3b8; padding:20px;">Chưa có dữ liệu lịch trình</td></tr>';
+            // 3. Xóa sạch các bảng dữ liệu trên DOM ngay lập tức
+            if (typeof clearAllDomTables === 'function') {
+                clearAllDomTables(false);
+            }
 
-            localStorage.removeItem('pm_unit_code');
-            localStorage.removeItem('pm_unit_name');
-
-            const overlay = document.getElementById('login-overlay');
-            if (overlay) overlay.style.display = 'flex';
-            const container = document.getElementById('user-menu-container');
-            if (container) container.style.display = 'none';
-            const unitInp = document.getElementById('login-unit');
-            if (unitInp) { unitInp.value = ''; unitInp.focus(); }
-            const userInp = document.getElementById('login-user');
-            if (userInp) userInp.value = '';
-            const passInp = document.getElementById('login-pass');
-            if (passInp) passInp.value = '';
-            if (typeof window.stopAutoSync === 'function') window.stopAutoSync();
+            // 4. Reload trang về URL gốc để đảm bảo 100% không còn biến / bộ nhớ / closure rò rỉ giữa 2 đơn vị
+            try {
+                window.location.href = window.location.origin + window.location.pathname;
+            } catch(e) {
+                window.location.reload();
+            }
         }
         window.doLogout = doLogout;
 
@@ -9915,6 +9978,9 @@ window.renderSttOrderControl = function (type, i, total) {
 
             } else {
 
+                const overlay = document.getElementById('login-overlay');
+                if (overlay) overlay.style.display = 'flex';
+                if (typeof clearAllDomTables === 'function') clearAllDomTables(false);
                 document.getElementById('login-user')?.focus();
 
             }
@@ -9925,9 +9991,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
             setTimeout(function () {
 
-                if (typeof loadAllData === 'function') loadAllData();
-
-                if (typeof loadDashboard === 'function') loadDashboard();
+                const sessionStr = localStorage.getItem('meds_session');
+                if (sessionStr) {
+                    if (typeof loadAllData === 'function') loadAllData();
+                    if (typeof loadDashboard === 'function') loadDashboard();
+                }
 
             }, 800);
 

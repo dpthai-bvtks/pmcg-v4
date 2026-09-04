@@ -102,13 +102,27 @@ document.addEventListener('DOMContentLoaded', () => {
     if (unitInput) unitInput.value = savedUnit;
 
     // 🧹 Dọn dẹp cache rò rỉ giữa các đơn vị (Multi-Tenant Cache Sanitization)
-    const currentUnitCode = (localStorage.getItem('pm_unit_code') || '').toLowerCase();
-    const scheduleUnitTag = (localStorage.getItem('meds_schedule_unit') || '').toLowerCase();
-    if (!scheduleUnitTag || (currentUnitCode && scheduleUnitTag !== currentUnitCode)) {
-        localStorage.removeItem('meds_success');
-        localStorage.removeItem('meds_unscheduled');
-        localStorage.removeItem('meds_schedule_date');
-        localStorage.removeItem('times_bootstrap_cache');
+    if (!hasValidSession) {
+        const preserveKeys = ['pm_app_theme', 'doc_theme', 'times_backup_api_url'];
+        try {
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && !preserveKeys.includes(key)) {
+                    keysToRemove.push(key);
+                }
+            }
+            keysToRemove.forEach(k => localStorage.removeItem(k));
+        } catch(e) {}
+    } else {
+        const currentUnitCode = (localStorage.getItem('pm_unit_code') || '').toLowerCase();
+        const scheduleUnitTag = (localStorage.getItem('meds_schedule_unit') || '').toLowerCase();
+        if (!scheduleUnitTag || (currentUnitCode && scheduleUnitTag !== currentUnitCode)) {
+            localStorage.removeItem('meds_success');
+            localStorage.removeItem('meds_unscheduled');
+            localStorage.removeItem('meds_schedule_date');
+            localStorage.removeItem('times_bootstrap_cache');
+        }
     }
 
     // 🧹 Tự động làm sạch URL Google Apps Script nếu bị dính lặp

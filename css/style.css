@@ -3076,6 +3076,30 @@
 
             box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08) !important;
 
+            background: #f8f9fa;
+
+        }
+
+        .btn-filter-pat-type {
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #475569;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+
+        .btn-filter-pat-type:hover {
+            background: #f1f5f9;
+        }
+
+        .btn-filter-pat-type.active {
+            border-color: #1e3d2b;
+            background: #1e3d2b;
+            color: #ffffff;
         }
 
 
@@ -6516,6 +6540,215 @@ transition: box-shadow 0.3s;
     background: #111827 !important;
     border-bottom: 1px solid #334155 !important;
 }
+
+/* --------------------------------------------------------------------------
+   🌙 DARK THEME: FORMS, SEARCH BARS, SKILLS BOXES, FILTERS & CONTROLS
+   -------------------------------------------------------------------------- */
+
+/* 1. Khung biểu mẫu bên trái (Sidebar Form) & Chân trang ghim (Pinned Footer) */
+[data-theme="dark"] .sidebar-form {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"] .sidebar-form label,
+[data-theme="dark"] .sidebar-form .form-group label {
+    color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .sidebar-form .form-pinned-footer,
+[data-theme="dark"] .form-pinned-footer,
+[data-theme="dark"] div[style*="background: #f1f2f6"],
+[data-theme="dark"] div[style*="background:#f1f2f6"],
+[data-theme="dark"] div[style*="background: #f8f9fa"],
+[data-theme="dark"] div[style*="background:#f8f9fa"] {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+/* 2. Khung Thủ thuật / Kỹ năng (Skills Box, Headers & Checkboxes) */
+[data-theme="dark"] .skills-box,
+[data-theme="dark"] div[class*="skills-box"],
+[data-theme="dark"] div[style*="background: #ffffff"][style*="border-radius: 6px; max-height: 300px"],
+[data-theme="dark"] div[style*="background:#ffffff"][style*="border-radius: 6px; max-height: 300px"] {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .skills-header,
+[data-theme="dark"] div[class*="skills-header"],
+[data-theme="dark"] div[style*="background:#dcdde1"],
+[data-theme="dark"] div[style*="background: #dcdde1"] {
+    background: #0b1120 !important;
+    border-color: #334155 !important;
+    color: #38bdf8 !important;
+}
+
+[data-theme="dark"] .scrollable-checkbox-list,
+[data-theme="dark"] .skills-grid.scrollable-checkbox-list,
+[data-theme="dark"] div[class*="scrollable-checkbox-list"] {
+    background: #0b1120 !important;
+    border: 1px solid #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .skills-col h4 {
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .skills-col h4.yhct {
+    color: #f87171 !important;
+}
+
+[data-theme="dark"] .skills-col h4.phcn {
+    color: #60a5fa !important;
+}
+
+[data-theme="dark"] .checkbox-item label,
+[data-theme="dark"] .checkbox-item span,
+[data-theme="dark"] .skills-col label {
+    color: #cbd5e1 !important;
+}
+
+/* 3. Thanh tìm kiếm (Search Bars) trên các tab */
+[data-theme="dark"] .patients-search-bar,
+[data-theme="dark"] .search-bar,
+[data-theme="dark"] div[class*="search-bar"],
+[data-theme="dark"] div[id*="search-bar"],
+[data-theme="dark"] div[style*="border-bottom:none;"][style*="padding: 10px;"] {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    border-bottom: none !important;
+    color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .patients-search-bar label,
+[data-theme="dark"] .search-bar label,
+[data-theme="dark"] div[style*="justify-content: space-between"] label,
+[data-theme="dark"] .schedule-compact-header label {
+    color: #38bdf8 !important;
+}
+
+/* 4. Nút lọc loại bệnh nhân (Tất cả, Nội trú, Ngoại trú) */
+[data-theme="dark"] .btn-filter-pat-type {
+    background: #0f172a !important;
+    border: 1px solid #334155 !important;
+    color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .btn-filter-pat-type:hover {
+    background: #334155 !important;
+    color: #f8fafc !important;
+}
+
+[data-theme="dark"] .btn-filter-pat-type.active {
+    background: #2563eb !important;
+    border-color: #2563eb !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 10px rgba(37, 99, 235, 0.4) !important;
+}
+
+/* 5. Flatpickr Input & Calendar Popup */
+[data-theme="dark"] input.flatpickr-input[type="text"],
+[data-theme="dark"] input.flatpickr-input,
+[data-theme="dark"] .flatpickr-input {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+}
+
+[data-theme="dark"] .flatpickr-calendar {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6) !important;
+    color: #f8fafc !important;
+}
+
+[data-theme="dark"] .flatpickr-calendar .flatpickr-months,
+[data-theme="dark"] .flatpickr-calendar .flatpickr-month,
+[data-theme="dark"] .flatpickr-calendar .flatpickr-current-month,
+[data-theme="dark"] .flatpickr-calendar .flatpickr-current-month .cur-month,
+[data-theme="dark"] .flatpickr-calendar span.flatpickr-weekday {
+    background: #1e293b !important;
+    color: #38bdf8 !important;
+    fill: #38bdf8 !important;
+}
+
+[data-theme="dark"] .flatpickr-calendar .flatpickr-day {
+    color: #cbd5e1 !important;
+    border-color: transparent !important;
+}
+
+[data-theme="dark"] .flatpickr-calendar .flatpickr-day:hover,
+[data-theme="dark"] .flatpickr-calendar .flatpickr-day.prevMonthDay:hover,
+[data-theme="dark"] .flatpickr-calendar .flatpickr-day.nextMonthDay:hover {
+    background: #334155 !important;
+    color: #f8fafc !important;
+}
+
+[data-theme="dark"] .flatpickr-calendar .flatpickr-day.selected,
+[data-theme="dark"] .flatpickr-calendar .flatpickr-day.startRange,
+[data-theme="dark"] .flatpickr-calendar .flatpickr-day.endRange {
+    background: #2563eb !important;
+    border-color: #2563eb !important;
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .flatpickr-calendar .flatpickr-day.today {
+    border-color: #38bdf8 !important;
+}
+
+/* 6. Ô nhập liệu và chọn lọc ở tất cả các tab (Inputs, Selects, Textareas) */
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="search"],
+[data-theme="dark"] input[type="password"],
+[data-theme="dark"] input[type="number"],
+[data-theme="dark"] input[type="date"],
+[data-theme="dark"] input[type="url"],
+[data-theme="dark"] input[type="email"],
+[data-theme="dark"] select,
+[data-theme="dark"] textarea,
+[data-theme="dark"] .time-input,
+[data-theme="dark"] #pat-search-input,
+[data-theme="dark"] #schedule-search-input,
+[data-theme="dark"] #sat-search-bn,
+[data-theme="dark"] #proto-search-proc-input,
+[data-theme="dark"] #search-doc-time,
+[data-theme="dark"] #search-machine-type,
+[data-theme="dark"] #search-machine-time,
+[data-theme="dark"] #doc-search-input {
+    background: #0f172a !important;
+    border: 1px solid #334155 !important;
+    color: #f8fafc !important;
+    color-scheme: dark !important;
+}
+
+[data-theme="dark"] input:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus {
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25) !important;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+    color: #64748b !important;
+}
+
+/* 7. Khung thông tin phụ trợ & Thống kê nhanh */
+[data-theme="dark"] #schedule-upcoming-container,
+[data-theme="dark"] div[style*="background: #f1f2f6; padding: 10px; border-radius: 5px"],
+[data-theme="dark"] .upcoming-item {
+    background: #0f172a !important;
+    border: 1px solid #334155 !important;
+    color: #e2e8f0 !important;
+}
+
 
 
 
