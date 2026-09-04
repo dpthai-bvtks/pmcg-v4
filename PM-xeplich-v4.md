@@ -1050,6 +1050,40 @@ git add . && git commit -m "..." && git push origin main
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.1-rev25] - 14:05 04/09/2026: Nâng cấp toàn diện Cẩm nang Hướng Dẫn Sử Dụng (hdsd.html) Đa Vai Trò & Tích hợp Nút Chuyển Đổi Chế Độ Sáng/Tối (Dark Mode) cho tất cả tài khoản
+- **Yêu cầu của người dùng**:
+  1. Xây dựng tài liệu hướng dẫn sử dụng chuyên biệt cho từng đơn vị (Cơ sở y tế / Bệnh viện - Phòng khám) và cho Super Admin (Chủ sở hữu nền tảng SaaS).
+  2. Bổ sung nút chuyển đổi chế độ Sáng / Tối (Light / Dark theme) dùng được ở tất cả các loại tài khoản (Bác sĩ, KTV, Admin đơn vị, Super Admin).
+- **Giải pháp & Các tính năng đã hoàn thiện**:
+  1. **Nâng cấp Toàn diện Trang Cẩm nang Hướng Dẫn Sử Dụng (`hdsd.html`)**:
+     - Thiết kế giao diện hiện đại với **Bộ chuyển đổi vai trò (Role Switcher)** nổi bật ở đầu trang:
+       * `🏥 Dành Cho Cơ Sở Y Tế / Phòng Khám (Đơn Vị)`: 10 chương chuyên sâu bao quát toàn bộ quy trình thiết lập 5 danh mục, tiếp nhận bệnh nhân, khai báo giờ bận/giờ ra viện, xếp lịch tự động đa kịch bản (ngày thường & Thứ 7 chuyên biệt), kiểm tra lỗi trùng lịch, in ấn phiếu điều trị, chấm công điện tử, thống kê tiền thủ thuật và vận hành ngoại tuyến.
+       * `👑 Dành Cho Super Admin (Chủ Sở Hữu SaaS)`: 8 chương quản trị vận hành kinh doanh toàn cục: Quản lý đơn vị (Tenants), cấp phép gói cước (Free, Standard, Pro, VIP), thiết lập quota nhân sự (`max_staff`) và bệnh nhân (`max_patients`), quản lý bản quyền thời gian thực (`expires_at`, `is_active`), bảo mật mật khẩu Master SHA-256, sao lưu CSDL Cloudflare D1 tập trung, giám sát Worker API & Cron Job định kỳ, cùng Checklist Onboarding 5 bước bàn giao khách hàng.
+     - **Tự động nhận diện thông minh**: Khi người dùng đang đăng nhập là `SUPER_ADMIN` mở hướng dẫn, hệ thống tự động mở tab Super Admin; khi là tài khoản đơn vị thường thì tự động mở tab Đơn vị.
+     - Tích hợp tìm kiếm nhanh theo từ khóa, lọc chương mục, mục lục cuộn động (Dynamic Active TOC), chế độ in ấn (Print) và lưu trạng thái vào `localStorage`.
+  2. **Tích hợp Hệ Thống Chế Độ Sáng / Tối (Dark / Light Theme)**:
+     - Thêm nút chuyển đổi chế độ giao diện `🌙 / ☀️` tại 3 vị trí thuận tiện:
+       * **Desktop Header**: Cạnh biểu tượng trạng thái máy chủ Cloudflare & Turso (`#theme-toggle-btn`).
+       * **Menu người dùng (Dropdown User)**: Mục `Chế độ Tối / Chế độ Sáng` trong dropdown tài khoản (`#user-menu-theme-btn`).
+       * **Mobile Header**: Nút chuyển đổi nhanh trên thanh tiêu đề di động (`#mobile-theme-toggle-btn`).
+     - Viết bộ quy tắc CSS Dark Mode toàn diện cho toàn bộ hệ thống: Bảng lịch, danh mục, form tiếp nhận, modal popup, thanh sidebar và header.
+     - Tự động ghi nhớ tùy chọn vào `localStorage` (`pm_app_theme`) và đồng bộ tức thì sang cả trang Hướng Dẫn Sử Dụng (`doc_theme`).
+  3. **Đồng bộ Phiên bản & Cache Busters**:
+     - Nâng số revision từ `4.0.1-rev24` lên `4.0.1-rev25`.
+     - Cập nhật `index.html` (CSS, JS cache busters, timestamp `14:05 04/09/2026`, `APP_VERSION`).
+     - Cập nhật `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.1-rev25'`).
+- **File sửa đổi**:
+  + `hdsd.html`
+  + `css/style.css`
+  + `js/init.js`
+  + `js/app.js`
+  + `index.html`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+
 
 
 

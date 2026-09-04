@@ -83,7 +83,7 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=4.0.1-rev24">
+    <link rel="stylesheet" href="css/style.css?v=4.0.1-rev25">
     <!-- PWA & Mobile Web App Meta Tags -->
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
@@ -91,7 +91,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.0.1-rev24">
+    <link rel="stylesheet" href="css/mobile.css?v=4.0.1-rev25">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
     <script src="js/dexie.min.js?v=3.2.6"></script>
@@ -127,6 +127,7 @@
             <span class="mobile-status-pill" id="mobile-status-pill">
                 <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#22c55e;"></span> Online
             </span>
+            <button class="mobile-header-btn" id="mobile-theme-toggle-btn" onclick="window.toggleAppTheme()" title="Chế độ Sáng / Tối">🌙</button>
             <button class="mobile-header-btn" onclick="openHdsdModal()" title="Hướng dẫn sử dụng">📖</button>
             <button class="mobile-header-btn" onclick="toggleMobileDrawer()" title="Danh mục mở rộng">☰</button>
         </div>
@@ -339,6 +340,10 @@
                                     style="cursor: pointer; padding: 3px 10px; border-radius: 14px; font-size: 11px; font-weight: 700; background: #059669; color: white; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 1px 3px rgba(5,150,105,0.25); border: none; outline: none; z-index: 100; pointer-events: auto;">
                                     <span style="display:inline-block; width:6px; height:6px; background:#4ade80; border-radius:50%; box-shadow:0 0 6px #4ade80;"></span> Cloudflare & Turso
                                 </button>
+                                <button id="theme-toggle-btn" type="button" class="theme-toggle-btn"
+                                    title="Chuyển đổi Chế độ Sáng / Tối" onclick="window.toggleAppTheme()">
+                                    <span id="theme-toggle-icon">🌙</span>
+                                </button>
                             </div>
 
                             <div class="user-menu-dropdown-container" id="user-menu-container"
@@ -360,8 +365,16 @@
                                     </a>
                                     <div id="user-menu-divider"
                                         style="display: none; height: 1px; background: #edf2f7; margin: 4px 0;"></div>
+
+                                    <!-- 🌙 2. CHUYỂN ĐỔI CHẾ ĐỘ SÁNG / TỐI (Tất cả tài khoản) -->
+                                    <a href="javascript:void(0)" id="user-menu-theme-btn"
+                                        style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; font-size: 11.5px; color: #2c3e50; text-decoration: none; font-weight: 700; transition: background 0.15s;"
+                                        onclick="window.toggleAppTheme()">
+                                        <span style="font-size: 13px;" id="dropdown-theme-icon">🌙</span> <span id="dropdown-theme-text">Chế độ Tối</span>
+                                    </a>
+                                    <div style="height: 1px; background: #edf2f7; margin: 4px 0;"></div>
                                     
-                                    <!-- 🔑 2. ĐỔI MẬT KHẨU NHANH (Tất cả tài khoản) -->
+                                    <!-- 🔑 3. ĐỔI MẬT KHẨU NHANH (Tất cả tài khoản) -->
                                     <a href="javascript:void(0)" id="user-menu-change-pw-btn"
                                         style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; font-size: 11.5px; color: #2c3e50; text-decoration: none; font-weight: 700; transition: background 0.15s;"
                                         onclick="window.openChangePasswordModal(event)">
@@ -3274,7 +3287,7 @@
 
                     <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 4.0.1</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 13:40 04/09/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 14:05 04/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -3559,12 +3572,13 @@
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span style="font-size: 24px;">📖</span>
                     <div>
-                        <h3 style="margin: 0; font-size: 16px; font-weight: 700; letter-spacing: 0.5px;">HƯỚNG DẪN SỬ DỤNG PHẦN MỀM T.I.M.E.S SYSTEM (v3)</h3>
-                        <p style="margin: 2px 0 0 0; font-size: 12px; opacity: 0.9;">Cẩm nang toàn diện 12 chương xếp lịch & tối ưu công suất</p>
+                        <h3 style="margin: 0; font-size: 16px; font-weight: 700; letter-spacing: 0.5px;">HƯỚNG DẪN SỬ DỤNG HỆ THỐNG T.I.M.E.S SYSTEM (v4 SaaS)</h3>
+                        <p style="margin: 2px 0 0 0; font-size: 12px; opacity: 0.9;">Cẩm nang toàn diện dành cho Cơ sở y tế & Quản trị viên Super Admin</p>
                     </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <a href="hdsd.html" target="_blank"
+                    <a href="hdsd.html" target="_blank" id="btn-hdsd-newtab"
+                        onclick="this.href='hdsd.html?role=' + ((window.currentUserRole === 'SUPER_ADMIN') ? 'super_admin' : 'tenant') + '&theme=' + (document.documentElement.getAttribute('data-theme')||'light');"
                         style="text-decoration: none; padding: 5px 12px; background: rgba(255, 255, 255, 0.2); color: #fff; border-radius: 5px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; transition: background 0.2s;"
                         title="Mở tài liệu sang tab mới">
                         <span>↗</span> Mở Tab Mới
@@ -3714,18 +3728,18 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.0.1-rev24"></script>
-    <script src="js/ai-scheduler.js?v=4.0.1-rev24"></script>
-    <script src="js/cp-solver.js?v=4.0.1-rev24"></script>
-    <script src="js/scheduler-engine.js?v=4.0.1-rev24"></script>
-    <script src="js/app.js?v=4.0.1-rev24"></script>
-    <script src="js/init.js?v=4.0.1-rev24"></script>
-    <script src="js/sync.js?v=4.0.1-rev24"></script>
-    <script src="js/thongke.js?v=4.0.1-rev24"></script>
+    <script src="js/offline-sync-engine.js?v=4.0.1-rev25"></script>
+    <script src="js/ai-scheduler.js?v=4.0.1-rev25"></script>
+    <script src="js/cp-solver.js?v=4.0.1-rev25"></script>
+    <script src="js/scheduler-engine.js?v=4.0.1-rev25"></script>
+    <script src="js/app.js?v=4.0.1-rev25"></script>
+    <script src="js/init.js?v=4.0.1-rev25"></script>
+    <script src="js/sync.js?v=4.0.1-rev25"></script>
+    <script src="js/thongke.js?v=4.0.1-rev25"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>
-    const APP_VERSION = '4.0.1-rev24';
+    const APP_VERSION = '4.0.1-rev25';
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             // Unregister old service workers if version changed

@@ -12478,8 +12478,20 @@ window.populateMonthYearDropdown = populateMonthYearDropdown;
 window.openHdsdModal = function() {
     const modal = document.getElementById('modal-hdsd-viewer');
     const iframe = document.getElementById('hdsd-modal-iframe');
-    if (iframe && (!iframe.src || iframe.src === 'about:blank' || iframe.src.endsWith('about:blank'))) {
-        iframe.src = 'hdsd.html?v=3.2.0';
+    let userRole = 'tenant';
+    try {
+        const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
+        if (sess && sess.role === 'SUPER_ADMIN') {
+            userRole = 'super_admin';
+        }
+    } catch(e) {}
+    const curTheme = document.documentElement.getAttribute('data-theme') || localStorage.getItem('pm_app_theme') || 'light';
+    const targetUrl = `hdsd.html?role=${userRole}&theme=${curTheme}&v=4.0.1-rev25`;
+
+    if (iframe) {
+        if (!iframe.src || iframe.src === 'about:blank' || !iframe.src.includes(`role=${userRole}`)) {
+            iframe.src = targetUrl;
+        }
     }
     if (modal) {
         modal.style.display = 'flex';

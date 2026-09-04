@@ -33,10 +33,58 @@ window.updateAppHeader = function(unitCode, role) {
 };
 
 /* ==========================================
+   🌙 CHẾ ĐỘ SÁNG / TỐI (DARK / LIGHT THEME)
+   ========================================== */
+window.applyAppTheme = function(theme) {
+    const isDark = (theme === 'dark');
+    document.documentElement.setAttribute('data-theme', theme);
+    if (document.body) document.body.setAttribute('data-theme', theme);
+    localStorage.setItem('pm_app_theme', theme);
+    localStorage.setItem('doc_theme', theme);
+
+    const icon = isDark ? '☀️' : '🌙';
+    const text = isDark ? 'Chế độ Sáng' : 'Chế độ Tối';
+
+    const desktopIcon = document.getElementById('theme-toggle-icon');
+    if (desktopIcon) desktopIcon.innerText = icon;
+
+    const mobileBtn = document.getElementById('mobile-theme-toggle-btn');
+    if (mobileBtn) mobileBtn.innerText = icon;
+
+    const dropIcon = document.getElementById('dropdown-theme-icon');
+    if (dropIcon) dropIcon.innerText = icon;
+
+    const dropText = document.getElementById('dropdown-theme-text');
+    if (dropText) dropText.innerText = text;
+};
+
+window.initAppTheme = function() {
+    let savedTheme = 'light';
+    try {
+        savedTheme = localStorage.getItem('pm_app_theme') || localStorage.getItem('doc_theme') || 'light';
+    } catch(e) {}
+    window.applyAppTheme(savedTheme);
+};
+
+window.toggleAppTheme = function() {
+    const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    const next = (current === 'dark') ? 'light' : 'dark';
+    window.applyAppTheme(next);
+};
+
+// Kích hoạt tức thì ngay khi script khởi tạo để tránh chớp màn hình trắng
+try {
+    const preTheme = localStorage.getItem('pm_app_theme') || localStorage.getItem('doc_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', preTheme);
+} catch(e) {}
+
+/* ==========================================
    T.I.M.E.S SYSTEM - INITIALIZATION & THEME
    ========================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
+    window.initAppTheme();
+
     // 🏢 Khôi phục thông tin Mã Đơn Vị & Thương Hiệu đa bệnh viện
     let hasValidSession = false;
     try {
