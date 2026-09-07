@@ -6579,21 +6579,232 @@ transition: box-shadow 0.3s;
     color: #64748b !important;
 }
 
+/* --------------------------------------------------------------------------
+   🌙 HOÀN THIỆN GIAO DIỆN MODALS, POPUPS, ALERTS, CONFIRMS & OVERLAYS TRONG DARK THEME
+   -------------------------------------------------------------------------- */
 [data-theme="dark"] .modal-content,
 [data-theme="dark"] .modal-dialog,
 [data-theme="dark"] .popup-content,
 [data-theme="dark"] div[id^="modal-"] > div,
 [data-theme="dark"] div[id*="Modal"] > div,
+[data-theme="dark"] #custom-confirm-modal > div,
+[data-theme="dark"] #global-custom-alert > div,
+[data-theme="dark"] #custom-success-popup > div,
+[data-theme="dark"] #tab-context-menu,
+[data-theme="dark"] #modal-tenant-form > div,
+[data-theme="dark"] #modal-protocol-editor > div,
+[data-theme="dark"] #modal-admin-employee > div,
 [data-theme="dark"] #modal-hdsd-viewer > div,
+[data-theme="dark"] #modal-doc-lookup > div,
+[data-theme="dark"] #modal-unscheduled-advisor > div,
 [data-theme="dark"] #modal-change-password > div,
 [data-theme="dark"] #modal-server-status > div,
 [data-theme="dark"] #modal-config-gas > div,
-[data-theme="dark"] #modal-doc-lookup > div,
-[data-theme="dark"] #modal-unscheduled-advisor > div {
+[data-theme="dark"] #strategyModal > div {
     background: #1e293b !important;
     color: #e2e8f0 !important;
     border: 1px solid #334155 !important;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7) !important;
+}
+
+/* 1. Hộp thoại xác nhận (Custom Confirm Modal) */
+[data-theme="dark"] #custom-confirm-modal > div {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+}
+[data-theme="dark"] #confirm-title {
+    color: #38bdf8 !important;
+}
+[data-theme="dark"] #confirm-message {
+    color: #cbd5e1 !important;
+}
+
+/* 2. Hộp thoại thông báo toàn cục (Global Custom Alert) */
+[data-theme="dark"] #global-custom-alert > div {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+}
+[data-theme="dark"] #gca-title {
+    color: #38bdf8 !important;
+}
+[data-theme="dark"] #gca-message {
+    color: #cbd5e1 !important;
+}
+
+/* 3. Popup thành công xếp lịch (Custom Success Popup) */
+[data-theme="dark"] #custom-success-popup > div {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+}
+[data-theme="dark"] #custom-popup-content {
+    background: #0f172a !important;
+    color: #e2e8f0 !important;
+    border: 1px solid #334155 !important;
+}
+
+/* 4. Menu ngữ cảnh chuột phải vào Tab (Tab Context Menu) */
+[data-theme="dark"] #tab-context-menu {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+}
+[data-theme="dark"] #tab-context-title {
+    color: #94a3b8 !important;
+    border-bottom: 1px solid #334155 !important;
+}
+[data-theme="dark"] .tab-context-item {
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] .tab-context-item:hover {
+    background: #334155 !important;
+    color: #38bdf8 !important;
+}
+
+/* 5. Cố vấn giải cứu ca rớt (Smart Unscheduled Advisor) */
+[data-theme="dark"] #advisor-modal-body {
+    background: #0f172a !important;
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] .rescue-card {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+[data-theme="dark"] .rescue-card:hover {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.2) !important;
+}
+[data-theme="dark"] .rescue-card-header {
+    border-bottom-color: #334155 !important;
+}
+[data-theme="dark"] .rescue-pat-name {
+    color: #f8fafc !important;
+}
+[data-theme="dark"] .rescue-proc-name {
+    color: #60a5fa !important;
+}
+[data-theme="dark"] .rescue-cause-detail {
+    background: #0f172a !important;
+    color: #cbd5e1 !important;
+    border-left: 4px solid #3b82f6 !important;
+}
+[data-theme="dark"] .rescue-advice-item {
+    background: #151f2e !important;
+    border: 1.5px solid #334155 !important;
+}
+[data-theme="dark"] .rescue-advice-item:hover {
+    border-color: #38bdf8 !important;
+    background: #1e293b !important;
+}
+[data-theme="dark"] .rescue-advice-title {
+    color: #38bdf8 !important;
+}
+[data-theme="dark"] .rescue-advice-desc {
+    color: #94a3b8 !important;
+}
+
+/* 6. Modal Tra Cứu Văn Bản & BHXH (Doc Lookup) */
+[data-theme="dark"] #modal-doc-lookup > div {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+}
+[data-theme="dark"] #modal-doc-lookup div[style*="background: #f8fafc"],
+[data-theme="dark"] #modal-doc-lookup div[style*="background:#f8fafc"] {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] #modal-doc-lookup div[style*="background: #ffffff"],
+[data-theme="dark"] #modal-doc-lookup div[style*="background:#ffffff"] {
+    background: #1e293b !important;
+}
+[data-theme="dark"] #doc-admin-editor-panel {
+    background: #0f172a !important;
+    border-bottom: 2px solid #1e3a8a !important;
+}
+[data-theme="dark"] #doc-editor-title {
+    color: #38bdf8 !important;
+}
+[data-theme="dark"] #doc-filter-agency {
+    background: #0f172a !important;
+    color: #f8fafc !important;
+    border-color: #334155 !important;
+}
+[data-theme="dark"] #modal-doc-lookup table thead tr,
+[data-theme="dark"] #modal-doc-lookup table thead th {
+    background: #0f172a !important;
+    color: #38bdf8 !important;
+    border-color: #334155 !important;
+}
+[data-theme="dark"] #modal-doc-lookup table tbody tr td {
+    background: #1e293b !important;
+    color: #e2e8f0 !important;
+    border-bottom: 1px solid #334155 !important;
+}
+[data-theme="dark"] #modal-doc-lookup table tbody tr:hover td {
+    background: #253349 !important;
+    color: #ffffff !important;
+}
+
+/* 7. Modal Trình Biên Tập Phác Đồ (Protocol Editor) */
+[data-theme="dark"] #modal-protocol-editor > div {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] #modal-protocol-title {
+    color: #38bdf8 !important;
+}
+[data-theme="dark"] #modal-protocol-editor div[style*="background: #f8fafc"],
+[data-theme="dark"] #modal-protocol-editor div[style*="background:#f8fafc"] {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+}
+[data-theme="dark"] #modal-protocol-procs-yhct,
+[data-theme="dark"] #modal-protocol-procs-phcn {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+}
+[data-theme="dark"] #modal-protocol-editor label {
+    color: #cbd5e1 !important;
+}
+
+/* 8. Modal Quản Lý Nhân Sự & Quản Lý Đơn Vị (Tenants) */
+[data-theme="dark"] #modal-admin-employee > div,
+[data-theme="dark"] #modal-tenant-form > div {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] #modal-admin-emp-title,
+[data-theme="dark"] #modal-tenant-title {
+    color: #38bdf8 !important;
+}
+[data-theme="dark"] #modal-admin-employee label,
+[data-theme="dark"] #modal-tenant-form label {
+    color: #cbd5e1 !important;
+}
+
+/* 9. Modal Trạng Thái Server, Đổi Mật Khẩu, Cấu Hình GAS */
+[data-theme="dark"] #modal-change-password > div,
+[data-theme="dark"] #modal-server-status > div,
+[data-theme="dark"] #modal-config-gas > div {
+    background: #1e293b !important;
+    border: 1px solid #334155 !important;
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] #modal-server-status h3,
+[data-theme="dark"] #modal-change-password h3,
+[data-theme="dark"] #modal-config-gas h3 {
+    color: #38bdf8 !important;
+}
+[data-theme="dark"] #modal-server-status div[style*="background: #f8fafc"],
+[data-theme="dark"] #modal-server-status div[style*="background:#f8fafc"],
+[data-theme="dark"] #modal-config-gas div[style*="background: #f8fafc"],
+[data-theme="dark"] #modal-config-gas div[style*="background:#f8fafc"] {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: #cbd5e1 !important;
 }
 
 [data-theme="dark"] .modal-header {

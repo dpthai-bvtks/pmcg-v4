@@ -11470,12 +11470,13 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (titleEl) {
                     titleEl.innerText = title;
                     titleEl.style.fontSize = '20px';
-                    titleEl.style.color = '#333';
+                    titleEl.style.color = '';
                     titleEl.style.fontWeight = 'bold';
                     titleEl.style.margin = '0 0 10px 0';
                 }
                 if (msgEl) {
                     msgEl.style.display = 'block';
+                    msgEl.style.color = '';
                     msgEl.innerHTML = message;
                 }
                 if (btn) btn.style.backgroundColor = btnColor;
@@ -12902,7 +12903,7 @@ window.openHdsdModal = function() {
         }
     } catch(e) {}
     const curTheme = document.documentElement.getAttribute('data-theme') || localStorage.getItem('pm_app_theme') || 'light';
-    const targetUrl = `hdsd.html?role=${userRole}&theme=${curTheme}&v=4.0.2-rev3`;
+    const targetUrl = `hdsd.html?role=${userRole}&theme=${curTheme}&v=4.0.2-rev4`;
 
     if (iframe) {
         if (!iframe.src || iframe.src === 'about:blank' || !iframe.src.includes(`role=${userRole}`)) {
@@ -13752,3 +13753,36 @@ window.submitChangePassword = function() {
         alert('❌ Lỗi kết nối máy chủ: ' + (err.message || String(err)));
     });
 };
+
+// ============================================================
+// ⏰ TỰ ĐỘNG THEO DÕI & ĐỒNG BỘ CHỐT SỔ ĐÁM MÂY (CLIENT-SIDE LISTENER)
+// ============================================================
+(function() {
+    let lastCheckedMinute = -1;
+    setInterval(() => {
+        try {
+            const now = new Date();
+            const currentMin = now.getMinutes();
+            if (currentMin === lastCheckedMinute) return;
+            lastCheckedMinute = currentMin;
+
+            const chotSoEl = document.getElementById("admin-chotso-time");
+            const targetTime = chotSoEl && chotSoEl.value ? chotSoEl.value.trim() : "16:20";
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            const currentTimeStr = `${hh}:${mm}`;
+
+            // Khi đến hoặc qua giờ chốt sổ, kiểm tra với server
+            if (currentTimeStr >= targetTime && !window._chotSoDone) {
+                if (typeof callApi === 'function') {
+                    callApi('autoChotSo', [], res => {
+                        if (res && res.status === 'success') {
+                            console.log("[Client Auto-ChotSo]: Đồng bộ kiểm tra chốt sổ tự động với máy chủ thành công.");
+                        }
+                    }, () => {});
+                }
+            }
+        } catch(e) {}
+    }, 30000);
+})();
+

@@ -1446,3 +1446,36 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `index.html` (cập nhật version v4.0.2-rev3, footer timestamp 09:15 07/09/2026)
   + `sw.js` (cập nhật CACHE_NAME v4.0.2-rev3)
   + `PM-xeplich-v4.md` (nhật ký phát triển)
+
+### Chốt Sổ Tự Động 100% Độc Lập Trên Đám Mây & Hoàn Thiện Giao Diện Sáng / Tối (07/09/2026 - v4.0.2-rev4)
+- **Yêu cầu của người dùng**:
+  1. Chốt sổ tự động 100% độc lập trên đám mây (kể cả khi tắt hết máy tính) theo giờ đã cài đặt trên hệ thống (có thể thay đổi giờ tùy thích).
+  2. Rà soát, chuẩn hóa toàn bộ các modal popup, bảng biểu, nút bấm, menu và form khi chuyển đổi qua lại giữa chế độ Sáng và Tối (Dark / Light mode).
+- **Phân tích nguyên nhân & Giải pháp**:
+  + *Chốt sổ tự động đám mây*:
+    - Trước đây, Worker chỉ kích hoạt `checkAutoChotSo` khi có request API gửi lên từ trình duyệt. Nếu nhân viên tắt máy trước giờ chốt sổ (ví dụ 16:15 khi giờ chốt là 16:20) thì không có request nào kích hoạt chốt sổ ngầm.
+    - Cấu hình Cloudflare Worker Cron trong `wrangler.toml` thành `*/10 * * * *` (chạy ngầm mỗi 10 phút trên mạng lưới Cloudflare toàn cầu, không tốn tài nguyên).
+    - Cập nhật hàm `scheduled()` trong `backend/src/index.js` tự động quét danh sách toàn bộ các đơn vị đang hoạt động (`tenants`), đọc giờ chốt sổ linh hoạt theo `chotSoTime` của từng đơn vị trong bảng `cai_dat` (mặc định 16:20 hoặc giờ tùy chỉnh).
+    - Bổ sung cơ chế *Safety Catch-up* trong `checkAutoChotSo`: tự động phát hiện và chốt sổ dữ liệu ngày cũ tồn đọng trong `lich_trinh` (`date < todayDateStr`) để sáng hôm sau nhân viên mở máy lên luôn có bảng sạch sẽ sẵn sàng cho ngày mới mà không bị popup cảnh báo.
+    - Tách biệt và bảo toàn tiến trình sao lưu Google Drive vào khung 17:00 VN hàng ngày.
+    - Bổ sung bộ lắng nghe định kỳ phía Client (`js/app.js`) để đồng bộ trạng thái khi chốt sổ diễn ra.
+  + *Hoàn thiện giao diện Sáng / Tối (Dark / Light Mode)*:
+    - Rà soát toàn bộ các modal, popup và overlay có inline style cứng: `#custom-confirm-modal`, `#global-custom-alert`, `#custom-success-popup`, `#tab-context-menu`, `#modal-unscheduled-advisor`, `#modal-protocol-editor`, `#modal-admin-employee`, `#modal-tenant-form`, `#modal-doc-lookup`, `#modal-change-password`, `#modal-server-status`, `#modal-config-gas`, `#strategyModal`.
+    - Bổ sung đầy đủ CSS Dark Theme trong `css/style.css` ghi đè toàn diện: nền tối cao cấp (`#1e293b` / `#151f2e`), viền `#334155`, đổ bóng 3D, tiêu đề màu Sky (`#38bdf8`), nội dung màu xám bạc (`#cbd5e1`), các khung con màu `#0f172a`.
+    - Bổ sung Dark Theme đầy đủ cho thẻ cố vấn giải cứu ca rớt (`.rescue-card`, `.rescue-cause-detail`, `.rescue-advice-item`).
+    - Chuẩn hóa toàn bộ bảng danh sách văn bản và form nhập trong modal Tra cứu văn bản BHXH (`#modal-doc-lookup`).
+    - Bỏ gán màu chữ cứng `#333` trong `showCustomAlert()` (`js/app.js`) để tiêu đề và nội dung tự động nhận màu sắc theo theme Sáng/Tối.
+  + *Đồng bộ phiên bản theo RULES.md*:
+    - Giữ phiên bản chính `4.0.2`, nâng revision lên `4.0.2-rev4`.
+    - Cập nhật footer timestamp thành `09:50 07/09/2026`.
+    - Đồng bộ `CACHE_NAME = 'pmcg-v4-cache-4.0.2-rev4'` trong `sw.js`.
+    - Đồng bộ cache buster `?v=4.0.2-rev4` trên toàn bộ link CSS và thẻ script trong `index.html`.
+- **File sửa đổi**:
+  + `backend/wrangler.toml` (cấu hình Cloudflare Cron `*/10 * * * *`)
+  + `backend/src/index.js` (cập nhật `scheduled`, `checkAutoChotSo`, `autoChotSo`)
+  + `css/style.css` (bổ sung toàn diện Dark Theme cho tất cả modals, popups, tables, context menu, rescue cards)
+  + `js/app.js` (showCustomAlert, client-side auto-chotso listener, cache buster URL)
+  + `index.html` (footer timestamp 09:50 07/09/2026, version 4.0.2-rev4, cache buster)
+  + `sw.js` (CACHE_NAME v4.0.2-rev4)
+  + `PM-xeplich-v4.md` (nhật ký phát triển)
+

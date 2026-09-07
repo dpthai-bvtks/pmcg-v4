@@ -8,7 +8,7 @@ binding = "DB"
 database_name = "pmcg-db"
 database_id = "361c6030-0826-46e1-8a94-2f951f98a022"
 
-# CRON Trigger tự động chạy backup lúc 17:00 hàng ngày (10:00 UTC)
+# CRON Trigger tự động kiểm tra chốt sổ ngầm mỗi 10 phút & backup 17:00 hàng ngày
 [triggers]
-crons = ["0 10 * * *"]
+crons = ["*/10 * * * *"]
 

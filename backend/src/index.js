@@ -920,73 +920,93 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
-    console.log("[Worker CRON]: Executing daily automated backup trigger...");
+    console.log("[Worker CRON]: Scheduled event triggered on Cloudflare Edge...");
     try {
       const db = getDatabase(env);
       if (!db) return;
       await ensureSchema(db);
 
-      const rec = await db.prepare("SELECT value FROM cai_dat WHERE key = 'gdrive_webhook_url'").first();
-      const webhookUrl = rec ? String(rec.value).trim() : "";
-      if (!webhookUrl || !webhookUrl.startsWith("http")) {
-        console.log("[Worker CRON]: No valid Google Drive Webhook URL configured. Skipping remote backup.");
-        return;
+      // 1. 🏢 TỰ ĐỘNG CHỐT SỔ ĐỘC LẬP TRÊN ĐÁM MÂY (MULTI-TENANT SAAS)
+      try {
+        const tenantRes = await db.prepare("SELECT unit_code FROM tenants WHERE is_active = 1 UNION SELECT 'bvtks-cs2' AS unit_code").all().catch(() => ({ results: [] }));
+        const unitCodes = (tenantRes.results || []).map(r => r.unit_code).filter(Boolean);
+        if (unitCodes.length === 0) unitCodes.push("bvtks-cs2");
+        for (const uCode of unitCodes) {
+          await checkAutoChotSo(db, uCode);
+        }
+      } catch(eAuto) {
+        console.error("[Worker CRON Auto-ChotSo Error]:", eAuto);
+        await checkAutoChotSo(db, "bvtks-cs2");
       }
 
-      const [
-        tai_khoan, nhan_su, may_moc, phong, thu_thuat,
-        benh_nhan, lich_trinh, lich_su, gio_ban_cu,
-        cham_cong, thong_ke, tim_ranh, tai_lieu, cai_dat
-      ] = await Promise.all([
-        db.prepare("SELECT * FROM tai_khoan").all(),
-        db.prepare("SELECT * FROM nhan_su").all(),
-        db.prepare("SELECT * FROM may_moc").all(),
-        db.prepare("SELECT * FROM phong").all(),
-        db.prepare("SELECT * FROM thu_thuat").all(),
-        db.prepare("SELECT * FROM benh_nhan").all(),
-        db.prepare("SELECT * FROM lich_trinh").all(),
-        db.prepare("SELECT * FROM lich_su").all(),
-        db.prepare("SELECT * FROM gio_ban_cu").all(),
-        db.prepare("SELECT * FROM cham_cong").all(),
-        db.prepare("SELECT * FROM thong_ke").all(),
-        db.prepare("SELECT * FROM tim_ranh").all(),
-        db.prepare("SELECT * FROM tai_lieu").all(),
-        db.prepare("SELECT * FROM cai_dat").all()
-      ]);
+      // 2. 💾 TỰ ĐỘNG SAO LƯU GOOGLE DRIVE VÀO KHUNG 17:00 GIỜ VN (10:00 UTC)
+      const nowVN = new Date(Date.now() + 7 * 60 * 60 * 1000);
+      const hh = nowVN.getUTCHours();
+      const mm = nowVN.getUTCMinutes();
+      // Chạy backup nếu ở khung 17h (17:00 - 17:15 VN)
+      if (hh === 17 && mm < 15) {
+        console.log("[Worker CRON]: Executing daily automated backup trigger at 17:00 VN...");
+        const rec = await db.prepare("SELECT value FROM cai_dat WHERE key = 'gdrive_webhook_url'").first();
+        const webhookUrl = rec ? String(rec.value).trim() : "";
+        if (!webhookUrl || !webhookUrl.startsWith("http")) {
+          console.log("[Worker CRON]: No valid Google Drive Webhook URL configured. Skipping remote backup.");
+        } else {
+          const [
+            tai_khoan, nhan_su, may_moc, phong, thu_thuat,
+            benh_nhan, lich_trinh, lich_su, gio_ban_cu,
+            cham_cong, thong_ke, tim_ranh, tai_lieu, cai_dat
+          ] = await Promise.all([
+            db.prepare("SELECT * FROM tai_khoan").all(),
+            db.prepare("SELECT * FROM nhan_su").all(),
+            db.prepare("SELECT * FROM may_moc").all(),
+            db.prepare("SELECT * FROM phong").all(),
+            db.prepare("SELECT * FROM thu_thuat").all(),
+            db.prepare("SELECT * FROM benh_nhan").all(),
+            db.prepare("SELECT * FROM lich_trinh").all(),
+            db.prepare("SELECT * FROM lich_su").all(),
+            db.prepare("SELECT * FROM gio_ban_cu").all(),
+            db.prepare("SELECT * FROM cham_cong").all(),
+            db.prepare("SELECT * FROM thong_ke").all(),
+            db.prepare("SELECT * FROM tim_ranh").all(),
+            db.prepare("SELECT * FROM tai_lieu").all(),
+            db.prepare("SELECT * FROM cai_dat").all()
+          ]);
 
-      const backupData = {
-        version: "v3.6",
-        exportDate: new Date().toISOString(),
-        tables: {
-          tai_khoan: tai_khoan.results || [],
-          nhan_su: nhan_su.results || [],
-          may_moc: may_moc.results || [],
-          phong: phong.results || [],
-          thu_thuat: thu_thuat.results || [],
-          benh_nhan: benh_nhan.results || [],
-          lich_trinh: lich_trinh.results || [],
-          lich_su: lich_su.results || [],
-          gio_ban_cu: gio_ban_cu.results || [],
-          cham_cong: cham_cong.results || [],
-          thong_ke: thong_ke.results || [],
-          tim_ranh: tim_ranh.results || [],
-          tai_lieu: tai_lieu.results || [],
-          cai_dat: cai_dat.results || []
+          const backupData = {
+            version: "v3.6",
+            exportDate: new Date().toISOString(),
+            tables: {
+              tai_khoan: tai_khoan.results || [],
+              nhan_su: nhan_su.results || [],
+              may_moc: may_moc.results || [],
+              phong: phong.results || [],
+              thu_thuat: thu_thuat.results || [],
+              benh_nhan: benh_nhan.results || [],
+              lich_trinh: lich_trinh.results || [],
+              lich_su: lich_su.results || [],
+              gio_ban_cu: gio_ban_cu.results || [],
+              cham_cong: cham_cong.results || [],
+              thong_ke: thong_ke.results || [],
+              tim_ranh: tim_ranh.results || [],
+              tai_lieu: tai_lieu.results || [],
+              cai_dat: cai_dat.results || []
+            }
+          };
+
+          const dateStr = new Date().toISOString().slice(0, 10);
+          const filename = `PMCG_D1_Backup_AUTO_${dateStr}.json`;
+
+          await fetch(webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              filename: filename,
+              content: JSON.stringify(backupData)
+            })
+          });
+          console.log(`[Worker CRON]: Automated backup uploaded to Google Drive successfully (${filename})!`);
         }
-      };
-
-      const dateStr = new Date().toISOString().slice(0, 10);
-      const filename = `PMCG_D1_Backup_AUTO_${dateStr}.json`;
-
-      await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          filename: filename,
-          content: JSON.stringify(backupData)
-        })
-      });
-      console.log(`[Worker CRON]: Automated backup uploaded to Google Drive successfully (${filename})!`);
+      }
     } catch(err) {
       console.error("[Worker CRON Error]:", err);
     }
@@ -3579,7 +3599,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     }
 
     case "autoChotSo": {
-      await checkAutoChotSo(db);
+      await checkAutoChotSo(db, unitCode);
       return success({ message: "Đã kiểm tra chốt sổ tự động!" });
     }
 
@@ -3663,32 +3683,41 @@ async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
     const month = String(nowVN.getUTCMonth() + 1).padStart(2, '0');
     const yyyy = nowVN.getUTCFullYear();
     const todayDateStr = `${dd}/${month}/${yyyy}`;
+    const todayYMD = `${yyyy}-${month}-${dd}`;
 
     const keysRes = await db.prepare("SELECT key, value FROM cai_dat WHERE unit_code = ? AND key IN ('chotSoTime', 'lastChotSoDate')").bind(unitCode).all();
     const settings = {};
     (keysRes.results || []).forEach(r => { settings[r.key] = r.value; });
 
-    const chotSoTime = settings.chotSoTime ? String(settings.chotSoTime).trim() : "";
+    // Giờ chốt sổ linh hoạt theo cấu hình đơn vị (mặc định 16:20)
+    let chotSoTime = settings.chotSoTime ? String(settings.chotSoTime).trim() : "16:20";
+    if (!chotSoTime.includes(':')) chotSoTime = "16:20";
     const lastChotSoDate = settings.lastChotSoDate ? String(settings.lastChotSoDate).trim() : "";
 
-    if (!chotSoTime || !chotSoTime.includes(':')) {
-      return;
-    }
-
-    // Nếu hôm nay đã chốt sổ rồi thì không chốt lại
-    if (lastChotSoDate === todayDateStr) {
-      return;
-    }
-
-    // Chỉ tự động chốt sổ hôm nay khi đã đến hoặc qua giờ chốt sổ (ví dụ: 17:00)
-    // Trong giờ làm việc buổi sáng/chiều trước giờ chốt sổ, TUYỆT ĐỐI không chốt sổ tự động để tránh xóa nhầm dữ liệu đang nhập!
     let shouldClose = false;
-    if (currentHourMin >= chotSoTime) {
+    let reason = "";
+
+    // 1. Kích hoạt chốt sổ hôm nay khi đã đến hoặc qua giờ chốt sổ (ví dụ: >= 16:20)
+    if (lastChotSoDate !== todayDateStr && currentHourMin >= chotSoTime) {
       shouldClose = true;
+      reason = `Đã đến giờ chốt sổ hàng ngày (${currentHourMin} >= ${chotSoTime})`;
+    }
+
+    // 2. Cơ chế hồi phục an toàn (Safety Catch-up):
+    // Nếu trong lich_trinh còn tồn đọng lịch của ngày cũ (quá khứ) chưa được chốt (ví dụ: tắt máy sớm, nghỉ lễ/cuối tuần)
+    if (!shouldClose) {
+      const pastSched = await db.prepare(
+        "SELECT date FROM lich_trinh WHERE unit_code = ? AND date IS NOT NULL AND TRIM(date) != '' AND date != ? AND date != ? LIMIT 1"
+      ).bind(unitCode, todayDateStr, todayYMD).first().catch(() => null);
+
+      if (pastSched && pastSched.date) {
+        shouldClose = true;
+        reason = `Tồn đọng lịch ngày cũ (${pastSched.date}) chưa chốt`;
+      }
     }
 
     if (shouldClose) {
-      console.log(`[Worker Auto-ChotSo]: Triggering auto closure for unit '${unitCode}'. today=${todayDateStr}, lastClosed=${lastChotSoDate}, time=${currentHourMin}, chotSoTime=${chotSoTime}`);
+      console.log(`[Worker Auto-ChotSo]: Triggering auto closure for unit '${unitCode}'. Lý do: ${reason}. today=${todayDateStr}, lastClosed=${lastChotSoDate}, time=${currentHourMin}, chotSoTime=${chotSoTime}`);
       
       const statements = [
         db.prepare("INSERT INTO lich_su (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE unit_code = ?").bind(unitCode),
