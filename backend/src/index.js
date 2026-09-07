@@ -3467,8 +3467,6 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           }
         });
       }
-      const jsonStr = typeof data === "string" ? data : JSON.stringify(data);
-      
       // Chuẩn hoá month_year về duy nhất định dạng chuẩn YYYY-MM (VD: 2026-08)
       let myStandard = my || new Date().toISOString().substring(0, 7);
       const cleanS = myStandard.replace('/', '-').replace('_', '-');
@@ -3480,6 +3478,38 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           myStandard = `${parts[1]}-${parts[0].padStart(2, '0')}`;
         }
       }
+
+      // BẢO VỆ DỮ LIỆU CHẤM CÔNG (Server-side Safe Merge):
+      // Đọc bản ghi hiện có từ CSDL để hợp nhất an toàn, không để tình trạng một client gửi thiếu làm xóa mất ngày của các nhân sự khác
+      try {
+        const uUnits = (unitCode === "bvtks-cs2" || unitCode === "bvtks_cs2") ? ["bvtks-cs2", "bvtks_cs2"] : [unitCode];
+        const uPlaceholders = uUnits.map(() => '?').join(',');
+        const existingRow = await db.prepare(`SELECT data_json FROM cham_cong WHERE unit_code IN (${uPlaceholders}) AND month_year = ? ORDER BY updated_at DESC LIMIT 1`).bind(...uUnits, myStandard).first();
+        if (existingRow && existingRow.data_json) {
+          const parsedExisting = JSON.parse(existingRow.data_json);
+          if (parsedExisting && typeof parsedExisting === 'object') {
+            const merged = { ...parsedExisting };
+            for (const emp in data) {
+              if (!merged[emp]) merged[emp] = {};
+              if (data[emp].heSo !== undefined) merged[emp].heSo = data[emp].heSo;
+              for (const d in data[emp]) {
+                if (d === 'heSo') continue;
+                const v = data[emp][d];
+                if (v !== undefined && v !== null && v !== '') {
+                  merged[emp][d] = v;
+                } else if (v === '') {
+                  delete merged[emp][d];
+                }
+              }
+            }
+            data = merged;
+          }
+        }
+      } catch(eMerge) {
+        console.warn("saveChamCong merge fallback:", eMerge);
+      }
+
+      const jsonStr = typeof data === "string" ? data : JSON.stringify(data);
 
       try {
         await db.prepare(`

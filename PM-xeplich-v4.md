@@ -1689,6 +1689,44 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `js/app.js` (cache buster v4.0.2-rev9 cho modal hdsd)
   + `PM-xeplich-v4.md` (nhật ký phát triển)
 
+### Khắc Phục Triệt Để Lỗi Mất Ngày Chấm Công & Cơ Chế Hợp Nhất Dữ Liệu An Toàn (Server-Side Safe Merge) (07/09/2026 - v4.0.2-rev10)
+- **Yêu cầu của người dùng**:
+  - "1 số ngày chấm công của 1 số nhân sự bị mất, xem lại hộ mình, mấy ngày của tháng 9 cũng bị mất" kèm ảnh chụp Bảng chấm công Tháng 6 Năm 2026.
+- **Phân tích nguyên nhân cốt lõi**:
+  1. *Nguyên nhân Tháng 9 bị mất các ngày 1–5*:
+     - Khi người dùng nhập một ô bất kỳ (ví dụ: ngày 7 của Hoàng Đức Đạt gõ `8`), hàm `commitChamCongCell` kích hoạt `triggerAutoSaveChamCong`.
+     - Nếu tiến trình tải nền từ server (`getChamCong`) đang diễn ra hoặc cache chưa kịp nạp đủ các nhân sự khác, đoạn mã bảo vệ dữ liệu cục bộ trong `loadChamCongData` trước đó (`hasLocalData && isRecentlyEdited && !serverIsEmpty`) thực hiện lệnh `return;` sớm thay vì hợp nhất với dữ liệu server.
+     - Hệ quả: bộ nhớ tạm chỉ chứa duy nhất 1 ô vừa gõ của 1 nhân sự (`{"Hoàng Đức Đạt": {"7": "8"}}`). Khi bộ đếm auto-save kích hoạt, nó gửi gói dữ liệu thiếu này lên server.
+     - Trên backend, lệnh `INSERT INTO cham_cong ... ON CONFLICT DO UPDATE SET data_json = excluded.data_json` thực hiện ghi đè toàn bộ cột JSON, xóa sạch toàn bộ các ngày 1–5 và các nhân sự khác trong Tháng 9.
+     - Ngoài ra, sự kiện `blur` khi người dùng bấm vào ô có giá trị `"ca-ngay"` nhưng hiển thị `"X"` khiến biểu thức so sánh `val === oldVal` đánh giá sai (`"X" !== "ca-ngay"`), làm bảng bị đánh dấu `isDirty` ngoài ý muốn.
+  2. *Bản chất dữ liệu Tháng 6 trong ảnh người dùng*:
+     - Trong bản sao lưu gốc CSDL từ tháng 08/2026, nhân sự **Nguyễn Thu Hằng** bắt đầu nghỉ chế độ Thai sản từ cuối Tháng 5/2026. Trong Tháng 6 và Tháng 7, người lập bảng cũ để trống hoàn toàn `{}` thay vì ghi chú ký hiệu `TS` (đến Tháng 8 mới bắt đầu ghi `TS`). Do đó, trên giao diện hàng của Nguyễn Thu Hằng bị trống 100% với Tổng công = 0.
+     - Đối với **Nguyễn Thị Duyên Thảo** và **Phạm Thị Thuyến**, dữ liệu lịch sử trong CSDL gốc ghi nhận lịch làm việc/trực luân phiên theo ca thực tế (Duyên Thảo nghỉ ngày 2 và 10–13; Thuyến làm 3 ngày/tuần thứ 2, 3, 4 nên các ngày thứ 5, 6, 7 để trống).
+- **Các giải pháp đã triển khai**:
+  1. *Cơ chế Hợp Nhất An Toàn Phía Máy Chủ (Server-Side Safe Merge)*:
+     - Tại `backend/src/index.js` (case `saveChamCong`), trước khi lưu, Worker truy vấn dữ liệu hiện tại trong CSDL.
+     - Thực hiện hợp nhất từng nhân sự và từng ngày: các ngày cũ của các nhân sự khác luôn được bảo toàn tuyệt đối, chỉ cập nhật các ngày mới gửi lên hoặc xóa khi client truyền chuỗi rỗng `""`. Ngăn chặn 100% tình trạng mất dữ liệu do client gửi payload thiếu.
+  2. *Cơ chế Hợp Nhất An Toàn Phía Trình Duyệt (Client-Side Safe Overlay)*:
+     - Trong `js/thongke.js` (`loadChamCongData`), khi nhận được dữ liệu đầy đủ từ server, nếu người dùng đang nhập dở dang một vài ô trên máy, hệ thống đắp các ô sửa cục bộ đè lên dữ liệu server, không bỏ qua dữ liệu server.
+     - Chuẩn hóa so sánh trong `commitChamCongCell` (`CA-NGAY` <-> `X`, `SANG` <-> `S`, `CHIEU` <-> `C`), chấm dứt việc tự động dirty khi chỉ click/blur ô đã có dữ liệu.
+  3. *Khôi phục dữ liệu Tháng 9 và cập nhật Tháng 6, 7*:
+     - **Tháng 09/2026**: Khôi phục trọn vẹn 13 nhân sự cho các ngày 1–2 (LỄ Quốc Khánh), ngày 3–5 (đi làm/trực theo ca), ngày 7 (đi làm thực tế, giữ nguyên giá trị 8 của BS Đạt).
+     - **Tháng 06/2026 & Tháng 07/2026**: Bổ sung ký hiệu Thai sản `TS` cho toàn bộ 26–27 ngày làm việc của Nguyễn Thu Hằng, giúp bảng chấm công rõ ràng, minh bạch trạng thái thai sản và không còn bị coi là mất dữ liệu.
+  4. *Đồng bộ phiên bản theo RULES.md*:
+     - Giữ phiên bản chính `4.0.2`, nâng revision lên `4.0.2-rev10`.
+     - Footer timestamp: `14:15 07/09/2026`.
+     - Đồng bộ `CACHE_NAME = 'pmcg-v4-cache-4.0.2-rev10'` trong `sw.js`.
+     - Đồng bộ `?v=4.0.2-rev10` trên toàn bộ link CSS, thẻ script và `APP_VERSION` trong `index.html`.
+     - Cập nhật query string `v=4.0.2-rev10` cho `hdsd.html` trong `js/app.js`.
+- **File sửa đổi**:
+  + `backend/src/index.js` (server-side safe merge trong saveChamCong)
+  + `js/thongke.js` (client-side safe merge, chuẩn hoá so sánh commitChamCongCell)
+  + `index.html` (footer timestamp 14:15 07/09/2026, version 4.0.2-rev10, cache busters)
+  + `sw.js` (CACHE_NAME v4.0.2-rev10)
+  + `js/app.js` (cache buster v4.0.2-rev10 cho modal hdsd)
+  + `PM-xeplich-v4.md` (nhật ký phát triển)
+
+
 
 
 

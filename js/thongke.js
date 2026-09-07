@@ -690,10 +690,18 @@ function renderAdminChamCongTable() {
             input.setAttribute('value', val);
 
             if (!chamCongData[emp]) chamCongData[emp] = {};
-            const oldVal = chamCongData[emp][day] || '';
+            const oldRaw = chamCongData[emp][day] || '';
+            const oldVal = (typeof oldRaw === 'string' ? oldRaw.trim().toUpperCase() : String(oldRaw));
+
+            const norm = (v) => {
+                if (v === 'CA-NGAY') return 'X';
+                if (v === 'SANG') return 'S';
+                if (v === 'CHIEU') return 'C';
+                return v;
+            };
 
             // NẾU GIÁ TRỊ KHÔNG THAY ĐỔI -> THOÁT NGAY, KHÔNG DIRTY, KHÔNG LƯU!
-            if (val === oldVal) {
+            if (norm(val) === norm(oldVal)) {
                 return;
             }
 
@@ -841,18 +849,22 @@ function renderAdminChamCongTable() {
                         raw = res;
                     }
 
-                    // BẢO VỆ DỮ LIỆU CỤC BỘ: Chỉ giữ khi đúng tháng này và đang được chỉnh sửa dở dang tại máy
+                    // BẢO VỆ DỮ LIỆU CỤC BỘ (Safe Merge on Client):
                     const hasLocalData = chamCongData && Object.keys(chamCongData).some(k => Object.keys(chamCongData[k] || {}).length > 0);
                     const isRecentlyEdited = (Date.now() - chamCongLastEditedTime < 8000) && chamCongIsDirty && (activeChamCongMonthYear === my);
                     const serverIsEmpty = !raw || Object.keys(raw).length === 0;
 
-                    if (hasLocalData && isRecentlyEdited && !serverIsEmpty) {
-                        console.log('[ChamCong] Giữ dữ liệu vừa sửa tại máy cho tháng ' + my);
-                        return;
-                    }
-
                     if (!serverIsEmpty) {
                         const fresh = normalizeChamCongData(raw);
+                        // HỢP NHẤT AN TOÀN: Giữ các ô vừa nhập/sửa trên máy, đắp lên dữ liệu đầy đủ từ server
+                        if (hasLocalData && isRecentlyEdited) {
+                            for (const emp in chamCongData) {
+                                if (!fresh[emp]) fresh[emp] = {};
+                                for (const d in chamCongData[emp]) {
+                                    fresh[emp][d] = chamCongData[emp][d];
+                                }
+                            }
+                        }
                         chamCongData = fresh;
                         window.chamCongData = chamCongData;
                         setCachedChamCong(my, fresh);
