@@ -4471,25 +4471,70 @@ transition: box-shadow 0.3s;
             box-shadow: 0 0 0 1px rgba(37,99,235,0.3);
         }
         #table-chamcong .cc-input-text {
-            width: 22px !important;
-            height: 17px !important;
+            width: 26px !important;
+            height: 19px !important;
+            min-height: 19px !important;
+            max-height: 20px !important;
             padding: 0 !important;
-            margin: 0 !important;
+            margin: 0 auto !important;
+            display: block !important;
             text-align: center;
             font-weight: 700;
-            font-size: 10.5px !important;
-            line-height: 17px !important;
+            font-size: 10px !important;
+            letter-spacing: -0.2px;
+            line-height: 19px !important;
             border: 1px solid #cbd5e1;
-            border-radius: 2px;
+            border-radius: 3px;
             background: #fff;
-            color: #2563eb;
+            color: #1d4ed8;
             outline: none;
             text-transform: uppercase;
+            box-sizing: border-box !important;
+            transition: all 0.15s ease;
         }
         #table-chamcong .cc-input-text:focus {
             border-color: #2563eb;
-            box-shadow: 0 0 0 1px rgba(37,99,235,0.3);
+            box-shadow: 0 0 0 1px rgba(37,99,235,0.4);
             background: #eff6ff;
+        }
+        #table-chamcong .cc-input-text[value="LỄ"],
+        #table-chamcong .cc-input-text[value="LE"] {
+            color: #b91c1c !important;
+            background-color: #fee2e2 !important;
+            border-color: #fca5a5 !important;
+            font-weight: 800 !important;
+        }
+        #table-chamcong .cc-input-text[value="TS"],
+        #table-chamcong .cc-input-text[value="ĐK"],
+        #table-chamcong .cc-input-text[value="DK"] {
+            color: #6d28d9 !important;
+            background-color: #f3e8ff !important;
+            border-color: #d8b4fe !important;
+            font-weight: 800 !important;
+        }
+        #table-chamcong .cc-input-text[value="S"],
+        #table-chamcong .cc-input-text[value="C"],
+        #table-chamcong .cc-input-text[value="B"] {
+            color: #047857 !important;
+            font-weight: 700 !important;
+        }
+        [data-theme="dark"] #table-chamcong .cc-input-text {
+            background-color: #1e293b !important;
+            color: #60a5fa !important;
+            border-color: #334155 !important;
+        }
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="LỄ"],
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="LE"] {
+            color: #fca5a5 !important;
+            background-color: #450a0a !important;
+            border-color: #7f1d1d !important;
+        }
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="TS"],
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="ĐK"],
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="DK"] {
+            color: #d8b4fe !important;
+            background-color: #3b0764 !important;
+            border-color: #581c87 !important;
         }
 
         /* 6. THEAD BẢNG THỐNG KÊ & PREVIEW */
@@ -5476,22 +5521,21 @@ transition: box-shadow 0.3s;
         border-spacing: 0 !important;
     }
 
-    /* Ghim cố định cột Tên Nhân Viên cho Bảng Chấm Công */
+    /* Ghim cố định cột Tên Nhân Viên cho Bảng Chấm Công trên Mobile/Tablet */
     #table-chamcong thead tr:first-child th:first-child,
-    #table-chamcong thead tr:nth-child(2) th:first-child,
     #table-chamcong tbody tr td:first-child {
         position: sticky !important;
         left: 0 !important;
         z-index: 35 !important;
         background: #ffffff !important;
-        min-width: 105px !important;
-        max-width: 125px !important;
-        width: 115px !important;
+        min-width: 160px !important;
+        max-width: 160px !important;
+        width: 160px !important;
         font-weight: 700 !important;
         font-size: 11px !important;
         text-align: left !important;
-        padding: 3px 5px !important;
-        box-shadow: 2px 0 6px rgba(0,0,0,0.12) !important;
+        padding: 2px 6px !important;
+        box-shadow: 2px 0 6px rgba(0,0,0,0.08) !important;
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
@@ -5503,9 +5547,28 @@ transition: box-shadow 0.3s;
         z-index: 45 !important;
     }
 
+    /* Ghim cột Hệ số ngay sau cột Tên (160px) */
+    #table-chamcong thead tr:first-child th:nth-child(2),
+    #table-chamcong tbody tr td:nth-child(2) {
+        position: sticky !important;
+        left: 160px !important;
+        z-index: 35 !important;
+        background: #ffffff !important;
+        min-width: 38px !important;
+        max-width: 38px !important;
+        width: 38px !important;
+        text-align: center !important;
+        padding: 0 !important;
+    }
+    #table-chamcong thead tr:first-child th:nth-child(2) {
+        background: #275d38 !important;
+        color: #ffffff !important;
+        z-index: 45 !important;
+    }
+
     #table-chamcong thead th {
-        font-size: 9.5px !important;
-        height: 20px !important;
+        font-size: 10px !important;
+        height: 22px !important;
         padding: 0 1px !important;
     }
 
@@ -5514,13 +5577,17 @@ transition: box-shadow 0.3s;
         padding: 0 1px !important;
     }
 
-    #table-chamcong .cc-input-text {
+    #table-chamcong .cc-input-text,
+    #table-chamcong .heso-input {
         font-size: 11px !important;
         height: 22px !important;
+        min-height: 20px !important;
+        max-height: 24px !important;
         line-height: 22px !important;
         text-align: center !important;
         padding: 0 !important;
         width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     /* Timeline Canvas on Mobile */

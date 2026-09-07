@@ -7,3 +7,5 @@ scratch_cache_update.js
 scratch/
 backups/
 *.sql
+*.xls
+*.xlsx

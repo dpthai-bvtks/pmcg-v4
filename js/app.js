@@ -11103,8 +11103,12 @@ window.renderSttOrderControl = function (type, i, total) {
                 const daysInMonth = new Date(y, parseInt(m, 10), 0).getDate();
 
                 let empList = [];
+                let rawEmps = null;
                 if (typeof getOrLoadChamCongEmployees === 'function') {
-                    empList = getOrLoadChamCongEmployees().map(e => typeof e === 'object' ? (e.ten || e.name) : e).filter(Boolean);
+                    try { rawEmps = getOrLoadChamCongEmployees(); } catch(e){}
+                }
+                if (Array.isArray(rawEmps) && rawEmps.length > 0) {
+                    empList = rawEmps.map(e => typeof e === 'object' ? (e.ten || e.name) : e).filter(Boolean);
                 } else if (typeof adminChamCongEmployees !== 'undefined' && Array.isArray(adminChamCongEmployees) && adminChamCongEmployees.length > 0) {
                     empList = adminChamCongEmployees.map(e => typeof e === 'object' ? (e.ten || e.name) : e).filter(Boolean);
                 } else {
@@ -12914,7 +12918,7 @@ window.openHdsdModal = function() {
         }
     } catch(e) {}
     const curTheme = document.documentElement.getAttribute('data-theme') || localStorage.getItem('pm_app_theme') || 'light';
-    const targetUrl = `hdsd.html?role=${userRole}&theme=${curTheme}&v=4.0.2-rev6`;
+    const targetUrl = `hdsd.html?role=${userRole}&theme=${curTheme}&v=4.0.2-rev7`;
 
     if (iframe) {
         if (!iframe.src || iframe.src === 'about:blank' || !iframe.src.includes(`role=${userRole}`)) {

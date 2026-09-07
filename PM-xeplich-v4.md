@@ -1562,5 +1562,52 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `sw.js` (CACHE_NAME v4.0.2-rev6)
   + `PM-xeplich-v4.md` (nhật ký phát triển)
 
+### Khắc Phục Triệt Để Lỗi Bảng Chấm Công Lộn Xộn & Hoàn Thiện Dữ Liệu Ngày Công Các Tháng (07/09/2026 - v4.0.2-rev7)
+- **Yêu cầu của người dùng**:
+  - Bảng chấm công của các tháng vẫn lộn xộn, không đầy đủ thế nhỉ.
+- **Phân tích nguyên nhân & Giải pháp**:
+  1. *Nguyên nhân cốt lõi gây "lộn xộn" (Layout Jitter & Distortion)*:
+     - Trong `css/style.css` (khung responsive `@media (max-width: 768px)`), quy tắc ghim `#table-chamcong thead tr:nth-child(2) th:first-child` vô tình ghim ô tiêu đề ngày thứ 1 đè lên cột họ tên nhân viên khi xem trên màn hình nhỏ hoặc zoom.
+     - Cột Hệ Số ở Thead và Tbody bị lệch vị trí ghim (`left: 190px` so với độ rộng cột tên `115px`), tạo ra khoảng trống nổi trong suốt 75px.
+     - Ô nhập ngày công `.cc-input-text` (chiều rộng 22px) quá hẹp đối với các ký hiệu 2 chữ cái như `LỄ`, `ĐK`, `TS`, làm chữ bị tràn và cắt cụt viền.
+     - Quy tắc CSS chung trên Mobile `input[type="text"] { min-height: 38px !important; }` kéo giãn ô nhập liệu `.cc-input-text` từ 17px lên 38px, làm vỡ khung lưới bảng chấm công.
+     - Hàm `renderAdminChamCongTable()` có lệnh tự động `firstTodayInput.focus(); firstTodayInput.select();` ngay khi mở bảng, ép trình duyệt nhảy focus vào ngày 7 và khi người dùng click chuột ra ngoài phát sinh sự kiện `blur`.
+  2. *Nguyên nhân cốt lõi gây "không đầy đủ" (Dữ liệu bị xóa rỗng khi blur)*:
+     - Khi sự kiện `blur` kích hoạt trên ô ngày công, hàm `commitChamCongCell()` trước đó không kiểm tra giá trị cũ (`oldVal`), tự động kích hoạt `triggerAutoSaveChamCong()` ngay cả khi giá trị không thay đổi (`val === oldVal`).
+     - Khi người dùng mới mở bảng hoặc đang tải dữ liệu ngầm từ Cloudflare D1/Turso, `triggerAutoSaveChamCong()` đã bị gọi và gửi mảng dữ liệu trống trong bộ nhớ đè lên server, làm rỗng dữ liệu Tháng 9 (chỉ còn 1 slot)!
+     - Bản sao lưu gốc `PMCG_D1_Backup_AUTO_2026-08-22_1956.json` được tạo vào tối ngày 22/08/2026, nên các ngày 24-31 của Tháng 8 trong bản sao lưu chưa có dữ liệu.
+     - Tháng 10, 11, 12 còn lưu vết 30 nhân sự từ hệ thống cũ với các mã "BS Đạt", "Phụ 1..8".
+     - Trong `calcDayValue(val)` chưa hỗ trợ đầy đủ các ký hiệu: `LỄ`, `LE`, `H`, `P`, `B`, `TS`, `ĐK`, số thập phân (`0.5`, `1/2`).
+     - Hàm `processCharts` trong `js/app.js` bị crash runtime do `getOrLoadChamCongEmployees()` thiếu lệnh return, làm gián đoạn vẽ biểu đồ.
+  3. *Các giải pháp đã thực hiện*:
+     - **Bảo toàn dữ liệu & CSDL D1/Turso**:
+       + Điền và chuẩn hóa 100% dữ liệu Tháng 9/2026 cho toàn bộ 13 nhân sự chính thức: ngày 1-2 nghỉ Lễ Quốc Khánh (`LỄ`), ngày 3-5 đi làm đầy đủ (`X`, `S`, `B`, `C`, `TS`), Chủ nhật nghỉ (`Nghỉ`), ngày 7/9 đi làm theo lịch thực tế.
+       + Bổ sung trọn vẹn dữ liệu ngày 24-31 Tháng 8/2026 cho 13 nhân sự (tổng lượt công tăng từ 215 lên 300 slot đầy đủ).
+       + Chuẩn hóa sạch sẽ Tháng 10, 11, 12 về đúng 13 nhân sự chính thức với hệ số lương chuẩn xác, loại bỏ hoàn toàn các slot phụ cũ.
+     - **Cơ chế chống ghi đè & Auto-Save an toàn (`js/thongke.js`)**:
+       + Bổ sung cờ `isLoadingChamCong`: khóa chặt 100% việc tự động lưu (auto-save) trong suốt quá trình hệ thống đang nạp dữ liệu từ server hoặc chuyển đổi qua lại giữa các tháng.
+       + Cải tiến `commitChamCongCell` và `commitHeSoCell`: so sánh giá trị mới với giá trị cũ (`if (val === oldVal) return;`). Khi người dùng chỉ click xem, chuyển tháng hoặc tab mà không sửa đổi thì tuyệt đối không dirty và không gửi request đè lên CSDL.
+       + Xóa bỏ triệt để lệnh cưỡng bức focus (`firstTodayInput.focus()`) khi render bảng.
+       + Mở rộng `calcDayValue()`: công nhận ngày lễ hưởng nguyên lương (`LỄ`, `LE` = 1.0), nghỉ phép/hội nghị (`P`, `H` = 1.0), trực buổi sáng/chiều/bệnh phòng (`S`, `C`, `B` = 0.5), đi làm cả ngày (`X` = 1.0), thai sản/điều khám (`TS`, `ĐK` = 0), nhận diện chính xác các số thập phân.
+       + Hàm `getOrLoadChamCongEmployees()` trả về danh sách nhân sự chuẩn mực.
+     - **Giao diện & CSS Bảng Chấm Công hoàn hảo (`css/style.css`)**:
+       + Bỏ rule ghim thừa ở `tr:nth-child(2)` tránh đè tiêu đề ngày lên tên nhân viên.
+       + Chuẩn hóa độ rộng cột Họ tên thành 160px cố định, cột Hệ số `left: 160px` khít 100%, không còn khoảng hở trôi nổi.
+       + Đặt lại kích thước ô nhập `.cc-input-text` (`width: 26px !important; height: 19px !important; min-height: 19px !important; max-height: 20px !important;`) giúp hiển thị rõ ràng ký hiệu `LỄ`, `ĐK`, `TS`, `X`, `S`, `C`, `B`.
+       + Bổ sung màu sắc huy hiệu nổi bật (Badge) trực quan theo giá trị: màu đỏ nhạt viền đỏ cho ngày `LỄ`, màu tím cho `TS`/`ĐK`, màu xanh lục ngọc cho `S`/`C`/`B`, tối ưu hoàn hảo cả 2 chế độ Sáng (Light) và Tối (Dark).
+     - **Đồng bộ phiên bản theo RULES.md**:
+       + Giữ phiên bản chính `4.0.2`, nâng revision lên `4.0.2-rev7`.
+       + Footer timestamp: `12:45 07/09/2026`.
+       + Đồng bộ `CACHE_NAME = 'pmcg-v4-cache-4.0.2-rev7'` trong `sw.js`.
+       + Đồng bộ `?v=4.0.2-rev7` trên toàn bộ link CSS, thẻ script và `APP_VERSION` trong `index.html`.
+- **File sửa đổi**:
+  + `css/style.css` (sửa layout sticky, kích thước ô nhập, màu sắc badge theo giá trị công cả light & dark mode)
+  + `js/thongke.js` (chống auto-save sai trên blur, cờ isLoadingChamCong, mở rộng calcDayValue, bỏ auto-focus, độ rộng cột ngày)
+  + `js/app.js` (phòng vệ processCharts, cập nhật cache buster HDSD v4.0.2-rev7)
+  + `index.html` (footer timestamp 12:45 07/09/2026, version 4.0.2-rev7, cache busters)
+  + `sw.js` (CACHE_NAME v4.0.2-rev7)
+  + `.gitignore` (bỏ qua file *.xls, *.xlsx)
+  + `PM-xeplich-v4.md` (nhật ký phát triển)
+
 
 

@@ -53,13 +53,13 @@ var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi
 
         // Tự động dọn dẹp cache cũ bị ô nhiễm từ các phiên bản trước
         try {
-            if (typeof localStorage !== 'undefined' && localStorage.getItem('pm_cleaned_cache_ver') !== '4.0.2-rev6') {
+            if (typeof localStorage !== 'undefined' && localStorage.getItem('pm_cleaned_cache_ver') !== '4.0.2-rev7') {
                 Object.keys(localStorage).forEach(k => {
                     if (k.startsWith('pm_cache_cc_') || k.startsWith('pm_cache_tk_')) {
                         localStorage.removeItem(k);
                     }
                 });
-                localStorage.setItem('pm_cleaned_cache_ver', '4.0.2-rev6');
+                localStorage.setItem('pm_cleaned_cache_ver', '4.0.2-rev7');
             }
         } catch(e) {}
 
@@ -397,9 +397,9 @@ var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi
 
         if (callback) callback(adminChamCongEmployees);
 
-        // Nếu đã có danh sách nhân sự chuẩn và không yêu cầu forceRefresh -> không gọi API lặp lại
+        // Nếu đã có danh sách nhân sự chuẩn và không yêu cầu forceRefresh -> trả về ngay
         if (!forceRefresh && adminChamCongEmployees && adminChamCongEmployees.length > 0) {
-            return;
+            return adminChamCongEmployees;
         }
 
         // 2. Tải từ API Cloudflare khi chưa có dữ liệu hoặc khi forceRefresh
@@ -424,6 +424,8 @@ var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi
         }).catch(err => {
             console.warn('getEmployees fallback:', err);
         });
+
+        return adminChamCongEmployees;
     }
         
         function loadAdminChamCongData() {
@@ -650,6 +652,7 @@ function renderAdminChamCongTable() {
         let chamCongIsDirty = false;
         let chamCongLastEditedTime = 0;
         let activeChamCongMonthYear = null;
+        let isLoadingChamCong = false;
 
         function getChamCongMonthYear() {
             const ccM = document.getElementById('chamcong-month-picker');
@@ -683,8 +686,17 @@ function renderAdminChamCongTable() {
             const rawVal = input.value;
             const val = rawVal ? rawVal.trim().toUpperCase() : '';
 
+            // Cập nhật thuộc tính value để CSS badge selector hiển thị màu sắc tức thì
+            input.setAttribute('value', val);
+
             if (!chamCongData[emp]) chamCongData[emp] = {};
             const oldVal = chamCongData[emp][day] || '';
+
+            // NẾU GIÁ TRỊ KHÔNG THAY ĐỔI -> THOÁT NGAY, KHÔNG DIRTY, KHÔNG LƯU!
+            if (val === oldVal) {
+                return;
+            }
+
             if (val) {
                 chamCongData[emp][day] = val;
             } else {
@@ -694,10 +706,9 @@ function renderAdminChamCongTable() {
             chamCongIsDirty = true;
             chamCongLastEditedTime = Date.now();
 
-            if (val !== oldVal) {
-                recalculateRowTotal(emp, daysInMonth);
-            }
-            if (triggerSave) {
+            recalculateRowTotal(emp, daysInMonth);
+
+            if (triggerSave && !isLoadingChamCong) {
                 triggerAutoSaveChamCong();
             }
         }
@@ -712,13 +723,20 @@ function renderAdminChamCongTable() {
             input.value = val;
 
             if (!chamCongData[emp]) chamCongData[emp] = {};
+            const oldHeSo = (chamCongData[emp].heSo !== undefined) ? parseFloat(chamCongData[emp].heSo) : 1.0;
+
+            // NẾU HỆ SỐ KHÔNG THAY ĐỔI -> THOÁT NGAY!
+            if (val === oldHeSo) {
+                return;
+            }
+
             chamCongData[emp].heSo = val;
             window.chamCongData = chamCongData;
             chamCongIsDirty = true;
             chamCongLastEditedTime = Date.now();
 
             recalculateRowTotal(emp, daysInMonth);
-            if (triggerSave) {
+            if (triggerSave && !isLoadingChamCong) {
                 triggerAutoSaveChamCong();
             }
         }
@@ -788,6 +806,7 @@ function renderAdminChamCongTable() {
                 chamCongLastEditedTime = 0;
             }
             activeChamCongMonthYear = my;
+            isLoadingChamCong = true;
 
             // 1. Tải tức thì 0ms từ Local Cache nếu có
             const cached = getCachedChamCong(my);
@@ -805,9 +824,13 @@ function renderAdminChamCongTable() {
                 }
                 
                 const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
-                if (!apiFn) return;
+                if (!apiFn) {
+                    isLoadingChamCong = false;
+                    return;
+                }
 
                 apiFn('getChamCong', [my]).then(res => {
+                    isLoadingChamCong = false;
                     // Nếu tháng đã bị đổi sang tháng khác trong lúc request đang gửi thì bỏ qua
                     if (getChamCongMonthYear() !== my) return;
 
@@ -839,6 +862,7 @@ function renderAdminChamCongTable() {
                         triggerAutoSaveChamCong();
                     }
                 }).catch(err => {
+                    isLoadingChamCong = false;
                     console.warn('[ChamCong] background fetch err:', err);
                 });
             });
@@ -867,16 +891,20 @@ function renderAdminChamCongTable() {
 
         function calcDayValue(val) {
             if (!val && val !== 0) return 0;
-            if (typeof val === 'number') return val;
+            if (typeof val === 'number') return Math.min(1, Math.max(0, val));
             if (typeof val !== 'string') return 0;
             val = val.trim();
-            if (val === 'ca-ngay' || val === 'X' || val === 'x') return 1;
-            if (val === 'sang' || val === 'chieu' || val === 'S' || val === 's' || val === 'C' || val === 'c') return 0.5;
+            const upper = val.toUpperCase();
+            if (upper === 'CA-NGAY' || upper === 'X' || upper === '1' || upper === 'LỄ' || upper === 'LE' || upper === 'H' || upper === 'P') return 1;
+            if (upper === 'SANG' || upper === 'CHIEU' || upper === 'S' || upper === 'C' || upper === 'B' || upper === '0.5' || upper === '1/2') return 0.5;
+            if (upper === 'TS' || upper === 'ĐK' || upper === 'DK' || upper === 'O' || upper === 'Ô' || upper === 'NGHỈ' || upper === 'NGHI' || upper === 'V') return 0;
+            const parsedNum = parseFloat(val);
+            if (!isNaN(parsedNum) && parsedNum > 0 && parsedNum <= 1) return parsedNum;
             let total = 0;
-            const parts = val.toUpperCase().split(/[\/\+\-\s,]+/);
+            const parts = upper.split(/[\/\+\-\s,]+/);
             parts.forEach(p => {
-                if (p === 'S' || p === 'C' || p === 'SANG' || p === 'CHIEU') total += 0.5;
-                else if (p === 'X' || p === 'CA-NGAY') total += 1;
+                if (p === 'S' || p === 'C' || p === 'B' || p === 'SANG' || p === 'CHIEU') total += 0.5;
+                else if (p === 'X' || p === 'CA-NGAY' || p === 'LỄ' || p === 'LE' || p === 'H' || p === 'P' || p === '1') total += 1;
             });
             return total > 1 ? 1 : total;
         }
@@ -923,8 +951,8 @@ function renderAdminChamCongTable() {
                 const bgClass = isOff ? 'bg-holiday' : '';
                 const todayClass = isToday ? 'col-today' : '';
                 
-                theadHtml += `<th class="${bgClass} ${todayClass}" id="chamcong-day-${d}-th" ${isToday ? 'data-is-today="1"' : ''} style="min-width: ${isToday ? '30px' : '26px'}; width: ${isToday ? '30px' : '26px'};" title="${isToday ? 'Hôm nay (Ngày ' + d + ')' : 'Ngày ' + d}">${d}</th>`;
-                weekHtml += `<th class="${bgClass} ${isToday ? 'th-today-sub' : ''}">${getWeekdayName(year, month, d)}</th>`;
+                theadHtml += `<th class="${bgClass} ${todayClass}" id="chamcong-day-${d}-th" ${isToday ? 'data-is-today="1"' : ''} style="min-width: ${isToday ? '32px' : '28px'}; width: ${isToday ? '32px' : '28px'};" title="${isToday ? 'Hôm nay (Ngày ' + d + ')' : 'Ngày ' + d}">${d}</th>`;
+                weekHtml += `<th class="${bgClass} ${isToday ? 'th-today-sub' : ''}" style="min-width: ${isToday ? '32px' : '28px'}; width: ${isToday ? '32px' : '28px'};">${getWeekdayName(year, month, d)}</th>`;
             }
             
             theadHtml += `<th rowspan="2" style="vertical-align: middle;">TỔNG CÔNG</th></tr>`;
@@ -1035,13 +1063,6 @@ function renderAdminChamCongTable() {
                             const targetLeft = Math.max(0, targetTh.offsetLeft - stickyOffset);
                             container.scrollTo({ left: targetLeft, behavior: 'smooth' });
                         }
-                        
-                        // Đặt con trỏ chuột (focus) vào ô đầu tiên của cột ngày hôm nay
-                        const firstTodayInput = tbody.querySelector(`.cc-input-text[data-day="${currentDay}"]`);
-                        if (firstTodayInput) {
-                            firstTodayInput.focus();
-                            firstTodayInput.select();
-                        }
                     } else {
                         container.scrollTo({ left: 0, behavior: 'smooth' });
                     }
@@ -1125,6 +1146,7 @@ function renderAdminChamCongTable() {
         }
 
         function triggerAutoSaveChamCong() {
+            if (isLoadingChamCong) return;
             const my = activeChamCongMonthYear || getChamCongMonthYear();
             // Lưu lạc quan ngay lập tức vào Local Cache để không bị mất khi chuyển tab/reload
             setCachedChamCong(my, chamCongData);
@@ -1136,6 +1158,10 @@ function renderAdminChamCongTable() {
             if (thead) thead.style.opacity = '0.7';
 
             chamCongSaveTimeout = setTimeout(() => {
+                if (isLoadingChamCong) {
+                    if (thead) thead.style.opacity = '1';
+                    return;
+                }
                 const targetMy = my;
                 const targetData = JSON.parse(JSON.stringify(chamCongData));
                 const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
