@@ -1822,6 +1822,47 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `js/app.js` (cache buster v4.0.2-rev13 cho modal hdsd)
   + `PM-xeplich-v4.md` (nhật ký phát triển)
 
+---
+
+### Tích Hợp Quản Lý Nhân Sự Chấm Công Kéo Thả Trực Tiếp & Ký Hiệu Chấm Công Động Vào Tab Chấm Công (07/09/2026 - v4.0.2-rev14)
+
+- **Yêu cầu của người dùng**:
+  1. Đưa danh sách nhân sự chấm công và thống kê tổng hợp từ tab Quản trị vào thẳng luôn tab Chấm Công.
+  2. Khi cần thêm/sửa/xóa nhân sự thì thao tác trực tiếp từ tab Chấm Công luôn.
+  3. Có nút 3 gạch (`☰`) ở đầu mỗi hàng để kéo thả (Drag & Drop) di chuyển sắp xếp thứ tự nhân sự theo ý thích.
+  4. Bảng ký hiệu chấm công cũng có thể thêm/sửa/xóa ký hiệu (mã, tên, số công quy đổi, màu sắc).
+- **Phân tích & Hiện thực**:
+  1. *Sub-tabs tiện ích trong Tab Chấm Công*:
+     - Tích hợp thanh điều hướng Sub-tab phía trên Tab Chấm Công gồm 2 chế độ:
+       + `📅 Bảng Chấm Công`: Lưới chấm công 31 ngày, bộ lọc tháng/năm, bảng ký hiệu chấm công động bên dưới.
+       + `🧑‍⚕️ Danh Sách Nhân Sự`: Bảng quản lý nhân sự chuyên dụng với các cột: ☰ Sắp xếp, STT, Tên Nhân Viên, Chức Danh / Vị Trí, Từ Khóa Nhận Diện HIS, Kỹ Năng / Phân Loại, Thao Tác (Sửa / Xóa) và nút `➕ Thêm Nhân Viên Mới`.
+     - Cho phép quản trị viên thêm, sửa, xóa nhân sự trực tiếp ngay trong tab Chấm Công mà không phải mở Tab Quản trị.
+  2. *Kéo thả sắp xếp thứ tự nhân sự (Drag & Drop)*:
+     - Tận dụng thư viện `SortableJS` tích hợp sẵn trong dự án (`js/sortable.min.js`), kích hoạt trên `#chamcong-employees-body` với tay cầm kéo `.drag-handle`.
+     - Bổ sung nút mũi tên nhanh `▲` `▼` (`moveAdminEmployee`) hỗ trợ sắp xếp tức thì 1 chạm trên màn hình cảm ứng hoặc chuột.
+     - Sau khi kéo thả, thứ tự mới tự động lưu lên máy chủ (`saveEmployees`) và Bảng Chấm Công tự động render lại theo đúng thứ tự mới sắp xếp.
+  3. *Hệ thống ký hiệu chấm công động (Dynamic Symbols & Quy ước tính công)*:
+     - Thêm 2 action backend Cloudflare Workers: `getChamCongSymbols` (đọc từ `cai_dat` key `chamcong_symbols`, fallback 13 ký hiệu chuẩn) và `saveChamCongSymbols` (lưu lên CSDL D1 và bump data version).
+     - Giao diện chú thích ký hiệu `#chamcong-legend-chips` được render động từ CSDL kèm 2 nút chức năng: `[⚙️ Quản Lý Ký Hiệu]` và `[➕ Thêm Ký Hiệu]`.
+     - Modal `#modal-chamcong-symbol`: Cho phép Thêm mới, Sửa, Xóa từng ký hiệu, tùy biến mã ký hiệu, tên ý nghĩa, số công quy đổi (ví dụ: `1.0`, `0.5`, `0`), màu nền, màu chữ với khung Preview Badge trực tiếp.
+     - Nút `[🔄 Khôi phục 13 ký hiệu chuẩn]` giúp hoàn tác về bộ ký hiệu ban đầu bất kỳ lúc nào.
+     - Hàm `calcDayValue(val)` và `formatDisplayValue(val)` tra cứu động theo danh sách ký hiệu mới, đảm bảo tính công chính xác 100% trên Bảng Chấm Công, Thống Kê Tổng Hợp, Thống Kê Quý và In ấn.
+     - Tự động gán màu sắc trực quan (background, viền, chữ) cho các ô input chấm công dựa trên ký hiệu đã chọn.
+  4. *Đồng bộ phiên bản theo RULES.md*:
+     - Giữ phiên bản chính `4.0.2`, nâng revision lên `4.0.2-rev14`.
+     - Footer timestamp: `16:15 07/09/2026`.
+     - Đồng bộ `CACHE_NAME = 'pmcg-v4-cache-4.0.2-rev14'` trong `sw.js`.
+     - Đồng bộ `?v=4.0.2-rev14` trên toàn bộ link CSS, thẻ script và `APP_VERSION` trong `index.html`.
+     - Cập nhật query string `v=4.0.2-rev14` cho `hdsd.html` trong `js/app.js`.
+- **File sửa đổi**:
+  + `backend/src/index.js` (thêm getChamCongSymbols, saveChamCongSymbols)
+  + `css/style.css` (bổ sung styling subtabs, drag-handle, btn-quick-move, symbols chip)
+  + `index.html` (thêm subtabs trong tab-chamcong, modal-chamcong-symbol, timestamp 16:15 07/09/2026, cache busters v4.0.2-rev14)
+  + `js/thongke.js` (tích hợp render đồng bộ nhân sự, sortable kéo thả, moveAdminEmployee, switchChamCongSubTab, dynamic symbols, modal symbols, calcDayValue nâng cao)
+  + `sw.js` (CACHE_NAME v4.0.2-rev14)
+  + `js/app.js` (cache buster v4.0.2-rev14 cho modal hdsd)
+  + `PM-xeplich-v4.md` (nhật ký phát triển)
+
 
 
 

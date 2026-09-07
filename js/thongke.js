@@ -489,159 +489,281 @@ var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi
         };
 
 function renderAdminChamCongTable() {
-            const tbody = document.getElementById('admin-employees-body');
-            if(!tbody) return;
-            tbody.innerHTML = '';
-            adminChamCongEmployees.forEach((emp, index) => {
-                const tr = document.createElement('tr');
-                tr.style.borderBottom = '1.5px solid #cbd5e1';
-                tr.style.transition = 'background-color 0.15s';
-                tr.onmouseenter = () => tr.style.backgroundColor = (document.documentElement.getAttribute('data-theme') === 'dark' ? '#253347' : '#f1f5f9');
-                tr.onmouseleave = () => tr.style.backgroundColor = '';
+    const adminTbody = document.getElementById('admin-employees-body');
+    const ccTbody = document.getElementById('chamcong-employees-body');
+    const badgeCount = document.getElementById('chamcong-staff-badge-count');
+    if (badgeCount) badgeCount.innerText = adminChamCongEmployees.length;
 
-                const staff = adminChamCongStaffConfig[emp] || { keys: [emp.toLowerCase()], skills: 'PHCN' };
-                const keysStr = staff.keys ? staff.keys.join(', ') : emp.toLowerCase();
-                const skill = staff.skills || 'PHCN';
-                const role = getEmployeeRole(emp);
-                
-                let roleBadge = `<span style="background: #f8fafc; color: #475569; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #e2e8f0; display: inline-block; line-height: 15px;">${role}</span>`;
-                if (role === 'Bác sĩ') {
-                    roleBadge = `<span style="background: #eff6ff; color: #1d4ed8; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #bfdbfe; display: inline-block; line-height: 15px;">Bác sĩ</span>`;
-                } else if (role === 'KTV') {
-                    roleBadge = `<span style="background: #f0fdf4; color: #15803d; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #bbf7d0; display: inline-block; line-height: 15px;">KTV</span>`;
-                } else if (role === 'Điều dưỡng') {
-                    roleBadge = `<span style="background: #faf5ff; color: #7e22ce; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #e9d5ff; display: inline-block; line-height: 15px;">Điều dưỡng</span>`;
-                }
+    if (!adminTbody && !ccTbody) return;
 
-                let skillBadge = `<span style="background: #eff6ff; color: #2563eb; padding: 1px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #bfdbfe; display: inline-block; line-height: 15px;">PHCN</span>`;
-                if (skill === 'YHCT') {
-                    skillBadge = `<span style="background: #fef3c7; color: #d97706; padding: 1px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #fde68a; display: inline-block; line-height: 15px;">YHCT</span>`;
-                } else if (skill === 'Cả hai') {
-                    skillBadge = `<span style="background: #ecfdf5; color: #059669; padding: 1px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #a7f3d0; display: inline-block; line-height: 15px;">Cả hai</span>`;
+    // 1. Render Bảng trong Section Admin (nếu có)
+    if (adminTbody) {
+        adminTbody.innerHTML = '';
+        adminChamCongEmployees.forEach((emp, index) => {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1.5px solid #cbd5e1';
+            tr.style.transition = 'background-color 0.15s';
+            tr.onmouseenter = () => tr.style.backgroundColor = (document.documentElement.getAttribute('data-theme') === 'dark' ? '#253347' : '#f1f5f9');
+            tr.onmouseleave = () => tr.style.backgroundColor = '';
+
+            const staff = adminChamCongStaffConfig[emp] || { keys: [emp.toLowerCase()], skills: 'PHCN' };
+            const keysStr = staff.keys ? staff.keys.join(', ') : emp.toLowerCase();
+            const skill = staff.skills || 'PHCN';
+            const role = getEmployeeRole(emp);
+            
+            let roleBadge = `<span style="background: #f8fafc; color: #475569; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #e2e8f0; display: inline-block; line-height: 15px;">${role}</span>`;
+            if (role === 'Bác sĩ') {
+                roleBadge = `<span style="background: #eff6ff; color: #1d4ed8; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #bfdbfe; display: inline-block; line-height: 15px;">Bác sĩ</span>`;
+            } else if (role === 'KTV') {
+                roleBadge = `<span style="background: #f0fdf4; color: #15803d; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #bbf7d0; display: inline-block; line-height: 15px;">KTV</span>`;
+            } else if (role === 'Điều dưỡng') {
+                roleBadge = `<span style="background: #faf5ff; color: #7e22ce; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #e9d5ff; display: inline-block; line-height: 15px;">Điều dưỡng</span>`;
+            }
+
+            let skillBadge = `<span style="background: #eff6ff; color: #2563eb; padding: 1px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #bfdbfe; display: inline-block; line-height: 15px;">PHCN</span>`;
+            if (skill === 'YHCT') {
+                skillBadge = `<span style="background: #fef3c7; color: #d97706; padding: 1px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #fde68a; display: inline-block; line-height: 15px;">YHCT</span>`;
+            } else if (skill === 'Cả hai') {
+                skillBadge = `<span style="background: #ecfdf5; color: #059669; padding: 1px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #a7f3d0; display: inline-block; line-height: 15px;">Cả hai</span>`;
+            }
+            
+            tr.innerHTML = `
+                <td style="color: #64748b; text-align: center; font-weight: 600;">${index + 1}</td>
+                <td style="font-weight: 700; color: #1e293b; font-size: 12px; text-align: left; padding: 1px 8px !important;">${emp}</td>
+                <td style="text-align: center;">${roleBadge}</td>
+                <td style="font-size: 11.5px; color: #64748b; text-align: left; padding: 1px 8px !important;">${keysStr}</td>
+                <td style="text-align: center;">${skillBadge}</td>
+                <td style="text-align: center;">
+                    <div style="display: inline-flex; gap: 4px; justify-content: center; align-items: center;">
+                        <button style="padding: 0 6px; font-size: 10.5px; font-weight: 600; height: 18px; line-height: 16px; border-radius: 3px; border: 1px solid #bfdbfe; background: #eff6ff; color: #2563eb; cursor: pointer; display: inline-flex; align-items: center; gap: 2px;" onclick="openEditAdminEmployeeModal(${index})">
+                            <i class='bx bx-edit' style="font-size: 11px;"></i> Sửa
+                        </button>
+                        <button style="padding: 0 6px; font-size: 10.5px; font-weight: 600; height: 18px; line-height: 16px; border-radius: 3px; border: 1px solid #fecaca; background: #fef2f2; color: #dc2626; cursor: pointer; display: inline-flex; align-items: center; gap: 2px;" onclick="deleteAdminChamCongEmployee(${index})">
+                            <i class='bx bx-trash' style="font-size: 11px;"></i> Xóa
+                        </button>
+                    </div>
+                </td>
+            `;
+            adminTbody.appendChild(tr);
+        });
+    }
+
+    // 2. Render Bảng trong Sub-Tab Chấm Công (Kèm Cột 3 Gạch ☰ Kéo Thả Sắp Xếp)
+    if (ccTbody) {
+        ccTbody.innerHTML = '';
+        adminChamCongEmployees.forEach((emp, index) => {
+            const tr = document.createElement('tr');
+            tr.setAttribute('data-emp', emp);
+            tr.setAttribute('data-index', index);
+            tr.style.borderBottom = '1.5px solid #cbd5e1';
+            tr.style.transition = 'background-color 0.15s';
+            tr.onmouseenter = () => tr.style.backgroundColor = (document.documentElement.getAttribute('data-theme') === 'dark' ? '#253347' : '#f1f5f9');
+            tr.onmouseleave = () => tr.style.backgroundColor = '';
+
+            const staff = adminChamCongStaffConfig[emp] || { keys: [emp.toLowerCase()], skills: 'PHCN' };
+            const keysStr = staff.keys ? staff.keys.join(', ') : emp.toLowerCase();
+            const skill = staff.skills || 'PHCN';
+            const role = getEmployeeRole(emp);
+            
+            let roleBadge = `<span style="background: #f8fafc; color: #475569; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #e2e8f0; display: inline-block; line-height: 15px;">${role}</span>`;
+            if (role === 'Bác sĩ') {
+                roleBadge = `<span style="background: #eff6ff; color: #1d4ed8; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #bfdbfe; display: inline-block; line-height: 15px;">Bác sĩ</span>`;
+            } else if (role === 'KTV') {
+                roleBadge = `<span style="background: #f0fdf4; color: #15803d; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #bbf7d0; display: inline-block; line-height: 15px;">KTV</span>`;
+            } else if (role === 'Điều dưỡng') {
+                roleBadge = `<span style="background: #faf5ff; color: #7e22ce; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #e9d5ff; display: inline-block; line-height: 15px;">Điều dưỡng</span>`;
+            }
+
+            let skillBadge = `<span style="background: #eff6ff; color: #2563eb; padding: 1px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #bfdbfe; display: inline-block; line-height: 15px;">PHCN</span>`;
+            if (skill === 'YHCT') {
+                skillBadge = `<span style="background: #fef3c7; color: #d97706; padding: 1px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #fde68a; display: inline-block; line-height: 15px;">YHCT</span>`;
+            } else if (skill === 'Cả hai') {
+                skillBadge = `<span style="background: #ecfdf5; color: #059669; padding: 1px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #a7f3d0; display: inline-block; line-height: 15px;">Cả hai</span>`;
+            }
+
+            tr.innerHTML = `
+                <td style="text-align: center; padding: 2px !important;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 3px;">
+                        <span class="drag-handle" title="Nắm và kéo thả để đổi vị trí">☰</span>
+                        <button type="button" class="btn-quick-move" onclick="moveAdminEmployee(${index}, -1)" title="Di chuyển lên trên" ${index === 0 ? 'disabled style="opacity:0.25; cursor:not-allowed;"' : ''}>▲</button>
+                        <button type="button" class="btn-quick-move" onclick="moveAdminEmployee(${index}, 1)" title="Di chuyển xuống dưới" ${index === adminChamCongEmployees.length - 1 ? 'disabled style="opacity:0.25; cursor:not-allowed;"' : ''}>▼</button>
+                    </div>
+                </td>
+                <td style="color: #64748b; text-align: center; font-weight: 600;">${index + 1}</td>
+                <td style="font-weight: 700; color: #1e293b; font-size: 12.5px; text-align: left; padding: 4px 8px !important;">${emp}</td>
+                <td style="text-align: center;">${roleBadge}</td>
+                <td style="font-size: 11.5px; color: #64748b; text-align: left; padding: 4px 8px !important;">${keysStr}</td>
+                <td style="text-align: center;">${skillBadge}</td>
+                <td style="text-align: center;">
+                    <div style="display: inline-flex; gap: 5px; justify-content: center; align-items: center;">
+                        <button style="padding: 2px 8px; font-size: 11px; font-weight: 600; border-radius: 4px; border: 1px solid #bfdbfe; background: #eff6ff; color: #2563eb; cursor: pointer; display: inline-flex; align-items: center; gap: 2px;" onclick="openEditAdminEmployeeModal(${index})">
+                            <i class='bx bx-edit' style="font-size: 12px;"></i> Sửa
+                        </button>
+                        <button style="padding: 2px 8px; font-size: 11px; font-weight: 600; border-radius: 4px; border: 1px solid #fecaca; background: #fef2f2; color: #dc2626; cursor: pointer; display: inline-flex; align-items: center; gap: 2px;" onclick="deleteAdminChamCongEmployee(${index})">
+                            <i class='bx bx-trash' style="font-size: 12px;"></i> Xóa
+                        </button>
+                    </div>
+                </td>
+            `;
+            ccTbody.appendChild(tr);
+        });
+
+        // Khởi tạo thư viện kéo thả SortableJS cho bảng chấm công
+        if (typeof Sortable !== 'undefined' && !ccTbody._sortableInstance) {
+            ccTbody._sortableInstance = new Sortable(ccTbody, {
+                handle: '.drag-handle',
+                animation: 150,
+                ghostClass: 'dragging-row',
+                chosenClass: 'drag-over-row',
+                onEnd: function(evt) {
+                    if (evt.oldIndex !== evt.newIndex) {
+                        const movedItem = adminChamCongEmployees.splice(evt.oldIndex, 1)[0];
+                        adminChamCongEmployees.splice(evt.newIndex, 0, movedItem);
+                        saveAdminChamCongData(false); // Lưu tự động không popup chặn
+                    }
                 }
-                
-                tr.innerHTML = `
-                    <td style="color: #64748b; text-align: center; font-weight: 600;">${index + 1}</td>
-                    <td style="font-weight: 700; color: #1e293b; font-size: 12px; text-align: left; padding: 1px 8px !important;">${emp}</td>
-                    <td style="text-align: center;">${roleBadge}</td>
-                    <td style="font-size: 11.5px; color: #64748b; text-align: left; padding: 1px 8px !important;">${keysStr}</td>
-                    <td style="text-align: center;">${skillBadge}</td>
-                    <td style="text-align: center;">
-                        <div style="display: inline-flex; gap: 4px; justify-content: center; align-items: center;">
-                            <button style="padding: 0 6px; font-size: 10.5px; font-weight: 600; height: 18px; line-height: 16px; border-radius: 3px; border: 1px solid #bfdbfe; background: #eff6ff; color: #2563eb; cursor: pointer; display: inline-flex; align-items: center; gap: 2px;" onclick="openEditAdminEmployeeModal(${index})">
-                                <i class='bx bx-edit' style="font-size: 11px;"></i> Sửa
-                            </button>
-                            <button style="padding: 0 6px; font-size: 10.5px; font-weight: 600; height: 18px; line-height: 16px; border-radius: 3px; border: 1px solid #fecaca; background: #fef2f2; color: #dc2626; cursor: pointer; display: inline-flex; align-items: center; gap: 2px;" onclick="deleteAdminChamCongEmployee(${index})">
-                                <i class='bx bx-trash' style="font-size: 11px;"></i> Xóa
-                            </button>
-                        </div>
-                    </td>
-                `;
-                tbody.appendChild(tr);
             });
         }
+    }
+}
 
-        function closeAdminEmployeeModal() {
-            document.getElementById('modal-admin-employee').style.display = 'none';
+window.moveAdminEmployee = function(index, direction) {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= adminChamCongEmployees.length) return;
+    const item = adminChamCongEmployees.splice(index, 1)[0];
+    adminChamCongEmployees.splice(newIndex, 0, item);
+    saveAdminChamCongData(false);
+};
+
+window.switchChamCongSubTab = function(tabName) {
+    const btnGrid = document.getElementById('subtab-btn-grid');
+    const btnStaff = document.getElementById('subtab-btn-staff');
+    const viewGrid = document.getElementById('subtab-chamcong-grid-view');
+    const viewStaff = document.getElementById('subtab-chamcong-staff-view');
+    const toolbar = document.getElementById('chamcong-grid-toolbar');
+
+    if (tabName === 'staff') {
+        if (btnGrid) btnGrid.classList.remove('active');
+        if (btnStaff) btnStaff.classList.add('active');
+        if (viewGrid) viewGrid.style.display = 'none';
+        if (viewStaff) viewStaff.style.display = 'flex';
+        if (toolbar) toolbar.style.visibility = 'hidden';
+        renderAdminChamCongTable();
+    } else {
+        if (btnGrid) btnGrid.classList.add('active');
+        if (btnStaff) btnStaff.classList.remove('active');
+        if (viewGrid) viewGrid.style.display = 'flex';
+        if (viewStaff) viewStaff.style.display = 'none';
+        if (toolbar) toolbar.style.visibility = 'visible';
+        renderChamCongTable();
+    }
+};
+
+function closeAdminEmployeeModal() {
+    const modal = document.getElementById('modal-admin-employee');
+    if (modal) modal.style.display = 'none';
+}
+
+function openAddAdminEmployeeModal() {
+    editAdminEmployeeIndex = -1;
+    document.getElementById('modal-admin-emp-title').innerText = "Thêm Nhân Sự Mới";
+    document.getElementById('admin-emp-name').value = "";
+    document.getElementById('admin-emp-role').value = "KTV";
+    document.getElementById('admin-emp-keys').value = "";
+    document.getElementById('admin-emp-skills').value = "PHCN";
+    document.getElementById('modal-admin-employee').style.display = 'flex';
+    setTimeout(() => document.getElementById('admin-emp-name').focus(), 100);
+}
+
+function openEditAdminEmployeeModal(index) {
+    editAdminEmployeeIndex = index;
+    const empName = adminChamCongEmployees[index];
+    const staff = adminChamCongStaffConfig[empName] || { keys: [empName.toLowerCase()], skills: 'PHCN' };
+    
+    document.getElementById('modal-admin-emp-title').innerText = "Sửa Thông Tin Nhân Sự";
+    document.getElementById('admin-emp-name').value = empName;
+    document.getElementById('admin-emp-role').value = getEmployeeRole(empName);
+    document.getElementById('admin-emp-keys').value = staff.keys ? staff.keys.join(', ') : empName.toLowerCase();
+    document.getElementById('admin-emp-skills').value = staff.skills || 'PHCN';
+    
+    document.getElementById('modal-admin-employee').style.display = 'flex';
+}
+
+function deleteAdminChamCongEmployee(index) {
+    const empName = adminChamCongEmployees[index];
+    if(confirm(`Bạn có chắc chắn muốn xóa nhân viên "${empName}" khỏi danh sách chấm công?`)) {
+        adminChamCongEmployees.splice(index, 1);
+        if (adminChamCongStaffConfig[empName]) {
+            delete adminChamCongStaffConfig[empName];
         }
+        saveAdminChamCongData();
+    }
+}
 
-        function openAddAdminEmployeeModal() {
-            editAdminEmployeeIndex = -1;
-            document.getElementById('modal-admin-emp-title').innerText = "Thêm Nhân Sự Mới";
-            document.getElementById('admin-emp-name').value = "";
-            document.getElementById('admin-emp-role').value = "KTV";
-            document.getElementById('admin-emp-keys').value = "";
-            document.getElementById('admin-emp-skills').value = "PHCN";
-            document.getElementById('modal-admin-employee').style.display = 'flex';
-            setTimeout(() => document.getElementById('admin-emp-name').focus(), 100);
+function saveAdminEmployee() {
+    const newName = document.getElementById('admin-emp-name').value.trim();
+    const roleVal = document.getElementById('admin-emp-role').value;
+    const keysVal = document.getElementById('admin-emp-keys').value.trim();
+    const skillsVal = document.getElementById('admin-emp-skills').value;
+    
+    if (!newName) return alert("Tên không được để trống!");
+    
+    let oldName = null;
+    if (editAdminEmployeeIndex > -1) {
+        oldName = adminChamCongEmployees[editAdminEmployeeIndex];
+        if (newName !== oldName && adminChamCongEmployees.includes(newName)) {
+            return alert("Tên nhân viên đã tồn tại!");
         }
-
-        function openEditAdminEmployeeModal(index) {
-            editAdminEmployeeIndex = index;
-            const empName = adminChamCongEmployees[index];
-            const staff = adminChamCongStaffConfig[empName] || { keys: [empName.toLowerCase()], skills: 'PHCN' };
-            
-            document.getElementById('modal-admin-emp-title').innerText = "Sửa Thông Tin Nhân Sự";
-            document.getElementById('admin-emp-name').value = empName;
-            document.getElementById('admin-emp-role').value = getEmployeeRole(empName);
-            document.getElementById('admin-emp-keys').value = staff.keys ? staff.keys.join(', ') : empName.toLowerCase();
-            document.getElementById('admin-emp-skills').value = staff.skills || 'PHCN';
-            
-            document.getElementById('modal-admin-employee').style.display = 'flex';
+    } else {
+        if (adminChamCongEmployees.includes(newName)) {
+            return alert("Tên nhân viên đã tồn tại!");
         }
-
-        function deleteAdminChamCongEmployee(index) {
-            const empName = adminChamCongEmployees[index];
-            if(confirm(`Bạn có chắc chắn muốn xóa nhân viên "${empName}" khỏi danh sách chấm công?`)) {
-                adminChamCongEmployees.splice(index, 1);
-                if (adminChamCongStaffConfig[empName]) {
-                    delete adminChamCongStaffConfig[empName];
-                }
-                saveAdminChamCongData();
-            }
+    }
+    
+    const keysArr = keysVal.split(',').map(s => s.trim().toLowerCase()).filter(s => s.length > 0);
+    if (keysArr.length === 0) keysArr.push(newName.toLowerCase());
+    
+    if (editAdminEmployeeIndex > -1) {
+        adminChamCongEmployees[editAdminEmployeeIndex] = newName;
+        if (oldName !== newName) {
+            delete adminChamCongStaffConfig[oldName];
         }
+    } else {
+        adminChamCongEmployees.push(newName);
+    }
+    
+    adminChamCongStaffConfig[newName] = { keys: keysArr, skills: skillsVal, role: roleVal, heSo: 1.0 };
+    
+    saveAdminChamCongData();
+    closeAdminEmployeeModal();
+}
 
-        function saveAdminEmployee() {
-            const newName = document.getElementById('admin-emp-name').value.trim();
-            const roleVal = document.getElementById('admin-emp-role').value;
-            const keysVal = document.getElementById('admin-emp-keys').value.trim();
-            const skillsVal = document.getElementById('admin-emp-skills').value;
-            
-            if (!newName) return alert("Tên không được để trống!");
-            
-            let oldName = null;
-            if (editAdminEmployeeIndex > -1) {
-                oldName = adminChamCongEmployees[editAdminEmployeeIndex];
-                if (newName !== oldName && adminChamCongEmployees.includes(newName)) {
-                    return alert("Tên nhân viên đã tồn tại!");
-                }
-            } else {
-                if (adminChamCongEmployees.includes(newName)) {
-                    return alert("Tên nhân viên đã tồn tại!");
-                }
-            }
-            
-            const keysArr = keysVal.split(',').map(s => s.trim().toLowerCase()).filter(s => s.length > 0);
-            if (keysArr.length === 0) keysArr.push(newName.toLowerCase());
-            
-            if (editAdminEmployeeIndex > -1) {
-                adminChamCongEmployees[editAdminEmployeeIndex] = newName;
-                if (oldName !== newName) {
-                    delete adminChamCongStaffConfig[oldName];
-                }
-            } else {
-                adminChamCongEmployees.push(newName);
-            }
-            
-            adminChamCongStaffConfig[newName] = { keys: keysArr, skills: skillsVal, role: roleVal, heSo: 1.0 };
-            
-            saveAdminChamCongData();
-            closeAdminEmployeeModal();
+function saveAdminChamCongData(showAlert = true) {
+    if (showAlert) window.showGlobalLoading("Đang lưu danh sách nhân sự lên máy chủ...");
+    callApi('saveEmployees', [adminChamCongEmployees]).then(() => {
+        return callApi('saveErrorConfig', [{ staff: adminChamCongStaffConfig }]);
+    }).then(() => {
+        if (showAlert) {
+            window.hideGlobalLoading();
+            alert("Đã lưu danh sách nhân sự chấm công lên máy chủ!");
         }
+        renderAdminChamCongTable();
+        renderChamCongTable();
+    }).catch(err => {
+        if (showAlert) window.hideGlobalLoading();
+        console.error(err);
+        alert('Lỗi khi lưu nhân sự: ' + (err.message || err));
+    });
+}
 
-        function saveAdminChamCongData() {
-            window.showGlobalLoading("Đang lưu danh sách nhân sự lên máy chủ...");
-            callApi('saveEmployees', [adminChamCongEmployees]).then(() => {
-                return callApi('saveErrorConfig', [{ staff: adminChamCongStaffConfig }]);
-            }).then(() => {
-                window.hideGlobalLoading();
-                renderAdminChamCongTable();
-                alert("Đã lưu danh sách nhân sự chấm công lên máy chủ!");
-            }).catch(err => {
-                window.hideGlobalLoading();
-                console.error(err);
-                alert('Lỗi khi lưu nhân sự: ' + (err.message || err));
-            });
-        }
-
-        // Auto load when opening Admin Tab
-        const originalSwitchAdminSection = window.switchAdminSection || function(s, b) {};
-        window.switchAdminSection = function(sectionId, btn) {
-            originalSwitchAdminSection(sectionId, btn);
-            if (sectionId === 'admin-sec-employees') {
-                loadAdminChamCongData();
-            }
-        };
+// Auto load when opening Admin Tab
+const originalSwitchAdminSection = window.switchAdminSection || function(s, b) {};
+window.switchAdminSection = function(sectionId, btn) {
+    originalSwitchAdminSection(sectionId, btn);
+    if (sectionId === 'admin-sec-employees') {
+        loadAdminChamCongData();
+    }
+};
 
         // ==========================================
         // TAB CHẤM CÔNG (TỪ PM CŨ)
@@ -678,6 +800,304 @@ function renderAdminChamCongTable() {
             return `${y}-${m}`;
         }
 
+        // ==========================================
+        // QUẢN LÝ KÝ HIỆU CHẤM CÔNG ĐỘNG (SYMBOLS)
+        // ==========================================
+        const DEFAULT_CHAMCONG_SYMBOLS = [
+            { code: 'X', label: 'Cả ngày', value: 1.0, bg: '#dcfce7', border: '#86efac', color: '#15803d', aliases: 'CA-NGAY, 1' },
+            { code: 'X/2', label: 'Nửa ngày', value: 0.5, bg: '#fef9c3', border: '#fde047', color: '#a16207', aliases: '1/2, 0.5' },
+            { code: 'S', label: 'Sáng', value: 0.5, bg: '#ffedd5', border: '#fdba74', color: '#c2410c', aliases: 'SANG' },
+            { code: 'C', label: 'Chiều', value: 0.5, bg: '#ffedd5', border: '#fdba74', color: '#c2410c', aliases: 'CHIEU' },
+            { code: 'TS', label: 'Thai sản', value: 0, bg: '#fce7f3', border: '#f472b6', color: '#be185d', aliases: '' },
+            { code: 'ĐK', label: 'Đi khám', value: 0, bg: '#ede9fe', border: '#c4b5fd', color: '#6d28d9', aliases: 'DK' },
+            { code: 'Ô', label: 'Ốm', value: 0, bg: '#fee2e2', border: '#fca5a5', color: '#b91c1c', aliases: 'O' },
+            { code: 'F', label: 'F', value: 0, bg: '#f1f5f9', border: '#cbd5e1', color: '#475569', aliases: '' },
+            { code: 'H', label: 'Học tập', value: 0, bg: '#e0e7ff', border: '#a5b4fc', color: '#4338ca', aliases: '' },
+            { code: 'V', label: 'Vắng', value: 0, bg: '#f3f4f6', border: '#d1d5db', color: '#6b7280', aliases: '' },
+            { code: 'Lễ', label: 'Nghỉ lễ', value: 0, bg: '#fef3c7', border: '#fcd34d', color: '#b45309', aliases: 'LE, TẾT, TET' },
+            { code: 'Nội', label: 'Hội nghị/Nội bộ', value: 0, bg: '#e0f2fe', border: '#7dd3fc', color: '#0369a1', aliases: 'NOI' },
+            { code: 'P', label: 'Phép', value: 0, bg: '#fef08a', border: '#eab308', color: '#854d0e', aliases: '' }
+        ];
+        let chamCongSymbols = [...DEFAULT_CHAMCONG_SYMBOLS];
+        window.chamCongSymbols = chamCongSymbols;
+        window.DEFAULT_CHAMCONG_SYMBOLS = DEFAULT_CHAMCONG_SYMBOLS;
+
+        function findChamCongSymbol(str) {
+            if (!str && str !== 0) return null;
+            const s = String(str).trim().toUpperCase();
+            if (!s) return null;
+            return chamCongSymbols.find(item => {
+                if (!item || !item.code) return false;
+                if (item.code.toUpperCase() === s) return true;
+                if (item.aliases) {
+                    const arr = item.aliases.split(',').map(a => a.trim().toUpperCase()).filter(Boolean);
+                    if (arr.includes(s)) return true;
+                }
+                return false;
+            }) || null;
+        }
+        window.findChamCongSymbol = findChamCongSymbol;
+
+        function applySymbolStyleToInput(input, val) {
+            if (!input) return;
+            const sym = findChamCongSymbol(val);
+            if (sym) {
+                input.style.backgroundColor = sym.bg || '';
+                input.style.borderColor = sym.border || sym.color || '#cbd5e1';
+                input.style.color = sym.color || '';
+                input.style.fontWeight = '700';
+            } else {
+                input.style.backgroundColor = '';
+                input.style.borderColor = '';
+                input.style.color = '';
+                input.style.fontWeight = '';
+            }
+        }
+        window.applySymbolStyleToInput = applySymbolStyleToInput;
+
+        function loadChamCongSymbols(callback) {
+            const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
+            if (!apiFn) {
+                renderChamCongLegend();
+                if (callback) callback(chamCongSymbols);
+                return;
+            }
+            apiFn('getChamCongSymbols', []).then(res => {
+                let list = null;
+                if (res && res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
+                    list = res.data;
+                } else if (Array.isArray(res) && res.length > 0) {
+                    list = res;
+                }
+                if (list && list.length > 0) {
+                    chamCongSymbols = list;
+                    window.chamCongSymbols = chamCongSymbols;
+                }
+                renderChamCongLegend();
+                if (callback) callback(chamCongSymbols);
+            }).catch(err => {
+                console.warn('[ChamCong] load symbols err:', err);
+                renderChamCongLegend();
+                if (callback) callback(chamCongSymbols);
+            });
+        }
+        window.loadChamCongSymbols = loadChamCongSymbols;
+
+        function renderChamCongLegend() {
+            const container = document.getElementById('chamcong-legend-chips');
+            if (!container) return;
+            
+            let html = '';
+            chamCongSymbols.forEach(sym => {
+                const valText = (sym.value !== undefined && sym.value !== null) ? `${sym.value} công` : '';
+                const borderCol = sym.border || sym.color || '#cbd5e1';
+                html += `
+                    <div class="cc-symbol-chip" style="background: ${sym.bg}; border: 1px solid ${borderCol}; color: ${sym.color};" title="${sym.label || sym.code} (${valText})">
+                        <span class="cc-symbol-code">${sym.code}</span>
+                        <span>: ${sym.label || sym.code} (${valText})</span>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+        window.renderChamCongLegend = renderChamCongLegend;
+
+        function updateSymbolPreviewBadge() {
+            const code = document.getElementById('symbol-input-code')?.value.trim() || 'Xem';
+            const bg = document.getElementById('symbol-input-bg')?.value || '#ffffff';
+            const color = document.getElementById('symbol-input-color')?.value || '#1e293b';
+            const badge = document.getElementById('symbol-preview-badge');
+            if (badge) {
+                badge.innerText = code;
+                badge.style.backgroundColor = bg;
+                badge.style.borderColor = color;
+                badge.style.color = color;
+            }
+        }
+        window.updateSymbolPreviewBadge = updateSymbolPreviewBadge;
+
+        function openChamCongSymbolModal() {
+            cancelEditChamCongSymbol();
+            renderChamCongSymbolTable();
+            const modal = document.getElementById('modal-chamcong-symbol');
+            if (modal) modal.style.display = 'flex';
+            
+            const codeInput = document.getElementById('symbol-input-code');
+            const bgInput = document.getElementById('symbol-input-bg');
+            const colorInput = document.getElementById('symbol-input-color');
+            if (codeInput) codeInput.oninput = updateSymbolPreviewBadge;
+            if (bgInput) bgInput.oninput = updateSymbolPreviewBadge;
+            if (colorInput) colorInput.oninput = updateSymbolPreviewBadge;
+            updateSymbolPreviewBadge();
+        }
+        window.openChamCongSymbolModal = openChamCongSymbolModal;
+
+        function closeChamCongSymbolModal() {
+            const modal = document.getElementById('modal-chamcong-symbol');
+            if (modal) modal.style.display = 'none';
+        }
+        window.closeChamCongSymbolModal = closeChamCongSymbolModal;
+
+        function openAddChamCongSymbolModal() {
+            openChamCongSymbolModal();
+            const codeInput = document.getElementById('symbol-input-code');
+            if (codeInput) codeInput.focus();
+        }
+        window.openAddChamCongSymbolModal = openAddChamCongSymbolModal;
+
+        function renderChamCongSymbolTable() {
+            const tbody = document.getElementById('chamcong-symbol-tbody');
+            if (!tbody) return;
+            
+            let html = '';
+            chamCongSymbols.forEach((sym, idx) => {
+                const borderCol = sym.border || sym.color || '#cbd5e1';
+                html += `
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 6px 10px; text-align: center;">
+                            <span style="display: inline-block; min-width: 28px; padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 11px; background: ${sym.bg}; border: 1px solid ${borderCol}; color: ${sym.color};">
+                                ${sym.code}
+                            </span>
+                        </td>
+                        <td style="padding: 6px 10px;">
+                            <div style="font-weight: 600; color: #1e293b;">${sym.label || sym.code}</div>
+                            ${sym.aliases ? `<div style="font-size: 11px; color: #64748b;">Viết tắt: ${sym.aliases}</div>` : ''}
+                        </td>
+                        <td style="padding: 6px 10px; text-align: center; font-weight: 700; color: #2563eb;">
+                            ${sym.value}
+                        </td>
+                        <td style="padding: 6px 10px; text-align: center;">
+                            <button type="button" onclick="editChamCongSymbol(${idx})" style="padding: 3px 8px; font-size: 11px; border: 1px solid #93c5fd; background: #eff6ff; color: #1d4ed8; border-radius: 4px; cursor: pointer; margin-right: 4px;">Sửa</button>
+                            <button type="button" onclick="deleteChamCongSymbol(${idx})" style="padding: 3px 8px; font-size: 11px; border: 1px solid #fca5a5; background: #fef2f2; color: #b91c1c; border-radius: 4px; cursor: pointer;">Xóa</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+        window.renderChamCongSymbolTable = renderChamCongSymbolTable;
+
+        function editChamCongSymbol(index) {
+            const sym = chamCongSymbols[index];
+            if (!sym) return;
+            
+            document.getElementById('symbol-edit-index').value = index;
+            document.getElementById('symbol-input-code').value = sym.code;
+            document.getElementById('symbol-input-label').value = sym.label || '';
+            document.getElementById('symbol-input-value').value = (sym.value !== undefined) ? sym.value : 1.0;
+            document.getElementById('symbol-input-bg').value = sym.bg || '#ffffff';
+            document.getElementById('symbol-input-color').value = sym.color || '#1e293b';
+            
+            document.getElementById('symbol-form-title').innerText = `✏️ Sửa Ký Hiệu "${sym.code}"`;
+            document.getElementById('symbol-form-badge').style.display = 'inline-block';
+            document.getElementById('btn-cancel-edit-symbol').style.display = 'inline-block';
+            updateSymbolPreviewBadge();
+            document.getElementById('symbol-input-code').focus();
+        }
+        window.editChamCongSymbol = editChamCongSymbol;
+
+        function cancelEditChamCongSymbol() {
+            document.getElementById('symbol-edit-index').value = '-1';
+            document.getElementById('symbol-input-code').value = '';
+            document.getElementById('symbol-input-label').value = '';
+            document.getElementById('symbol-input-value').value = '1.0';
+            document.getElementById('symbol-input-bg').value = '#ffffff';
+            document.getElementById('symbol-input-color').value = '#1e293b';
+            
+            document.getElementById('symbol-form-title').innerText = '➕ Thêm Ký Hiệu Chấm Công Mới';
+            document.getElementById('symbol-form-badge').style.display = 'none';
+            document.getElementById('btn-cancel-edit-symbol').style.display = 'none';
+            updateSymbolPreviewBadge();
+        }
+        window.cancelEditChamCongSymbol = cancelEditChamCongSymbol;
+
+        function saveChamCongSymbolItem() {
+            const editIndex = parseInt(document.getElementById('symbol-edit-index').value);
+            const code = document.getElementById('symbol-input-code').value.trim();
+            const label = document.getElementById('symbol-input-label').value.trim();
+            const valRaw = document.getElementById('symbol-input-value').value;
+            const bg = document.getElementById('symbol-input-bg').value;
+            const color = document.getElementById('symbol-input-color').value;
+            
+            if (!code) {
+                alert('Vui lòng nhập Mã ký hiệu!');
+                return;
+            }
+            const val = parseFloat(valRaw);
+            if (isNaN(val) || val < 0) {
+                alert('Số công quy đổi phải là số >= 0!');
+                return;
+            }
+            
+            const dupIndex = chamCongSymbols.findIndex((s, idx) => s.code.toUpperCase() === code.toUpperCase() && idx !== editIndex);
+            if (dupIndex !== -1) {
+                alert(`Mã ký hiệu "${code}" đã tồn tại! Vui lòng chọn mã khác.`);
+                return;
+            }
+            
+            const newSym = {
+                code: code,
+                label: label || code,
+                value: val,
+                bg: bg,
+                border: color,
+                color: color,
+                aliases: (editIndex >= 0 && chamCongSymbols[editIndex]?.aliases) ? chamCongSymbols[editIndex].aliases : ''
+            };
+            
+            if (editIndex >= 0) {
+                chamCongSymbols[editIndex] = newSym;
+            } else {
+                chamCongSymbols.push(newSym);
+            }
+            
+            const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
+            if (apiFn) {
+                apiFn('saveChamCongSymbols', [chamCongSymbols]).catch(err => console.error('[ChamCong] save symbols error:', err));
+            }
+            
+            cancelEditChamCongSymbol();
+            renderChamCongSymbolTable();
+            renderChamCongLegend();
+            renderChamCongTable();
+        }
+        window.saveChamCongSymbolItem = saveChamCongSymbolItem;
+
+        function deleteChamCongSymbol(index) {
+            const sym = chamCongSymbols[index];
+            if (!sym) return;
+            if (!confirm(`Bạn có chắc chắn muốn xóa ký hiệu "${sym.code}" (${sym.label})?`)) return;
+            
+            chamCongSymbols.splice(index, 1);
+            const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
+            if (apiFn) {
+                apiFn('saveChamCongSymbols', [chamCongSymbols]).catch(err => console.error('[ChamCong] delete symbol error:', err));
+            }
+            
+            cancelEditChamCongSymbol();
+            renderChamCongSymbolTable();
+            renderChamCongLegend();
+            renderChamCongTable();
+        }
+        window.deleteChamCongSymbol = deleteChamCongSymbol;
+
+        function resetDefaultChamCongSymbols() {
+            if (!confirm('Khôi phục danh sách ký hiệu về 13 ký hiệu chuẩn ban đầu?')) return;
+            chamCongSymbols = JSON.parse(JSON.stringify(DEFAULT_CHAMCONG_SYMBOLS));
+            window.chamCongSymbols = chamCongSymbols;
+            
+            const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
+            if (apiFn) {
+                apiFn('saveChamCongSymbols', [chamCongSymbols]).catch(err => console.error('[ChamCong] reset symbols error:', err));
+            }
+            
+            cancelEditChamCongSymbol();
+            renderChamCongSymbolTable();
+            renderChamCongLegend();
+            renderChamCongTable();
+        }
+        window.resetDefaultChamCongSymbols = resetDefaultChamCongSymbols;
+
         function commitChamCongCell(input, daysInMonth, triggerSave = true) {
             if (!input) return;
             const emp = input.getAttribute('data-emp');
@@ -688,7 +1108,10 @@ function renderAdminChamCongTable() {
             const upper = val.toUpperCase();
 
             // Chuẩn hóa ký hiệu trực quan & đồng bộ dữ liệu bản in
-            if (upper === 'CA-NGAY') val = 'X';
+            const sym = findChamCongSymbol(upper);
+            if (sym) {
+                val = sym.code;
+            } else if (upper === 'CA-NGAY') val = 'X';
             else if (upper === 'SANG') val = 'S';
             else if (upper === 'CHIEU') val = 'C';
             else if (upper === 'LỄ' || upper === 'LE') val = 'Lễ';
@@ -697,9 +1120,10 @@ function renderAdminChamCongTable() {
             else if (upper === 'X/2' || upper === '1/2') val = 'X/2';
             else if (val) val = upper;
 
-            // Cập nhật thuộc tính value để CSS badge selector hiển thị màu sắc tức thì
+            // Cập nhật thuộc tính value và màu sắc trực quan tức thì
             input.setAttribute('value', val);
             input.value = val;
+            applySymbolStyleToInput(input, val);
 
             if (!chamCongData[emp]) chamCongData[emp] = {};
             const oldRaw = chamCongData[emp][day] || '';
@@ -708,6 +1132,8 @@ function renderAdminChamCongTable() {
             const norm = (v) => {
                 if (!v) return '';
                 const u = String(v).trim().toUpperCase();
+                const matched = findChamCongSymbol(u);
+                if (matched) return matched.code.toUpperCase();
                 if (u === 'CA-NGAY') return 'X';
                 if (u === 'SANG') return 'S';
                 if (u === 'CHIEU') return 'C';
@@ -844,55 +1270,58 @@ function renderAdminChamCongTable() {
             }
 
             getOrLoadChamCongEmployees(() => {
-                if (!hasCached) {
-                    renderChamCongTable(); // Hiển thị khung bảng ngay lập tức không để trống
-                }
-                
-                const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
-                if (!apiFn) {
-                    isLoadingChamCong = false;
-                    return;
-                }
-
-                apiFn('getChamCong', [my]).then(res => {
-                    isLoadingChamCong = false;
-                    // Nếu tháng đã bị đổi sang tháng khác trong lúc request đang gửi thì bỏ qua
-                    if (getChamCongMonthYear() !== my) return;
-
-                    let raw = {};
-                    if (res && res.status === 'success' && res.data) {
-                        raw = res.data;
-                    } else if (res && typeof res === 'object' && !res.status) {
-                        raw = res;
+                loadChamCongSymbols(() => {
+                    renderChamCongLegend();
+                    if (!hasCached) {
+                        renderChamCongTable(); // Hiển thị khung bảng ngay lập tức không để trống
+                    }
+                    
+                    const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
+                    if (!apiFn) {
+                        isLoadingChamCong = false;
+                        return;
                     }
 
-                    // BẢO VỆ DỮ LIỆU CỤC BỘ (Safe Merge on Client):
-                    const hasLocalData = chamCongData && Object.keys(chamCongData).some(k => Object.keys(chamCongData[k] || {}).length > 0);
-                    const isRecentlyEdited = (Date.now() - chamCongLastEditedTime < 8000) && chamCongIsDirty && (activeChamCongMonthYear === my);
-                    const serverIsEmpty = !raw || Object.keys(raw).length === 0;
+                    apiFn('getChamCong', [my]).then(res => {
+                        isLoadingChamCong = false;
+                        // Nếu tháng đã bị đổi sang tháng khác trong lúc request đang gửi thì bỏ qua
+                        if (getChamCongMonthYear() !== my) return;
 
-                    if (!serverIsEmpty) {
-                        const fresh = normalizeChamCongData(raw);
-                        // HỢP NHẤT AN TOÀN: Giữ các ô vừa nhập/sửa trên máy, đắp lên dữ liệu đầy đủ từ server
-                        if (hasLocalData && isRecentlyEdited) {
-                            for (const emp in chamCongData) {
-                                if (!fresh[emp]) fresh[emp] = {};
-                                for (const d in chamCongData[emp]) {
-                                    fresh[emp][d] = chamCongData[emp][d];
+                        let raw = {};
+                        if (res && res.status === 'success' && res.data) {
+                            raw = res.data;
+                        } else if (res && typeof res === 'object' && !res.status) {
+                            raw = res;
+                        }
+
+                        // BẢO VỆ DỮ LIỆU CỤC BỘ (Safe Merge on Client):
+                        const hasLocalData = chamCongData && Object.keys(chamCongData).some(k => Object.keys(chamCongData[k] || {}).length > 0);
+                        const isRecentlyEdited = (Date.now() - chamCongLastEditedTime < 8000) && chamCongIsDirty && (activeChamCongMonthYear === my);
+                        const serverIsEmpty = !raw || Object.keys(raw).length === 0;
+
+                        if (!serverIsEmpty) {
+                            const fresh = normalizeChamCongData(raw);
+                            // HỢP NHẤT AN TOÀN: Giữ các ô vừa nhập/sửa trên máy, đắp lên dữ liệu đầy đủ từ server
+                            if (hasLocalData && isRecentlyEdited) {
+                                for (const emp in chamCongData) {
+                                    if (!fresh[emp]) fresh[emp] = {};
+                                    for (const d in chamCongData[emp]) {
+                                        fresh[emp][d] = chamCongData[emp][d];
+                                    }
                                 }
                             }
+                            chamCongData = fresh;
+                            window.chamCongData = chamCongData;
+                            setCachedChamCong(my, fresh);
+                            renderChamCongTable();
+                        } else if (hasLocalData && isRecentlyEdited) {
+                            setCachedChamCong(my, chamCongData);
+                            triggerAutoSaveChamCong();
                         }
-                        chamCongData = fresh;
-                        window.chamCongData = chamCongData;
-                        setCachedChamCong(my, fresh);
-                        renderChamCongTable();
-                    } else if (hasLocalData && isRecentlyEdited) {
-                        setCachedChamCong(my, chamCongData);
-                        triggerAutoSaveChamCong();
-                    }
-                }).catch(err => {
-                    isLoadingChamCong = false;
-                    console.warn('[ChamCong] background fetch err:', err);
+                    }).catch(err => {
+                        isLoadingChamCong = false;
+                        console.warn('[ChamCong] background fetch err:', err);
+                    });
                 });
             });
         }
@@ -913,6 +1342,8 @@ function renderAdminChamCongTable() {
             if (typeof val !== 'string') return '';
             val = val.trim();
             const upper = val.toUpperCase();
+            const sym = findChamCongSymbol(upper);
+            if (sym) return sym.code;
             if (upper === 'CA-NGAY') return 'X';
             if (upper === 'SANG') return 'S';
             if (upper === 'CHIEU') return 'C';
@@ -925,33 +1356,41 @@ function renderAdminChamCongTable() {
 
         function calcDayValue(val) {
             if (!val && val !== 0) return 0;
-            if (typeof val === 'number') return Math.min(1, Math.max(0, val));
+            if (typeof val === 'number') return Math.min(2, Math.max(0, val));
             if (typeof val !== 'string') return 0;
             val = val.trim();
             if (!val) return 0;
             const upper = val.toUpperCase();
 
-            // 1. Ký hiệu nghỉ / học / không tính công thủ thuật: 0 công (Khớp 100% bản in)
+            // 1. Khớp theo ký hiệu cấu hình động (Dynamic Symbols)
+            const sym = findChamCongSymbol(upper);
+            if (sym && sym.value !== undefined) {
+                return parseFloat(sym.value) || 0;
+            }
+
+            // Fallback ký hiệu mặc định nếu chưa khớp
             if (['TS', 'ĐK', 'DK', 'O', 'Ô', 'NGHỈ', 'NGHI', 'V', 'LỄ', 'LE', 'TẾT', 'TET', 'NỘI', 'NOI', 'H', 'F', 'B', 'P'].includes(upper)) return 0;
-
-            // 2. Nửa ngày công: 0.5 công
             if (['X/2', '1/2', '0.5', 'S', 'C', 'SANG', 'CHIEU'].includes(upper)) return 0.5;
-
-            // 3. Cả ngày công: 1.0 công
             if (['X', 'CA-NGAY', '1'].includes(upper)) return 1;
 
             const parsedNum = parseFloat(val);
-            if (!isNaN(parsedNum) && parsedNum >= 0 && parsedNum <= 1) return parsedNum;
+            if (!isNaN(parsedNum) && parsedNum >= 0 && parsedNum <= 2) return parsedNum;
 
             if (upper.includes('X/2') || upper.includes('1/2')) return 0.5;
 
             let total = 0;
             const parts = upper.split(/[\+\-\s,]+/);
             parts.forEach(p => {
-                if (p === 'S' || p === 'C' || p === 'SANG' || p === 'CHIEU') total += 0.5;
-                else if (p === 'X' || p === 'CA-NGAY' || p === '1') total += 1;
+                const subSym = findChamCongSymbol(p);
+                if (subSym && subSym.value !== undefined) {
+                    total += (parseFloat(subSym.value) || 0);
+                } else if (p === 'S' || p === 'C' || p === 'SANG' || p === 'CHIEU') {
+                    total += 0.5;
+                } else if (p === 'X' || p === 'CA-NGAY' || p === '1') {
+                    total += 1;
+                }
             });
-            return total > 1 ? 1 : total;
+            return total > 2 ? 2 : total;
         }
         window.calcDayValue = calcDayValue;
 
@@ -1030,7 +1469,7 @@ function renderAdminChamCongTable() {
             if (!adminChamCongEmployees || adminChamCongEmployees.length === 0) {
                 const colSpan = daysInMonth + 3;
                 tbody.innerHTML = '<tr><td colspan="' + colSpan + '" style="text-align:center; padding:30px; color:#64748b; font-size:13px; font-weight:500;">' +
-                    '⚠️ Đơn vị này chưa có danh sách nhân sự chấm công. Vui lòng vào <b>Quản trị ➔ Nhân sự chấm công & thống kê</b> để thêm nhân viên.' +
+                    '⚠️ Đơn vị này chưa có danh sách nhân sự chấm công. Vui lòng vào <b>Quản trị ➔ Nhân sự chấm công & thống kê</b> hoặc bấm chuyển sang tab <b>🧑‍⚕️ Danh Sách Nhân Sự</b> để thêm nhân viên.' +
                     '</td></tr>';
                 return;
             }
@@ -1118,6 +1557,7 @@ function renderAdminChamCongTable() {
 
         function attachChamCongEvents(daysInMonth) {
             document.querySelectorAll('.cc-input-text').forEach(input => {
+                applySymbolStyleToInput(input, input.value);
                 ['input', 'change', 'blur'].forEach(evtType => {
                     input.addEventListener(evtType, (e) => {
                         commitChamCongCell(e.target, daysInMonth, true);
@@ -1239,9 +1679,12 @@ function renderAdminChamCongTable() {
             if (tkM) tkM.value = curM;
             if (tkY) tkY.value = curY;
 
-            // Pre-render sẵn bảng Chấm Công và Thống Kê
-            try { renderChamCongTable(); } catch(e) { console.error(e); }
-            try { renderThongKeTable(); } catch(e) { console.error(e); }
+            loadChamCongSymbols(() => {
+                renderChamCongLegend();
+                // Pre-render sẵn bảng Chấm Công và Thống Kê
+                try { renderChamCongTable(); } catch(e) { console.error(e); }
+                try { renderThongKeTable(); } catch(e) { console.error(e); }
+            });
         });
 
         // ==========================================
@@ -3171,4 +3614,18 @@ window.loadThongKeData = loadThongKeData;
 window.renderThongKeTable = renderThongKeTable;
 window.loadChamCongData = loadChamCongData;
 window.renderChamCongTable = renderChamCongTable;
+window.loadChamCongSymbols = loadChamCongSymbols;
+window.renderChamCongLegend = renderChamCongLegend;
+window.openChamCongSymbolModal = openChamCongSymbolModal;
+window.closeChamCongSymbolModal = closeChamCongSymbolModal;
+window.openAddChamCongSymbolModal = openAddChamCongSymbolModal;
+window.renderChamCongSymbolTable = renderChamCongSymbolTable;
+window.editChamCongSymbol = editChamCongSymbol;
+window.cancelEditChamCongSymbol = cancelEditChamCongSymbol;
+window.saveChamCongSymbolItem = saveChamCongSymbolItem;
+window.deleteChamCongSymbol = deleteChamCongSymbol;
+window.resetDefaultChamCongSymbols = resetDefaultChamCongSymbols;
+window.updateSymbolPreviewBadge = updateSymbolPreviewBadge;
+window.findChamCongSymbol = findChamCongSymbol;
+window.applySymbolStyleToInput = applySymbolStyleToInput;
 

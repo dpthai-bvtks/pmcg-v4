@@ -3111,6 +3111,39 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       return success({ message: "Đã lưu cấu hình thành công!" });
     }
 
+    case "getChamCongSymbols": {
+      const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'chamcong_symbols'").bind(unitCode).first();
+      if (rec && rec.value) {
+        try {
+          const list = JSON.parse(rec.value);
+          if (Array.isArray(list) && list.length > 0) return success(list);
+        } catch(e) {}
+      }
+      const defaultSymbols = [
+        { code: "X", label: "Cả ngày", value: 1.0, bg: "#ffffff", border: "#cbd5e1", color: "#1e293b" },
+        { code: "X/2", label: "Nửa ngày", value: 0.5, bg: "#ccfbf1", border: "#99f6e4", color: "#0f766e" },
+        { code: "S / C", label: "Sáng / Chiều", value: 0.5, bg: "#d1fae5", border: "#a7f3d0", color: "#047857", aliases: ["S", "C"] },
+        { code: "Lễ", label: "Nghỉ lễ", value: 0.0, bg: "#fee2e2", border: "#fca5a5", color: "#b91c1c", aliases: ["LE"] },
+        { code: "Tết", label: "Nghỉ Tết", value: 0.0, bg: "#fee2e2", border: "#fca5a5", color: "#b91c1c", aliases: ["TET"] },
+        { code: "Nội", label: "Trực / học nội trú", value: 0.0, bg: "#dbeafe", border: "#93c5fd", color: "#1d4ed8", aliases: ["NOI"] },
+        { code: "Ô", label: "Nghỉ ốm", value: 0.0, bg: "#ffedd5", border: "#fed7aa", color: "#c2410c", aliases: ["O"] },
+        { code: "H", label: "Học / Hội chẩn", value: 0.0, bg: "#fef3c7", border: "#fde68a", color: "#b45309" },
+        { code: "F", label: "Nghỉ phép", value: 0.0, bg: "#fef3c7", border: "#fde68a", color: "#b45309" },
+        { code: "B", label: "Nghỉ bù", value: 0.0, bg: "#fef3c7", border: "#fde68a", color: "#b45309" },
+        { code: "TS", label: "Thai sản", value: 0.0, bg: "#f3e8ff", border: "#d8b4fe", color: "#6d28d9" },
+        { code: "ĐK / DK", label: "Khám ngoại viện / Dã ngoại", value: 0.0, bg: "#f3e8ff", border: "#d8b4fe", color: "#6d28d9", aliases: ["DK", "ĐK"] },
+        { code: "K / V", label: "Nghỉ việc riêng / Không lương", value: 0.0, bg: "#f1f5f9", border: "#cbd5e1", color: "#64748b", aliases: ["K", "V"] }
+      ];
+      return success(defaultSymbols);
+    }
+
+    case "saveChamCongSymbols": {
+      const symbols = args[0] || [];
+      await setCaiDat(db, unitCode, 'chamcong_symbols', JSON.stringify(symbols));
+      await bumpDataVersion(db, unitCode);
+      return success({ message: "Đã lưu danh sách ký hiệu chấm công thành công!" });
+    }
+
 
     case "getDocuments": {
       try {

@@ -76,9 +76,9 @@
     }
     </script>
     <meta name="theme-color" content="#1e3d2b">
-    <link rel="icon" type="image/png" sizes="128x128" href="favicon-128.png?v=4.0.2-rev13">
+    <link rel="icon" type="image/png" sizes="128x128" href="favicon-128.png?v=4.0.2-rev14">
     <!-- Thêm icon cho iOS -->
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=4.0.2-rev13">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=4.0.2-rev14">
 
 
 
@@ -89,15 +89,15 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=4.0.2-rev13">
+    <link rel="stylesheet" href="css/style.css?v=4.0.2-rev14">
     <!-- PWA & Mobile Web App Meta Tags -->
-    <link rel="manifest" href="manifest.json?v=4.0.2-rev13">
+    <link rel="manifest" href="manifest.json?v=4.0.2-rev14">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.0.2-rev13">
+    <link rel="stylesheet" href="css/mobile.css?v=4.0.2-rev14">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
     <script src="js/dexie.min.js?v=3.2.6"></script>
@@ -2754,20 +2754,29 @@
                         </div>
                     </div>
                 </div>
-                <!-- TAB: CHẤM CÔNG (CHUẨN GIAO DIỆN PM CŨ) -->
+                <!-- TAB: CHẤM CÔNG (CHUẨN GIAO DIỆN TÍCH HỢP QUẢN LÝ NHÂN SỰ & KÝ HIỆU) -->
                 <div class="tab-content" id="tab-chamcong">
                     <div class="chamcong-card-wrapper"
                         style="background: #ffffff; border-radius: 6px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04); padding: 6px 8px; display: flex; flex-direction: column; height: 100%; min-height: 480px; box-sizing: border-box;">
 
-                        <div
-                            style="flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid #f1f5f9;">
-                            <h2
-                                style="color: #2563eb; font-weight: 700; font-size: 15px; margin: 0; letter-spacing: 0.3px; text-transform: uppercase; display: flex; align-items: center; gap: 4px;">
-                                <span>📅</span> BẢNG CHẤM CÔNG
-                            </h2>
+                        <!-- THANH ĐIỀU HƯỚNG CHÍNH CỦA TAB CHẤM CÔNG -->
+                        <div style="flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px solid #f1f5f9;">
+                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <h2 style="color: #2563eb; font-weight: 700; font-size: 15px; margin: 0; letter-spacing: 0.3px; text-transform: uppercase; display: flex; align-items: center; gap: 4px;">
+                                    <span>📅</span> CHẤM CÔNG & NHÂN SỰ
+                                </h2>
+                                <div class="chamcong-subnav">
+                                    <button type="button" class="chamcong-subtab-btn active" id="subtab-btn-grid" onclick="switchChamCongSubTab('grid')">
+                                        <span>📅</span> Bảng Chấm Công
+                                    </button>
+                                    <button type="button" class="chamcong-subtab-btn" id="subtab-btn-staff" onclick="switchChamCongSubTab('staff')">
+                                        <span>🧑‍⚕️</span> Danh Sách Nhân Sự (<span id="chamcong-staff-badge-count">13</span>)
+                                    </button>
+                                </div>
+                            </div>
 
-                            <div
-                                style="display: flex; justify-content: center; align-items: center; gap: 4px; flex-wrap: wrap;">
+                            <!-- KHU VỰC THÁNG / NĂM / XUẤT EXCEL CHO BẢNG CHẤM CÔNG -->
+                            <div id="chamcong-grid-toolbar" style="display: flex; justify-content: center; align-items: center; gap: 4px; flex-wrap: wrap;">
                                 <span style="font-weight: 600; color: #475569; font-size: 12px;">Tháng</span>
                                 <input type="number" id="chamcong-month-picker" min="1" max="12"
                                     style="width: 44px; height: 26px; text-align: center; font-weight: 700; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 12px; outline: none; background: #fff; padding: 0;">
@@ -2782,86 +2791,106 @@
                                     style="margin-left: 3px; padding: 0 12px; border-radius: 4px; font-weight: 600; font-size: 12px; height: 26px; display: inline-flex; align-items: center; gap: 3px; background: #f8fafc; color: #1e293b; border: 1px solid #cbd5e1; cursor: pointer; transition: all 0.2s;">
                                     <i class='bx bx-download'></i> Xuất Excel
                                 </button>
+                                <button type="button" onclick="switchChamCongSubTab('staff')"
+                                    style="margin-left: 3px; padding: 0 10px; border-radius: 4px; font-weight: 600; font-size: 11.5px; height: 26px; display: inline-flex; align-items: center; gap: 3px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; cursor: pointer; transition: all 0.2s;"
+                                    title="Chuyển sang Quản lý và Sắp xếp nhân sự">
+                                    <span>👥</span> Sắp Xếp Nhân Sự
+                                </button>
                             </div>
                         </div>
 
-                        <div style="border: 1px solid #cbd5e1; border-radius: 4px; overflow: auto; flex: 1; min-height: 380px; background: #ffffff; -webkit-overflow-scrolling: touch;"
-                            id="table-chamcong-container" class="table-chamcong-scroll">
-                            <table class="data-table" id="table-chamcong"
-                                style="width: 100%; border-collapse: separate; border-spacing: 0; white-space: nowrap;">
-                                <thead id="chamcong-thead">
-                                </thead>
-                                <tbody id="chamcong-body">
-                                </tbody>
-                            </table>
+                        <!-- SUB-VIEW 1: BẢNG CHẤM CÔNG THEO THÁNG -->
+                        <div id="subtab-chamcong-grid-view" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+                            <div style="border: 1px solid #cbd5e1; border-radius: 4px; overflow: auto; flex: 1; min-height: 380px; background: #ffffff; -webkit-overflow-scrolling: touch;"
+                                id="table-chamcong-container" class="table-chamcong-scroll">
+                                <table class="data-table" id="table-chamcong"
+                                    style="width: 100%; border-collapse: separate; border-spacing: 0; white-space: nowrap;">
+                                    <thead id="chamcong-thead">
+                                    </thead>
+                                    <tbody id="chamcong-body">
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- BẢNG KÝ HIỆU CHẤM CÔNG (ĐỘNG & CÓ THỂ THÊM / SỬA KÝ HIỆU) -->
+                            <div class="chamcong-legend-wrapper" id="chamcong-legend-container" style="margin-top: 10px; padding: 10px 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); flex-shrink: 0;">
+                                <div class="cc-leg-divider" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+                                    <div class="cc-leg-header" style="display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; color: #1e293b;">
+                                        <span style="font-size: 15px;">💡</span>
+                                        <span style="text-transform: uppercase; letter-spacing: 0.3px;">Bảng Ký Hiệu Chấm Công & Quy Ước Tính Công</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                        <div class="cc-leg-sub" id="chamcong-legend-summary" style="font-size: 12px; color: #64748b;">
+                                            Quy ước: <b style="color: #2563eb;">X</b> = 1.0 công &nbsp;|&nbsp; <b style="color: #0f766e;">X/2, S, C</b> = 0.5 công &nbsp;|&nbsp; Ký hiệu khác = 0 công
+                                        </div>
+                                        <div style="display: inline-flex; gap: 5px;">
+                                            <button type="button" onclick="openChamCongSymbolModal()"
+                                                style="padding: 2px 8px; font-size: 11px; font-weight: 600; border-radius: 4px; border: 1px solid #cbd5e1; background: #ffffff; color: #334155; cursor: pointer; display: inline-flex; align-items: center; gap: 3px;"
+                                                title="Tùy chỉnh danh sách ký hiệu chấm công và số công tính">
+                                                <span>⚙️</span> Quản Lý Ký Hiệu
+                                            </button>
+                                            <button type="button" onclick="openAddChamCongSymbolModal()"
+                                                style="padding: 2px 8px; font-size: 11px; font-weight: 600; border-radius: 4px; border: 1px solid #bfdbfe; background: #eff6ff; color: #2563eb; cursor: pointer; display: inline-flex; align-items: center; gap: 3px;"
+                                                title="Thêm ký hiệu chấm công mới">
+                                                <span>➕</span> Thêm Ký Hiệu
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="chamcong-legend-chips" style="display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12px; align-items: center;">
+                                    <!-- Dynamic Chips will be injected by renderChamCongLegend() -->
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- BẢNG KÝ HIỆU CHẤM CÔNG (HIỂN THỊ TRỰC QUAN PHÍA DƯỚI BẢNG) -->
-                        <div class="chamcong-legend-wrapper" style="margin-top: 10px; padding: 10px 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); flex-shrink: 0;">
-                            <div class="cc-leg-divider" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
-                                <div class="cc-leg-header" style="display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; color: #1e293b;">
-                                    <span style="font-size: 15px;">💡</span>
-                                    <span style="text-transform: uppercase; letter-spacing: 0.3px;">Bảng Ký Hiệu Chấm Công & Quy Ước Tính Công</span>
+                        <!-- SUB-VIEW 2: QUẢN LÝ NHÂN SỰ CHẤM CÔNG & THỐNG KÊ (KÉO THẢ SẮP XẾP ☰) -->
+                        <div id="subtab-chamcong-staff-view" style="display: none; flex-direction: column; flex: 1; min-height: 0; padding-top: 4px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                                <div>
+                                    <h3 style="margin: 0 0 4px 0; color: #1e293b; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                                        <span>🧑‍⚕️</span> Danh Sách Nhân Sự Chấm Công & Thống Kê
+                                    </h3>
+                                    <p style="margin: 0; font-size: 12.5px; color: #64748b;">
+                                        Danh sách nhân sự dùng riêng cho tính năng Chấm Công và Thống Kê. Nắm giữ biểu tượng <b style="color: #2563eb;">☰</b> để kéo thả sắp xếp hoặc bấm <b style="color: #2563eb;">▲ ▼</b> để đổi vị trí.
+                                    </p>
                                 </div>
-                                <div class="cc-leg-sub" style="font-size: 12px; color: #64748b;">
-                                    Quy ước: <b style="color: #2563eb;">X</b> = 1.0 công &nbsp;|&nbsp; <b style="color: #0f766e;">X/2, S, C</b> = 0.5 công &nbsp;|&nbsp; Ký hiệu khác = 0 công
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                    <button class="btn btn-success" onclick="openAddAdminEmployeeModal()"
+                                        style="padding: 7px 14px; border-radius: 6px; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; background: #10b981; border: none; color: #fff; cursor: pointer; box-shadow: 0 2px 4px rgba(16,185,129,0.2);">
+                                        <i class="bx bx-plus"></i> Thêm Nhân Viên
+                                    </button>
+                                    <button type="button" onclick="restoreDefaultChamCongStaffList()"
+                                        style="padding: 7px 12px; border-radius: 6px; font-weight: 600; font-size: 12.5px; display: inline-flex; align-items: center; gap: 5px; background: #f8fafc; border: 1px solid #cbd5e1; color: #334155; cursor: pointer;"
+                                        title="Khôi phục 13 nhân sự chuẩn BVTKS CS2">
+                                        <span>🔄</span> Mẫu Chuẩn Nhân Sự
+                                    </button>
+                                    <button type="button" onclick="switchChamCongSubTab('grid')"
+                                        style="padding: 7px 14px; border-radius: 6px; font-weight: 600; font-size: 12.5px; display: inline-flex; align-items: center; gap: 5px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; cursor: pointer;">
+                                        <span>📅</span> Xem Bảng Chấm Công
+                                    </button>
                                 </div>
                             </div>
-                            <div style="display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12px; align-items: center;">
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #ffffff; border: 1px solid #cbd5e1; color: #1e293b;">X</span>
-                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Cả ngày (1.0)</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #ccfbf1; border: 1px solid #99f6e4; color: #0f766e;">X/2</span>
-                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Nửa ngày (0.5)</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #d1fae5; border: 1px solid #a7f3d0; color: #047857;">S / C</span>
-                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Sáng / Chiều (0.5)</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c;">Lễ</span>
-                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Nghỉ lễ</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c;">Tết</span>
-                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Nghỉ Tết</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #dbeafe; border: 1px solid #93c5fd; color: #1d4ed8;">Nội</span>
-                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Trực / học nội trú</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #ffedd5; border: 1px solid #fed7aa; color: #c2410c;">Ô</span>
-                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Nghỉ ốm</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #fef3c7; border: 1px solid #fde68a; color: #b45309;">H</span>
-                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Học / Hội chẩn</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #fef3c7; border: 1px solid #fde68a; color: #b45309;">F</span>
-                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Nghỉ phép</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #fef3c7; border: 1px solid #fde68a; color: #b45309;">B</span>
-                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Nghỉ bù</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #f3e8ff; border: 1px solid #d8b4fe; color: #6d28d9;">TS</span>
-                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Thai sản</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #f3e8ff; border: 1px solid #d8b4fe; color: #6d28d9;">ĐK / DK</span>
-                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Khám ngoại viện / Dã ngoại</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #f1f5f9; border: 1px solid #cbd5e1; color: #64748b;">K / V</span>
-                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Nghỉ việc riêng / Không lương</span>
-                                </div>
+
+                            <div style="border: 1px solid #e2e8f0; border-radius: 6px; overflow: auto; background: #fff; flex: 1; min-height: 360px;">
+                                <table id="table-chamcong-employees" class="data-table" style="width: 100%; border-collapse: collapse;">
+                                    <thead style="background: #275d38; color: #ffffff; position: sticky; top: 0; z-index: 2;">
+                                        <tr>
+                                            <th style="width: 60px; text-align: center; color: #ffffff; padding: 8px 4px;" title="Kéo thả hoặc bấm nút mũi tên để di chuyển thứ tự">Sắp xếp</th>
+                                            <th style="width: 45px; text-align: center; color: #ffffff; padding: 8px 4px;">STT</th>
+                                            <th style="text-align: left; color: #ffffff; padding: 8px 8px;">Tên Nhân Viên</th>
+                                            <th style="width: 110px; text-align: center; color: #ffffff; padding: 8px 4px;">Chức Danh</th>
+                                            <th style="text-align: left; color: #ffffff; padding: 8px 8px;">Từ khóa nhận diện Excel (HIS)</th>
+                                            <th style="width: 100px; text-align: center; color: #ffffff; padding: 8px 4px;">Hệ / Kỹ năng</th>
+                                            <th style="width: 130px; text-align: center; color: #ffffff; padding: 8px 4px;">Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="chamcong-employees-body">
+                                        <!-- Rendered dynamically by JS with Drag & Drop -->
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
+
                     </div>
                 </div>
 
@@ -3302,7 +3331,7 @@
 
                     <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 4.0.2</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 15:55 07/09/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 16:15 07/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -3575,6 +3604,83 @@
         </div>
     </div>
 
+    <!-- MODAL QUẢN LÝ KÝ HIỆU CHẤM CÔNG & QUY ƯỚC CÔNG -->
+    <div id="modal-chamcong-symbol"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(3px);">
+        <div style="background: #fff; padding: 20px 24px; border-radius: 10px; width: 620px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.25); box-sizing: border-box;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
+                <h3 style="margin: 0; color: #1e293b; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                    <span>💡</span> Quản Lý Ký Hiệu Chấm Công & Quy Ước Tính Công
+                </h3>
+                <button type="button" onclick="closeChamCongSymbolModal()" style="background: none; border: none; font-size: 22px; color: #64748b; cursor: pointer; line-height: 1;">&times;</button>
+            </div>
+
+            <!-- Form Thêm / Sửa Ký Hiệu -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px;">
+                <div style="font-weight: 700; font-size: 13px; color: #2563eb; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <span id="symbol-form-title">➕ Thêm Ký Hiệu Chấm Công Mới</span>
+                    <span id="symbol-form-badge" style="display: none; font-size: 11px; background: #eff6ff; color: #1d4ed8; padding: 2px 8px; border-radius: 4px; font-weight: 600;">Đang sửa</span>
+                </div>
+                <input type="hidden" id="symbol-edit-index" value="-1">
+                <div style="display: grid; grid-template-columns: 1fr 1.6fr 1fr; gap: 10px; margin-bottom: 8px;">
+                    <div>
+                        <label style="display: block; font-size: 11.5px; font-weight: 600; color: #334155; margin-bottom: 3px;">Mã Ký Hiệu (*)</label>
+                        <input type="text" id="symbol-input-code" placeholder="VD: CT, H/2..." style="width: 100%; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 12.5px; font-weight: 700; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 11.5px; font-weight: 600; color: #334155; margin-bottom: 3px;">Tên / Ý Nghĩa</label>
+                        <input type="text" id="symbol-input-label" placeholder="VD: Đi công tác" style="width: 100%; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 12.5px; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 11.5px; font-weight: 600; color: #334155; margin-bottom: 3px;">Số Công Quy Đổi (*)</label>
+                        <input type="number" id="symbol-input-value" step="0.1" min="0" max="2" placeholder="1.0" style="width: 100%; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 12.5px; font-weight: 700; text-align: center; box-sizing: border-box;">
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 12px;">
+                        <span style="font-weight: 600; color: #475569;">Màu nền:</span>
+                        <input type="color" id="symbol-input-bg" value="#ffffff" style="width: 32px; height: 26px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; padding: 0;">
+                        <span style="font-weight: 600; color: #475569; margin-left: 4px;">Màu chữ:</span>
+                        <input type="color" id="symbol-input-color" value="#1e293b" style="width: 32px; height: 26px; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; padding: 0;">
+                        <div id="symbol-preview-badge" style="margin-left: 8px; display: inline-block; min-width: 28px; padding: 2px 6px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #ffffff; border: 1px solid #cbd5e1; color: #1e293b;">
+                            Xem thử
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 6px;">
+                        <button type="button" id="btn-cancel-edit-symbol" onclick="cancelEditChamCongSymbol()" style="display: none; padding: 5px 12px; font-size: 12px; border-radius: 5px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer;">Hủy sửa</button>
+                        <button type="button" onclick="saveChamCongSymbolItem()" style="padding: 5px 15px; font-size: 12px; font-weight: 700; border-radius: 5px; border: none; background: #2563eb; color: #fff; cursor: pointer; box-shadow: 0 1px 3px rgba(37,99,235,0.3);">Lưu Ký Hiệu</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bảng danh sách các ký hiệu đang có -->
+            <div style="flex: 1; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 12px; min-height: 180px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                    <thead style="background: #f1f5f9; position: sticky; top: 0; z-index: 1;">
+                        <tr>
+                            <th style="padding: 6px 10px; text-align: center; width: 70px; border-bottom: 1px solid #cbd5e1;">Huy hiệu</th>
+                            <th style="padding: 6px 10px; text-align: left; border-bottom: 1px solid #cbd5e1;">Mô tả / Ý nghĩa</th>
+                            <th style="padding: 6px 10px; text-align: center; width: 80px; border-bottom: 1px solid #cbd5e1;">Số công</th>
+                            <th style="padding: 6px 10px; text-align: center; width: 100px; border-bottom: 1px solid #cbd5e1;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="chamcong-symbol-tbody">
+                        <!-- Rendered by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <button type="button" onclick="resetDefaultChamCongSymbols()" style="padding: 6px 12px; font-size: 12px; border: 1px solid #cbd5e1; background: #f8fafc; color: #64748b; border-radius: 5px; cursor: pointer;">
+                    🔄 Khôi phục 13 ký hiệu chuẩn
+                </button>
+                <button type="button" onclick="closeChamCongSymbolModal()" style="padding: 6px 16px; font-size: 12px; font-weight: 600; border: none; background: #475569; color: #fff; border-radius: 5px; cursor: pointer;">
+                    Đóng
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Hướng Dẫn Sử Dụng Nhanh (HDSD Popup Viewer) -->
     <div id="modal-hdsd-viewer"
         style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 15px;">
@@ -3743,18 +3849,18 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.0.2-rev13"></script>
-    <script src="js/ai-scheduler.js?v=4.0.2-rev13"></script>
-    <script src="js/cp-solver.js?v=4.0.2-rev13"></script>
-    <script src="js/scheduler-engine.js?v=4.0.2-rev13"></script>
-    <script src="js/app.js?v=4.0.2-rev13"></script>
-    <script src="js/init.js?v=4.0.2-rev13"></script>
-    <script src="js/sync.js?v=4.0.2-rev13"></script>
-    <script src="js/thongke.js?v=4.0.2-rev13"></script>
+    <script src="js/offline-sync-engine.js?v=4.0.2-rev14"></script>
+    <script src="js/ai-scheduler.js?v=4.0.2-rev14"></script>
+    <script src="js/cp-solver.js?v=4.0.2-rev14"></script>
+    <script src="js/scheduler-engine.js?v=4.0.2-rev14"></script>
+    <script src="js/app.js?v=4.0.2-rev14"></script>
+    <script src="js/init.js?v=4.0.2-rev14"></script>
+    <script src="js/sync.js?v=4.0.2-rev14"></script>
+    <script src="js/thongke.js?v=4.0.2-rev14"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>
-    const APP_VERSION = '4.0.2-rev13';
+    const APP_VERSION = '4.0.2-rev14';
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             // Unregister old service workers if version changed
