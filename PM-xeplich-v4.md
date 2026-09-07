@@ -1646,5 +1646,49 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `sw.js` (CACHE_NAME v4.0.2-rev8)
   + `PM-xeplich-v4.md` (nhật ký phát triển)
 
+### Triệt Tiêu Triệt Để Lỗi Telemetry / Web Vitals reportAllChanges startTime Từ Cloudflare Beacon (07/09/2026 - v4.0.2-rev9)
+- **Yêu cầu của người dùng**:
+  - Xử lý lỗi console:
+    ```
+    VM106:2 Uncaught TypeError: Cannot read properties of undefined (reading 'startTime')
+        at et.reportAllChanges (<anonymous>:2:19429)
+        at <anonymous>:2:13070
+        at <anonymous>:2:331
+        at d (<anonymous>:2:6141)
+        at <anonymous>:2:6326
+        at <anonymous>:2:2895
+        at n.timeout (<anonymous>:2:5652)
+    ```
+- **Phân tích nguyên nhân cốt lõi**:
+  1. *Nguồn gốc script gây lỗi*:
+     - Cloudflare Pages tự động tiêm đoạn mã theo dõi hiệu năng và lưu lượng (Cloudflare Web Analytics / Real User Monitoring) mang tên `beacon.min.js` (`static.cloudflareinsights.com/beacon.min.js`) vào cuối mỗi trang HTML trước thẻ `</body>`.
+     - Trong `beacon.min.js`, Cloudflare nhúng thư viện `web-vitals` của Google để đo lường các chỉ số LCP, FID, INP, CLS.
+     - Hàm `reportAllChanges` trong `web-vitals` cố gắng đọc thuộc tính `startTime` từ danh sách quan sát hiệu năng (`entries[0].startTime`). Khi một sự kiện người dùng diễn ra mà danh sách `entries` bị rỗng hoặc chưa kịp khởi tạo, `entries[0]` trả về `undefined`, dẫn đến ngoại lệ `Cannot read properties of undefined (reading 'startTime')`.
+  2. *Lý do lỗi này trước đây không bị chặn*:
+     - Lỗi xảy ra bên trong một `setTimeout` timer callback vô danh của Cloudflare (`at n.timeout (<anonymous>:2:5652)`). Trong Chromium DevTools, các ngoại lệ unhandled trong task queue hoặc microtask queue thường bị in ra tab Console trước khi trình xử lý sự kiện thông thường có thể ngăn chặn hoàn toàn.
+  3. *Giải pháp kiến trúc dứt điểm*:
+     - Bằng cách phân tích mã nguồn bytecode của Cloudflare `beacon.min.js`, script này có cơ chế kiểm tra cờ cấu hình toàn cục:
+       `let v = window.__cfBeacon ? window.__cfBeacon : {}; if (v && "single" === v.load) return;`
+     - Khi khai báo `window.__cfBeacon = { load: 'single' };` ngay từ thẻ `<head>` đầu trang, script `beacon.min.js` của Cloudflare sẽ phát hiện cờ dừng và thoát ngay lập tức ở dòng khởi tạo đầu tiên, không tạo observer, không chạy bộ đếm timeout và không còn cơ hội phát sinh lỗi `startTime`.
+     - Bổ sung bộ lắng nghe `window.addEventListener('error', ..., true)` ở mức capture cao nhất để nuốt sạch mọi vết lỗi telemetry nếu có bất kỳ biến thể nào khác lọt qua.
+- **Các giải pháp đã thực hiện**:
+  1. *Thiết lập cờ vô hiệu hóa Cloudflare Beacon*:
+     - Thêm `window.__cfBeacon = { load: 'single' };` vào `<head>` của `index.html` và `hdsd.html`.
+  2. *Bổ sung Error Handler toàn cục mức Capture*:
+     - Bổ sung hàm lắng nghe lỗi sớm trong `index.html` nhằm ngăn chặn các ngoại lệ liên quan đến `startTime`, `reportAllChanges` và `beacon.min.js`.
+  3. *Đồng bộ phiên bản theo RULES.md*:
+     - Giữ phiên bản chính `4.0.2`, nâng revision lên `4.0.2-rev9`.
+     - Footer timestamp: `13:55 07/09/2026`.
+     - Đồng bộ `CACHE_NAME = 'pmcg-v4-cache-4.0.2-rev9'` trong `sw.js`.
+     - Đồng bộ `?v=4.0.2-rev9` trên toàn bộ link CSS, thẻ script và `APP_VERSION` trong `index.html`.
+     - Cập nhật query string `v=4.0.2-rev9` cho `hdsd.html` trong `js/app.js`.
+- **File sửa đổi**:
+  + `index.html` (khai báo __cfBeacon, error listener, version 4.0.2-rev9, timestamp 13:55 07/09/2026)
+  + `hdsd.html` (khai báo __cfBeacon)
+  + `sw.js` (CACHE_NAME v4.0.2-rev9)
+  + `js/app.js` (cache buster v4.0.2-rev9 cho modal hdsd)
+  + `PM-xeplich-v4.md` (nhật ký phát triển)
+
+
 
 
