@@ -1758,7 +1758,41 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `css/style.css` (bổ sung CSS badge cho Lễ, Tết, Nội, Ô, H, F, B, X/2 cả Light và Dark mode)
   + `js/app.js` (cache buster v4.0.2-rev11 cho modal hdsd)
   + `index.html` (footer timestamp 15:20 07/09/2026, version 4.0.2-rev11, cache busters)
-  + `sw.js` (CACHE_NAME v4.0.2-rev11)
+  + `PM-xeplich-v4.md` (nhật ký phát triển)
+
+### Khắc Phục Lỗi Hiển Thị 4.2 Công Của Trần Thị Duyên (Tháng 1-2 Chưa Vào Khoa) & Chuẩn Hóa Hệ Số Lương 1.0 (07/09/2026 - v4.0.2-rev12)
+- **Yêu cầu của người dùng**:
+  - *"tháng 1/2026 với Trần Thị Duyên chưa vào khoa nên chưa có dữ liệu, sao trên web lại hiện 4,2 công"* kèm ảnh chụp màn hình Bảng Chấm Công Tháng 1/2026 trên web.
+- **Phân tích nguyên nhân cốt lõi**:
+  1. *Nguyên nhân Trần Thị Duyên có 4.2 công ở Tháng 1 và có ngày ở Tháng 2*:
+     - Trước đây dữ liệu mẫu trong CSDL gán cho Trần Thị Duyên 14 ngày đi làm ở Tháng 1 và 9 ngày Tết ở Tháng 2 kèm hệ số `heSo: 0.3`. Khi tính: 14 ngày * 0.3 = `4.2` công.
+     - Thực tế trên bản in giấy gốc của khoa: Tháng 1 và Tháng 2/2026 chỉ có 12 nhân sự, **Trần Thị Duyên chưa vào khoa**, hoàn toàn không có tên và không có ngày công nào. Trần Thị Duyên chỉ bắt đầu vào làm từ Tháng 3/2026.
+  2. *Nguyên nhân hệ số Lê Thị Thu Hiền và Nguyễn Văn Khính bị nhân 0.5 (9.75 và 9.5 công)*:
+     - Trong CSDL lưu vết cũ, Lê Thị Thu Hiền và Nguyễn Văn Khính bị ghi `heSo: 0.5`, làm tổng công Tháng 1 của Lê Hiền bị giảm còn 9.75 (thay vì 19.5 như bản in giấy) và Khính còn 9.5 (thay vì 19).
+     - Trên bản in giấy gốc, tất cả nhân sự đều hưởng chuẩn công 1.0.
+  3. *Nguyên nhân cơ chế Safe Merge trên backend giữ lại ngày cũ khi không gửi*:
+     - Cơ chế `saveChamCong` trước đó thực hiện merge giữa dữ liệu mới và dữ liệu cũ trong CSDL, nên nếu client gửi danh sách không có Trần Thị Duyên, bản ghi cũ vẫn tồn tại.
+- **Các giải pháp đã triển khai**:
+  1. *Nâng cấp Worker `saveChamCong`*:
+     - Bổ sung cờ `_replaceWhole: true` (hoặc `args[2] === true`) cho phép ghi đè hoàn toàn tập dữ liệu khi cần làm sạch CSDL.
+     - Cho phép xóa hẳn nhân sự khi truyền `null` hoặc `_delete: true`.
+  2. *Làm sạch CSDL Cloudflare D1 cho toàn bộ 5 tháng*:
+     - **Tháng 1 & Tháng 2/2026**: Xóa sạch 100% ngày công của Trần Thị Duyên (`{ heSo: 1.0 }`), đưa tổng công về chính xác `0`.
+     - **Chuẩn hóa Hệ số 1.0**: Toàn bộ nhân sự (bao gồm Lê Thị Thu Hiền, Nguyễn Văn Khính, Trần Thị Duyên) đều có hệ số `1.0`, giúp tổng công Tháng 1 của Lê Thị Thu Hiền đạt đúng `19.5`, Nguyễn Văn Khính đạt đúng `19` khớp 100% bản in giấy.
+  3. *Tự động dọn dẹp Cache Client*:
+     - Cập nhật `pm_cleaned_cache_ver = '4.0.2-rev12'` trong `js/thongke.js` để trình duyệt người dùng tự động xóa cache chấm công cũ (`pm_cache_cc_*`) và nhận dữ liệu mới ngay lập tức.
+  4. *Đồng bộ phiên bản theo RULES.md*:
+     - Giữ phiên bản chính `4.0.2`, nâng revision lên `4.0.2-rev12`.
+     - Footer timestamp: `15:45 07/09/2026`.
+     - Đồng bộ `CACHE_NAME = 'pmcg-v4-cache-4.0.2-rev12'` trong `sw.js`.
+     - Đồng bộ `?v=4.0.2-rev12` trên toàn bộ link CSS, thẻ script và `APP_VERSION` trong `index.html`.
+     - Cập nhật query string `v=4.0.2-rev12` cho `hdsd.html` trong `js/app.js`.
+- **File sửa đổi**:
+  + `backend/src/index.js` (hỗ trợ _replaceWhole và xóa nhân sự trong saveChamCong)
+  + `js/thongke.js` (nâng cấp pm_cleaned_cache_ver lên 4.0.2-rev12)
+  + `index.html` (footer timestamp 15:45 07/09/2026, version 4.0.2-rev12, cache busters)
+  + `sw.js` (CACHE_NAME v4.0.2-rev12)
+  + `js/app.js` (cache buster v4.0.2-rev12)
   + `PM-xeplich-v4.md` (nhật ký phát triển)
 
 

@@ -3481,32 +3481,41 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
       // BẢO VỆ DỮ LIỆU CHẤM CÔNG (Server-side Safe Merge):
       // Đọc bản ghi hiện có từ CSDL để hợp nhất an toàn, không để tình trạng một client gửi thiếu làm xóa mất ngày của các nhân sự khác
-      try {
-        const uUnits = (unitCode === "bvtks-cs2" || unitCode === "bvtks_cs2") ? ["bvtks-cs2", "bvtks_cs2"] : [unitCode];
-        const uPlaceholders = uUnits.map(() => '?').join(',');
-        const existingRow = await db.prepare(`SELECT data_json FROM cham_cong WHERE unit_code IN (${uPlaceholders}) AND month_year = ? ORDER BY updated_at DESC LIMIT 1`).bind(...uUnits, myStandard).first();
-        if (existingRow && existingRow.data_json) {
-          const parsedExisting = JSON.parse(existingRow.data_json);
-          if (parsedExisting && typeof parsedExisting === 'object') {
-            const merged = { ...parsedExisting };
-            for (const emp in data) {
-              if (!merged[emp]) merged[emp] = {};
-              if (data[emp].heSo !== undefined) merged[emp].heSo = data[emp].heSo;
-              for (const d in data[emp]) {
-                if (d === 'heSo') continue;
-                const v = data[emp][d];
-                if (v !== undefined && v !== null && v !== '') {
-                  merged[emp][d] = v;
-                } else if (v === '') {
-                  delete merged[emp][d];
+      const replaceWhole = (args[2] === true) || (data && data._replaceWhole === true);
+      if (!replaceWhole) {
+        try {
+          const uUnits = (unitCode === "bvtks-cs2" || unitCode === "bvtks_cs2") ? ["bvtks-cs2", "bvtks_cs2"] : [unitCode];
+          const uPlaceholders = uUnits.map(() => '?').join(',');
+          const existingRow = await db.prepare(`SELECT data_json FROM cham_cong WHERE unit_code IN (${uPlaceholders}) AND month_year = ? ORDER BY updated_at DESC LIMIT 1`).bind(...uUnits, myStandard).first();
+          if (existingRow && existingRow.data_json) {
+            const parsedExisting = JSON.parse(existingRow.data_json);
+            if (parsedExisting && typeof parsedExisting === 'object') {
+              const merged = { ...parsedExisting };
+              for (const emp in data) {
+                if (data[emp] === null || (typeof data[emp] === 'object' && data[emp]._delete === true)) {
+                  delete merged[emp];
+                  continue;
+                }
+                if (!merged[emp]) merged[emp] = {};
+                if (data[emp].heSo !== undefined) merged[emp].heSo = data[emp].heSo;
+                for (const d in data[emp]) {
+                  if (d === 'heSo') continue;
+                  const v = data[emp][d];
+                  if (v !== undefined && v !== null && v !== '') {
+                    merged[emp][d] = v;
+                  } else if (v === '') {
+                    delete merged[emp][d];
+                  }
                 }
               }
+              data = merged;
             }
-            data = merged;
           }
+        } catch(eMerge) {
+          console.warn("saveChamCong merge fallback:", eMerge);
         }
-      } catch(eMerge) {
-        console.warn("saveChamCong merge fallback:", eMerge);
+      } else {
+        if (data && data._replaceWhole) delete data._replaceWhole;
       }
 
       const jsonStr = typeof data === "string" ? data : JSON.stringify(data);
