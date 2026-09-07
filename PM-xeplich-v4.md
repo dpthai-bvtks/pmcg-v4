@@ -1400,3 +1400,13 @@ git add . && git commit -m "..." && git push origin main
 
 
 
+
+### Chu?n hóa tìm ki?m th? thu?t HIS (07/09/2026 - v4.0.2-rev1)
+- **Yêu c?u c?a ngu?i dùng**: Fix l?i khi nh?p file HIS th? thu?t T?p v?n d?ng có tr? giúp hi?n th? tên d?y d? thay vì vi?t t?t, và chu?n hóa cho t?t c? các th? thu?t.
+- **Phân tích nguyên nhân & Gi?i pháp**: Hàm getShortSkills và matchProc tru?c dây so sánh chu?i c?ng nh?c (.toLowerCase() ===), d?n d?n n?u tên th? thu?t t? file HIS (ho?c t? database) b? l?ch nh? v? d?u câu, ch? 'có' thì s? không kh?p và hi?n th? tên d?y d?. Ðã thêm hàm 
+orm (lo?i b? d?u ti?ng Vi?t) và c?p nh?t co ch? kh?p tuong d?i (includes) cho t?t c? các th? thu?t (? c? danh sách b?nh nhân và nhân s?).
+- **File s?a d?i**:
+  + js/app.js (c?p nh?t getShortSkills và matchProc)
+  + index.html (c?p nh?t phiên b?n và timestamp)
+  + sw.js (c?p nh?t CACHE_NAME)
+

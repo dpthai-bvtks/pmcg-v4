@@ -1985,20 +1985,40 @@ window.renderSttOrderControl = function (type, i, total) {
             if (!arr.length) return '';
 
             const procList = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.proc)) ? dataCache.proc : [];
+            const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\u0111/g, 'd').trim();
 
             if (!isStaff) {
                 return arr.map(sk => {
                     let proc = procList.find(p => p && p.ten && p.ten.toLowerCase() === sk);
+                    if (!proc) {
+                        const nSk = norm(sk);
+                        // Cố gắng khớp chính xác sau khi bỏ dấu
+                        proc = procList.find(p => p && p.ten && norm(p.ten) === nSk);
+                        // Nếu vẫn không thấy, cố gắng khớp một phần (chứa nhau)
+                        if (!proc) {
+                            proc = procList.find(p => p && p.ten && (norm(p.ten).includes(nSk) || nSk.includes(norm(p.ten))));
+                        }
+                    }
                     return (proc && proc.vietTat) ? proc.vietTat : sk;
                 }).join(', ');
             }
 
             const allYHCT = procList.filter(p => p && p.he === 'YHCT');
             const allPHCN = procList.filter(p => p && p.he === 'PHCN');
-            const staffYHCT = allYHCT.filter(p => p && p.ten && arr.includes(p.ten.toLowerCase()));
-            const staffPHCN = allPHCN.filter(p => p && p.ten && arr.includes(p.ten.toLowerCase()));
-            const missingYHCT = allYHCT.filter(p => p && p.ten && !arr.includes(p.ten.toLowerCase()));
-            const missingPHCN = allPHCN.filter(p => p && p.ten && !arr.includes(p.ten.toLowerCase()));
+            
+            const normArr = arr.map(sk => norm(sk));
+            const checkMatch = (p) => {
+                if (!p || !p.ten) return false;
+                if (arr.includes(p.ten.toLowerCase())) return true;
+                const np = norm(p.ten);
+                if (normArr.includes(np)) return true;
+                return normArr.some(sk => np.includes(sk) || sk.includes(np));
+            };
+
+            const staffYHCT = allYHCT.filter(p => checkMatch(p));
+            const staffPHCN = allPHCN.filter(p => checkMatch(p));
+            const missingYHCT = allYHCT.filter(p => !checkMatch(p));
+            const missingPHCN = allPHCN.filter(p => !checkMatch(p));
 
             let yhctStr = '';
             if (staffYHCT.length > 0) {
@@ -2031,14 +2051,19 @@ window.renderSttOrderControl = function (type, i, total) {
             const strA = String(a).trim().toLowerCase();
             const strB = String(b).trim().toLowerCase();
             if (strA === strB) return true;
+            
+            const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\u0111/g, 'd').trim();
+            const normA = norm(a);
+            const normB = norm(b);
+            if (normA === normB || normA.includes(normB) || normB.includes(normA)) return true;
 
             // 1. Tra cứu database theo mã viết tắt hoặc tên đầy đủ (chính xác 100%)
             const procs = (window.dataCache && window.dataCache.proc) ? window.dataCache.proc : [];
-            const procA = procs.find(p => (p.ten && p.ten.toLowerCase() === strA) || (p.vietTat && p.vietTat.toLowerCase() === strA));
-            const procB = procs.find(p => (p.ten && p.ten.toLowerCase() === strB) || (p.vietTat && p.vietTat.toLowerCase() === strB));
-            if (procA && procB && procA.ten && procB.ten && procA.ten.toLowerCase() === procB.ten.toLowerCase()) return true;
-            if (procA && (procA.ten.toLowerCase() === strB || (procA.vietTat && procA.vietTat.toLowerCase() === strB))) return true;
-            if (procB && (procB.ten.toLowerCase() === strA || (procB.vietTat && procB.vietTat.toLowerCase() === strA))) return true;
+            const procA = procs.find(p => (p.ten && norm(p.ten) === normA) || (p.vietTat && norm(p.vietTat) === normA));
+            const procB = procs.find(p => (p.ten && norm(p.ten) === normB) || (p.vietTat && norm(p.vietTat) === normB));
+            if (procA && procB && procA.ten && procB.ten && norm(procA.ten) === norm(procB.ten)) return true;
+            if (procA && (norm(procA.ten) === normB || (procA.vietTat && norm(procA.vietTat) === normB))) return true;
+            if (procB && (norm(procB.ten) === normA || (procB.vietTat && norm(procB.vietTat) === normA))) return true;
 
             // 2. Kiểm tra phân biệt từ khóa đặc biệt để tránh bắt nhầm (vd: 'liệt', 'vùng', 'bấm huyệt', 'kháng trở', 'trợ giúp', 'thở')
             const distinctKeywords = ['liệt', 'vùng', 'bấm huyệt', 'kháng trở', 'trợ giúp', 'thở'];
