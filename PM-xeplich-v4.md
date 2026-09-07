@@ -1479,3 +1479,46 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `sw.js` (CACHE_NAME v4.0.2-rev4)
   + `PM-xeplich-v4.md` (nhật ký phát triển)
 
+### Chuẩn Hóa Tên Nhân Viên Đầy Đủ & Loại Bỏ Phụ 1-8 Khỏi Bảng Chấm Công, Thống Kê Thủ Thuật (07/09/2026 - v4.0.2-rev5)
+- **Yêu cầu của người dùng**:
+  1. Bảng Chấm Công và Thống Kê Tổng Hợp của các tháng đang bị hiện tên viết tắt của nhân viên ("BS Đạt", "BS Hoa", "KTV Hà chip"...) dù đã có tên đầy đủ trong hệ thống.
+  2. Bị lẫn các dòng trợ lý ảo "Phụ 1", "Phụ 2"..."Phụ 8" vào bảng chấm công và thống kê.
+  3. Dữ liệu các tháng cũ (tháng 1 đến tháng 9) bị thiếu, không hiển thị đầy đủ công và thủ thuật hoặc bị phân rã theo mã đơn vị cũ.
+  4. Xác nhận bảng quản lý nhân sự tại Tab Admin (*Cài đặt hệ thống ➔ Quản lý nhân sự chấm công & thống kê*, `#table-admin-employees`) là **Single Source of Truth** chứa toàn bộ 13 nhân sự chuẩn với đầy đủ Họ tên chính thức, chức danh, hệ số công và từ khóa HIS.
+- **Phân tích nguyên nhân & Giải pháp**:
+  + *Nguyên nhân cốt lõi*:
+    - Mảng `dataCache.staff` (danh sách xếp lịch phòng thủ thuật) chứa các tên biệt danh ngắn và 8 slot trợ lý ảo `Phụ 1..8`.
+    - Nhiều vị trí trong `js/thongke.js` có fallback gán `adminChamCongEmployees = dataCache.staff.map(...)`. Điều này làm ô nhiễm cache `localStorage` (`med_chamcong_employees_bvtks-cs2`) với tên viết tắt và `Phụ 1..8`, đồng thời làm rớt 4 nhân sự chính thức không trực tiếp xếp lịch thủ thuật (Hằng, Khính, Thuyến, Duyên).
+    - Dữ liệu lịch sử các tháng cũ trên D1/Turso lưu theo tên đầy đủ chính thức. Khi so khớp với danh sách tên viết tắt, hệ thống không tìm thấy và trả về 0 hoặc bỏ sót dòng.
+    - Một số bản ghi lịch sử lưu theo mã đơn vị `bvtks-cs2` trong khi Frontend có thể gửi `bvtks_cs2`.
+  + *Các giải pháp đã thực hiện*:
+    - **Backend Worker (`backend/src/index.js`)**:
+      + Chuẩn hóa mã đơn vị: chuyển đổi `bvtks_cs2` thành `bvtks-cs2` xuyên suốt `handleApiAction`.
+      + Trong `getEmployees`: lọc sạch 100% `Phụ 1..8`, đảm bảo trả về đầy đủ 13 nhân sự chuẩn cho `bvtks-cs2` và `bvtks_cs2`.
+      + Trong `saveEmployees`: loại bỏ triệt để các phần tử "Phụ" trước khi lưu vào bảng `cai_dat`.
+      + Trong `saveChamCong`: lọc sạch các khóa "Phụ" trước khi lưu trữ vào D1.
+      + Trong `getChamCong` & `getThongKeThuThuat`: truy vấn `unit_code IN ('bvtks-cs2', 'bvtks_cs2')` để tổng hợp đầy đủ toàn bộ dữ liệu lịch sử từ các tháng trước mà không bị thất thoát.
+    - **Frontend Thống Kê & Chấm Công (`js/thongke.js`)**:
+      + Cung cấp hàm `getCanonicalStaffName(rawName)`: ánh xạ thông minh giữa tên biệt danh/từ khóa và tên đầy đủ chính thức chuẩn mực (Hoàng Đức Đạt, Lê Thị Thu Hoa, Nguyễn Thị Hà...), loại bỏ tuyệt đối `Phụ 1..8`.
+      + Cung cấp hàm `cleanseAdminChamCongEmployees(list)`: làm sạch mảng nhân sự, loại bỏ trùng lặp, lọc sạch "Phụ", bảo đảm danh sách luôn có đủ 13 nhân sự chuẩn theo đúng thứ tự canonical.
+      + Viết lại `getOrLoadChamCongEmployees` & `loadAdminChamCongData`: tuyệt đối không fallback sang `dataCache.staff`.
+      + Nâng cấp `findStaffDataByKey`: hỗ trợ so khớp 2 chiều giữa tên chính thức và tên hiển thị.
+      + Nâng cấp `normalizeChamCongData`, `normalizeThongKeData` & `fetchMultiMonthsData`: gộp và tổng hợp dữ liệu lịch sử chuẩn xác dưới tên chính thức.
+      + Đồng bộ picker tháng: ưu tiên `thongke-month-picker` khi người dùng đang ở tab Thống kê.
+      + Chuẩn hóa toàn bộ các hàm xuất Excel (`exportChamCongExcel`, `exportThongKeExcel`, `exportThucLinhExcel`) để 100% xuất tên đầy đủ, không có Phụ.
+    - **Biểu đồ Dashboard (`js/app.js`)**:
+      + Cập nhật `processCharts`: sử dụng `getOrLoadChamCongEmployees` và `cleanseAdminChamCongEmployees`, loại bỏ triệt để "Phụ 1..8", đồng thời giải quyết dữ liệu ngày công và thủ thuật qua `findStaffDataByKey`.
+    - **Đồng bộ phiên bản theo RULES.md**:
+      + Giữ phiên bản chính `4.0.2`, tăng revision lên `4.0.2-rev5`.
+      + Cập nhật footer timestamp thành `10:55 07/09/2026`.
+      + Đồng bộ `CACHE_NAME = 'pmcg-v4-cache-4.0.2-rev5'` trong `sw.js`.
+      + Đồng bộ cache buster `?v=4.0.2-rev5` trên toàn bộ link CSS, thẻ script và `APP_VERSION` trong `index.html`.
+- **File sửa đổi**:
+  + `backend/src/index.js` (chuẩn hóa unit_code, lọc Phụ, truy vấn lịch sử IN bvtks-cs2 / bvtks_cs2)
+  + `js/thongke.js` (bộ lọc canonical name, cleanseAdminChamCongEmployees, loại bỏ fallback, chuẩn hóa bảng và xuất Excel)
+  + `js/app.js` (chuẩn hóa danh sách biểu đồ Dashboard, loại bỏ Phụ, cache buster)
+  + `index.html` (footer timestamp 10:55 07/09/2026, version 4.0.2-rev5, cache buster)
+  + `sw.js` (CACHE_NAME v4.0.2-rev5)
+  + `PM-xeplich-v4.md` (nhật ký phát triển)
+
+

@@ -11103,26 +11103,36 @@ window.renderSttOrderControl = function (type, i, total) {
                 const daysInMonth = new Date(y, parseInt(m, 10), 0).getDate();
 
                 let empList = [];
-                if (typeof dataCache !== 'undefined' && dataCache.staff && dataCache.staff.length > 0) {
-                    empList = dataCache.staff.map(s => s.ten || s.name || s[1]).filter(Boolean);
+                if (typeof getOrLoadChamCongEmployees === 'function') {
+                    empList = getOrLoadChamCongEmployees().map(e => typeof e === 'object' ? (e.ten || e.name) : e).filter(Boolean);
                 } else if (typeof adminChamCongEmployees !== 'undefined' && Array.isArray(adminChamCongEmployees) && adminChamCongEmployees.length > 0) {
-                    empList = [...adminChamCongEmployees];
+                    empList = adminChamCongEmployees.map(e => typeof e === 'object' ? (e.ten || e.name) : e).filter(Boolean);
                 } else {
                     empList = Array.from(new Set([...Object.keys(cc), ...Object.keys(tt)])).filter(Boolean);
+                }
+
+                if (typeof cleanseAdminChamCongEmployees === 'function') {
+                    empList = cleanseAdminChamCongEmployees(empList).map(e => typeof e === 'object' ? (e.ten || e.name) : e);
+                } else {
+                    empList = empList.filter(e => {
+                        const s = String(e).trim();
+                        return s && !/^(phụ|phu)\s*\d+/i.test(s);
+                    });
                 }
 
                 // 1. Dữ liệu ngày công
                 const workdaysArr = empList.map(emp => {
                     let totalCong = 0;
-                    if (cc[emp]) {
+                    const empRecord = cc[emp] || (typeof findStaffDataByKey === 'function' ? findStaffDataByKey(cc, emp) : null);
+                    if (empRecord) {
                         for (let d = 1; d <= daysInMonth; d++) {
-                            const raw = cc[emp][d] || '';
+                            const raw = empRecord[d] || '';
                             if (typeof calcDayValue === 'function') totalCong += calcDayValue(raw);
                             else if (typeof window.calcDayValue === 'function') totalCong += window.calcDayValue(raw);
                             else if (raw === 'ca-ngay' || raw === 'X' || raw === 'x') totalCong += 1;
                             else if (raw === 'sang' || raw === 'chieu' || raw === 'S' || raw === 'C') totalCong += 0.5;
                         }
-                        const heSo = cc[emp].heSo !== undefined ? parseFloat(cc[emp].heSo) : 1.0;
+                        const heSo = empRecord.heSo !== undefined ? parseFloat(empRecord.heSo) : 1.0;
                         totalCong = Math.round((totalCong * heSo) * 100) / 100;
                     }
                     return { name: emp, val: totalCong };
@@ -11131,8 +11141,9 @@ window.renderSttOrderControl = function (type, i, total) {
                 // 2. Dữ liệu thủ thuật
                 const procsArr = empList.map(emp => {
                     let totalTT = 0;
-                    if (tt[emp]) {
-                        totalTT = (tt[emp].loai1 || 0) + (tt[emp].loai2 || 0) + (tt[emp].loai3 || 0) + (tt[emp].khac || 0);
+                    const empTT = tt[emp] || (typeof findStaffDataByKey === 'function' ? findStaffDataByKey(tt, emp) : null);
+                    if (empTT) {
+                        totalTT = (empTT.loai1 || 0) + (empTT.loai2 || 0) + (empTT.loai3 || 0) + (empTT.khac || 0);
                     }
                     return { name: emp, val: totalTT };
                 }).filter(x => x.val > 0).sort((a, b) => b.val - a.val);
@@ -12903,7 +12914,7 @@ window.openHdsdModal = function() {
         }
     } catch(e) {}
     const curTheme = document.documentElement.getAttribute('data-theme') || localStorage.getItem('pm_app_theme') || 'light';
-    const targetUrl = `hdsd.html?role=${userRole}&theme=${curTheme}&v=4.0.2-rev4`;
+    const targetUrl = `hdsd.html?role=${userRole}&theme=${curTheme}&v=4.0.2-rev5`;
 
     if (iframe) {
         if (!iframe.src || iframe.src === 'about:blank' || !iframe.src.includes(`role=${userRole}`)) {

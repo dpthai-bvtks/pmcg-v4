@@ -89,204 +89,349 @@ var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi
         }
 
     const DEFAULT_CHAMCONG_EMPLOYEES = Object.keys(DEFAULT_CHAMCONG_STAFF);
+    if (typeof window !== 'undefined') {
+        window.DEFAULT_CHAMCONG_EMPLOYEES = DEFAULT_CHAMCONG_EMPLOYEES;
+        window.DEFAULT_CHAMCONG_STAFF = DEFAULT_CHAMCONG_STAFF;
+    }
 
-        const isBVTKS_CS2 = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2') === 'bvtks-cs2';
-        let adminChamCongEmployees = isBVTKS_CS2 ? [...DEFAULT_CHAMCONG_EMPLOYEES] : []; 
-        let adminChamCongStaffConfig = isBVTKS_CS2 ? { ...DEFAULT_CHAMCONG_STAFF } : {};
-        let editAdminEmployeeIndex = -1;
+    const isBVTKS_CS2 = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2') === 'bvtks-cs2';
 
-        // ==========================================
-        // SMART RESOLVER & DATA NORMALIZATION
-        // ==========================================
-        function ensureStaffConfigForEmployees() {
-            if (!adminChamCongStaffConfig || typeof adminChamCongStaffConfig !== 'object') {
-                adminChamCongStaffConfig = {};
-            }
-            adminChamCongEmployees.forEach(emp => {
-                if (!emp) return;
-                const empName = String(emp).trim();
-                if (!empName) return;
-                if (!adminChamCongStaffConfig[empName]) {
-                    const role = getEmployeeRole(empName);
-                    const lower = empName.toLowerCase().trim();
-                    const keys = [lower];
-                    const words = lower.split(/\s+/);
-                    if (words.length > 1) {
-                        const shortName = words[words.length - 1];
-                        keys.push(shortName);
-                        if (role === 'Bác sĩ') {
-                            keys.push('bs ' + shortName, 'bs. ' + shortName, 'bs ' + lower, 'bs. ' + lower);
-                        } else if (role === 'Điều dưỡng') {
-                            keys.push('đd ' + shortName, 'đd. ' + shortName, 'dd ' + shortName, 'dd. ' + shortName, 'đd ' + lower);
-                        } else {
-                            keys.push('ktv ' + shortName, 'ktv. ' + shortName, 'ktv ' + lower, 'ktv. ' + lower);
-                        }
-                    }
-                    adminChamCongStaffConfig[empName] = {
-                        keys: keys,
-                        skills: 'Cả hai',
-                        role: role,
-                        heSo: 1.0
-                    };
-                }
-            });
+    // ==========================================
+    // CANONICAL NAME RESOLVER & STAFF DATA SANITIZER
+    // ==========================================
+    function getCanonicalStaffName(rawName) {
+        if (!rawName) return null;
+        if (typeof rawName === 'object') {
+            rawName = rawName.tenHis || rawName.name || rawName.ten || rawName[1] || rawName[0] || '';
         }
+        const str = String(rawName).trim();
+        if (!str) return null;
 
-        function findStaffDataByKey(dataObj, empName) {
-            if (!dataObj || typeof dataObj !== 'object') return null;
-            if (dataObj[empName]) return dataObj[empName];
-
-            const staffConf = (adminChamCongStaffConfig && adminChamCongStaffConfig[empName]) || DEFAULT_CHAMCONG_STAFF[empName];
-            const keys = (staffConf && staffConf.keys) ? staffConf.keys : [empName.toLowerCase()];
-            const empLower = empName.toLowerCase().trim();
-
-            for (const dKey of Object.keys(dataObj)) {
-                const lowerDKey = dKey.toLowerCase().trim();
-                if (lowerDKey === empLower) return dataObj[dKey];
-                for (const k of keys) {
-                    const lowerK = k.toLowerCase().trim();
-                    if (lowerDKey === lowerK || lowerDKey.includes(lowerK) || lowerK.includes(lowerDKey)) {
-                        return dataObj[dKey];
-                    }
-                }
-                const cleanDKey = lowerDKey.replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd|dd\.|dd)\s+/, '').trim();
-                if (cleanDKey === empLower || cleanDKey.includes(empLower) || empLower.includes(cleanDKey)) {
-                    return dataObj[dKey];
-                }
-            }
+        // 1. Triệt tiêu 100% các ô trợ lý ảo Phụ 1..8, Phụ trách
+        if (/^(phụ|phu)\s*\d+/i.test(str) || /^(ktv\s*)?phụ\s*trách/i.test(str) || /^ktv\s*phu\s*trach/i.test(str)) {
             return null;
         }
 
-        function normalizeChamCongData(raw) {
-            const res = {};
-            if (!raw || typeof raw !== 'object') return res;
-            Object.assign(res, raw);
+        // 2. Khớp trực tiếp với Họ và tên đầy đủ chuẩn BVTKS CS2
+        if (DEFAULT_CHAMCONG_STAFF[str]) return str;
 
-            adminChamCongEmployees.forEach(emp => {
-                if (!res[emp] || Object.keys(res[emp]).length === 0) {
-                    const found = findStaffDataByKey(raw, emp);
-                    if (found && typeof found === 'object' && Object.keys(found).length > 0) {
-                        res[emp] = found;
-                    } else if (!res[emp]) {
-                        res[emp] = {};
-                    }
+        const lower = str.toLowerCase().trim();
+        const cleanLower = lower.replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd|dd\.|dd)\s+/, '').trim();
+
+        for (const [fullName, conf] of Object.entries(DEFAULT_CHAMCONG_STAFF)) {
+            if (fullName.toLowerCase() === lower || fullName.toLowerCase() === cleanLower) return fullName;
+            if (conf && conf.keys) {
+                for (const k of conf.keys) {
+                    const kl = String(k).toLowerCase().trim();
+                    if (lower === kl || cleanLower === kl) return fullName;
                 }
-            });
-            return res;
+            }
         }
 
-        function normalizeThongKeData(raw) {
-            const res = {};
-            if (!raw || typeof raw !== 'object') return res;
-            Object.assign(res, raw);
+        // 3. Tra cứu qua cấu hình nhân sự Tab Admin hiện tại
+        if (adminChamCongStaffConfig && typeof adminChamCongStaffConfig === 'object') {
+            for (const [confName, conf] of Object.entries(adminChamCongStaffConfig)) {
+                if (confName.toLowerCase() === lower || confName.toLowerCase() === cleanLower) return confName;
+                if (conf && conf.keys) {
+                    for (const k of conf.keys) {
+                        const kl = String(k).toLowerCase().trim();
+                        if (lower === kl || cleanLower === kl) return confName;
+                    }
+                }
+            }
+        }
 
-            adminChamCongEmployees.forEach(emp => {
-                if (!res[emp]) {
-                    const found = findStaffDataByKey(raw, emp);
-                    if (found) {
-                        res[emp] = found;
+        // 4. Tra cứu qua dataCache.staff (lấy trường tên đầy đủ tenHis)
+        if (typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff)) {
+            const found = dataCache.staff.find(s => {
+                if (!s) return false;
+                const sTen = String(s.ten || s.name || '').toLowerCase().trim();
+                const sClean = sTen.replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd|dd\.|dd)\s+/, '').trim();
+                return sTen === lower || sClean === cleanLower || (s.tenHis && s.tenHis.toLowerCase().trim() === lower);
+            });
+            if (found && found.tenHis && String(found.tenHis).trim()) {
+                const hisName = String(found.tenHis).trim();
+                if (DEFAULT_CHAMCONG_STAFF[hisName]) return hisName;
+                return hisName;
+            }
+        }
+
+        return str;
+    }
+    window.getCanonicalStaffName = getCanonicalStaffName;
+
+    function cleanseAdminChamCongEmployees(list) {
+        const isDefault = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2') === 'bvtks-cs2';
+        let res = [];
+        if (Array.isArray(list)) {
+            list.forEach(item => {
+                const canon = getCanonicalStaffName(item);
+                if (canon && !res.includes(canon)) {
+                    res.push(canon);
+                }
+            });
+        }
+        if (isDefault) {
+            // Đảm bảo luôn trọn vẹn đủ 13 nhân sự chuẩn BVTKS CS2 từ Tab Admin
+            DEFAULT_CHAMCONG_EMPLOYEES.forEach(stdEmp => {
+                if (!res.includes(stdEmp)) {
+                    res.push(stdEmp);
+                }
+            });
+            // Sắp xếp theo thứ tự chuẩn
+            res.sort((a, b) => {
+                const idxA = DEFAULT_CHAMCONG_EMPLOYEES.indexOf(a);
+                const idxB = DEFAULT_CHAMCONG_EMPLOYEES.indexOf(b);
+                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                if (idxA !== -1) return -1;
+                if (idxB !== -1) return 1;
+                return 0;
+            });
+        }
+        return res;
+    }
+    window.cleanseAdminChamCongEmployees = cleanseAdminChamCongEmployees;
+
+    let adminChamCongEmployees = isBVTKS_CS2 ? [...DEFAULT_CHAMCONG_EMPLOYEES] : []; 
+    let adminChamCongStaffConfig = isBVTKS_CS2 ? { ...DEFAULT_CHAMCONG_STAFF } : {};
+    let editAdminEmployeeIndex = -1;
+
+    // Tự động nạp và làm sạch danh sách nhân sự từ cache khi khởi động
+    try {
+        const cachedEmp = JSON.parse(localStorage.getItem(getChamCongStorageKey('med_chamcong_employees')) || '[]');
+        if (Array.isArray(cachedEmp) && cachedEmp.length > 0) {
+            adminChamCongEmployees = cleanseAdminChamCongEmployees(cachedEmp);
+        }
+        const cachedStaff = JSON.parse(localStorage.getItem(getChamCongStorageKey('med_chamcong_staff_config')) || '{}');
+        if (cachedStaff && Object.keys(cachedStaff).length > 0) {
+            adminChamCongStaffConfig = cachedStaff;
+        }
+    } catch(e) {}
+
+    // Đảm bảo cấu hình nhân sự
+    function ensureStaffConfigForEmployees() {
+        if (!adminChamCongStaffConfig || typeof adminChamCongStaffConfig !== 'object') {
+            adminChamCongStaffConfig = {};
+        }
+        adminChamCongEmployees.forEach(emp => {
+            if (!emp) return;
+            const empName = String(emp).trim();
+            if (!empName) return;
+            if (!adminChamCongStaffConfig[empName]) {
+                const defConf = DEFAULT_CHAMCONG_STAFF[empName];
+                if (defConf) {
+                    adminChamCongStaffConfig[empName] = { ...defConf };
+                    return;
+                }
+                const role = getEmployeeRole(empName);
+                const lower = empName.toLowerCase().trim();
+                const keys = [lower];
+                const words = lower.split(/\s+/);
+                if (words.length > 1) {
+                    const shortName = words[words.length - 1];
+                    keys.push(shortName);
+                    if (role === 'Bác sĩ') {
+                        keys.push('bs ' + shortName, 'bs. ' + shortName, 'bs ' + lower, 'bs. ' + lower);
+                    } else if (role === 'Điều dưỡng') {
+                        keys.push('đd ' + shortName, 'đd. ' + shortName, 'dd ' + shortName, 'dd. ' + shortName, 'đd ' + lower);
                     } else {
-                        res[emp] = { loai1: 0, loai2: 0, loai3: 0, khac: 0, tong: 0, details: [] };
+                        keys.push('ktv ' + shortName, 'ktv. ' + shortName, 'ktv ' + lower, 'ktv. ' + lower);
+                    }
+                }
+                adminChamCongStaffConfig[empName] = {
+                    keys: keys,
+                    skills: 'Cả hai',
+                    role: role,
+                    heSo: 1.0
+                };
+            }
+        });
+    }
+
+    function findStaffDataByKey(dataObj, empName) {
+        if (!dataObj || typeof dataObj !== 'object') return null;
+        if (dataObj[empName]) return dataObj[empName];
+
+        const canonTarget = getCanonicalStaffName(empName);
+
+        // 1. Kiểm tra nếu trong dataObj có key nào quy về cùng canonical full name
+        for (const dKey of Object.keys(dataObj)) {
+            if (dKey === empName) return dataObj[dKey];
+            const canonDKey = getCanonicalStaffName(dKey);
+            if (canonTarget && canonDKey && canonTarget === canonDKey) {
+                return dataObj[dKey];
+            }
+        }
+
+        // 2. So khớp từ khóa với aliases
+        const staffConf = (adminChamCongStaffConfig && adminChamCongStaffConfig[empName]) || (canonTarget && DEFAULT_CHAMCONG_STAFF[canonTarget]) || DEFAULT_CHAMCONG_STAFF[empName];
+        const keys = (staffConf && staffConf.keys) ? staffConf.keys : [empName.toLowerCase()];
+        const empLower = empName.toLowerCase().trim();
+        const cleanEmpLower = empLower.replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd|dd\.|dd)\s+/, '').trim();
+
+        for (const dKey of Object.keys(dataObj)) {
+            const lowerDKey = dKey.toLowerCase().trim();
+            const cleanDKey = lowerDKey.replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd|dd\.|dd)\s+/, '').trim();
+            if (lowerDKey === empLower || cleanDKey === cleanEmpLower) return dataObj[dKey];
+            for (const k of keys) {
+                const lowerK = String(k).toLowerCase().trim();
+                if (lowerDKey === lowerK || cleanDKey === lowerK) {
+                    return dataObj[dKey];
+                }
+            }
+        }
+        return null;
+    }
+    window.findStaffDataByKey = findStaffDataByKey;
+
+    function normalizeChamCongData(raw) {
+        const res = {};
+        if (!raw || typeof raw !== 'object') return res;
+
+        // 1. Gom nhóm theo Họ tên đầy đủ chuẩn hóa và loại bỏ Phụ 1..8
+        Object.keys(raw).forEach(k => {
+            const canon = getCanonicalStaffName(k);
+            if (!canon) return; // Bỏ qua Phụ 1..8
+            if (!res[canon]) {
+                res[canon] = {};
+            }
+            const dayData = raw[k] || {};
+            Object.keys(dayData).forEach(dKey => {
+                if (dKey === 'heSo') {
+                    if (res[canon].heSo === undefined) res[canon].heSo = dayData[dKey];
+                } else {
+                    if (!res[canon][dKey] && dayData[dKey]) {
+                        res[canon][dKey] = dayData[dKey];
                     }
                 }
             });
-            return res;
+        });
+
+        // 2. Đảm bảo mọi nhân sự trong adminChamCongEmployees đều có bản ghi
+        adminChamCongEmployees.forEach(emp => {
+            if (!res[emp]) {
+                const found = findStaffDataByKey(raw, emp);
+                if (found && typeof found === 'object' && Object.keys(found).length > 0) {
+                    res[emp] = found;
+                } else {
+                    res[emp] = {};
+                }
+            }
+        });
+        return res;
+    }
+
+    function normalizeThongKeData(raw) {
+        const res = {};
+        if (!raw || typeof raw !== 'object') return res;
+
+        // 1. Gom nhóm theo Họ tên đầy đủ chuẩn hóa và loại bỏ Phụ 1..8
+        Object.keys(raw).forEach(k => {
+            const canon = getCanonicalStaffName(k);
+            if (!canon) return; // Bỏ qua Phụ 1..8
+            if (!res[canon]) {
+                res[canon] = { loai1: 0, loai2: 0, loai3: 0, khac: 0, tong: 0, details: [] };
+            }
+            const item = raw[k] || {};
+            res[canon].loai1 = (res[canon].loai1 || 0) + (item.loai1 || 0);
+            res[canon].loai2 = (res[canon].loai2 || 0) + (item.loai2 || 0);
+            res[canon].loai3 = (res[canon].loai3 || 0) + (item.loai3 || 0);
+            res[canon].khac = (res[canon].khac || 0) + (item.khac || 0);
+            res[canon].tong = (res[canon].tong || 0) + (item.tong || 0);
+            if (Array.isArray(item.details) && item.details.length > 0) {
+                res[canon].details = (res[canon].details || []).concat(item.details);
+            }
+        });
+
+        // 2. Đảm bảo mọi nhân sự trong adminChamCongEmployees đều có bản ghi
+        adminChamCongEmployees.forEach(emp => {
+            if (!res[emp]) {
+                const found = findStaffDataByKey(raw, emp);
+                if (found) {
+                    res[emp] = found;
+                } else {
+                    res[emp] = { loai1: 0, loai2: 0, loai3: 0, khac: 0, tong: 0, details: [] };
+                }
+            }
+        });
+        return res;
+    }
+
+    function getOrLoadChamCongEmployees(callback, forceRefresh = false) {
+        const isDefault = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2') === 'bvtks-cs2';
+        
+        // 1. Kiểm tra RAM -> Cache LocalStorage (và luôn làm sạch ngay lập tức)
+        if (!adminChamCongEmployees || adminChamCongEmployees.length === 0) {
+            const cachedEmpStr = localStorage.getItem(getChamCongStorageKey('med_chamcong_employees'));
+            if (cachedEmpStr) {
+                try {
+                    const parsed = JSON.parse(cachedEmpStr);
+                    if (Array.isArray(parsed) && parsed.length > 0) adminChamCongEmployees = parsed;
+                } catch(e){}
+            }
         }
 
+        adminChamCongEmployees = cleanseAdminChamCongEmployees(adminChamCongEmployees);
+        if (adminChamCongEmployees.length === 0 && isDefault) {
+            adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
+        }
 
-        // Tự động nạp danh sách nhân sự từ cache khi khởi động
+        ensureStaffConfigForEmployees();
+
+        // Ghi đè lại cache sạch vào localStorage
         try {
-            const cachedEmp = JSON.parse(localStorage.getItem(getChamCongStorageKey('med_chamcong_employees')) || '[]');
-            if (Array.isArray(cachedEmp) && cachedEmp.length > 0) {
-                adminChamCongEmployees = cachedEmp;
-            }
-            const cachedStaff = JSON.parse(localStorage.getItem(getChamCongStorageKey('med_chamcong_staff_config')) || '{}');
-            if (cachedStaff && Object.keys(cachedStaff).length > 0) {
-                adminChamCongStaffConfig = cachedStaff;
-            }
-        } catch(e) {}
+            localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees));
+        } catch(e){}
 
-        function getOrLoadChamCongEmployees(callback, forceRefresh = false) {
-            const isDefault = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2') === 'bvtks-cs2';
-            
-            // 1. Kiểm tra RAM -> Cache LocalStorage -> dataCache.staff -> default (nếu bvtks-cs2)
-            if (!adminChamCongEmployees || adminChamCongEmployees.length === 0) {
-                const cachedEmpStr = localStorage.getItem(getChamCongStorageKey('med_chamcong_employees'));
-                if (cachedEmpStr) {
-                    try {
-                        const parsed = JSON.parse(cachedEmpStr);
-                        if (Array.isArray(parsed) && parsed.length > 0) adminChamCongEmployees = parsed;
-                    } catch(e){}
-                }
+        if (callback) callback(adminChamCongEmployees);
+
+        // Nếu đã có danh sách nhân sự chuẩn và không yêu cầu forceRefresh -> không gọi API lặp lại
+        if (!forceRefresh && adminChamCongEmployees && adminChamCongEmployees.length > 0) {
+            return;
+        }
+
+        // 2. Tải từ API Cloudflare khi chưa có dữ liệu hoặc khi forceRefresh
+        callApi('getEmployees', []).then(empRes => {
+            let list = [];
+            if (empRes && empRes.status === 'success') {
+                if (Array.isArray(empRes.data)) list = empRes.data;
+                else if (empRes.data && empRes.data.employees) list = empRes.data.employees;
+                else if (empRes.data && typeof empRes.data === 'object') list = Object.keys(empRes.data);
+            } else if (Array.isArray(empRes)) {
+                list = empRes;
             }
 
-            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
-                adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
-            }
-
-            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && isDefault) {
-                adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
-            }
-
-            ensureStaffConfigForEmployees();
-
-            if (callback) callback(adminChamCongEmployees);
-
-            // Nếu đã có danh sách nhân sự và không yêu cầu forceRefresh -> không gọi API lặp lại
-            if (!forceRefresh && adminChamCongEmployees && adminChamCongEmployees.length > 0) {
-                return;
-            }
-
-            // 2. Chỉ tải từ API Cloudflare khi chưa có dữ liệu hoặc khi forceRefresh
-            callApi('getEmployees', []).then(empRes => {
-                let list = [];
-                if (empRes && empRes.status === 'success') {
-                    if (Array.isArray(empRes.data)) list = empRes.data;
-                    else if (empRes.data && empRes.data.employees) list = empRes.data.employees;
-                    else if (empRes.data && typeof empRes.data === 'object') list = Object.keys(empRes.data);
-                } else if (Array.isArray(empRes)) {
-                    list = empRes;
-                }
-
-                const mappedList = list.map(item => typeof item === 'object' && item !== null ? (item.ten || item.name || item.his_name) : item).filter(Boolean);
-                if (mappedList.length > 0) {
-                    adminChamCongEmployees = mappedList;
-                }
+            if (list && list.length > 0) {
+                adminChamCongEmployees = cleanseAdminChamCongEmployees(list);
                 ensureStaffConfigForEmployees();
-
                 try { localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees)); } catch(e){}
                 if (typeof renderChamCongTable === 'function') renderChamCongTable();
                 if (typeof renderThongKeTable === 'function') renderThongKeTable();
-            }).catch(err => {
-                console.warn('getEmployees fallback:', err);
-            });
-        }
+                if (typeof renderAdminChamCongTable === 'function') renderAdminChamCongTable();
+            }
+        }).catch(err => {
+            console.warn('getEmployees fallback:', err);
+        });
+    }
         
         function loadAdminChamCongData() {
             window.showGlobalLoading("Đang tải danh sách nhân sự từ máy chủ...");
             callApi('getEmployees', []).then(res => {
+                let list = [];
                 if(res && res.status === 'success' && res.data) {
-                    if (Array.isArray(res.data)) {
-                        adminChamCongEmployees = res.data;
-                    } else if (Array.isArray(res.data.employees)) {
-                        adminChamCongEmployees = res.data.employees;
-                    } else {
-                        adminChamCongEmployees = Object.keys(res.data);
-                    }
+                    if (Array.isArray(res.data)) list = res.data;
+                    else if (Array.isArray(res.data.employees)) list = res.data.employees;
+                    else list = Object.keys(res.data);
                 } else if (Array.isArray(res)) {
-                    adminChamCongEmployees = res;
+                    list = res;
                 } else if (res && typeof res === 'object') {
-                    adminChamCongEmployees = Object.keys(res);
+                    list = Object.keys(res);
                 }
-                if (Array.isArray(adminChamCongEmployees)) {
-                    adminChamCongEmployees = adminChamCongEmployees.map(item => typeof item === 'object' && item !== null ? (item.ten || item.name || item.his_name) : item).filter(Boolean);
+                adminChamCongEmployees = cleanseAdminChamCongEmployees(list);
+                if (adminChamCongEmployees.length === 0 && isBVTKS_CS2) {
+                    adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
                 }
-                if (adminChamCongEmployees.length === 0 && typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
-                    adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
-                }
-                if (adminChamCongEmployees.length > 0) {
-                    try { localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees)); } catch(e){}
-                }
+                try { localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees)); } catch(e){}
                 ensureStaffConfigForEmployees();
                 return callApi('getErrorConfig', []);
             }).then(resConfig => {
@@ -301,8 +446,9 @@ var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi
             }).catch(err => {
                 window.hideGlobalLoading();
                 console.error('Lỗi loadAdminChamCongData:', err);
-                if (adminChamCongEmployees.length === 0 && typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
-                    adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
+                adminChamCongEmployees = cleanseAdminChamCongEmployees(adminChamCongEmployees);
+                if (adminChamCongEmployees.length === 0 && isBVTKS_CS2) {
+                    adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
                 }
                 ensureStaffConfigForEmployees();
                 renderAdminChamCongTable();
@@ -501,8 +647,15 @@ function renderAdminChamCongTable() {
             const curM = now.getMonth() + 1;
             const curY = now.getFullYear();
 
-            const mVal = (ccM && ccM.value) ? ccM.value : ((tkM && tkM.value) ? tkM.value : curM);
-            const yVal = (ccY && ccY.value) ? ccY.value : ((tkY && tkY.value) ? tkY.value : curY);
+            const isTkActive = document.getElementById('tab-thongke')?.classList.contains('active');
+            let mVal, yVal;
+            if (isTkActive) {
+                mVal = (tkM && tkM.value) ? tkM.value : ((ccM && ccM.value) ? ccM.value : curM);
+                yVal = (tkY && tkY.value) ? tkY.value : ((ccY && ccY.value) ? ccY.value : curY);
+            } else {
+                mVal = (ccM && ccM.value) ? ccM.value : ((tkM && tkM.value) ? tkM.value : curM);
+                yVal = (ccY && ccY.value) ? ccY.value : ((tkY && tkY.value) ? tkY.value : curY);
+            }
 
             const m = String(mVal).padStart(2, '0');
             const y = String(yVal);
@@ -761,10 +914,16 @@ function renderAdminChamCongTable() {
             tbody.innerHTML = '';
             let grandTotalChamCong = 0;
 
+            adminChamCongEmployees = cleanseAdminChamCongEmployees(adminChamCongEmployees);
+            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && isBVTKS_CS2) {
+                adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
+            }
+            ensureStaffConfigForEmployees();
+
             if (!adminChamCongEmployees || adminChamCongEmployees.length === 0) {
                 const colSpan = daysInMonth + 3;
                 tbody.innerHTML = '<tr><td colspan="' + colSpan + '" style="text-align:center; padding:30px; color:#64748b; font-size:13px; font-weight:500;">' +
-                    '⚠️ Đơn vị này chưa có danh sách nhân sự chấm công. Vui lòng vào <b>Quản trị ➔ Nhân sự chấm công</b> để thêm nhân viên.' +
+                    '⚠️ Đơn vị này chưa có danh sách nhân sự chấm công. Vui lòng vào <b>Quản trị ➔ Nhân sự chấm công & thống kê</b> để thêm nhân viên.' +
                     '</td></tr>';
                 return;
             }
@@ -1145,9 +1304,11 @@ function renderAdminChamCongTable() {
                     const cc = mData.chamcong || {};
                     const tt = mData.thuthuat || {};
 
-                    // Gộp chấm công
+                    // Gộp chấm công theo canonical full name
                     Object.keys(cc).forEach(emp => {
-                        if (!mergedChamCong[emp]) mergedChamCong[emp] = 0;
+                        const canon = getCanonicalStaffName(emp);
+                        if (!canon) return;
+                        if (!mergedChamCong[canon]) mergedChamCong[canon] = 0;
                         let rawCong = 0;
                         Object.keys(cc[emp]).forEach(key => {
                             if (key !== 'heSo') {
@@ -1155,16 +1316,18 @@ function renderAdminChamCongTable() {
                             }
                         });
                         const heSo = cc[emp].heSo !== undefined ? parseFloat(cc[emp].heSo) : 1.0;
-                        mergedChamCong[emp] += Math.round((rawCong * heSo) * 100) / 100;
+                        mergedChamCong[canon] += Math.round((rawCong * heSo) * 100) / 100;
                     });
 
-                    // Gộp thủ thuật
+                    // Gộp thủ thuật theo canonical full name
                     Object.keys(tt).forEach(emp => {
-                        if (!mergedThuThuat[emp]) mergedThuThuat[emp] = { loai1: 0, loai2: 0, loai3: 0, khac: 0 };
-                        mergedThuThuat[emp].loai1 += (tt[emp].loai1 || 0);
-                        mergedThuThuat[emp].loai2 += (tt[emp].loai2 || 0);
-                        mergedThuThuat[emp].loai3 += (tt[emp].loai3 || 0);
-                        mergedThuThuat[emp].khac += (tt[emp].khac || 0);
+                        const canon = getCanonicalStaffName(emp);
+                        if (!canon) return;
+                        if (!mergedThuThuat[canon]) mergedThuThuat[canon] = { loai1: 0, loai2: 0, loai3: 0, khac: 0 };
+                        mergedThuThuat[canon].loai1 += (tt[emp].loai1 || 0);
+                        mergedThuThuat[canon].loai2 += (tt[emp].loai2 || 0);
+                        mergedThuThuat[canon].loai3 += (tt[emp].loai3 || 0);
+                        mergedThuThuat[canon].khac += (tt[emp].khac || 0);
                     });
                 });
 
@@ -1186,17 +1349,18 @@ function renderAdminChamCongTable() {
             if(!tbody) return;
             tbody.innerHTML = '';
             
-            // Auto fallback to dataCache.staff if adminChamCongEmployees is empty
-            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
-                adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
-                ensureStaffConfigForEmployees();
+            // Luôn đảm bảo adminChamCongEmployees sạch và lấy chuẩn từ Tab Admin
+            adminChamCongEmployees = cleanseAdminChamCongEmployees(adminChamCongEmployees);
+            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && isBVTKS_CS2) {
+                adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
             }
+            ensureStaffConfigForEmployees();
 
             if (!adminChamCongEmployees || adminChamCongEmployees.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:35px 20px; color:#64748b; font-size:13px; font-weight:500; background:#f8fafc;">
                     <div style="font-size:24px; margin-bottom:8px;">👥</div>
                     <div>Đơn vị chưa có danh sách nhân sự.</div>
-                    <div style="font-size:11.5px; color:#94a3b8; margin-top:4px;">Vui lòng thêm nhân sự tại mục <b>Quản lý nhân sự</b> hoặc vào <b>Quản trị ➔ Cài đặt hệ thống ➔ Nhân sự chấm công</b>.</div>
+                    <div style="font-size:11.5px; color:#94a3b8; margin-top:4px;">Vui lòng thêm nhân sự tại <b>Quản trị ➔ Cài đặt hệ thống ➔ Nhân sự chấm công & thống kê</b>.</div>
                 </td></tr>`;
                 return;
             }
@@ -1297,10 +1461,11 @@ function renderAdminChamCongTable() {
         });
 
         function processThuThuatExcelData(dataRows) {
-            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
-                adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
-                ensureStaffConfigForEmployees();
+            adminChamCongEmployees = cleanseAdminChamCongEmployees(adminChamCongEmployees);
+            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && isBVTKS_CS2) {
+                adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
             }
+            ensureStaffConfigForEmployees();
 
             tempThuThuatData = {};
             adminChamCongEmployees.forEach(emp => {
@@ -1753,10 +1918,11 @@ function renderAdminChamCongTable() {
                 alert("Thư viện ExcelJS đang nạp, vui lòng thử lại sau giây lát!");
                 return;
             }
-            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
-                adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
-                ensureStaffConfigForEmployees();
+            adminChamCongEmployees = cleanseAdminChamCongEmployees(adminChamCongEmployees);
+            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && isBVTKS_CS2) {
+                adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
             }
+            ensureStaffConfigForEmployees();
             if (adminChamCongEmployees.length === 0) {
                 alert("Chưa có danh sách nhân sự chấm công để xuất!");
                 return;
@@ -1989,10 +2155,11 @@ function renderAdminChamCongTable() {
                 alert("Thư viện ExcelJS đang nạp, vui lòng thử lại sau giây lát!");
                 return;
             }
-            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
-                adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
-                ensureStaffConfigForEmployees();
+            adminChamCongEmployees = cleanseAdminChamCongEmployees(adminChamCongEmployees);
+            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && isBVTKS_CS2) {
+                adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
             }
+            ensureStaffConfigForEmployees();
             if (adminChamCongEmployees.length === 0) {
                 alert("Chưa có danh sách nhân sự để xuất báo cáo!");
                 return;
@@ -2493,10 +2660,11 @@ function renderAdminChamCongTable() {
                 alert("Thư viện ExcelJS đang nạp, vui lòng thử lại sau giây lát!");
                 return;
             }
-            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
-                adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
-                ensureStaffConfigForEmployees();
+            adminChamCongEmployees = cleanseAdminChamCongEmployees(adminChamCongEmployees);
+            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && isBVTKS_CS2) {
+                adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
             }
+            ensureStaffConfigForEmployees();
             if (adminChamCongEmployees.length === 0) {
                 alert("Chưa có danh sách nhân sự để tính thực lĩnh!");
                 return;
@@ -2851,10 +3019,8 @@ window.resetChamCongForUnit = function(unitCode) {
     if (cachedEmp) {
         try { 
             const parsed = JSON.parse(cachedEmp);
-            adminChamCongEmployees = (Array.isArray(parsed) && parsed.length > 0) ? parsed : (isDefault ? [...DEFAULT_CHAMCONG_EMPLOYEES] : []);
+            adminChamCongEmployees = cleanseAdminChamCongEmployees(parsed);
         } catch(e){ adminChamCongEmployees = isDefault ? [...DEFAULT_CHAMCONG_EMPLOYEES] : []; }
-    } else if (typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
-        adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
     } else {
         adminChamCongEmployees = isDefault ? [...DEFAULT_CHAMCONG_EMPLOYEES] : [];
     }

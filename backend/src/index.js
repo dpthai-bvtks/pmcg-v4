@@ -1057,6 +1057,7 @@ function dispatchBackgroundSync(action, args, env, ctx) {
 }
 
 async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtks-cs2") {
+  if (unitCode === "bvtks_cs2") unitCode = "bvtks-cs2";
   const db = getDatabase(env);
   if (!db) {
     return error("Database chưa được cấu hình (cần TURSO_URL hoặc D1 binding DB).", 500);
@@ -3047,15 +3048,30 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     // 📅 CHẤM CÔNG (CHAM CONG) & NHÂN SỰ CHẤM CÔNG
     // ============================================================
     case "getEmployees": {
+      const isDefault = (unitCode === "bvtks-cs2" || unitCode === "bvtks_cs2");
       const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'chamcong_employees'").bind(unitCode).first();
       if (rec && rec.value) {
         try {
           const list = JSON.parse(rec.value);
-          if (Array.isArray(list)) return success(list);
+          if (Array.isArray(list)) {
+            const cleanList = list.map(x => (typeof x === 'object' && x !== null ? (x.ten || x.name || x.his_name) : x))
+                                  .filter(n => n && !/^(phụ|phu)\s*\d+/i.test(String(n).trim()) && !/^(ktv\s*)?phụ trách/i.test(String(n).trim()));
+            if (cleanList.length > 0) {
+              if (isDefault) {
+                const std13 = [
+                  "Hoàng Đức Đạt", "Lê Thị Thu Hoa", "Nguyễn Thị Duyên Thảo", "Nguyễn Thu Hằng",
+                  "Đặng Phong Thái", "Phạm Thạch Khuyến", "Nguyễn Thị Xuân Lương", "Nguyễn Thị Hà",
+                  "Phan Thị Thu Hiền", "Lê Thị Thu Hiền", "Nguyễn Văn Khính", "Phạm Thị Thuyến", "Trần Thị Duyên"
+                ];
+                std13.forEach(s => { if (!cleanList.includes(s)) cleanList.push(s); });
+              }
+              return success(cleanList);
+            }
+          }
         } catch(e) {}
       }
-      // Đối với đơn vị bvtks-cs2 mặc định thì cung cấp danh sách nhân sự chuẩn
-      if (unitCode === "bvtks-cs2") {
+      // Đối với đơn vị bvtks-cs2 mặc định thì cung cấp danh sách 13 nhân sự chuẩn đầy đủ
+      if (isDefault) {
         return success([
           "Hoàng Đức Đạt", "Lê Thị Thu Hoa", "Nguyễn Thị Duyên Thảo", "Nguyễn Thu Hằng",
           "Đặng Phong Thái", "Phạm Thạch Khuyến", "Nguyễn Thị Xuân Lương", "Nguyễn Thị Hà",
@@ -3070,6 +3086,10 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       let list = args[0] || [];
       if (typeof list === "object" && list !== null && !Array.isArray(list)) {
         list = list.employees || list.list || [];
+      }
+      if (Array.isArray(list)) {
+        list = list.map(x => (typeof x === 'object' && x !== null ? (x.ten || x.name || x.his_name) : x))
+                   .filter(n => n && !/^(phụ|phu)\s*\d+/i.test(String(n).trim()) && !/^(ktv\s*)?phụ trách/i.test(String(n).trim()));
       }
       await setCaiDat(db, unitCode, 'chamcong_employees', JSON.stringify(list));
       await bumpDataVersion(db, unitCode);
@@ -3378,10 +3398,13 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const uniqueVariants = [...new Set(myVariants)].filter(Boolean);
 
       if (uniqueVariants.length > 0) {
+        const uUnits = (unitCode === "bvtks-cs2" || unitCode === "bvtks_cs2") ? ["bvtks-cs2", "bvtks_cs2"] : [unitCode];
+        const uPlaceholders = uUnits.map(() => '?').join(',');
+
         // 1. Single SQL query on cham_cong with IN (...)
         try {
           const placeholders = uniqueVariants.map(() => '?').join(',');
-          const res = await db.prepare(`SELECT month_year, data_json FROM cham_cong WHERE unit_code = ? AND month_year IN (${placeholders})`).bind(unitCode, ...uniqueVariants).all();
+          const res = await db.prepare(`SELECT month_year, data_json FROM cham_cong WHERE unit_code IN (${uPlaceholders}) AND month_year IN (${placeholders})`).bind(...uUnits, ...uniqueVariants).all();
           if (res && res.results && res.results.length > 0) {
             for (const v of uniqueVariants) {
               const row = res.results.find(r => r.month_year === v);
@@ -3399,7 +3422,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         try {
           const cdKeys = uniqueVariants.map(v => "chamcong_" + v);
           const placeholdersCd = cdKeys.map(() => '?').join(',');
-          const resCd = await db.prepare(`SELECT key, value FROM cai_dat WHERE unit_code = ? AND key IN (${placeholdersCd})`).bind(unitCode, ...cdKeys).all();
+          const resCd = await db.prepare(`SELECT key, value FROM cai_dat WHERE unit_code IN (${uPlaceholders}) AND key IN (${placeholdersCd})`).bind(...uUnits, ...cdKeys).all();
           if (resCd && resCd.results && resCd.results.length > 0) {
             for (const k of cdKeys) {
               const row = resCd.results.find(r => r.key === k);
@@ -3435,6 +3458,14 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         my = String(args[0].month_year || args[0].my || "").trim();
         data = args[0].data || args[0].data_json || {};
         if (typeof data === "string") { try { data = JSON.parse(data); } catch(e) {} }
+      }
+      // Khử triệt để các key Phụ 1..8 trước khi ghi vào CSDL
+      if (typeof data === "object" && data !== null) {
+        Object.keys(data).forEach(k => {
+          if (/^(phụ|phu)\s*\d+/i.test(String(k).trim()) || /^(ktv\s*)?phụ trách/i.test(String(k).trim())) {
+            delete data[k];
+          }
+        });
       }
       const jsonStr = typeof data === "string" ? data : JSON.stringify(data);
       
@@ -3498,10 +3529,13 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         const uniqueVariants = [...new Set(myVariants)].filter(Boolean);
 
         if (uniqueVariants.length > 0) {
+          const uUnits = (unitCode === "bvtks-cs2" || unitCode === "bvtks_cs2") ? ["bvtks-cs2", "bvtks_cs2"] : [unitCode];
+          const uPlaceholders = uUnits.map(() => '?').join(',');
+
           // 1. Single SQL query on thong_ke with IN (...)
           try {
             const placeholders = uniqueVariants.map(() => '?').join(',');
-            const res = await db.prepare(`SELECT month_year, data_json FROM thong_ke WHERE unit_code = ? AND month_year IN (${placeholders})`).bind(unitCode, ...uniqueVariants).all();
+            const res = await db.prepare(`SELECT month_year, data_json FROM thong_ke WHERE unit_code IN (${uPlaceholders}) AND month_year IN (${placeholders})`).bind(...uUnits, ...uniqueVariants).all();
             if (res && res.results && res.results.length > 0) {
               for (const v of uniqueVariants) {
                 const row = res.results.find(r => r.month_year === v);
@@ -3519,7 +3553,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           try {
             const cdKeys = uniqueVariants.map(v => "thongke_" + v);
             const placeholdersCd = cdKeys.map(() => '?').join(',');
-            const resCd = await db.prepare(`SELECT key, value FROM cai_dat WHERE unit_code = ? AND key IN (${placeholdersCd})`).bind(unitCode, ...cdKeys).all();
+            const resCd = await db.prepare(`SELECT key, value FROM cai_dat WHERE unit_code IN (${uPlaceholders}) AND key IN (${placeholdersCd})`).bind(...uUnits, ...cdKeys).all();
             if (resCd && resCd.results && resCd.results.length > 0) {
               for (const k of cdKeys) {
                 const row = resCd.results.find(r => r.key === k);
