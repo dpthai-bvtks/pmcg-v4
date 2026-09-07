@@ -1401,19 +1401,28 @@ git add . && git commit -m "..." && git push origin main
 
 
 
-### Chu?n h�a t�m ki?m th? thu?t HIS (07/09/2026 - v4.0.2-rev1)
-- **Y�u c?u c?a ngu?i d�ng**: Fix l?i khi nh?p file HIS th? thu?t T?p v?n d?ng c� tr? gi�p hi?n th? t�n d?y d? thay v� vi?t t?t, v� chu?n h�a cho t?t c? c�c th? thu?t.
-- **Ph�n t�ch nguy�n nh�n & Gi?i ph�p**: H�m getShortSkills v� matchProc tru?c d�y so s�nh chu?i c?ng nh?c (.toLowerCase() ===), d?n d?n n?u t�n th? thu?t t? file HIS (ho?c t? database) b? l?ch nh? v? d?u c�u, ch? 'c�' th� s? kh�ng kh?p v� hi?n th? t�n d?y d?. �� th�m h�m 
-orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho t?t c? c�c th? thu?t (? c? danh s�ch b?nh nh�n v� nh�n s?).
+### Chu?n h�a t�m ki?m th? thu?t HIS (07/09/2026 - v4.0.2-rev1)
+- **Y�u c?u c?a ngu?i d�ng**: Fix l?i khi nh?p file HIS th? thu?t T?p v?n d?ng c� tr? gi�p hi?n th? t�n d?y d? thay v� vi?t t?t, v� chu?n h�a cho t?t c? c�c th? thu?t.
+- **Ph�n t�ch nguy�n nh�n & Gi?i ph�p**: H�m getShortSkills v� matchProc tru?c d�y so s�nh chu?i c?ng nh?c (.toLowerCase() ===), d?n d?n n?u t�n th? thu?t t? file HIS (ho?c t? database) b? l?ch nh? v? d?u c�u, ch? 'c�' th� s? kh�ng kh?p v� hi?n th? t�n d?y d?. �� th�m h�m 
+orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho t?t c? c�c th? thu?t (? c? danh s�ch b?nh nh�n v� nh�n s?).
 - **File s?a d?i**:
-  + js/app.js (c?p nh?t getShortSkills v� matchProc)
-  + index.html (c?p nh?t phi�n b?n v� timestamp)
+  + js/app.js (c?p nh?t getShortSkills v� matchProc)
+  + index.html (c?p nh?t phi�n b?n v� timestamp)
   + sw.js (c?p nh?t CACHE_NAME)
 
 
-### T?i uu ho� thu?t to�n chu?n h�a th? thu?t HIS (07/09/2026 - v4.0.3)
-- **V?n d?**: Sau khi c?p nh?t, th? thu?t 'T?p v?n d?ng c� tr? gi�p' v?n b? l?i do user c� th? s?a t�n th�nh 'T?p v?n d?ng tr? gi�p' (thi?u t? 'c�'), khi?n h�m includes() kh�ng t�m th?y chu?i li�n t?c.
-- **Gi?i ph�p**: B? sung regex lo?i b? c�c hu t? (c�, di?u tr?, v�, c?a) tru?c khi ti?n h�nh so kh?p trong getCanonicalProcedureName, getShortSkills v� matchProc. �i?u n�y gi�p t�m ra s? tuong d?ng m?t c�ch m?nh m? (VD: 't?p v?n d?ng c� tr? gi�p' -> 't?p v?n d?ng tr? gi�p').
-- **File s?a d?i**:
-  + js/app.js
-  + index.html, sw.js (version 4.0.3)
+### Tối ưu hoá thuật toán chuẩn hoá thủ thuật HIS & Đồng bộ Phiên bản theo RULES.md (07/09/2026 - v4.0.2-rev2)
+- **Yêu cầu của người dùng**: Trang web chưa cập nhật bản hôm nay (4.0.2), yêu cầu đọc và tuân thủ chặt chẽ RULES.md.
+- **Phân tích nguyên nhân & Giải pháp**:
+  + Phát hiện ở lượt trước đã tăng phiên bản sai quy tắc lên `4.0.3` (vi phạm quy tắc mỗi ngày chỉ tăng 1 phiên bản chính: ngày hôm nay 07/09/2026 là `4.0.2`), đồng thời thẻ `#app-footer-version` trong `index.html` vẫn bị sót là `4.0.1`, các query string script là `4.0.2-rev1`, và cache name `sw.js` lệch với `APP_VERSION`, dẫn đến Service Worker không tự hủy cache cũ và giao diện người dùng không nhận được số phiên bản ngày hôm nay.
+  + Đã đọc toàn diện RULES.md và đồng bộ chuẩn xác 3 vị trí bắt buộc:
+    1. Footer `#app-footer-version` hiển thị `Phiên bản: 4.0.2`, timestamp `#sys-last-update` cập nhật: `09:00 07/09/2026`.
+    2. Cache Buster Query Strings: toàn bộ CSS, JS, manifest, apple-touch-icon và hằng số `APP_VERSION = '4.0.2-rev2'`.
+    3. Service Worker `CACHE_NAME = 'pmcg-v4-cache-4.0.2-rev2'`.
+  + Giữ nguyên toàn bộ logic mở rộng so khớp chuẩn hóa thủ thuật HIS (loại bỏ hư từ 'có', 'điều trị', 'và', 'của' để nhận diện chính xác các biến thể như 'Tập vận động trợ giúp' khớp với 'Tập vận động có trợ giúp' -> 'VĐ-TG').
+- **File sửa đổi**:
+  + `index.html` (cập nhật footer version, timestamp, cache busters, `APP_VERSION`)
+  + `sw.js` (cập nhật `CACHE_NAME` thành `pmcg-v4-cache-4.0.2-rev2`)
+  + `js/app.js` (cập nhật cache buster HDSD URL và thuật toán so khớp thủ thuật)
+  + `backend/package.json` & `backend/src/index.js` (đồng bộ version 4.0.2)
+  + `PM-xeplich-v4.md` (chuẩn hóa nhật ký theo RULES.md)
