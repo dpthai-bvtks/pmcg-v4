@@ -4497,13 +4497,30 @@ transition: box-shadow 0.3s;
             box-shadow: 0 0 0 1px rgba(37,99,235,0.4);
             background: #eff6ff;
         }
+        /* Ký hiệu Lễ, Tết (Màu đỏ tươi lễ hội) */
         #table-chamcong .cc-input-text[value="LỄ"],
-        #table-chamcong .cc-input-text[value="LE"] {
+        #table-chamcong .cc-input-text[value="LE"],
+        #table-chamcong .cc-input-text[value="Lễ"],
+        #table-chamcong .cc-input-text[value="TẾT"],
+        #table-chamcong .cc-input-text[value="TET"],
+        #table-chamcong .cc-input-text[value="Tết"] {
             color: #b91c1c !important;
             background-color: #fee2e2 !important;
             border-color: #fca5a5 !important;
             font-weight: 800 !important;
         }
+
+        /* Ký hiệu Nội trú (Màu xanh dương đậm) */
+        #table-chamcong .cc-input-text[value="NỘI"],
+        #table-chamcong .cc-input-text[value="NOI"],
+        #table-chamcong .cc-input-text[value="Nội"] {
+            color: #1d4ed8 !important;
+            background-color: #dbeafe !important;
+            border-color: #93c5fd !important;
+            font-weight: 800 !important;
+        }
+
+        /* Ký hiệu Thai sản, Dã ngoại (Màu tím) */
         #table-chamcong .cc-input-text[value="TS"],
         #table-chamcong .cc-input-text[value="ĐK"],
         #table-chamcong .cc-input-text[value="DK"] {
@@ -4512,22 +4529,65 @@ transition: box-shadow 0.3s;
             border-color: #d8b4fe !important;
             font-weight: 800 !important;
         }
-        #table-chamcong .cc-input-text[value="S"],
-        #table-chamcong .cc-input-text[value="C"],
+
+        /* Ký hiệu Nghỉ ốm Ô (Màu cam đậm) */
+        #table-chamcong .cc-input-text[value="Ô"],
+        #table-chamcong .cc-input-text[value="O"] {
+            color: #c2410c !important;
+            background-color: #ffedd5 !important;
+            border-color: #fed7aa !important;
+            font-weight: 800 !important;
+        }
+
+        /* Ký hiệu Học, Phép, Bù (Màu vàng hổ phách/nâu) */
+        #table-chamcong .cc-input-text[value="H"],
+        #table-chamcong .cc-input-text[value="F"],
         #table-chamcong .cc-input-text[value="B"] {
-            color: #047857 !important;
+            color: #b45309 !important;
+            background-color: #fef3c7 !important;
+            border-color: #fde68a !important;
             font-weight: 700 !important;
         }
+
+        /* Ký hiệu Nửa công X/2 (Màu xanh mòng két) */
+        #table-chamcong .cc-input-text[value="X/2"],
+        #table-chamcong .cc-input-text[value="1/2"] {
+            color: #0f766e !important;
+            background-color: #ccfbf1 !important;
+            border-color: #99f6e4 !important;
+            font-weight: 800 !important;
+        }
+
+        /* Ký hiệu Sáng, Chiều (Màu xanh ngọc bích) */
+        #table-chamcong .cc-input-text[value="S"],
+        #table-chamcong .cc-input-text[value="C"] {
+            color: #047857 !important;
+            background-color: #d1fae5 !important;
+            border-color: #a7f3d0 !important;
+            font-weight: 700 !important;
+        }
+
         [data-theme="dark"] #table-chamcong .cc-input-text {
             background-color: #1e293b !important;
             color: #60a5fa !important;
             border-color: #334155 !important;
         }
         [data-theme="dark"] #table-chamcong .cc-input-text[value="LỄ"],
-        [data-theme="dark"] #table-chamcong .cc-input-text[value="LE"] {
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="LE"],
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="Lễ"],
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="TẾT"],
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="TET"],
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="Tết"] {
             color: #fca5a5 !important;
             background-color: #450a0a !important;
             border-color: #7f1d1d !important;
+        }
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="NỘI"],
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="NOI"],
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="Nội"] {
+            color: #93c5fd !important;
+            background-color: #172554 !important;
+            border-color: #1e40af !important;
         }
         [data-theme="dark"] #table-chamcong .cc-input-text[value="TS"],
         [data-theme="dark"] #table-chamcong .cc-input-text[value="ĐK"],
@@ -4535,6 +4595,31 @@ transition: box-shadow 0.3s;
             color: #d8b4fe !important;
             background-color: #3b0764 !important;
             border-color: #581c87 !important;
+        }
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="Ô"],
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="O"] {
+            color: #fdba74 !important;
+            background-color: #431407 !important;
+            border-color: #9a3412 !important;
+        }
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="H"],
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="F"],
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="B"] {
+            color: #fde68a !important;
+            background-color: #451a03 !important;
+            border-color: #78350f !important;
+        }
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="X/2"],
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="1/2"] {
+            color: #5eead4 !important;
+            background-color: #042f2e !important;
+            border-color: #115e59 !important;
+        }
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="S"],
+        [data-theme="dark"] #table-chamcong .cc-input-text[value="C"] {
+            color: #6ee7b7 !important;
+            background-color: #022c22 !important;
+            border-color: #065f46 !important;
         }
 
         /* 6. THEAD BẢNG THỐNG KÊ & PREVIEW */

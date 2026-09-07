@@ -684,20 +684,37 @@ function renderAdminChamCongTable() {
             const day = input.getAttribute('data-day');
             if (!emp || !day) return;
             const rawVal = input.value;
-            const val = rawVal ? rawVal.trim().toUpperCase() : '';
+            let val = rawVal ? rawVal.trim() : '';
+            const upper = val.toUpperCase();
+
+            // Chuẩn hóa ký hiệu trực quan & đồng bộ dữ liệu bản in
+            if (upper === 'CA-NGAY') val = 'X';
+            else if (upper === 'SANG') val = 'S';
+            else if (upper === 'CHIEU') val = 'C';
+            else if (upper === 'LỄ' || upper === 'LE') val = 'Lễ';
+            else if (upper === 'TẾT' || upper === 'TET') val = 'Tết';
+            else if (upper === 'NỘI' || upper === 'NOI') val = 'Nội';
+            else if (upper === 'X/2' || upper === '1/2') val = 'X/2';
+            else if (val) val = upper;
 
             // Cập nhật thuộc tính value để CSS badge selector hiển thị màu sắc tức thì
             input.setAttribute('value', val);
+            input.value = val;
 
             if (!chamCongData[emp]) chamCongData[emp] = {};
             const oldRaw = chamCongData[emp][day] || '';
-            const oldVal = (typeof oldRaw === 'string' ? oldRaw.trim().toUpperCase() : String(oldRaw));
+            const oldVal = (typeof oldRaw === 'string' ? oldRaw.trim() : String(oldRaw));
 
             const norm = (v) => {
-                if (v === 'CA-NGAY') return 'X';
-                if (v === 'SANG') return 'S';
-                if (v === 'CHIEU') return 'C';
-                return v;
+                if (!v) return '';
+                const u = String(v).trim().toUpperCase();
+                if (u === 'CA-NGAY') return 'X';
+                if (u === 'SANG') return 'S';
+                if (u === 'CHIEU') return 'C';
+                if (u === 'LỄ' || u === 'LE') return 'LỄ';
+                if (u === 'TẾT' || u === 'TET') return 'TẾT';
+                if (u === 'NỘI' || u === 'NOI') return 'NỘI';
+                return u;
             };
 
             // NẾU GIÁ TRỊ KHÔNG THAY ĐỔI -> THOÁT NGAY, KHÔNG DIRTY, KHÔNG LƯU!
@@ -895,10 +912,15 @@ function renderAdminChamCongTable() {
             if (typeof val === 'number') return String(val);
             if (typeof val !== 'string') return '';
             val = val.trim();
-            if (val === 'ca-ngay') return 'X';
-            if (val === 'sang') return 'S';
-            if (val === 'chieu') return 'C';
-            return val.toUpperCase();
+            const upper = val.toUpperCase();
+            if (upper === 'CA-NGAY') return 'X';
+            if (upper === 'SANG') return 'S';
+            if (upper === 'CHIEU') return 'C';
+            if (upper === 'LỄ' || upper === 'LE') return 'Lễ';
+            if (upper === 'TẾT' || upper === 'TET') return 'Tết';
+            if (upper === 'NỘI' || upper === 'NOI') return 'Nội';
+            if (upper === 'X/2' || upper === '1/2') return 'X/2';
+            return val;
         }
 
         function calcDayValue(val) {
@@ -906,20 +928,32 @@ function renderAdminChamCongTable() {
             if (typeof val === 'number') return Math.min(1, Math.max(0, val));
             if (typeof val !== 'string') return 0;
             val = val.trim();
+            if (!val) return 0;
             const upper = val.toUpperCase();
-            if (upper === 'CA-NGAY' || upper === 'X' || upper === '1' || upper === 'LỄ' || upper === 'LE' || upper === 'H' || upper === 'P') return 1;
-            if (upper === 'SANG' || upper === 'CHIEU' || upper === 'S' || upper === 'C' || upper === 'B' || upper === '0.5' || upper === '1/2') return 0.5;
-            if (upper === 'TS' || upper === 'ĐK' || upper === 'DK' || upper === 'O' || upper === 'Ô' || upper === 'NGHỈ' || upper === 'NGHI' || upper === 'V') return 0;
+
+            // 1. Ký hiệu nghỉ / học / không tính công thủ thuật: 0 công (Khớp 100% bản in)
+            if (['TS', 'ĐK', 'DK', 'O', 'Ô', 'NGHỈ', 'NGHI', 'V', 'LỄ', 'LE', 'TẾT', 'TET', 'NỘI', 'NOI', 'H', 'F', 'B', 'P'].includes(upper)) return 0;
+
+            // 2. Nửa ngày công: 0.5 công
+            if (['X/2', '1/2', '0.5', 'S', 'C', 'SANG', 'CHIEU'].includes(upper)) return 0.5;
+
+            // 3. Cả ngày công: 1.0 công
+            if (['X', 'CA-NGAY', '1'].includes(upper)) return 1;
+
             const parsedNum = parseFloat(val);
-            if (!isNaN(parsedNum) && parsedNum > 0 && parsedNum <= 1) return parsedNum;
+            if (!isNaN(parsedNum) && parsedNum >= 0 && parsedNum <= 1) return parsedNum;
+
+            if (upper.includes('X/2') || upper.includes('1/2')) return 0.5;
+
             let total = 0;
-            const parts = upper.split(/[\/\+\-\s,]+/);
+            const parts = upper.split(/[\+\-\s,]+/);
             parts.forEach(p => {
-                if (p === 'S' || p === 'C' || p === 'B' || p === 'SANG' || p === 'CHIEU') total += 0.5;
-                else if (p === 'X' || p === 'CA-NGAY' || p === 'LỄ' || p === 'LE' || p === 'H' || p === 'P' || p === '1') total += 1;
+                if (p === 'S' || p === 'C' || p === 'SANG' || p === 'CHIEU') total += 0.5;
+                else if (p === 'X' || p === 'CA-NGAY' || p === '1') total += 1;
             });
             return total > 1 ? 1 : total;
         }
+        window.calcDayValue = calcDayValue;
 
         function enableHolidayCell(td, emp, day) {
             td.onclick = null;

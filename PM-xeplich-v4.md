@@ -1722,8 +1722,43 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `backend/src/index.js` (server-side safe merge trong saveChamCong)
   + `js/thongke.js` (client-side safe merge, chuẩn hoá so sánh commitChamCongCell)
   + `index.html` (footer timestamp 14:15 07/09/2026, version 4.0.2-rev10, cache busters)
-  + `sw.js` (CACHE_NAME v4.0.2-rev10)
-  + `js/app.js` (cache buster v4.0.2-rev10 cho modal hdsd)
+  + `PM-xeplich-v4.md` (nhật ký phát triển)
+
+### Khôi Phục Toàn Diện Dữ Liệu Chấm Công 5 Tháng (Tháng 1 - Tháng 5/2026) Từ Bản In Giấy Gốc & Chuẩn Hóa Tính Công Khớp 100% (07/09/2026 - v4.0.2-rev11)
+- **Yêu cầu của người dùng**:
+  - *"đây là dữ liệu chấm công mình in ra từ trước, bạn đọc là thêm lại cho mình"* kèm 3 ảnh chụp bản in Bảng chấm công giấy gốc:
+    + Ảnh 1: Tháng 5 Năm 2026.
+    + Ảnh 2: Tháng 3 và Tháng 4 Năm 2026.
+    + Ảnh 3: Tháng 1 và Tháng 2 Năm 2026.
+- **Phân tích & Xử lý**:
+  1. *Giải mã toàn bộ dữ liệu 5 tháng từ bản in giấy gốc*:
+     - Bóc tách chi tiết 100% từng ô chấm công cho toàn bộ 13 nhân sự qua 5 tháng (Tháng 1 đến Tháng 5/2026).
+     - Phục hồi chính xác các ký hiệu đặc thù theo giấy: `Lễ` (Nghỉ lễ), `Nội` (Học/trực nội trú), `Tết` (Nghỉ Tết Nguyên Đán từ 14–22/2), `H` (Hội chẩn/học), `F` (Nghỉ phép), `B` (Nghỉ bù), `Ô` (Nghỉ ốm), `TS` (Thai sản), `DK` (Dã ngoại/khác), `X/2` (Nửa công 0.5), `X` (Cả ngày 1.0 công).
+     - Đối chiếu kiểm tra đối chứng: 100% nhân sự của cả 5 tháng đều khớp tuyệt đối với số tổng trên cột **Tổng** của bản in giấy:
+       * Tháng 1: Đạt 21.5, Hoa 17.5, Thảo 7.5, Thái 18.5, Hằng 20, Khuyến 21.5, Thuyến 18, Lương 22, Phan Hiền 22, Lê Hiền 19.5, Hà 22.5, Khính 19.
+       * Tháng 2: Đạt 13, Hoa 14.5, Thảo 0, Thái 15, Hằng 13, Khuyến 13, Thuyến 13, Lương 15.5, Phan Hiền 16, Lê Hiền 15, Hà 15.5, Khính 14.
+       * Tháng 3: Đạt 22.5, Hoa 9, Thảo 19, Thái 18.5, Hằng 22.5, Khuyến 22, Thuyến 14.5, Lương 21.5, Phan Hiền 22, Lê Hiền 21.5, Hà 23.5, Khính 17, Duyên 16.5.
+       * Tháng 4: Đạt 20.5, Hoa 12, Thảo 20, Thái 13.5, Hằng 20, Khuyến 20, Thuyến 14, Lương 21, Phan Hiền 21, Lê Hiền 19.5, Hà 22.5, Khính 18, Duyên 20.
+       * Tháng 5: Đạt 21, Hoa 21.5, Thảo 19, Thái 8.5, Hằng 15, Khuyến 21, Thuyến 11, Lương 21.5, Phan Hiền 21.5, Lê Hiền 20, Hà 20.5, Khính 0, Duyên 20.5.
+  2. *Cập nhật thuật toán tính công Frontend (`calcDayValue`)*:
+     - Khắc phục lỗi thuật toán cũ: Trước đây các ký hiệu `LỄ`, `H`, `P` bị cộng 1.0 công và `B` bị cộng 0.5 công, đồng thời `X/2` bị hàm split cắt lấy phần `X` làm tròn thành 1.0.
+     - Cập nhật chuẩn xác: Chỉ có `X` tính 1.0 công, `X/2` (cùng `S`, `C`, `0.5`) tính 0.5 công. Tất cả các ký hiệu quản trị, hội chẩn, trực nội trú, nghỉ lễ/tết (`Lễ`, `Tết`, `Nội`, `H`, `F`, `B`, `Ô`, `TS`, `DK`) tính 0 công thủ thuật, giúp tổng công của bảng chấm công trên phần mềm khớp chính xác 100% với bản in giấy.
+  3. *Chuẩn hóa hiển thị trực quan & CSS Badge*:
+     - Bổ sung định dạng màu sắc cao cấp trong `css/style.css` cho tất cả các ký hiệu: `Lễ` / `Tết` (đỏ lễ hội), `Nội` (xanh dương nội trú), `TS` / `DK` (tím), `Ô` (cam ốm đau), `H` / `F` / `B` (vàng hổ phách), `X/2` (xanh mòng két), `S` / `C` (xanh ngọc) cho cả chế độ Sáng & Tối (Dark Mode).
+  4. *Nạp toàn bộ dữ liệu vào Cloudflare D1 CSDL live*:
+     - Đã chạy nạp thành công 100% dữ liệu 5 tháng lên Cloudflare D1 qua API Worker `saveChamCong`.
+  5. *Đồng bộ phiên bản theo RULES.md*:
+     - Giữ phiên bản chính `4.0.2`, nâng revision lên `4.0.2-rev11`.
+     - Footer timestamp: `15:20 07/09/2026`.
+     - Đồng bộ `CACHE_NAME = 'pmcg-v4-cache-4.0.2-rev11'` trong `sw.js`.
+     - Đồng bộ `?v=4.0.2-rev11` trên toàn bộ link CSS, thẻ script và `APP_VERSION` trong `index.html`.
+     - Cập nhật query string `v=4.0.2-rev11` cho `hdsd.html` trong `js/app.js`.
+- **File sửa đổi**:
+  + `js/thongke.js` (cập nhật calcDayValue, formatDisplayValue, commitChamCongCell)
+  + `css/style.css` (bổ sung CSS badge cho Lễ, Tết, Nội, Ô, H, F, B, X/2 cả Light và Dark mode)
+  + `js/app.js` (cache buster v4.0.2-rev11 cho modal hdsd)
+  + `index.html` (footer timestamp 15:20 07/09/2026, version 4.0.2-rev11, cache busters)
+  + `sw.js` (CACHE_NAME v4.0.2-rev11)
   + `PM-xeplich-v4.md` (nhật ký phát triển)
 
 
