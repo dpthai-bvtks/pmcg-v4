@@ -1795,6 +1795,34 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `js/app.js` (cache buster v4.0.2-rev12)
   + `PM-xeplich-v4.md` (nhật ký phát triển)
 
+---
+
+### Di Chuyển Bảng Ký Hiệu Chấm Công Xuống Phía Dưới Bảng Chấm Công (07/09/2026 - v4.0.2-rev13)
+
+- **Yêu cầu của người dùng**:
+  + Chuyển phần ký hiệu chấm công (trước đây nằm trong tab Quản trị) ra đặt ngay ở bảng phía dưới bảng chấm công.
+- **Phân tích & Hiện thực**:
+  1. *Chuyển vị trí hiển thị*:
+     - Di dời toàn bộ khối chú thích ký hiệu chấm công từ Section 4 của Tab Quản trị (`#admin-sec-procedures`) sang đặt ngay bên dưới container bảng chấm công (`#table-chamcong-container`) thuộc Tab Chấm Công (`#tab-chamcong`).
+     - Người chấm công có thể trực quan theo dõi ngay quy ước ký hiệu tính công mà không cần chuyển sang tab Quản trị.
+  2. *Giao diện & Trải nghiệm*:
+     - Thiết kế card chú thích `.chamcong-legend-wrapper` hiện đại, viền bo góc, bóng đổ nhẹ.
+     - Các huy hiệu ký hiệu (`X`, `X/2`, `S / C`, `Lễ`, `Tết`, `Nội`, `Ô`, `H`, `F`, `B`, `TS`, `ĐK / DK`, `K / V`) hiển thị màu sắc tương thích hoàn toàn với màu sắc các ô input trong bảng chấm công.
+     - Tối ưu chế độ Dark Mode (`[data-theme="dark"]`): nền tối mờ `#1e293b`, viền `#334155`, chữ nhãn `#cbd5e1`, tiêu đề xanh nhạt `#60a5fa`, các badge giữ nguyên sắc độ nhận diện.
+  3. *Đồng bộ phiên bản theo RULES.md*:
+     - Giữ phiên bản chính `4.0.2`, nâng revision lên `4.0.2-rev13`.
+     - Footer timestamp: `15:55 07/09/2026`.
+     - Đồng bộ `CACHE_NAME = 'pmcg-v4-cache-4.0.2-rev13'` trong `sw.js`.
+     - Đồng bộ `?v=4.0.2-rev13` trên toàn bộ link CSS, thẻ script và `APP_VERSION` trong `index.html`.
+     - Cập nhật query string `v=4.0.2-rev13` cho `hdsd.html` trong `js/app.js`.
+- **File sửa đổi**:
+  + `index.html` (chuyển vị trí bảng ký hiệu xuống dưới bảng chấm công, footer timestamp 15:55 07/09/2026, version 4.0.2-rev13, cache busters)
+  + `css/style.css` (bổ sung styling cho `.chamcong-legend-wrapper` và hỗ trợ Dark Mode)
+  + `sw.js` (CACHE_NAME v4.0.2-rev13)
+  + `js/app.js` (cache buster v4.0.2-rev13 cho modal hdsd)
+  + `PM-xeplich-v4.md` (nhật ký phát triển)
+
+
 
 
 

@@ -4622,6 +4622,29 @@ transition: box-shadow 0.3s;
             border-color: #065f46 !important;
         }
 
+        /* 5.1. BẢNG KÝ HIỆU CHẤM CÔNG DƯỚI BẢNG */
+        .chamcong-legend-wrapper {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+        [data-theme="dark"] .chamcong-legend-wrapper {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
+        }
+        [data-theme="dark"] .chamcong-legend-wrapper .cc-leg-header,
+        [data-theme="dark"] .chamcong-legend-wrapper .cc-leg-label,
+        [data-theme="dark"] .chamcong-legend-wrapper .cc-leg-sub {
+            color: #cbd5e1 !important;
+        }
+        [data-theme="dark"] .chamcong-legend-wrapper .cc-leg-divider {
+            border-bottom-color: #334155 !important;
+        }
+        [data-theme="dark"] .chamcong-legend-wrapper b {
+            color: #60a5fa !important;
+        }
+
         /* 6. THEAD BẢNG THỐNG KÊ & PREVIEW */
         #table-thongke thead th,
         #table-preview-thuthuat thead th {

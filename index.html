@@ -76,9 +76,9 @@
     }
     </script>
     <meta name="theme-color" content="#1e3d2b">
-    <link rel="icon" type="image/png" sizes="128x128" href="favicon-128.png?v=4.0.2-rev12">
+    <link rel="icon" type="image/png" sizes="128x128" href="favicon-128.png?v=4.0.2-rev13">
     <!-- Thêm icon cho iOS -->
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=4.0.2-rev12">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=4.0.2-rev13">
 
 
 
@@ -89,15 +89,15 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=4.0.2-rev12">
+    <link rel="stylesheet" href="css/style.css?v=4.0.2-rev13">
     <!-- PWA & Mobile Web App Meta Tags -->
-    <link rel="manifest" href="manifest.json?v=4.0.2-rev12">
+    <link rel="manifest" href="manifest.json?v=4.0.2-rev13">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.0.2-rev12">
+    <link rel="stylesheet" href="css/mobile.css?v=4.0.2-rev13">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
     <script src="js/dexie.min.js?v=3.2.6"></script>
@@ -2441,48 +2441,6 @@
                                         </div>
                                     </div>
 
-                                    <!-- BẢNG KÝ HIỆU CHẤM CÔNG (CHUẨN PM CŨ THEO ẢNH) -->
-                                    <div
-                                        style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 30px;">
-                                        <h4
-                                            style="margin: 0 0 10px 0; color: #1e293b; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-                                            <i class='bx bx-info-circle' style="color: #2563eb; font-size: 20px;"></i>
-                                            Bảng Ký Hiệu Chấm Công
-                                        </h4>
-                                        <p
-                                            style="font-size: 13px; color: #64748b; margin-bottom: 16px; line-height: 1.6;">
-                                            Nhập các ký hiệu sau vào ô chấm công. Có thể kết hợp bằng dấu <code
-                                                style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #e11d48; font-weight: 600;">+</code>,
-                                            <code
-                                                style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #e11d48; font-weight: 600;">-</code>,
-                                            <code
-                                                style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #e11d48; font-weight: 600;">/</code>,
-                                            <code
-                                                style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #e11d48; font-weight: 600;">,</code>
-                                            hoặc dấu cách (Ví dụ: <code
-                                                style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #2563eb; font-weight: 600;">S+F</code>,
-                                            <code
-                                                style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #2563eb; font-weight: 600;">H/C</code>).
-                                            Hệ thống tự động tính: <code
-                                                style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #2563eb; font-weight: 600;">S, C</code>
-                                            = 0.5 công | <code
-                                                style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #2563eb; font-weight: 600;">X</code>
-                                            = 1 công.
-                                        </p>
-                                        <div
-                                            style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; font-size: 14px;">
-                                            <div><b style="color: #0f172a;">X</b>: Cả ngày</div>
-                                            <div><b style="color: #0f172a;">S</b>: Sáng</div>
-                                            <div><b style="color: #0f172a;">C</b>: Chiều</div>
-                                            <div><b style="color: #0f172a;">F</b>: Phép</div>
-                                            <div><b style="color: #0f172a;">Ô</b>: Ốm</div>
-                                            <div><b style="color: #0f172a;">H</b>: Học</div>
-                                            <div><b style="color: #0f172a;">L</b>: Lễ</div>
-                                            <div><b style="color: #0f172a;">TS</b>: Thai sản</div>
-                                            <div><b style="color: #0f172a;">ĐK</b>: Định kỳ</div>
-                                            <div><b style="color: #0f172a;">K</b>: Nghỉ không lương</div>
-                                        </div>
-                                    </div>
                                 </div>
 
                             </div>
@@ -2836,6 +2794,73 @@
                                 <tbody id="chamcong-body">
                                 </tbody>
                             </table>
+                        </div>
+
+                        <!-- BẢNG KÝ HIỆU CHẤM CÔNG (HIỂN THỊ TRỰC QUAN PHÍA DƯỚI BẢNG) -->
+                        <div class="chamcong-legend-wrapper" style="margin-top: 10px; padding: 10px 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); flex-shrink: 0;">
+                            <div class="cc-leg-divider" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+                                <div class="cc-leg-header" style="display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; color: #1e293b;">
+                                    <span style="font-size: 15px;">💡</span>
+                                    <span style="text-transform: uppercase; letter-spacing: 0.3px;">Bảng Ký Hiệu Chấm Công & Quy Ước Tính Công</span>
+                                </div>
+                                <div class="cc-leg-sub" style="font-size: 12px; color: #64748b;">
+                                    Quy ước: <b style="color: #2563eb;">X</b> = 1.0 công &nbsp;|&nbsp; <b style="color: #0f766e;">X/2, S, C</b> = 0.5 công &nbsp;|&nbsp; Ký hiệu khác = 0 công
+                                </div>
+                            </div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 12px; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #ffffff; border: 1px solid #cbd5e1; color: #1e293b;">X</span>
+                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Cả ngày (1.0)</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #ccfbf1; border: 1px solid #99f6e4; color: #0f766e;">X/2</span>
+                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Nửa ngày (0.5)</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #d1fae5; border: 1px solid #a7f3d0; color: #047857;">S / C</span>
+                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Sáng / Chiều (0.5)</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c;">Lễ</span>
+                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Nghỉ lễ</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c;">Tết</span>
+                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Nghỉ Tết</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #dbeafe; border: 1px solid #93c5fd; color: #1d4ed8;">Nội</span>
+                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Trực / học nội trú</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #ffedd5; border: 1px solid #fed7aa; color: #c2410c;">Ô</span>
+                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Nghỉ ốm</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #fef3c7; border: 1px solid #fde68a; color: #b45309;">H</span>
+                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Học / Hội chẩn</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #fef3c7; border: 1px solid #fde68a; color: #b45309;">F</span>
+                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Nghỉ phép</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #fef3c7; border: 1px solid #fde68a; color: #b45309;">B</span>
+                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Nghỉ bù</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #f3e8ff; border: 1px solid #d8b4fe; color: #6d28d9;">TS</span>
+                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Thai sản</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #f3e8ff; border: 1px solid #d8b4fe; color: #6d28d9;">ĐK / DK</span>
+                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Khám ngoại viện / Dã ngoại</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="display: inline-block; min-width: 26px; padding: 2px 5px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 11px; background: #f1f5f9; border: 1px solid #cbd5e1; color: #64748b;">K / V</span>
+                                    <span class="cc-leg-label" style="color: #334155; font-weight: 500;">Nghỉ việc riêng / Không lương</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -3277,7 +3302,7 @@
 
                     <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 4.0.2</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 15:45 07/09/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 15:55 07/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -3718,18 +3743,18 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.0.2-rev12"></script>
-    <script src="js/ai-scheduler.js?v=4.0.2-rev12"></script>
-    <script src="js/cp-solver.js?v=4.0.2-rev12"></script>
-    <script src="js/scheduler-engine.js?v=4.0.2-rev12"></script>
-    <script src="js/app.js?v=4.0.2-rev12"></script>
-    <script src="js/init.js?v=4.0.2-rev12"></script>
-    <script src="js/sync.js?v=4.0.2-rev12"></script>
-    <script src="js/thongke.js?v=4.0.2-rev12"></script>
+    <script src="js/offline-sync-engine.js?v=4.0.2-rev13"></script>
+    <script src="js/ai-scheduler.js?v=4.0.2-rev13"></script>
+    <script src="js/cp-solver.js?v=4.0.2-rev13"></script>
+    <script src="js/scheduler-engine.js?v=4.0.2-rev13"></script>
+    <script src="js/app.js?v=4.0.2-rev13"></script>
+    <script src="js/init.js?v=4.0.2-rev13"></script>
+    <script src="js/sync.js?v=4.0.2-rev13"></script>
+    <script src="js/thongke.js?v=4.0.2-rev13"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>
-    const APP_VERSION = '4.0.2-rev12';
+    const APP_VERSION = '4.0.2-rev13';
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             // Unregister old service workers if version changed
