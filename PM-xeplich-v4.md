@@ -1521,4 +1521,46 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `sw.js` (CACHE_NAME v4.0.2-rev5)
   + `PM-xeplich-v4.md` (nhật ký phát triển)
 
+### Khôi Phục Toàn Diện Dữ Liệu Ngày Công Lịch Sử (Tháng 1 - 9) & Chống Ghi Đè Chéo Tháng (07/09/2026 - v4.0.2-rev6)
+- **Yêu cầu của người dùng**:
+  - Dữ liệu các tháng vẫn chưa hiện đầy đủ số liệu công và thủ thuật khi chuyển qua lại giữa các tháng hoặc khi nạp từ server.
+- **Phân tích nguyên nhân cốt lõi**:
+  1. *Lỗi ghi đè chéo tháng (Cross-month auto-save overwrite)*: Trong `js/thongke.js`, biến `chamCongData` được giữ trong bộ nhớ toàn cục. Khi người dùng bấm chuyển tháng (ví dụ từ Tháng 9 sang Tháng 1, 2, 3...), nếu server phản hồi trễ hoặc cờ `chamCongIsDirty` còn bật, hàm nạp client hiểu nhầm dữ liệu Tháng 9 trên máy là bản mới hơn và tự động gọi `saveChamCong` ghi đè toàn bộ dữ liệu Tháng 9 (chỉ có 5 ngày) lên tháng mục tiêu trên server.
+  2. *Thiếu bộ theo dõi tháng kích hoạt (`activeChamCongMonthYear`)*: Khi đổi tháng, bộ nhớ đệm `chamCongData` không được reset, dẫn đến dữ liệu tháng trước bị hòa lẫn vào tháng sau.
+  3. *Bộ lắng nghe sự kiện bộ chọn tháng/năm*: Chỉ lắng nghe sự kiện `change`, bỏ sót sự kiện `input` khi người dùng bấm mũi tên tăng/giảm trên `<input type="number">`.
+  4. *Bộ nhớ đệm LocalStorage (`pm_cache_cc_*`)*: Bị nhiễm dữ liệu 5 ngày của tháng 9 từ các lần kiểm thử trước khiến trình duyệt ưu tiên nạp dữ liệu cũ 0ms.
+- **Các giải pháp đã thực hiện**:
+  1. **Khôi phục 100% dữ liệu gốc chuẩn xác**:
+     - Nạp lại toàn bộ dữ liệu ngày công lịch sử trọn vẹn từ file sao lưu chuẩn `PMCG_D1_Backup_AUTO_2026-08-22_1956.json` lên máy chủ đám mây cho tất cả các tháng:
+       + Tháng 1: 13 nhân sự, 253 lượt công (~217.15 công thực tế, 4.027 thủ thuật).
+       + Tháng 2: 13 nhân sự, 163 lượt công (~145.45 công thực tế, 2.346 thủ thuật).
+       + Tháng 3: 13 nhân sự, 261 lượt công (~219.2 công thực tế, 4.998 thủ thuật).
+       + Tháng 4: 13 nhân sự, 249 lượt công (~209.25 công thực tế, 4.776 thủ thuật).
+       + Tháng 5: 13 nhân sự, 233 lượt công (~196.65 công thực tế, 4.385 thủ thuật).
+       + Tháng 6: 13 nhân sự, 257 lượt công (~220.1 công thực tế, 4.523 thủ thuật).
+       + Tháng 7: 13 nhân sự, 238 lượt công (~206.7 công thực tế, 4.041 thủ thuật).
+       + Tháng 8: 13 nhân sự, 215 lượt công (~155.55 công thực tế, 4.275 thủ thuật).
+       + Tháng 9: 13 nhân sự, 68 lượt công từ ngày 1-7/9 (~30.5 công thực tế, 201 thủ thuật).
+  2. **Triệt tiêu hoàn toàn lỗi ghi đè chéo tháng (`js/thongke.js`)**:
+     - Khai báo biến quản lý tháng chủ động `activeChamCongMonthYear`.
+     - Khi chuyển tháng: Nếu tháng cũ đang có chỉnh sửa dở dang thì chỉ lưu vào đúng tháng cũ đó; đồng thời reset sạch `chamCongData = {}`, `chamCongIsDirty = false`, `chamCongLastEditedTime = 0` trước khi nạp tháng mới.
+     - Kiểm tra điều kiện ngắt: Nếu kết quả API trả về khi người dùng đã chuyển sang tháng khác (`getChamCongMonthYear() !== my`), lập tức hủy bỏ để tránh ghi đè dữ liệu sai tháng.
+     - Khóa chặt `triggerAutoSaveChamCong()` chỉ lưu đúng tháng `activeChamCongMonthYear`.
+  3. **Hỗ trợ đồng thời cả sự kiện `input` và `change` trên bộ chọn tháng/năm**:
+     - Đồng bộ mượt mà giữa Chấm công và Thống kê; khi người dùng click mũi tên hoặc gõ số tháng/năm, bảng lập tức tải và hiển thị chính xác số liệu sau 60ms debounce.
+  4. **Tự động làm sạch bộ nhớ đệm cũ (Cache Purge)**:
+     - Thêm cơ chế tự động dọn dẹp các khóa `pm_cache_cc_*` và `pm_cache_tk_*` cũ trong `localStorage` cho phiên bản `4.0.2-rev6`.
+  5. **Đồng bộ phiên bản theo RULES.md**:
+     - Giữ phiên bản ngày `4.0.2`, nâng revision lên `4.0.2-rev6`.
+     - Footer timestamp: `11:15 07/09/2026`.
+     - Đồng bộ `CACHE_NAME = 'pmcg-v4-cache-4.0.2-rev6'` trong `sw.js`.
+     - Đồng bộ `?v=4.0.2-rev6` trên toàn bộ script, stylesheet và `APP_VERSION` trong `index.html`.
+- **File sửa đổi**:
+  + `js/thongke.js` (chống ghi đè chéo tháng, activeChamCongMonthYear, dọn cache, sự kiện input/change)
+  + `js/app.js` (cập nhật cache buster HDSD v4.0.2-rev6)
+  + `index.html` (footer timestamp 11:15 07/09/2026, version 4.0.2-rev6, cache busters)
+  + `sw.js` (CACHE_NAME v4.0.2-rev6)
+  + `PM-xeplich-v4.md` (nhật ký phát triển)
+
+
 

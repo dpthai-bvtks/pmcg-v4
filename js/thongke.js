@@ -51,6 +51,18 @@ var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi
             return key + '_' + u;
         }
 
+        // Tự động dọn dẹp cache cũ bị ô nhiễm từ các phiên bản trước
+        try {
+            if (typeof localStorage !== 'undefined' && localStorage.getItem('pm_cleaned_cache_ver') !== '4.0.2-rev6') {
+                Object.keys(localStorage).forEach(k => {
+                    if (k.startsWith('pm_cache_cc_') || k.startsWith('pm_cache_tk_')) {
+                        localStorage.removeItem(k);
+                    }
+                });
+                localStorage.setItem('pm_cleaned_cache_ver', '4.0.2-rev6');
+            }
+        } catch(e) {}
+
         function getLocalCCKey(my) {
             const u = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
             return `pm_cache_cc_${u}_${my}`;
@@ -637,6 +649,7 @@ function renderAdminChamCongTable() {
         let chamCongSaveTimeout = null;
         let chamCongIsDirty = false;
         let chamCongLastEditedTime = 0;
+        let activeChamCongMonthYear = null;
 
         function getChamCongMonthYear() {
             const ccM = document.getElementById('chamcong-month-picker');
@@ -758,6 +771,24 @@ function renderAdminChamCongTable() {
         function loadChamCongData() {
             const my = getChamCongMonthYear();
             
+            // Xử lý chuyển đổi tháng: Flush thay đổi dở dang của tháng cũ (nếu có) và reset bộ nhớ tạm
+            if (activeChamCongMonthYear && activeChamCongMonthYear !== my) {
+                if (chamCongIsDirty && chamCongData && Object.keys(chamCongData).length > 0) {
+                    const prevMy = activeChamCongMonthYear;
+                    const prevData = JSON.parse(JSON.stringify(chamCongData));
+                    const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
+                    if (apiFn) {
+                        apiFn('saveChamCong', [prevMy, prevData]);
+                    }
+                    setCachedChamCong(prevMy, prevData);
+                }
+                chamCongData = {};
+                window.chamCongData = chamCongData;
+                chamCongIsDirty = false;
+                chamCongLastEditedTime = 0;
+            }
+            activeChamCongMonthYear = my;
+
             // 1. Tải tức thì 0ms từ Local Cache nếu có
             const cached = getCachedChamCong(my);
             let hasCached = false;
@@ -777,6 +808,9 @@ function renderAdminChamCongTable() {
                 if (!apiFn) return;
 
                 apiFn('getChamCong', [my]).then(res => {
+                    // Nếu tháng đã bị đổi sang tháng khác trong lúc request đang gửi thì bỏ qua
+                    if (getChamCongMonthYear() !== my) return;
+
                     let raw = {};
                     if (res && res.status === 'success' && res.data) {
                         raw = res.data;
@@ -784,26 +818,25 @@ function renderAdminChamCongTable() {
                         raw = res;
                     }
 
-                    // BẢO VỆ DỮ LIỆU CỤC BỘ: Nếu người dùng vừa chỉnh sửa gần đây hoặc server trả về rỗng trong khi cục bộ có dữ liệu
+                    // BẢO VỆ DỮ LIỆU CỤC BỘ: Chỉ giữ khi đúng tháng này và đang được chỉnh sửa dở dang tại máy
                     const hasLocalData = chamCongData && Object.keys(chamCongData).some(k => Object.keys(chamCongData[k] || {}).length > 0);
-                    const isRecentlyEdited = (Date.now() - chamCongLastEditedTime < 8000) || chamCongIsDirty;
+                    const isRecentlyEdited = (Date.now() - chamCongLastEditedTime < 8000) && chamCongIsDirty && (activeChamCongMonthYear === my);
                     const serverIsEmpty = !raw || Object.keys(raw).length === 0;
 
-                    if (hasLocalData && (isRecentlyEdited || serverIsEmpty)) {
-                        console.log('[ChamCong] Giữ dữ liệu cục bộ mới hơn, lưu lên server...');
-                        setCachedChamCong(my, chamCongData);
-                        triggerAutoSaveChamCong();
+                    if (hasLocalData && isRecentlyEdited && !serverIsEmpty) {
+                        console.log('[ChamCong] Giữ dữ liệu vừa sửa tại máy cho tháng ' + my);
                         return;
                     }
 
-                    const fresh = normalizeChamCongData(raw);
-                    const oldStr = JSON.stringify(chamCongData);
-                    const newStr = JSON.stringify(fresh);
-                    chamCongData = fresh;
-                    window.chamCongData = chamCongData;
-                    setCachedChamCong(my, fresh);
-                    if (oldStr !== newStr) {
+                    if (!serverIsEmpty) {
+                        const fresh = normalizeChamCongData(raw);
+                        chamCongData = fresh;
+                        window.chamCongData = chamCongData;
+                        setCachedChamCong(my, fresh);
                         renderChamCongTable();
+                    } else if (hasLocalData && isRecentlyEdited) {
+                        setCachedChamCong(my, chamCongData);
+                        triggerAutoSaveChamCong();
                     }
                 }).catch(err => {
                     console.warn('[ChamCong] background fetch err:', err);
@@ -1092,7 +1125,7 @@ function renderAdminChamCongTable() {
         }
 
         function triggerAutoSaveChamCong() {
-            const my = getChamCongMonthYear();
+            const my = activeChamCongMonthYear || getChamCongMonthYear();
             // Lưu lạc quan ngay lập tức vào Local Cache để không bị mất khi chuyển tab/reload
             setCachedChamCong(my, chamCongData);
             chamCongIsDirty = true;
@@ -1103,12 +1136,14 @@ function renderAdminChamCongTable() {
             if (thead) thead.style.opacity = '0.7';
 
             chamCongSaveTimeout = setTimeout(() => {
+                const targetMy = my;
+                const targetData = JSON.parse(JSON.stringify(chamCongData));
                 const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
                 if (!apiFn) {
                     if (thead) thead.style.opacity = '1';
                     return;
                 }
-                apiFn('saveChamCong', [my, chamCongData]).then(() => {
+                apiFn('saveChamCong', [targetMy, targetData]).then(() => {
                     chamCongIsDirty = false;
                     if (thead) thead.style.opacity = '1';
                 }).catch(err => {
@@ -1187,21 +1222,14 @@ function renderAdminChamCongTable() {
                     });
 
                     Promise.all([pCC, pTT]).then(([rawCC, rawTT]) => {
+                        if (getChamCongMonthYear() !== my) return;
                         const freshCC = normalizeChamCongData(rawCC);
                         const freshTT = normalizeThongKeData(rawTT);
 
-                        const hasLocalCC = chamCongData && Object.keys(chamCongData).some(k => Object.keys(chamCongData[k] || {}).length > 0);
-                        const isRecentlyEditedCC = (Date.now() - chamCongLastEditedTime < 8000) || chamCongIsDirty;
-                        const serverCCIsEmpty = !rawCC || Object.keys(rawCC).length === 0;
+                        chamCongData = freshCC;
+                        window.chamCongData = chamCongData;
+                        setCachedChamCong(my, freshCC);
 
-                        if (!hasLocalCC || (!isRecentlyEditedCC && !serverCCIsEmpty)) {
-                            chamCongData = freshCC;
-                            window.chamCongData = chamCongData;
-                            setCachedChamCong(my, freshCC);
-                        } else {
-                            setCachedChamCong(my, chamCongData);
-                            triggerAutoSaveChamCong();
-                        }
                         thongKeData = freshTT;
                         setCachedThongKe(my, freshTT);
                         renderThongKeTable();
@@ -2940,43 +2968,66 @@ function renderAdminChamCongTable() {
             const tkM = document.getElementById('thongke-month-picker');
             const tkY = document.getElementById('thongke-year-picker');
 
-            if (ccM) ccM.value = curM;
-            if (ccY) ccY.value = curY;
-            if (tkM) tkM.value = curM;
-            if (tkY) tkY.value = curY;
+            if (ccM && !ccM.value) ccM.value = curM;
+            if (ccY && !ccY.value) ccY.value = curY;
+            if (tkM && !tkM.value) tkM.value = curM;
+            if (tkY && !tkY.value) tkY.value = curY;
+
+            let syncTimer = null;
+            const debouncedSync = (fn) => {
+                if (syncTimer) clearTimeout(syncTimer);
+                syncTimer = setTimeout(fn, 60);
+            };
+
+            const onMonthChangeFromTK = () => {
+                if (ccM) ccM.value = tkM.value;
+                debouncedSync(() => {
+                    const mode = document.getElementById('thongke-mode')?.value;
+                    if (mode === 'current') loadThongKeData();
+                    if (typeof loadChamCongData === 'function') loadChamCongData();
+                });
+            };
+            const onYearChangeFromTK = () => {
+                if (ccY) ccY.value = tkY.value;
+                debouncedSync(() => {
+                    const mode = document.getElementById('thongke-mode')?.value;
+                    if (mode === 'current') loadThongKeData();
+                    if (typeof loadChamCongData === 'function') loadChamCongData();
+                });
+            };
+
+            const onMonthChangeFromCC = () => {
+                if (tkM) tkM.value = ccM.value;
+                debouncedSync(() => {
+                    loadChamCongData();
+                    const mode = document.getElementById('thongke-mode')?.value;
+                    if (mode === 'current') loadThongKeData();
+                });
+            };
+            const onYearChangeFromCC = () => {
+                if (tkY) tkY.value = ccY.value;
+                debouncedSync(() => {
+                    loadChamCongData();
+                    const mode = document.getElementById('thongke-mode')?.value;
+                    if (mode === 'current') loadThongKeData();
+                });
+            };
 
             if (tkM) {
-                tkM.addEventListener('change', () => {
-                    if (ccM) ccM.value = tkM.value;
-                    const mode = document.getElementById('thongke-mode')?.value;
-                    if (mode === 'current') loadThongKeData();
-                    if (typeof loadChamCongData === 'function') loadChamCongData();
-                });
+                tkM.addEventListener('change', onMonthChangeFromTK);
+                tkM.addEventListener('input', onMonthChangeFromTK);
             }
             if (tkY) {
-                tkY.addEventListener('change', () => {
-                    if (ccY) ccY.value = tkY.value;
-                    const mode = document.getElementById('thongke-mode')?.value;
-                    if (mode === 'current') loadThongKeData();
-                    if (typeof loadChamCongData === 'function') loadChamCongData();
-                });
+                tkY.addEventListener('change', onYearChangeFromTK);
+                tkY.addEventListener('input', onYearChangeFromTK);
             }
-
             if (ccM) {
-                ccM.addEventListener('change', () => {
-                    if (tkM) tkM.value = ccM.value;
-                    loadChamCongData();
-                    const mode = document.getElementById('thongke-mode')?.value;
-                    if (mode === 'current') loadThongKeData();
-                });
+                ccM.addEventListener('change', onMonthChangeFromCC);
+                ccM.addEventListener('input', onMonthChangeFromCC);
             }
             if (ccY) {
-                ccY.addEventListener('change', () => {
-                    if (tkY) tkY.value = ccY.value;
-                    loadChamCongData();
-                    const mode = document.getElementById('thongke-mode')?.value;
-                    if (mode === 'current') loadThongKeData();
-                });
+                ccY.addEventListener('change', onYearChangeFromCC);
+                ccY.addEventListener('input', onYearChangeFromCC);
             }
         }
         initMonthYearSync();
