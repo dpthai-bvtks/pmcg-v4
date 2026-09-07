@@ -1609,5 +1609,42 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `.gitignore` (bỏ qua file *.xls, *.xlsx)
   + `PM-xeplich-v4.md` (nhật ký phát triển)
 
+### Khắc Phục Lỗi Nhận Diện Nhầm Xét Nghiệm Máu Thành Laser & Lỗi Hiển Thị Đột Biến XBBH Khi Nhập File HIS (07/09/2026 - v4.0.2-rev8)
+- **Yêu cầu của người dùng**:
+  - Xem file 7.xls xem tại sao khi đưa vào dù không có thủ thuật XBBH nhưng vẫn bị nhảy hiển thị vào và khi xếp lịch lại hiện Laser châm vào.
+- **Phân tích nguyên nhân cốt lõi**:
+  1. *Nguyên nhân nhảy hiển thị XBBH*:
+     - Trong file `7.xls`, 3 bệnh nhân (Nguyễn Thị Thạch, Lưu Thị Duy, Nguyễn Thị Phúc Hậu) có chỉ định xét nghiệm cận lâm sàng: `"Tổng phân tích tế bào máu ngoại vi (bằng máy đếm laser)"`.
+     - Trong bảng từ điển `HIS_MAPPING`, từ khóa `'laser'` bắt trúng dòng xét nghiệm máu này và gán thành thủ thuật `"Laser điều trị"`.
+     - Khi nạp vào Tab Bệnh nhân, hệ thống gọi hàm `getShortSkills(item.thuThuat)` để rút gọn tên thủ thuật thành mã viết tắt (ví dụ: Điện châm -> DC, Thủy châm -> TC).
+     - Tại dòng 2022 của `js/app.js`:
+       `return np === nSk || cp === cSk || vp === nSk || (vp && cp === vp);`
+       Đoạn code `(vp && cp === vp)` là một lỗi logic: nó so sánh `cp` của chính bản ghi thủ thuật trong danh mục với `vp` của nó, mà không hề so sánh với chuỗi kỹ năng đầu vào `sk`.
+       Với thủ thuật số 4 trong CSDL là `{ ten: 'XBBH', vietTat: 'XBBH' }`, `cp` là `'xbbh'` và `vp` là `'xbbh'`, nên `cp === vp` luôn luôn trả về `true`!
+       Hệ quả: BẤT KỲ thủ thuật nào không nằm trong danh mục (ở đây là "Laser điều trị") khi đi qua `getShortSkills` đều bị ép khớp vào `XBBH`. Do đó trên bảng Bệnh nhân, cột Thủ thuật của 3 bệnh nhân này tự dưng hiện chữ `XBBH` (ví dụ: `XBBH, TC, SN, DX`).
+  2. *Nguyên nhân khi xếp lịch lại hiện Laser châm (Laser điều trị)*:
+     - Trong bộ nhớ CSDL và đối tượng bệnh nhân (`p.thuThuat`), dữ liệu lưu trữ thực tế là `"Laser điều trị"` (chứ không phải `XBBH`).
+     - Khi người dùng bấm "Xếp lịch", bộ giải thuật xếp lịch đọc trực tiếp chuỗi gốc `p.thuThuat` (chứ không dùng `getShortSkills`). Do đó, lịch trình được xếp với tên `"Laser điều trị"`, tạo ra sự mâu thuẫn giữa tên hiển thị trên bảng Bệnh nhân (`XBBH`) và lịch trình thực tế (`Laser điều trị`).
+- **Các giải pháp đã thực hiện**:
+  1. *Loại trừ xét nghiệm huyết học khỏi Laser trong `HIS_MAPPING`*:
+     - Bổ sung danh sách loại trừ nghiêm ngặt cho mục Laser trong `HIS_MAPPING`:
+       `excludes: ['máy đếm', 'may dem', 'tế bào máu', 'te bao mau', 'huyết học', 'huyet hoc', 'xét nghiệm', 'xet nghiem', 'phân tích', 'phan tich', 'máu', 'mau', 'nước tiểu', 'nuoc tieu']`.
+     - Nhờ đó, chỉ định `"Tổng phân tích tế bào máu ngoại vi (bằng máy đếm laser)"` được nhận diện chính xác là xét nghiệm máu và tự động bỏ qua, không còn bị biến thành thủ thuật Laser.
+  2. *Sửa lỗi logic trong `getShortSkills`*:
+     - Sửa biểu thức tại dòng 2022 từ `(vp && cp === vp)` thành `(cSk && vp === cSk)`.
+     - Đảm bảo việc viết tắt luôn so sánh với chuỗi đầu vào của bệnh nhân, chấm dứt hoàn toàn hiện tượng các thủ thuật lạ hoặc chưa rõ bị gán ép thành `XBBH`.
+  3. *Làm sạch đuôi đơn vị trong `cleanHISLine`*:
+     - Bổ sung regex `.replace(/\s*\(\s*(?:lần|lan|ngày|ngay)\s*\)/gi, '')` giúp làm sạch triệt để các đuôi `(Lần)`, `(Ngày)` còn sót lại từ y lệnh HIS.
+  4. *Đồng bộ phiên bản theo RULES.md*:
+     - Giữ phiên bản chính `4.0.2`, nâng revision lên `4.0.2-rev8`.
+     - Footer timestamp: `13:45 07/09/2026`.
+     - Đồng bộ `CACHE_NAME = 'pmcg-v4-cache-4.0.2-rev8'` trong `sw.js`.
+     - Đồng bộ `?v=4.0.2-rev8` trên toàn bộ link CSS, thẻ script và `APP_VERSION` trong `index.html`.
+- **File sửa đổi**:
+  + `js/app.js` (sửa lỗi getShortSkills, bổ sung excludes cho Laser trong HIS_MAPPING, cleanHISLine, cache buster HDSD)
+  + `index.html` (footer timestamp 13:45 07/09/2026, version 4.0.2-rev8, cache busters)
+  + `sw.js` (CACHE_NAME v4.0.2-rev8)
+  + `PM-xeplich-v4.md` (nhật ký phát triển)
+
 
 

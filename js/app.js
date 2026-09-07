@@ -2019,7 +2019,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         const np = norm(p.ten);
                         const cp = cleanMedicalProc(p.ten);
                         const vp = p.vietTat ? norm(p.vietTat) : '';
-                        return np === nSk || cp === cSk || vp === nSk || (vp && cp === vp);
+                        return np === nSk || cp === cSk || vp === nSk || (cSk && vp === cSk);
                     });
 
                     // 3. Khớp alias nhóm thủ thuật (Trợ giúp, Kháng trở, Thụ động)
@@ -8923,7 +8923,11 @@ window.renderSttOrderControl = function (type, i, total) {
             // 11. Chiếu đèn hồng ngoại
             { keywords: ['hồng ngoại', 'hong ngoai', 'tia hồng', 'tia hong', 'đèn hồng', 'den hong', ' hn,', ',hn,', ',hn', ' hn '], target: 'Chiếu đèn hồng ngoại' },
             // 12. Laser / Laser điều trị
-            { keywords: ['laser', 'la-de', 'lade', 'ls ', ' ls,', ',ls,', ',ls', 'laser châm', 'laser nội mạch'], target: 'Laser điều trị' },
+            { 
+                keywords: ['laser châm', 'laser noi mach', 'laser nội mạch', 'laser dieu tri', 'laser điều trị', 'châm laser', 'la-de', 'lade', 'chiếu laser', 'ls ', ' ls,', ',ls,', ',ls', 'laser'], 
+                excludes: ['máy đếm', 'may dem', 'tế bào máu', 'te bao mau', 'huyết học', 'huyet hoc', 'xét nghiệm', 'xet nghiem', 'phân tích', 'phan tich', 'máu', 'mau', 'nước tiểu', 'nuoc tieu'], 
+                target: 'Laser điều trị' 
+            },
             // 13. Sóng ngắn
             { keywords: ['sóng ngắn', 'song ngan', 'thấu nhiệt sóng ngắn', ' sn,', ',sn,', ',sn', ' sn '], target: 'Sóng ngắn' },
             // 14. Siêu âm điều trị
@@ -8986,6 +8990,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 .replace(/\s*\([^)]*khoa[^)]*\)/gi, '') // Bỏ (khoa ...)
                 .replace(/\s*\([^)]*bác sĩ[^)]*\)/gi, '')
                 .replace(/\s*\([^)]*bs[^)]*\)/gi, '')
+                .replace(/\s*\(\s*(?:lần|lan|ngày|ngay)\s*\)/gi, '') // Bỏ đuôi (Lần) hoặc (Ngày) còn sót
                 .trim();
         }
 
@@ -12918,7 +12923,7 @@ window.openHdsdModal = function() {
         }
     } catch(e) {}
     const curTheme = document.documentElement.getAttribute('data-theme') || localStorage.getItem('pm_app_theme') || 'light';
-    const targetUrl = `hdsd.html?role=${userRole}&theme=${curTheme}&v=4.0.2-rev7`;
+    const targetUrl = `hdsd.html?role=${userRole}&theme=${curTheme}&v=4.0.2-rev8`;
 
     if (iframe) {
         if (!iframe.src || iframe.src === 'about:blank' || !iframe.src.includes(`role=${userRole}`)) {
