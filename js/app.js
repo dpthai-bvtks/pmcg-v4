@@ -1978,10 +1978,21 @@ window.renderSttOrderControl = function (type, i, total) {
 
         }
 
+        function cleanMedicalProc(s) {
+            return String(s || '')
+                .toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/đ/g, 'd')
+                .replace(/\b(van dong|co|dieu tri|va|cua|bang may|ky thuat|chieu den)\b/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+        window.cleanMedicalProc = cleanMedicalProc;
+
         function getShortSkills(skillStr, isStaff = false) {
             if (!skillStr) return '';
             const str = typeof skillStr === 'string' ? skillStr : (Array.isArray(skillStr) ? skillStr.join(', ') : String(skillStr || ''));
-            const arr = str.split(',').map(sk => sk.trim().toLowerCase()).filter(sk => sk);
+            const arr = str.split(',').map(sk => sk.trim()).filter(Boolean);
             if (!arr.length) return '';
 
             const procList = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.proc)) ? dataCache.proc : [];
@@ -1989,44 +2000,69 @@ window.renderSttOrderControl = function (type, i, total) {
 
             if (!isStaff) {
                 return arr.map(sk => {
-                    let proc = procList.find(p => p && p.ten && p.ten.toLowerCase() === sk);
+                    const skLower = sk.toLowerCase();
+                    // 1. Khớp chính xác theo tên hoặc viết tắt
+                    let proc = procList.find(p => p && ((p.ten && p.ten.toLowerCase() === skLower) || (p.vietTat && p.vietTat.toLowerCase() === skLower)));
+                    if (proc) {
+                        if (cleanMedicalProc(proc.ten).includes('khang tro') && (!proc.vietTat || proc.vietTat.toUpperCase() === 'TTK')) {
+                            return 'TKT';
+                        }
+                        return proc.vietTat || proc.ten;
+                    }
+
+                    const nSk = norm(sk);
+                    const cSk = cleanMedicalProc(sk);
+
+                    // 2. Khớp theo chuẩn hóa không dấu và bỏ hư từ y khoa
+                    proc = procList.find(p => {
+                        if (!p || !p.ten) return false;
+                        const np = norm(p.ten);
+                        const cp = cleanMedicalProc(p.ten);
+                        const vp = p.vietTat ? norm(p.vietTat) : '';
+                        return np === nSk || cp === cSk || vp === nSk || (vp && cp === vp);
+                    });
+
+                    // 3. Khớp alias nhóm thủ thuật (Trợ giúp, Kháng trở, Thụ động)
                     if (!proc) {
-                        const nSk = norm(sk);
-                        const cSk = nSk.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
-                        // Cố gắng khớp chính xác sau khi bỏ dấu và từ khóa phụ
+                        if (cSk.includes('tro giup') || nSk === 'ttg' || nSk === 'vd-tg' || nSk === 'vdtg') {
+                            proc = procList.find(p => p && (cleanMedicalProc(p.ten).includes('tro giup') || (p.vietTat && norm(p.vietTat) === 'ttg')));
+                            if (!proc) return 'TTG';
+                        } else if (cSk.includes('khang tro') || nSk === 'tkt' || nSk === 'ttk' || nSk === 'vd-kt' || nSk === 'vdkt') {
+                            proc = procList.find(p => p && (cleanMedicalProc(p.ten).includes('khang tro') || (p.vietTat && (norm(p.vietTat) === 'tkt' || norm(p.vietTat) === 'ttk'))));
+                            if (!proc) return 'TKT';
+                        } else if (cSk.includes('thu dong') || nSk === 'ttd' || nSk === 'vd-td' || nSk === 'vdtd') {
+                            proc = procList.find(p => p && (cleanMedicalProc(p.ten).includes('thu dong') || (p.vietTat && (norm(p.vietTat) === 'ttd' || norm(p.vietTat) === 'vd-td'))));
+                            if (!proc) return 'VĐ-TD';
+                        }
+                    }
+
+                    // 4. Khớp chứa nhau an toàn
+                    if (!proc) {
                         proc = procList.find(p => {
                             if (!p || !p.ten) return false;
                             const np = norm(p.ten);
-                            const cp = np.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
-                            return np === nSk || cp === cSk;
+                            const cp = cleanMedicalProc(p.ten);
+                            return (np.length >= 3 && (np.includes(nSk) || nSk.includes(np))) ||
+                                   (cp && cSk && cp.length >= 3 && (cp.includes(cSk) || cSk.includes(cp)));
                         });
-                        // Nếu vẫn không thấy, cố gắng khớp một phần (chứa nhau)
-                        if (!proc) {
-                            proc = procList.find(p => {
-                                if (!p || !p.ten) return false;
-                                const np = norm(p.ten);
-                                const cp = np.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
-                                return (np.includes(nSk) || nSk.includes(np)) || (cp && cSk && (cp.includes(cSk) || cSk.includes(cp)));
-                            });
-                        }
                     }
-                    return (proc && proc.vietTat) ? proc.vietTat : sk;
+
+                    if (proc) {
+                        if (cleanMedicalProc(proc.ten).includes('khang tro') && (!proc.vietTat || proc.vietTat.toUpperCase() === 'TTK')) {
+                            return 'TKT';
+                        }
+                        return proc.vietTat || proc.ten;
+                    }
+                    return sk;
                 }).join(', ');
             }
 
             const allYHCT = procList.filter(p => p && p.he === 'YHCT');
             const allPHCN = procList.filter(p => p && p.he === 'PHCN');
             
-            const normArr = arr.map(sk => norm(sk));
-            const cleanArr = normArr.map(sk => sk.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim());
             const checkMatch = (p) => {
                 if (!p || !p.ten) return false;
-                if (arr.includes(p.ten.toLowerCase())) return true;
-                const np = norm(p.ten);
-                const cp = np.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
-                if (normArr.includes(np) || (cp && cleanArr.includes(cp))) return true;
-                return normArr.some(sk => np.includes(sk) || sk.includes(np)) || 
-                       cleanArr.some(csk => csk && cp && (cp.includes(csk) || csk.includes(cp)));
+                return arr.some(sk => matchProc(p.ten, sk) || (p.vietTat && matchProc(p.vietTat, sk)));
             };
 
             const staffYHCT = allYHCT.filter(p => checkMatch(p));
@@ -2069,48 +2105,64 @@ window.renderSttOrderControl = function (type, i, total) {
             const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\u0111/g, 'd').trim();
             const normA = norm(a);
             const normB = norm(b);
-            const cleanA = normA.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
-            const cleanB = normB.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+            const cleanA = cleanMedicalProc(a);
+            const cleanB = cleanMedicalProc(b);
             
-            if (normA === normB || normA.includes(normB) || normB.includes(normA)) return true;
-            if (cleanA && cleanB && (cleanA === cleanB || cleanA.includes(cleanB) || cleanB.includes(cleanA))) return true;
+            if (normA === normB) return true;
+            if (cleanA && cleanB && cleanA === cleanB) return true;
 
-            // 1. Tra cứu database theo mã viết tắt hoặc tên đầy đủ (chính xác 100%)
+            // 1. Nhóm từ đồng nghĩa chuẩn xác (Trợ giúp, Kháng trở, Thụ động)
+            const isTroGiupA = cleanA.includes('tro giup') || normA === 'ttg' || normA === 'vd-tg' || normA === 'vdtg';
+            const isTroGiupB = cleanB.includes('tro giup') || normB === 'ttg' || normB === 'vd-tg' || normB === 'vdtg';
+            if (isTroGiupA && isTroGiupB) return true;
+
+            const isKhangTroA = cleanA.includes('khang tro') || normA === 'tkt' || normA === 'ttk' || normA === 'vd-kt' || normA === 'vdkt';
+            const isKhangTroB = cleanB.includes('khang tro') || normB === 'tkt' || normB === 'ttk' || normB === 'vd-kt' || normB === 'vdkt';
+            if (isKhangTroA && isKhangTroB) return true;
+
+            const isThuDongA = cleanA.includes('thu dong') || normA === 'ttd' || normA === 'vd-td' || normA === 'vdtd';
+            const isThuDongB = cleanB.includes('thu dong') || normB === 'ttd' || normB === 'vd-td' || normB === 'vdtd';
+            if (isThuDongA && isThuDongB) return true;
+
+            // 2. Tra cứu database theo mã viết tắt hoặc tên đầy đủ (chính xác 100%)
             const procs = (window.dataCache && window.dataCache.proc) ? window.dataCache.proc : [];
             const procA = procs.find(p => {
+                if (!p) return false;
                 const pn = norm(p.ten);
                 const pvt = p.vietTat ? norm(p.vietTat) : '';
-                const pc = pn.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+                const pc = cleanMedicalProc(p.ten);
                 return pn === normA || pvt === normA || (pc && cleanA && pc === cleanA);
             });
             const procB = procs.find(p => {
+                if (!p) return false;
                 const pn = norm(p.ten);
                 const pvt = p.vietTat ? norm(p.vietTat) : '';
-                const pc = pn.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+                const pc = cleanMedicalProc(p.ten);
                 return pn === normB || pvt === normB || (pc && cleanB && pc === cleanB);
             });
             
             if (procA && procB && procA.ten && procB.ten) {
+                if (procA.id && procB.id && procA.id === procB.id) return true;
                 const pnA = norm(procA.ten);
                 const pnB = norm(procB.ten);
-                const pcA = pnA.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
-                const pcB = pnB.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+                const pcA = cleanMedicalProc(procA.ten);
+                const pcB = cleanMedicalProc(procB.ten);
                 if (pnA === pnB || (pcA && pcB && pcA === pcB)) return true;
             }
             if (procA) {
                 const pn = norm(procA.ten);
                 const pvt = procA.vietTat ? norm(procA.vietTat) : '';
-                const pc = pn.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+                const pc = cleanMedicalProc(procA.ten);
                 if (pn === normB || pvt === normB || (pc && cleanB && pc === cleanB)) return true;
             }
             if (procB) {
                 const pn = norm(procB.ten);
                 const pvt = procB.vietTat ? norm(procB.vietTat) : '';
-                const pc = pn.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+                const pc = cleanMedicalProc(procB.ten);
                 if (pn === normA || pvt === normA || (pc && cleanA && pc === cleanA)) return true;
             }
 
-            // 2. Kiểm tra phân biệt từ khóa đặc biệt để tránh bắt nhầm (vd: 'liệt', 'vùng', 'bấm huyệt', 'kháng trở', 'trợ giúp', 'thở')
+            // 3. Kiểm tra phân biệt từ khóa đặc biệt để tránh bắt nhầm (vd: 'liệt', 'vùng', 'bấm huyệt', 'kháng trở', 'trợ giúp', 'thở')
             const distinctKeywords = ['liệt', 'vùng', 'bấm huyệt', 'kháng trở', 'trợ giúp', 'thở'];
             for (const kw of distinctKeywords) {
                 const hasA = strA.includes(kw) || (procA && procA.ten && procA.ten.toLowerCase().includes(kw));
@@ -2118,10 +2170,11 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (hasA !== hasB) return false;
             }
 
-            // 3. Substring match an toàn (sau khi đã loại trừ các keyword phân biệt)
+            // 4. Substring match an toàn (sau khi đã loại trừ các keyword phân biệt)
             if (strA.includes(strB) || strB.includes(strA)) return true;
+            if (cleanA && cleanB && (cleanA.includes(cleanB) || cleanB.includes(cleanA))) return true;
 
-            // 4. Token-based matching: các token chính của b đều nằm trong a
+            // 5. Token-based matching: các token chính của b đều nằm trong a
             const tokensB = strB.split(/\s+/).filter(tok => tok.length > 1);
             if (tokensB.length >= 2 && tokensB.every(tok => strA.includes(tok))) return true;
             const tokensA = strA.split(/\s+/).filter(tok => tok.length > 1);
@@ -5301,9 +5354,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
             }
 
-            const ttArr = item.thuThuat ? item.thuThuat.split(',').map(t => t.trim().toLowerCase()) : [];
+            const ttArr = item.thuThuat ? item.thuThuat.split(',').map(t => t.trim()).filter(Boolean) : [];
 
-            document.querySelectorAll('.pat-proc-cb').forEach(cb => { cb.checked = ttArr.includes(cb.value.toLowerCase()); });
+            document.querySelectorAll('.pat-proc-cb').forEach(cb => { 
+                cb.checked = ttArr.some(t => matchProc(t, cb.value)); 
+            });
 
             document.getElementById('btn-save-pat').innerText = "Lưu Sửa";
 
@@ -8876,11 +8931,11 @@ window.renderSttOrderControl = function (type, i, total) {
             // 15. Kéo giãn cột sống
             { keywords: ['kéo giãn', 'keo gian', 'kéo cột sống', 'keo cot song', 'cot song', 'kéo cổ', 'keo co', 'kéo lưng', 'keo lung', ' kg,', ',kg,', ',kg', ' kg '], target: 'Kéo giãn' },
             // 16. Tập vận động có trợ giúp
-            { keywords: ['vận động có trợ giúp', 'van dong co tro giup', 'tập trợ giúp', 'tap tro giup', 'trợ giúp', 'tro giup', 'ttg', 'vđ-tg', 'vdtg'], target: 'Tập vận động có trợ giúp' },
+            { keywords: ['tập vận động có trợ giúp', 'tap van dong co tro giup', 'tập vận động trợ giúp', 'tap van dong tro giup', 'vận động có trợ giúp', 'van dong co tro giup', 'vận động trợ giúp', 'van dong tro giup', 'tập trợ giúp', 'tap tro giup', 'trợ giúp', 'tro giup', 'ttg', 'vđ-tg', 'vdtg', ' ttg,', ',ttg,', ',ttg'], target: 'tập trợ giúp' },
             // 17. Tập vận động thụ động
-            { keywords: ['vận động thụ động', 'van dong thu dong', 'tập thụ động', 'tap thu dong', 'thụ động', 'thu dong', 'vđ-td', 'vdtd'], target: 'Tập vận động thụ động' },
+            { keywords: ['tập vận động thụ động', 'van dong thu dong', 'tập thụ động', 'tap thu dong', 'thụ động', 'thu dong', 'vđ-td', 'vdtd', 'ttd'], target: 'tập thụ động' },
             // 18. Tập vận động có kháng trở
-            { keywords: ['kháng trở', 'khang tro', 'có kháng trở', 'tập kháng trở', 'tap khang tro', ' tk,', ',tk,', ',tk', ' tk '], target: 'Tập kháng trở' },
+            { keywords: ['tập vận động có kháng trở', 'van dong co khang tro', 'tập vận động kháng trở', 'tap van dong khang tro', 'vận động có kháng trở', 'van dong co khang tro', 'vận động kháng trở', 'van dong khang tro', 'tập kháng trở', 'tap khang tro', 'kháng trở', 'khang tro', 'có kháng trở', 'tkt', 'ttk', 'vđ-kt', 'vdkt', ' tkt,', ',tkt,', ',tkt', ' ttk,', ',ttk,', ',ttk', ' tk,', ',tk,', ',tk', ' tk '], target: 'tập kháng trở' },
             // 19. Tập các kiểu thở
             { keywords: ['tập các kiểu thở', 'kiểu thở', 'kieu tho', 'tập thở', 'tap tho'], target: 'Tập thở' },
             // 20. Vận động trị liệu
@@ -8986,21 +9041,37 @@ window.renderSttOrderControl = function (type, i, total) {
             if (!procs.length) return targetOrName;
 
             const nTarget = normalizeStr(targetOrName);
-            const cleanTarget = nTarget.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+            const cleanTarget = cleanMedicalProc(targetOrName);
 
-            // Khớp chính xác tên hoặc viết tắt
+            // 1. Khớp chính xác tên hoặc viết tắt
             const exact = procs.find(p => {
+                if (!p) return false;
                 const pNorm = normalizeStr(p.ten);
                 const vNorm = p.vietTat ? normalizeStr(p.vietTat) : '';
-                const pClean = pNorm.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
-                return pNorm === nTarget || vNorm === nTarget || pClean === cleanTarget;
+                const pClean = cleanMedicalProc(p.ten);
+                return pNorm === nTarget || vNorm === nTarget || (pClean && cleanTarget && pClean === cleanTarget);
             });
             if (exact) return exact.ten;
 
-            // Khớp chứa trọn vẹn
+            // 2. Khớp alias nhóm thủ thuật (Trợ giúp, Kháng trở, Thụ động)
+            if (cleanTarget.includes('tro giup') || nTarget === 'ttg' || nTarget === 'vd-tg' || nTarget === 'vdtg') {
+                const pTG = procs.find(p => cleanMedicalProc(p.ten).includes('tro giup') || (p.vietTat && normalizeStr(p.vietTat) === 'ttg'));
+                if (pTG) return pTG.ten;
+            }
+            if (cleanTarget.includes('khang tro') || nTarget === 'tkt' || nTarget === 'ttk' || nTarget === 'vd-kt' || nTarget === 'vdkt') {
+                const pKT = procs.find(p => cleanMedicalProc(p.ten).includes('khang tro') || (p.vietTat && (normalizeStr(p.vietTat) === 'tkt' || normalizeStr(p.vietTat) === 'ttk')));
+                if (pKT) return pKT.ten;
+            }
+            if (cleanTarget.includes('thu dong') || nTarget === 'ttd' || nTarget === 'vd-td' || nTarget === 'vdtd') {
+                const pTD = procs.find(p => cleanMedicalProc(p.ten).includes('thu dong') || (p.vietTat && (normalizeStr(p.vietTat) === 'ttd' || normalizeStr(p.vietTat) === 'vd-td')));
+                if (pTD) return pTD.ten;
+            }
+
+            // 3. Khớp chứa trọn vẹn
             const partial = procs.find(p => {
+                if (!p) return false;
                 const pNorm = normalizeStr(p.ten);
-                const pClean = pNorm.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+                const pClean = cleanMedicalProc(p.ten);
                 return (pNorm.length >= 3 && nTarget.includes(pNorm)) || 
                        (nTarget.length >= 3 && pNorm.includes(nTarget)) ||
                        (pClean.length >= 3 && cleanTarget.includes(pClean)) ||
@@ -9025,13 +9096,8 @@ window.renderSttOrderControl = function (type, i, total) {
                 const direct = procs.find(p => normalizeStr(p.ten) === cleanNorm || (p.vietTat && normalizeStr(p.vietTat) === cleanNorm));
                 if (direct) return direct.ten;
 
-                const contains = procs.find(p => {
-                    const pNorm = normalizeStr(p.ten);
-                    if (pNorm.length >= 4 && cleanNorm.includes(pNorm)) return true;
-                    if (cleanNorm.length >= 4 && pNorm.includes(cleanNorm)) return true;
-                    return false;
-                });
-                if (contains) return contains.ten;
+                const canonical = getCanonicalProcedureName(clean);
+                if (canonical && procs.some(p => p.ten === canonical)) return canonical;
             }
 
             // Ưu tiên 2: Khớp qua bảng từ khóa HIS_MAPPING
@@ -9061,32 +9127,7 @@ window.renderSttOrderControl = function (type, i, total) {
         // So khớp thủ thuật thông minh cho Tab Thứ 7
         function matchProcedureInTab7(itemProcName, hisProcName) {
             if (!itemProcName || !hisProcName) return false;
-            const normA = normalizeStr(itemProcName);
-            const normB = normalizeStr(hisProcName);
-
-            // 1. Chuẩn hóa bằng nhau
-            if (normA === normB) return true;
-
-            // 2. Chứa nhau (vd: "Chiếu đèn hồng ngoại" chứa "hồng ngoại")
-            if ((normA.length >= 3 && normB.includes(normA)) || (normB.length >= 3 && normA.includes(normB))) return true;
-
-            // 3. Khớp qua danh mục dataCache.proc
-            const procs = (window.dataCache && (window.dataCache.proc || window.dataCache.procedures)) || [];
-            const pA = procs.find(p => normalizeStr(p.ten) === normA || (p.vietTat && normalizeStr(p.vietTat) === normA));
-            const pB = procs.find(p => normalizeStr(p.ten) === normB || (p.vietTat && normalizeStr(p.vietTat) === normB));
-            if (pA && pB && pA.ten === pB.ten) return true;
-            if (pA && (normalizeStr(pA.ten) === normB || (pA.vietTat && normalizeStr(pA.vietTat) === normB))) return true;
-            if (pB && (normalizeStr(pB.ten) === normA || (pB.vietTat && normalizeStr(pB.vietTat) === normA))) return true;
-
-            // 4. Khớp qua HIS_MAPPING keywords & target
-            for (const mapping of HIS_MAPPING) {
-                const targetNorm = normalizeStr(mapping.target);
-                const matchA = normA === targetNorm || mapping.keywords.some(k => normA.includes(normalizeStr(k)));
-                const matchB = normB === targetNorm || mapping.keywords.some(k => normB.includes(normalizeStr(k)));
-                if (matchA && matchB) return true;
-            }
-
-            return false;
+            return matchProc(itemProcName, hisProcName);
         }
 
         window.mapHISToProcedure = mapHISToProcedure;
@@ -12861,7 +12902,7 @@ window.openHdsdModal = function() {
         }
     } catch(e) {}
     const curTheme = document.documentElement.getAttribute('data-theme') || localStorage.getItem('pm_app_theme') || 'light';
-    const targetUrl = `hdsd.html?role=${userRole}&theme=${curTheme}&v=4.0.2-rev2`;
+    const targetUrl = `hdsd.html?role=${userRole}&theme=${curTheme}&v=4.0.2-rev3`;
 
     if (iframe) {
         if (!iframe.src || iframe.src === 'about:blank' || !iframe.src.includes(`role=${userRole}`)) {

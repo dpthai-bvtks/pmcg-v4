@@ -1426,3 +1426,23 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `js/app.js` (cập nhật cache buster HDSD URL và thuật toán so khớp thủ thuật)
   + `backend/package.json` & `backend/src/index.js` (đồng bộ version 4.0.2)
   + `PM-xeplich-v4.md` (chuẩn hóa nhật ký theo RULES.md)
+
+
+### Khôi phục & Chuẩn hóa hiển thị thủ thuật Tập trợ giúp (TTG) và Tập kháng trở (TKT) từ file HIS (07/09/2026 - v4.0.2-rev3)
+- **Yêu cầu của người dùng**: Khi nhập file HIS vào, thủ thuật 'tập trợ giúp' (TTG) và 'tập kháng trở' (TKT) không hiển thị được trong bảng bên tab Bệnh nhân như những lần trước.
+- **Phân tích nguyên nhân & Giải pháp**:
+  + *Nguyên nhân 1 (Trợ giúp)*: Trong từ điển HIS_MAPPING trước đó đặt target là 'Tập vận động có trợ giúp'. Trong khi đó trong CSDL của đơn vị (dataCache.proc), tên thủ thuật thực tế là 'tập trợ giúp' với mã viết tắt là 'TTG'. Do chuỗi 'tập vận động có trợ giúp' có chèn từ 'vận động' ở giữa cụm từ 'tập' và 'trợ giúp', các hàm regex và so sánh chuỗi trước đây không thể khớp với 'tập trợ giúp', dẫn tới không lấy được viết tắt 'TTG' và rơi về hiển thị chuỗi dài gốc hoặc không nhận diện được.
+  + *Nguyên nhân 2 (Kháng trở)*: Danh sách keywords của 'tập kháng trở' bị thiếu từ viết tắt phổ biến của bác sĩ là 'TKT' (Tập Kháng Trở) cũng như các biến thể 'Tập vận động có kháng trở', 'Tập vận động kháng trở', khiến các ô HIS ghi 'TKT' bị mapHISToProcedure bỏ qua thành null. Đồng thời trong CSDL mã viết tắt cũ là 'TTK' cũng đã được đồng bộ hóa thành 'TKT'.
+  + *Giải pháp*:
+    1. Bổ sung hàm `cleanMedicalProc(s)` loại bỏ các hư từ y khoa (`van dong`, `co`, `dieu tri`, `va`, `cua`, `bang may`, `ky thuat`, `chieu den`) giúp 'Tập vận động có trợ giúp' và 'Tập trợ giúp' tự động tương đương 100% (`tap tro giup`), tương tự cho 'Tập vận động có kháng trở' và 'Tập kháng trở' (`tap khang tro`).
+    2. Nâng cấp `getCanonicalProcedureName` và `HIS_MAPPING` để luôn tự động quy đổi chính xác về tên thủ thuật thực tế trong CSDL của từng đơn vị.
+    3. Nâng cấp `getShortSkills` tự động nhận diện các biến thể trợ giúp/kháng trở để luôn hiển thị mã viết tắt chuẩn **TTG** và **TKT**.
+    4. Nâng cấp `matchProc` kiểm tra đồng nghĩa y khoa an toàn và không gây xung đột giữa các thủ thuật khác nhau.
+    5. Cập nhật checkbox trong `editPatient` dùng `matchProc` để khi mở form sửa bệnh nhân luôn tích đúng các ô thủ thuật.
+    6. Thêm migration trong backend tự động cập nhật viết tắt `TKT` cho các bản ghi tập kháng trở.
+- **File sửa đổi**:
+  + `js/app.js` (cleanMedicalProc, getShortSkills, matchProc, HIS_MAPPING, getCanonicalProcedureName, editPatient, matchProcedureInTab7)
+  + `backend/src/index.js` (migration cập nhật viết tắt TKT)
+  + `index.html` (cập nhật version v4.0.2-rev3, footer timestamp 09:15 07/09/2026)
+  + `sw.js` (cập nhật CACHE_NAME v4.0.2-rev3)
+  + `PM-xeplich-v4.md` (nhật ký phát triển)

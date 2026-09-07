@@ -591,6 +591,7 @@ async function ensureSchema(db) {
       "ALTER TABLE benh_nhan ADD COLUMN ngay_vao TEXT DEFAULT ''",
       "ALTER TABLE benh_nhan ADD COLUMN gio_ban TEXT DEFAULT ''",
       "ALTER TABLE benh_nhan ADD COLUMN is_saturday INTEGER DEFAULT 0",
+      "UPDATE thu_thuat SET viet_tat = 'TKT' WHERE (viet_tat = 'TTK' OR viet_tat = 'tk') AND (ten_thu_thuat LIKE '%kháng trở%' OR ten_thu_thuat LIKE '%khang tro%')",
     ];
     try {
       await db.batch(migrations.map(sql => db.prepare(sql)));
