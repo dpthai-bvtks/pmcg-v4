@@ -1410,3 +1410,10 @@ orm (lo?i b? d?u ti?ng Vi?t) và c?p nh?t co ch? kh?p tuong d?i (includes) cho t?
   + index.html (c?p nh?t phiên b?n và timestamp)
   + sw.js (c?p nh?t CACHE_NAME)
 
+
+### T?i uu hoá thu?t toán chu?n hóa th? thu?t HIS (07/09/2026 - v4.0.3)
+- **V?n d?**: Sau khi c?p nh?t, th? thu?t 'T?p v?n d?ng có tr? giúp' v?n b? l?i do user có th? s?a tên thành 'T?p v?n d?ng tr? giúp' (thi?u t? 'có'), khi?n hàm includes() không tìm th?y chu?i liên t?c.
+- **Gi?i pháp**: B? sung regex lo?i b? các hu t? (có, di?u tr?, và, c?a) tru?c khi ti?n hành so kh?p trong getCanonicalProcedureName, getShortSkills và matchProc. Ði?u này giúp tìm ra s? tuong d?ng m?t cách m?nh m? (VD: 't?p v?n d?ng có tr? giúp' -> 't?p v?n d?ng tr? giúp').
+- **File s?a d?i**:
+  + js/app.js
+  + index.html, sw.js (version 4.0.3)

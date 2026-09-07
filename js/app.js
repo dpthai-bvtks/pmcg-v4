@@ -1992,11 +1992,22 @@ window.renderSttOrderControl = function (type, i, total) {
                     let proc = procList.find(p => p && p.ten && p.ten.toLowerCase() === sk);
                     if (!proc) {
                         const nSk = norm(sk);
-                        // Cố gắng khớp chính xác sau khi bỏ dấu
-                        proc = procList.find(p => p && p.ten && norm(p.ten) === nSk);
+                        const cSk = nSk.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+                        // Cố gắng khớp chính xác sau khi bỏ dấu và từ khóa phụ
+                        proc = procList.find(p => {
+                            if (!p || !p.ten) return false;
+                            const np = norm(p.ten);
+                            const cp = np.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+                            return np === nSk || cp === cSk;
+                        });
                         // Nếu vẫn không thấy, cố gắng khớp một phần (chứa nhau)
                         if (!proc) {
-                            proc = procList.find(p => p && p.ten && (norm(p.ten).includes(nSk) || nSk.includes(norm(p.ten))));
+                            proc = procList.find(p => {
+                                if (!p || !p.ten) return false;
+                                const np = norm(p.ten);
+                                const cp = np.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+                                return (np.includes(nSk) || nSk.includes(np)) || (cp && cSk && (cp.includes(cSk) || cSk.includes(cp)));
+                            });
                         }
                     }
                     return (proc && proc.vietTat) ? proc.vietTat : sk;
@@ -2007,12 +2018,15 @@ window.renderSttOrderControl = function (type, i, total) {
             const allPHCN = procList.filter(p => p && p.he === 'PHCN');
             
             const normArr = arr.map(sk => norm(sk));
+            const cleanArr = normArr.map(sk => sk.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim());
             const checkMatch = (p) => {
                 if (!p || !p.ten) return false;
                 if (arr.includes(p.ten.toLowerCase())) return true;
                 const np = norm(p.ten);
-                if (normArr.includes(np)) return true;
-                return normArr.some(sk => np.includes(sk) || sk.includes(np));
+                const cp = np.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+                if (normArr.includes(np) || (cp && cleanArr.includes(cp))) return true;
+                return normArr.some(sk => np.includes(sk) || sk.includes(np)) || 
+                       cleanArr.some(csk => csk && cp && (cp.includes(csk) || csk.includes(cp)));
             };
 
             const staffYHCT = allYHCT.filter(p => checkMatch(p));
@@ -2055,15 +2069,46 @@ window.renderSttOrderControl = function (type, i, total) {
             const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\u0111/g, 'd').trim();
             const normA = norm(a);
             const normB = norm(b);
+            const cleanA = normA.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+            const cleanB = normB.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+            
             if (normA === normB || normA.includes(normB) || normB.includes(normA)) return true;
+            if (cleanA && cleanB && (cleanA === cleanB || cleanA.includes(cleanB) || cleanB.includes(cleanA))) return true;
 
             // 1. Tra cứu database theo mã viết tắt hoặc tên đầy đủ (chính xác 100%)
             const procs = (window.dataCache && window.dataCache.proc) ? window.dataCache.proc : [];
-            const procA = procs.find(p => (p.ten && norm(p.ten) === normA) || (p.vietTat && norm(p.vietTat) === normA));
-            const procB = procs.find(p => (p.ten && norm(p.ten) === normB) || (p.vietTat && norm(p.vietTat) === normB));
-            if (procA && procB && procA.ten && procB.ten && norm(procA.ten) === norm(procB.ten)) return true;
-            if (procA && (norm(procA.ten) === normB || (procA.vietTat && norm(procA.vietTat) === normB))) return true;
-            if (procB && (norm(procB.ten) === normA || (procB.vietTat && norm(procB.vietTat) === normA))) return true;
+            const procA = procs.find(p => {
+                const pn = norm(p.ten);
+                const pvt = p.vietTat ? norm(p.vietTat) : '';
+                const pc = pn.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+                return pn === normA || pvt === normA || (pc && cleanA && pc === cleanA);
+            });
+            const procB = procs.find(p => {
+                const pn = norm(p.ten);
+                const pvt = p.vietTat ? norm(p.vietTat) : '';
+                const pc = pn.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+                return pn === normB || pvt === normB || (pc && cleanB && pc === cleanB);
+            });
+            
+            if (procA && procB && procA.ten && procB.ten) {
+                const pnA = norm(procA.ten);
+                const pnB = norm(procB.ten);
+                const pcA = pnA.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+                const pcB = pnB.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+                if (pnA === pnB || (pcA && pcB && pcA === pcB)) return true;
+            }
+            if (procA) {
+                const pn = norm(procA.ten);
+                const pvt = procA.vietTat ? norm(procA.vietTat) : '';
+                const pc = pn.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+                if (pn === normB || pvt === normB || (pc && cleanB && pc === cleanB)) return true;
+            }
+            if (procB) {
+                const pn = norm(procB.ten);
+                const pvt = procB.vietTat ? norm(procB.vietTat) : '';
+                const pc = pn.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+                if (pn === normA || pvt === normA || (pc && cleanA && pc === cleanA)) return true;
+            }
 
             // 2. Kiểm tra phân biệt từ khóa đặc biệt để tránh bắt nhầm (vd: 'liệt', 'vùng', 'bấm huyệt', 'kháng trở', 'trợ giúp', 'thở')
             const distinctKeywords = ['liệt', 'vùng', 'bấm huyệt', 'kháng trở', 'trợ giúp', 'thở'];
@@ -8941,15 +8986,25 @@ window.renderSttOrderControl = function (type, i, total) {
             if (!procs.length) return targetOrName;
 
             const nTarget = normalizeStr(targetOrName);
+            const cleanTarget = nTarget.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
 
             // Khớp chính xác tên hoặc viết tắt
-            const exact = procs.find(p => normalizeStr(p.ten) === nTarget || (p.vietTat && normalizeStr(p.vietTat) === nTarget));
+            const exact = procs.find(p => {
+                const pNorm = normalizeStr(p.ten);
+                const vNorm = p.vietTat ? normalizeStr(p.vietTat) : '';
+                const pClean = pNorm.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+                return pNorm === nTarget || vNorm === nTarget || pClean === cleanTarget;
+            });
             if (exact) return exact.ten;
 
             // Khớp chứa trọn vẹn
             const partial = procs.find(p => {
                 const pNorm = normalizeStr(p.ten);
-                return (pNorm.length >= 3 && nTarget.includes(pNorm)) || (nTarget.length >= 3 && pNorm.includes(nTarget));
+                const pClean = pNorm.replace(/\b(co|dieu tri|va|cua)\b/g, '').replace(/\s+/g, ' ').trim();
+                return (pNorm.length >= 3 && nTarget.includes(pNorm)) || 
+                       (nTarget.length >= 3 && pNorm.includes(nTarget)) ||
+                       (pClean.length >= 3 && cleanTarget.includes(pClean)) ||
+                       (cleanTarget.length >= 3 && pClean.includes(cleanTarget));
             });
             if (partial) return partial.ten;
 
