@@ -2093,3 +2093,34 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `js/thongke.js` (`pm_cleaned_cache_ver = '4.0.3-rev4'`)
   + `PM-xeplich-v4.md` (nhật ký phát triển)
 
+### Phiên bản 4.0.3-rev5 (08/09/2026)
+- **Yêu cầu người dùng**:
+  + Bác sĩ phản ánh: "bảng chấm công hiện tại đang tô nền của ngày Chủ nhật, mình cũng muốn Thứ 7 cũng vậy để dễ phân biệt vì thường chỉ làm từ thứ 2 đến thứ 6, thứ 7 chỉ có 1-2 người đi làm là cùng".
+- **Phân tích & Giải pháp triển khai**:
+  1. *Cập nhật hàm nhận diện ngày nghỉ/cuối tuần `isHoliday(y, m, d)`*:
+     - Trước đây hàm chỉ trả về `true` cho ngày Chủ Nhật (`date.getDay() === 0`).
+     - Đã nâng cấp hàm để bao gồm cả ngày Thứ 7 (`date.getDay() === 6 || date.getDay() === 0`).
+  2. *Đồng bộ hiển thị trực quan trên Bảng Chấm Công (Web & Xuất Excel)*:
+     - Trên giao diện Web:
+       + Tiêu đề cột Thứ 7 (`T7`) và Chủ Nhật (`CN`) tự động nhận lớp CSS `bg-holiday` (nền vàng ấm `#fef08a`, chữ nâu đậm `#854d0e`, font-weight 800).
+       + Toàn bộ cột dữ liệu của ngày Thứ 7 và Chủ Nhật được tô nền vàng kem dịu mắt (`#fff9c4`), giúp phân biệt ngay lập tức với các ngày làm việc chính trong tuần (Thứ 2 đến Thứ 6).
+       + Đối với các nhân viên không đi làm vào Thứ 7 hoặc Chủ Nhật, ô hiển thị chữ nghiêng "Nghỉ". Khi người dùng bấm vào ô, ô chuyển thành ô nhập liệu nhanh (`enableHolidayCell`) để người dùng dễ dàng nhập ký hiệu công cho 1-2 nhân viên đi trực/làm việc vào ngày đó.
+       + Bổ sung cơ chế tự động phục hồi chữ "Nghỉ" khi người dùng click vào ô cuối tuần nhưng không nhập nội dung và chuyển tiêu điểm ra ngoài (`blur`).
+     - Khi Xuất Báo Cáo Excel (`exportChamCongExcel`):
+       + Các cột ngày Thứ 7 và Chủ Nhật được tự động tô màu nền vàng `#FFFEF08A` ở phần Tiêu đề và `#FFFEF9C3` ở phần Dữ liệu nhân viên, đồng bộ 100% với giao diện phần mềm.
+  3. *Đồng bộ phiên bản hệ thống theo RULES.md*:
+     - Phiên bản chính: `4.0.3` (Footer: `Phiên bản: 4.0.3`).
+     - Revision: `v4.0.3-rev5`.
+     - Footer timestamp: `10:45 08/09/2026`.
+     - `index.html`: Cập nhật toàn bộ cache busters `?v=4.0.3-rev5`, `APP_VERSION = '4.0.3-rev5'`.
+     - `sw.js`: Đổi `CACHE_NAME = 'pmcg-v4-cache-4.0.3-rev5'`.
+     - `js/thongke.js`: Đổi `pm_cleaned_cache_ver = '4.0.3-rev5'`.
+     - `js/app.js`: Đổi targetUrl HDSD sang `v=4.0.3-rev5`.
+- **File sửa đổi**:
+  + `js/thongke.js` (cập nhật `isHoliday` bao gồm Thứ 7 và Chủ Nhật, nâng cấp `enableHolidayCell`, `pm_cleaned_cache_ver = '4.0.3-rev5'`)
+  + `index.html` (cache busters `?v=4.0.3-rev5`, `APP_VERSION = '4.0.3-rev5'`, footer timestamp `10:45 08/09/2026`)
+  + `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.3-rev5'`)
+  + `js/app.js` (targetUrl HDSD `v=4.0.3-rev5`)
+  + `PM-xeplich-v4.md` (nhật ký phát triển)
+
+

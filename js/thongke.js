@@ -53,13 +53,13 @@ var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi
 
         // Tự động dọn dẹp cache cũ bị ô nhiễm từ các phiên bản trước
         try {
-            if (typeof localStorage !== 'undefined' && localStorage.getItem('pm_cleaned_cache_ver') !== '4.0.3-rev4') {
+            if (typeof localStorage !== 'undefined' && localStorage.getItem('pm_cleaned_cache_ver') !== '4.0.3-rev5') {
                 Object.keys(localStorage).forEach(k => {
                     if (k.startsWith('pm_cache_cc_') || k.startsWith('pm_cache_tk_')) {
                         localStorage.removeItem(k);
                     }
                 });
-                localStorage.setItem('pm_cleaned_cache_ver', '4.0.3-rev4');
+                localStorage.setItem('pm_cleaned_cache_ver', '4.0.3-rev5');
             }
         } catch(e) {}
 
@@ -1374,7 +1374,8 @@ window.switchAdminSection = function(sectionId, btn) {
 
         function isHoliday(y, m, d) {
             const date = new Date(y, m - 1, d);
-            return date.getDay() === 0; // Chỉ Chủ Nhật mới nghỉ cố định
+            const day = date.getDay();
+            return day === 0 || day === 6; // Thứ 7 (6) và Chủ Nhật (0) đều được tô nền để phân biệt ngày làm việc trong tuần (T2-T6)
         }
 
         function getWeekdayName(y, m, d) {
@@ -1460,10 +1461,24 @@ window.switchAdminSection = function(sectionId, btn) {
             input.focus();
             
             const daysInMonth = new Date(getChamCongMonthYear().split('-')[0], getChamCongMonthYear().split('-')[1], 0).getDate();
-            ['input', 'change', 'blur'].forEach(evtType => {
+            ['input', 'change'].forEach(evtType => {
                 input.addEventListener(evtType, (e) => {
                     commitChamCongCell(e.target, daysInMonth, true);
                 });
+            });
+            input.addEventListener('blur', (e) => {
+                const val = e.target.value.trim();
+                commitChamCongCell(e.target, daysInMonth, true);
+                if (!val) {
+                    td.innerHTML = `<div style="color: #a16207; font-style: italic; font-size: 10px; font-weight: 600; cursor: pointer; line-height: 20px; user-select: none;">Nghỉ</div>`;
+                    td.onclick = () => enableHolidayCell(td, emp, day);
+                }
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    input.blur();
+                }
             });
         }
 
