@@ -396,43 +396,11 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
     const info = thuThuatInfo[tenThuThuat.toLowerCase()] || ["Thủ công", 15, 5, "PHCN", 1, 0, [], 5];
     const tenGoc = info[8] || tenThuThuat, targetRoom = patient.room, loaiMay = info[0];
-    const baseTgMay = Math.max(info[1], info[2]), canPhu = info[5];
-    const tgMayMax = info[10] ? Math.max(info[10], baseTgMay) : baseTgMay;
-    const tgNvMin = Math.max(1, info[2] || 5);
-    const tgNvMax = info[11] ? Math.max(tgNvMin, info[11]) : tgNvMin;
-    const gapMinutes = (info[12] !== undefined && info[12] > 0) ? info[12] : 1;
+    const baseTgMay = Math.max(info[1], info[2]), tgNhanVien = info[2], canPhu = info[5];
     const isSupplemental = existingSched && existingSched.length > 0;
     
     const isDienCham = tenThuThuat.toLowerCase().includes('điện châm') || tenThuThuat.toLowerCase() === 'đc' || (info[8] && String(info[8]).toLowerCase().includes('điện châm'));
-    
-    // Kiểm tra tính chất làm việc liên tục 1:1 (KTV/Bác sĩ làm trực tiếp toàn bộ thời gian thủ thuật, ví dụ: TTG, TTK, XBBH, XBV, HH, SA, CC...)
-    const isExplicitContinuous = info[13] === 1 || info[13] === '1' || info[13] === 'Có' || info[13] === true;
-    const isContinuous = isExplicitContinuous 
-                      || (baseTgMay === tgNvMin && tgMayMax === tgNvMax) 
-                      || (loaiMay === 'Thủ công' && baseTgMay === tgNvMin)
-                      || (baseTgMay === tgNvMin && tgNvMin >= 10);
-    
-    let candidatePairs = [];
-    if (isContinuous) {
-      // Đối với thủ thuật liên tục: Thời gian thực hiện (NV bận) BẮT BUỘC BẰNG Thời gian thủ thuật (BN điều trị)
-      const minDur = Math.max(baseTgMay, tgNvMin);
-      const maxDur = Math.max(tgMayMax, tgNvMax);
-      for (let d = minDur; d <= maxDur; d++) {
-        candidatePairs.push({ tgMay: d, tgNv: d });
-      }
-    } else if (tgMayMax > baseTgMay || tgNvMax > tgNvMin) {
-      for (let m = baseTgMay; m <= tgMayMax; m++) {
-        for (let nv = tgNvMin; nv <= tgNvMax; nv++) {
-          if (nv <= m) {
-            candidatePairs.push({ tgMay: m, tgNv: nv });
-          }
-        }
-      }
-    } else if (isDienCham && (isSupplemental || isBackfill)) {
-      [25, 30, 26, 27, 28, 29].forEach(m => candidatePairs.push({ tgMay: m, tgNv: tgNvMin }));
-    } else {
-      candidatePairs.push({ tgMay: baseTgMay, tgNv: tgNvMin });
-    }
+    const candidateDurs = (isDienCham && (isSupplemental || isBackfill)) ? [25, 30, 26, 27, 28, 29] : [baseTgMay];
 
     const isYHCT = String(info[3] || "").trim().toUpperCase() === "YHCT";
     const yhctEndLimit = weights.yhctEnd !== undefined ? weights.yhctEnd : 10;
@@ -448,10 +416,9 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       }
     }
 
-    for (const pair of candidatePairs) {
-      const tgMay = pair.tgMay;
-      const tgNhanVien = pair.tgNv;
-      const khoangCach = tgNhanVien + gapMinutes;
+    for (const tgMay of candidateDurs) {
+      const rawKhoangCach = scenario === 1 ? info[2] : (info[7] || info[2]);
+      const khoangCach = Math.max(rawKhoangCach, info[2] + 1);
       const gioKetThuc = tNow + tgMay;
       const hasTeardown = tgMay > tgNhanVien;
       const tearStart = hasTeardown ? (tNow + tgMay) : null;
@@ -881,94 +848,109 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
   return { sched: results, rot: finalDropList, score: scoreVal, staff: staffLoad, proc: localProcCount, tl: staffTimeline, ca: staffShifts };
 }
 
-function getPatientSignature(pat) {
-    if (!pat) return '';
-    return (pat.name || pat.pId || '') + '_' + (pat.pending ? pat.pending.join('|') : '');
+function runBestIteration(db, dateVal, existingSched = [], scenario = 1, crowdedOverride = -1, weights = { drop: 10000, overtime: 2, imbalance: 0.1 }) {
+  let rand = createSeededRandom(42);
+  let currentPatients = clonePatients(db.rawPatients);
+  let current = _turbo_core_logic({ ...db, rawPatients: currentPatients }, dateVal, 0, existingSched, scenario, crowdedOverride, weights);
+  let best = current;
+
+  if (best.rot.length === 0) return best;
+
+  let droppedNames = new Set(best.rot.map(r => r.pId || (r.bn + '_' + (r.ns || '') + '_' + (r.room || ''))));
+  const T_initial = 4.0, T_min = 1.0, alpha = 0.65;
+  let T = T_initial, noImprove = 0;
+
+  while (T > T_min && noImprove < 1) {
+    const neighborPatients = mutate(currentPatients, rand, droppedNames);
+    const neighbor = _turbo_core_logic({ ...db, rawPatients: neighborPatients }, dateVal, 0, existingSched, scenario, crowdedOverride, weights);
+    const delta = neighbor.score - current.score;
+    const accept = delta < 0 || (rand() < Math.exp(-delta / T));
+    if (accept) {
+      current = neighbor; currentPatients = neighborPatients;
+      if (current.score < best.score) {
+        best = current;
+        if (best.rot.length === 0) return best;
+        droppedNames = new Set(best.rot.map(r => r.pId || (r.bn + '_' + (r.ns || '') + '_' + (r.room || ''))));
+        noImprove = 0;
+      } else { noImprove++; }
+    } else { noImprove++; }
+    T *= alpha;
   }
 
-  function runBestIteration(db, dateVal, existingSched = [], scenario = 1, crowdedOverride = -1, weights = { drop: 10000, overtime: 2, imbalance: 0.1 }, baseSeed = 42, maxSteps = 15) {
-    let bestSched = null;
-    let bestRot = null;
-    let bestScore = Infinity;
-
-    // 🤖 AI Smart Patient Ranking: Xếp thứ tự ban đầu theo định lượng AI
-    let initialPatients = db.rawPatients;
-    if (typeof window !== 'undefined' && window.AIScheduler && typeof window.AIScheduler.rankPatients === 'function') {
-      initialPatients = window.AIScheduler.rankPatients(db.rawPatients, {}, db.thuThuatInfo || {});
-    }
-
-    let currentOrder = clonePatients(initialPatients);
-    let currentRes = _turbo_core_logic(db, dateVal, baseSeed, existingSched, scenario, crowdedOverride, weights);
-    if (currentRes) {
-      bestSched = currentRes.sched;
-      bestRot = currentRes.rot;
-      bestScore = currentRes.score;
-    }
-
-    // Tabu Search State List (FIFO size 30)
-    const tabuList = [];
-    const maxTabuSize = 30;
-
-    // Late Acceptance Hill Climbing (LAHC buffer L=5)
-    const lahcLength = 5;
-    const lahcBuffer = new Array(lahcLength).fill(bestScore);
-    let lahcIdx = 0;
-
-    for (let step = 0; step < maxSteps; step++) {
-      const stepSeed = (baseSeed * 1000 + step * 37) % 2147483647;
-      const randFn = createSeededRandom(stepSeed);
-      const droppedNames = bestRot ? bestRot.map(r => String(r.bn || r.tenBN || r.name || '').toUpperCase()) : [];
-      const candidateOrder = mutate(currentOrder, randFn, droppedNames);
-      
-      const sig = candidateOrder.map(p => getPatientSignature(p)).slice(0, 15).join(';');
-      const isTabu = tabuList.includes(sig);
-
-      db.rawPatients = candidateOrder;
-      const res = _turbo_core_logic(db, dateVal, baseSeed + step * 7 + 1, existingSched, scenario, crowdedOverride, weights);
-
-      if (res) {
-        // Aspiration Criterion: vượt tabu nếu điểm tốt hơn kỷ lục toàn cục
-        if (!isTabu || res.score < bestScore) {
-          const lahcThreshold = lahcBuffer[lahcIdx];
-          if (res.score <= lahcThreshold || res.score <= bestScore) {
-            currentOrder = candidateOrder;
-            lahcBuffer[lahcIdx] = res.score;
-            lahcIdx = (lahcIdx + 1) % lahcLength;
-
-            tabuList.push(sig);
-            if (tabuList.length > maxTabuSize) tabuList.shift();
-          }
-
-          if (res.score < bestScore) {
-            bestScore = res.score;
-            bestSched = res.sched;
-            bestRot = res.rot;
-          }
-        }
-      }
-    }
-
-    return {
-      sched: bestSched,
-      rot: bestRot,
-      score: bestScore
-    };
+  if (best.rot.length > 0) {
+    const result = _turbo_core_logic({ ...db, rawPatients: clonePatients(db.rawPatients) }, dateVal, 101, existingSched, scenario, crowdedOverride, weights);
+    if (result.score < best.score) best = result;
   }
+  return best;
+}
 
-  function compactTimelineGaps(scheduleList, db) {
-    if (!scheduleList || scheduleList.length <= 1) return scheduleList || [];
-    
-    const patGroups = {};
-    scheduleList.forEach(item => {
-      const key = (item.tenBN || item.HOTEN || '') + '_' + (item.namSinh || item.NAMSINH || '');
-      if (!patGroups[key]) patGroups[key] = [];
-      patGroups[key].push(item);
-    });
+async function buildBaseDbFromD1(db) {
+  const [machinesRes, staffRes, roomsRes, procsRes, patientsRes] = await db.batch([
+    db.prepare("SELECT * FROM machines WHERE is_active = 1 AND trang_thai = 'Sẵn sàng' ORDER BY order_idx ASC"),
+    db.prepare("SELECT * FROM staff WHERE is_active = 1 AND name NOT GLOB '[0-9]*' ORDER BY priority ASC, id ASC"),
+    db.prepare("SELECT * FROM rooms WHERE is_active = 1 ORDER BY order_idx ASC"),
+    db.prepare("SELECT * FROM procedures WHERE is_active = 1 ORDER BY order_idx ASC"),
+    db.prepare("SELECT * FROM patients WHERE is_saturday = 0 ORDER BY order_idx ASC, id ASC")
+  ]);
 
-    const result = [...scheduleList];
-    return result;
-  }
-function getSafeCache() {
+  const database = {
+    machineTypes: {},
+    thuThuatInfo: {},
+    replacementMap: {},
+    roomStaff: {},
+    roomBeds: {},
+    rawStaff: [],
+    rawPatients: []
+  };
+
+  (machinesRes.results || []).forEach(r => {
+    if (!database.machineTypes[r.ten_loai]) database.machineTypes[r.ten_loai] = [];
+    database.machineTypes[r.ten_loai].push(r.ma_may);
+  });
+
+  (staffRes.results || []).forEach(r => {
+    const thayThe = r.nguoi_thay_the || "Không";
+    if (thayThe && thayThe !== "Không") database.replacementMap[r.name] = thayThe;
+    const skills = parseStringOrJsonArray(r.skills).join(", ");
+    const busy = parseStringOrJsonArray(r.temp_busy).join(", ");
+    database.rawStaff.push([r.name, r.role || "KTV", skills, r.thoi_gian_lam || "07:30-11:30, 13:00-16:30", busy, r.trang_thai || "Đi làm"]);
+  });
+
+  (procsRes.results || []).forEach(r => {
+    const tgNhanVien = parseInt(r.tg_thuc_hien) || 5;
+    const tgMay = parseInt(r.tg_thu_thuat) || 15;
+    const khoangCach = parseInt(r.khoang_cach) || tgNhanVien;
+    const dsPhu = parseStringOrJsonArray(r.ds_nguoi_phu);
+    database.thuThuatInfo[String(r.ten_thu_thuat).trim().toLowerCase()] = [
+      r.may || "Thủ công",
+      Math.max(1, tgMay),
+      Math.max(1, tgNhanVien),
+      r.he || "PHCN",
+      (r.can_rut_may === 1 || r.can_rut_may === '1' || r.can_rut_may === 'Có' || r.can_rut_may === true) ? 1 : 0,
+      (r.can_nguoi_phu === 1 || r.can_nguoi_phu === '1' || r.can_nguoi_phu === 'Có' || r.can_nguoi_phu === true) ? 1 : 0,
+      dsPhu,
+      khoangCach,
+      String(r.ten_thu_thuat).trim(),
+      r.viet_tat || ""
+    ];
+  });
+
+  (roomsRes.results || []).forEach(r => {
+    const soGiuong = parseInt(r.so_giuong) || 15;
+    const bedStr = r.danh_sach_giuong ? String(r.danh_sach_giuong).trim() : "";
+    database.roomBeds[r.ten_phong] = (bedStr && bedStr !== 'None')
+      ? bedStr.split(",").map(x => x.trim()).filter(Boolean)
+      : Array.from({ length: soGiuong }, (_, i) => `Giường ${i + 1}`);
+
+    const dsBacSi = parseStringOrJsonArray(r.bac_si);
+    const dsKTV = parseStringOrJsonArray(r.ktv);
+    database.roomStaff[r.ten_phong] = [...new Set([...dsBacSi, ...dsKTV].map(x => database.replacementMap[x] || x))];
+  });
+
+  return { database, rawPatientsList: patientsRes.results || [] };
+}
+
+  function getSafeCache() {
     let cache = (typeof dataCache !== 'undefined' && dataCache) ? dataCache : (window.dataCache || null);
     if (!cache || !cache.staff || !cache.staff.length) {
       try {
@@ -1042,45 +1024,23 @@ function getSafeCache() {
     procList.forEach(p => {
       const ten = String(p.ten || p.name || p[1] || "").trim().toLowerCase();
       if (!ten) return;
-      const tgNvMin = parseInt(p.thoiGianThucHienMin || p.thoiGianThucHien || p[6]) || 5;
-      let tgNvMax = parseInt(p.thoiGianThucHienMax || p[13] || 0) || tgNvMin;
-      if (!tgNvMax || tgNvMax <= tgNvMin) tgNvMax = tgNvMin;
-
-      const tgMayMin = parseInt(p.thoiGianThuThuatMin || p.thoiGianThuThuat || p[7]) || 15;
-      let tgMayMax = parseInt(p.thoiGianThuThuatMax || p[12] || 0) || 0;
-      if (!tgMayMax || tgMayMax <= tgMayMin) {
-        if (ten.includes('điện châm') || ten === 'đc' || ten === 'dctb') {
-          if (tgMayMin === 25) tgMayMax = 30;
-          else if (tgMayMin === 30) tgMayMax = 35;
-        } else if (ten.includes('parafin') || ten === 'pa') {
-          if (tgMayMin === 20) tgMayMax = 25;
-        } else {
-          tgMayMax = tgMayMin;
-        }
-      }
-      const rawKc = parseInt(p.khoangCach || p[8]);
-      const gapMinutes = (!isNaN(rawKc) && rawKc > 0) ? (rawKc > tgNvMin ? rawKc - tgNvMin : rawKc) : 1;
-      const khoangCachBase = tgNvMin + gapMinutes;
+      const tgNhanVien = parseInt(p.thoiGianThucHien || p[6]) || 5;
+      const tgMay = parseInt(p.thoiGianThuThuat || p[7]) || 15;
+      const khoangCach = parseInt(p.khoangCach || p[8]) || tgNhanVien;
       const dsPhuStr = p.dsNguoiPhu || p[11] || "";
       const dsPhu = Array.isArray(dsPhuStr) ? dsPhuStr : String(dsPhuStr).split(",").map(x => x.trim()).filter(Boolean);
 
-      const isLienTuc = (p.lienTuc === 'Có' || p.lienTuc === 1 || p.lienTuc === '1' || p.lienTuc === true || p[14] === 'Có' || p[14] === 1 || p[14] === '1') ? 1 : 0;
-
       database.thuThuatInfo[ten] = [
         p.may || p[5] || "Thủ công",
-        Math.max(1, tgMayMin),
-        Math.max(1, tgNvMin),
+        Math.max(1, tgMay),
+        Math.max(1, tgNhanVien),
         p.he || p[3] || "PHCN",
         (p.canRutMay === "Có" || p[9] === "Có" || p.canRutMay === 1 || p.canRutMay === "1" || p.canRutMay === true) ? 1 : 0,
         (p.canNguoiPhu === "Có" || p[10] === "Có" || p.canNguoiPhu === 1 || p.canNguoiPhu === "1" || p.canNguoiPhu === true) ? 1 : 0,
         dsPhu,
-        khoangCachBase,
+        khoangCach,
         p.ten || p.name || p[1] || "",
-        p.vietTat || p[2] || "",
-        Math.max(1, Math.max(tgMayMin, tgMayMax)),
-        Math.max(1, Math.max(tgNvMin, tgNvMax)),
-        gapMinutes,
-        isLienTuc
+        p.vietTat || p[2] || ""
       ];
     });
 
@@ -1207,22 +1167,12 @@ function getSafeCache() {
       };
     }
 
-    const scenarioMap = { opt_rare: 1, opt_math: 1 };
+    const scenarioMap = { opt_rare: 1, balanced: 2, contingency: 3 };
     const scenario = scenarioMap[strategyKey] || 1;
 
-    let best = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, { drop: 10000, overtime: 2, imbalance: 0.1 }, 42, 14);
-    let engineName = '🤖 AI-Guided Turbo-Engine';
-
-    // 🧠 Pha 2: Tối ưu hóa Toán học Chuyên sâu (Constraint Programming CP-SAT / MIP Optimizer)
-    if (strategyKey === 'opt_math' && typeof window !== 'undefined' && window.MedicalCPSolver && best) {
-      const cpRes = window.MedicalCPSolver.solve(db, dateVal, best.sched, best.rot, 1200);
-      if (cpRes && cpRes.sched) {
-        best = { ...best, sched: cpRes.sched, rot: cpRes.rot, score: cpRes.score };
-        engineName = cpRes.rescuedCount > 0 ? `🤖 AI + CP-SAT Optimizer (Cứu +${cpRes.rescuedCount} ca)` : '🤖 AI + CP-SAT Optimizer';
-      }
-    }
-
+    const best = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride);
     const finalDropList = (best ? best.rot : []).concat(forcedDrops).map(r => ({ ...r, ngay: r.ngay || dateVal }));
+
     const formattedSched = (best ? best.sched : []).map(x => ({
       ngay: x.NGAY,
       tenBN: x.HOTEN,
@@ -1237,204 +1187,17 @@ function getSafeCache() {
       giuong: x.GIUONG
     }));
 
-    const compactedSched = compactTimelineGaps(formattedSched, db);
     const elapsed = Math.round(performance.now() - startTime);
 
-    const diagnosedRot = finalDropList.map(item => {
-      if (typeof UnscheduledDiagnosticEngine !== 'undefined') {
-        const diag = UnscheduledDiagnosticEngine.diagnose(item, db, compactedSched);
-        if (diag) {
-          return {
-            ...item,
-            causeCode: diag.causeCode,
-            causeTitle: diag.causeTitle,
-            causeDetail: diag.causeDetail,
-            reason: diag.causeDetail,
-            advices: diag.advices
-          };
-        }
-      }
-      return item;
-    });
-
     return {
-      scheduleCount: compactedSched.length,
-      unscheduledCount: diagnosedRot.length,
-      schedule: compactedSched,
-      sched: compactedSched,
-      unscheduled: diagnosedRot,
-      rot: diagnosedRot,
-      elapsedMs: elapsed,
-      threadCount: 1,
-      engine: engineName
+      scheduleCount: formattedSched.length,
+      unscheduledCount: finalDropList.length,
+      schedule: formattedSched,
+      sched: formattedSched,
+      unscheduled: finalDropList,
+      rot: finalDropList,
+      elapsedMs: elapsed
     };
-  }
-
-  async function runSchedulingAsync(dateVal, strategyKey = 'opt_rare', skipProcsStr = '', crowdedOverride = -1, existingSched = [], options = {}) {
-    const startTime = performance.now();
-    const { database: db, forcedDrops } = buildDbFromCache(null, skipProcsStr, existingSched);
-
-    if (!db.rawPatients.length) {
-      return {
-        schedule: [],
-        unscheduled: [],
-        scheduleCount: 0,
-        unscheduledCount: 0,
-        elapsedMs: 0,
-        threadCount: 1,
-        engine: 'Worker-Turbo'
-      };
-    }
-
-    const scenarioMap = { opt_rare: 1, opt_math: 1 };
-    const scenario = scenarioMap[strategyKey] || 1;
-    const weights = options.weights || { drop: 10000, overtime: 2, imbalance: 0.1 };
-
-    const hasWorker = typeof Worker !== 'undefined' && typeof Blob !== 'undefined' && typeof URL !== 'undefined';
-    const numWorkers = hasWorker ? Math.min(Math.max((typeof navigator !== 'undefined' && navigator.hardwareConcurrency) ? navigator.hardwareConcurrency : 4, 2), 8) : 1;
-
-    if (!hasWorker || options.forceSync) {
-      return runClientScheduling(dateVal, strategyKey, skipProcsStr, crowdedOverride, existingSched);
-    }
-
-    try {
-      const seeds = [42, 101, 2026, 7777, 8888, 12345, 99999, 54321].slice(0, numWorkers);
-      const workerScript = `
-        ${t2m.toString()}
-        ${isEmptyTime.toString()}
-        ${m2t.toString()}
-        ${is_overlap.toString()}
-        ${createSeededRandom.toString()}
-        ${parseNgayVao.toString()}
-        ${updatePatientCache.toString()}
-        ${mergeTimeline.toString()}
-        ${getNextEvent.toString()}
-        ${blockStaff.toString()}
-        ${clonePatients.toString()}
-        ${mutate.toString()}
-        ${getPatientSignature.toString()}
-        ${_turbo_core_logic.toString()}
-        ${runBestIteration.toString()}
-
-        self.onmessage = function(e) {
-          const { db, dateVal, existingSched, scenario, crowdedOverride, weights, seed } = e.data;
-          const result = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, weights, seed, 15);
-          self.postMessage(result);
-        };
-      `;
-
-      const blob = new Blob([workerScript], { type: 'application/javascript' });
-      const workerUrl = URL.createObjectURL(blob);
-
-      const workerPromises = seeds.map(seed => {
-        return new Promise((resolve) => {
-          try {
-            const w = new Worker(workerUrl);
-            const timeout = setTimeout(() => {
-              w.terminate();
-              resolve(null);
-            }, 2500);
-
-            w.onmessage = (e) => {
-              clearTimeout(timeout);
-              w.terminate();
-              resolve(e.data);
-            };
-
-            w.onerror = (err) => {
-              clearTimeout(timeout);
-              w.terminate();
-              resolve(null);
-            };
-
-            w.postMessage({ db, dateVal, existingSched, scenario, crowdedOverride, weights, seed });
-          } catch(err) {
-            resolve(null);
-          }
-        });
-      });
-
-      const results = await Promise.all(workerPromises);
-      URL.revokeObjectURL(workerUrl);
-
-      let best = null;
-      for (const res of results) {
-        if (res && res.sched) {
-          if (!best || res.score < best.score) {
-            best = res;
-          }
-        }
-      }
-
-      if (!best) {
-        best = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, weights, 42, 14);
-      }
-
-      let engineName = `🤖 AI-Guided Multi-Thread (${numWorkers} Cores)`;
-
-      // 🧠 Pha 2: Tối ưu hóa Toán học Chuyên sâu (Constraint Programming CP-SAT / MIP Optimizer)
-      if (strategyKey === 'opt_math' && typeof window !== 'undefined' && window.MedicalCPSolver && best) {
-        const cpRes = window.MedicalCPSolver.solve(db, dateVal, best.sched, best.rot, 1500);
-        if (cpRes && cpRes.sched) {
-          best = { ...best, sched: cpRes.sched, rot: cpRes.rot, score: cpRes.score };
-          engineName = cpRes.rescuedCount > 0 ? `🤖 AI + CP-SAT Optimizer (Cứu +${cpRes.rescuedCount} ca)` : '🤖 AI + CP-SAT Optimizer';
-        }
-      }
-
-      const finalDropList = (best ? best.rot : []).concat(forcedDrops).map(r => ({ ...r, ngay: r.ngay || dateVal }));
-      const formattedSched = (best ? best.sched : []).map(x => ({
-        ngay: x.NGAY,
-        tenBN: x.HOTEN,
-        namSinh: x.NAMSINH,
-        phong: x.PHONG,
-        thuThuat: x.DICHVU,
-        gioDienRa: x.GIODIENRA,
-        gioKetThuc: x.GIOKETTHUC,
-        nvChinh: x["NV CHÍNH"],
-        nvPhu: x["NV PHỤ"],
-        may: x.MAY,
-        giuong: x.GIUONG
-      }));
-
-      const compactedSched = compactTimelineGaps(formattedSched, db);
-      const elapsed = Math.round(performance.now() - startTime);
-
-      const diagnosedRot = finalDropList.map(item => {
-        if (typeof UnscheduledDiagnosticEngine !== 'undefined') {
-          const diag = UnscheduledDiagnosticEngine.diagnose(item, db, compactedSched);
-          if (diag) {
-            return {
-              ...item,
-              causeCode: diag.causeCode,
-              causeTitle: diag.causeTitle,
-              causeDetail: diag.causeDetail,
-              reason: diag.causeDetail,
-              advices: diag.advices
-            };
-          }
-        }
-        return item;
-      });
-
-      return {
-        scheduleCount: compactedSched.length,
-        unscheduledCount: diagnosedRot.length,
-        schedule: compactedSched,
-        sched: compactedSched,
-        unscheduled: diagnosedRot,
-        rot: diagnosedRot,
-        elapsedMs: elapsed,
-        threadCount: numWorkers,
-        engine: engineName
-      };
-    } catch(err) {
-      console.warn('[SchedulerEngine]: Web Worker đa luồng gặp sự cố, tự động fallback về chạy đơn luồng:', err);
-      return runClientScheduling(dateVal, strategyKey, skipProcsStr, crowdedOverride, existingSched);
-    }
-  }
-
-  function runExtraScheduling(dateVal, existingSched = []) {
-    return runClientScheduling(dateVal, 'opt_rare', '', -1, existingSched);
   }
 
   function runSaturdayScheduling(payload = {}, dateVal = '') {
@@ -1502,17 +1265,13 @@ function getSafeCache() {
       return { scheduleCount: 0, unscheduledCount: 0, sched: [], schedule: [], rot: [], unscheduled: [], elapsedMs: 0 };
     }
 
-    const rawRot = (best.rot || []).map(u => {
+    const rot = (best.rot || []).map(u => {
       if (u.phong === "PHONG_CHUNG_T7" || u.room === "PHONG_CHUNG_T7") {
         const orig = (payload.final_pats || []).find(p => p.ten.toUpperCase() === u.bn.toUpperCase());
         if (orig) { u.phong = orig.phong; u.room = orig.phong; }
       }
       return { ...u, ngay: u.ngay || targetDate };
     });
-
-    const diagnosedRot = (typeof UnscheduledDiagnosticEngine !== 'undefined')
-      ? UnscheduledDiagnosticEngine.diagnose(rawRot, baseDb)
-      : rawRot;
 
     const formattedSched = (best.sched || []).map(item => {
       const { realRoom, realBed } = decodeRoom(item);
@@ -1535,13 +1294,17 @@ function getSafeCache() {
 
     return {
       scheduleCount: formattedSched.length,
-      unscheduledCount: diagnosedRot.length,
+      unscheduledCount: rot.length,
       sched: formattedSched,
       schedule: formattedSched,
-      rot: diagnosedRot,
-      unscheduled: diagnosedRot,
+      rot: rot,
+      unscheduled: rot,
       elapsedMs: elapsed
     };
+  }
+
+  function runExtraScheduling(dateVal, existingSched = []) {
+    return runClientScheduling(dateVal, 'opt_rare', '', -1, existingSched);
   }
 
   return {
@@ -1549,229 +1312,7 @@ function getSafeCache() {
     m2t,
     buildDbFromCache,
     runScheduling: runClientScheduling,
-    runSchedulingAsync: runSchedulingAsync,
     runExtraScheduling: runExtraScheduling,
     runSaturdayScheduling: runSaturdayScheduling
   };
 })();
-
-// ============================================================
-// 💡 UNSCHEDULED DIAGNOSTIC & SMART RESCUE ADVISOR ENGINE
-// ============================================================
-const UnscheduledDiagnosticEngine = (function () {
-  'use strict';
-
-  function t2m(thoiGian) {
-    if (!thoiGian && thoiGian !== 0) return 0;
-    if (thoiGian instanceof Date) {
-      if (isNaN(thoiGian.getTime())) return 0;
-      return thoiGian.getUTCHours() * 60 + thoiGian.getUTCMinutes();
-    }
-    const str = String(thoiGian).trim();
-    if (!str || str === '0') return 0;
-    if (!isNaN(str) && parseFloat(str) > 0 && parseFloat(str) <= 1) return Math.round(parseFloat(str) * 1440);
-    if (!str.includes(":")) return 0;
-    const parts = str.split(":");
-    const gio = parseInt(parts[0].split(" ").pop(), 10);
-    const phut = parseInt(parts[1], 10);
-    return (isNaN(gio) ? 0 : gio) * 60 + (isNaN(phut) ? 0 : phut);
-  }
-
-  function m2t(totalMinutes) {
-    return `${String(Math.floor(totalMinutes / 60)).padStart(2, '0')}:${String(totalMinutes % 60).padStart(2, '0')}`;
-  }
-
-  function is_overlap(start1, end1, start2, end2) {
-    return Math.max(start1, start2) < Math.min(end1, end2);
-  }
-
-  function diagnose(rotItem, db, currentSched = []) {
-    if (!rotItem) return null;
-
-    const bnName = String(rotItem.bn || rotItem.tenBN || rotItem.HOTEN || '').toUpperCase().trim();
-    const bnNs = String(rotItem.ns || rotItem.namSinh || rotItem.NAMSINH || '').trim();
-    const room = String(rotItem.room || rotItem.phong || rotItem.PHONG || '').trim();
-    const tt = String(rotItem.tt || rotItem.thuThuat || rotItem.DICHVU || '').trim();
-    const ttLower = tt.toLowerCase();
-    const targetDate = rotItem.ngay || new Date().toISOString().slice(0, 10);
-
-    const info = (db && db.thuThuatInfo && (db.thuThuatInfo[ttLower] || db.thuThuatInfo[tt])) || ["Thủ công", 15, 5, "PHCN", 1, 0, [], 5];
-    const loaiMay = info[0] || "Thủ công";
-    const tgMay = Math.max(info[1] || 15, info[2] || 5);
-
-    let patientObj = null;
-    if (db && db.rawPatients) {
-      patientObj = db.rawPatients.find(p => {
-        const pName = String(p.name || p.ten || '').toUpperCase().trim();
-        const pNs = String(p.ns || p.namSinh || '').trim();
-        return pName === bnName && (!bnNs || !pNs || bnNs === pNs);
-      });
-    }
-
-    const arriveMins = patientObj ? (patientObj.arrive || 421) : 421;
-    const leaveMins = patientObj ? (patientObj.leave || 1014) : 1014;
-    const loaiBN = (patientObj && patientObj.loaiBN) || 'NoiTru';
-    const buoiDieuTri = (patientObj && patientObj.buoiDieuTri) || 'Sang';
-
-    const machinesOfCategory = (db && db.machineTypes && db.machineTypes[loaiMay]) || [];
-    const qualifiedStaff = [];
-    if (db && db.rawStaff) {
-      db.rawStaff.forEach(r => {
-        const name = r[0];
-        const skills = r[2] ? String(r[2]).toLowerCase().split(",").map(x => x.trim()) : [];
-        if (skills.includes(ttLower) || skills.includes((info[8] || "").toLowerCase()) || skills.includes((info[9] || "").toLowerCase())) {
-          qualifiedStaff.push(name);
-        }
-      });
-    }
-
-    const staffOccupancy = {};
-    const machineOccupancy = {};
-    const patientOccupancy = [];
-
-    (currentSched || []).forEach(slot => {
-      const gStart = t2m(slot.gioDienRa || slot.GIODIENRA);
-      const gEnd = t2m(slot.gioKetThuc || slot.GIOKETTHUC);
-      if (!gStart || !gEnd || gEnd <= gStart) return;
-
-      const pName = String(slot.tenBN || slot.HOTEN || '').toUpperCase().trim();
-      if (pName === bnName) patientOccupancy.push([gStart, gEnd]);
-      const nv1 = slot.nvChinh || slot["NV CHÍNH"];
-      if (nv1) {
-        if (!staffOccupancy[nv1]) staffOccupancy[nv1] = [];
-        staffOccupancy[nv1].push([gStart, gEnd]);
-      }
-      const nv2 = slot.nvPhu || slot["NV PHỤ"];
-      if (nv2) {
-        if (!staffOccupancy[nv2]) staffOccupancy[nv2] = [];
-        staffOccupancy[nv2].push([gStart, gEnd]);
-      }
-      const maySlot = slot.may || slot.MAY;
-      if (maySlot && maySlot !== "Thủ công") {
-        if (!machineOccupancy[maySlot]) machineOccupancy[maySlot] = [];
-        machineOccupancy[maySlot].push([gStart, gEnd]);
-      }
-    });
-
-    let causeCode = 'STAFF_UNAVAILABLE';
-    let causeTitle = '🟡 Nhân sự quá tải / Thiếu KTV chuyên môn';
-    let causeDetail = `Chưa xếp được ca [${tt}] cho BN ${bnName} do các KTV có kỹ năng (${qualifiedStaff.join(', ') || 'Chưa phân công'}) kín lịch vào khung giờ rảnh của bệnh nhân.`;
-
-    if (loaiMay !== "Thủ công" && machinesOfCategory.length > 0) {
-      let allMachinesBusyInFreeWindow = true;
-      for (let t = arriveMins; t <= leaveMins - tgMay; t += 15) {
-        const slotEnd = t + tgMay;
-        const availableMachine = machinesOfCategory.find(mName => {
-          const occ = machineOccupancy[mName] || [];
-          return !occ.some(b => is_overlap(t, slotEnd, b[0], b[1]));
-        });
-        if (availableMachine) {
-          allMachinesBusyInFreeWindow = false;
-          break;
-        }
-      }
-      if (allMachinesBusyInFreeWindow) {
-        causeCode = 'BOTTLENECK_MACHINE';
-        causeTitle = '🔴 Nghẽn máy móc thiết bị';
-        causeDetail = `Toàn bộ máy [${loaiMay}] (${machinesOfCategory.join(', ')}) bị kín chỗ trong tất cả khung giờ rảnh của bệnh nhân.`;
-      }
-    }
-
-    if (loaiBN === 'NgoaiTru' && causeCode !== 'BOTTLENECK_MACHINE') {
-      if (buoiDieuTri === 'Sang') {
-        causeCode = 'OUTPATIENT_SESSION_LIMIT';
-        causeTitle = '🟠 Xung đột ca Sáng Ngoại trú';
-        causeDetail = `Bệnh nhân Ngoại trú được đăng ký đi ca Sáng (07:00 - 11:30) nhưng các tài nguyên Sáng đã kín chỗ. Buổi Chiều (13:00 - 16:30) còn khoảng trống khả thi.`;
-      } else if (buoiDieuTri === 'Chieu') {
-        causeCode = 'OUTPATIENT_SESSION_LIMIT';
-        causeTitle = '🟠 Xung đột ca Chiều Ngoại trú';
-        causeDetail = `Bệnh nhân Ngoại trú được đăng ký đi ca Chiều (13:00 - 16:30) nhưng các tài nguyên Chiều đã kín chỗ. Buổi Sáng (07:00 - 11:30) còn khoảng trống khả thi.`;
-      }
-    }
-
-    if (arriveMins > 630 || leaveMins < 960) {
-      causeCode = 'PATIENT_TIME_WINDOW';
-      causeTitle = '🔵 Giờ Y lệnh / Giờ vào muộn';
-      causeDetail = `Khung giờ khả dụng của bệnh nhân (${m2t(arriveMins)} - ${m2t(leaveMins)}) quá hẹp, không đủ thời gian trống để xếp thủ thuật kéo dài ${tgMay} phút.`;
-    }
-
-    if (patientOccupancy.length >= 2 && causeCode !== 'BOTTLENECK_MACHINE') {
-      causeCode = 'INTERNAL_PATIENT_CLASH';
-      causeTitle = '🟣 Trùng lịch thủ thuật BN';
-      causeDetail = `Bệnh nhân ${bnName} có nhiều thủ thuật dài kẹp sát nhau trong ngày, chiếm hết khung giờ rảnh để làm thêm [${tt}].`;
-    }
-
-    const targetStaff = qualifiedStaff[0] || (db.roomStaff && db.roomStaff[room] && db.roomStaff[room][0]) || "KTV Phụ Trách";
-    const advices = [];
-
-    const overTimeStart = 675; // 11:15
-    const overTimeEnd = overTimeStart + tgMay;
-    advices.push({
-      id: 1,
-      title: `⚡ Cho phép KTV ${targetStaff} làm lố ${Math.max(5, overTimeEnd - 690)} phút cuối ca sáng (${m2t(overTimeStart)} - ${m2t(overTimeEnd)})`,
-      description: `Nới lỏng giờ làm ca sáng thêm 5-10 phút để KTV ${targetStaff} hoàn thành ca thủ thuật [${tt}] cho BN ${bnName}.`,
-      actionType: 'OVERTIME',
-      patch: {
-        gioDienRa: m2t(overTimeStart),
-        gioKetThuc: m2t(overTimeEnd),
-        nvChinh: targetStaff,
-        nvPhu: "",
-        may: (machinesOfCategory[0] || "Thủ công"),
-        giuong: "Giường 1",
-        phong: room
-      }
-    });
-
-    const aftStart = 810; // 13:30
-    const aftEnd = aftStart + tgMay;
-    advices.push({
-      id: 2,
-      title: `⚡ Chuyển xếp ca sang buổi Chiều (${m2t(aftStart)} - ${m2t(aftEnd)})`,
-      description: `Tận dụng các khoảng trống vắng khách đầu ca chiều để xếp thủ thuật [${tt}] với đầy đủ máy móc và KTV rảnh.`,
-      actionType: 'SWITCH_SESSION',
-      patch: {
-        gioDienRa: m2t(aftStart),
-        gioKetThuc: m2t(aftEnd),
-        nvChinh: targetStaff,
-        nvPhu: "",
-        may: (machinesOfCategory[0] || "Thủ công"),
-        giuong: "Giường 1",
-        phong: room
-      }
-    });
-
-    const earlyStart = 450; // 07:30
-    const earlyEnd = earlyStart + tgMay;
-    advices.push({
-      id: 3,
-      title: `⚡ Dời giờ Y lệnh / Cho BN làm ca đầu giờ sáng (${m2t(earlyStart)} - ${m2t(earlyEnd)})`,
-      description: `Xếp BN thực hiện ca [${tt}] vào đầu giờ sáng lúc 07:30 trước khung giờ cao điểm tắc nghẽn.`,
-      actionType: 'SHIFT_WINDOW',
-      patch: {
-        gioDienRa: m2t(earlyStart),
-        gioKetThuc: m2t(earlyEnd),
-        nvChinh: targetStaff,
-        nvPhu: "",
-        may: (machinesOfCategory[0] || "Thủ công"),
-        giuong: "Giường 1",
-        phong: room
-      }
-    });
-
-    return {
-      rotItem,
-      causeCode,
-      causeTitle,
-      causeDetail,
-      advices
-    };
-  }
-
-  return {
-    diagnose: diagnose
-  };
-})();
-
-if (typeof window !== 'undefined') {
-  window.UnscheduledDiagnosticEngine = UnscheduledDiagnosticEngine;
-}

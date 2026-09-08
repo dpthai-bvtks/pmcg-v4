@@ -213,10 +213,7 @@ window.AIScheduler = (function () {
     // Đọc từ localStorage cache
     try {
       if (typeof localStorage !== 'undefined') {
-        const cacheKey = typeof window !== 'undefined' && typeof window.getBootstrapCacheKey === 'function'
-          ? window.getBootstrapCacheKey()
-          : ('times_bootstrap_cache_' + (localStorage.getItem('pm_unit_code') || 'bvtks-cs2'));
-        const bStr = localStorage.getItem(cacheKey) || localStorage.getItem('times_bootstrap_cache');
+        const bStr = localStorage.getItem('times_bootstrap_cache');
         if (bStr) {
           const bObj = JSON.parse(bStr);
           if (bObj && Array.isArray(bObj.schedule)) historyRows = historyRows.concat(bObj.schedule);

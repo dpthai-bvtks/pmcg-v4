@@ -11395,6 +11395,16 @@ window.renderSttOrderControl = function (type, i, total) {
                 valid.forEach(r => {
                     const nvChinh = (r[7] || '').trim();
                     const thuThuat = (r[4] || '').trim();
+
+                    // Bỏ qua các tên slot ảo của engine xếp lịch (Phụ 1, Phụ 2, Phụ 3, Chính 1...)
+                    if (!nvChinh || /^(ph[uụ]|chinh|chính)\s*\d*$/i.test(nvChinh)) {
+                        // Vẫn đếm thủ thuật dù không có NV hợp lệ
+                        const cat = procCategoryMap[thuThuat.toLowerCase()] || 'PHCN';
+                        if (cat === 'YHCT') procCountYHCT[thuThuat] = (procCountYHCT[thuThuat] || 0) + 1;
+                        else procCountPHCN[thuThuat] = (procCountPHCN[thuThuat] || 0) + 1;
+                        return;
+                    }
+
                     const role = staffRoleMap[nvChinh.toLowerCase()] || '';
 
                     let isDoctor = false;

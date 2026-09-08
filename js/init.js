@@ -14,12 +14,11 @@ window.updateAppHeader = function(unitCode, role) {
     const appSlogan = document.getElementById('app-slogan');
     const mobSub = document.getElementById('mobile-header-date');
 
-    const isSuper = (String(sessRole).toUpperCase() === 'SUPER_ADMIN' || String(sessRole).toUpperCase() === 'SUPERADMIN');
-    if (isSuper) {
+    if (sessRole === 'SUPER_ADMIN') {
         if (appHosp) appHosp.innerText = 'T.I.M.E.S SYSTEM';
-        if (appSub) appSub.innerText = 'HỆ THỐNG XẾP LỊCH THỦ THUẬT YHCT- PHCN THÔNG MINH';
-        if (appSlogan) appSlogan.innerText = 'NHANH GỌN, TỐI ƯU, CHÍNH XÁC';
-        if (mobSub) mobSub.innerText = 'YHCT - PHCN';
+        if (appSub) appSub.innerText = 'HỆ THỐNG QUẢN LÝ ĐƠN VỊ & BẢN QUYỀN SAAS';
+        if (appSlogan) appSlogan.innerText = 'TRUNG TÂM ĐIỀU HÀNH TOÀN CỤC';
+        if (mobSub) mobSub.innerText = 'Super Admin Portal';
     } else if (uCode === 'bvtks-cs2') {
         if (appHosp) appHosp.innerText = 'BỆNH VIỆN THAN - KHOÁNG SẢN CS2';
         if (appSub) appSub.innerText = 'KHOA Y HỌC CỔ TRUYỀN - PHỤC HỒI CHỨC NĂNG';
@@ -34,106 +33,16 @@ window.updateAppHeader = function(unitCode, role) {
 };
 
 /* ==========================================
-   🌙 CHẾ ĐỘ SÁNG / TỐI (DARK / LIGHT THEME)
-   ========================================== */
-window.applyAppTheme = function(theme) {
-    const isDark = (theme === 'dark');
-    document.documentElement.setAttribute('data-theme', theme);
-    if (document.body) document.body.setAttribute('data-theme', theme);
-    localStorage.setItem('pm_app_theme', theme);
-    localStorage.setItem('doc_theme', theme);
-
-    const icon = isDark ? '☀️' : '🌙';
-    const text = isDark ? 'Chế độ Sáng' : 'Chế độ Tối';
-
-    const desktopIcon = document.getElementById('theme-toggle-icon');
-    if (desktopIcon) desktopIcon.innerText = icon;
-
-    const mobileBtn = document.getElementById('mobile-theme-toggle-btn');
-    if (mobileBtn) mobileBtn.innerText = icon;
-
-    // Tự động vẽ lại biểu đồ Dashboard nếu đang hiển thị
-    if (typeof window.loadDashboard === 'function') {
-        try { window.loadDashboard(); } catch(e) {}
-    }
-};
-
-window.initAppTheme = function() {
-    let savedTheme = 'light';
-    try {
-        savedTheme = localStorage.getItem('pm_app_theme') || localStorage.getItem('doc_theme') || 'light';
-    } catch(e) {}
-    window.applyAppTheme(savedTheme);
-};
-
-window.toggleAppTheme = function() {
-    const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-    const next = (current === 'dark') ? 'light' : 'dark';
-    window.applyAppTheme(next);
-};
-
-// Kích hoạt tức thì ngay khi script khởi tạo để tránh chớp màn hình trắng
-try {
-    const preTheme = localStorage.getItem('pm_app_theme') || localStorage.getItem('doc_theme') || 'light';
-    document.documentElement.setAttribute('data-theme', preTheme);
-} catch(e) {}
-
-/* ==========================================
    T.I.M.E.S SYSTEM - INITIALIZATION & THEME
    ========================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
-    window.initAppTheme();
-
     // 🏢 Khôi phục thông tin Mã Đơn Vị & Thương Hiệu đa bệnh viện
-    let hasValidSession = false;
-    try {
-        const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
-        if (sess && (sess.username || sess.role)) hasValidSession = true;
-    } catch(e) {}
-
-    const savedUnit = hasValidSession ? (localStorage.getItem('pm_unit_code') || '') : '';
+    const savedUnit = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
     const unitInput = document.getElementById('login-unit');
     if (unitInput) unitInput.value = savedUnit;
 
-    // 🧹 Dọn dẹp cache rò rỉ giữa các đơn vị (Multi-Tenant Cache Sanitization)
-    if (!hasValidSession) {
-        const preserveKeys = ['pm_app_theme', 'doc_theme', 'times_backup_api_url'];
-        try {
-            const keysToRemove = [];
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && !preserveKeys.includes(key)) {
-                    keysToRemove.push(key);
-                }
-            }
-            keysToRemove.forEach(k => localStorage.removeItem(k));
-        } catch(e) {}
-    } else {
-        const currentUnitCode = (localStorage.getItem('pm_unit_code') || '').toLowerCase();
-        const scheduleUnitTag = (localStorage.getItem('meds_schedule_unit') || '').toLowerCase();
-        if (!scheduleUnitTag || (currentUnitCode && scheduleUnitTag !== currentUnitCode)) {
-            localStorage.removeItem('meds_success');
-            localStorage.removeItem('meds_unscheduled');
-            localStorage.removeItem('meds_schedule_date');
-            localStorage.removeItem('times_bootstrap_cache');
-        }
-    }
-
-    // 🧹 Tự động làm sạch URL Google Apps Script nếu bị dính lặp
-    try {
-        const rawBackup = localStorage.getItem('times_backup_api_url') || '';
-        if (rawBackup) {
-            const cleanBackup = (typeof window.sanitizeGoogleScriptUrl === 'function')
-                ? window.sanitizeGoogleScriptUrl(rawBackup)
-                : (rawBackup.includes('/exechttps://') ? rawBackup.substring(0, rawBackup.indexOf('/exechttps://') + 5) : rawBackup);
-            if (cleanBackup && cleanBackup !== rawBackup) {
-                localStorage.setItem('times_backup_api_url', cleanBackup);
-            }
-        }
-    } catch(e) {}
-
-    if (typeof window.updateAppHeader === 'function' && savedUnit) {
+    if (typeof window.updateAppHeader === 'function') {
         window.updateAppHeader(savedUnit);
     }
 
@@ -146,7 +55,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (sess.role) {
             const superTab = document.getElementById('nav-tab-tenants');
             if (superTab) superTab.style.display = 'none';
-            if (typeof applyPermissions === 'function') applyPermissions(sess.role, sess.permissions || 'all');
         }
     } catch(e) {}
 
@@ -229,13 +137,13 @@ window.loadTimRanhDataFromServer = function () {
 };
 
 window.doLogin = function () {
-    const unit = (document.getElementById('login-unit')?.value || '').trim().toLowerCase();
+    const unit = (document.getElementById('login-unit')?.value || '').trim().toLowerCase() || 'bvtks-cs2';
     const user = (document.getElementById('login-user')?.value || '').trim();
     const pass = (document.getElementById('login-pass')?.value || '').trim();
     const errDiv = document.getElementById('login-error');
     const btn = document.getElementById('btn-do-login');
 
-    if (!unit || !user || !pass) {
+    if (!user || !pass) {
         if (errDiv) {
             errDiv.innerText = 'Vui lòng nhập đầy đủ mã đơn vị, tên đăng nhập và mật khẩu!';
             errDiv.style.display = 'block';
@@ -259,8 +167,8 @@ window.doLogin = function () {
                 const uName = res.username || user || 'admin';
                 const uRole = res.role || 'Admin';
                 const uPerms = res.permissions || 'all';
-                const uUnit = (res.unit_code || unit).toLowerCase();
-                const uUnitName = res.unit_name || (uRole === 'SUPER_ADMIN' ? 'T.I.M.E.S SYSTEM' : 'Bệnh viện Than - Khoáng sản Cơ sở 2');
+                const uUnit = res.unit_code || unit;
+                const uUnitName = res.unit_name || (uRole === 'SUPER_ADMIN' ? 'Hệ Thống Quản Trị Trung Tâm SaaS' : 'Bệnh viện Than - Khoáng sản Cơ sở 2');
 
                 localStorage.setItem('pm_unit_code', uUnit);
                 localStorage.setItem('pm_unit_name', uUnitName);
@@ -273,55 +181,6 @@ window.doLogin = function () {
                     plan_tier: res.plan_tier || 'PRO',
                     sessionId: res.sessionId || ('sess_' + Date.now())
                 }));
-
-                // ✅ 1. Xóa sạch bộ đệm lịch trình cục bộ của đơn vị trước đó
-                localStorage.removeItem('meds_success');
-                localStorage.removeItem('meds_unscheduled');
-                localStorage.removeItem('meds_schedule_date');
-                localStorage.removeItem('meds_schedule_unit');
-
-                // ✅ 2. Xóa sạch dữ liệu trong RAM của đơn vị cũ
-                window.currentScheduleData = null;
-                window.chamCongData = {};
-                window.thongKeData = {};
-                window.adminChamCongEmployees = [];
-
-                if (window._dashWorkdaysChart) {
-                    try { window._dashWorkdaysChart.destroy(); } catch(e){}
-                    window._dashWorkdaysChart = null;
-                }
-                if (window._dashProcsChart) {
-                    try { window._dashProcsChart.destroy(); } catch(e){}
-                    window._dashProcsChart = null;
-                }
-
-                if (window.dataCache) {
-                    window.dataCache.pat = [];
-                    window.dataCache.staff = [];
-                    window.dataCache.machine = [];
-                    window.dataCache.room = [];
-                    window.dataCache.proc = [];
-                    window.dataCache.schedule = [];
-                    window.dataCache.protocols = [];
-                }
-                if (window.dataCacheTime) {
-                    window.dataCacheTime = {};
-                }
-
-                // ✅ 3. Reset các chỉ số trên Dashboard về trạng thái đang tải
-                const elBN = document.getElementById('statBN'); if (elBN) elBN.textContent = '...';
-                const elStaff = document.getElementById('statStaff'); if (elStaff) elStaff.textContent = '...';
-                const elSched = document.getElementById('statScheduled'); if (elSched) elSched.textContent = '...';
-                const elDrop = document.getElementById('statDropped'); if (elDrop) elDrop.textContent = '...';
-                const elTotal = document.getElementById('statTotalProcs'); if (elTotal) elTotal.textContent = '...';
-                const previewTbody = document.getElementById('dashboard-preview-body');
-                if (previewTbody) {
-                    previewTbody.innerHTML = '<tr><td colspan="8" align="center" style="padding:24px;"><div class="spinner"></div><div style="font-size:12px; color:#64748b; margin-top:8px;">Đang tải dữ liệu đơn vị...</div></td></tr>';
-                }
-
-                if (typeof window.resetChamCongForUnit === 'function') {
-                    window.resetChamCongForUnit(uUnit);
-                }
 
                 const overlay = document.getElementById('login-overlay');
                 if (overlay) overlay.style.display = 'none';
@@ -339,11 +198,22 @@ window.doLogin = function () {
                 if (typeof window.updateAppHeader === 'function') {
                     window.updateAppHeader(uUnit, uRole);
                 }
-                if (typeof updateLogoutButton === 'function') {
-                    updateLogoutButton(uName);
+
+                // Xóa sạch bộ đệm dữ liệu của đơn vị trước đó trong RAM
+                if (window.dataCache) {
+                    window.dataCache.pat = [];
+                    window.dataCache.staff = [];
+                    window.dataCache.machine = [];
+                    window.dataCache.room = [];
+                    window.dataCache.proc = [];
+                    window.dataCache.schedule = [];
+                    window.dataCache.protocols = [];
+                }
+                if (window.dataCacheTime) {
+                    window.dataCacheTime = {};
                 }
 
-                // ✅ 4. Tải dữ liệu Bootstrap mới nhất của đơn vị này ngay lập tức (forceRefresh = true)
+                // Tải dữ liệu Bootstrap mới nhất của đơn vị này ngay lập tức (forceRefresh = true)
                 if (typeof window.loadBootstrapData === 'function') {
                     try { window.loadBootstrapData(true); } catch(e) { console.warn('Lỗi loadBootstrapData:', e); }
                 } else if (typeof window.loadAllData === 'function') {

@@ -2,16 +2,6 @@
    T.I.M.E.S SYSTEM - THỐNG KÊ HIS & EXCEL EXPORT
    ========================================== */
 
-var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi : (typeof callApi === 'function' ? callApi : function(name, args, cb, err) {
-    if (typeof window !== 'undefined' && window.callApi) return window.callApi(name, args, cb, err);
-    if (typeof window !== 'undefined' && window.google?.script?.run) {
-        return new Promise((res, rej) => {
-            window.google.script.run.withSuccessHandler(r => { if (cb) cb(r); res(r); }).withFailureHandler(e => { if (err) err(e); rej(e); })[name](...(args || []));
-        });
-    }
-    return Promise.reject(new Error("API not available"));
-});
-
         // ==========================================
         // QUẢN LÝ NHÂN SỰ CHẤM CÔNG (HỌ VÀ TÊN ĐẦY ĐỦ CHUẨN BVTKS CS2)
         // ==========================================
@@ -47,417 +37,163 @@ var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi
         }
 
         function getChamCongStorageKey(key) {
-            const u = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
-            return key + '_' + u;
+        const u = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
+        return key + '_' + u;
+    }
+
+    const DEFAULT_CHAMCONG_EMPLOYEES = Object.keys(DEFAULT_CHAMCONG_STAFF);
+
+        const isBVTKS_CS2 = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2') === 'bvtks-cs2';
+        let adminChamCongEmployees = isBVTKS_CS2 ? [...DEFAULT_CHAMCONG_EMPLOYEES] : []; 
+        let adminChamCongStaffConfig = isBVTKS_CS2 ? { ...DEFAULT_CHAMCONG_STAFF } : {};
+        let editAdminEmployeeIndex = -1;
+
+        // ==========================================
+        // SMART RESOLVER & DATA NORMALIZATION
+        // ==========================================
+        function findStaffDataByKey(dataObj, empName) {
+            if (!dataObj || typeof dataObj !== 'object') return null;
+            if (dataObj[empName]) return dataObj[empName];
+
+            const staffConf = (adminChamCongStaffConfig && adminChamCongStaffConfig[empName]) || DEFAULT_CHAMCONG_STAFF[empName];
+            const keys = (staffConf && staffConf.keys) ? staffConf.keys : [empName.toLowerCase()];
+
+            for (const dKey of Object.keys(dataObj)) {
+                const lowerDKey = dKey.toLowerCase().trim();
+                if (lowerDKey === empName.toLowerCase().trim()) return dataObj[dKey];
+                for (const k of keys) {
+                    const lowerK = k.toLowerCase().trim();
+                    if (lowerDKey === lowerK || lowerDKey.includes(lowerK) || lowerK.includes(lowerDKey)) {
+                        return dataObj[dKey];
+                    }
+                }
+            }
+            return null;
         }
 
-        // Tự động dọn dẹp cache cũ bị ô nhiễm từ các phiên bản trước
-        try {
-            if (typeof localStorage !== 'undefined' && localStorage.getItem('pm_cleaned_cache_ver') !== '4.0.3-rev6') {
-                Object.keys(localStorage).forEach(k => {
-                    if (k.startsWith('pm_cache_cc_') || k.startsWith('pm_cache_tk_')) {
-                        localStorage.removeItem(k);
+        function normalizeChamCongData(raw) {
+            const res = {};
+            if (!raw || typeof raw !== 'object') return res;
+            Object.assign(res, raw);
+
+            adminChamCongEmployees.forEach(emp => {
+                if (!res[emp] || Object.keys(res[emp]).length === 0) {
+                    const found = findStaffDataByKey(raw, emp);
+                    if (found && typeof found === 'object' && Object.keys(found).length > 0) {
+                        res[emp] = found;
+                    } else if (!res[emp]) {
+                        res[emp] = {};
                     }
-                });
-                localStorage.setItem('pm_cleaned_cache_ver', '4.0.3-rev6');
+                }
+            });
+            return res;
+        }
+
+        function normalizeThongKeData(raw) {
+            const res = {};
+            if (!raw || typeof raw !== 'object') return res;
+            Object.assign(res, raw);
+
+            adminChamCongEmployees.forEach(emp => {
+                if (!res[emp]) {
+                    const found = findStaffDataByKey(raw, emp);
+                    if (found) {
+                        res[emp] = found;
+                    } else {
+                        res[emp] = { loai1: 0, loai2: 0, loai3: 0, khac: 0, tong: 0, details: [] };
+                    }
+                }
+            });
+            return res;
+        }
+
+
+        // Tự động nạp danh sách nhân sự từ cache khi khởi động
+        try {
+            const cachedEmp = JSON.parse(localStorage.getItem(getChamCongStorageKey('med_chamcong_employees')) || '[]');
+            if (Array.isArray(cachedEmp) && cachedEmp.length > 0) {
+                adminChamCongEmployees = cachedEmp;
+            }
+            const cachedStaff = JSON.parse(localStorage.getItem(getChamCongStorageKey('med_chamcong_staff_config')) || '{}');
+            if (cachedStaff && Object.keys(cachedStaff).length > 0) {
+                adminChamCongStaffConfig = cachedStaff;
             }
         } catch(e) {}
 
-        function getLocalCCKey(my) {
-            const u = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
-            return `pm_cache_cc_${u}_${my}`;
-        }
-        function getLocalTKKey(my) {
-            const u = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
-            return `pm_cache_tk_${u}_${my}`;
-        }
-        function getCachedChamCong(my) {
-            try {
-                const raw = localStorage.getItem(getLocalCCKey(my));
-                if (raw) return JSON.parse(raw);
-            } catch(e) {}
-            return null;
-        }
-        function setCachedChamCong(my, data) {
-            try {
-                if (data && typeof data === 'object') {
-                    localStorage.setItem(getLocalCCKey(my), JSON.stringify(data));
-                }
-            } catch(e) {}
-        }
-        function getCachedThongKe(my) {
-            try {
-                const raw = localStorage.getItem(getLocalTKKey(my));
-                if (raw) return JSON.parse(raw);
-            } catch(e) {}
-            return null;
-        }
-        function setCachedThongKe(my, data) {
-            try {
-                if (data && typeof data === 'object') {
-                    localStorage.setItem(getLocalTKKey(my), JSON.stringify(data));
-                }
-            } catch(e) {}
-        }
-
-    const DEFAULT_CHAMCONG_EMPLOYEES = Object.keys(DEFAULT_CHAMCONG_STAFF);
-    if (typeof window !== 'undefined') {
-        window.DEFAULT_CHAMCONG_EMPLOYEES = DEFAULT_CHAMCONG_EMPLOYEES;
-        window.DEFAULT_CHAMCONG_STAFF = DEFAULT_CHAMCONG_STAFF;
-    }
-
-    const isBVTKS_CS2 = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2') === 'bvtks-cs2';
-
-    // ==========================================
-    // CANONICAL NAME RESOLVER & STAFF DATA SANITIZER
-    // ==========================================
-    function getCanonicalStaffName(rawName) {
-        if (!rawName) return null;
-        if (typeof rawName === 'object') {
-            rawName = rawName.tenHis || rawName.name || rawName.ten || rawName[1] || rawName[0] || '';
-        }
-        const str = String(rawName).trim();
-        if (!str) return null;
-
-        // 1. Triệt tiêu 100% các ô trợ lý ảo Phụ 1..8, Phụ trách
-        if (/^(phụ|phu)\s*\d+/i.test(str) || /^(ktv\s*)?phụ\s*trách/i.test(str) || /^ktv\s*phu\s*trach/i.test(str)) {
-            return null;
-        }
-
-        // 2. Khớp trực tiếp với Họ và tên đầy đủ chuẩn BVTKS CS2
-        if (DEFAULT_CHAMCONG_STAFF[str]) return str;
-
-        const lower = str.toLowerCase().trim();
-        const cleanLower = lower.replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd|dd\.|dd)\s+/, '').trim();
-
-        for (const [fullName, conf] of Object.entries(DEFAULT_CHAMCONG_STAFF)) {
-            if (fullName.toLowerCase() === lower || fullName.toLowerCase() === cleanLower) return fullName;
-            if (conf && conf.keys) {
-                for (const k of conf.keys) {
-                    const kl = String(k).toLowerCase().trim();
-                    if (lower === kl || cleanLower === kl) return fullName;
+        function getOrLoadChamCongEmployees(callback) {
+            const isDefault = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2') === 'bvtks-cs2';
+            
+            // 1. Kiểm tra cache / dataCache / default
+            if (adminChamCongEmployees.length === 0) {
+                const cachedEmpStr = localStorage.getItem(getChamCongStorageKey('med_chamcong_employees'));
+                if (cachedEmpStr) {
+                    try { adminChamCongEmployees = JSON.parse(cachedEmpStr); } catch(e){}
+                } else if (isDefault) {
+                    adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
                 }
             }
-        }
 
-        // 3. Tra cứu qua cấu hình nhân sự Tab Admin hiện tại
-        if (adminChamCongStaffConfig && typeof adminChamCongStaffConfig === 'object') {
-            for (const [confName, conf] of Object.entries(adminChamCongStaffConfig)) {
-                if (confName.toLowerCase() === lower || confName.toLowerCase() === cleanLower) return confName;
-                if (conf && conf.keys) {
-                    for (const k of conf.keys) {
-                        const kl = String(k).toLowerCase().trim();
-                        if (lower === kl || cleanLower === kl) return confName;
-                    }
+            if (callback) callback(adminChamCongEmployees);
+
+            // 2. Tải đồng bộ ngầm từ API Cloudflare
+            google.script.run.withSuccessHandler(empRes => {
+                let list = [];
+                if (empRes && empRes.status === 'success') {
+                    if (Array.isArray(empRes.data)) list = empRes.data;
+                    else if (empRes.data && empRes.data.employees) list = empRes.data.employees;
+                    else if (empRes.data && typeof empRes.data === 'object') list = Object.keys(empRes.data);
+                } else if (Array.isArray(empRes)) {
+                    list = empRes;
                 }
-            }
-        }
 
-        // 4. Tra cứu qua dataCache.staff (lấy trường tên đầy đủ tenHis)
-        if (typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff)) {
-            const found = dataCache.staff.find(s => {
-                if (!s) return false;
-                const sTen = String(s.ten || s.name || '').toLowerCase().trim();
-                const sClean = sTen.replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd|dd\.|dd)\s+/, '').trim();
-                return sTen === lower || sClean === cleanLower || (s.tenHis && s.tenHis.toLowerCase().trim() === lower);
-            });
-            if (found && found.tenHis && String(found.tenHis).trim()) {
-                const hisName = String(found.tenHis).trim();
-                if (DEFAULT_CHAMCONG_STAFF[hisName]) return hisName;
-                return hisName;
-            }
-        }
-
-        return str;
-    }
-    window.getCanonicalStaffName = getCanonicalStaffName;
-
-    function cleanseAdminChamCongEmployees(list) {
-        const isDefault = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2') === 'bvtks-cs2';
-        let res = [];
-        if (Array.isArray(list)) {
-            list.forEach(item => {
-                const canon = getCanonicalStaffName(item);
-                if (canon && !res.includes(canon)) {
-                    res.push(canon);
-                }
-            });
-        }
-        if (isDefault) {
-            // Đảm bảo đủ nhân sự chuẩn BVTKS CS2 nếu danh sách bị thiếu (chỉ bổ sung vào cuối, tuyệt đối KHÔNG sort lại để bảo toàn thứ tự kéo thả của người dùng)
-            DEFAULT_CHAMCONG_EMPLOYEES.forEach(stdEmp => {
-                if (!res.includes(stdEmp)) {
-                    res.push(stdEmp);
-                }
-            });
-        }
-        return res;
-    }
-    window.cleanseAdminChamCongEmployees = cleanseAdminChamCongEmployees;
-
-    let adminChamCongEmployees = isBVTKS_CS2 ? [...DEFAULT_CHAMCONG_EMPLOYEES] : []; 
-    let adminChamCongStaffConfig = isBVTKS_CS2 ? { ...DEFAULT_CHAMCONG_STAFF } : {};
-    let editAdminEmployeeIndex = -1;
-
-    // Tự động nạp và làm sạch danh sách nhân sự từ cache khi khởi động
-    try {
-        const cachedEmp = JSON.parse(localStorage.getItem(getChamCongStorageKey('med_chamcong_employees')) || '[]');
-        if (Array.isArray(cachedEmp) && cachedEmp.length > 0) {
-            adminChamCongEmployees = cleanseAdminChamCongEmployees(cachedEmp);
-        }
-        const cachedStaff = JSON.parse(localStorage.getItem(getChamCongStorageKey('med_chamcong_staff_config')) || '{}');
-        if (cachedStaff && Object.keys(cachedStaff).length > 0) {
-            adminChamCongStaffConfig = cachedStaff;
-        }
-    } catch(e) {}
-
-    // Đảm bảo cấu hình nhân sự
-    function ensureStaffConfigForEmployees() {
-        if (!adminChamCongStaffConfig || typeof adminChamCongStaffConfig !== 'object') {
-            adminChamCongStaffConfig = {};
-        }
-        adminChamCongEmployees.forEach(emp => {
-            if (!emp) return;
-            const empName = String(emp).trim();
-            if (!empName) return;
-            if (!adminChamCongStaffConfig[empName]) {
-                const defConf = DEFAULT_CHAMCONG_STAFF[empName];
-                if (defConf) {
-                    adminChamCongStaffConfig[empName] = { ...defConf };
-                    return;
-                }
-                const role = getEmployeeRole(empName);
-                const lower = empName.toLowerCase().trim();
-                const keys = [lower];
-                const words = lower.split(/\s+/);
-                if (words.length > 1) {
-                    const shortName = words[words.length - 1];
-                    keys.push(shortName);
-                    if (role === 'Bác sĩ') {
-                        keys.push('bs ' + shortName, 'bs. ' + shortName, 'bs ' + lower, 'bs. ' + lower);
-                    } else if (role === 'Điều dưỡng') {
-                        keys.push('đd ' + shortName, 'đd. ' + shortName, 'dd ' + shortName, 'dd. ' + shortName, 'đd ' + lower);
-                    } else {
-                        keys.push('ktv ' + shortName, 'ktv. ' + shortName, 'ktv ' + lower, 'ktv. ' + lower);
-                    }
-                }
-                adminChamCongStaffConfig[empName] = {
-                    keys: keys,
-                    skills: 'Cả hai',
-                    role: role,
-                    heSo: 1.0
-                };
-            }
-        });
-    }
-
-    function findStaffDataByKey(dataObj, empName) {
-        if (!dataObj || typeof dataObj !== 'object') return null;
-        if (dataObj[empName]) return dataObj[empName];
-
-        const canonTarget = getCanonicalStaffName(empName);
-
-        // 1. Kiểm tra nếu trong dataObj có key nào quy về cùng canonical full name
-        for (const dKey of Object.keys(dataObj)) {
-            if (dKey === empName) return dataObj[dKey];
-            const canonDKey = getCanonicalStaffName(dKey);
-            if (canonTarget && canonDKey && canonTarget === canonDKey) {
-                return dataObj[dKey];
-            }
-        }
-
-        // 2. So khớp từ khóa với aliases
-        const staffConf = (adminChamCongStaffConfig && adminChamCongStaffConfig[empName]) || (canonTarget && DEFAULT_CHAMCONG_STAFF[canonTarget]) || DEFAULT_CHAMCONG_STAFF[empName];
-        const keys = (staffConf && staffConf.keys) ? staffConf.keys : [empName.toLowerCase()];
-        const empLower = empName.toLowerCase().trim();
-        const cleanEmpLower = empLower.replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd|dd\.|dd)\s+/, '').trim();
-
-        for (const dKey of Object.keys(dataObj)) {
-            const lowerDKey = dKey.toLowerCase().trim();
-            const cleanDKey = lowerDKey.replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd|dd\.|dd)\s+/, '').trim();
-            if (lowerDKey === empLower || cleanDKey === cleanEmpLower) return dataObj[dKey];
-            for (const k of keys) {
-                const lowerK = String(k).toLowerCase().trim();
-                if (lowerDKey === lowerK || cleanDKey === lowerK) {
-                    return dataObj[dKey];
-                }
-            }
-        }
-        return null;
-    }
-    window.findStaffDataByKey = findStaffDataByKey;
-
-    function normalizeChamCongData(raw) {
-        const res = {};
-        if (!raw || typeof raw !== 'object') return res;
-
-        // 1. Gom nhóm theo Họ tên đầy đủ chuẩn hóa và loại bỏ Phụ 1..8
-        Object.keys(raw).forEach(k => {
-            const canon = getCanonicalStaffName(k);
-            if (!canon) return; // Bỏ qua Phụ 1..8
-            if (!res[canon]) {
-                res[canon] = {};
-            }
-            const dayData = raw[k] || {};
-            Object.keys(dayData).forEach(dKey => {
-                if (dKey === 'heSo') {
-                    if (res[canon].heSo === undefined) res[canon].heSo = dayData[dKey];
-                } else {
-                    if (!res[canon][dKey] && dayData[dKey]) {
-                        res[canon][dKey] = dayData[dKey];
-                    }
-                }
-            });
-        });
-
-        // 2. Đảm bảo mọi nhân sự trong adminChamCongEmployees đều có bản ghi
-        adminChamCongEmployees.forEach(emp => {
-            if (!res[emp]) {
-                const found = findStaffDataByKey(raw, emp);
-                if (found && typeof found === 'object' && Object.keys(found).length > 0) {
-                    res[emp] = found;
-                } else {
-                    res[emp] = {};
-                }
-            }
-        });
-        return res;
-    }
-
-    function normalizeThongKeData(raw) {
-        const res = {};
-        if (!raw || typeof raw !== 'object') return res;
-
-        // 1. Gom nhóm theo Họ tên đầy đủ chuẩn hóa và loại bỏ Phụ 1..8
-        Object.keys(raw).forEach(k => {
-            const canon = getCanonicalStaffName(k);
-            if (!canon) return; // Bỏ qua Phụ 1..8
-            if (!res[canon]) {
-                res[canon] = { loai1: 0, loai2: 0, loai3: 0, khac: 0, tong: 0, details: [] };
-            }
-            const item = raw[k] || {};
-            res[canon].loai1 = (res[canon].loai1 || 0) + (item.loai1 || 0);
-            res[canon].loai2 = (res[canon].loai2 || 0) + (item.loai2 || 0);
-            res[canon].loai3 = (res[canon].loai3 || 0) + (item.loai3 || 0);
-            res[canon].khac = (res[canon].khac || 0) + (item.khac || 0);
-            res[canon].tong = (res[canon].tong || 0) + (item.tong || 0);
-            if (Array.isArray(item.details) && item.details.length > 0) {
-                res[canon].details = (res[canon].details || []).concat(item.details);
-            }
-        });
-
-        // 2. Đảm bảo mọi nhân sự trong adminChamCongEmployees đều có bản ghi
-        adminChamCongEmployees.forEach(emp => {
-            if (!res[emp]) {
-                const found = findStaffDataByKey(raw, emp);
-                if (found) {
-                    res[emp] = found;
-                } else {
-                    res[emp] = { loai1: 0, loai2: 0, loai3: 0, khac: 0, tong: 0, details: [] };
-                }
-            }
-        });
-        return res;
-    }
-
-    function getOrLoadChamCongEmployees(callback, forceRefresh = false) {
-        const isDefault = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2') === 'bvtks-cs2';
-        
-        // 1. Kiểm tra RAM -> Cache LocalStorage (và luôn làm sạch ngay lập tức)
-        if (!adminChamCongEmployees || adminChamCongEmployees.length === 0) {
-            const cachedEmpStr = localStorage.getItem(getChamCongStorageKey('med_chamcong_employees'));
-            if (cachedEmpStr) {
-                try {
-                    const parsed = JSON.parse(cachedEmpStr);
-                    if (Array.isArray(parsed) && parsed.length > 0) adminChamCongEmployees = parsed;
-                } catch(e){}
-            }
-        }
-
-        adminChamCongEmployees = cleanseAdminChamCongEmployees(adminChamCongEmployees);
-        if (adminChamCongEmployees.length === 0 && isDefault) {
-            adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
-        }
-
-        ensureStaffConfigForEmployees();
-
-        // Ghi đè lại cache sạch vào localStorage
-        try {
-            localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees));
-        } catch(e){}
-
-        if (callback) callback(adminChamCongEmployees);
-
-        // Nếu đã có danh sách nhân sự chuẩn và không yêu cầu forceRefresh -> trả về ngay
-        if (!forceRefresh && adminChamCongEmployees && adminChamCongEmployees.length > 0) {
-            return adminChamCongEmployees;
-        }
-
-        // 2. Tải từ API Cloudflare khi chưa có dữ liệu hoặc khi forceRefresh
-        callApi('getEmployees', []).then(empRes => {
-            let list = [];
-            if (empRes && empRes.status === 'success') {
-                if (Array.isArray(empRes.data)) list = empRes.data;
-                else if (empRes.data && empRes.data.employees) list = empRes.data.employees;
-                else if (empRes.data && typeof empRes.data === 'object') list = Object.keys(empRes.data);
-            } else if (Array.isArray(empRes)) {
-                list = empRes;
-            }
-
-            if (list && list.length > 0) {
-                adminChamCongEmployees = cleanseAdminChamCongEmployees(list);
-                ensureStaffConfigForEmployees();
+                adminChamCongEmployees = list.map(item => typeof item === 'object' && item !== null ? (item.ten || item.name || item.his_name) : item).filter(Boolean);
                 try { localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees)); } catch(e){}
+                if (callback) callback(adminChamCongEmployees);
                 if (typeof renderChamCongTable === 'function') renderChamCongTable();
-                if (typeof renderThongKeTable === 'function') renderThongKeTable();
-                if (typeof renderAdminChamCongTable === 'function') renderAdminChamCongTable();
-            }
-        }).catch(err => {
-            console.warn('getEmployees fallback:', err);
-        });
-
-        return adminChamCongEmployees;
-    }
+            }).withFailureHandler(err => {
+                console.warn("getEmployees fallback:", err);
+            }).getEmployees();
+        }
         
         function loadAdminChamCongData() {
-            window.showGlobalLoading("Đang tải danh sách nhân sự từ máy chủ...");
-            callApi('getEmployees', []).then(res => {
-                let list = [];
+            window.showGlobalLoading("Đang tải danh sách nhân sự từ Google Drive...");
+            google.script.run.withSuccessHandler(res => {
                 if(res && res.status === 'success' && res.data) {
-                    if (Array.isArray(res.data)) list = res.data;
-                    else if (Array.isArray(res.data.employees)) list = res.data.employees;
-                    else list = Object.keys(res.data);
+                    if (Array.isArray(res.data)) {
+                        adminChamCongEmployees = res.data;
+                    } else if (Array.isArray(res.data.employees)) {
+                        adminChamCongEmployees = res.data.employees;
+                    } else {
+                        adminChamCongEmployees = Object.keys(res.data);
+                    }
                 } else if (Array.isArray(res)) {
-                    list = res;
-                } else if (res && typeof res === 'object') {
-                    list = Object.keys(res);
+                    adminChamCongEmployees = res;
+                } else {
+                    adminChamCongEmployees = Object.keys(res);
                 }
-                adminChamCongEmployees = cleanseAdminChamCongEmployees(list);
-                if (adminChamCongEmployees.length === 0 && isBVTKS_CS2) {
-                    adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
+                if (Array.isArray(adminChamCongEmployees)) {
+                    adminChamCongEmployees = adminChamCongEmployees.map(item => typeof item === 'object' && item !== null ? (item.ten || item.name || item.his_name) : item).filter(Boolean);
                 }
-                try { localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees)); } catch(e){}
-                ensureStaffConfigForEmployees();
-                return callApi('getErrorConfig', []);
-            }).then(resConfig => {
+                if (adminChamCongEmployees.length > 0) {
+                    try { localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees)); } catch(e){}
+                }
+                google.script.run.withSuccessHandler(resConfig => {
+                    window.hideGlobalLoading();
+                    if(resConfig && resConfig.status === 'success' && resConfig.data) {
+                        adminChamCongStaffConfig = resConfig.data.staff || {};
+                    } else if (resConfig && resConfig.staff) {
+                        adminChamCongStaffConfig = resConfig.staff;
+                    }
+                    renderAdminChamCongTable();
+                }).getErrorConfig();
+            }).withFailureHandler(err => {
                 window.hideGlobalLoading();
-                if(resConfig && resConfig.status === 'success' && resConfig.data) {
-                    adminChamCongStaffConfig = resConfig.data.staff || {};
-                } else if (resConfig && resConfig.staff) {
-                    adminChamCongStaffConfig = resConfig.staff;
+                console.error("Lỗi loadAdminChamCongData:", err);
+                if (adminChamCongEmployees.length === 0 && typeof dataCache !== 'undefined' && dataCache.staff && dataCache.staff.length > 0) {
+                    adminChamCongEmployees = dataCache.staff.map(s => s.ten || s[1] || s[0]).filter(n => n && String(n).trim() !== '');
                 }
-                ensureStaffConfigForEmployees();
                 renderAdminChamCongTable();
-            }).catch(err => {
-                window.hideGlobalLoading();
-                console.error('Lỗi loadAdminChamCongData:', err);
-                adminChamCongEmployees = cleanseAdminChamCongEmployees(adminChamCongEmployees);
-                if (adminChamCongEmployees.length === 0 && isBVTKS_CS2) {
-                    adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
-                }
-                ensureStaffConfigForEmployees();
-                renderAdminChamCongTable();
-            });
+            }).getEmployees();
         }
 
         
@@ -472,7 +208,10 @@ var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi
             renderAdminChamCongTable();
 
             // Save to server
-            if (typeof callApi === 'function') {
+            if (window.google && window.google.script && window.google.script.run) {
+                window.google.script.run.saveEmployees(adminChamCongEmployees);
+                window.google.script.run.saveErrorConfig({ staff: adminChamCongStaffConfig });
+            } else if (typeof callApi === 'function') {
                 callApi('saveEmployees', [adminChamCongEmployees]);
                 callApi('saveErrorConfig', [{ staff: adminChamCongStaffConfig }]);
             }
@@ -480,902 +219,193 @@ var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi
         };
 
 function renderAdminChamCongTable() {
-    const adminTbody = document.getElementById('admin-employees-body');
-    const ccTbody = document.getElementById('chamcong-employees-body');
-    const badgeCount = document.getElementById('chamcong-staff-badge-count');
-    if (badgeCount) badgeCount.innerText = adminChamCongEmployees.length;
+            const tbody = document.getElementById('admin-employees-body');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            adminChamCongEmployees.forEach((emp, index) => {
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1.5px solid #cbd5e1';
+                tr.style.transition = 'background-color 0.15s';
+                tr.onmouseenter = () => tr.style.backgroundColor = '#f1f5f9';
+                tr.onmouseleave = () => tr.style.backgroundColor = '#ffffff';
 
-    if (!adminTbody && !ccTbody) return;
-
-    // 1. Render Bảng trong Section Admin (nếu có)
-    if (adminTbody) {
-        adminTbody.innerHTML = '';
-        adminChamCongEmployees.forEach((emp, index) => {
-            const tr = document.createElement('tr');
-            tr.style.borderBottom = '1.5px solid #cbd5e1';
-            tr.style.transition = 'background-color 0.15s';
-            tr.onmouseenter = () => tr.style.backgroundColor = (document.documentElement.getAttribute('data-theme') === 'dark' ? '#253347' : '#f1f5f9');
-            tr.onmouseleave = () => tr.style.backgroundColor = '';
-
-            const staff = adminChamCongStaffConfig[emp] || { keys: [emp.toLowerCase()], skills: 'PHCN' };
-            const keysStr = staff.keys ? staff.keys.join(', ') : emp.toLowerCase();
-            const skill = staff.skills || 'PHCN';
-            const role = getEmployeeRole(emp);
-            
-            let roleBadge = `<span style="background: #f8fafc; color: #475569; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #e2e8f0; display: inline-block; line-height: 15px;">${role}</span>`;
-            if (role === 'Bác sĩ') {
-                roleBadge = `<span style="background: #eff6ff; color: #1d4ed8; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #bfdbfe; display: inline-block; line-height: 15px;">Bác sĩ</span>`;
-            } else if (role === 'KTV') {
-                roleBadge = `<span style="background: #f0fdf4; color: #15803d; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #bbf7d0; display: inline-block; line-height: 15px;">KTV</span>`;
-            } else if (role === 'Điều dưỡng') {
-                roleBadge = `<span style="background: #faf5ff; color: #7e22ce; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #e9d5ff; display: inline-block; line-height: 15px;">Điều dưỡng</span>`;
-            }
-
-            let skillBadge = `<span style="background: #eff6ff; color: #2563eb; padding: 1px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #bfdbfe; display: inline-block; line-height: 15px;">PHCN</span>`;
-            if (skill === 'YHCT') {
-                skillBadge = `<span style="background: #fef3c7; color: #d97706; padding: 1px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #fde68a; display: inline-block; line-height: 15px;">YHCT</span>`;
-            } else if (skill === 'Cả hai') {
-                skillBadge = `<span style="background: #ecfdf5; color: #059669; padding: 1px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #a7f3d0; display: inline-block; line-height: 15px;">Cả hai</span>`;
-            }
-            
-            tr.innerHTML = `
-                <td style="color: #64748b; text-align: center; font-weight: 600;">${index + 1}</td>
-                <td style="font-weight: 700; color: #1e293b; font-size: 12px; text-align: left; padding: 1px 8px !important;">${emp}</td>
-                <td style="text-align: center;">${roleBadge}</td>
-                <td style="font-size: 11.5px; color: #64748b; text-align: left; padding: 1px 8px !important;">${keysStr}</td>
-                <td style="text-align: center;">${skillBadge}</td>
-                <td style="text-align: center;">
-                    <div style="display: inline-flex; gap: 4px; justify-content: center; align-items: center;">
-                        <button style="padding: 0 6px; font-size: 10.5px; font-weight: 600; height: 18px; line-height: 16px; border-radius: 3px; border: 1px solid #bfdbfe; background: #eff6ff; color: #2563eb; cursor: pointer; display: inline-flex; align-items: center; gap: 2px;" onclick="openEditAdminEmployeeModal(${index})">
-                            <i class='bx bx-edit' style="font-size: 11px;"></i> Sửa
-                        </button>
-                        <button style="padding: 0 6px; font-size: 10.5px; font-weight: 600; height: 18px; line-height: 16px; border-radius: 3px; border: 1px solid #fecaca; background: #fef2f2; color: #dc2626; cursor: pointer; display: inline-flex; align-items: center; gap: 2px;" onclick="deleteAdminChamCongEmployee(${index})">
-                            <i class='bx bx-trash' style="font-size: 11px;"></i> Xóa
-                        </button>
-                    </div>
-                </td>
-            `;
-            adminTbody.appendChild(tr);
-        });
-    }
-
-    // 2. Render Bảng trong Sub-Tab Chấm Công (Kèm Cột 3 Gạch ☰ Kéo Thả Sắp Xếp)
-    if (ccTbody) {
-        ccTbody.innerHTML = '';
-        adminChamCongEmployees.forEach((emp, index) => {
-            const tr = document.createElement('tr');
-            tr.setAttribute('data-emp', emp);
-            tr.setAttribute('data-index', index);
-            tr.style.borderBottom = '1.5px solid #cbd5e1';
-            tr.style.transition = 'background-color 0.15s';
-            tr.onmouseenter = () => tr.style.backgroundColor = (document.documentElement.getAttribute('data-theme') === 'dark' ? '#253347' : '#f1f5f9');
-            tr.onmouseleave = () => tr.style.backgroundColor = '';
-
-            const staff = adminChamCongStaffConfig[emp] || { keys: [emp.toLowerCase()], skills: 'PHCN' };
-            const keysStr = staff.keys ? staff.keys.join(', ') : emp.toLowerCase();
-            const skill = staff.skills || 'PHCN';
-            const role = getEmployeeRole(emp);
-            
-            let roleBadge = `<span style="background: #f8fafc; color: #475569; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #e2e8f0; display: inline-block; line-height: 15px;">${role}</span>`;
-            if (role === 'Bác sĩ') {
-                roleBadge = `<span style="background: #eff6ff; color: #1d4ed8; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #bfdbfe; display: inline-block; line-height: 15px;">Bác sĩ</span>`;
-            } else if (role === 'KTV') {
-                roleBadge = `<span style="background: #f0fdf4; color: #15803d; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #bbf7d0; display: inline-block; line-height: 15px;">KTV</span>`;
-            } else if (role === 'Điều dưỡng') {
-                roleBadge = `<span style="background: #faf5ff; color: #7e22ce; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #e9d5ff; display: inline-block; line-height: 15px;">Điều dưỡng</span>`;
-            }
-
-            let skillBadge = `<span style="background: #eff6ff; color: #2563eb; padding: 1px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #bfdbfe; display: inline-block; line-height: 15px;">PHCN</span>`;
-            if (skill === 'YHCT') {
-                skillBadge = `<span style="background: #fef3c7; color: #d97706; padding: 1px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #fde68a; display: inline-block; line-height: 15px;">YHCT</span>`;
-            } else if (skill === 'Cả hai') {
-                skillBadge = `<span style="background: #ecfdf5; color: #059669; padding: 1px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #a7f3d0; display: inline-block; line-height: 15px;">Cả hai</span>`;
-            }
-
-            tr.innerHTML = `
-                <td style="text-align: center; padding: 2px !important;">
-                    <span class="drag-handle" title="Nắm giữ nút 3 gạch ☰ và kéo thả để di chuyển sắp xếp thứ tự">☰</span>
-                </td>
-                <td style="color: #64748b; text-align: center; font-weight: 600;">${index + 1}</td>
-                <td style="font-weight: 700; color: #1e293b; font-size: 12.5px; text-align: left; padding: 4px 8px !important;">${emp}</td>
-                <td style="text-align: center;">${roleBadge}</td>
-                <td style="font-size: 11.5px; color: #64748b; text-align: left; padding: 4px 8px !important;">${keysStr}</td>
-                <td style="text-align: center;">${skillBadge}</td>
-                <td style="text-align: center;">
-                    <div style="display: inline-flex; gap: 5px; justify-content: center; align-items: center;">
-                        <button style="padding: 2px 8px; font-size: 11px; font-weight: 600; border-radius: 4px; border: 1px solid #bfdbfe; background: #eff6ff; color: #2563eb; cursor: pointer; display: inline-flex; align-items: center; gap: 2px;" onclick="openEditAdminEmployeeModal(${index})">
-                            <i class='bx bx-edit' style="font-size: 12px;"></i> Sửa
-                        </button>
-                        <button style="padding: 2px 8px; font-size: 11px; font-weight: 600; border-radius: 4px; border: 1px solid #fecaca; background: #fef2f2; color: #dc2626; cursor: pointer; display: inline-flex; align-items: center; gap: 2px;" onclick="deleteAdminChamCongEmployee(${index})">
-                            <i class='bx bx-trash' style="font-size: 12px;"></i> Xóa
-                        </button>
-                    </div>
-                </td>
-            `;
-            ccTbody.appendChild(tr);
-        });
-
-        // Khởi tạo thư viện kéo thả SortableJS cho bảng chấm công
-        if (typeof Sortable !== 'undefined') {
-            if (ccTbody._sortableInstance) {
-                try { ccTbody._sortableInstance.destroy(); } catch(e){}
-                ccTbody._sortableInstance = null;
-            }
-            ccTbody._sortableInstance = new Sortable(ccTbody, {
-                handle: '.drag-handle',
-                draggable: 'tr',
-                animation: 150,
-                ghostClass: 'dragging-row',
-                chosenClass: 'drag-over-row',
-                filter: 'button, input, select, a',
-                preventOnFilter: false,
-                onEnd: function(evt) {
-                    if (evt.oldIndex !== evt.newIndex && evt.oldIndex != null && evt.newIndex != null) {
-                        // Đọc thứ tự thực tế chính xác 100% từ các hàng DOM vừa được SortableJS kéo thả
-                        const rows = Array.from(ccTbody.querySelectorAll('tr'));
-                        const newOrder = rows.map(r => r.getAttribute('data-emp')).filter(Boolean);
-                        if (newOrder.length > 0) {
-                            adminChamCongEmployees = newOrder;
-                        }
-
-                        // Cập nhật STT, data-index và onclick handlers trên DOM ngay lập tức
-                        rows.forEach((r, idx) => {
-                            r.setAttribute('data-index', idx);
-                            const sttCell = r.querySelector('td:nth-child(2)');
-                            if (sttCell) sttCell.innerText = idx + 1;
-                            const editBtn = r.querySelector('button[onclick^="openEditAdminEmployeeModal"]');
-                            if (editBtn) editBtn.setAttribute('onclick', `openEditAdminEmployeeModal(${idx})`);
-                            const delBtn = r.querySelector('button[onclick^="deleteAdminChamCongEmployee"]');
-                            if (delBtn) delBtn.setAttribute('onclick', `deleteAdminChamCongEmployee(${idx})`);
-                        });
-
-                        // Lưu vào localStorage và đồng bộ lên server ngầm
-                        saveAdminChamCongData(false);
-                    }
+                const staff = adminChamCongStaffConfig[emp] || { keys: [emp.toLowerCase()], skills: 'PHCN' };
+                const keysStr = staff.keys ? staff.keys.join(', ') : emp.toLowerCase();
+                const skill = staff.skills || 'PHCN';
+                const role = getEmployeeRole(emp);
+                
+                let roleBadge = `<span style="background: #f8fafc; color: #475569; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #e2e8f0; display: inline-block; line-height: 15px;">${role}</span>`;
+                if (role === 'Bác sĩ') {
+                    roleBadge = `<span style="background: #eff6ff; color: #1d4ed8; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #bfdbfe; display: inline-block; line-height: 15px;">Bác sĩ</span>`;
+                } else if (role === 'KTV') {
+                    roleBadge = `<span style="background: #f0fdf4; color: #15803d; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #bbf7d0; display: inline-block; line-height: 15px;">KTV</span>`;
+                } else if (role === 'Điều dưỡng') {
+                    roleBadge = `<span style="background: #faf5ff; color: #7e22ce; padding: 1px 7px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #e9d5ff; display: inline-block; line-height: 15px;">Điều dưỡng</span>`;
                 }
+
+                let skillBadge = `<span style="background: #eff6ff; color: #2563eb; padding: 1px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #bfdbfe; display: inline-block; line-height: 15px;">PHCN</span>`;
+                if (skill === 'YHCT') {
+                    skillBadge = `<span style="background: #fef3c7; color: #d97706; padding: 1px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #fde68a; display: inline-block; line-height: 15px;">YHCT</span>`;
+                } else if (skill === 'Cả hai') {
+                    skillBadge = `<span style="background: #ecfdf5; color: #059669; padding: 1px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; border: 1px solid #a7f3d0; display: inline-block; line-height: 15px;">Cả hai</span>`;
+                }
+                
+                tr.innerHTML = `
+                    <td style="color: #64748b; text-align: center; font-weight: 600;">${index + 1}</td>
+                    <td style="font-weight: 700; color: #1e293b; font-size: 12px; text-align: left; padding: 1px 8px !important;">${emp}</td>
+                    <td style="text-align: center;">${roleBadge}</td>
+                    <td style="font-size: 11.5px; color: #64748b; text-align: left; padding: 1px 8px !important;">${keysStr}</td>
+                    <td style="text-align: center;">${skillBadge}</td>
+                    <td style="text-align: center;">
+                        <div style="display: inline-flex; gap: 4px; justify-content: center; align-items: center;">
+                            <button style="padding: 0 6px; font-size: 10.5px; font-weight: 600; height: 18px; line-height: 16px; border-radius: 3px; border: 1px solid #bfdbfe; background: #eff6ff; color: #2563eb; cursor: pointer; display: inline-flex; align-items: center; gap: 2px;" onclick="openEditAdminEmployeeModal(${index})">
+                                <i class='bx bx-edit' style="font-size: 11px;"></i> Sửa
+                            </button>
+                            <button style="padding: 0 6px; font-size: 10.5px; font-weight: 600; height: 18px; line-height: 16px; border-radius: 3px; border: 1px solid #fecaca; background: #fef2f2; color: #dc2626; cursor: pointer; display: inline-flex; align-items: center; gap: 2px;" onclick="deleteAdminChamCongEmployee(${index})">
+                                <i class='bx bx-trash' style="font-size: 11px;"></i> Xóa
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
             });
         }
-    }
-}
 
-window.moveAdminEmployee = function(index, direction) {
-    const newIndex = index + direction;
-    if (newIndex < 0 || newIndex >= adminChamCongEmployees.length) return;
-    const item = adminChamCongEmployees.splice(index, 1)[0];
-    adminChamCongEmployees.splice(newIndex, 0, item);
-    saveAdminChamCongData(false);
-};
-
-window.switchChamCongSubTab = function(tabName) {
-    const btnGrid = document.getElementById('subtab-btn-grid');
-    const btnStaff = document.getElementById('subtab-btn-staff');
-    const viewGrid = document.getElementById('subtab-chamcong-grid-view');
-    const viewStaff = document.getElementById('subtab-chamcong-staff-view');
-    const toolbar = document.getElementById('chamcong-grid-toolbar');
-
-    if (tabName === 'staff') {
-        if (btnGrid) btnGrid.classList.remove('active');
-        if (btnStaff) btnStaff.classList.add('active');
-        if (viewGrid) viewGrid.style.display = 'none';
-        if (viewStaff) viewStaff.style.display = 'flex';
-        if (toolbar) toolbar.style.visibility = 'hidden';
-        renderAdminChamCongTable();
-    } else {
-        if (btnGrid) btnGrid.classList.add('active');
-        if (btnStaff) btnStaff.classList.remove('active');
-        if (viewGrid) viewGrid.style.display = 'flex';
-        if (viewStaff) viewStaff.style.display = 'none';
-        if (toolbar) toolbar.style.visibility = 'visible';
-        renderChamCongTable();
-    }
-};
-
-function closeAdminEmployeeModal() {
-    const modal = document.getElementById('modal-admin-employee');
-    if (modal) modal.style.display = 'none';
-}
-
-function openAddAdminEmployeeModal() {
-    editAdminEmployeeIndex = -1;
-    document.getElementById('modal-admin-emp-title').innerText = "Thêm Nhân Sự Mới";
-    document.getElementById('admin-emp-name').value = "";
-    document.getElementById('admin-emp-role').value = "KTV";
-    document.getElementById('admin-emp-keys').value = "";
-    document.getElementById('admin-emp-skills').value = "PHCN";
-    document.getElementById('modal-admin-employee').style.display = 'flex';
-    setTimeout(() => document.getElementById('admin-emp-name').focus(), 100);
-}
-
-function openEditAdminEmployeeModal(index) {
-    editAdminEmployeeIndex = index;
-    const empName = adminChamCongEmployees[index];
-    const staff = adminChamCongStaffConfig[empName] || { keys: [empName.toLowerCase()], skills: 'PHCN' };
-    
-    document.getElementById('modal-admin-emp-title').innerText = "Sửa Thông Tin Nhân Sự";
-    document.getElementById('admin-emp-name').value = empName;
-    document.getElementById('admin-emp-role').value = getEmployeeRole(empName);
-    document.getElementById('admin-emp-keys').value = staff.keys ? staff.keys.join(', ') : empName.toLowerCase();
-    document.getElementById('admin-emp-skills').value = staff.skills || 'PHCN';
-    
-    document.getElementById('modal-admin-employee').style.display = 'flex';
-}
-
-function deleteAdminChamCongEmployee(index) {
-    const empName = adminChamCongEmployees[index];
-    if(confirm(`Bạn có chắc chắn muốn xóa nhân viên "${empName}" khỏi danh sách chấm công?`)) {
-        adminChamCongEmployees.splice(index, 1);
-        if (adminChamCongStaffConfig[empName]) {
-            delete adminChamCongStaffConfig[empName];
+        function closeAdminEmployeeModal() {
+            document.getElementById('modal-admin-employee').style.display = 'none';
         }
-        saveAdminChamCongData();
-    }
-}
 
-function saveAdminEmployee() {
-    const newName = document.getElementById('admin-emp-name').value.trim();
-    const roleVal = document.getElementById('admin-emp-role').value;
-    const keysVal = document.getElementById('admin-emp-keys').value.trim();
-    const skillsVal = document.getElementById('admin-emp-skills').value;
-    
-    if (!newName) return alert("Tên không được để trống!");
-    
-    let oldName = null;
-    if (editAdminEmployeeIndex > -1) {
-        oldName = adminChamCongEmployees[editAdminEmployeeIndex];
-        if (newName !== oldName && adminChamCongEmployees.includes(newName)) {
-            return alert("Tên nhân viên đã tồn tại!");
+        function openAddAdminEmployeeModal() {
+            editAdminEmployeeIndex = -1;
+            document.getElementById('modal-admin-emp-title').innerText = "Thêm Nhân Sự Mới";
+            document.getElementById('admin-emp-name').value = "";
+            document.getElementById('admin-emp-role').value = "KTV";
+            document.getElementById('admin-emp-keys').value = "";
+            document.getElementById('admin-emp-skills').value = "PHCN";
+            document.getElementById('modal-admin-employee').style.display = 'flex';
+            setTimeout(() => document.getElementById('admin-emp-name').focus(), 100);
         }
-    } else {
-        if (adminChamCongEmployees.includes(newName)) {
-            return alert("Tên nhân viên đã tồn tại!");
-        }
-    }
-    
-    const keysArr = keysVal.split(',').map(s => s.trim().toLowerCase()).filter(s => s.length > 0);
-    if (keysArr.length === 0) keysArr.push(newName.toLowerCase());
-    
-    if (editAdminEmployeeIndex > -1) {
-        adminChamCongEmployees[editAdminEmployeeIndex] = newName;
-        if (oldName !== newName) {
-            delete adminChamCongStaffConfig[oldName];
-        }
-    } else {
-        adminChamCongEmployees.push(newName);
-    }
-    
-    adminChamCongStaffConfig[newName] = { keys: keysArr, skills: skillsVal, role: roleVal, heSo: 1.0 };
-    
-    saveAdminChamCongData();
-    closeAdminEmployeeModal();
-}
 
-function saveAdminChamCongData(showAlert = true) {
-    if (showAlert) window.showGlobalLoading("Đang lưu danh sách nhân sự lên máy chủ...");
-
-    // 1. Lưu ngay tức thì vào LocalStorage để tránh bị reset khi nạp lại
-    try {
-        localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees));
-        localStorage.setItem(getChamCongStorageKey('med_chamcong_staff_config'), JSON.stringify(adminChamCongStaffConfig));
-    } catch(e){}
-
-    // 2. Gửi API lưu lên Cloudflare Worker CSDL D1
-    callApi('saveEmployees', [adminChamCongEmployees]).then(() => {
-        return callApi('saveErrorConfig', [{ staff: adminChamCongStaffConfig }]);
-    }).then(() => {
-        if (showAlert) {
-            window.hideGlobalLoading();
-            alert("Đã lưu danh sách nhân sự chấm công lên máy chủ!");
-            try { renderAdminChamCongTable(); } catch(e) { console.error(e); }
+        function openEditAdminEmployeeModal(index) {
+            editAdminEmployeeIndex = index;
+            const empName = adminChamCongEmployees[index];
+            const staff = adminChamCongStaffConfig[empName] || { keys: [empName.toLowerCase()], skills: 'PHCN' };
+            
+            document.getElementById('modal-admin-emp-title').innerText = "Sửa Thông Tin Nhân Sự";
+            document.getElementById('admin-emp-name').value = empName;
+            document.getElementById('admin-emp-role').value = getEmployeeRole(empName);
+            document.getElementById('admin-emp-keys').value = staff.keys ? staff.keys.join(', ') : empName.toLowerCase();
+            document.getElementById('admin-emp-skills').value = staff.skills || 'PHCN';
+            
+            document.getElementById('modal-admin-employee').style.display = 'flex';
         }
-        // Luôn cập nhật Bảng Chấm Công (31 ngày) để đồng bộ theo thứ tự mới sắp xếp
-        try { renderChamCongTable(); } catch(e) { console.error(e); }
-    }).catch(err => {
-        if (showAlert) {
-            window.hideGlobalLoading();
-            console.error(err);
-            alert('Lỗi khi lưu nhân sự: ' + (err.message || err));
-        } else {
-            console.error('[ChamCong] saveAdminChamCongData error:', err);
-        }
-    });
-}
 
-// Auto load when opening Admin Tab
-const originalSwitchAdminSection = window.switchAdminSection || function(s, b) {};
-window.switchAdminSection = function(sectionId, btn) {
-    originalSwitchAdminSection(sectionId, btn);
-    if (sectionId === 'admin-sec-employees') {
-        loadAdminChamCongData();
-    }
-};
+        function deleteAdminChamCongEmployee(index) {
+            const empName = adminChamCongEmployees[index];
+            if(confirm(`Bạn có chắc chắn muốn xóa nhân viên "${empName}" khỏi danh sách chấm công?`)) {
+                adminChamCongEmployees.splice(index, 1);
+                if (adminChamCongStaffConfig[empName]) {
+                    delete adminChamCongStaffConfig[empName];
+                }
+                saveAdminChamCongData();
+            }
+        }
+
+        function saveAdminEmployee() {
+            const newName = document.getElementById('admin-emp-name').value.trim();
+            const roleVal = document.getElementById('admin-emp-role').value;
+            const keysVal = document.getElementById('admin-emp-keys').value.trim();
+            const skillsVal = document.getElementById('admin-emp-skills').value;
+            
+            if (!newName) return alert("Tên không được để trống!");
+            
+            let oldName = null;
+            if (editAdminEmployeeIndex > -1) {
+                oldName = adminChamCongEmployees[editAdminEmployeeIndex];
+                if (newName !== oldName && adminChamCongEmployees.includes(newName)) {
+                    return alert("Tên nhân viên đã tồn tại!");
+                }
+            } else {
+                if (adminChamCongEmployees.includes(newName)) {
+                    return alert("Tên nhân viên đã tồn tại!");
+                }
+            }
+            
+            const keysArr = keysVal.split(',').map(s => s.trim().toLowerCase()).filter(s => s.length > 0);
+            if (keysArr.length === 0) keysArr.push(newName.toLowerCase());
+            
+            if (editAdminEmployeeIndex > -1) {
+                adminChamCongEmployees[editAdminEmployeeIndex] = newName;
+                if (oldName !== newName) {
+                    delete adminChamCongStaffConfig[oldName];
+                }
+            } else {
+                adminChamCongEmployees.push(newName);
+            }
+            
+            adminChamCongStaffConfig[newName] = { keys: keysArr, skills: skillsVal, role: roleVal, heSo: 1.0 };
+            
+            saveAdminChamCongData();
+            closeAdminEmployeeModal();
+        }
+
+        function saveAdminChamCongData() {
+            window.showGlobalLoading("Đang lưu danh sách nhân sự lên Google Drive...");
+            google.script.run.withSuccessHandler(() => {
+                google.script.run.withSuccessHandler(() => {
+                    window.hideGlobalLoading();
+                    renderAdminChamCongTable();
+                    alert("Đã lưu danh sách nhân sự chấm công lên Google Drive!");
+                }).saveErrorConfig({ staff: adminChamCongStaffConfig });
+            }).saveEmployees(adminChamCongEmployees);
+        }
+
+        // Auto load when opening Admin Tab
+        const originalSwitchAdminSection = window.switchAdminSection || function(s, b) {};
+        window.switchAdminSection = function(sectionId, btn) {
+            originalSwitchAdminSection(sectionId, btn);
+            if (sectionId === 'admin-sec-employees') {
+                loadAdminChamCongData();
+            }
+        };
 
         // ==========================================
         // TAB CHẤM CÔNG (TỪ PM CŨ)
         // ==========================================
         let chamCongData = {};
-        window.chamCongData = chamCongData;
         let chamCongSaveTimeout = null;
-        let chamCongIsDirty = false;
-        let chamCongLastEditedTime = 0;
-        let activeChamCongMonthYear = null;
-        let isLoadingChamCong = false;
 
         function getChamCongMonthYear() {
-            const ccM = document.getElementById('chamcong-month-picker');
-            const ccY = document.getElementById('chamcong-year-picker');
-            const tkM = document.getElementById('thongke-month-picker');
-            const tkY = document.getElementById('thongke-year-picker');
-            const now = new Date();
-            const curM = now.getMonth() + 1;
-            const curY = now.getFullYear();
-
-            const isTkActive = document.getElementById('tab-thongke')?.classList.contains('active');
-            let mVal, yVal;
-            if (isTkActive) {
-                mVal = (tkM && tkM.value) ? tkM.value : ((ccM && ccM.value) ? ccM.value : curM);
-                yVal = (tkY && tkY.value) ? tkY.value : ((ccY && ccY.value) ? ccY.value : curY);
-            } else {
-                mVal = (ccM && ccM.value) ? ccM.value : ((tkM && tkM.value) ? tkM.value : curM);
-                yVal = (ccY && ccY.value) ? ccY.value : ((tkY && tkY.value) ? tkY.value : curY);
-            }
-
-            const m = String(mVal).padStart(2, '0');
-            const y = String(yVal);
+            const m = String(document.getElementById('chamcong-month-picker').value || '1').padStart(2, '0');
+            const y = String(document.getElementById('chamcong-year-picker').value || '2026');
             return `${y}-${m}`;
         }
-
-        // ==========================================
-        // QUẢN LÝ KÝ HIỆU CHẤM CÔNG ĐỘNG (SYMBOLS)
-        // ==========================================
-        // QUẢN LÝ KÝ HIỆU CHẤM CÔNG ĐỘNG (SYMBOLS)
-        // ==========================================
-        const DEFAULT_CHAMCONG_SYMBOLS = [
-            { code: 'X', label: 'Cả ngày', value: 1.0, bg: '#ffffff', border: '#cbd5e1', color: '#1e293b', aliases: 'CA-NGAY, 1' },
-            { code: 'X/2', label: 'Nửa ngày', value: 0.5, bg: '#ccfbf1', border: '#99f6e4', color: '#0f766e', aliases: '1/2, 0.5' },
-            { code: 'S / C', label: 'Sáng / Chiều', value: 0.5, bg: '#d1fae5', border: '#a7f3d0', color: '#047857', aliases: 'S, C, SANG, CHIEU' },
-            { code: 'Lễ', label: 'Nghỉ lễ', value: 0.0, bg: '#fee2e2', border: '#fca5a5', color: '#b91c1c', aliases: 'LE' },
-            { code: 'Tết', label: 'Nghỉ Tết', value: 0.0, bg: '#fee2e2', border: '#fca5a5', color: '#b91c1c', aliases: 'TET' },
-            { code: 'Nội', label: 'Trực / học nội trú', value: 0.0, bg: '#dbeafe', border: '#93c5fd', color: '#1d4ed8', aliases: 'NOI' },
-            { code: 'Ô', label: 'Nghỉ ốm', value: 0.0, bg: '#ffedd5', border: '#fed7aa', color: '#c2410c', aliases: 'O' },
-            { code: 'H', label: 'Học / Hội chẩn', value: 0.0, bg: '#fef3c7', border: '#fde68a', color: '#b45309', aliases: '' },
-            { code: 'F', label: 'Nghỉ phép', value: 0.0, bg: '#fef3c7', border: '#fde68a', color: '#b45309', aliases: '' },
-            { code: 'B', label: 'Nghỉ bù', value: 0.0, bg: '#fef3c7', border: '#fde68a', color: '#b45309', aliases: '' },
-            { code: 'TS', label: 'Thai sản', value: 0.0, bg: '#f3e8ff', border: '#d8b4fe', color: '#6d28d9', aliases: '' },
-            { code: 'ĐK / DK', label: 'Khám ngoại viện / Dã ngoại', value: 0.0, bg: '#f3e8ff', border: '#d8b4fe', color: '#6d28d9', aliases: 'DK, ĐK' },
-            { code: 'K / V', label: 'Nghỉ việc riêng / Không lương', value: 0.0, bg: '#f1f5f9', border: '#cbd5e1', color: '#64748b', aliases: 'K, V, VANG' }
-        ];
-        let chamCongSymbols = [...DEFAULT_CHAMCONG_SYMBOLS];
-        window.chamCongSymbols = chamCongSymbols;
-        window.DEFAULT_CHAMCONG_SYMBOLS = DEFAULT_CHAMCONG_SYMBOLS;
-
-        function findChamCongSymbol(str) {
-            if (!str && str !== 0) return null;
-            const s = String(str).trim().toUpperCase();
-            if (!s) return null;
-            if (!Array.isArray(chamCongSymbols) || chamCongSymbols.length === 0) return null;
-            return chamCongSymbols.find(item => {
-                if (!item || !item.code) return false;
-                const codeUpper = String(item.code).trim().toUpperCase();
-                if (codeUpper === s) return true;
-                
-                // Hỗ trợ mã gộp có dấu gạch chéo (VD: "S / C", "ĐK / DK", "K / V", v.v.)
-                if (codeUpper.includes('/')) {
-                    const slashParts = codeUpper.split('/').map(p => p.trim()).filter(Boolean);
-                    if (slashParts.includes(s)) return true;
-                }
-                
-                // Hỗ trợ aliases dạng chuỗi ("S, C") hoặc mảng (["S", "C"]) an toàn tuyệt đối
-                if (item.aliases) {
-                    let arr = [];
-                    if (Array.isArray(item.aliases)) {
-                        arr = item.aliases.map(a => String(a).trim().toUpperCase()).filter(Boolean);
-                    } else if (typeof item.aliases === 'string') {
-                        arr = item.aliases.split(/[,;\/]+/).map(a => a.trim().toUpperCase()).filter(Boolean);
-                    }
-                    if (arr.includes(s)) return true;
-                }
-                return false;
-            }) || null;
-        }
-        window.findChamCongSymbol = findChamCongSymbol;
-
-        function applySymbolStyleToInput(input, val) {
-            if (!input) return;
-            const sym = findChamCongSymbol(val);
-            if (sym) {
-                input.style.backgroundColor = sym.bg || '';
-                input.style.borderColor = sym.border || sym.color || '#cbd5e1';
-                input.style.color = sym.color || '';
-                input.style.fontWeight = '700';
-            } else {
-                input.style.backgroundColor = '';
-                input.style.borderColor = '';
-                input.style.color = '';
-                input.style.fontWeight = '';
-            }
-        }
-        window.applySymbolStyleToInput = applySymbolStyleToInput;
-
-        function loadChamCongSymbols(callback) {
-            const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
-            if (!apiFn) {
-                renderChamCongLegend();
-                if (callback) callback(chamCongSymbols);
-                return;
-            }
-            apiFn('getChamCongSymbols', []).then(res => {
-                let list = null;
-                if (res && res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
-                    list = res.data;
-                } else if (Array.isArray(res) && res.length > 0) {
-                    list = res;
-                }
-                if (list && list.length > 0) {
-                    chamCongSymbols = list.map(sym => ({
-                        ...sym,
-                        aliases: Array.isArray(sym.aliases) ? sym.aliases.join(', ') : (sym.aliases || '')
-                    }));
-                    window.chamCongSymbols = chamCongSymbols;
-                }
-                renderChamCongLegend();
-                if (callback) callback(chamCongSymbols);
-            }).catch(err => {
-                console.warn('[ChamCong] load symbols err:', err);
-                renderChamCongLegend();
-                if (callback) callback(chamCongSymbols);
-            });
-        }
-        window.loadChamCongSymbols = loadChamCongSymbols;
-
-        function renderChamCongLegend() {
-            const container = document.getElementById('chamcong-legend-chips');
-            if (!container) return;
-            
-            let html = '';
-            chamCongSymbols.forEach(sym => {
-                const valText = (sym.value !== undefined && sym.value !== null) ? `${sym.value} công` : '';
-                const borderCol = sym.border || sym.color || '#cbd5e1';
-                html += `
-                    <div class="cc-symbol-chip" style="background: ${sym.bg}; border: 1px solid ${borderCol}; color: ${sym.color};" title="${sym.label || sym.code} (${valText})">
-                        <span class="cc-symbol-code">${sym.code}</span>
-                        <span>: ${sym.label || sym.code} (${valText})</span>
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
-        }
-        window.renderChamCongLegend = renderChamCongLegend;
-
-        function updateSymbolPreviewBadge() {
-            const code = document.getElementById('symbol-input-code')?.value.trim() || 'Xem';
-            const bg = document.getElementById('symbol-input-bg')?.value || '#ffffff';
-            const color = document.getElementById('symbol-input-color')?.value || '#1e293b';
-            const badge = document.getElementById('symbol-preview-badge');
-            if (badge) {
-                badge.innerText = code;
-                badge.style.backgroundColor = bg;
-                badge.style.borderColor = color;
-                badge.style.color = color;
-            }
-        }
-        window.updateSymbolPreviewBadge = updateSymbolPreviewBadge;
-
-        function openChamCongSymbolModal() {
-            cancelEditChamCongSymbol();
-            renderChamCongSymbolTable();
-            const modal = document.getElementById('modal-chamcong-symbol');
-            if (modal) modal.style.display = 'flex';
-            
-            const codeInput = document.getElementById('symbol-input-code');
-            const bgInput = document.getElementById('symbol-input-bg');
-            const colorInput = document.getElementById('symbol-input-color');
-            if (codeInput) codeInput.oninput = updateSymbolPreviewBadge;
-            if (bgInput) bgInput.oninput = updateSymbolPreviewBadge;
-            if (colorInput) colorInput.oninput = updateSymbolPreviewBadge;
-            updateSymbolPreviewBadge();
-        }
-        window.openChamCongSymbolModal = openChamCongSymbolModal;
-
-        function closeChamCongSymbolModal() {
-            const modal = document.getElementById('modal-chamcong-symbol');
-            if (modal) modal.style.display = 'none';
-        }
-        window.closeChamCongSymbolModal = closeChamCongSymbolModal;
-
-        function openAddChamCongSymbolModal() {
-            openChamCongSymbolModal();
-            const codeInput = document.getElementById('symbol-input-code');
-            if (codeInput) codeInput.focus();
-        }
-        window.openAddChamCongSymbolModal = openAddChamCongSymbolModal;
-
-        function renderChamCongSymbolTable() {
-            const tbody = document.getElementById('chamcong-symbol-tbody');
-            if (!tbody) return;
-            
-            let html = '';
-            chamCongSymbols.forEach((sym, idx) => {
-                const borderCol = sym.border || sym.color || '#cbd5e1';
-                html += `
-                    <tr style="border-bottom: 1px solid #f1f5f9;">
-                        <td style="padding: 6px 10px; text-align: center;">
-                            <span style="display: inline-block; min-width: 28px; padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 11px; background: ${sym.bg}; border: 1px solid ${borderCol}; color: ${sym.color};">
-                                ${sym.code}
-                            </span>
-                        </td>
-                        <td style="padding: 6px 10px;">
-                            <div style="font-weight: 600; color: #1e293b;">${sym.label || sym.code}</div>
-                            ${sym.aliases ? `<div style="font-size: 11px; color: #64748b;">Viết tắt: ${sym.aliases}</div>` : ''}
-                        </td>
-                        <td style="padding: 6px 10px; text-align: center; font-weight: 700; color: #2563eb;">
-                            ${sym.value}
-                        </td>
-                        <td style="padding: 6px 10px; text-align: center;">
-                            <button type="button" onclick="editChamCongSymbol(${idx})" style="padding: 3px 8px; font-size: 11px; border: 1px solid #93c5fd; background: #eff6ff; color: #1d4ed8; border-radius: 4px; cursor: pointer; margin-right: 4px;">Sửa</button>
-                            <button type="button" onclick="deleteChamCongSymbol(${idx})" style="padding: 3px 8px; font-size: 11px; border: 1px solid #fca5a5; background: #fef2f2; color: #b91c1c; border-radius: 4px; cursor: pointer;">Xóa</button>
-                        </td>
-                    </tr>
-                `;
-            });
-            tbody.innerHTML = html;
-        }
-        window.renderChamCongSymbolTable = renderChamCongSymbolTable;
-
-        function editChamCongSymbol(index) {
-            const sym = chamCongSymbols[index];
-            if (!sym) return;
-            
-            document.getElementById('symbol-edit-index').value = index;
-            document.getElementById('symbol-input-code').value = sym.code;
-            document.getElementById('symbol-input-label').value = sym.label || '';
-            document.getElementById('symbol-input-value').value = (sym.value !== undefined) ? sym.value : 1.0;
-            document.getElementById('symbol-input-bg').value = sym.bg || '#ffffff';
-            document.getElementById('symbol-input-color').value = sym.color || '#1e293b';
-            
-            document.getElementById('symbol-form-title').innerText = `✏️ Sửa Ký Hiệu "${sym.code}"`;
-            document.getElementById('symbol-form-badge').style.display = 'inline-block';
-            document.getElementById('btn-cancel-edit-symbol').style.display = 'inline-block';
-            updateSymbolPreviewBadge();
-            document.getElementById('symbol-input-code').focus();
-        }
-        window.editChamCongSymbol = editChamCongSymbol;
-
-        function cancelEditChamCongSymbol() {
-            document.getElementById('symbol-edit-index').value = '-1';
-            document.getElementById('symbol-input-code').value = '';
-            document.getElementById('symbol-input-label').value = '';
-            document.getElementById('symbol-input-value').value = '1.0';
-            document.getElementById('symbol-input-bg').value = '#ffffff';
-            document.getElementById('symbol-input-color').value = '#1e293b';
-            
-            document.getElementById('symbol-form-title').innerText = '➕ Thêm Ký Hiệu Chấm Công Mới';
-            document.getElementById('symbol-form-badge').style.display = 'none';
-            document.getElementById('btn-cancel-edit-symbol').style.display = 'none';
-            updateSymbolPreviewBadge();
-        }
-        window.cancelEditChamCongSymbol = cancelEditChamCongSymbol;
-
-        function saveChamCongSymbolItem() {
-            const editIndex = parseInt(document.getElementById('symbol-edit-index').value);
-            const code = document.getElementById('symbol-input-code').value.trim();
-            const label = document.getElementById('symbol-input-label').value.trim();
-            const valRaw = document.getElementById('symbol-input-value').value;
-            const bg = document.getElementById('symbol-input-bg').value;
-            const color = document.getElementById('symbol-input-color').value;
-            
-            if (!code) {
-                alert('Vui lòng nhập Mã ký hiệu!');
-                return;
-            }
-            const val = parseFloat(valRaw);
-            if (isNaN(val) || val < 0) {
-                alert('Số công quy đổi phải là số >= 0!');
-                return;
-            }
-            
-            const dupIndex = chamCongSymbols.findIndex((s, idx) => s.code.toUpperCase() === code.toUpperCase() && idx !== editIndex);
-            if (dupIndex !== -1) {
-                alert(`Mã ký hiệu "${code}" đã tồn tại! Vui lòng chọn mã khác.`);
-                return;
-            }
-            
-            const newSym = {
-                code: code,
-                label: label || code,
-                value: val,
-                bg: bg,
-                border: color,
-                color: color,
-                aliases: (editIndex >= 0 && chamCongSymbols[editIndex]?.aliases) ? chamCongSymbols[editIndex].aliases : ''
-            };
-            
-            if (editIndex >= 0) {
-                chamCongSymbols[editIndex] = newSym;
-            } else {
-                chamCongSymbols.push(newSym);
-            }
-            
-            const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
-            if (apiFn) {
-                apiFn('saveChamCongSymbols', [chamCongSymbols]).catch(err => console.error('[ChamCong] save symbols error:', err));
-            }
-            
-            cancelEditChamCongSymbol();
-            renderChamCongSymbolTable();
-            renderChamCongLegend();
-            renderChamCongTable();
-        }
-        window.saveChamCongSymbolItem = saveChamCongSymbolItem;
-
-        function deleteChamCongSymbol(index) {
-            const sym = chamCongSymbols[index];
-            if (!sym) return;
-            if (!confirm(`Bạn có chắc chắn muốn xóa ký hiệu "${sym.code}" (${sym.label})?`)) return;
-            
-            chamCongSymbols.splice(index, 1);
-            const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
-            if (apiFn) {
-                apiFn('saveChamCongSymbols', [chamCongSymbols]).catch(err => console.error('[ChamCong] delete symbol error:', err));
-            }
-            
-            cancelEditChamCongSymbol();
-            renderChamCongSymbolTable();
-            renderChamCongLegend();
-            renderChamCongTable();
-        }
-        window.deleteChamCongSymbol = deleteChamCongSymbol;
-
-        function resetDefaultChamCongSymbols() {
-            if (!confirm('Khôi phục danh sách ký hiệu về 13 ký hiệu chuẩn ban đầu?')) return;
-            chamCongSymbols = JSON.parse(JSON.stringify(DEFAULT_CHAMCONG_SYMBOLS));
-            window.chamCongSymbols = chamCongSymbols;
-            
-            const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
-            if (apiFn) {
-                apiFn('saveChamCongSymbols', [chamCongSymbols]).catch(err => console.error('[ChamCong] reset symbols error:', err));
-            }
-            
-            cancelEditChamCongSymbol();
-            renderChamCongSymbolTable();
-            renderChamCongLegend();
-            renderChamCongTable();
-        }
-        window.resetDefaultChamCongSymbols = resetDefaultChamCongSymbols;
-
-        function commitChamCongCell(input, daysInMonth, triggerSave = true) {
-            if (!input) return;
-            const emp = input.getAttribute('data-emp');
-            const day = input.getAttribute('data-day');
-            if (!emp || !day) return;
-            const rawVal = input.value;
-            let val = rawVal ? rawVal.trim() : '';
-            const upper = val.toUpperCase();
-
-            // Chuẩn hóa ký hiệu trực quan & đồng bộ dữ liệu bản in
-            const sym = findChamCongSymbol(upper);
-            if (sym && sym.code && !sym.code.includes('/')) {
-                val = sym.code;
-            } else if (upper === 'CA-NGAY') val = 'X';
-            else if (upper === 'SANG') val = 'S';
-            else if (upper === 'CHIEU') val = 'C';
-            else if (upper === 'LỄ' || upper === 'LE') val = 'Lễ';
-            else if (upper === 'TẾT' || upper === 'TET') val = 'Tết';
-            else if (upper === 'NỘI' || upper === 'NOI') val = 'Nội';
-            else if (upper === 'X/2' || upper === '1/2') val = 'X/2';
-            else if (upper === 'DK') val = 'ĐK';
-            else if (val) val = upper;
-
-            // Cập nhật thuộc tính value và màu sắc trực quan tức thì
-            input.setAttribute('value', val);
-            input.value = val;
-            applySymbolStyleToInput(input, val);
-
-            if (!chamCongData[emp]) chamCongData[emp] = {};
-            const oldRaw = chamCongData[emp][day] || '';
-            const oldVal = (typeof oldRaw === 'string' ? oldRaw.trim() : String(oldRaw));
-
-            const norm = (v) => {
-                if (!v) return '';
-                const u = String(v).trim().toUpperCase();
-                if (u === 'CA-NGAY') return 'X';
-                if (u === 'SANG') return 'S';
-                if (u === 'CHIEU') return 'C';
-                if (u === 'LỄ' || u === 'LE') return 'LỄ';
-                if (u === 'TẾT' || u === 'TET') return 'TẾT';
-                if (u === 'NỘI' || u === 'NOI') return 'NỘI';
-                if (u === 'DK') return 'ĐK';
-                const matched = findChamCongSymbol(u);
-                if (matched && matched.code && !matched.code.includes('/')) return matched.code.toUpperCase();
-                return u;
-            };
-
-            // NẾU GIÁ TRỊ KHÔNG THAY ĐỔI -> THOÁT NGAY, KHÔNG DIRTY, KHÔNG LƯU!
-            if (norm(val) === norm(oldVal)) {
-                return;
-            }
-
-            if (val) {
-                chamCongData[emp][day] = val;
-            } else {
-                delete chamCongData[emp][day];
-            }
-            window.chamCongData = chamCongData;
-            chamCongIsDirty = true;
-            chamCongLastEditedTime = Date.now();
-
-            recalculateRowTotal(emp, daysInMonth);
-
-            if (triggerSave && !isLoadingChamCong) {
-                triggerAutoSaveChamCong();
-            }
-        }
-
-        function commitHeSoCell(input, daysInMonth, triggerSave = true) {
-            if (!input) return;
-            const emp = input.getAttribute('data-emp');
-            if (!emp) return;
-            let val = parseFloat(input.value);
-            if (isNaN(val) || val < 0) val = 1.0;
-            if (val > 1) val = 1.0;
-            input.value = val;
-
-            if (!chamCongData[emp]) chamCongData[emp] = {};
-            const oldHeSo = (chamCongData[emp].heSo !== undefined) ? parseFloat(chamCongData[emp].heSo) : 1.0;
-
-            // NẾU HỆ SỐ KHÔNG THAY ĐỔI -> THOÁT NGAY!
-            if (val === oldHeSo) {
-                return;
-            }
-
-            chamCongData[emp].heSo = val;
-            window.chamCongData = chamCongData;
-            chamCongIsDirty = true;
-            chamCongLastEditedTime = Date.now();
-
-            recalculateRowTotal(emp, daysInMonth);
-            if (triggerSave && !isLoadingChamCong) {
-                triggerAutoSaveChamCong();
-            }
-        }
-
-        function flushPendingChamCongSave() {
-            // 1. Commit ngay ô input đang focus (nếu có)
-            const activeEl = document.activeElement;
-            if (activeEl && activeEl.classList) {
-                const my = getChamCongMonthYear();
-                const daysInMonth = new Date(my.split('-')[0], my.split('-')[1], 0).getDate();
-                if (activeEl.classList.contains('cc-input-text')) {
-                    commitChamCongCell(activeEl, daysInMonth, false);
-                } else if (activeEl.classList.contains('heso-input')) {
-                    commitHeSoCell(activeEl, daysInMonth, false);
-                }
-            }
-
-            // 2. Lưu đồng bộ ngay vào LocalStorage
-            const my = getChamCongMonthYear();
-            if (chamCongData && Object.keys(chamCongData).length > 0) {
-                setCachedChamCong(my, chamCongData);
-            }
-
-            // 3. Nếu có lệnh lưu đang chờ hoặc dữ liệu bị sửa đổi (dirty), gọi API lưu ngay lên server
-            if (chamCongSaveTimeout || chamCongIsDirty) {
-                if (chamCongSaveTimeout) {
-                    clearTimeout(chamCongSaveTimeout);
-                    chamCongSaveTimeout = null;
-                }
-                chamCongIsDirty = false;
-                const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
-                if (apiFn && chamCongData) {
-                    apiFn('saveChamCong', [my, chamCongData]).then(() => {
-                        const thead = document.getElementById('chamcong-thead');
-                        if (thead) thead.style.opacity = '1';
-                    }).catch(err => {
-                        console.error('[ChamCong] flush save error:', err);
-                        const thead = document.getElementById('chamcong-thead');
-                        if (thead) thead.style.opacity = '1';
-                    });
-                }
-            }
-        }
-        window.flushPendingChamCongSave = flushPendingChamCongSave;
-        window.addEventListener('beforeunload', flushPendingChamCongSave);
-        window.addEventListener('visibilitychange', () => {
-            if (document.hidden) flushPendingChamCongSave();
-        });
 
         function loadChamCongData() {
             const my = getChamCongMonthYear();
             
-            // Xử lý chuyển đổi tháng: Flush thay đổi dở dang của tháng cũ (nếu có) và reset bộ nhớ tạm
-            if (activeChamCongMonthYear && activeChamCongMonthYear !== my) {
-                if (chamCongIsDirty && chamCongData && Object.keys(chamCongData).length > 0) {
-                    const prevMy = activeChamCongMonthYear;
-                    const prevData = JSON.parse(JSON.stringify(chamCongData));
-                    const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
-                    if (apiFn) {
-                        apiFn('saveChamCong', [prevMy, prevData]);
-                    }
-                    setCachedChamCong(prevMy, prevData);
-                }
-                chamCongData = {};
-                window.chamCongData = chamCongData;
-                chamCongIsDirty = false;
-                chamCongLastEditedTime = 0;
-            }
-            activeChamCongMonthYear = my;
-            isLoadingChamCong = true;
-
-            // 1. Tải tức thì 0ms từ Local Cache nếu có
-            const cached = getCachedChamCong(my);
-            let hasCached = false;
-            if (cached && typeof cached === 'object' && Object.keys(cached).length > 0) {
-                chamCongData = normalizeChamCongData(cached);
-                window.chamCongData = chamCongData;
-                renderChamCongTable();
-                hasCached = true;
-            }
-
             getOrLoadChamCongEmployees(() => {
-                loadChamCongSymbols(() => {
-                    renderChamCongLegend();
-                    if (!hasCached) {
-                        renderChamCongTable(); // Hiển thị khung bảng ngay lập tức không để trống
+                renderChamCongTable(); // Hiển thị ngay lập tức không để bảng trống trơn
+                
+                google.script.run.withSuccessHandler(res => {
+                    let raw = {};
+                    if (res && res.status === 'success' && res.data) {
+                        raw = res.data;
+                    } else if (res && typeof res === 'object' && !res.status) {
+                        raw = res;
                     }
-                    
-                    const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
-                    if (!apiFn) {
-                        isLoadingChamCong = false;
-                        return;
-                    }
-
-                    apiFn('getChamCong', [my]).then(res => {
-                        isLoadingChamCong = false;
-                        // Nếu tháng đã bị đổi sang tháng khác trong lúc request đang gửi thì bỏ qua
-                        if (getChamCongMonthYear() !== my) return;
-
-                        let raw = {};
-                        if (res && res.status === 'success' && res.data) {
-                            raw = res.data;
-                        } else if (res && typeof res === 'object' && !res.status) {
-                            raw = res;
-                        }
-
-                        // BẢO VỆ DỮ LIỆU CỤC BỘ (Safe Merge on Client):
-                        const hasLocalData = chamCongData && Object.keys(chamCongData).some(k => Object.keys(chamCongData[k] || {}).length > 0);
-                        const isRecentlyEdited = (Date.now() - chamCongLastEditedTime < 8000) && chamCongIsDirty && (activeChamCongMonthYear === my);
-                        const serverIsEmpty = !raw || Object.keys(raw).length === 0;
-
-                        if (!serverIsEmpty) {
-                            const fresh = normalizeChamCongData(raw);
-                            // HỢP NHẤT AN TOÀN: Giữ các ô vừa nhập/sửa trên máy, đắp lên dữ liệu đầy đủ từ server
-                            if (hasLocalData && isRecentlyEdited) {
-                                for (const emp in chamCongData) {
-                                    if (!fresh[emp]) fresh[emp] = {};
-                                    for (const d in chamCongData[emp]) {
-                                        fresh[emp][d] = chamCongData[emp][d];
-                                    }
-                                }
-                            }
-                            chamCongData = fresh;
-                            window.chamCongData = chamCongData;
-                            setCachedChamCong(my, fresh);
-                            renderChamCongTable();
-                        } else if (hasLocalData && isRecentlyEdited) {
-                            setCachedChamCong(my, chamCongData);
-                            triggerAutoSaveChamCong();
-                        }
-                    }).catch(err => {
-                        isLoadingChamCong = false;
-                        console.warn('[ChamCong] background fetch err:', err);
-                    });
-                });
+                    chamCongData = normalizeChamCongData(raw);
+                    renderChamCongTable();
+                }).withFailureHandler(err => {
+                    console.error("Lỗi khi tải chấm công:", err);
+                    renderChamCongTable();
+                }).getChamCong(my);
             });
         }
 
         function isHoliday(y, m, d) {
             const date = new Date(y, m - 1, d);
-            const day = date.getDay();
-            return day === 0 || day === 6; // Thứ 7 (6) và Chủ Nhật (0) đều được tô nền để phân biệt ngày làm việc trong tuần (T2-T6)
+            return date.getDay() === 0; // Chỉ Chủ Nhật mới nghỉ cố định
         }
 
         function getWeekdayName(y, m, d) {
@@ -1388,97 +418,44 @@ window.switchAdminSection = function(sectionId, btn) {
             if (typeof val === 'number') return String(val);
             if (typeof val !== 'string') return '';
             val = val.trim();
-            const upper = val.toUpperCase();
-            if (upper === 'CA-NGAY') return 'X';
-            if (upper === 'SANG') return 'S';
-            if (upper === 'CHIEU') return 'C';
-            if (upper === 'LỄ' || upper === 'LE') return 'Lễ';
-            if (upper === 'TẾT' || upper === 'TET') return 'Tết';
-            if (upper === 'NỘI' || upper === 'NOI') return 'Nội';
-            if (upper === 'X/2' || upper === '1/2') return 'X/2';
-            if (upper === 'DK') return 'ĐK';
-
-            const sym = findChamCongSymbol(upper);
-            if (sym && sym.code) {
-                if (sym.code.includes('/')) {
-                    return upper;
-                }
-                return sym.code;
-            }
-            return val;
+            if (val === 'ca-ngay') return 'X';
+            if (val === 'sang') return 'S';
+            if (val === 'chieu') return 'C';
+            return val.toUpperCase();
         }
 
         function calcDayValue(val) {
             if (!val && val !== 0) return 0;
-            if (typeof val === 'number') return Math.min(2, Math.max(0, val));
+            if (typeof val === 'number') return val;
             if (typeof val !== 'string') return 0;
             val = val.trim();
-            if (!val) return 0;
-            const upper = val.toUpperCase();
-
-            // 1. Khớp theo ký hiệu cấu hình động (Dynamic Symbols)
-            try {
-                const sym = findChamCongSymbol(upper);
-                if (sym && sym.value !== undefined) {
-                    return parseFloat(sym.value) || 0;
-                }
-            } catch(e) {
-                console.warn('[ChamCong] findChamCongSymbol error:', e);
-            }
-
-            // Fallback ký hiệu mặc định nếu chưa khớp
-            if (['TS', 'ĐK', 'DK', 'O', 'Ô', 'NGHỈ', 'NGHI', 'V', 'K', 'LỄ', 'LE', 'TẾT', 'TET', 'NỘI', 'NOI', 'H', 'F', 'B', 'P'].includes(upper)) return 0;
-            if (['X/2', '1/2', '0.5', 'S', 'C', 'SANG', 'CHIEU'].includes(upper)) return 0.5;
-            if (['X', 'CA-NGAY', '1'].includes(upper)) return 1;
-
-            const parsedNum = parseFloat(val);
-            if (!isNaN(parsedNum) && parsedNum >= 0 && parsedNum <= 2) return parsedNum;
-
-            if (upper.includes('X/2') || upper.includes('1/2')) return 0.5;
-
+            if (val === 'ca-ngay' || val === 'X' || val === 'x') return 1;
+            if (val === 'sang' || val === 'chieu' || val === 'S' || val === 's' || val === 'C' || val === 'c') return 0.5;
             let total = 0;
-            const parts = upper.split(/[\+\-\s,]+/);
+            const parts = val.toUpperCase().split(/[\/\+\-\s,]+/);
             parts.forEach(p => {
-                const subSym = findChamCongSymbol(p);
-                if (subSym && subSym.value !== undefined) {
-                    total += (parseFloat(subSym.value) || 0);
-                } else if (p === 'S' || p === 'C' || p === 'SANG' || p === 'CHIEU') {
-                    total += 0.5;
-                } else if (p === 'X' || p === 'CA-NGAY' || p === '1') {
-                    total += 1;
-                }
+                if (p === 'S' || p === 'C' || p === 'SANG' || p === 'CHIEU') total += 0.5;
+                else if (p === 'X' || p === 'CA-NGAY') total += 1;
             });
-            return total > 2 ? 2 : total;
+            return total > 1 ? 1 : total;
         }
-        window.calcDayValue = calcDayValue;
 
         function enableHolidayCell(td, emp, day) {
             td.onclick = null;
             td.innerHTML = `
-                <input type="text" class="cc-input-text" data-emp="${emp}" data-day="${day}" value="" style="border: 1px solid #fef08a;">
+                <input type="text" class="cc-input-text" data-emp="${emp}" data-day="${day}" value="" style="background:#fff; border: 1px solid #fef08a;">
             `;
             const input = td.querySelector('input');
             input.focus();
             
             const daysInMonth = new Date(getChamCongMonthYear().split('-')[0], getChamCongMonthYear().split('-')[1], 0).getDate();
-            ['input', 'change'].forEach(evtType => {
-                input.addEventListener(evtType, (e) => {
-                    commitChamCongCell(e.target, daysInMonth, true);
-                });
-            });
-            input.addEventListener('blur', (e) => {
-                const val = e.target.value.trim();
-                commitChamCongCell(e.target, daysInMonth, true);
-                if (!val) {
-                    td.innerHTML = `<div style="color: #a16207; font-style: italic; font-size: 10px; font-weight: 600; cursor: pointer; line-height: 20px; user-select: none;">Nghỉ</div>`;
-                    td.onclick = () => enableHolidayCell(td, emp, day);
-                }
-            });
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    input.blur();
-                }
+            input.addEventListener('change', (e) => {
+                const val = e.target.value.trim().toUpperCase();
+                if (!chamCongData[emp]) chamCongData[emp] = {};
+                if (val) chamCongData[emp][day] = val;
+                else delete chamCongData[emp][day];
+                recalculateRowTotal(emp, daysInMonth);
+                triggerAutoSaveChamCong();
             });
         }
 
@@ -1508,8 +485,8 @@ window.switchAdminSection = function(sectionId, btn) {
                 const bgClass = isOff ? 'bg-holiday' : '';
                 const todayClass = isToday ? 'col-today' : '';
                 
-                theadHtml += `<th class="${bgClass} ${todayClass}" id="chamcong-day-${d}-th" ${isToday ? 'data-is-today="1"' : ''} style="min-width: ${isToday ? '32px' : '28px'}; width: ${isToday ? '32px' : '28px'};" title="${isToday ? 'Hôm nay (Ngày ' + d + ')' : 'Ngày ' + d}">${d}</th>`;
-                weekHtml += `<th class="${bgClass} ${isToday ? 'th-today-sub' : ''}" style="min-width: ${isToday ? '32px' : '28px'}; width: ${isToday ? '32px' : '28px'};">${getWeekdayName(year, month, d)}</th>`;
+                theadHtml += `<th class="${bgClass} ${todayClass}" id="chamcong-day-${d}-th" ${isToday ? 'data-is-today="1"' : ''} style="min-width: ${isToday ? '30px' : '26px'}; width: ${isToday ? '30px' : '26px'};" title="${isToday ? 'Hôm nay (Ngày ' + d + ')' : 'Ngày ' + d}">${d}</th>`;
+                weekHtml += `<th class="${bgClass} ${isToday ? 'th-today-sub' : ''}">${getWeekdayName(year, month, d)}</th>`;
             }
             
             theadHtml += `<th rowspan="2" style="vertical-align: middle;">TỔNG CÔNG</th></tr>`;
@@ -1532,16 +509,10 @@ window.switchAdminSection = function(sectionId, btn) {
             tbody.innerHTML = '';
             let grandTotalChamCong = 0;
 
-            adminChamCongEmployees = cleanseAdminChamCongEmployees(adminChamCongEmployees);
-            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && isBVTKS_CS2) {
-                adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
-            }
-            ensureStaffConfigForEmployees();
-
             if (!adminChamCongEmployees || adminChamCongEmployees.length === 0) {
                 const colSpan = daysInMonth + 3;
                 tbody.innerHTML = '<tr><td colspan="' + colSpan + '" style="text-align:center; padding:30px; color:#64748b; font-size:13px; font-weight:500;">' +
-                    '⚠️ Đơn vị này chưa có danh sách nhân sự chấm công. Vui lòng vào <b>Quản trị ➔ Nhân sự chấm công & thống kê</b> hoặc bấm chuyển sang tab <b>🧑‍⚕️ Danh Sách Nhân Sự</b> để thêm nhân viên.' +
+                    '⚠️ Đơn vị này chưa có danh sách nhân sự chấm công. Vui lòng vào <b>Quản trị ➔ Nhân sự chấm công</b> để thêm nhân viên.' +
                     '</td></tr>';
                 return;
             }
@@ -1562,13 +533,12 @@ window.switchAdminSection = function(sectionId, btn) {
                     const rawVal = chamCongData[emp][d] || '';
                     tongCong += calcDayValue(rawVal);
                     const isOff = isHoliday(year, month, d);
-                    const isSundayOnly = (new Date(year, month - 1, d).getDay() === 0);
                     const isToday = isCurrentMonthView && (d === currentDay);
                     const bgClass = isOff ? 'bg-holiday' : '';
                     const todayClass = isToday ? 'col-today' : '';
                     const displayVal = formatDisplayValue(rawVal);
 
-                    if (isSundayOnly && !displayVal) {
+                    if (isOff && !displayVal) {
                         rowHtml += `
                             <td class="${bgClass} ${todayClass}" onclick="enableHolidayCell(this, '${emp}', ${d})">
                                 <div style="color: #a16207; font-style: italic; font-size: 10px; font-weight: 600; cursor: pointer; line-height: 20px; user-select: none;">Nghỉ</div>
@@ -1621,6 +591,13 @@ window.switchAdminSection = function(sectionId, btn) {
                             const targetLeft = Math.max(0, targetTh.offsetLeft - stickyOffset);
                             container.scrollTo({ left: targetLeft, behavior: 'smooth' });
                         }
+                        
+                        // Đặt con trỏ chuột (focus) vào ô đầu tiên của cột ngày hôm nay
+                        const firstTodayInput = tbody.querySelector(`.cc-input-text[data-day="${currentDay}"]`);
+                        if (firstTodayInput) {
+                            firstTodayInput.focus();
+                            firstTodayInput.select();
+                        }
                     } else {
                         container.scrollTo({ left: 0, behavior: 'smooth' });
                     }
@@ -1630,11 +607,17 @@ window.switchAdminSection = function(sectionId, btn) {
 
         function attachChamCongEvents(daysInMonth) {
             document.querySelectorAll('.cc-input-text').forEach(input => {
-                applySymbolStyleToInput(input, input.value);
-                ['input', 'change', 'blur'].forEach(evtType => {
-                    input.addEventListener(evtType, (e) => {
-                        commitChamCongCell(e.target, daysInMonth, true);
-                    });
+                input.addEventListener('change', (e) => {
+                    const emp = e.target.getAttribute('data-emp');
+                    const day = e.target.getAttribute('data-day');
+                    const val = e.target.value.trim().toUpperCase();
+
+                    if (!chamCongData[emp]) chamCongData[emp] = {};
+                    if (val) chamCongData[emp][day] = val;
+                    else delete chamCongData[emp][day];
+
+                    recalculateRowTotal(emp, daysInMonth);
+                    triggerAutoSaveChamCong();
                 });
 
                 input.addEventListener('keydown', (e) => {
@@ -1654,18 +637,12 @@ window.switchAdminSection = function(sectionId, btn) {
                     } else if (e.key === 'ArrowLeft' && currentDay > 1) {
                         if (e.target.selectionStart === 0) {
                             e.preventDefault();
-                            for (let prevD = currentDay - 1; prevD >= 1; prevD--) {
-                                const target = document.querySelector(`.cc-input-text[data-emp="${currentEmp}"][data-day="${prevD}"]`);
-                                if (target) { nextInput = target; break; }
-                            }
+                            nextInput = document.querySelector(`.cc-input-text[data-emp="${currentEmp}"][data-day="${currentDay - 1}"]`);
                         }
                     } else if (e.key === 'ArrowRight' && currentDay < daysInMonth) {
                         if (e.target.selectionEnd === e.target.value.length) {
                             e.preventDefault();
-                            for (let nextD = currentDay + 1; nextD <= daysInMonth; nextD++) {
-                                const target = document.querySelector(`.cc-input-text[data-emp="${currentEmp}"][data-day="${nextD}"]`);
-                                if (target) { nextInput = target; break; }
-                            }
+                            nextInput = document.querySelector(`.cc-input-text[data-emp="${currentEmp}"][data-day="${currentDay + 1}"]`);
                         }
                     }
                     if (nextInput) {
@@ -1676,10 +653,18 @@ window.switchAdminSection = function(sectionId, btn) {
             });
 
             document.querySelectorAll('.heso-input').forEach(input => {
-                ['input', 'change', 'blur'].forEach(evtType => {
-                    input.addEventListener(evtType, (e) => {
-                        commitHeSoCell(e.target, daysInMonth, true);
-                    });
+                input.addEventListener('change', (e) => {
+                    const emp = e.target.getAttribute('data-emp');
+                    let val = parseFloat(e.target.value);
+                    if (isNaN(val) || val < 0) val = 1.0;
+                    if (val > 1) val = 1.0;
+                    
+                    e.target.value = val;
+                    if (!chamCongData[emp]) chamCongData[emp] = {};
+                    chamCongData[emp].heSo = val;
+                    
+                    recalculateRowTotal(emp, daysInMonth);
+                    triggerAutoSaveChamCong();
                 });
             });
         }
@@ -1711,59 +696,27 @@ window.switchAdminSection = function(sectionId, btn) {
         }
 
         function triggerAutoSaveChamCong() {
-            if (isLoadingChamCong) return;
-            const my = activeChamCongMonthYear || getChamCongMonthYear();
-            // Lưu lạc quan ngay lập tức vào Local Cache để không bị mất khi chuyển tab/reload
-            setCachedChamCong(my, chamCongData);
-            chamCongIsDirty = true;
-            chamCongLastEditedTime = Date.now();
-
             if (chamCongSaveTimeout) clearTimeout(chamCongSaveTimeout);
-            const thead = document.getElementById('chamcong-thead');
-            if (thead) thead.style.opacity = '0.7';
-
             chamCongSaveTimeout = setTimeout(() => {
-                if (isLoadingChamCong) {
-                    if (thead) thead.style.opacity = '1';
-                    return;
-                }
-                const targetMy = my;
-                const targetData = JSON.parse(JSON.stringify(chamCongData));
-                const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
-                if (!apiFn) {
-                    if (thead) thead.style.opacity = '1';
-                    return;
-                }
-                apiFn('saveChamCong', [targetMy, targetData]).then(() => {
-                    chamCongIsDirty = false;
-                    if (thead) thead.style.opacity = '1';
-                }).catch(err => {
-                    console.error('[ChamCong] auto-save error:', err);
-                    if (thead) thead.style.opacity = '1';
-                });
-            }, 350);
+                const my = getChamCongMonthYear();
+                document.getElementById('chamcong-thead').style.opacity = '0.7';
+                google.script.run.withSuccessHandler(() => {
+                    document.getElementById('chamcong-thead').style.opacity = '1';
+                }).saveChamCong(my, chamCongData);
+            }, 1000);
         }
 
         // Tự động set tháng hiện tại & render sẵn bảng khi load
         document.addEventListener('DOMContentLoaded', () => {
             const today = new Date();
-            const curM = today.getMonth() + 1;
-            const curY = today.getFullYear();
             const monthEl = document.getElementById('chamcong-month-picker');
             const yearEl = document.getElementById('chamcong-year-picker');
-            const tkM = document.getElementById('thongke-month-picker');
-            const tkY = document.getElementById('thongke-year-picker');
-            if (monthEl) monthEl.value = curM;
-            if (yearEl) yearEl.value = curY;
-            if (tkM) tkM.value = curM;
-            if (tkY) tkY.value = curY;
+            if (monthEl) monthEl.value = today.getMonth() + 1;
+            if (yearEl) yearEl.value = today.getFullYear();
 
-            loadChamCongSymbols(() => {
-                renderChamCongLegend();
-                // Pre-render sẵn bảng Chấm Công và Thống Kê
-                try { renderChamCongTable(); } catch(e) { console.error(e); }
-                try { renderThongKeTable(); } catch(e) { console.error(e); }
-            });
+            // Pre-render sẵn bảng Chấm Công và Thống Kê
+            try { renderChamCongTable(); } catch(e) { console.error(e); }
+            try { renderThongKeTable(); } catch(e) { console.error(e); }
         });
 
         // ==========================================
@@ -1780,57 +733,32 @@ window.switchAdminSection = function(sectionId, btn) {
             thongKeMode = mode;
             
             getOrLoadChamCongEmployees(() => {
+                renderThongKeTable(); // Render table ngay lập tức với dữ liệu hiện có
+
                 if (mode === 'current') {
                     const my = getChamCongMonthYear();
-                    
-                    // 1. Tải tức thì 0ms từ Local Cache nếu có
-                    const cachedCC = getCachedChamCong(my);
-                    const cachedTK = getCachedThongKe(my);
-                    let hasCached = false;
-                    if (cachedCC || cachedTK) {
-                        if (cachedCC) chamCongData = normalizeChamCongData(cachedCC);
-                        if (cachedTK) thongKeData = normalizeThongKeData(cachedTK);
+                    google.script.run.withSuccessHandler(resCC => {
+                        let rawCC = {};
+                        if (resCC && resCC.status === 'success' && resCC.data) rawCC = resCC.data;
+                        else if (resCC && typeof resCC === 'object' && !resCC.status) rawCC = resCC;
+                        chamCongData = normalizeChamCongData(rawCC);
+
+                        google.script.run.withSuccessHandler(resTT => {
+                            let rawTT = {};
+                            if (resTT && resTT.status === 'success' && resTT.data) rawTT = resTT.data;
+                            else if (resTT && typeof resTT === 'object' && !resTT.status) rawTT = resTT;
+                            thongKeData = normalizeThongKeData(rawTT);
+
+                            renderThongKeTable();
+                        }).withFailureHandler(err => {
+                            console.error(err);
+                            thongKeData = normalizeThongKeData({});
+                            renderThongKeTable();
+                        }).getThongKeThuThuat(my);
+                    }).withFailureHandler(err => {
+                        console.error(err);
                         renderThongKeTable();
-                        hasCached = true;
-                    }
-
-                    if (!hasCached) {
-                        renderThongKeTable(); // Hiển thị khung bảng ngay lập tức
-                    }
-
-                    const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
-                    if (!apiFn) return;
-
-                    // 2. Chạy đồng bộ ngầm song song cả Chấm Công & Thống Kê (Parallel Execution)
-                    const pCC = new Promise(resolve => {
-                        apiFn('getChamCong', [my], 
-                            res => resolve((res && res.data) ? res.data : (res || {})),
-                            () => resolve(cachedCC || {})
-                        );
-                    });
-                    const pTT = new Promise(resolve => {
-                        apiFn('getThongKeThuThuat', [my], 
-                            res => resolve((res && res.data) ? res.data : (res || {})),
-                            () => resolve(cachedTK || {})
-                        );
-                    });
-
-                    Promise.all([pCC, pTT]).then(([rawCC, rawTT]) => {
-                        if (getChamCongMonthYear() !== my) return;
-                        const freshCC = normalizeChamCongData(rawCC);
-                        const freshTT = normalizeThongKeData(rawTT);
-
-                        chamCongData = freshCC;
-                        window.chamCongData = chamCongData;
-                        setCachedChamCong(my, freshCC);
-
-                        thongKeData = freshTT;
-                        setCachedThongKe(my, freshTT);
-                        renderThongKeTable();
-                    }).catch(err => {
-                        console.warn('[ThongKe] Background load error:', err);
-                        renderThongKeTable();
-                    });
+                    }).getChamCong(my);
                 } else if (mode === 'custom') {
                     const startVal = document.getElementById('custom-start-date').value;
                     const endVal = document.getElementById('custom-end-date').value;
@@ -1856,7 +784,7 @@ window.switchAdminSection = function(sectionId, btn) {
                     fetchMultiMonthsData(months, `khoảng thời gian từ ${startVal} đến ${endVal}`);
                 } else {
                     // Quý (q1, q2, q3, q4)
-                    const year = document.getElementById('chamcong-year-picker') ? document.getElementById('chamcong-year-picker').value : new Date().getFullYear().toString();
+                    const year = document.getElementById('chamcong-year-picker').value || '2026';
                     let months = [];
                     let qName = '';
                     if (mode === 'q1') { months = [`${year}-01`, `${year}-02`, `${year}-03`]; qName = 'Quý I (' + year + ')'; }
@@ -1869,45 +797,53 @@ window.switchAdminSection = function(sectionId, btn) {
         }
 
         function fetchSingleMonthData(my) {
-            const cachedCC = getCachedChamCong(my);
-            const cachedTK = getCachedThongKe(my);
-
-            const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
-            if (!apiFn) {
-                return Promise.resolve({
-                    month: my,
-                    data: {
-                        chamcong: normalizeChamCongData(cachedCC || {}),
-                        thuthuat: normalizeThongKeData(cachedTK || {})
-                    }
-                });
-            }
-
-            const pCC = new Promise(resolve => {
-                apiFn('getChamCong', [my], 
-                    res => resolve((res && res.data) ? res.data : (res || {})),
-                    () => resolve(cachedCC || {})
-                );
-            });
-            const pTT = new Promise(resolve => {
-                apiFn('getThongKeThuThuat', [my], 
-                    res => resolve((res && res.data) ? res.data : (res || {})),
-                    () => resolve(cachedTK || {})
-                );
-            });
-
-            return Promise.all([pCC, pTT]).then(([rawCC, rawTT]) => {
-                const normCC = normalizeChamCongData(rawCC);
-                const normTT = normalizeThongKeData(rawTT);
-                setCachedChamCong(my, normCC);
-                setCachedThongKe(my, normTT);
-                return {
-                    month: my,
-                    data: {
-                        chamcong: normCC,
-                        thuthuat: normTT
-                    }
-                };
+            return new Promise((resolve) => {
+                let rawCC = {};
+                let rawTT = {};
+                google.script.run.withSuccessHandler(resCC => {
+                    if (resCC && resCC.status === 'success' && resCC.data) rawCC = resCC.data;
+                    else if (resCC && typeof resCC === 'object' && !resCC.status) rawCC = resCC;
+                    
+                    google.script.run.withSuccessHandler(resTT => {
+                        if (resTT && resTT.status === 'success' && resTT.data) rawTT = resTT.data;
+                        else if (resTT && typeof resTT === 'object' && !resTT.status) rawTT = resTT;
+                        resolve({ 
+                            month: my, 
+                            data: { 
+                                chamcong: normalizeChamCongData(rawCC), 
+                                thuthuat: normalizeThongKeData(rawTT) 
+                            } 
+                        });
+                    }).withFailureHandler(() => {
+                        resolve({ 
+                            month: my, 
+                            data: { 
+                                chamcong: normalizeChamCongData(rawCC), 
+                                thuthuat: normalizeThongKeData({}) 
+                            } 
+                        });
+                    }).getThongKeThuThuat(my);
+                }).withFailureHandler(() => {
+                    google.script.run.withSuccessHandler(resTT => {
+                        if (resTT && resTT.status === 'success' && resTT.data) rawTT = resTT.data;
+                        else if (resTT && typeof resTT === 'object' && !resTT.status) rawTT = resTT;
+                        resolve({ 
+                            month: my, 
+                            data: { 
+                                chamcong: normalizeChamCongData({}), 
+                                thuthuat: normalizeThongKeData(rawTT) 
+                            } 
+                        });
+                    }).withFailureHandler(() => {
+                        resolve({ 
+                            month: my, 
+                            data: { 
+                                chamcong: normalizeChamCongData({}), 
+                                thuthuat: normalizeThongKeData({}) 
+                            } 
+                        });
+                    }).getThongKeThuThuat(my);
+                }).getChamCong(my);
             });
         }
         window.calcDayValue = calcDayValue;
@@ -1926,11 +862,9 @@ window.switchAdminSection = function(sectionId, btn) {
                     const cc = mData.chamcong || {};
                     const tt = mData.thuthuat || {};
 
-                    // Gộp chấm công theo canonical full name
+                    // Gộp chấm công
                     Object.keys(cc).forEach(emp => {
-                        const canon = getCanonicalStaffName(emp);
-                        if (!canon) return;
-                        if (!mergedChamCong[canon]) mergedChamCong[canon] = 0;
+                        if (!mergedChamCong[emp]) mergedChamCong[emp] = 0;
                         let rawCong = 0;
                         Object.keys(cc[emp]).forEach(key => {
                             if (key !== 'heSo') {
@@ -1938,18 +872,16 @@ window.switchAdminSection = function(sectionId, btn) {
                             }
                         });
                         const heSo = cc[emp].heSo !== undefined ? parseFloat(cc[emp].heSo) : 1.0;
-                        mergedChamCong[canon] += Math.round((rawCong * heSo) * 100) / 100;
+                        mergedChamCong[emp] += Math.round((rawCong * heSo) * 100) / 100;
                     });
 
-                    // Gộp thủ thuật theo canonical full name
+                    // Gộp thủ thuật
                     Object.keys(tt).forEach(emp => {
-                        const canon = getCanonicalStaffName(emp);
-                        if (!canon) return;
-                        if (!mergedThuThuat[canon]) mergedThuThuat[canon] = { loai1: 0, loai2: 0, loai3: 0, khac: 0 };
-                        mergedThuThuat[canon].loai1 += (tt[emp].loai1 || 0);
-                        mergedThuThuat[canon].loai2 += (tt[emp].loai2 || 0);
-                        mergedThuThuat[canon].loai3 += (tt[emp].loai3 || 0);
-                        mergedThuThuat[canon].khac += (tt[emp].khac || 0);
+                        if (!mergedThuThuat[emp]) mergedThuThuat[emp] = { loai1: 0, loai2: 0, loai3: 0, khac: 0 };
+                        mergedThuThuat[emp].loai1 += (tt[emp].loai1 || 0);
+                        mergedThuThuat[emp].loai2 += (tt[emp].loai2 || 0);
+                        mergedThuThuat[emp].loai3 += (tt[emp].loai3 || 0);
+                        mergedThuThuat[emp].khac += (tt[emp].khac || 0);
                     });
                 });
 
@@ -1971,22 +903,6 @@ window.switchAdminSection = function(sectionId, btn) {
             if(!tbody) return;
             tbody.innerHTML = '';
             
-            // Luôn đảm bảo adminChamCongEmployees sạch và lấy chuẩn từ Tab Admin
-            adminChamCongEmployees = cleanseAdminChamCongEmployees(adminChamCongEmployees);
-            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && isBVTKS_CS2) {
-                adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
-            }
-            ensureStaffConfigForEmployees();
-
-            if (!adminChamCongEmployees || adminChamCongEmployees.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:35px 20px; color:#64748b; font-size:13px; font-weight:500; background:#f8fafc;">
-                    <div style="font-size:24px; margin-bottom:8px;">👥</div>
-                    <div>Đơn vị chưa có danh sách nhân sự.</div>
-                    <div style="font-size:11.5px; color:#94a3b8; margin-top:4px;">Vui lòng thêm nhân sự tại <b>Quản trị ➔ Cài đặt hệ thống ➔ Nhân sự chấm công & thống kê</b>.</div>
-                </td></tr>`;
-                return;
-            }
-
             const isQ = (thongKeMode !== 'current');
             const sourceChamCong = isQ ? thongKeQuarterData.chamcong : null;
             const sourceThuThuat = isQ ? thongKeQuarterData.thuthuat : thongKeData;
@@ -2000,20 +916,18 @@ window.switchAdminSection = function(sectionId, btn) {
 
             adminChamCongEmployees.forEach(emp => {
                 const tr = document.createElement('tr');
-                const t = (sourceThuThuat && sourceThuThuat[emp]) ? sourceThuThuat[emp] : (sourceThuThuat ? (findStaffDataByKey(sourceThuThuat, emp) || { loai1: 0, loai2: 0, loai3: 0, khac: 0 }) : { loai1: 0, loai2: 0, loai3: 0, khac: 0 });
+                const t = (sourceThuThuat && sourceThuThuat[emp]) ? sourceThuThuat[emp] : { loai1: 0, loai2: 0, loai3: 0, khac: 0 };
                 
                 let tongCong = 0;
                 if (isQ) {
-                    tongCong = (sourceChamCong && sourceChamCong[emp] !== undefined) ? Math.round(sourceChamCong[emp] * 100) / 100 : (sourceChamCong ? Math.round((findStaffDataByKey(sourceChamCong, emp) || 0) * 100) / 100 : 0);
+                    tongCong = (sourceChamCong && sourceChamCong[emp] !== undefined) ? Math.round(sourceChamCong[emp] * 100) / 100 : 0;
                 } else {
-                    const empCC = chamCongData[emp] || findStaffDataByKey(chamCongData, emp);
-                    if (empCC) {
-                        const myParts = getChamCongMonthYear().split('-');
-                        const daysInMonth = new Date(parseInt(myParts[0]), parseInt(myParts[1]), 0).getDate();
+                    if (chamCongData[emp]) {
+                        const daysInMonth = new Date(getChamCongMonthYear().split('-')[0], getChamCongMonthYear().split('-')[1], 0).getDate();
                         for (let d = 1; d <= daysInMonth; d++) {
-                            tongCong += calcDayValue(empCC[d] || '');
+                            tongCong += calcDayValue(chamCongData[emp][d] || '');
                         }
-                        const heSo = empCC.heSo !== undefined ? parseFloat(empCC.heSo) : 1.0;
+                        const heSo = chamCongData[emp].heSo !== undefined ? parseFloat(chamCongData[emp].heSo) : 1.0;
                         tongCong = Math.round((tongCong * heSo) * 100) / 100;
                     }
                 }
@@ -2083,12 +997,6 @@ window.switchAdminSection = function(sectionId, btn) {
         });
 
         function processThuThuatExcelData(dataRows) {
-            adminChamCongEmployees = cleanseAdminChamCongEmployees(adminChamCongEmployees);
-            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && isBVTKS_CS2) {
-                adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
-            }
-            ensureStaffConfigForEmployees();
-
             tempThuThuatData = {};
             adminChamCongEmployees.forEach(emp => {
                 tempThuThuatData[emp] = { 
@@ -2116,28 +1024,12 @@ window.switchAdminSection = function(sectionId, btn) {
                 if (rawEmpNameNormalized.includes('thủ thuật viên') || rawEmpNameNormalized.includes('tên nhân viên')) continue;
 
                 let matchedEmp = null;
-                const cleanRaw = rawEmpNameNormalized.replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd|dd\.|dd)\s+/, '').trim();
-                
                 for (const emp of adminChamCongEmployees) {
-                    const staff = adminChamCongStaffConfig[emp] || { keys: [emp.toLowerCase().trim()] };
-                    const empLower = emp.toLowerCase().trim();
-                    
-                    if (rawEmpNameNormalized === empLower || cleanRaw === empLower) {
+                    const staff = adminChamCongStaffConfig[emp] || { keys: [emp.toLowerCase()] };
+                    if (staff.keys && staff.keys.includes(rawEmpNameNormalized)) {
                         matchedEmp = emp;
                         break;
                     }
-                    if (staff.keys && (staff.keys.includes(rawEmpNameNormalized) || staff.keys.includes(cleanRaw))) {
-                        matchedEmp = emp;
-                        break;
-                    }
-                    for (const k of (staff.keys || [])) {
-                        const lk = k.toLowerCase().trim();
-                        if (rawEmpNameNormalized === lk || cleanRaw === lk || rawEmpNameNormalized.includes(lk) || lk.includes(rawEmpNameNormalized)) {
-                            matchedEmp = emp;
-                            break;
-                        }
-                    }
-                    if (matchedEmp) break;
                 }
                 
                 if (!matchedEmp) continue;
@@ -2261,36 +1153,22 @@ window.switchAdminSection = function(sectionId, btn) {
 
         function saveThuThuatToServer() {
             const my = getChamCongMonthYear();
-            setCachedThongKe(my, thongKeData);
             window.showGlobalLoading("Đang lưu dữ liệu thủ thuật...");
-            const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
-            if (!apiFn) {
-                window.hideGlobalLoading();
-                return;
-            }
-            apiFn('saveThongKeThuThuat', [my, thongKeData]).then(() => {
+            google.script.run.withSuccessHandler(() => {
                 window.hideGlobalLoading();
                 alert("Đã lưu dữ liệu thủ thuật lên máy chủ!");
-            }).catch(err => {
+            }).withFailureHandler((err) => {
                 window.hideGlobalLoading();
                 console.error(err);
                 alert("Lỗi khi lưu dữ liệu thủ thuật!");
-            });
+            }).saveThongKeThuThuat(my, thongKeData);
         }
 
         document.getElementById('thongke-mode').addEventListener('change', (e) => {
-            const tkContainer = document.getElementById('thongke-month-year-container');
-            const customContainer = document.getElementById('custom-range-picker-container');
             if (e.target.value === 'custom') {
-                if (customContainer) customContainer.style.display = 'flex';
-                if (tkContainer) tkContainer.style.display = 'none';
-            } else if (e.target.value === 'current') {
-                if (customContainer) customContainer.style.display = 'none';
-                if (tkContainer) tkContainer.style.display = 'inline-flex';
-                loadThongKeData();
+                document.getElementById('custom-range-picker-container').style.display = 'flex';
             } else {
-                if (customContainer) customContainer.style.display = 'none';
-                if (tkContainer) tkContainer.style.display = 'none';
+                document.getElementById('custom-range-picker-container').style.display = 'none';
                 loadThongKeData();
             }
         });
@@ -2424,9 +1302,8 @@ window.switchAdminSection = function(sectionId, btn) {
 
         function getThongKeTimeLabel() {
             const mode = document.getElementById('thongke-mode')?.value || 'current';
-            const now = new Date();
-            const year = parseInt(document.getElementById('chamcong-year-picker')?.value || document.getElementById('thongke-year-picker')?.value || now.getFullYear());
-            const month = parseInt(document.getElementById('chamcong-month-picker')?.value || document.getElementById('thongke-month-picker')?.value || (now.getMonth() + 1));
+            const year = parseInt(document.getElementById('chamcong-year-picker')?.value || '2026');
+            const month = parseInt(document.getElementById('chamcong-month-picker')?.value || '8');
             
             let endYear = year;
             let endMonth = month;
@@ -2540,11 +1417,6 @@ window.switchAdminSection = function(sectionId, btn) {
                 alert("Thư viện ExcelJS đang nạp, vui lòng thử lại sau giây lát!");
                 return;
             }
-            adminChamCongEmployees = cleanseAdminChamCongEmployees(adminChamCongEmployees);
-            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && isBVTKS_CS2) {
-                adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
-            }
-            ensureStaffConfigForEmployees();
             if (adminChamCongEmployees.length === 0) {
                 alert("Chưa có danh sách nhân sự chấm công để xuất!");
                 return;
@@ -2663,12 +1535,11 @@ window.switchAdminSection = function(sectionId, btn) {
                     const rawVal = chamCongData[emp] ? (chamCongData[emp][d] || '') : '';
                     tongCong += calcDayValue(rawVal);
                     const isOff = isHoliday(year, month, d);
-                    const isSundayOnly = (new Date(year, month - 1, d).getDay() === 0);
                     const cell = ws.getCell(r, colIdx);
                     cell.alignment = { vertical: 'middle', horizontal: 'center' };
 
                     const displayVal = formatDisplayValue(rawVal);
-                    if (isSundayOnly && !displayVal) {
+                    if (isOff && !displayVal) {
                         cell.value = 'Nghỉ';
                         cell.font = { name: 'Times New Roman', size: 9.5, italic: true, color: { argb: 'FFA16207' } };
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF9C3' } };
@@ -2778,11 +1649,6 @@ window.switchAdminSection = function(sectionId, btn) {
                 alert("Thư viện ExcelJS đang nạp, vui lòng thử lại sau giây lát!");
                 return;
             }
-            adminChamCongEmployees = cleanseAdminChamCongEmployees(adminChamCongEmployees);
-            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && isBVTKS_CS2) {
-                adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
-            }
-            ensureStaffConfigForEmployees();
             if (adminChamCongEmployees.length === 0) {
                 alert("Chưa có danh sách nhân sự để xuất báo cáo!");
                 return;
@@ -3283,11 +2149,6 @@ window.switchAdminSection = function(sectionId, btn) {
                 alert("Thư viện ExcelJS đang nạp, vui lòng thử lại sau giây lát!");
                 return;
             }
-            adminChamCongEmployees = cleanseAdminChamCongEmployees(adminChamCongEmployees);
-            if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && isBVTKS_CS2) {
-                adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
-            }
-            ensureStaffConfigForEmployees();
             if (adminChamCongEmployees.length === 0) {
                 alert("Chưa có danh sách nhân sự để tính thực lĩnh!");
                 return;
@@ -3552,121 +2413,36 @@ window.switchAdminSection = function(sectionId, btn) {
         // Khởi tạo UI cấu hình đơn giá
         initPriceConfigUI();
 
-        // Đồng bộ và gán sự kiện cho bộ chọn Tháng/Năm giữa Chấm công & Thống kê
-        function initMonthYearSync() {
-            const now = new Date();
-            const curM = now.getMonth() + 1;
-            const curY = now.getFullYear();
-
-            const ccM = document.getElementById('chamcong-month-picker');
-            const ccY = document.getElementById('chamcong-year-picker');
-            const tkM = document.getElementById('thongke-month-picker');
-            const tkY = document.getElementById('thongke-year-picker');
-
-            if (ccM && !ccM.value) ccM.value = curM;
-            if (ccY && !ccY.value) ccY.value = curY;
-            if (tkM && !tkM.value) tkM.value = curM;
-            if (tkY && !tkY.value) tkY.value = curY;
-
-            let syncTimer = null;
-            const debouncedSync = (fn) => {
-                if (syncTimer) clearTimeout(syncTimer);
-                syncTimer = setTimeout(fn, 60);
-            };
-
-            const onMonthChangeFromTK = () => {
-                if (ccM) ccM.value = tkM.value;
-                debouncedSync(() => {
-                    const mode = document.getElementById('thongke-mode')?.value;
-                    if (mode === 'current') loadThongKeData();
-                    if (typeof loadChamCongData === 'function') loadChamCongData();
-                });
-            };
-            const onYearChangeFromTK = () => {
-                if (ccY) ccY.value = tkY.value;
-                debouncedSync(() => {
-                    const mode = document.getElementById('thongke-mode')?.value;
-                    if (mode === 'current') loadThongKeData();
-                    if (typeof loadChamCongData === 'function') loadChamCongData();
-                });
-            };
-
-            const onMonthChangeFromCC = () => {
-                if (tkM) tkM.value = ccM.value;
-                debouncedSync(() => {
-                    loadChamCongData();
-                    const mode = document.getElementById('thongke-mode')?.value;
-                    if (mode === 'current') loadThongKeData();
-                });
-            };
-            const onYearChangeFromCC = () => {
-                if (tkY) tkY.value = ccY.value;
-                debouncedSync(() => {
-                    loadChamCongData();
-                    const mode = document.getElementById('thongke-mode')?.value;
-                    if (mode === 'current') loadThongKeData();
-                });
-            };
-
-            if (tkM) {
-                tkM.addEventListener('change', onMonthChangeFromTK);
-                tkM.addEventListener('input', onMonthChangeFromTK);
-            }
-            if (tkY) {
-                tkY.addEventListener('change', onYearChangeFromTK);
-                tkY.addEventListener('input', onYearChangeFromTK);
-            }
-            if (ccM) {
-                ccM.addEventListener('change', onMonthChangeFromCC);
-                ccM.addEventListener('input', onMonthChangeFromCC);
-            }
-            if (ccY) {
-                ccY.addEventListener('change', onYearChangeFromCC);
-                ccY.addEventListener('input', onYearChangeFromCC);
-            }
-        }
-        initMonthYearSync();
+        // Event for month/year change in Cham Cong
+        document.getElementById('chamcong-month-picker').addEventListener('change', () => {
+            loadChamCongData();
+            const mode = document.getElementById('thongke-mode').value;
+            if (mode === 'current') loadThongKeData();
+        });
+        document.getElementById('chamcong-year-picker').addEventListener('change', () => {
+            loadChamCongData();
+            const mode = document.getElementById('thongke-mode').value;
+            if (mode === 'current') loadThongKeData();
+        });
 
         document.querySelectorAll('.nav-tab').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const targetTab = btn.getAttribute('data-tab');
                 if (targetTab === 'tab-chamcong') {
-                    const ccM = document.getElementById('chamcong-month-picker');
-                    const tkM = document.getElementById('thongke-month-picker');
-                    const ccY = document.getElementById('chamcong-year-picker');
-                    const tkY = document.getElementById('thongke-year-picker');
-                    if (tkM && ccM && tkM.value) ccM.value = tkM.value;
-                    if (tkY && ccY && tkY.value) ccY.value = tkY.value;
                     loadChamCongData();
                 } else if (targetTab === 'tab-thongke') {
-                    const ccM = document.getElementById('chamcong-month-picker');
-                    const tkM = document.getElementById('thongke-month-picker');
-                    const ccY = document.getElementById('chamcong-year-picker');
-                    const tkY = document.getElementById('thongke-year-picker');
-                    if (ccM && tkM && ccM.value) tkM.value = ccM.value;
-                    if (ccY && tkY && ccY.value) tkY.value = ccY.value;
                     loadThongKeData();
                 }
             });
         });
 
 window.resetChamCongForUnit = function(unitCode) {
-    const isDefault = (unitCode || localStorage.getItem('pm_unit_code') || 'bvtks-cs2') === 'bvtks-cs2';
+    const isDefault = (unitCode || 'bvtks-cs2') === 'bvtks-cs2';
     const cachedEmp = localStorage.getItem(getChamCongStorageKey('med_chamcong_employees'));
     const cachedConf = localStorage.getItem(getChamCongStorageKey('med_chamcong_staff_config'));
     
-    const my = getChamCongMonthYear();
-    const cachedCC = getCachedChamCong(my);
-    const cachedTK = getCachedThongKe(my);
-    chamCongData = cachedCC ? normalizeChamCongData(cachedCC) : {};
-    thongKeData = cachedTK ? normalizeThongKeData(cachedTK) : {};
-    thongKeQuarterData = { chamcong: {}, thuthuat: {} };
-
     if (cachedEmp) {
-        try { 
-            const parsed = JSON.parse(cachedEmp);
-            adminChamCongEmployees = cleanseAdminChamCongEmployees(parsed);
-        } catch(e){ adminChamCongEmployees = isDefault ? [...DEFAULT_CHAMCONG_EMPLOYEES] : []; }
+        try { adminChamCongEmployees = JSON.parse(cachedEmp); } catch(e){ adminChamCongEmployees = isDefault ? [...DEFAULT_CHAMCONG_EMPLOYEES] : []; }
     } else {
         adminChamCongEmployees = isDefault ? [...DEFAULT_CHAMCONG_EMPLOYEES] : [];
     }
@@ -3677,35 +2453,7 @@ window.resetChamCongForUnit = function(unitCode) {
         adminChamCongStaffConfig = isDefault ? { ...DEFAULT_CHAMCONG_STAFF } : {};
     }
 
-    ensureStaffConfigForEmployees();
-
     if (typeof renderAdminChamCongTable === 'function') {
         renderAdminChamCongTable();
     }
-    if (typeof renderChamCongTable === 'function') {
-        renderChamCongTable();
-    }
-    if (typeof renderThongKeTable === 'function') {
-        renderThongKeTable();
-    }
 };
-
-window.loadThongKeData = loadThongKeData;
-window.renderThongKeTable = renderThongKeTable;
-window.loadChamCongData = loadChamCongData;
-window.renderChamCongTable = renderChamCongTable;
-window.loadChamCongSymbols = loadChamCongSymbols;
-window.renderChamCongLegend = renderChamCongLegend;
-window.openChamCongSymbolModal = openChamCongSymbolModal;
-window.closeChamCongSymbolModal = closeChamCongSymbolModal;
-window.openAddChamCongSymbolModal = openAddChamCongSymbolModal;
-window.renderChamCongSymbolTable = renderChamCongSymbolTable;
-window.editChamCongSymbol = editChamCongSymbol;
-window.cancelEditChamCongSymbol = cancelEditChamCongSymbol;
-window.saveChamCongSymbolItem = saveChamCongSymbolItem;
-window.deleteChamCongSymbol = deleteChamCongSymbol;
-window.resetDefaultChamCongSymbols = resetDefaultChamCongSymbols;
-window.updateSymbolPreviewBadge = updateSymbolPreviewBadge;
-window.findChamCongSymbol = findChamCongSymbol;
-window.applySymbolStyleToInput = applySymbolStyleToInput;
-

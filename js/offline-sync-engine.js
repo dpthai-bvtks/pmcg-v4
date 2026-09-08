@@ -26,6 +26,7 @@ window.OfflineSyncEngine = (function () {
           thongke: 'month_year, updated_at',
           syncQueue: '++id, action, timestamp'
         });
+        console.log('[Dexie.js] Khởi tạo bộ nhớ đệm Offline IndexedDB (' + getDbName(u) + ') thành công!');
       }
     } catch (e) {
       console.warn('[Dexie.js] Khởi tạo Dexie thất bại:', e);
@@ -81,15 +82,8 @@ window.OfflineSyncEngine = (function () {
 
     // Luôn duy trì đồng bộ bản sao nhẹ trên LocalStorage cho các hàm đọc đồng bộ tức thì
     try {
-      if (key === 'times_bootstrap_cache' || key.startsWith('times_bootstrap_cache') || key === 'meds_success') {
-        const payloadStr = typeof data === 'string' ? data : JSON.stringify(data);
-        localStorage.setItem(key, payloadStr);
-        if (key === 'times_bootstrap_cache') {
-          const unitKey = typeof window !== 'undefined' && typeof window.getBootstrapCacheKey === 'function'
-            ? window.getBootstrapCacheKey()
-            : ('times_bootstrap_cache_' + (localStorage.getItem('pm_unit_code') || 'bvtks-cs2'));
-          localStorage.setItem(unitKey, payloadStr);
-        }
+      if (key === 'times_bootstrap_cache' || key === 'meds_success') {
+        localStorage.setItem(key, typeof data === 'string' ? data : JSON.stringify(data));
       }
     } catch (e) {
       // LocalStorage đầy thì bỏ qua, dữ liệu đã an toàn trong IndexedDB
@@ -254,6 +248,7 @@ window.OfflineSyncEngine = (function () {
           }
         });
       };
+      console.log('[LiveSync Bus] Kênh phát sóng thời gian thực BroadcastChannel đã kích hoạt!');
     }
   } catch (e) {
     console.warn('[LiveSync Bus] Trình duyệt không hỗ trợ BroadcastChannel:', e);

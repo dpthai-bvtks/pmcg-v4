@@ -268,7 +268,7 @@ async function processApiRequest(c) {
   if (!action || action === "ping") {
     return success({
       message: "PM-XepLich v4 Multi-Tenant SaaS API is running perfectly!",
-      version: "4.0.2-PRO",
+      version: "4.0.0-PRO",
       unit_code: unitCode,
       timestamp: new Date().toISOString()
     });
@@ -569,9 +569,8 @@ async function ensureSchema(db) {
       "CREATE INDEX IF NOT EXISTS idx_phac_do_unit ON phac_do(unit_code, is_active, order_idx)",
       "CREATE INDEX IF NOT EXISTS idx_lich_trinh_unit ON lich_trinh(unit_code, date)",
       "CREATE INDEX IF NOT EXISTS idx_lich_su_unit ON lich_su(unit_code, date)",
+      "CREATE INDEX IF NOT EXISTS idx_gio_ban_unit ON gio_ban_cu(unit_code, date)",
       "CREATE INDEX IF NOT EXISTS idx_tai_khoan_unit ON tai_khoan(unit_code, username)",
-      "CREATE UNIQUE INDEX IF NOT EXISTS idx_cham_cong_unit_my ON cham_cong(unit_code, month_year)",
-      "CREATE UNIQUE INDEX IF NOT EXISTS idx_thong_ke_unit_my ON thong_ke(unit_code, month_year)",
       "ALTER TABLE may_moc ADD COLUMN is_active INTEGER DEFAULT 1",
       "ALTER TABLE may_moc ADD COLUMN order_idx INTEGER DEFAULT 0",
       "ALTER TABLE phong ADD COLUMN is_active INTEGER DEFAULT 1",
@@ -591,7 +590,6 @@ async function ensureSchema(db) {
       "ALTER TABLE benh_nhan ADD COLUMN ngay_vao TEXT DEFAULT ''",
       "ALTER TABLE benh_nhan ADD COLUMN gio_ban TEXT DEFAULT ''",
       "ALTER TABLE benh_nhan ADD COLUMN is_saturday INTEGER DEFAULT 0",
-      "UPDATE thu_thuat SET viet_tat = 'TKT' WHERE (viet_tat = 'TTK' OR viet_tat = 'tk') AND (ten_thu_thuat LIKE '%kháng trở%' OR ten_thu_thuat LIKE '%khang tro%')",
     ];
     try {
       await db.batch(migrations.map(sql => db.prepare(sql)));
@@ -690,188 +688,6 @@ async function ensureSchema(db) {
       console.warn("[Migrate nhan_su error]:", e);
     }
 
-    try {
-      // 4. may_moc
-      const mmSql = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='may_moc'").first();
-      if (mmSql && mmSql.sql && (mmSql.sql.includes("ma_may TEXT UNIQUE") || mmSql.sql.includes("UNIQUE (ma_may)") || mmSql.sql.includes("UNIQUE(ma_may)"))) {
-        await db.prepare(`
-          CREATE TABLE IF NOT EXISTS may_moc_v4 (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
-            ten_loai TEXT NOT NULL,
-            ma_may TEXT NOT NULL,
-            trang_thai TEXT DEFAULT 'Sẵn sàng',
-            order_idx INTEGER DEFAULT 0,
-            is_active INTEGER DEFAULT 1,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(unit_code, ma_may)
-          )
-        `).run();
-        await db.prepare(`
-          INSERT OR IGNORE INTO may_moc_v4 (id, unit_code, ten_loai, ma_may, trang_thai, order_idx, is_active, updated_at)
-          SELECT id, COALESCE(unit_code, 'bvtks-cs2'), ten_loai, ma_may, trang_thai, order_idx, is_active, updated_at FROM may_moc
-        `).run();
-        await db.prepare("DROP TABLE may_moc").run();
-        await db.prepare("ALTER TABLE may_moc_v4 RENAME TO may_moc").run();
-        await db.prepare("CREATE INDEX IF NOT EXISTS idx_may_moc_unit ON may_moc(unit_code, ma_may)").run();
-      }
-    } catch(e) {
-      console.warn("[Migrate may_moc error]:", e);
-    }
-
-    try {
-      // 5. phong
-      const pSql = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='phong'").first();
-      if (pSql && pSql.sql && (pSql.sql.includes("ten_phong TEXT UNIQUE") || pSql.sql.includes("UNIQUE (ten_phong)") || pSql.sql.includes("UNIQUE(ten_phong)"))) {
-        await db.prepare(`
-          CREATE TABLE IF NOT EXISTS phong_v4 (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
-            ten_phong TEXT NOT NULL,
-            bac_si TEXT DEFAULT '',
-            ktv TEXT DEFAULT '',
-            danh_sach_may TEXT DEFAULT '',
-            so_giuong INTEGER DEFAULT 0,
-            danh_sach_giuong TEXT DEFAULT '',
-            order_idx INTEGER DEFAULT 0,
-            is_active INTEGER DEFAULT 1,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(unit_code, ten_phong)
-          )
-        `).run();
-        await db.prepare(`
-          INSERT OR IGNORE INTO phong_v4 (id, unit_code, ten_phong, bac_si, ktv, danh_sach_may, so_giuong, danh_sach_giuong, order_idx, is_active, updated_at)
-          SELECT id, COALESCE(unit_code, 'bvtks-cs2'), ten_phong, bac_si, ktv, danh_sach_may, so_giuong, danh_sach_giuong, order_idx, is_active, updated_at FROM phong
-        `).run();
-        await db.prepare("DROP TABLE phong").run();
-        await db.prepare("ALTER TABLE phong_v4 RENAME TO phong").run();
-        await db.prepare("CREATE INDEX IF NOT EXISTS idx_phong_unit ON phong(unit_code, ten_phong)").run();
-      }
-    } catch(e) {
-      console.warn("[Migrate phong error]:", e);
-    }
-
-    try {
-      // 6. thu_thuat
-      const ttSql = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='thu_thuat'").first();
-      if (ttSql && ttSql.sql && (ttSql.sql.includes("ten_thu_thuat TEXT UNIQUE") || ttSql.sql.includes("UNIQUE (ten_thu_thuat)") || ttSql.sql.includes("UNIQUE(ten_thu_thuat)"))) {
-        await db.prepare(`
-          CREATE TABLE IF NOT EXISTS thu_thuat_v4 (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
-            ten_thu_thuat TEXT NOT NULL,
-            viet_tat TEXT DEFAULT '',
-            he TEXT DEFAULT 'PHCN',
-            phan_loai TEXT DEFAULT '',
-            may TEXT DEFAULT '',
-            tg_thuc_hien INTEGER DEFAULT 30,
-            tg_thuc_hien_max INTEGER DEFAULT 0,
-            tg_thu_thuat INTEGER DEFAULT 30,
-            tg_thu_thuat_max INTEGER DEFAULT 0,
-            khoang_cach INTEGER DEFAULT 0,
-            can_rut_may INTEGER DEFAULT 0,
-            can_nguoi_phu INTEGER DEFAULT 0,
-            ds_nguoi_phu TEXT DEFAULT '',
-            lien_tuc INTEGER DEFAULT 0,
-            order_idx INTEGER DEFAULT 0,
-            is_active INTEGER DEFAULT 1,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(unit_code, ten_thu_thuat)
-          )
-        `).run();
-        await db.prepare(`
-          INSERT OR IGNORE INTO thu_thuat_v4 (id, unit_code, ten_thu_thuat, viet_tat, he, phan_loai, may, tg_thuc_hien, tg_thuc_hien_max, tg_thu_thuat, tg_thu_thuat_max, khoang_cach, can_rut_may, can_nguoi_phu, ds_nguoi_phu, lien_tuc, order_idx, is_active, updated_at)
-          SELECT id, COALESCE(unit_code, 'bvtks-cs2'), ten_thu_thuat, viet_tat, he, phan_loai, may, tg_thuc_hien, tg_thuc_hien_max, tg_thu_thuat, tg_thu_thuat_max, khoang_cach, can_rut_may, can_nguoi_phu, ds_nguoi_phu, lien_tuc, order_idx, is_active, updated_at FROM thu_thuat
-        `).run();
-        await db.prepare("DROP TABLE thu_thuat").run();
-        await db.prepare("ALTER TABLE thu_thuat_v4 RENAME TO thu_thuat").run();
-        await db.prepare("CREATE INDEX IF NOT EXISTS idx_thu_thuat_unit ON thu_thuat(unit_code, ten_thu_thuat)").run();
-      }
-    } catch(e) {
-      console.warn("[Migrate thu_thuat error]:", e);
-    }
-
-    try {
-      // 7. phac_do
-      const pdSql = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='phac_do'").first();
-      if (pdSql && pdSql.sql && (pdSql.sql.includes("ten_phac_do TEXT UNIQUE") || pdSql.sql.includes("UNIQUE (ten_phac_do)") || pdSql.sql.includes("UNIQUE(ten_phac_do)"))) {
-        await db.prepare(`
-          CREATE TABLE IF NOT EXISTS phac_do_v4 (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
-            ten_phac_do TEXT NOT NULL,
-            danh_sach_thu_thuat TEXT NOT NULL DEFAULT '[]',
-            order_idx INTEGER DEFAULT 0,
-            is_active INTEGER DEFAULT 1,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(unit_code, ten_phac_do)
-          )
-        `).run();
-        await db.prepare(`
-          INSERT OR IGNORE INTO phac_do_v4 (id, unit_code, ten_phac_do, danh_sach_thu_thuat, order_idx, is_active, created_at, updated_at)
-          SELECT id, COALESCE(unit_code, 'bvtks-cs2'), ten_phac_do, danh_sach_thu_thuat, order_idx, is_active, created_at, updated_at FROM phac_do
-        `).run();
-        await db.prepare("DROP TABLE phac_do").run();
-        await db.prepare("ALTER TABLE phac_do_v4 RENAME TO phac_do").run();
-        await db.prepare("CREATE INDEX IF NOT EXISTS idx_phac_do_unit ON phac_do(unit_code, ten_phac_do)").run();
-      }
-    } catch(e) {
-      console.warn("[Migrate phac_do error]:", e);
-    }
-
-    try {
-      // 8. cham_cong
-      const ccSql = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='cham_cong'").first();
-      if (ccSql && ccSql.sql && (ccSql.sql.includes("month_year TEXT UNIQUE") || ccSql.sql.includes("UNIQUE (month_year)") || ccSql.sql.includes("UNIQUE(month_year)"))) {
-        await db.prepare(`
-          CREATE TABLE IF NOT EXISTS cham_cong_v4 (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
-            month_year TEXT NOT NULL,
-            data_json TEXT NOT NULL DEFAULT '{}',
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(unit_code, month_year)
-          )
-        `).run();
-        await db.prepare(`
-          INSERT OR IGNORE INTO cham_cong_v4 (id, unit_code, month_year, data_json, updated_at)
-          SELECT id, COALESCE(unit_code, 'bvtks-cs2'), month_year, data_json, updated_at FROM cham_cong
-        `).run();
-        await db.prepare("DROP TABLE cham_cong").run();
-        await db.prepare("ALTER TABLE cham_cong_v4 RENAME TO cham_cong").run();
-        await db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_cham_cong_unit_my ON cham_cong(unit_code, month_year)").run();
-      }
-    } catch(e) {
-      console.warn("[Migrate cham_cong error]:", e);
-    }
-
-    try {
-      // 9. thong_ke
-      const tkSql = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='thong_ke'").first();
-      if (tkSql && tkSql.sql && (tkSql.sql.includes("month_year TEXT UNIQUE") || tkSql.sql.includes("UNIQUE (month_year)") || tkSql.sql.includes("UNIQUE(month_year)"))) {
-        await db.prepare(`
-          CREATE TABLE IF NOT EXISTS thong_ke_v4 (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
-            month_year TEXT NOT NULL,
-            data_json TEXT NOT NULL DEFAULT '{}',
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(unit_code, month_year)
-          )
-        `).run();
-        await db.prepare(`
-          INSERT OR IGNORE INTO thong_ke_v4 (id, unit_code, month_year, data_json, updated_at)
-          SELECT id, COALESCE(unit_code, 'bvtks-cs2'), month_year, data_json, updated_at FROM thong_ke
-        `).run();
-        await db.prepare("DROP TABLE thong_ke").run();
-        await db.prepare("ALTER TABLE thong_ke_v4 RENAME TO thong_ke").run();
-        await db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_thong_ke_unit_my ON thong_ke(unit_code, month_year)").run();
-      }
-    } catch(e) {
-      console.warn("[Migrate thong_ke error]:", e);
-    }
-
     schemaEnsured = true;
   } catch(err) {
     console.warn("[ensureSchema error]:", err);
@@ -885,32 +701,10 @@ async function hashPassword(password, pepper = "TIMES_BVTKS_2026_SECURE_SALT_PEP
   return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-async function setCaiDat(db, unitCode, key, value) {
-  const vStr = typeof value === "string" ? value : JSON.stringify(value);
-  try {
-    return await db.prepare(`
-      INSERT INTO cai_dat (unit_code, key, value, updated_at) 
-      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-      ON CONFLICT(unit_code, key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
-    `).bind(unitCode, key, vStr).run();
-  } catch(e) {
-    try {
-      const exist = await db.prepare("SELECT key FROM cai_dat WHERE unit_code = ? AND key = ?").bind(unitCode, key).first();
-      if (exist) {
-        return await db.prepare("UPDATE cai_dat SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ? AND key = ?").bind(vStr, unitCode, key).run();
-      } else {
-        return await db.prepare("INSERT INTO cai_dat (unit_code, key, value, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)").bind(unitCode, key, vStr).run();
-      }
-    } catch(e2) {
-      console.warn("[setCaiDat error]:", e2);
-    }
-  }
-}
-
-async function bumpDataVersion(db, unitCode = "bvtks-cs2") {
+async function bumpDataVersion(db) {
   try {
     const v = String(Date.now());
-    await setCaiDat(db, unitCode, 'data_version', v);
+    await db.prepare("INSERT INTO cai_dat (key, value) VALUES ('data_version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(v).run();
   } catch(e) {}
 }
 
@@ -920,93 +714,73 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
-    console.log("[Worker CRON]: Scheduled event triggered on Cloudflare Edge...");
+    console.log("[Worker CRON]: Executing daily automated backup trigger...");
     try {
       const db = getDatabase(env);
       if (!db) return;
       await ensureSchema(db);
 
-      // 1. 🏢 TỰ ĐỘNG CHỐT SỔ ĐỘC LẬP TRÊN ĐÁM MÂY (MULTI-TENANT SAAS)
-      try {
-        const tenantRes = await db.prepare("SELECT unit_code FROM tenants WHERE is_active = 1 UNION SELECT 'bvtks-cs2' AS unit_code").all().catch(() => ({ results: [] }));
-        const unitCodes = (tenantRes.results || []).map(r => r.unit_code).filter(Boolean);
-        if (unitCodes.length === 0) unitCodes.push("bvtks-cs2");
-        for (const uCode of unitCodes) {
-          await checkAutoChotSo(db, uCode);
-        }
-      } catch(eAuto) {
-        console.error("[Worker CRON Auto-ChotSo Error]:", eAuto);
-        await checkAutoChotSo(db, "bvtks-cs2");
+      const rec = await db.prepare("SELECT value FROM cai_dat WHERE key = 'gdrive_webhook_url'").first();
+      const webhookUrl = rec ? String(rec.value).trim() : "";
+      if (!webhookUrl || !webhookUrl.startsWith("http")) {
+        console.log("[Worker CRON]: No valid Google Drive Webhook URL configured. Skipping remote backup.");
+        return;
       }
 
-      // 2. 💾 TỰ ĐỘNG SAO LƯU GOOGLE DRIVE VÀO KHUNG 17:00 GIỜ VN (10:00 UTC)
-      const nowVN = new Date(Date.now() + 7 * 60 * 60 * 1000);
-      const hh = nowVN.getUTCHours();
-      const mm = nowVN.getUTCMinutes();
-      // Chạy backup nếu ở khung 17h (17:00 - 17:15 VN)
-      if (hh === 17 && mm < 15) {
-        console.log("[Worker CRON]: Executing daily automated backup trigger at 17:00 VN...");
-        const rec = await db.prepare("SELECT value FROM cai_dat WHERE key = 'gdrive_webhook_url'").first();
-        const webhookUrl = rec ? String(rec.value).trim() : "";
-        if (!webhookUrl || !webhookUrl.startsWith("http")) {
-          console.log("[Worker CRON]: No valid Google Drive Webhook URL configured. Skipping remote backup.");
-        } else {
-          const [
-            tai_khoan, nhan_su, may_moc, phong, thu_thuat,
-            benh_nhan, lich_trinh, lich_su, gio_ban_cu,
-            cham_cong, thong_ke, tim_ranh, tai_lieu, cai_dat
-          ] = await Promise.all([
-            db.prepare("SELECT * FROM tai_khoan").all(),
-            db.prepare("SELECT * FROM nhan_su").all(),
-            db.prepare("SELECT * FROM may_moc").all(),
-            db.prepare("SELECT * FROM phong").all(),
-            db.prepare("SELECT * FROM thu_thuat").all(),
-            db.prepare("SELECT * FROM benh_nhan").all(),
-            db.prepare("SELECT * FROM lich_trinh").all(),
-            db.prepare("SELECT * FROM lich_su").all(),
-            db.prepare("SELECT * FROM gio_ban_cu").all(),
-            db.prepare("SELECT * FROM cham_cong").all(),
-            db.prepare("SELECT * FROM thong_ke").all(),
-            db.prepare("SELECT * FROM tim_ranh").all(),
-            db.prepare("SELECT * FROM tai_lieu").all(),
-            db.prepare("SELECT * FROM cai_dat").all()
-          ]);
+      const [
+        tai_khoan, nhan_su, may_moc, phong, thu_thuat,
+        benh_nhan, lich_trinh, lich_su, gio_ban_cu,
+        cham_cong, thong_ke, tim_ranh, tai_lieu, cai_dat
+      ] = await Promise.all([
+        db.prepare("SELECT * FROM tai_khoan").all(),
+        db.prepare("SELECT * FROM nhan_su").all(),
+        db.prepare("SELECT * FROM may_moc").all(),
+        db.prepare("SELECT * FROM phong").all(),
+        db.prepare("SELECT * FROM thu_thuat").all(),
+        db.prepare("SELECT * FROM benh_nhan").all(),
+        db.prepare("SELECT * FROM lich_trinh").all(),
+        db.prepare("SELECT * FROM lich_su").all(),
+        db.prepare("SELECT * FROM gio_ban_cu").all(),
+        db.prepare("SELECT * FROM cham_cong").all(),
+        db.prepare("SELECT * FROM thong_ke").all(),
+        db.prepare("SELECT * FROM tim_ranh").all(),
+        db.prepare("SELECT * FROM tai_lieu").all(),
+        db.prepare("SELECT * FROM cai_dat").all()
+      ]);
 
-          const backupData = {
-            version: "v3.6",
-            exportDate: new Date().toISOString(),
-            tables: {
-              tai_khoan: tai_khoan.results || [],
-              nhan_su: nhan_su.results || [],
-              may_moc: may_moc.results || [],
-              phong: phong.results || [],
-              thu_thuat: thu_thuat.results || [],
-              benh_nhan: benh_nhan.results || [],
-              lich_trinh: lich_trinh.results || [],
-              lich_su: lich_su.results || [],
-              gio_ban_cu: gio_ban_cu.results || [],
-              cham_cong: cham_cong.results || [],
-              thong_ke: thong_ke.results || [],
-              tim_ranh: tim_ranh.results || [],
-              tai_lieu: tai_lieu.results || [],
-              cai_dat: cai_dat.results || []
-            }
-          };
-
-          const dateStr = new Date().toISOString().slice(0, 10);
-          const filename = `PMCG_D1_Backup_AUTO_${dateStr}.json`;
-
-          await fetch(webhookUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              filename: filename,
-              content: JSON.stringify(backupData)
-            })
-          });
-          console.log(`[Worker CRON]: Automated backup uploaded to Google Drive successfully (${filename})!`);
+      const backupData = {
+        version: "v3.6",
+        exportDate: new Date().toISOString(),
+        tables: {
+          tai_khoan: tai_khoan.results || [],
+          nhan_su: nhan_su.results || [],
+          may_moc: may_moc.results || [],
+          phong: phong.results || [],
+          thu_thuat: thu_thuat.results || [],
+          benh_nhan: benh_nhan.results || [],
+          lich_trinh: lich_trinh.results || [],
+          lich_su: lich_su.results || [],
+          gio_ban_cu: gio_ban_cu.results || [],
+          cham_cong: cham_cong.results || [],
+          thong_ke: thong_ke.results || [],
+          tim_ranh: tim_ranh.results || [],
+          tai_lieu: tai_lieu.results || [],
+          cai_dat: cai_dat.results || []
         }
-      }
+      };
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const filename = `PMCG_D1_Backup_AUTO_${dateStr}.json`;
+
+      await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: filename,
+          content: JSON.stringify(backupData)
+        })
+      });
+      console.log(`[Worker CRON]: Automated backup uploaded to Google Drive successfully (${filename})!`);
     } catch(err) {
       console.error("[Worker CRON Error]:", err);
     }
@@ -1033,12 +807,9 @@ function dispatchBackgroundSync(action, args, env, ctx) {
     try {
       const db = getDatabase(env);
       if (!db) return;
-      let webhookUrl = rec ? String(rec.value).trim() : "";
+      const rec = await db.prepare("SELECT value FROM cai_dat WHERE key = 'gdrive_webhook_url'").first();
+      const webhookUrl = rec ? String(rec.value).trim() : "";
       if (!webhookUrl || !webhookUrl.startsWith("http")) return;
-      const dupIdx = webhookUrl.indexOf('/exechttps://');
-      if (dupIdx !== -1) {
-        webhookUrl = webhookUrl.substring(0, dupIdx + 5);
-      }
 
       await fetch(webhookUrl, {
         method: "POST",
@@ -1057,20 +828,15 @@ function dispatchBackgroundSync(action, args, env, ctx) {
 }
 
 async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtks-cs2") {
-  if (unitCode === "bvtks_cs2") unitCode = "bvtks-cs2";
   const db = getDatabase(env);
   if (!db) {
     return error("Database chưa được cấu hình (cần TURSO_URL hoặc D1 binding DB).", 500);
   }
 
   await ensureSchema(db);
-  await checkAutoChotSo(db, unitCode);
+  await checkAutoChotSo(db);
 
   switch (action) {
-    case "ping": {
-      return success({ pong: true, time: Date.now(), unit_code: unitCode });
-    }
-
     // ============================================================
     // 🏢 0. MULTI-TENANT & SAAS SUBSCRIPTION HANDLERS
     // ============================================================
@@ -1379,7 +1145,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
       const exportPackage = {
         app: "PM-XepLich T.I.M.E.S SaaS",
-        version: "4.0.2",
+        version: "4.0.0",
         unit_code: uCode,
         exported_at: new Date().toISOString(),
         tables: {}
@@ -1395,56 +1161,6 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       exportPackage.plan_tier = tenantRow?.plan_tier || 'PRO';
 
       return success(exportPackage);
-    }
-
-    case "exportAllDatabaseForSuperAdmin":
-    case "exportAllDatabase": {
-      // Dành riêng cho Super Admin: Xuất toàn bộ CSDL của tất cả các đơn vị
-      const tables = [
-        'tenants', 'cai_dat', 'tai_khoan', 'nhan_su', 'may_moc', 'phong',
-        'thu_thuat', 'benh_nhan', 'lich_trinh', 'lich_su', 'gio_ban_cu',
-        'cham_cong', 'thong_ke', 'tim_ranh', 'tai_lieu', 'phac_do'
-      ];
-
-      const queries = tables.map(t => db.prepare(`SELECT * FROM ${t}`));
-      let results = [];
-      try {
-        results = await db.batch(queries);
-      } catch (batchErr) {
-        results = [];
-        for (const t of tables) {
-          try {
-            const r = await db.prepare(`SELECT * FROM ${t}`).all();
-            results.push(r);
-          } catch(e) {
-            results.push({ results: [] });
-          }
-        }
-      }
-
-      const dbPayload = {
-        app: "PM-XepLich T.I.M.E.S SaaS - All Tenants Master Export",
-        version: "4.0.2",
-        exported_at: new Date().toISOString(),
-        tenants: results[0]?.results || [],
-        cai_dat: results[1]?.results || [],
-        tai_khoan: results[2]?.results || [],
-        nhan_su: results[3]?.results || [],
-        may_moc: results[4]?.results || [],
-        phong: results[5]?.results || [],
-        thu_thuat: results[6]?.results || [],
-        benh_nhan: results[7]?.results || [],
-        lich_trinh: results[8]?.results || [],
-        lich_su: results[9]?.results || [],
-        gio_ban_cu: results[10]?.results || [],
-        cham_cong: results[11]?.results || [],
-        thong_ke: results[12]?.results || [],
-        tim_ranh: results[13]?.results || [],
-        tai_lieu: results[14]?.results || [],
-        phac_do: results[15]?.results || []
-      };
-
-      return success(dbPayload);
     }
 
     case "importTenantData": {
@@ -1596,7 +1312,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         db.prepare("SELECT * FROM phong WHERE unit_code = ? ORDER BY order_idx ASC, id ASC").bind(unitCode),
         db.prepare("SELECT * FROM thu_thuat WHERE unit_code = ? ORDER BY order_idx ASC, id ASC").bind(unitCode),
         db.prepare("SELECT * FROM benh_nhan WHERE unit_code = ? AND is_saturday = 0 ORDER BY order_idx ASC, id ASC").bind(unitCode),
-        db.prepare("SELECT * FROM lich_trinh WHERE unit_code = ? AND (date = ? OR date = ?) ORDER BY order_idx ASC, start_time ASC").bind(unitCode, todayVN, todayVNSlash),
+        db.prepare("SELECT * FROM lich_trinh WHERE unit_code = ? AND date = ? ORDER BY order_idx ASC, start_time ASC").bind(unitCode, todayVN),
         db.prepare("SELECT id, username, role, permissions FROM tai_khoan WHERE unit_code = ?").bind(unitCode),
         db.prepare("SELECT * FROM phac_do WHERE unit_code = ? AND is_active = 1 ORDER BY order_idx ASC, id ASC").bind(unitCode),
         db.prepare("SELECT * FROM tenants WHERE unit_code = ?").bind(unitCode)
@@ -1826,7 +1542,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     // ============================================================
     // 2. CRUD MÁY MÓC
     // ============================================================
-    case "getMayMoc":
+        case "getMayMoc":
     case "getDanhSachMay": {
       const res = await db.prepare("SELECT * FROM may_moc WHERE unit_code = ? ORDER BY order_idx ASC, id ASC").bind(unitCode).all();
       const list = (res.results || []).map((m, i) => ({
@@ -1858,13 +1574,13 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const stmts = [];
       if (qty > 1) {
         for (let i = 0; i < qty; i++) {
-          stmts.push(db.prepare("INSERT INTO may_moc (unit_code, ten_loai, ma_may, trang_thai, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, ma_may) DO UPDATE SET ten_loai = excluded.ten_loai, trang_thai = excluded.trang_thai, updated_at = CURRENT_TIMESTAMP").bind(unitCode, tenLoai, `${maMayPrefix}${i + 1}`, trangThai));
+          stmts.push(db.prepare("INSERT INTO may_moc (ten_loai, ma_may, trang_thai) VALUES (?, ?, ?) ON CONFLICT(ma_may) DO UPDATE SET ten_loai = excluded.ten_loai, trang_thai = excluded.trang_thai").bind(tenLoai, `${maMayPrefix}${i + 1}`, trangThai));
         }
       } else {
-        stmts.push(db.prepare("INSERT INTO may_moc (unit_code, ten_loai, ma_may, trang_thai, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, ma_may) DO UPDATE SET ten_loai = excluded.ten_loai, trang_thai = excluded.trang_thai, updated_at = CURRENT_TIMESTAMP").bind(unitCode, tenLoai, maMayPrefix, trangThai));
+        stmts.push(db.prepare("INSERT INTO may_moc (ten_loai, ma_may, trang_thai) VALUES (?, ?, ?) ON CONFLICT(ma_may) DO UPDATE SET ten_loai = excluded.ten_loai, trang_thai = excluded.trang_thai").bind(tenLoai, maMayPrefix, trangThai));
       }
       await db.batch(stmts);
-      await bumpDataVersion(db, unitCode);
+      await bumpDataVersion(db);
       return success({ message: "Thêm thiết bị thành công" });
     }
 
@@ -1881,8 +1597,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const tenLoai = String(payload.tenLoai || payload.ten_loai || "");
       const maMay = String(payload.maMay || payload.ma_may || "");
       const trangThai = String(payload.trangThai || payload.trang_thai || "Sẵn sàng");
-      await db.prepare("INSERT INTO may_moc (unit_code, ten_loai, ma_may, trang_thai, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, ma_may) DO UPDATE SET ten_loai = excluded.ten_loai, trang_thai = excluded.trang_thai, updated_at = CURRENT_TIMESTAMP").bind(unitCode, tenLoai, maMay, trangThai).run();
-      await bumpDataVersion(db, unitCode);
+      await db.prepare("INSERT INTO may_moc (ten_loai, ma_may, trang_thai) VALUES (?, ?, ?) ON CONFLICT(ma_may) DO UPDATE SET ten_loai = excluded.ten_loai, trang_thai = excluded.trang_thai").bind(tenLoai, maMay, trangThai).run();
+      await bumpDataVersion(db);
       return success({ message: "Cập nhật thiết bị thành công" });
     }
 
@@ -1891,8 +1607,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       if (typeof args[0] === "object" && args[0] !== null) payload = args[0];
       let offset = (typeof args[0] === "number" || (typeof args[0] === "string" && /^\d+$/.test(args[0]))) ? 1 : 0;
       const maMay = String(payload.maMay || payload.ma_may || args[offset] || args[0] || "").trim();
-      await db.prepare("DELETE FROM may_moc WHERE unit_code = ? AND (ma_may = ? OR id = ?)").bind(unitCode, maMay, maMay).run();
-      await bumpDataVersion(db, unitCode);
+      await db.prepare("DELETE FROM may_moc WHERE ma_may = ? OR id = ?").bind(maMay, maMay).run();
+      await bumpDataVersion(db);
       return success({ message: "Xóa máy thành công" });
     }
 
@@ -1962,11 +1678,11 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const dsPhu = String(payload.dsNguoiPhu || payload.ds_nguoi_phu || "");
       const isLt = (payload.lienTuc === 'Có' || payload.lienTuc === 1 || payload.lienTuc === '1' || payload.lienTuc === true || payload.lien_tuc === 1 || payload.lien_tuc === '1' || payload.lien_tuc === 'Có' || payload.lien_tuc === true) ? 1 : ((tgThMin === tgTtMin && tgThMax === tgTtMax && tgThMin >= 10) ? 1 : 0);
 
-      await db.prepare(`INSERT INTO thu_thuat (unit_code, ten_thu_thuat, viet_tat, he, phan_loai, may, tg_thuc_hien, tg_thuc_hien_max, tg_thu_thuat, tg_thu_thuat_max, khoang_cach, can_rut_may, can_nguoi_phu, ds_nguoi_phu, lien_tuc, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(unit_code, ten_thu_thuat) DO UPDATE SET viet_tat = excluded.viet_tat, he = excluded.he, phan_loai = excluded.phan_loai, may = excluded.may, tg_thuc_hien = excluded.tg_thuc_hien, tg_thuc_hien_max = excluded.tg_thuc_hien_max, tg_thu_thuat = excluded.tg_thu_thuat, tg_thu_thuat_max = excluded.tg_thu_thuat_max, khoang_cach = excluded.khoang_cach, can_rut_may = excluded.can_rut_may, can_nguoi_phu = excluded.can_nguoi_phu, ds_nguoi_phu = excluded.ds_nguoi_phu, lien_tuc = excluded.lien_tuc, updated_at = CURRENT_TIMESTAMP`)
-        .bind(unitCode, ten, vietTat, he, phanLoai, may, tgThMin, tgThMax, tgTtMin, tgTtMax, kc, rut, phu, dsPhu, isLt).run();
-      await bumpDataVersion(db, unitCode);
+      await db.prepare(`INSERT INTO thu_thuat (ten_thu_thuat, viet_tat, he, phan_loai, may, tg_thuc_hien, tg_thuc_hien_max, tg_thu_thuat, tg_thu_thuat_max, khoang_cach, can_rut_may, can_nguoi_phu, ds_nguoi_phu, lien_tuc)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(ten_thu_thuat) DO UPDATE SET viet_tat = excluded.viet_tat, he = excluded.he, phan_loai = excluded.phan_loai, may = excluded.may, tg_thuc_hien = excluded.tg_thuc_hien, tg_thuc_hien_max = excluded.tg_thuc_hien_max, tg_thu_thuat = excluded.tg_thu_thuat, tg_thu_thuat_max = excluded.tg_thu_thuat_max, khoang_cach = excluded.khoang_cach, can_rut_may = excluded.can_rut_may, can_nguoi_phu = excluded.can_nguoi_phu, ds_nguoi_phu = excluded.ds_nguoi_phu, lien_tuc = excluded.lien_tuc`)
+        .bind(ten, vietTat, he, phanLoai, may, tgThMin, tgThMax, tgTtMin, tgTtMax, kc, rut, phu, dsPhu, isLt).run();
+      await bumpDataVersion(db);
       return success({ message: "Lưu thủ thuật thành công" });
     }
 
@@ -1975,8 +1691,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       if (typeof args[0] === "object" && args[0] !== null) payload = args[0];
       let offset = (typeof args[0] === "number" || (typeof args[0] === "string" && /^\d+$/.test(args[0]))) ? 1 : 0;
       const ten = String(payload.ten || payload.name || args[offset] || args[0] || "").trim();
-      await db.prepare("DELETE FROM thu_thuat WHERE unit_code = ? AND (ten_thu_thuat = ? OR id = ?)").bind(unitCode, ten, ten).run();
-      await bumpDataVersion(db, unitCode);
+      await db.prepare("DELETE FROM thu_thuat WHERE ten_thu_thuat = ? OR id = ?").bind(ten, ten).run();
+      await bumpDataVersion(db);
       return success({ message: "Xóa thủ thuật thành công" });
     }
 
@@ -2021,11 +1737,11 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const soGiuong = parseInt(payload.soGiuong || payload.so_giuong) || 0;
       const danhSachGiuong = String(payload.danhSachGiuong || payload.danh_sach_giuong || "");
 
-      await db.prepare(`INSERT INTO phong (unit_code, ten_phong, bac_si, ktv, danh_sach_may, so_giuong, danh_sach_giuong, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(unit_code, ten_phong) DO UPDATE SET bac_si = excluded.bac_si, ktv = excluded.ktv, danh_sach_may = excluded.danh_sach_may, so_giuong = excluded.so_giuong, danh_sach_giuong = excluded.danh_sach_giuong, updated_at = CURRENT_TIMESTAMP`)
-        .bind(unitCode, tenPhong, bacSi, ktv, danhSachMay, soGiuong, danhSachGiuong).run();
-      await bumpDataVersion(db, unitCode);
+      await db.prepare(`INSERT INTO phong (ten_phong, bac_si, ktv, danh_sach_may, so_giuong, danh_sach_giuong)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(ten_phong) DO UPDATE SET bac_si = excluded.bac_si, ktv = excluded.ktv, danh_sach_may = excluded.danh_sach_may, so_giuong = excluded.so_giuong, danh_sach_giuong = excluded.danh_sach_giuong`)
+        .bind(tenPhong, bacSi, ktv, danhSachMay, soGiuong, danhSachGiuong).run();
+      await bumpDataVersion(db);
       return success({ message: "Lưu phòng thành công" });
     }
 
@@ -2034,8 +1750,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       if (typeof args[0] === "object" && args[0] !== null) payload = args[0];
       let offset = (typeof args[0] === "number" || (typeof args[0] === "string" && /^\d+$/.test(args[0]))) ? 1 : 0;
       const ten = String(payload.tenPhong || payload.ten || args[offset] || args[0] || "").trim();
-      await db.prepare("DELETE FROM phong WHERE unit_code = ? AND (ten_phong = ? OR id = ?)").bind(unitCode, ten, ten).run();
-      await bumpDataVersion(db, unitCode);
+      await db.prepare("DELETE FROM phong WHERE ten_phong = ? OR id = ?").bind(ten, ten).run();
+      await bumpDataVersion(db);
       return success({ message: "Xóa phòng thành công" });
     }
 
@@ -2044,7 +1760,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         await db.prepare("DELETE FROM nhan_su WHERE unit_code = ? AND (name GLOB '[0-9]*' OR name = '' OR name IS NULL)").bind(unitCode).run();
       } catch(e) {}
 
-      const res = await db.prepare("SELECT * FROM nhan_su WHERE unit_code = ? AND name NOT GLOB '[0-9]*' ORDER BY priority ASC, id ASC").bind(unitCode).all();
+      const res = await db.prepare("SELECT * FROM nhan_su WHERE name NOT GLOB '[0-9]*' ORDER BY priority ASC, id ASC").all();
       const list = (res.results || []).map((s, idx) => {
         const skillsArr = parseStringOrJsonArray(s.skills);
         const tempBusyArr = parseStringOrJsonArray(s.temp_busy);
@@ -2098,9 +1814,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const sTempBusy = JSON.stringify(tempBusyArr);
 
       await db.prepare(
-        "INSERT INTO nhan_su (unit_code, name, role, system, skills, temp_busy, his_name, trang_thai, thoi_gian_lam, nguoi_thay_the, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, name) DO UPDATE SET role = excluded.role, system = excluded.system, skills = excluded.skills, temp_busy = excluded.temp_busy, his_name = excluded.his_name, trang_thai = excluded.trang_thai, thoi_gian_lam = excluded.thoi_gian_lam, nguoi_thay_the = excluded.nguoi_thay_the, updated_at = CURRENT_TIMESTAMP"
-      ).bind(unitCode, sName, sRole, sSystem, sSkills, sTempBusy, String(s.tenHis || ""), sTrangThai, sThoiGianLam, sNguoiThayThe).run();
-      await bumpDataVersion(db, unitCode);
+        "INSERT INTO nhan_su (name, role, system, skills, temp_busy, his_name, trang_thai, thoi_gian_lam, nguoi_thay_the) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(name) DO UPDATE SET role = excluded.role, system = excluded.system, skills = excluded.skills, temp_busy = excluded.temp_busy, his_name = excluded.his_name, trang_thai = excluded.trang_thai, thoi_gian_lam = excluded.thoi_gian_lam, nguoi_thay_the = excluded.nguoi_thay_the, updated_at = CURRENT_TIMESTAMP"
+      ).bind(sName, sRole, sSystem, sSkills, sTempBusy, String(s.tenHis || ""), sTrangThai, sThoiGianLam, sNguoiThayThe).run();
+      await bumpDataVersion(db);
       return success(true);
     }
 
@@ -2147,9 +1863,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const sTempBusy = JSON.stringify(tempBusyArr);
 
       await db.prepare(
-        "INSERT INTO nhan_su (unit_code, name, role, system, skills, temp_busy, his_name, trang_thai, thoi_gian_lam, nguoi_thay_the, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, name) DO UPDATE SET role = excluded.role, system = excluded.system, skills = excluded.skills, temp_busy = excluded.temp_busy, his_name = excluded.his_name, trang_thai = excluded.trang_thai, thoi_gian_lam = excluded.thoi_gian_lam, nguoi_thay_the = excluded.nguoi_thay_the, updated_at = CURRENT_TIMESTAMP"
-      ).bind(unitCode, sName, sRole, sSystem, sSkills, sTempBusy, String(s.tenHis || ""), sTrangThai, sThoiGianLam, sNguoiThayThe).run();
-      await bumpDataVersion(db, unitCode);
+        "INSERT INTO nhan_su (name, role, system, skills, temp_busy, his_name, trang_thai, thoi_gian_lam, nguoi_thay_the) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(name) DO UPDATE SET role = excluded.role, system = excluded.system, skills = excluded.skills, temp_busy = excluded.temp_busy, his_name = excluded.his_name, trang_thai = excluded.trang_thai, thoi_gian_lam = excluded.thoi_gian_lam, nguoi_thay_the = excluded.nguoi_thay_the, updated_at = CURRENT_TIMESTAMP"
+      ).bind(sName, sRole, sSystem, sSkills, sTempBusy, String(s.tenHis || ""), sTrangThai, sThoiGianLam, sNguoiThayThe).run();
+      await bumpDataVersion(db);
       return success(true);
     }
 
@@ -2157,14 +1873,14 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const name = typeof args[1] === "string" ? args[1] : (typeof args[0] === "string" ? args[0] : null);
       if (name && !/^\d+$/.test(name)) {
         await db.prepare("DELETE FROM nhan_su WHERE unit_code = ? AND name = ?").bind(unitCode, name).run();
-        await bumpDataVersion(db, unitCode);
+        await bumpDataVersion(db);
       } else {
         const idx = typeof args[0] === "number" ? args[0] : parseInt(args[0]);
         if (!isNaN(idx)) {
-          const allStaff = await db.prepare("SELECT id FROM nhan_su WHERE unit_code = ? AND name NOT GLOB '[0-9]*' ORDER BY priority ASC, id ASC").bind(unitCode).all();
+          const allStaff = await db.prepare("SELECT id FROM nhan_su WHERE name NOT GLOB '[0-9]*' ORDER BY priority ASC, id ASC").all();
           if (allStaff.results && allStaff.results[idx]) {
-            await db.prepare("DELETE FROM nhan_su WHERE unit_code = ? AND id = ?").bind(unitCode, allStaff.results[idx].id).run();
-            await bumpDataVersion(db, unitCode);
+            await db.prepare("DELETE FROM nhan_su WHERE id = ?").bind(allStaff.results[idx].id).run();
+            await bumpDataVersion(db);
           }
         }
       }
@@ -2207,114 +1923,74 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       return success(list);
     }
 
-  case "addBenhNhan": {
-    let p = (typeof args[0] === "object") ? args[0] : {
-      ten: args[0],
-      namSinh: args[1],
-      ngayVao: args[2],
-      gioVao: args[3],
-      gioBan: args[4],
-      gioRa: args[5],
-      phong: args[6],
-      thuThuat: args[7],
-      loai_bn: args[8],
-      buoi_dieu_tri: args[9]
-    };
+    case "addBenhNhan": {
+      // Signature: (ten, namSinh, ngayVao, gioVao, gioBan, gioRa, phong, thuThuat) or (patientObject)
+      let p = (typeof args[0] === "object") ? args[0] : {
+        ten: args[0],
+        namSinh: args[1],
+        ngayVao: args[2],
+        gioVao: args[3],
+        gioBan: args[4],
+        gioRa: args[5],
+        phong: args[6],
+        thuThuat: args[7],
+        loai_bn: args[8],
+        buoi_dieu_tri: args[9]
+      };
 
-    const procs = typeof p.thuThuat === "string" ? p.thuThuat.split(",").map(x => ({ name: x.trim(), status: "Chưa xếp" })) : (p.thu_thuat || []);
-    
-    const res = await db.prepare(
-      "INSERT INTO benh_nhan (unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-    ).bind(
-      unitCode,
-      String(p.ten || p.name || ""),
-      parseInt(p.namSinh || p.age) || 0,
-      String(p.gender || "Nam"),
-      String(p.phong || p.room || ""),
-      String(p.bed || ""),
-      String(p.gioVao || p.arriveTime || "07:30"),
-      String(p.gioRa || p.leaveTime || ""),
-      JSON.stringify(procs),
-      String(p.status || "Chưa xếp"),
-      String(p.ngayVao || ""),
-      String(p.gioBan || ""),
-      String(p.loai_bn || "NoiTru"),
-      String(p.buoi_dieu_tri || "TuDong")
-    ).run();
-    await bumpDataVersion(db, unitCode);
-    return success({ id: res?.meta?.last_row_id || 0 });
-  }
+      const procs = typeof p.thuThuat === "string" ? p.thuThuat.split(",").map(x => ({ name: x.trim(), status: "Chưa xếp" })) : (p.thu_thuat || []);
+      const versionVal = String(Date.now());
+      
+      const res = await db.batch([
+        db.prepare(
+          "INSERT INTO benh_nhan (name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(name, age) DO UPDATE SET age = excluded.age, room = excluded.room, arrive_time = excluded.arrive_time, leave_time = excluded.leave_time, thu_thuat = excluded.thu_thuat, ngay_vao = excluded.ngay_vao, gio_ban = excluded.gio_ban, loai_bn = excluded.loai_bn, buoi_dieu_tri = excluded.buoi_dieu_tri, updated_at = CURRENT_TIMESTAMP"
+        ).bind(
+          String(p.ten || p.name || ""),
+          parseInt(p.namSinh || p.age) || 0,
+          String(p.gender || "Nam"),
+          String(p.phong || p.room || ""),
+          String(p.bed || ""),
+          String(p.gioVao || p.arriveTime || "07:30"),
+          String(p.gioRa || p.leaveTime || ""),
+          JSON.stringify(procs),
+          String(p.status || "Chưa xếp"),
+          String(p.ngayVao || ""),
+          String(p.gioBan || ""),
+          String(p.loai_bn || "NoiTru"),
+          String(p.buoi_dieu_tri || "TuDong")
+        ),
+        db.prepare("INSERT INTO cai_dat (key, value) VALUES ('data_version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(versionVal)
+      ]);
+      return success({ id: res[0]?.meta?.last_row_id || 0 });
+    }
 
-  case "editBenhNhan": {
-    let offset = (typeof args[0] === "number" || (typeof args[0] === "string" && /^\d+$/.test(args[0]) && args.length >= 9)) ? 1 : 0;
-    let p = (typeof args[0] === "object" && args[0] !== null) ? args[0] : {
-      ten: args[offset],
-      namSinh: args[offset + 1],
-      ngayVao: args[offset + 2],
-      gioVao: args[offset + 3],
-      gioBan: args[offset + 4],
-      gioRa: args[offset + 5],
-      phong: args[offset + 6],
-      thuThuat: args[offset + 7],
-      oldTen: args[offset + 8] || args[offset],
-      oldNamSinh: args[offset + 9] || args[offset + 1],
-      loai_bn: args[offset + 10],
-      buoi_dieu_tri: args[offset + 11]
-    };
+    case "editBenhNhan": {
+      // Signature: (rowIndex, ten, namSinh, ngayVao, gioVao, gioBan, gioRa, phong, thuThuat, oldTen, oldNamSinh) or (patientObject)
+      let offset = (typeof args[0] === "number" || (typeof args[0] === "string" && /^\d+$/.test(args[0]) && args.length >= 9)) ? 1 : 0;
+      let p = (typeof args[0] === "object" && args[0] !== null) ? args[0] : {
+        ten: args[offset],
+        namSinh: args[offset + 1],
+        ngayVao: args[offset + 2],
+        gioVao: args[offset + 3],
+        gioBan: args[offset + 4],
+        gioRa: args[offset + 5],
+        phong: args[offset + 6],
+        thuThuat: args[offset + 7],
+        oldTen: args[offset + 8] || args[offset],
+        oldNamSinh: args[offset + 9] || args[offset + 1],
+        loai_bn: args[offset + 10],
+        buoi_dieu_tri: args[offset + 11]
+      };
 
-    const procs = typeof p.thuThuat === "string" ? p.thuThuat.split(",").map(x => ({ name: x.trim(), status: "Chưa xếp" })).filter(x => x.name) : (p.thu_thuat || []);
-    const patName = String(p.ten || p.name || "").trim();
-    const targetName = String(p.oldTen || patName).trim();
-    const targetAge = parseInt(p.oldNamSinh || p.namSinh || p.age) || 0;
-    const patId = parseInt(p.id) || 0;
-    const loaiBnVal = p.loai_bn ? String(p.loai_bn).trim() : "";
-    const buoiVal = p.buoi_dieu_tri ? String(p.buoi_dieu_tri).trim() : "";
+      const procs = typeof p.thuThuat === "string" ? p.thuThuat.split(",").map(x => ({ name: x.trim(), status: "Chưa xếp" })).filter(x => x.name) : (p.thu_thuat || []);
+      const patName = String(p.ten || p.name || "").trim();
+      const targetName = String(p.oldTen || patName).trim();
+      const targetAge = parseInt(p.oldNamSinh || p.namSinh || p.age) || 0;
+      const versionVal = String(Date.now());
 
-    const updateRes = await db.prepare(`
-      UPDATE benh_nhan SET 
-        name = ?, 
-        age = ?, 
-        gender = ?, 
-        room = ?, 
-        bed = ?, 
-        arrive_time = ?, 
-        leave_time = ?, 
-        thu_thuat = ?, 
-        status = ?, 
-        ngay_vao = ?, 
-        gio_ban = ?, 
-        loai_bn = CASE WHEN ? != '' THEN ? ELSE loai_bn END, 
-        buoi_dieu_tri = CASE WHEN ? != '' THEN ? ELSE buoi_dieu_tri END, 
-        updated_at = CURRENT_TIMESTAMP 
-      WHERE unit_code = ? AND ((? > 0 AND id = ?) OR (name = ? AND age = ?))
-    `).bind(
-      patName,
-      parseInt(p.namSinh || p.age) || 0,
-      String(p.gender || "Nam"),
-      String(p.phong || p.room || ""),
-      String(p.bed || ""),
-      String(p.gioVao || p.arriveTime || "07:30"),
-      String(p.gioRa || p.leaveTime || ""),
-      JSON.stringify(procs),
-      String(p.status || "Chưa xếp"),
-      String(p.ngayVao || ""),
-      String(p.gioBan || ""),
-      loaiBnVal,
-      loaiBnVal,
-      buoiVal,
-      buoiVal,
-      unitCode,
-      patId,
-      patId,
-      targetName,
-      targetAge
-    ).run();
-
-    if (updateRes.meta && updateRes.meta.changes === 0) {
-      await db.prepare(
-        "INSERT INTO benh_nhan (unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      const updateStmt = db.prepare(
+        "UPDATE benh_nhan SET name = ?, age = ?, gender = ?, room = ?, bed = ?, arrive_time = ?, leave_time = ?, thu_thuat = ?, status = ?, ngay_vao = ?, gio_ban = ?, loai_bn = ?, buoi_dieu_tri = ?, updated_at = CURRENT_TIMESTAMP WHERE name = ? AND age = ?"
       ).bind(
-        unitCode,
         patName,
         parseInt(p.namSinh || p.age) || 0,
         String(p.gender || "Nam"),
@@ -2326,28 +2002,54 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         String(p.status || "Chưa xếp"),
         String(p.ngayVao || ""),
         String(p.gioBan || ""),
-        loaiBnVal || "NoiTru",
-        buoiVal || "TuDong"
-      ).run();
+        String(p.loai_bn || "NoiTru"),
+        String(p.buoi_dieu_tri || "TuDong"),
+        targetName,
+        targetAge
+      );
+
+      const bumpStmt = db.prepare("INSERT INTO cai_dat (key, value) VALUES ('data_version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(versionVal);
+
+      const batchRes = await db.batch([updateStmt, bumpStmt]);
+      const updateRes = batchRes[0];
+
+      if (updateRes.meta && updateRes.meta.changes === 0) {
+        await db.prepare(
+          "INSERT INTO benh_nhan (name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(name, age) DO UPDATE SET age = excluded.age, gender = excluded.gender, room = excluded.room, bed = excluded.bed, arrive_time = excluded.arrive_time, leave_time = excluded.leave_time, thu_thuat = excluded.thu_thuat, status = excluded.status, ngay_vao = excluded.ngay_vao, gio_ban = excluded.gio_ban, loai_bn = excluded.loai_bn, buoi_dieu_tri = excluded.buoi_dieu_tri, updated_at = CURRENT_TIMESTAMP"
+        ).bind(
+          patName,
+          parseInt(p.namSinh || p.age) || 0,
+          String(p.gender || "Nam"),
+          String(p.phong || p.room || ""),
+          String(p.bed || ""),
+          String(p.gioVao || p.arriveTime || "07:30"),
+          String(p.gioRa || p.leaveTime || ""),
+          JSON.stringify(procs),
+          String(p.status || "Chưa xếp"),
+          String(p.ngayVao || ""),
+          String(p.gioBan || ""),
+          String(p.loai_bn || "NoiTru"),
+          String(p.buoi_dieu_tri || "TuDong")
+        ).run();
+      }
+
+      return success(true);
     }
-    await bumpDataVersion(db, unitCode);
-    return success(true);
-  }
 
     case "deleteBenhNhan": {
       let payload = {};
       if (typeof args[0] === "object" && args[0] !== null) payload = args[0];
       const ten = String(payload.ten || payload.name || args[1] || (typeof args[0] === "string" && !/^\d+$/.test(args[0]) ? args[0] : "")).trim();
       if (ten) {
-        await db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND (name = ? OR id = ?)").bind(unitCode, ten, ten).run();
-        await bumpDataVersion(db, unitCode);
+        await db.prepare("DELETE FROM benh_nhan WHERE name = ? OR id = ?").bind(ten, ten).run();
+        await bumpDataVersion(db);
       } else {
         const idx = typeof args[0] === "number" ? args[0] : parseInt(args[0]);
         if (!isNaN(idx)) {
-          const allPats = await db.prepare("SELECT id FROM benh_nhan WHERE unit_code = ? AND is_saturday = 0 ORDER BY ngay_vao ASC, name ASC").bind(unitCode).all();
+          const allPats = await db.prepare("SELECT id FROM benh_nhan WHERE is_saturday = 0 ORDER BY ngay_vao ASC, name ASC").all();
           if (allPats.results && allPats.results[idx]) {
-            await db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND id = ?").bind(unitCode, allPats.results[idx].id).run();
-            await bumpDataVersion(db, unitCode);
+            await db.prepare("DELETE FROM benh_nhan WHERE id = ?").bind(allPats.results[idx].id).run();
+            await bumpDataVersion(db);
           }
         }
       }
@@ -2365,7 +2067,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
             const name = String(p.ten || p.name || "").trim();
             const id = p.id;
             if (name) {
-              stmts.push(db.prepare("UPDATE benh_nhan SET order_idx = ? WHERE unit_code = ? AND (name = ? OR id = ?)").bind(idx + 1, unitCode, name, id || 0));
+              stmts.push(db.prepare("UPDATE benh_nhan SET order_idx = ? WHERE name = ? OR id = ?").bind(idx + 1, name, id || 0));
             }
           });
         } else if (type === "nhan_su" || type === "staff" || type === "nhansu") {
@@ -2373,21 +2075,21 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
             const name = String(s.ten || s.name || "").trim();
             const id = s.id;
             if (name) {
-              stmts.push(db.prepare("UPDATE nhan_su SET priority = ? WHERE unit_code = ? AND (name = ? OR id = ?)").bind(idx + 1, unitCode, name, id || 0));
+              stmts.push(db.prepare("UPDATE nhan_su SET priority = ? WHERE name = ? OR id = ?").bind(idx + 1, name, id || 0));
             }
           });
         } else if (type === "may_moc" || type === "machines" || type === "machine" || type === "may") {
           list.forEach((m, idx) => {
             const ma = String(m.maMay || m[2] || m.ten || m.name || "").trim();
             if (ma) {
-              stmts.push(db.prepare("UPDATE may_moc SET order_idx = ? WHERE unit_code = ? AND ma_may = ?").bind(idx + 1, unitCode, ma));
+              stmts.push(db.prepare("UPDATE may_moc SET order_idx = ? WHERE ma_may = ?").bind(idx + 1, ma));
             }
           });
         } else if (type === "phong" || type === "rooms" || type === "room") {
           list.forEach((r, idx) => {
             const ten = String(r.tenPhong || r.ten || r.name || r[1] || "").trim();
             if (ten) {
-              stmts.push(db.prepare("UPDATE phong SET order_idx = ? WHERE unit_code = ? AND ten_phong = ?").bind(idx + 1, unitCode, ten));
+              stmts.push(db.prepare("UPDATE phong SET order_idx = ? WHERE ten_phong = ?").bind(idx + 1, ten));
             }
           });
         } else if (type === "thu_thuat" || type === "procedures" || type === "proc") {
@@ -2399,15 +2101,15 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
             const tgTtMax = parseInt(p.thoiGianThuThuatMax || p[12] || tgTtMin) || tgTtMin;
             const kc = parseInt(p.khoangCach || p[8]) || 0;
             if (ten) {
-              stmts.push(db.prepare(`UPDATE thu_thuat SET order_idx = ?, tg_thuc_hien = CASE WHEN ? > 0 THEN ? ELSE tg_thuc_hien END, tg_thuc_hien_max = CASE WHEN ? > 0 THEN ? ELSE tg_thuc_hien_max END, tg_thu_thuat = CASE WHEN ? > 0 THEN ? ELSE tg_thu_thuat END, tg_thu_thuat_max = CASE WHEN ? > 0 THEN ? ELSE tg_thu_thuat_max END, khoang_cach = CASE WHEN ? > 0 THEN ? ELSE khoang_cach END WHERE unit_code = ? AND ten_thu_thuat = ?`)
-                .bind(idx + 1, tgThMin, tgThMin, tgThMax, tgThMax, tgTtMin, tgTtMin, tgTtMax, tgTtMax, kc, kc, unitCode, ten));
+              stmts.push(db.prepare(`UPDATE thu_thuat SET order_idx = ?, tg_thuc_hien = CASE WHEN ? > 0 THEN ? ELSE tg_thuc_hien END, tg_thuc_hien_max = CASE WHEN ? > 0 THEN ? ELSE tg_thuc_hien_max END, tg_thu_thuat = CASE WHEN ? > 0 THEN ? ELSE tg_thu_thuat END, tg_thu_thuat_max = CASE WHEN ? > 0 THEN ? ELSE tg_thu_thuat_max END, khoang_cach = CASE WHEN ? > 0 THEN ? ELSE khoang_cach END WHERE ten_thu_thuat = ?`)
+                .bind(idx + 1, tgThMin, tgThMin, tgThMax, tgThMax, tgTtMin, tgTtMin, tgTtMax, tgTtMax, kc, kc, ten));
             }
           });
         }
 
         if (stmts.length > 0) {
           await db.batch(stmts);
-          await bumpDataVersion(db, unitCode);
+          await bumpDataVersion(db);
         }
       } catch (e) {
         console.warn("[saveReorderedData error]:", e);
@@ -2420,7 +2122,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const replaceAll = Boolean(args[1]);
 
       if (replaceAll) {
-        await db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND (is_saturday = 0 OR is_saturday IS NULL OR is_saturday = '')").bind(unitCode).run();
+        await db.prepare("DELETE FROM benh_nhan WHERE is_saturday = 0 OR is_saturday IS NULL OR is_saturday = ''").run();
       }
 
       const insertStatements = [];
@@ -2456,26 +2158,25 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         const procsJson = JSON.stringify(procs);
 
         const sql = replaceAll
-          ? "INSERT INTO benh_nhan (unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri, order_idx) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-          : "INSERT INTO benh_nhan (unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri, order_idx) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(name, age) DO UPDATE SET age = excluded.age, gender = excluded.gender, room = excluded.room, bed = excluded.bed, arrive_time = excluded.arrive_time, leave_time = excluded.leave_time, thu_thuat = excluded.thu_thuat, status = excluded.status, ngay_vao = excluded.ngay_vao, gio_ban = excluded.gio_ban, loai_bn = excluded.loai_bn, buoi_dieu_tri = excluded.buoi_dieu_tri, order_idx = excluded.order_idx, updated_at = CURRENT_TIMESTAMP";
+          ? "INSERT INTO benh_nhan (name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri, order_idx) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+          : "INSERT INTO benh_nhan (name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri, order_idx) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(name, age) DO UPDATE SET age = excluded.age, gender = excluded.gender, room = excluded.room, bed = excluded.bed, arrive_time = excluded.arrive_time, leave_time = excluded.leave_time, thu_thuat = excluded.thu_thuat, status = excluded.status, ngay_vao = excluded.ngay_vao, gio_ban = excluded.gio_ban, loai_bn = excluded.loai_bn, buoi_dieu_tri = excluded.buoi_dieu_tri, order_idx = excluded.order_idx, updated_at = CURRENT_TIMESTAMP";
 
         insertStatements.push(
           db.prepare(sql).bind(
-            unitCode,   // 1: unit_code (TEXT)
-            name,       // 2: name (TEXT)
-            age,        // 3: age (INTEGER)
-            gender,     // 4: gender (TEXT)
-            room,       // 5: room (TEXT)
-            bed,        // 6: bed (TEXT)
-            gioVao,     // 7: arrive_time (TEXT)
-            gioRa,      // 8: leave_time (TEXT)
-            procsJson,  // 9: thu_thuat (TEXT, JSON)
-            status,     // 10: status (TEXT)
-            ngayVao,    // 11: ngay_vao (TEXT)
-            gioBan,     // 12: gio_ban (TEXT)
-            loaiBn,     // 13: loai_bn (TEXT)
-            buoiDieuTri,// 14: buoi_dieu_tri (TEXT)
-            idx         // 15: order_idx (INTEGER)
+            name,       // 1: name (TEXT)
+            age,        // 2: age (INTEGER)
+            gender,     // 3: gender (TEXT)
+            room,       // 4: room (TEXT)
+            bed,        // 5: bed (TEXT)
+            gioVao,     // 6: arrive_time (TEXT)
+            gioRa,      // 7: leave_time (TEXT)
+            procsJson,  // 8: thu_thuat (TEXT, JSON)
+            status,     // 9: status (TEXT)
+            ngayVao,    // 10: ngay_vao (TEXT)
+            gioBan,     // 11: gio_ban (TEXT)
+            loaiBn,     // 12: loai_bn (TEXT)
+            buoiDieuTri,// 13: buoi_dieu_tri (TEXT)
+            idx         // 14: order_idx (INTEGER)
           )
         );
       });
@@ -2485,7 +2186,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         for (let i = 0; i < insertStatements.length; i += chunkSize) {
           await db.batch(insertStatements.slice(i, i + chunkSize));
         }
-        await bumpDataVersion(db, unitCode);
+        await bumpDataVersion(db);
       }
 
       return success({ message: `Cập nhật danh sách ${patientList.length} bệnh nhân thành công!` });
@@ -2494,15 +2195,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     case "getSchedule":
     case "getLichTrinh": {
       const date = args[0] || new Date().toISOString().slice(0, 10);
-      let ymd = date, dmy = date;
-      if (date.includes("/")) {
-        const [d, m, y] = date.split("/");
-        ymd = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
-      } else if (date.includes("-")) {
-        const [y, m, d] = date.split("-");
-        dmy = `${d.padStart(2, "0")}/${m.padStart(2, "0")}/${y}`;
-      }
-      const res = await db.prepare("SELECT * FROM lich_trinh WHERE unit_code = ? AND (date = ? OR date = ?) ORDER BY order_idx ASC, start_time ASC").bind(unitCode, ymd, dmy).all();
+      const res = await db.prepare("SELECT * FROM lich_trinh WHERE unit_code = ? AND date = ? ORDER BY order_idx ASC, start_time ASC").bind(unitCode, date).all();
       const rows = (res.results || []).map(s => [
         s.date, s.patient_name, s.dob || "", s.room || "", s.procedure_name, s.start_time, s.end_time, s.staff_name || "", s.sub_staff_name || "", s.machine_name || "", s.bed || ""
       ]);
@@ -2519,9 +2212,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
       rows.forEach((r, idx) => {
         statements.push(
-          db.prepare("INSERT INTO lich_trinh (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed, order_idx) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+          db.prepare("INSERT INTO lich_trinh (date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed, order_idx) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
           .bind(
-            unitCode,
             r[0] || date,
             r[1] || "",
             r[2] || "",
@@ -2543,7 +2235,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         for (let i = 0; i < statements.length; i += chunkSize) {
           await db.batch(statements.slice(i, i + chunkSize));
         }
-        await bumpDataVersion(db, unitCode);
+        await bumpDataVersion(db);
       }
       return success(true);
     }
@@ -2555,31 +2247,31 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const statements = [];
       if (date && typeof date === "string" && date.trim()) {
         statements.push(
-          db.prepare("INSERT INTO lich_su (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE unit_code = ? AND date = ?").bind(unitCode, date.trim()),
-          db.prepare("DELETE FROM lich_trinh WHERE unit_code = ? AND date = ?").bind(unitCode, date.trim())
+          db.prepare("INSERT INTO lich_su (date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE date = ?").bind(date.trim()),
+          db.prepare("DELETE FROM lich_trinh WHERE date = ?").bind(date.trim())
         );
       } else {
         statements.push(
-          db.prepare("INSERT INTO lich_su (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE unit_code = ?").bind(unitCode),
-          db.prepare("DELETE FROM lich_trinh WHERE unit_code = ?").bind(unitCode)
+          db.prepare("INSERT INTO lich_su (date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh"),
+          db.prepare("DELETE FROM lich_trinh")
         );
       }
 
       // Xóa bệnh nhân đã có giờ ra viện
       statements.push(
-        db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(unitCode),
+        db.prepare("DELETE FROM benh_nhan WHERE leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'"),
         // Reset giờ vào về 07:30, xóa giờ bận, giờ ra, và reset status về 'Chưa xếp'
-        db.prepare("UPDATE benh_nhan SET arrive_time = '07:30', gio_ban = '', leave_time = '', status = 'Chưa xếp', updated_at = CURRENT_TIMESTAMP WHERE unit_code = ?").bind(unitCode),
+        db.prepare("UPDATE benh_nhan SET arrive_time = '07:30', gio_ban = '', leave_time = '', status = 'Chưa xếp', updated_at = CURRENT_TIMESTAMP"),
         // Reset giờ bận tạm thời của nhân viên
-        db.prepare("UPDATE nhan_su SET temp_busy = '[]', updated_at = CURRENT_TIMESTAMP WHERE unit_code = ?").bind(unitCode)
+        db.prepare("UPDATE nhan_su SET temp_busy = '[]', updated_at = CURRENT_TIMESTAMP")
       );
 
       await db.batch(statements);
-      await bumpDataVersion(db, unitCode);
+      await bumpDataVersion(db);
       return success({ message: "Đã chốt sổ và chuyển ngày mới thành công!" });
     }
 
-    // ============================================================
+        // ============================================================
     // BATCH IMPORT LỊCH SỬ & SỔ THỦ THUẬT
     // ============================================================
     case "importHistoryRecords": {
@@ -2589,9 +2281,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const stmts = [];
       for (const r of records) {
         stmts.push(
-          db.prepare(`INSERT INTO lich_su (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed)
-                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-            .bind(unitCode, r.date || "", r.patient_name || "", r.dob || "", r.room || "", r.procedure_name || "", r.start_time || "", r.end_time || "", r.staff_name || "", r.sub_staff_name || "", r.machine_name || "", r.bed || "")
+          db.prepare(`INSERT INTO lich_su (date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed)
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+            .bind(r.date || "", r.patient_name || "", r.dob || "", r.room || "", r.procedure_name || "", r.start_time || "", r.end_time || "", r.staff_name || "", r.sub_staff_name || "", r.machine_name || "", r.bed || "")
         );
       }
       
@@ -2609,8 +2301,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const stmts = [];
       for (const b of busyList) {
         stmts.push(
-          db.prepare(`INSERT INTO gio_ban_cu (unit_code, date, staff_name, busy_ranges) VALUES (?, ?, ?, ?)`)
-            .bind(unitCode, b.date || "", b.name || "", typeof b.busy_ranges === 'string' ? b.busy_ranges : JSON.stringify(b.busy_ranges || ""))
+          db.prepare(`INSERT INTO gio_ban_cu (date, staff_name, busy_ranges) VALUES (?, ?, ?)`)
+            .bind(b.date || "", b.name || "", typeof b.busy_ranges === 'string' ? b.busy_ranges : JSON.stringify(b.busy_ranges || ""))
         );
       }
       for (let i = 0; i < stmts.length; i += 50) {
@@ -2619,7 +2311,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       return success({ count: busyList.length });
     }
 
-    case "getHistoryFullData": {
+        case "getHistoryFullData": {
       const rawDate = args[0] || "";
       let ymd = rawDate;
       let dmy = rawDate;
@@ -2646,7 +2338,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       // Query lich_su first
       let histRes = { results: [] };
       try {
-        histRes = await db.prepare("SELECT date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_su WHERE unit_code = ? AND (date = ? OR date = ?) ORDER BY start_time ASC").bind(unitCode, ymd, dmy).all();
+        histRes = await db.prepare("SELECT date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_su WHERE date = ? OR date = ? ORDER BY start_time ASC").bind(ymd, dmy).all();
       } catch (e) {
         console.warn("Error querying lich_su:", e);
       }
@@ -2655,7 +2347,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       // Fallback: If no records in lich_su, check lich_trinh (e.g. today's active schedule)
       if (rows.length === 0) {
         try {
-          const fallbackRes = await db.prepare("SELECT date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE unit_code = ? AND (date = ? OR date = ?) ORDER BY start_time ASC").bind(unitCode, ymd, dmy).all();
+          const fallbackRes = await db.prepare("SELECT date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE date = ? OR date = ? ORDER BY start_time ASC").bind(ymd, dmy).all();
           rows = fallbackRes.results || [];
         } catch (e) {
           console.warn("Error querying fallback lich_trinh:", e);
@@ -2665,7 +2357,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       // Safe query for gio_ban_cu
       let busyRows = [];
       try {
-        const busyRes = await db.prepare("SELECT date, staff_name, busy_ranges FROM gio_ban_cu WHERE unit_code = ? AND (date = ? OR date = ?)").bind(unitCode, ymd, dmy).all();
+        const busyRes = await db.prepare("SELECT date, staff_name, busy_ranges FROM gio_ban_cu WHERE date = ? OR date = ?").bind(ymd, dmy).all();
         busyRows = busyRes.results || [];
       } catch (e) {
         // gio_ban_cu optional
@@ -2759,11 +2451,11 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       }
 
       // Check current schedule table first
-      let res = await db.prepare("SELECT date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE unit_code = ? AND (date = ? OR date = ?) ORDER BY start_time ASC").bind(unitCode, ymd, dmy).all();
+      let res = await db.prepare("SELECT date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE date = ? OR date = ? ORDER BY start_time ASC").bind(ymd, dmy).all();
       
       // If not in current schedule, fallback to lich_su
       if (!res.results || res.results.length === 0) {
-        res = await db.prepare("SELECT date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_su WHERE unit_code = ? AND (date = ? OR date = ?) ORDER BY start_time ASC").bind(unitCode, ymd, dmy).all();
+        res = await db.prepare("SELECT date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_su WHERE date = ? OR date = ? ORDER BY start_time ASC").bind(ymd, dmy).all();
       }
 
       const rows = (res.results || []).map(r => ({
@@ -2783,23 +2475,10 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     }
 
     case "getSatData": {
-      const staffRes = await db.prepare("SELECT * FROM nhan_su WHERE unit_code = ? AND (trang_thai != 'Nghỉ cả ngày' OR trang_thai IS NULL) ORDER BY priority ASC, id ASC").bind(unitCode).all().catch(() => db.prepare("SELECT * FROM nhan_su WHERE unit_code = ?").bind(unitCode).all());
-      const patRes = await db.prepare("SELECT id, name, age, arrive_time, room, thu_thuat FROM benh_nhan WHERE unit_code = ? AND is_saturday = 0").bind(unitCode).all();
+      const staffRes = await db.prepare("SELECT name, role FROM nhan_su ").all();
+      const patRes = await db.prepare("SELECT id, name, age, arrive_time, room, thu_thuat FROM benh_nhan WHERE is_saturday = 0").all();
       
-      const nhan_su = (staffRes.results || []).map((r, idx) => ({
-        id: r.id || (idx + 1),
-        ten: r.name,
-        name: r.name,
-        vaiTro: r.role || "KTV",
-        role: r.role || "KTV",
-        quyen: r.system || "Cả hai",
-        system: r.system || "Cả hai",
-        kyNang: r.skills || "",
-        skills: r.skills || "",
-        trangThai: r.trang_thai || "Đi làm",
-        thoiGianLam: r.thoi_gian_lam || "07:30-11:30, 13:00-16:30",
-        tenHis: r.his_name || ""
-      }));
+      const nhan_su = (staffRes.results || []).map(r => ({ ten: r.name, vaiTro: r.role }));
       const benh_nhan = (patRes.results || []).map(r => {
         let procs = [];
         try { procs = JSON.parse(r.thu_thuat || "[]").map(x => (typeof x === "object" ? x.name : x)); } catch(e) {}
@@ -2828,7 +2507,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         })));
       }
       // Fallback to schedule
-      const sched = await db.prepare("SELECT procedure_name, start_time, end_time, staff_name, machine_name FROM lich_trinh WHERE unit_code = ? ORDER BY start_time ASC").bind(unitCode).all();
+      const sched = await db.prepare("SELECT procedure_name, start_time, end_time, staff_name, machine_name FROM lich_trinh ORDER BY start_time ASC").all();
       return success((sched.results || []).map(r => ({
         thuThuat: r.procedure_name,
         gioDienRa: r.start_time,
@@ -2843,15 +2522,15 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     // ============================================================
     case "getMarqueeText":
     case "layThongBaoDongChuChay": {
-      const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'marquee_text'").bind(unitCode).first();
-      return success(rec ? rec.value : ("PHẦN MỀM XẾP LỊCH THỦ THUẬT - " + unitCode.toUpperCase()));
+      const rec = await db.prepare("SELECT value FROM cai_dat WHERE key = 'marquee_text'").first();
+      return success(rec ? rec.value : "PHẦN MỀM XẾP LỊCH THỦ THUẬT - KHOA YHCT - PHCN BVTKS CS2");
     }
 
     case "saveMarqueeText":
     case "luuThongBaoDongChuChay": {
       const text = args[0] || "";
-      await setCaiDat(db, unitCode, 'marquee_text', String(text));
-      await bumpDataVersion(db, unitCode);
+      await db.prepare("INSERT INTO cai_dat (key, value) VALUES ('marquee_text', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(String(text)).run();
+      await bumpDataVersion(db);
       return success(true);
     }
 
@@ -2864,10 +2543,17 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
     case "saveSystemSettings": {
       const settings = args[0] || {};
+      const statements = [];
       for (const [k, v] of Object.entries(settings)) {
-        await setCaiDat(db, unitCode, String(k), String(v ?? ""));
+        statements.push(
+          db.prepare("INSERT INTO cai_dat (unit_code, key, value, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, key) DO UPDATE SET value = excluded.value")
+          .bind(unitCode, String(k), String(v ?? ""))
+        );
       }
-      await bumpDataVersion(db, unitCode);
+      if (statements.length > 0) {
+        await db.batch(statements);
+        await bumpDataVersion(db);
+      }
       return success(true);
     }
 
@@ -2877,7 +2563,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     case "getProtocolsData":
     case "getClinicalProtocols":
     case "getPhacDo": {
-      const res = await db.prepare("SELECT * FROM phac_do WHERE unit_code = ? AND is_active = 1 ORDER BY order_idx ASC, id ASC").bind(unitCode).all().catch(() => ({ results: [] }));
+      const res = await db.prepare("SELECT * FROM phac_do WHERE is_active = 1 ORDER BY order_idx ASC, id ASC").all().catch(() => ({ results: [] }));
       if (res.results && res.results.length > 0) {
         const list = res.results.map((r, i) => {
           let procsArr = [];
@@ -2897,7 +2583,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       }
 
       // Fallback nếu bảng phac_do chưa có dữ liệu
-      const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'clinical_protocols'").bind(unitCode).first();
+      const rec = await db.prepare("SELECT value FROM cai_dat WHERE key = 'clinical_protocols'").first();
       if (rec && rec.value) {
         try {
           const list = JSON.parse(rec.value);
@@ -2915,7 +2601,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const jsonStr = JSON.stringify(list);
 
       const stmts = [
-        db.prepare("DELETE FROM phac_do WHERE unit_code = ?").bind(unitCode)
+        db.prepare("DELETE FROM phac_do"),
+        db.prepare("INSERT INTO cai_dat (key, value) VALUES ('clinical_protocols', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(jsonStr)
       ];
 
       list.forEach((item, idx) => {
@@ -2923,14 +2610,13 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         const procs = item.procs || item.danh_sach_thu_thuat || [];
         const procsJson = typeof procs === 'string' ? procs : JSON.stringify(procs);
         stmts.push(
-          db.prepare("INSERT INTO phac_do (unit_code, ten_phac_do, danh_sach_thu_thuat, order_idx, is_active, updated_at) VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)")
-            .bind(unitCode, name, procsJson, idx)
+          db.prepare("INSERT INTO phac_do (ten_phac_do, danh_sach_thu_thuat, order_idx, is_active) VALUES (?, ?, ?, 1)")
+            .bind(name, procsJson, idx)
         );
       });
 
       await db.batch(stmts);
-      await setCaiDat(db, unitCode, 'clinical_protocols', jsonStr);
-      await bumpDataVersion(db, unitCode);
+      await bumpDataVersion(db);
       return success(true);
     }
 
@@ -2945,23 +2631,18 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
       if (!name) return error("Tên phác đồ không được để trống", 400);
 
-      const existPd = await db.prepare("SELECT id FROM phac_do WHERE unit_code = ? AND ten_phac_do = ?").bind(unitCode, name).first();
-      if (existPd && existPd.id) {
-        await db.prepare("UPDATE phac_do SET danh_sach_thu_thuat = ?, order_idx = ?, is_active = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(procsJson, orderIdx, existPd.id).run();
-      } else {
-        await db.prepare("INSERT INTO phac_do (unit_code, ten_phac_do, danh_sach_thu_thuat, order_idx, is_active, updated_at) VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)").bind(unitCode, name, procsJson, orderIdx).run();
-      }
+      await db.prepare("INSERT INTO phac_do (ten_phac_do, danh_sach_thu_thuat, order_idx, is_active) VALUES (?, ?, ?, 1) ON CONFLICT(ten_phac_do) DO UPDATE SET danh_sach_thu_thuat = excluded.danh_sach_thu_thuat, order_idx = excluded.order_idx, is_active = 1, updated_at = CURRENT_TIMESTAMP").bind(name, procsJson, orderIdx).run();
       
       // Đồng bộ lại vào cai_dat
-      const allRes = await db.prepare("SELECT * FROM phac_do WHERE unit_code = ? AND is_active = 1 ORDER BY order_idx ASC, id ASC").bind(unitCode).all();
+      const allRes = await db.prepare("SELECT * FROM phac_do WHERE is_active = 1 ORDER BY order_idx ASC, id ASC").all();
       const allList = (allRes.results || []).map(r => ({
         id: String(r.id),
         name: r.ten_phac_do,
         procs: (() => { try { return JSON.parse(r.danh_sach_thu_thuat); } catch(e) { return []; } })()
       }));
-      await setCaiDat(db, unitCode, 'clinical_protocols', JSON.stringify(allList));
+      await db.prepare("INSERT INTO cai_dat (key, value) VALUES ('clinical_protocols', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(JSON.stringify(allList)).run();
 
-      await bumpDataVersion(db, unitCode);
+      await bumpDataVersion(db);
       return success({ message: "Thêm phác đồ thành công" });
     }
 
@@ -2977,21 +2658,21 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       if (!name) return error("Tên phác đồ không được để trống", 400);
 
       if (id) {
-        await db.prepare("UPDATE phac_do SET ten_phac_do = ?, danh_sach_thu_thuat = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ? AND id = ?").bind(name, procsJson, unitCode, id).run();
+        await db.prepare("UPDATE phac_do SET ten_phac_do = ?, danh_sach_thu_thuat = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(name, procsJson, id).run();
       } else {
-        await db.prepare("UPDATE phac_do SET danh_sach_thu_thuat = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ? AND ten_phac_do = ?").bind(procsJson, unitCode, name).run();
+        await db.prepare("UPDATE phac_do SET danh_sach_thu_thuat = ?, updated_at = CURRENT_TIMESTAMP WHERE ten_phac_do = ?").bind(procsJson, name).run();
       }
 
       // Đồng bộ lại vào cai_dat
-      const allRes = await db.prepare("SELECT * FROM phac_do WHERE unit_code = ? AND is_active = 1 ORDER BY order_idx ASC, id ASC").bind(unitCode).all();
+      const allRes = await db.prepare("SELECT * FROM phac_do WHERE is_active = 1 ORDER BY order_idx ASC, id ASC").all();
       const allList = (allRes.results || []).map(r => ({
         id: String(r.id),
         name: r.ten_phac_do,
         procs: (() => { try { return JSON.parse(r.danh_sach_thu_thuat); } catch(e) { return []; } })()
       }));
-      await setCaiDat(db, unitCode, 'clinical_protocols', JSON.stringify(allList));
+      await db.prepare("INSERT INTO cai_dat (key, value) VALUES ('clinical_protocols', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(JSON.stringify(allList)).run();
 
-      await bumpDataVersion(db, unitCode);
+      await bumpDataVersion(db);
       return success({ message: "Cập nhật phác đồ thành công" });
     }
 
@@ -3003,18 +2684,18 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       }
       if (!idOrName) return error("Thiếu ID hoặc Tên phác đồ để xóa", 400);
 
-      await db.prepare("DELETE FROM phac_do WHERE unit_code = ? AND (id = ? OR ten_phac_do = ?)").bind(unitCode, idOrName, idOrName).run();
+      await db.prepare("DELETE FROM phac_do WHERE id = ? OR ten_phac_do = ?").bind(idOrName, idOrName).run();
 
       // Đồng bộ lại vào cai_dat
-      const allRes = await db.prepare("SELECT * FROM phac_do WHERE unit_code = ? AND is_active = 1 ORDER BY order_idx ASC, id ASC").bind(unitCode).all();
+      const allRes = await db.prepare("SELECT * FROM phac_do WHERE is_active = 1 ORDER BY order_idx ASC, id ASC").all();
       const allList = (allRes.results || []).map(r => ({
         id: String(r.id),
         name: r.ten_phac_do,
         procs: (() => { try { return JSON.parse(r.danh_sach_thu_thuat); } catch(e) { return []; } })()
       }));
-      await setCaiDat(db, unitCode, 'clinical_protocols', JSON.stringify(allList));
+      await db.prepare("INSERT INTO cai_dat (key, value) VALUES ('clinical_protocols', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(JSON.stringify(allList)).run();
 
-      await bumpDataVersion(db, unitCode);
+      await bumpDataVersion(db);
       return success({ message: "Xóa phác đồ thành công" });
     }
 
@@ -3022,7 +2703,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     // 🔗 LIÊN KẾT NHANH (QUICK LINKS)
     // ============================================================
     case "getQuickLinks": {
-      const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'quick_links'").bind(unitCode).first();
+      const rec = await db.prepare("SELECT value FROM cai_dat WHERE key = 'quick_links'").first();
       if (rec && rec.value) {
         try {
           const list = JSON.parse(rec.value);
@@ -3039,8 +2720,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
     case "saveQuickLinks": {
       const links = Array.isArray(args[0]) ? args[0] : (args[0]?.links || []);
-      await setCaiDat(db, unitCode, 'quick_links', JSON.stringify(links));
-      await bumpDataVersion(db, unitCode);
+      await db.prepare("INSERT INTO cai_dat (key, value) VALUES ('quick_links', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+        .bind(JSON.stringify(links)).run();
+      await bumpDataVersion(db);
       return success({ message: "Đã lưu danh sách liên kết thành công!" });
     }
 
@@ -3048,30 +2730,15 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     // 📅 CHẤM CÔNG (CHAM CONG) & NHÂN SỰ CHẤM CÔNG
     // ============================================================
     case "getEmployees": {
-      const isDefault = (unitCode === "bvtks-cs2" || unitCode === "bvtks_cs2");
       const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'chamcong_employees'").bind(unitCode).first();
       if (rec && rec.value) {
         try {
           const list = JSON.parse(rec.value);
-          if (Array.isArray(list)) {
-            const cleanList = list.map(x => (typeof x === 'object' && x !== null ? (x.ten || x.name || x.his_name) : x))
-                                  .filter(n => n && !/^(phụ|phu)\s*\d+/i.test(String(n).trim()) && !/^(ktv\s*)?phụ trách/i.test(String(n).trim()));
-            if (cleanList.length > 0) {
-              if (isDefault) {
-                const std13 = [
-                  "Hoàng Đức Đạt", "Lê Thị Thu Hoa", "Nguyễn Thị Duyên Thảo", "Nguyễn Thu Hằng",
-                  "Đặng Phong Thái", "Phạm Thạch Khuyến", "Nguyễn Thị Xuân Lương", "Nguyễn Thị Hà",
-                  "Phan Thị Thu Hiền", "Lê Thị Thu Hiền", "Nguyễn Văn Khính", "Phạm Thị Thuyến", "Trần Thị Duyên"
-                ];
-                std13.forEach(s => { if (!cleanList.includes(s)) cleanList.push(s); });
-              }
-              return success(cleanList);
-            }
-          }
+          if (Array.isArray(list)) return success(list);
         } catch(e) {}
       }
-      // Đối với đơn vị bvtks-cs2 mặc định thì cung cấp danh sách 13 nhân sự chuẩn đầy đủ
-      if (isDefault) {
+      // Đối với đơn vị bvtks-cs2 mặc định thì cung cấp danh sách nhân sự chuẩn
+      if (unitCode === "bvtks-cs2") {
         return success([
           "Hoàng Đức Đạt", "Lê Thị Thu Hoa", "Nguyễn Thị Duyên Thảo", "Nguyễn Thu Hằng",
           "Đặng Phong Thái", "Phạm Thạch Khuyến", "Nguyễn Thị Xuân Lương", "Nguyễn Thị Hà",
@@ -3087,12 +2754,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       if (typeof list === "object" && list !== null && !Array.isArray(list)) {
         list = list.employees || list.list || [];
       }
-      if (Array.isArray(list)) {
-        list = list.map(x => (typeof x === 'object' && x !== null ? (x.ten || x.name || x.his_name) : x))
-                   .filter(n => n && !/^(phụ|phu)\s*\d+/i.test(String(n).trim()) && !/^(ktv\s*)?phụ trách/i.test(String(n).trim()));
-      }
-      await setCaiDat(db, unitCode, 'chamcong_employees', JSON.stringify(list));
-      await bumpDataVersion(db, unitCode);
+      await db.prepare("INSERT INTO cai_dat (unit_code, key, value) VALUES (?, 'chamcong_employees', ?) ON CONFLICT(unit_code, key) DO UPDATE SET value = excluded.value")
+        .bind(unitCode, JSON.stringify(list)).run();
+      await bumpDataVersion(db);
       return success({ message: "Đã lưu danh sách nhân sự chấm công thành công!" });
     }
 
@@ -3106,51 +2770,10 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
     case "saveErrorConfig": {
       const config = args[0] || { staff: {} };
-      await setCaiDat(db, unitCode, 'error_config', JSON.stringify(config));
-      await bumpDataVersion(db, unitCode);
+      await db.prepare("INSERT INTO cai_dat (unit_code, key, value) VALUES (?, 'error_config', ?) ON CONFLICT(unit_code, key) DO UPDATE SET value = excluded.value")
+        .bind(unitCode, JSON.stringify(config)).run();
+      await bumpDataVersion(db);
       return success({ message: "Đã lưu cấu hình thành công!" });
-    }
-
-    case "getChamCongSymbols": {
-      const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'chamcong_symbols'").bind(unitCode).first();
-      if (rec && rec.value) {
-        try {
-          const list = JSON.parse(rec.value);
-          if (Array.isArray(list) && list.length > 0) {
-            const normalized = list.map(item => ({
-              ...item,
-              aliases: Array.isArray(item.aliases) ? item.aliases.join(', ') : (item.aliases || '')
-            }));
-            return success(normalized);
-          }
-        } catch(e) {}
-      }
-      const defaultSymbols = [
-        { code: "X", label: "Cả ngày", value: 1.0, bg: "#ffffff", border: "#cbd5e1", color: "#1e293b", aliases: "CA-NGAY, 1" },
-        { code: "X/2", label: "Nửa ngày", value: 0.5, bg: "#ccfbf1", border: "#99f6e4", color: "#0f766e", aliases: "1/2, 0.5" },
-        { code: "S / C", label: "Sáng / Chiều", value: 0.5, bg: "#d1fae5", border: "#a7f3d0", color: "#047857", aliases: "S, C, SANG, CHIEU" },
-        { code: "Lễ", label: "Nghỉ lễ", value: 0.0, bg: "#fee2e2", border: "#fca5a5", color: "#b91c1c", aliases: "LE" },
-        { code: "Tết", label: "Nghỉ Tết", value: 0.0, bg: "#fee2e2", border: "#fca5a5", color: "#b91c1c", aliases: "TET" },
-        { code: "Nội", label: "Trực / học nội trú", value: 0.0, bg: "#dbeafe", border: "#93c5fd", color: "#1d4ed8", aliases: "NOI" },
-        { code: "Ô", label: "Nghỉ ốm", value: 0.0, bg: "#ffedd5", border: "#fed7aa", color: "#c2410c", aliases: "O" },
-        { code: "H", label: "Học / Hội chẩn", value: 0.0, bg: "#fef3c7", border: "#fde68a", color: "#b45309", aliases: "" },
-        { code: "F", label: "Nghỉ phép", value: 0.0, bg: "#fef3c7", border: "#fde68a", color: "#b45309", aliases: "" },
-        { code: "B", label: "Nghỉ bù", value: 0.0, bg: "#fef3c7", border: "#fde68a", color: "#b45309", aliases: "" },
-        { code: "TS", label: "Thai sản", value: 0.0, bg: "#f3e8ff", border: "#d8b4fe", color: "#6d28d9", aliases: "" },
-        { code: "ĐK / DK", label: "Khám ngoại viện / Dã ngoại", value: 0.0, bg: "#f3e8ff", border: "#d8b4fe", color: "#6d28d9", aliases: "DK, ĐK" },
-        { code: "K / V", label: "Nghỉ việc riêng / Không lương", value: 0.0, bg: "#f1f5f9", border: "#cbd5e1", color: "#64748b", aliases: "K, V, VANG" }
-      ];
-      return success(defaultSymbols);
-    }
-
-    case "saveChamCongSymbols": {
-      const symbols = (args[0] || []).map(item => ({
-        ...item,
-        aliases: Array.isArray(item.aliases) ? item.aliases.join(', ') : (item.aliases || '')
-      }));
-      await setCaiDat(db, unitCode, 'chamcong_symbols', JSON.stringify(symbols));
-      await bumpDataVersion(db, unitCode);
-      return success({ message: "Đã lưu danh sách ký hiệu chấm công thành công!" });
     }
 
 
@@ -3171,15 +2794,16 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         { id: "hd_bhxh", number: "HD-BHXH-2026", title: "Bộ quy chuẩn định mức & điều kiện thanh toán BHYT cho dịch vụ YHCT - PHCN mới nhất", issuer: "BHXH Việt Nam", signDate: "01/01/2026", link: "https://baohiemxahoi.gov.vn" }
       ];
       try {
-        await setCaiDat(db, unitCode, 'vb_documents', JSON.stringify(defaultDocs));
+        await db.prepare("INSERT OR REPLACE INTO cai_dat (key, value) VALUES ('vb_documents', ?)").bind(JSON.stringify(defaultDocs)).run();
       } catch(e) {}
       return success(defaultDocs);
     }
 
     case "saveDocuments": {
       const docs = Array.isArray(args[0]) ? args[0] : [];
-      await setCaiDat(db, unitCode, 'vb_documents', JSON.stringify(docs));
-      await bumpDataVersion(db, unitCode);
+      await db.prepare("INSERT INTO cai_dat (key, value) VALUES ('vb_documents', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+        .bind(JSON.stringify(docs)).run();
+      await bumpDataVersion(db);
       return success({ message: "Đã lưu danh mục tài liệu tra cứu thành công!" });
     }
 
@@ -3201,8 +2825,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           const defaultAdminHash = await hashPassword("admin");
           try {
             await db.batch([
-              db.prepare("INSERT OR IGNORE INTO tai_khoan (unit_code, username, password_hash, role, permissions, updated_at) VALUES (?, 'admin', ?, 'admin', 'ALL', CURRENT_TIMESTAMP)").bind(unitCode, defaultAdminHash),
-              db.prepare("INSERT OR IGNORE INTO tai_khoan (unit_code, username, password_hash, role, permissions, updated_at) VALUES (?, 'admin_yhct', ?, 'admin', 'ALL', CURRENT_TIMESTAMP)").bind(unitCode, defaultAdminHash)
+              db.prepare("INSERT OR IGNORE INTO tai_khoan (username, password_hash, role, permissions, updated_at) VALUES ('admin', ?, 'admin', 'ALL', CURRENT_TIMESTAMP)").bind(defaultAdminHash),
+              db.prepare("INSERT OR IGNORE INTO tai_khoan (username, password_hash, role, permissions, updated_at) VALUES ('admin_yhct', ?, 'admin', 'ALL', CURRENT_TIMESTAMP)").bind(defaultAdminHash)
             ]);
           } catch(errSeed) {}
           list = [
@@ -3236,7 +2860,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       }
 
       if (!username && id) {
-        const byId = await db.prepare("SELECT username FROM tai_khoan WHERE unit_code = ? AND id = ?").bind(unitCode, id).first();
+        const byId = await db.prepare("SELECT username FROM tai_khoan WHERE id = ?").bind(id).first();
         if (byId) username = byId.username;
       }
 
@@ -3437,56 +3061,39 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           myVariants.push(p[1] + '-' + p[0]);
         }
       }
-      const uniqueVariants = [...new Set(myVariants)].filter(Boolean);
 
-      if (uniqueVariants.length > 0) {
-        const uUnits = (unitCode === "bvtks-cs2" || unitCode === "bvtks_cs2") ? ["bvtks-cs2", "bvtks_cs2"] : [unitCode];
-        const uPlaceholders = uUnits.map(() => '?').join(',');
-
-        // 1. Single SQL query on cham_cong with IN (...)
+      // 1. Check table cham_cong in D1
+      for (const v of myVariants) {
         try {
-          const placeholders = uniqueVariants.map(() => '?').join(',');
-          const res = await db.prepare(`SELECT month_year, data_json FROM cham_cong WHERE unit_code IN (${uPlaceholders}) AND month_year IN (${placeholders})`).bind(...uUnits, ...uniqueVariants).all();
-          if (res && res.results && res.results.length > 0) {
-            for (const v of uniqueVariants) {
-              const row = res.results.find(r => r.month_year === v);
-              if (row && row.data_json) {
-                const parsed = JSON.parse(row.data_json);
-                if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
-                  return success(parsed);
-                }
-              }
+          const rec = await db.prepare("SELECT data_json FROM cham_cong WHERE month_year = ?").bind(v).first();
+          if (rec && rec.data_json) {
+            const parsed = JSON.parse(rec.data_json);
+            if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
+              return success(parsed);
             }
           }
         } catch(e) {}
+      }
 
-        // 2. Single fallback query on cai_dat with IN (...)
+      // 2. Check latest in table cham_cong if no specific month
+      if (!myRaw) {
         try {
-          const cdKeys = uniqueVariants.map(v => "chamcong_" + v);
-          const placeholdersCd = cdKeys.map(() => '?').join(',');
-          const resCd = await db.prepare(`SELECT key, value FROM cai_dat WHERE unit_code IN (${uPlaceholders}) AND key IN (${placeholdersCd})`).bind(...uUnits, ...cdKeys).all();
-          if (resCd && resCd.results && resCd.results.length > 0) {
-            for (const k of cdKeys) {
-              const row = resCd.results.find(r => r.key === k);
-              if (row && row.value) {
-                const parsed = JSON.parse(row.value);
-                if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
-                  return success(parsed);
-                }
-              }
-            }
-          }
-        } catch(e) {}
-      } else {
-        // No specific month: query latest
-        try {
-          const latest = await db.prepare("SELECT data_json FROM cham_cong WHERE unit_code = ? ORDER BY updated_at DESC LIMIT 1").bind(unitCode).first();
+          const latest = await db.prepare("SELECT data_json FROM cham_cong ORDER BY updated_at DESC LIMIT 1").first();
           if (latest && latest.data_json) {
             return success(JSON.parse(latest.data_json));
           }
         } catch(e) {}
       }
 
+      // 3. Fallback to cai_dat
+      for (const v of myVariants) {
+        try {
+          const recCd = await db.prepare("SELECT value FROM cai_dat WHERE key = ?").bind("chamcong_" + v).first();
+          if (recCd && recCd.value) {
+            return success(JSON.parse(recCd.value));
+          }
+        } catch(e) {}
+      }
       return success({});
     }
 
@@ -3501,91 +3108,22 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         data = args[0].data || args[0].data_json || {};
         if (typeof data === "string") { try { data = JSON.parse(data); } catch(e) {} }
       }
-      // Khử triệt để các key Phụ 1..8 trước khi ghi vào CSDL
-      if (typeof data === "object" && data !== null) {
-        Object.keys(data).forEach(k => {
-          if (/^(phụ|phu)\s*\d+/i.test(String(k).trim()) || /^(ktv\s*)?phụ trách/i.test(String(k).trim())) {
-            delete data[k];
-          }
-        });
-      }
-      // Chuẩn hoá month_year về duy nhất định dạng chuẩn YYYY-MM (VD: 2026-08)
-      let myStandard = my || new Date().toISOString().substring(0, 7);
-      const cleanS = myStandard.replace('/', '-').replace('_', '-');
-      const parts = cleanS.split('-');
-      if (parts.length === 2) {
-        if (parts[0].length === 4) {
-          myStandard = `${parts[0]}-${parts[1].padStart(2, '0')}`;
-        } else if (parts[1].length === 4) {
-          myStandard = `${parts[1]}-${parts[0].padStart(2, '0')}`;
-        }
-      }
-
-      // BẢO VỆ DỮ LIỆU CHẤM CÔNG (Server-side Safe Merge):
-      // Đọc bản ghi hiện có từ CSDL để hợp nhất an toàn, không để tình trạng một client gửi thiếu làm xóa mất ngày của các nhân sự khác
-      const replaceWhole = (args[2] === true) || (data && data._replaceWhole === true);
-      if (!replaceWhole) {
-        try {
-          const uUnits = (unitCode === "bvtks-cs2" || unitCode === "bvtks_cs2") ? ["bvtks-cs2", "bvtks_cs2"] : [unitCode];
-          const uPlaceholders = uUnits.map(() => '?').join(',');
-          const existingRow = await db.prepare(`SELECT data_json FROM cham_cong WHERE unit_code IN (${uPlaceholders}) AND month_year = ? ORDER BY updated_at DESC LIMIT 1`).bind(...uUnits, myStandard).first();
-          if (existingRow && existingRow.data_json) {
-            const parsedExisting = JSON.parse(existingRow.data_json);
-            if (parsedExisting && typeof parsedExisting === 'object') {
-              const merged = { ...parsedExisting };
-              for (const emp in data) {
-                if (data[emp] === null || (typeof data[emp] === 'object' && data[emp]._delete === true)) {
-                  delete merged[emp];
-                  continue;
-                }
-                if (!merged[emp]) merged[emp] = {};
-                if (data[emp].heSo !== undefined) merged[emp].heSo = data[emp].heSo;
-                for (const d in data[emp]) {
-                  if (d === 'heSo') continue;
-                  const v = data[emp][d];
-                  if (v !== undefined && v !== null && v !== '') {
-                    merged[emp][d] = v;
-                  } else if (v === '') {
-                    delete merged[emp][d];
-                  }
-                }
-              }
-              data = merged;
-            }
-          }
-        } catch(eMerge) {
-          console.warn("saveChamCong merge fallback:", eMerge);
-        }
-      } else {
-        if (data && data._replaceWhole) delete data._replaceWhole;
-      }
-
       const jsonStr = typeof data === "string" ? data : JSON.stringify(data);
+      const myStandard = my || new Date().toISOString().substring(0, 7);
+      const myUnderscore = myStandard.replace('-', '_');
 
       try {
-        await db.prepare(`
-          INSERT INTO cham_cong (unit_code, month_year, data_json, updated_at)
-          VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-          ON CONFLICT(unit_code, month_year) DO UPDATE SET
-            data_json = excluded.data_json,
-            updated_at = CURRENT_TIMESTAMP
-        `).bind(unitCode, myStandard, jsonStr).run();
+        await db.prepare("INSERT INTO cham_cong (unit_code, month_year, data_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, month_year) DO UPDATE SET data_json = excluded.data_json, updated_at = CURRENT_TIMESTAMP")
+          .bind(myStandard, jsonStr).run();
+        await db.prepare("INSERT INTO cham_cong (month_year, data_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(month_year) DO UPDATE SET data_json = excluded.data_json, updated_at = CURRENT_TIMESTAMP")
+          .bind(unitCode, myUnderscore, jsonStr).run();
       } catch(e) {
-        console.warn("saveChamCong D1 error, fallback to 2-step:", e);
-        try {
-          const exist = await db.prepare("SELECT id FROM cham_cong WHERE unit_code = ? AND month_year = ?").bind(unitCode, myStandard).first();
-          if (exist && exist.id) {
-            await db.prepare("UPDATE cham_cong SET data_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(jsonStr, exist.id).run();
-          } else {
-            await db.prepare("INSERT INTO cham_cong (unit_code, month_year, data_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)").bind(unitCode, myStandard, jsonStr).run();
-          }
-        } catch(e2) {
-          console.error("saveChamCong fatal error:", e2);
-        }
+        console.warn("saveChamCong D1 error:", e);
       }
 
-      await setCaiDat(db, unitCode, "chamcong_" + myStandard, jsonStr);
-      await bumpDataVersion(db, unitCode);
+      await db.prepare("INSERT INTO cai_dat (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+        .bind("chamcong_" + myStandard, jsonStr).run();
+      await bumpDataVersion(db);
       return success({ message: "Đã lưu bảng chấm công thành công!" });
     }
 
@@ -3607,51 +3145,98 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
             myVariants.push(p[1] + '-' + p[0]);
           }
         }
-        const uniqueVariants = [...new Set(myVariants)].filter(Boolean);
 
-        if (uniqueVariants.length > 0) {
-          const uUnits = (unitCode === "bvtks-cs2" || unitCode === "bvtks_cs2") ? ["bvtks-cs2", "bvtks_cs2"] : [unitCode];
-          const uPlaceholders = uUnits.map(() => '?').join(',');
-
-          // 1. Single SQL query on thong_ke with IN (...)
+        // 1. Query table thong_ke in D1
+        for (const v of myVariants) {
           try {
-            const placeholders = uniqueVariants.map(() => '?').join(',');
-            const res = await db.prepare(`SELECT month_year, data_json FROM thong_ke WHERE unit_code IN (${uPlaceholders}) AND month_year IN (${placeholders})`).bind(...uUnits, ...uniqueVariants).all();
-            if (res && res.results && res.results.length > 0) {
-              for (const v of uniqueVariants) {
-                const row = res.results.find(r => r.month_year === v);
-                if (row && row.data_json) {
-                  const parsed = JSON.parse(row.data_json);
-                  if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
-                    return success(parsed);
-                  }
-                }
-              }
-            }
-          } catch(e) {}
-
-          // 2. Single fallback query on cai_dat with IN (...)
-          try {
-            const cdKeys = uniqueVariants.map(v => "thongke_" + v);
-            const placeholdersCd = cdKeys.map(() => '?').join(',');
-            const resCd = await db.prepare(`SELECT key, value FROM cai_dat WHERE unit_code IN (${uPlaceholders}) AND key IN (${placeholdersCd})`).bind(...uUnits, ...cdKeys).all();
-            if (resCd && resCd.results && resCd.results.length > 0) {
-              for (const k of cdKeys) {
-                const row = resCd.results.find(r => r.key === k);
-                if (row && row.value) {
-                  const parsed = JSON.parse(row.value);
-                  if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
-                    return success(parsed);
-                  }
-                }
+            const rec = await db.prepare("SELECT data_json FROM thong_ke WHERE month_year = ?").bind(v).first();
+            if (rec && rec.data_json) {
+              const parsed = JSON.parse(rec.data_json);
+              if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
+                return success(parsed);
               }
             }
           } catch(e) {}
         }
 
-        // Không tự động đếm thủ thuật từ lịch trực (lich_trinh/lich_su)
-        // Số liệu thống kê thủ thuật chỉ được tính khi người dùng nạp file HIS thực tế
-        return success({});
+        // 2. Query cai_dat
+        for (const v of myVariants) {
+          try {
+            const recCd = await db.prepare("SELECT value FROM cai_dat WHERE key = ?").bind("thongke_" + v).first();
+            if (recCd && recCd.value) {
+              const parsed = JSON.parse(recCd.value);
+              if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
+                return success(parsed);
+              }
+            }
+          } catch(e) {}
+        }
+
+        // 3. Fallback calculate from lich_su and lich_trinh
+        let ymdPrefix = myRaw;
+        let dmySuffix = "";
+        if (myRaw.includes("-")) {
+          const parts = myRaw.split("-");
+          dmySuffix = "/" + parts[1] + "/" + parts[0];
+        } else if (myRaw.includes("/")) {
+          const parts = myRaw.split("/");
+          ymdPrefix = parts[1] + "-" + parts[0];
+          dmySuffix = "/" + parts[0] + "/" + parts[1];
+        }
+
+        const procTypeMap = {};
+        try {
+          const procRes = await db.prepare("SELECT ten_thu_thuat, phan_loai FROM thu_thuat").all();
+          (procRes.results || []).forEach(p => {
+            const name = p.ten_thu_thuat || "";
+            const typeStr = String(p.phan_loai || "").toLowerCase();
+            if (typeStr.includes("1") || typeStr.includes("i") || typeStr.includes("loại 1")) procTypeMap[name] = "loai1";
+            else if (typeStr.includes("2") || typeStr.includes("ii") || typeStr.includes("loại 2")) procTypeMap[name] = "loai2";
+            else if (typeStr.includes("3") || typeStr.includes("iii") || typeStr.includes("loại 3")) procTypeMap[name] = "loai3";
+            else procTypeMap[name] = "khac";
+          });
+        } catch (e) {}
+
+        let histRows = [];
+        let schedRows = [];
+        try {
+          const qHist = await db.prepare(
+            "SELECT staff_name, sub_staff_name, procedure_name FROM lich_su WHERE (date LIKE ? OR date LIKE ?)"
+          ).bind(ymdPrefix + "%", "%" + dmySuffix).all();
+          histRows = qHist.results || [];
+        } catch(e) {}
+
+        try {
+          const qSched = await db.prepare(
+            "SELECT staff_name, sub_staff_name, procedure_name FROM lich_trinh WHERE (date LIKE ? OR date LIKE ?)"
+          ).bind(ymdPrefix + "%", "%" + dmySuffix).all();
+          schedRows = qSched.results || [];
+        } catch(e) {}
+
+        const allRows = [...histRows, ...schedRows];
+        const stats = {};
+
+        allRows.forEach(r => {
+          const mainStaff = r.staff_name || "";
+          const subStaff = r.sub_staff_name || "";
+          const proc = r.procedure_name || "";
+          const category = procTypeMap[proc] || "khac";
+
+          [mainStaff, subStaff].filter(Boolean).forEach(st => {
+            const stName = st.trim();
+            if (!stName) return;
+            if (!stats[stName]) {
+              stats[stName] = { loai1: 0, loai2: 0, loai3: 0, khac: 0, tong: 0, details: [] };
+            }
+            if (category === "loai1") stats[stName].loai1++;
+            else if (category === "loai2") stats[stName].loai2++;
+            else if (category === "loai3") stats[stName].loai3++;
+            else stats[stName].khac++;
+            stats[stName].tong++;
+          });
+        });
+
+        return success(stats);
       } catch (err) {
         console.error("getThongKeThuThuat error:", err);
         return success({});
@@ -3662,80 +3247,57 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const my = String(args[0] || "").trim();
       const data = args[1] || {};
       const jsonStr = typeof data === "string" ? data : JSON.stringify(data);
-      
-      // Chuẩn hoá month_year về duy nhất định dạng chuẩn YYYY-MM (VD: 2026-08)
-      let myStandard = my || new Date().toISOString().substring(0, 7);
-      const cleanS = myStandard.replace('/', '-').replace('_', '-');
-      const parts = cleanS.split('-');
-      if (parts.length === 2) {
-        if (parts[0].length === 4) {
-          myStandard = `${parts[0]}-${parts[1].padStart(2, '0')}`;
-        } else if (parts[1].length === 4) {
-          myStandard = `${parts[1]}-${parts[0].padStart(2, '0')}`;
-        }
-      }
+      const myStandard = my || new Date().toISOString().substring(0, 7);
+      const myUnderscore = myStandard.replace('-', '_');
 
       try {
-        await db.prepare(`
-          INSERT INTO thong_ke (unit_code, month_year, data_json, updated_at)
-          VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-          ON CONFLICT(unit_code, month_year) DO UPDATE SET
-            data_json = excluded.data_json,
-            updated_at = CURRENT_TIMESTAMP
-        `).bind(unitCode, myStandard, jsonStr).run();
+        await db.prepare("INSERT INTO thong_ke (unit_code, month_year, data_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, month_year) DO UPDATE SET data_json = excluded.data_json, updated_at = CURRENT_TIMESTAMP")
+          .bind(myStandard, jsonStr).run();
+        await db.prepare("INSERT INTO thong_ke (month_year, data_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(month_year) DO UPDATE SET data_json = excluded.data_json, updated_at = CURRENT_TIMESTAMP")
+          .bind(myUnderscore, jsonStr).run();
       } catch(e) {
-        console.warn("saveThongKeThuThuat D1 error, fallback to 2-step:", e);
-        try {
-          const exist = await db.prepare("SELECT id FROM thong_ke WHERE unit_code = ? AND month_year = ?").bind(unitCode, myStandard).first();
-          if (exist && exist.id) {
-            await db.prepare("UPDATE thong_ke SET data_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(jsonStr, exist.id).run();
-          } else {
-            await db.prepare("INSERT INTO thong_ke (unit_code, month_year, data_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)").bind(unitCode, myStandard, jsonStr).run();
-          }
-        } catch(e2) {
-          console.error("saveThongKeThuThuat fatal error:", e2);
-        }
+        console.warn("saveThongKeThuThuat D1 error:", e);
       }
 
-      await setCaiDat(db, unitCode, "thongke_" + myStandard, jsonStr);
-      await bumpDataVersion(db, unitCode);
+      await db.prepare("INSERT INTO cai_dat (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+        .bind("thongke_" + myStandard, jsonStr).run();
+      await bumpDataVersion(db);
       return success({ message: "Đã lưu dữ liệu thống kê thủ thuật thành công!" });
     }
 
     case "saveAITrainingData": {
       const trainingRecords = Array.isArray(args[0]) ? args[0] : (args[0]?.records || []);
-      await setCaiDat(db, unitCode, 'ai_training_data', JSON.stringify(trainingRecords));
+      await db.prepare("INSERT INTO cai_dat (key, value) VALUES ('ai_training_data', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+        .bind(JSON.stringify(trainingRecords)).run();
       return success({ message: "Đã lưu dữ liệu AI Training!" });
     }
 
     case "clearAITrainingData": {
-      await db.prepare("DELETE FROM cai_dat WHERE unit_code = ? AND key = 'ai_training_data'").bind(unitCode).run();
+      await db.prepare("DELETE FROM cai_dat WHERE key = 'ai_training_data'").run();
       return success({ message: "Đã xóa dữ liệu AI Training!" });
     }
 
     case "autoChotSo": {
-      await checkAutoChotSo(db, unitCode);
+      await checkAutoChotSo(db);
       return success({ message: "Đã kiểm tra chốt sổ tự động!" });
     }
 
     case "exportDatabase": {
-      const isMaster = unitCode === 'master' || unitCode === 'MASTER';
       const [pat, staff, mach, room, proc, sched, hist, acc, cc, tk, cd] = await Promise.all([
-        isMaster ? db.prepare("SELECT * FROM benh_nhan").all().catch(() => ({ results: [] })) : db.prepare("SELECT * FROM benh_nhan WHERE unit_code = ?").bind(unitCode).all().catch(() => ({ results: [] })),
-        isMaster ? db.prepare("SELECT * FROM nhan_su").all().catch(() => ({ results: [] })) : db.prepare("SELECT * FROM nhan_su WHERE unit_code = ?").bind(unitCode).all().catch(() => ({ results: [] })),
-        isMaster ? db.prepare("SELECT * FROM may_moc").all().catch(() => ({ results: [] })) : db.prepare("SELECT * FROM may_moc WHERE unit_code = ?").bind(unitCode).all().catch(() => ({ results: [] })),
-        isMaster ? db.prepare("SELECT * FROM phong").all().catch(() => ({ results: [] })) : db.prepare("SELECT * FROM phong WHERE unit_code = ?").bind(unitCode).all().catch(() => ({ results: [] })),
-        isMaster ? db.prepare("SELECT * FROM thu_thuat").all().catch(() => ({ results: [] })) : db.prepare("SELECT * FROM thu_thuat WHERE unit_code = ?").bind(unitCode).all().catch(() => ({ results: [] })),
-        isMaster ? db.prepare("SELECT * FROM lich_trinh").all().catch(() => ({ results: [] })) : db.prepare("SELECT * FROM lich_trinh WHERE unit_code = ?").bind(unitCode).all().catch(() => ({ results: [] })),
-        isMaster ? db.prepare("SELECT * FROM lich_su").all().catch(() => ({ results: [] })) : db.prepare("SELECT * FROM lich_su WHERE unit_code = ?").bind(unitCode).all().catch(() => ({ results: [] })),
-        isMaster ? db.prepare("SELECT username, role, name, note FROM tai_khoan").all().catch(() => ({ results: [] })) : db.prepare("SELECT username, role, name, note FROM tai_khoan WHERE unit_code = ?").bind(unitCode).all().catch(() => ({ results: [] })),
-        isMaster ? db.prepare("SELECT * FROM cham_cong").all().catch(() => ({ results: [] })) : db.prepare("SELECT * FROM cham_cong WHERE unit_code = ?").bind(unitCode).all().catch(() => ({ results: [] })),
-        isMaster ? db.prepare("SELECT * FROM thong_ke").all().catch(() => ({ results: [] })) : db.prepare("SELECT * FROM thong_ke WHERE unit_code = ?").bind(unitCode).all().catch(() => ({ results: [] })),
-        isMaster ? db.prepare("SELECT * FROM cai_dat").all().catch(() => ({ results: [] })) : db.prepare("SELECT * FROM cai_dat WHERE unit_code = ?").bind(unitCode).all().catch(() => ({ results: [] }))
+        db.prepare("SELECT * FROM benh_nhan").all().catch(() => ({ results: [] })),
+        db.prepare("SELECT * FROM nhan_su").all().catch(() => ({ results: [] })),
+        db.prepare("SELECT * FROM may_moc").all().catch(() => ({ results: [] })),
+        db.prepare("SELECT * FROM phong").all().catch(() => ({ results: [] })),
+        db.prepare("SELECT * FROM thu_thuat").all().catch(() => ({ results: [] })),
+        db.prepare("SELECT * FROM lich_trinh").all().catch(() => ({ results: [] })),
+        db.prepare("SELECT * FROM lich_su").all().catch(() => ({ results: [] })),
+        db.prepare("SELECT username, role, name, note FROM tai_khoan").all().catch(() => ({ results: [] })),
+        db.prepare("SELECT * FROM cham_cong").all().catch(() => ({ results: [] })),
+        db.prepare("SELECT * FROM thong_ke").all().catch(() => ({ results: [] })),
+        db.prepare("SELECT * FROM cai_dat").all().catch(() => ({ results: [] }))
       ]);
       return success({
         version: "3.2.0",
-        unit_code: unitCode,
         exportedAt: new Date().toISOString(),
         pat: pat.results || [],
         staff: staff.results || [],
@@ -3757,23 +3319,23 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       if (data.caiDat && Array.isArray(data.caiDat)) {
         for (const item of data.caiDat) {
           if (item.key) {
-            await setCaiDat(db, unitCode, item.key, item.value);
+            await db.prepare("INSERT INTO cai_dat (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(item.key, item.value).run();
             restoredCount++;
           }
         }
       }
-      await bumpDataVersion(db, unitCode);
+      await bumpDataVersion(db);
       return success({ message: `Đã phục hồi thành công ${restoredCount} mục cài đặt!` });
     }
 
     case "saveGoogleDriveSettings": {
       const cfg = args[0] || {};
-      await setCaiDat(db, unitCode, 'gdrive_settings', JSON.stringify(cfg));
+      await db.prepare("INSERT INTO cai_dat (key, value) VALUES ('gdrive_settings', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(JSON.stringify(cfg)).run();
       return success({ message: "Đã lưu cài đặt Google Drive!" });
     }
 
     case "getGoogleDriveSettings": {
-      const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'gdrive_settings'").bind(unitCode).first();
+      const rec = await db.prepare("SELECT value FROM cai_dat WHERE key = 'gdrive_settings'").first();
       return success(rec && rec.value ? JSON.parse(rec.value) : {});
     }
 
@@ -3787,7 +3349,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 }
 
 
-async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
+async function checkAutoChotSo(db) {
   try {
     const nowVN = new Date(Date.now() + 7 * 60 * 60 * 1000);
     const hh = String(nowVN.getUTCHours()).padStart(2, '0');
@@ -3798,54 +3360,58 @@ async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
     const month = String(nowVN.getUTCMonth() + 1).padStart(2, '0');
     const yyyy = nowVN.getUTCFullYear();
     const todayDateStr = `${dd}/${month}/${yyyy}`;
-    const todayYMD = `${yyyy}-${month}-${dd}`;
 
-    const keysRes = await db.prepare("SELECT key, value FROM cai_dat WHERE unit_code = ? AND key IN ('chotSoTime', 'lastChotSoDate')").bind(unitCode).all();
+    const keysRes = await db.prepare("SELECT key, value FROM cai_dat WHERE key IN ('chotSoTime', 'lastChotSoDate')").all();
     const settings = {};
     (keysRes.results || []).forEach(r => { settings[r.key] = r.value; });
 
-    // Giờ chốt sổ linh hoạt theo cấu hình đơn vị (mặc định 16:20)
-    let chotSoTime = settings.chotSoTime ? String(settings.chotSoTime).trim() : "16:20";
-    if (!chotSoTime.includes(':')) chotSoTime = "16:20";
+    const chotSoTime = settings.chotSoTime ? String(settings.chotSoTime).trim() : "";
     const lastChotSoDate = settings.lastChotSoDate ? String(settings.lastChotSoDate).trim() : "";
 
-    let shouldClose = false;
-    let reason = "";
-
-    // 1. Kích hoạt chốt sổ hôm nay khi đã đến hoặc qua giờ chốt sổ (ví dụ: >= 16:20)
-    if (lastChotSoDate !== todayDateStr && currentHourMin >= chotSoTime) {
-      shouldClose = true;
-      reason = `Đã đến giờ chốt sổ hàng ngày (${currentHourMin} >= ${chotSoTime})`;
+    if (!chotSoTime || !chotSoTime.includes(':')) {
+      return;
     }
 
-    // 2. Cơ chế hồi phục an toàn (Safety Catch-up):
-    // Nếu trong lich_trinh còn tồn đọng lịch của ngày cũ (quá khứ) chưa được chốt (ví dụ: tắt máy sớm, nghỉ lễ/cuối tuần)
-    if (!shouldClose) {
-      const pastSched = await db.prepare(
-        "SELECT date FROM lich_trinh WHERE unit_code = ? AND date IS NOT NULL AND TRIM(date) != '' AND date != ? AND date != ? LIMIT 1"
-      ).bind(unitCode, todayDateStr, todayYMD).first().catch(() => null);
+    function parseDateDMY(dStr) {
+      if (!dStr || typeof dStr !== 'string') return null;
+      const p = dStr.split('/');
+      if (p.length < 3) return null;
+      return new Date(parseInt(p[2], 10), parseInt(p[1], 10) - 1, parseInt(p[0], 10));
+    }
 
-      if (pastSched && pastSched.date) {
+    const todayDate = parseDateDMY(todayDateStr);
+    const lastClosedDate = parseDateDMY(lastChotSoDate);
+
+    let shouldClose = false;
+    if (lastClosedDate && todayDate) {
+      const diffDays = (todayDate.getTime() - lastClosedDate.getTime()) / (1000 * 60 * 60 * 24);
+      if (diffDays > 0) {
         shouldClose = true;
-        reason = `Tồn đọng lịch ngày cũ (${pastSched.date}) chưa chốt`;
+      } else if (diffDays === 0) {
+        if (currentHourMin >= chotSoTime) {
+          shouldClose = true;
+        }
       }
+    } else if (todayDate) {
+      await db.prepare("INSERT INTO cai_dat (key, value) VALUES ('lastChotSoDate', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(todayDateStr).run();
+      console.log("[Worker Auto-ChotSo]: Initialized lastChotSoDate to " + todayDateStr);
     }
 
     if (shouldClose) {
-      console.log(`[Worker Auto-ChotSo]: Triggering auto closure for unit '${unitCode}'. Lý do: ${reason}. today=${todayDateStr}, lastClosed=${lastChotSoDate}, time=${currentHourMin}, chotSoTime=${chotSoTime}`);
+      console.log(`[Worker Auto-ChotSo]: Triggering auto closure. today=${todayDateStr}, lastClosed=${lastChotSoDate}, time=${currentHourMin}, chotSoTime=${chotSoTime}`);
       
       const statements = [
-        db.prepare("INSERT INTO lich_su (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE unit_code = ?").bind(unitCode),
-        db.prepare("DELETE FROM lich_trinh WHERE unit_code = ?").bind(unitCode),
-        db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(unitCode),
-        db.prepare("UPDATE benh_nhan SET arrive_time = '07:30', gio_ban = '', leave_time = '', status = 'Chưa xếp', updated_at = CURRENT_TIMESTAMP WHERE unit_code = ?").bind(unitCode),
-        db.prepare("UPDATE nhan_su SET temp_busy = '[]', updated_at = CURRENT_TIMESTAMP WHERE unit_code = ?").bind(unitCode)
+        db.prepare("INSERT INTO lich_su (date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh"),
+        db.prepare("DELETE FROM lich_trinh"),
+        db.prepare("DELETE FROM benh_nhan WHERE leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'"),
+        db.prepare("UPDATE benh_nhan SET arrive_time = '07:30', gio_ban = '', leave_time = '', status = 'Chưa xếp', updated_at = CURRENT_TIMESTAMP"),
+        db.prepare("UPDATE nhan_su SET temp_busy = '[]', updated_at = CURRENT_TIMESTAMP"),
+        db.prepare("INSERT INTO cai_dat (key, value) VALUES ('lastChotSoDate', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(todayDateStr)
       ];
 
       await db.batch(statements);
-      await setCaiDat(db, unitCode, 'lastChotSoDate', todayDateStr);
-      await bumpDataVersion(db, unitCode);
-      console.log(`[Worker Auto-ChotSo]: Automated day closure executed successfully for unit '${unitCode}'!`);
+      await bumpDataVersion(db);
+      console.log("[Worker Auto-ChotSo]: Automated day closure executed successfully!");
     }
   } catch (err) {
     console.error("[Worker Auto-ChotSo Error]:", err);
