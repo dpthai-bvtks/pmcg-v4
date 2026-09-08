@@ -1949,3 +1949,26 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `js/app.js` (targetUrl HDSD v4.0.2-rev16)
   + `PM-xeplich-v4.md` (nhật ký phát triển)
 
+---
+
+### Nâng Cấp Phiên Bản Hệ Thống Lên v4.0.3 (08/09/2026 - v4.0.3-rev1)
+
+- **Yêu cầu của người dùng**:
+  + Nâng cấp phiên bản toàn hệ thống lên `4.0.3`.
+- **Thực hiện & Đồng bộ toàn diện**:
+  1. *Đồng bộ phiên bản hệ thống theo RULES.md*:
+     - Nâng số phiên bản chính lên `4.0.3` (Revision: `v4.0.3-rev1`).
+     - Cập nhật số phiên bản hiển thị tại Chân trang (`#app-footer-version`): `Phiên bản: 4.0.3`.
+     - Footer timestamp: `07:30 08/09/2026`.
+     - `backend/package.json`: Cập nhật `"version": "4.0.3"`.
+     - `sw.js`: Cập nhật `CACHE_NAME = 'pmcg-v4-cache-4.0.3-rev1'`.
+     - `index.html`: Cập nhật toàn bộ cache busters `?v=4.0.3-rev1` cho các thẻ `<link>` CSS, thẻ `<script>`, và hằng số `APP_VERSION = '4.0.3-rev1'`.
+     - `js/app.js`: Cập nhật query string `v=4.0.3-rev1` cho modal Hướng dẫn sử dụng (`hdsd.html`).
+     - `js/thongke.js`: Nâng `pm_cleaned_cache_ver = '4.0.3-rev1'` để tự động làm sạch và đồng bộ cache trình duyệt của khách hàng.
+- **File sửa đổi**:
+  + `backend/package.json` (nâng version 4.0.3)
+  + `index.html` (footer version 4.0.3, footer timestamp 07:30 08/09/2026, cache busters v4.0.3-rev1)
+  + `sw.js` (CACHE_NAME v4.0.3-rev1)
+  + `js/app.js` (targetUrl HDSD v4.0.3-rev1)
+  + `js/thongke.js` (pm_cleaned_cache_ver 4.0.3-rev1)
+  + `PM-xeplich-v4.md` (nhật ký phát triển)
