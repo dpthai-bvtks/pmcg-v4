@@ -53,13 +53,13 @@ var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi
 
         // Tự động dọn dẹp cache cũ bị ô nhiễm từ các phiên bản trước
         try {
-            if (typeof localStorage !== 'undefined' && localStorage.getItem('pm_cleaned_cache_ver') !== '4.0.2-rev15') {
+            if (typeof localStorage !== 'undefined' && localStorage.getItem('pm_cleaned_cache_ver') !== '4.0.2-rev16') {
                 Object.keys(localStorage).forEach(k => {
                     if (k.startsWith('pm_cache_cc_') || k.startsWith('pm_cache_tk_')) {
                         localStorage.removeItem(k);
                     }
                 });
-                localStorage.setItem('pm_cleaned_cache_ver', '4.0.2-rev15');
+                localStorage.setItem('pm_cleaned_cache_ver', '4.0.2-rev16');
             }
         } catch(e) {}
 
@@ -184,20 +184,11 @@ var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi
             });
         }
         if (isDefault) {
-            // Đảm bảo luôn trọn vẹn đủ 13 nhân sự chuẩn BVTKS CS2 từ Tab Admin
+            // Đảm bảo đủ nhân sự chuẩn BVTKS CS2 nếu danh sách bị thiếu (chỉ bổ sung vào cuối, tuyệt đối KHÔNG sort lại để bảo toàn thứ tự kéo thả của người dùng)
             DEFAULT_CHAMCONG_EMPLOYEES.forEach(stdEmp => {
                 if (!res.includes(stdEmp)) {
                     res.push(stdEmp);
                 }
-            });
-            // Sắp xếp theo thứ tự chuẩn
-            res.sort((a, b) => {
-                const idxA = DEFAULT_CHAMCONG_EMPLOYEES.indexOf(a);
-                const idxB = DEFAULT_CHAMCONG_EMPLOYEES.indexOf(b);
-                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                if (idxA !== -1) return -1;
-                if (idxB !== -1) return 1;
-                return 0;
             });
         }
         return res;
@@ -583,11 +574,7 @@ function renderAdminChamCongTable() {
 
             tr.innerHTML = `
                 <td style="text-align: center; padding: 2px !important;">
-                    <div style="display: flex; align-items: center; justify-content: center; gap: 3px;">
-                        <span class="drag-handle" title="Nắm và kéo thả để đổi vị trí">☰</span>
-                        <button type="button" class="btn-quick-move" onclick="moveAdminEmployee(${index}, -1)" title="Di chuyển lên trên" ${index === 0 ? 'disabled style="opacity:0.25; cursor:not-allowed;"' : ''}>▲</button>
-                        <button type="button" class="btn-quick-move" onclick="moveAdminEmployee(${index}, 1)" title="Di chuyển xuống dưới" ${index === adminChamCongEmployees.length - 1 ? 'disabled style="opacity:0.25; cursor:not-allowed;"' : ''}>▼</button>
-                    </div>
+                    <span class="drag-handle" title="Nắm giữ nút 3 gạch ☰ và kéo thả để di chuyển sắp xếp thứ tự">☰</span>
                 </td>
                 <td style="color: #64748b; text-align: center; font-weight: 600;">${index + 1}</td>
                 <td style="font-weight: 700; color: #1e293b; font-size: 12.5px; text-align: left; padding: 4px 8px !important;">${emp}</td>
@@ -609,17 +596,38 @@ function renderAdminChamCongTable() {
         });
 
         // Khởi tạo thư viện kéo thả SortableJS cho bảng chấm công
-        if (typeof Sortable !== 'undefined' && !ccTbody._sortableInstance) {
+        if (typeof Sortable !== 'undefined') {
+            if (ccTbody._sortableInstance) {
+                try { ccTbody._sortableInstance.destroy(); } catch(e){}
+                ccTbody._sortableInstance = null;
+            }
             ccTbody._sortableInstance = new Sortable(ccTbody, {
                 handle: '.drag-handle',
                 animation: 150,
                 ghostClass: 'dragging-row',
                 chosenClass: 'drag-over-row',
                 onEnd: function(evt) {
-                    if (evt.oldIndex !== evt.newIndex) {
-                        const movedItem = adminChamCongEmployees.splice(evt.oldIndex, 1)[0];
-                        adminChamCongEmployees.splice(evt.newIndex, 0, movedItem);
-                        saveAdminChamCongData(false); // Lưu tự động không popup chặn
+                    if (evt.oldIndex !== evt.newIndex && evt.oldIndex != null && evt.newIndex != null) {
+                        // Đọc thứ tự thực tế chính xác 100% từ các hàng DOM vừa được SortableJS kéo thả
+                        const rows = Array.from(ccTbody.querySelectorAll('tr'));
+                        const newOrder = rows.map(r => r.getAttribute('data-emp')).filter(Boolean);
+                        if (newOrder.length > 0) {
+                            adminChamCongEmployees = newOrder;
+                        }
+
+                        // Cập nhật STT, data-index và onclick handlers trên DOM ngay lập tức
+                        rows.forEach((r, idx) => {
+                            r.setAttribute('data-index', idx);
+                            const sttCell = r.querySelector('td:nth-child(2)');
+                            if (sttCell) sttCell.innerText = idx + 1;
+                            const editBtn = r.querySelector('button[onclick^="openEditAdminEmployeeModal"]');
+                            if (editBtn) editBtn.setAttribute('onclick', `openEditAdminEmployeeModal(${idx})`);
+                            const delBtn = r.querySelector('button[onclick^="deleteAdminChamCongEmployee"]');
+                            if (delBtn) delBtn.setAttribute('onclick', `deleteAdminChamCongEmployee(${idx})`);
+                        });
+
+                        // Lưu vào localStorage và đồng bộ lên server ngầm
+                        saveAdminChamCongData(false);
                     }
                 }
             });
@@ -740,14 +748,23 @@ function saveAdminEmployee() {
 
 function saveAdminChamCongData(showAlert = true) {
     if (showAlert) window.showGlobalLoading("Đang lưu danh sách nhân sự lên máy chủ...");
+
+    // 1. Lưu ngay tức thì vào LocalStorage để tránh bị reset khi nạp lại
+    try {
+        localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees));
+        localStorage.setItem(getChamCongStorageKey('med_chamcong_staff_config'), JSON.stringify(adminChamCongStaffConfig));
+    } catch(e){}
+
+    // 2. Gửi API lưu lên Cloudflare Worker CSDL D1
     callApi('saveEmployees', [adminChamCongEmployees]).then(() => {
         return callApi('saveErrorConfig', [{ staff: adminChamCongStaffConfig }]);
     }).then(() => {
         if (showAlert) {
             window.hideGlobalLoading();
             alert("Đã lưu danh sách nhân sự chấm công lên máy chủ!");
+            try { renderAdminChamCongTable(); } catch(e) { console.error(e); }
         }
-        try { renderAdminChamCongTable(); } catch(e) { console.error(e); }
+        // Luôn cập nhật Bảng Chấm Công (31 ngày) để đồng bộ theo thứ tự mới sắp xếp
         try { renderChamCongTable(); } catch(e) { console.error(e); }
     }).catch(err => {
         if (showAlert) {

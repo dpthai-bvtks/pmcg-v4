@@ -1901,3 +1901,51 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `sw.js` (CACHE_NAME rev15)
   + `js/app.js` (targetUrl HDSD rev15)
   + `PM-xeplich-v4.md` (nhật ký phát triển)
+
+---
+
+### Khắc Phục Lỗi Nhảy Lại Thứ Tự Khi Kéo Thả Nhân Sự & Tối Ưu Nút 3 Gạch ☰ (08/09/2026 - v4.0.2-rev16)
+
+- **Yêu cầu của người dùng**:
+  + Kiểm tra lỗi khi kéo thả nhân sự thì lúc đầu được nhưng bị nhảy lại như đầu mà không báo lỗi gì.
+  + Bỏ các mũi tên lên xuống, chỉ giữ lại nút 3 gạch (`☰`) để sắp xếp nhân sự.
+- **Nguyên nhân gốc rễ (Root Cause)**:
+  1. Trong `cleanseAdminChamCongEmployees(list)` tại `js/thongke.js`, đoạn mã:
+     ```javascript
+     res.sort((a, b) => {
+         const idxA = DEFAULT_CHAMCONG_EMPLOYEES.indexOf(a);
+         const idxB = DEFAULT_CHAMCONG_EMPLOYEES.indexOf(b);
+         if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+         ...
+     });
+     ```
+     đã cưỡng chế sắp xếp lại toàn bộ mảng nhân sự theo đúng thứ tự canonical mặc định ban đầu (`DEFAULT_CHAMCONG_EMPLOYEES`) mỗi khi bất kỳ hàm nào gọi `cleanseAdminChamCongEmployees()`.
+  2. Khi người dùng kéo thả hàng, SortableJS chuyển dời DOM node và gọi `saveAdminChamCongData(false)`. Khi lệnh lưu hoàn tất hoặc khi gọi `renderChamCongTable()`, hàm `cleanseAdminChamCongEmployees()` được kích hoạt, âm thầm sort mảng `adminChamCongEmployees` quay ngược trở lại thứ tự gốc mà không có bất kỳ lỗi nào xuất hiện trong console ("bị nhảy lại như đầu mà không báo lỗi gì").
+  3. `saveAdminChamCongData` trước đó chỉ gửi API lên Cloudflare mà chưa ghi ngay vào `localStorage`, khiến việc tải lại hoặc đọc cache bị lệch với dữ liệu vừa kéo thả.
+- **Giải pháp & Khắc phục triệt để**:
+  1. *Loại bỏ cưỡng chế sort trong `cleanseAdminChamCongEmployees`*:
+     - Xóa bỏ hoàn toàn lệnh `res.sort(...)`. Giữ nguyên 100% thứ tự thực tế do người dùng vừa kéo thả sắp xếp.
+     - Vẫn đảm bảo kiểm tra nhân sự chuẩn: nếu danh sách thiếu nhân sự nào thì chỉ bổ sung người đó vào cuối danh sách.
+  2. *Tối ưu hóa kéo thả SortableJS*:
+     - Trong sự kiện `onEnd`, đọc trực tiếp danh sách thuộc tính `data-emp` từ các hàng `<tr>` DOM thực tế để cập nhật `adminChamCongEmployees`:
+       `const newOrder = Array.from(ccTbody.querySelectorAll('tr')).map(r => r.getAttribute('data-emp')).filter(Boolean);`
+       Loại bỏ triệt để mọi nguy cơ lệch chỉ mục `evt.oldIndex` / `evt.newIndex`.
+     - Cập nhật số thứ tự STT hiển thị trên màn hình (`1, 2, 3...`) và cập nhật thuộc tính `data-index`, `onclick` của các nút Sửa / Xóa theo vị trí mới ngay tức thì.
+     - Lưu ngay thứ tự mới vào `localStorage` trước khi gửi API lên server.
+  3. *Tối ưu giao diện & Trải nghiệm*:
+     - Loại bỏ hoàn toàn 2 nút mũi tên lên xuống (`▲`, `▼`), chỉ giữ lại duy nhất nút 3 gạch (`☰`) thanh lịch, rõ ràng.
+     - Cập nhật tiêu đề cột trên `index.html` thành biểu tượng `☰` gọn gàng.
+     - Tránh hủy/vẽ lại DOM `ccTbody` khi đang lưu ngầm (`showAlert === false`), đảm bảo chuyển động kéo thả mượt mà, không bị giật nháy màn hình.
+  4. *Đồng bộ phiên bản theo RULES.md*:
+     - Giữ phiên bản chính `4.0.2`, nâng revision lên `4.0.2-rev16`.
+     - Footer timestamp: `07:20 08/09/2026`.
+     - Đồng bộ `CACHE_NAME = 'pmcg-v4-cache-4.0.2-rev16'` trong `sw.js`.
+     - Đồng bộ `?v=4.0.2-rev16` trên toàn bộ link CSS, thẻ script và `APP_VERSION` trong `index.html`.
+     - Cập nhật query string `v=4.0.2-rev16` cho `hdsd.html` trong `js/app.js`.
+- **File sửa đổi**:
+  + `js/thongke.js` (bỏ res.sort, tối ưu Sortable onEnd, bỏ nút mũi tên, lưu localStorage ngay)
+  + `index.html` (đổi tiêu đề cột thành ☰, footer timestamp 07:20 08/09/2026, cache busters v4.0.2-rev16)
+  + `sw.js` (CACHE_NAME v4.0.2-rev16)
+  + `js/app.js` (targetUrl HDSD v4.0.2-rev16)
+  + `PM-xeplich-v4.md` (nhật ký phát triển)
+
