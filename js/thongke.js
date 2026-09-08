@@ -53,13 +53,13 @@ var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi
 
         // Tự động dọn dẹp cache cũ bị ô nhiễm từ các phiên bản trước
         try {
-            if (typeof localStorage !== 'undefined' && localStorage.getItem('pm_cleaned_cache_ver') !== '4.0.2-rev12') {
+            if (typeof localStorage !== 'undefined' && localStorage.getItem('pm_cleaned_cache_ver') !== '4.0.2-rev15') {
                 Object.keys(localStorage).forEach(k => {
                     if (k.startsWith('pm_cache_cc_') || k.startsWith('pm_cache_tk_')) {
                         localStorage.removeItem(k);
                     }
                 });
-                localStorage.setItem('pm_cleaned_cache_ver', '4.0.2-rev12');
+                localStorage.setItem('pm_cleaned_cache_ver', '4.0.2-rev15');
             }
         } catch(e) {}
 
@@ -747,12 +747,16 @@ function saveAdminChamCongData(showAlert = true) {
             window.hideGlobalLoading();
             alert("Đã lưu danh sách nhân sự chấm công lên máy chủ!");
         }
-        renderAdminChamCongTable();
-        renderChamCongTable();
+        try { renderAdminChamCongTable(); } catch(e) { console.error(e); }
+        try { renderChamCongTable(); } catch(e) { console.error(e); }
     }).catch(err => {
-        if (showAlert) window.hideGlobalLoading();
-        console.error(err);
-        alert('Lỗi khi lưu nhân sự: ' + (err.message || err));
+        if (showAlert) {
+            window.hideGlobalLoading();
+            console.error(err);
+            alert('Lỗi khi lưu nhân sự: ' + (err.message || err));
+        } else {
+            console.error('[ChamCong] saveAdminChamCongData error:', err);
+        }
     });
 }
 
@@ -803,20 +807,22 @@ window.switchAdminSection = function(sectionId, btn) {
         // ==========================================
         // QUẢN LÝ KÝ HIỆU CHẤM CÔNG ĐỘNG (SYMBOLS)
         // ==========================================
+        // QUẢN LÝ KÝ HIỆU CHẤM CÔNG ĐỘNG (SYMBOLS)
+        // ==========================================
         const DEFAULT_CHAMCONG_SYMBOLS = [
-            { code: 'X', label: 'Cả ngày', value: 1.0, bg: '#dcfce7', border: '#86efac', color: '#15803d', aliases: 'CA-NGAY, 1' },
-            { code: 'X/2', label: 'Nửa ngày', value: 0.5, bg: '#fef9c3', border: '#fde047', color: '#a16207', aliases: '1/2, 0.5' },
-            { code: 'S', label: 'Sáng', value: 0.5, bg: '#ffedd5', border: '#fdba74', color: '#c2410c', aliases: 'SANG' },
-            { code: 'C', label: 'Chiều', value: 0.5, bg: '#ffedd5', border: '#fdba74', color: '#c2410c', aliases: 'CHIEU' },
-            { code: 'TS', label: 'Thai sản', value: 0, bg: '#fce7f3', border: '#f472b6', color: '#be185d', aliases: '' },
-            { code: 'ĐK', label: 'Đi khám', value: 0, bg: '#ede9fe', border: '#c4b5fd', color: '#6d28d9', aliases: 'DK' },
-            { code: 'Ô', label: 'Ốm', value: 0, bg: '#fee2e2', border: '#fca5a5', color: '#b91c1c', aliases: 'O' },
-            { code: 'F', label: 'F', value: 0, bg: '#f1f5f9', border: '#cbd5e1', color: '#475569', aliases: '' },
-            { code: 'H', label: 'Học tập', value: 0, bg: '#e0e7ff', border: '#a5b4fc', color: '#4338ca', aliases: '' },
-            { code: 'V', label: 'Vắng', value: 0, bg: '#f3f4f6', border: '#d1d5db', color: '#6b7280', aliases: '' },
-            { code: 'Lễ', label: 'Nghỉ lễ', value: 0, bg: '#fef3c7', border: '#fcd34d', color: '#b45309', aliases: 'LE, TẾT, TET' },
-            { code: 'Nội', label: 'Hội nghị/Nội bộ', value: 0, bg: '#e0f2fe', border: '#7dd3fc', color: '#0369a1', aliases: 'NOI' },
-            { code: 'P', label: 'Phép', value: 0, bg: '#fef08a', border: '#eab308', color: '#854d0e', aliases: '' }
+            { code: 'X', label: 'Cả ngày', value: 1.0, bg: '#ffffff', border: '#cbd5e1', color: '#1e293b', aliases: 'CA-NGAY, 1' },
+            { code: 'X/2', label: 'Nửa ngày', value: 0.5, bg: '#ccfbf1', border: '#99f6e4', color: '#0f766e', aliases: '1/2, 0.5' },
+            { code: 'S / C', label: 'Sáng / Chiều', value: 0.5, bg: '#d1fae5', border: '#a7f3d0', color: '#047857', aliases: 'S, C, SANG, CHIEU' },
+            { code: 'Lễ', label: 'Nghỉ lễ', value: 0.0, bg: '#fee2e2', border: '#fca5a5', color: '#b91c1c', aliases: 'LE' },
+            { code: 'Tết', label: 'Nghỉ Tết', value: 0.0, bg: '#fee2e2', border: '#fca5a5', color: '#b91c1c', aliases: 'TET' },
+            { code: 'Nội', label: 'Trực / học nội trú', value: 0.0, bg: '#dbeafe', border: '#93c5fd', color: '#1d4ed8', aliases: 'NOI' },
+            { code: 'Ô', label: 'Nghỉ ốm', value: 0.0, bg: '#ffedd5', border: '#fed7aa', color: '#c2410c', aliases: 'O' },
+            { code: 'H', label: 'Học / Hội chẩn', value: 0.0, bg: '#fef3c7', border: '#fde68a', color: '#b45309', aliases: '' },
+            { code: 'F', label: 'Nghỉ phép', value: 0.0, bg: '#fef3c7', border: '#fde68a', color: '#b45309', aliases: '' },
+            { code: 'B', label: 'Nghỉ bù', value: 0.0, bg: '#fef3c7', border: '#fde68a', color: '#b45309', aliases: '' },
+            { code: 'TS', label: 'Thai sản', value: 0.0, bg: '#f3e8ff', border: '#d8b4fe', color: '#6d28d9', aliases: '' },
+            { code: 'ĐK / DK', label: 'Khám ngoại viện / Dã ngoại', value: 0.0, bg: '#f3e8ff', border: '#d8b4fe', color: '#6d28d9', aliases: 'DK, ĐK' },
+            { code: 'K / V', label: 'Nghỉ việc riêng / Không lương', value: 0.0, bg: '#f1f5f9', border: '#cbd5e1', color: '#64748b', aliases: 'K, V, VANG' }
         ];
         let chamCongSymbols = [...DEFAULT_CHAMCONG_SYMBOLS];
         window.chamCongSymbols = chamCongSymbols;
@@ -826,11 +832,26 @@ window.switchAdminSection = function(sectionId, btn) {
             if (!str && str !== 0) return null;
             const s = String(str).trim().toUpperCase();
             if (!s) return null;
+            if (!Array.isArray(chamCongSymbols) || chamCongSymbols.length === 0) return null;
             return chamCongSymbols.find(item => {
                 if (!item || !item.code) return false;
-                if (item.code.toUpperCase() === s) return true;
+                const codeUpper = String(item.code).trim().toUpperCase();
+                if (codeUpper === s) return true;
+                
+                // Hỗ trợ mã gộp có dấu gạch chéo (VD: "S / C", "ĐK / DK", "K / V", v.v.)
+                if (codeUpper.includes('/')) {
+                    const slashParts = codeUpper.split('/').map(p => p.trim()).filter(Boolean);
+                    if (slashParts.includes(s)) return true;
+                }
+                
+                // Hỗ trợ aliases dạng chuỗi ("S, C") hoặc mảng (["S", "C"]) an toàn tuyệt đối
                 if (item.aliases) {
-                    const arr = item.aliases.split(',').map(a => a.trim().toUpperCase()).filter(Boolean);
+                    let arr = [];
+                    if (Array.isArray(item.aliases)) {
+                        arr = item.aliases.map(a => String(a).trim().toUpperCase()).filter(Boolean);
+                    } else if (typeof item.aliases === 'string') {
+                        arr = item.aliases.split(/[,;\/]+/).map(a => a.trim().toUpperCase()).filter(Boolean);
+                    }
                     if (arr.includes(s)) return true;
                 }
                 return false;
@@ -870,7 +891,10 @@ window.switchAdminSection = function(sectionId, btn) {
                     list = res;
                 }
                 if (list && list.length > 0) {
-                    chamCongSymbols = list;
+                    chamCongSymbols = list.map(sym => ({
+                        ...sym,
+                        aliases: Array.isArray(sym.aliases) ? sym.aliases.join(', ') : (sym.aliases || '')
+                    }));
                     window.chamCongSymbols = chamCongSymbols;
                 }
                 renderChamCongLegend();
@@ -1109,7 +1133,7 @@ window.switchAdminSection = function(sectionId, btn) {
 
             // Chuẩn hóa ký hiệu trực quan & đồng bộ dữ liệu bản in
             const sym = findChamCongSymbol(upper);
-            if (sym) {
+            if (sym && sym.code && !sym.code.includes('/')) {
                 val = sym.code;
             } else if (upper === 'CA-NGAY') val = 'X';
             else if (upper === 'SANG') val = 'S';
@@ -1118,6 +1142,7 @@ window.switchAdminSection = function(sectionId, btn) {
             else if (upper === 'TẾT' || upper === 'TET') val = 'Tết';
             else if (upper === 'NỘI' || upper === 'NOI') val = 'Nội';
             else if (upper === 'X/2' || upper === '1/2') val = 'X/2';
+            else if (upper === 'DK') val = 'ĐK';
             else if (val) val = upper;
 
             // Cập nhật thuộc tính value và màu sắc trực quan tức thì
@@ -1132,14 +1157,15 @@ window.switchAdminSection = function(sectionId, btn) {
             const norm = (v) => {
                 if (!v) return '';
                 const u = String(v).trim().toUpperCase();
-                const matched = findChamCongSymbol(u);
-                if (matched) return matched.code.toUpperCase();
                 if (u === 'CA-NGAY') return 'X';
                 if (u === 'SANG') return 'S';
                 if (u === 'CHIEU') return 'C';
                 if (u === 'LỄ' || u === 'LE') return 'LỄ';
                 if (u === 'TẾT' || u === 'TET') return 'TẾT';
                 if (u === 'NỘI' || u === 'NOI') return 'NỘI';
+                if (u === 'DK') return 'ĐK';
+                const matched = findChamCongSymbol(u);
+                if (matched && matched.code && !matched.code.includes('/')) return matched.code.toUpperCase();
                 return u;
             };
 
@@ -1342,8 +1368,6 @@ window.switchAdminSection = function(sectionId, btn) {
             if (typeof val !== 'string') return '';
             val = val.trim();
             const upper = val.toUpperCase();
-            const sym = findChamCongSymbol(upper);
-            if (sym) return sym.code;
             if (upper === 'CA-NGAY') return 'X';
             if (upper === 'SANG') return 'S';
             if (upper === 'CHIEU') return 'C';
@@ -1351,6 +1375,15 @@ window.switchAdminSection = function(sectionId, btn) {
             if (upper === 'TẾT' || upper === 'TET') return 'Tết';
             if (upper === 'NỘI' || upper === 'NOI') return 'Nội';
             if (upper === 'X/2' || upper === '1/2') return 'X/2';
+            if (upper === 'DK') return 'ĐK';
+
+            const sym = findChamCongSymbol(upper);
+            if (sym && sym.code) {
+                if (sym.code.includes('/')) {
+                    return upper;
+                }
+                return sym.code;
+            }
             return val;
         }
 
@@ -1363,13 +1396,17 @@ window.switchAdminSection = function(sectionId, btn) {
             const upper = val.toUpperCase();
 
             // 1. Khớp theo ký hiệu cấu hình động (Dynamic Symbols)
-            const sym = findChamCongSymbol(upper);
-            if (sym && sym.value !== undefined) {
-                return parseFloat(sym.value) || 0;
+            try {
+                const sym = findChamCongSymbol(upper);
+                if (sym && sym.value !== undefined) {
+                    return parseFloat(sym.value) || 0;
+                }
+            } catch(e) {
+                console.warn('[ChamCong] findChamCongSymbol error:', e);
             }
 
             // Fallback ký hiệu mặc định nếu chưa khớp
-            if (['TS', 'ĐK', 'DK', 'O', 'Ô', 'NGHỈ', 'NGHI', 'V', 'LỄ', 'LE', 'TẾT', 'TET', 'NỘI', 'NOI', 'H', 'F', 'B', 'P'].includes(upper)) return 0;
+            if (['TS', 'ĐK', 'DK', 'O', 'Ô', 'NGHỈ', 'NGHI', 'V', 'K', 'LỄ', 'LE', 'TẾT', 'TET', 'NỘI', 'NOI', 'H', 'F', 'B', 'P'].includes(upper)) return 0;
             if (['X/2', '1/2', '0.5', 'S', 'C', 'SANG', 'CHIEU'].includes(upper)) return 0.5;
             if (['X', 'CA-NGAY', '1'].includes(upper)) return 1;
 

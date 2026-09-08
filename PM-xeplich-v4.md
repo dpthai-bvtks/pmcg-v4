@@ -1863,8 +1863,41 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `js/app.js` (cache buster v4.0.2-rev14 cho modal hdsd)
   + `PM-xeplich-v4.md` (nhật ký phát triển)
 
+---
 
+### Khắc Phục Lỗi item.aliases.split is not a function & Phục Hồi Hiển Thị Bảng Chấm Công (08/09/2026 - v4.0.2-rev15)
 
-
-
-
+- **Vấn đề phát sinh**:
+  + Người dùng phản ánh: "bảng chấm công trống trơn, khi kéo thả để sắp xếp thì báo 'Lỗi khi lưu nhân sự: item.aliases.split is not a function'".
+  + Console báo lỗi lặp đi lặp lại: `TypeError: item.aliases.split is not a function at findChamCongSymbol (thongke.js:833:46) at calcDayValue ... at renderChamCongTable ...`.
+- **Nguyên nhân gốc rễ (Root Cause)**:
+  1. Trong `backend/src/index.js`, dữ liệu `defaultSymbols` định nghĩa `aliases` dưới dạng mảng JSON `["S", "C"]` hoặc khi người dùng cấu hình lưu mảng vào D1 key `chamcong_symbols`.
+  2. Tại frontend `js/thongke.js`, hàm `findChamCongSymbol(str)` giả định `item.aliases` luôn là chuỗi và gọi trực tiếp `item.aliases.split(',')`. Do `item.aliases` là `Array`, JS quăng ngoại lệ `TypeError: item.aliases.split is not a function`.
+  3. Lỗi này kích hoạt ngay ở vòng lặp `renderChamCongTable()` tại ô đầu tiên của nhân sự đầu tiên, làm sập toàn bộ chu trình render DOM, khiến bảng chấm công không hiển thị được bất kỳ hàng nào ("trống trơn").
+  4. Tương tự, khi người dùng kéo thả sắp xếp nhân sự, hàm `saveAdminChamCongData(false)` gọi API lưu thành công nhưng trong callback `.then()` gọi `renderChamCongTable()` lại phát sinh ngoại lệ trên, rơi vào `.catch()` và kích hoạt popup báo động: *"Lỗi khi lưu nhân sự: item.aliases.split is not a function"*.
+- **Giải pháp & Khắc phục triệt để**:
+  1. *Backend (`backend/src/index.js`)*:
+     - Chuẩn hóa toàn bộ `aliases` trong `defaultSymbols` thành chuỗi ngăn cách bởi dấu phẩy (VD: `"S, C, SANG, CHIEU"`, `"DK, ĐK"`).
+     - Bổ sung bước chuẩn hóa tự động trong `getChamCongSymbols` và `saveChamCongSymbols`: nếu `aliases` là mảng thì tự động `.join(', ')` trước khi trả về hoặc lưu vào D1 CSDL.
+  2. *Frontend (`js/thongke.js`)*:
+     - Viết lại hàm `findChamCongSymbol(str)` hoàn toàn an toàn và linh hoạt:
+       + Kiểm tra mã gộp có chứa ký tự `/` (như `"S / C"`, `"ĐK / DK"`, `"K / V"`), tự động so khớp các phần tử con (`S`, `C`, `ĐK`, `DK`, `K`, `V`).
+       + Kiểm tra `item.aliases`: hỗ trợ linh hoạt cả Array (`.map()`) lẫn String (`.split(/[,;\/]+/)`), tuyệt đối không bao giờ phát sinh lỗi `.split is not a function`.
+     - Chuẩn hóa trong `loadChamCongSymbols`: tự động chuyển đổi `aliases` thành chuỗi khi nhận từ API backend.
+     - Hàm `formatDisplayValue(val)`: Giữ nguyên mã con của các ký hiệu gộp (hiển thị `S` hoặc `C` thay vì đổi thành `S / C`).
+     - Hàm `calcDayValue(val)`: Bọc try-catch phòng thủ đa tầng quanh `findChamCongSymbol` kèm fallback, không bao giờ ngắt luồng render bảng chấm công.
+     - Hàm `saveAdminChamCongData(showAlert)`: Bọc try-catch an toàn quanh việc render bảng, chỉ hiển thị alert popup khi người dùng bấm nút lưu trực tiếp (`showAlert === true`).
+     - Nâng cấp `pm_cleaned_cache_ver = '4.0.2-rev15'` để tự động dọn sạch cache cũ trên trình duyệt client.
+  3. *Đồng bộ phiên bản theo RULES.md*:
+     - Giữ phiên bản chính `4.0.2`, nâng revision lên `4.0.2-rev15`.
+     - Footer timestamp: `07:15 08/09/2026`.
+     - Đồng bộ `CACHE_NAME = 'pmcg-v4-cache-4.0.2-rev15'` trong `sw.js`.
+     - Đồng bộ `?v=4.0.2-rev15` trên toàn bộ link CSS, thẻ script và `APP_VERSION` trong `index.html`.
+     - Cập nhật query string `v=4.0.2-rev15` cho `hdsd.html` trong `js/app.js`.
+- **File sửa đổi**:
+  + `backend/src/index.js` (chuẩn hóa aliases)
+  + `js/thongke.js` (fix findChamCongSymbol, formatDisplayValue, calcDayValue, saveAdminChamCongData, cache ver)
+  + `index.html` (cache buster rev15, footer timestamp 07:15 08/09/2026)
+  + `sw.js` (CACHE_NAME rev15)
+  + `js/app.js` (targetUrl HDSD rev15)
+  + `PM-xeplich-v4.md` (nhật ký phát triển)
