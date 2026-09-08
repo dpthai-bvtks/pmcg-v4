@@ -1989,6 +1989,42 @@ window.renderSttOrderControl = function (type, i, total) {
         }
         window.cleanMedicalProc = cleanMedicalProc;
 
+        function extractPatientProcedures(item) {
+            if (!item) return [];
+            let raw = item.thuThuat;
+            if (raw === undefined || raw === null || raw === '') {
+                raw = item.thu_thuat || item.procs || item.dichVu || item.thuthuat || '';
+            }
+            if (!raw) return [];
+
+            // 1. Dạng mảng
+            if (Array.isArray(raw)) {
+                return raw.map(p => {
+                    if (!p) return '';
+                    if (typeof p === 'string') return p.trim();
+                    if (typeof p === 'object') return (p.name || p.ten || p.thuThuat || p.dichVu || '').trim();
+                    return String(p).trim();
+                }).filter(Boolean);
+            }
+
+            // 2. Dạng chuỗi (bao gồm chuỗi JSON hoặc chuỗi phân tách bởi dấu phẩy/chấm phẩy/xuống dòng)
+            if (typeof raw === 'string') {
+                const trimmed = raw.trim();
+                if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+                    try {
+                        const parsed = JSON.parse(trimmed);
+                        if (Array.isArray(parsed)) {
+                            return extractPatientProcedures({ thuThuat: parsed });
+                        }
+                    } catch (e) {}
+                }
+                return trimmed.split(/[,;\n]+/).map(t => t.trim()).filter(Boolean);
+            }
+
+            return [];
+        }
+        window.extractPatientProcedures = extractPatientProcedures;
+
         function getShortSkills(skillStr, isStaff = false) {
             if (!skillStr) return '';
             const str = typeof skillStr === 'string' ? skillStr : (Array.isArray(skillStr) ? skillStr.join(', ') : String(skillStr || ''));
@@ -2111,7 +2147,7 @@ window.renderSttOrderControl = function (type, i, total) {
             if (normA === normB) return true;
             if (cleanA && cleanB && cleanA === cleanB) return true;
 
-            // 1. Nhóm từ đồng nghĩa chuẩn xác (Trợ giúp, Kháng trở, Thụ động)
+            // 1. Nhóm từ đồng nghĩa chuẩn xác (Trợ giúp, Kháng trở, Thụ động, Xoa bóp bấm huyệt)
             const isTroGiupA = cleanA.includes('tro giup') || normA === 'ttg' || normA === 'vd-tg' || normA === 'vdtg';
             const isTroGiupB = cleanB.includes('tro giup') || normB === 'ttg' || normB === 'vd-tg' || normB === 'vdtg';
             if (isTroGiupA && isTroGiupB) return true;
@@ -2123,6 +2159,15 @@ window.renderSttOrderControl = function (type, i, total) {
             const isThuDongA = cleanA.includes('thu dong') || normA === 'ttd' || normA === 'vd-td' || normA === 'vdtd';
             const isThuDongB = cleanB.includes('thu dong') || normB === 'ttd' || normB === 'vd-td' || normB === 'vdtd';
             if (isThuDongA && isThuDongB) return true;
+
+            // Đồng nghĩa YHCT: Xoa bóp / Bấm huyệt / Xoa bóp bấm huyệt
+            const isXoaBopA = cleanA.includes('xoa bop') || normA === 'xb' || normA === 'xbbh';
+            const isXoaBopB = cleanB.includes('xoa bop') || normB === 'xb' || normB === 'xbbh';
+            if (isXoaBopA && isXoaBopB) {
+                const hasVungA = cleanA.includes('vung');
+                const hasVungB = cleanB.includes('vung');
+                if (hasVungA === hasVungB) return true;
+            }
 
             // 2. Tra cứu database theo mã viết tắt hoặc tên đầy đủ (chính xác 100%)
             const procs = (window.dataCache && window.dataCache.proc) ? window.dataCache.proc : [];
@@ -2165,6 +2210,10 @@ window.renderSttOrderControl = function (type, i, total) {
             // 3. Kiểm tra phân biệt từ khóa đặc biệt để tránh bắt nhầm (vd: 'liệt', 'vùng', 'bấm huyệt', 'kháng trở', 'trợ giúp', 'thở')
             const distinctKeywords = ['liệt', 'vùng', 'bấm huyệt', 'kháng trở', 'trợ giúp', 'thở'];
             for (const kw of distinctKeywords) {
+                // Nếu là 'bấm huyệt' nhưng một trong 2 bên có 'xoa bóp', không chặn khớp
+                if (kw === 'bấm huyệt' && (cleanA.includes('xoa bop') || cleanB.includes('xoa bop'))) {
+                    continue;
+                }
                 const hasA = strA.includes(kw) || (procA && procA.ten && procA.ten.toLowerCase().includes(kw));
                 const hasB = strB.includes(kw) || (procB && procB.ten && procB.ten.toLowerCase().includes(kw));
                 if (hasA !== hasB) return false;
@@ -3482,6 +3531,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     if(document.getElementById('pat-loai-bn')) document.getElementById('pat-loai-bn').value = 'NoiTru';
                     if(document.getElementById('pat-buoi-dieu-tri')) document.getElementById('pat-buoi-dieu-tri').value = 'TuDong';
                     if(typeof togglePatSessionSelect === 'function') togglePatSessionSelect();
+                    document.querySelectorAll('.pat-proc-cb-extra-container, .extra-proc-item').forEach(el => el.remove());
 
                 },
 
@@ -4111,6 +4161,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         function clearSelectedProcs() {
             document.querySelectorAll('.pat-proc-cb').forEach(cb => { cb.checked = false; });
+            document.querySelectorAll('.pat-proc-cb-extra-container, .extra-proc-item').forEach(el => el.remove());
             const sel = document.getElementById('pat-protocol-select');
             if (sel) sel.value = '';
         }
@@ -4140,88 +4191,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             // Bỏ chọn trước khi áp dụng
             document.querySelectorAll('.pat-proc-cb').forEach(cb => { cb.checked = false; });
-
-            let matchedCount = 0;
-            document.querySelectorAll('.pat-proc-cb').forEach(cb => {
-                const cbVal = String(cb.value || '').trim();
-                const isMatch = targetProcs.some(target => {
-                    const targetName = (typeof target === 'object' && target !== null) ? (target.name || target.ten || '') : String(target || '');
-                    return typeof matchProc === 'function' ? matchProc(cbVal, targetName) : (cbVal.toLowerCase() === targetName.toLowerCase());
-                });
-                if (isMatch) {
-                    cb.checked = true;
-                    matchedCount++;
-                    const parent = cb.closest('.checkbox-item') || cb.parentElement;
-                    if (parent) {
-                        parent.style.transition = 'background-color 0.3s';
-                        parent.style.backgroundColor = '#dbeafe';
-                        setTimeout(() => { parent.style.backgroundColor = ''; }, 600);
-                    }
-                }
-            });
-
-            if (typeof window.showToast === 'function') {
-                window.showToast(`🎯 Đã áp dụng: ${pObj.name} (${matchedCount} thủ thuật)`);
-            }
-        }
-        window.applyClinicalProtocol = applyClinicalProtocol;
-
-        function renderProtocolSelectOptions() {
-            const sel = document.getElementById('pat-protocol-select');
-            if (!sel) return;
-            const list = (window.dataCache && window.dataCache.protocols) ? window.dataCache.protocols : [];
-            
-            let optionsHtml = '<option value="">-- Chọn Phác đồ --</option>';
-            list.forEach((item, i) => {
-                let procsArr = [];
-                if (Array.isArray(item.procs)) {
-                    procsArr = item.procs;
-                } else if (typeof item.procs === 'string') {
-                    try {
-                        const parsed = JSON.parse(item.procs);
-                        procsArr = Array.isArray(parsed) ? parsed : item.procs.split(',').map(s => s.trim()).filter(Boolean);
-                    } catch(e) {
-                        procsArr = item.procs.split(',').map(s => s.trim()).filter(Boolean);
-                    }
-                }
-                const procsSummary = procsArr.map(p => (typeof p === 'object' && p !== null) ? (p.name || p.ten || '') : String(p || '')).filter(Boolean).join(', ');
-                optionsHtml += `<option value="${i}">${escapeHtml(item.name || `Phác đồ ${i + 1}`)}: ${escapeHtml(procsSummary)}</option>`;
-            });
-            sel.innerHTML = optionsHtml;
-        }
-        window.renderProtocolSelectOptions = renderProtocolSelectOptions;
-
-        function clearSelectedProcs() {
-            document.querySelectorAll('.pat-proc-cb').forEach(cb => { cb.checked = false; });
-            const sel = document.getElementById('pat-protocol-select');
-            if (sel) sel.value = '';
-        }
-        window.clearSelectedProcs = clearSelectedProcs;
-
-        function applyClinicalProtocol(protocolIdx) {
-            if (protocolIdx === '' || protocolIdx === null || protocolIdx === undefined) {
-                clearSelectedProcs();
-                return;
-            }
-            const idx = parseInt(protocolIdx, 10);
-            const list = (window.dataCache && window.dataCache.protocols) ? window.dataCache.protocols : [];
-            if (isNaN(idx) || idx < 0 || idx >= list.length) return;
-
-            const pObj = list[idx];
-            let targetProcs = [];
-            if (Array.isArray(pObj.procs)) {
-                targetProcs = pObj.procs;
-            } else if (typeof pObj.procs === 'string') {
-                try {
-                    const parsed = JSON.parse(pObj.procs);
-                    targetProcs = Array.isArray(parsed) ? parsed : pObj.procs.split(',').map(s => s.trim()).filter(Boolean);
-                } catch(e) {
-                    targetProcs = pObj.procs.split(',').map(s => s.trim()).filter(Boolean);
-                }
-            }
-
-            // Bỏ chọn trước khi áp dụng
-            document.querySelectorAll('.pat-proc-cb').forEach(cb => { cb.checked = false; });
+            document.querySelectorAll('.pat-proc-cb-extra-container, .extra-proc-item').forEach(el => el.remove());
 
             let matchedCount = 0;
             document.querySelectorAll('.pat-proc-cb').forEach(cb => {
@@ -4302,6 +4272,48 @@ window.renderSttOrderControl = function (type, i, total) {
 
             [['staff-skills-yhct', sYhct], ['staff-skills-phcn', sPhcn], ['pat-skills-yhct', pYhct], ['pat-skills-phcn', pPhcn]]
                 .forEach(([id, html]) => { const el = document.getElementById(id); if (el) el.innerHTML = html; });
+
+            // 🛡️ BẢO VỆ CHỐNG MẤT THỦ THUẬT: Nếu đang mở form sửa bệnh nhân, khôi phục lại các thủ thuật đã chọn
+            if (typeof editIndex !== 'undefined' && editIndex.pat > -1 && window.dataCache && window.dataCache.pat && window.dataCache.pat[editIndex.pat]) {
+                const curPat = window.dataCache.pat[editIndex.pat];
+                const ttArr = typeof extractPatientProcedures === 'function' ? extractPatientProcedures(curPat) : (curPat.thuThuat ? curPat.thuThuat.split(',').map(t => t.trim()).filter(Boolean) : []);
+                const matchedProcs = new Set();
+                document.querySelectorAll('.pat-proc-cb').forEach(cb => {
+                    const isM = ttArr.some(t => {
+                        if (typeof matchProc === 'function' ? matchProc(t, cb.value) : (t.toLowerCase() === cb.value.toLowerCase())) {
+                            matchedProcs.add(t);
+                            return true;
+                        }
+                        return false;
+                    });
+                    cb.checked = isM;
+                });
+                const unmatched = ttArr.filter(t => !matchedProcs.has(t));
+                if (unmatched.length > 0) {
+                    let extraContainer = document.getElementById('pat-skills-extra');
+                    if (!extraContainer) {
+                        const grid = document.querySelector('.skills-grid');
+                        if (grid) {
+                            extraContainer = document.createElement('div');
+                            extraContainer.id = 'pat-skills-extra';
+                            extraContainer.className = 'skills-col pat-proc-cb-extra-container';
+                            extraContainer.style.cssText = 'width: 100%; margin-top: 6px; padding: 6px 8px; background: #fff8e1; border: 1px dashed #f39c12; border-radius: 6px;';
+                            grid.appendChild(extraContainer);
+                        }
+                    }
+                    if (extraContainer) {
+                        let extraHtml = '<h4 style="color:#d35400; font-size:12px; margin:0 0 4px 0; font-weight:700;">📌 Thủ thuật bổ sung / ngoài danh mục:</h4>';
+                        unmatched.forEach(t => {
+                            const escaped = escapeHtml(t);
+                            extraHtml += `<label class="checkbox-item extra-proc-item" style="display:inline-flex; align-items:center; margin-right:12px; margin-bottom:4px; font-weight:600; color:#d35400;">
+                                <input type="checkbox" class="pat-proc-cb pat-proc-cb-extra" value="${escaped}" checked style="accent-color:#d35400; margin-right:4px;">
+                                ${escaped}
+                            </label>`;
+                        });
+                        extraContainer.innerHTML = extraHtml;
+                    }
+                }
+            }
 
             if (typeof renderProtoProcsFormCheckboxes === 'function') renderProtoProcsFormCheckboxes();
         }
@@ -5043,7 +5055,8 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const schedData = (window.currentScheduleData && window.currentScheduleData.length) ? window.currentScheduleData : ((typeof dataCache !== 'undefined' && dataCache.schedule) ? dataCache.schedule : []);
 
-            let displayPatList = dataCache.pat.map((p, origIdx) => ({ ...p, _origIndex: p.index !== undefined ? p.index : origIdx }));
+            dataCache.pat.forEach((p, idx) => { if (p) p.index = idx; });
+            let displayPatList = dataCache.pat.map((p, origIdx) => ({ ...p, _origIndex: origIdx }));
             
             const currentFilter = window._patientTypeFilter || 'all';
             if (currentFilter !== 'all') {
@@ -5090,7 +5103,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 const idx = item._origIndex;
                 const patName = String(item.ten || '').toUpperCase().trim();
                 const patNS = String(item.namSinh || '').trim();
-                const reqProcs = item.thuThuat ? item.thuThuat.split(',').map(x => x.trim()).filter(Boolean) : [];
+                const reqProcs = extractPatientProcedures(item);
                 const reqCount = reqProcs.length;
 
                 const schedItems = schedData.filter(r => {
@@ -5295,14 +5308,24 @@ window.renderSttOrderControl = function (type, i, total) {
             if (window.innerWidth <= 960 && typeof window.openMobileFormForEdit === "function") window.openMobileFormForEdit("pat");
             if (checkUnclosedDay()) return;
 
+            let targetIdx = index;
+            let item = (dataCache.pat && dataCache.pat[targetIdx]) ? dataCache.pat[targetIdx] : null;
+            if (!item && dataCache.pat && dataCache.pat.length) {
+                const foundIdx = dataCache.pat.findIndex(p => p && (p.index === index || p.id === index || p.sheetIndex === index));
+                if (foundIdx !== -1) {
+                    targetIdx = foundIdx;
+                    item = dataCache.pat[targetIdx];
+                }
+            }
+            if (!item) {
+                console.warn('[editPatient]: Không tìm thấy bệnh nhân tại vị trí', index);
+                return;
+            }
 
-            editIndex.pat = index;
+            editIndex.pat = targetIdx;
 
-            const item = dataCache.pat[index];
-
-            document.getElementById('pat-name').value = item.ten;
-
-            document.getElementById('pat-year').value = item.namSinh;
+            document.getElementById('pat-name').value = item.ten || '';
+            document.getElementById('pat-year').value = item.namSinh || '';
 
             const ngayVao = item.ngayVao || '';
             if (ngayVao.includes('/')) {
@@ -5327,12 +5350,10 @@ window.renderSttOrderControl = function (type, i, total) {
             const gioVal = item.gioVao || '';
             document.getElementById('pat-time').value = (gioVal === '07:30' || !gioVal) ? '' : gioVal;
 
-            document.getElementById('pat-room').value = item.phong;
-
-            document.getElementById('pat-leave').value = item.gioRa;
+            document.getElementById('pat-room').value = item.phong || '';
+            document.getElementById('pat-leave').value = item.gioRa || '';
 
             const busyVal = item.gioBan || '';
-
             document.getElementById('pat-busy').value = busyVal;
             document.getElementById('pat-loai-bn').value = item.loai_bn || 'NoiTru';
             // Auto-detect buổi: nếu có giờ ra viện → sáng, không thì dùng giá trị đã lưu (mặc định TuDong)
@@ -5341,27 +5362,67 @@ window.renderSttOrderControl = function (type, i, total) {
             if (typeof togglePatSessionSelect === 'function') togglePatSessionSelect();
 
             if (busyVal.includes('-')) {
-
                 document.getElementById('busy-start').value = busyVal.split('-')[0].trim();
-
                 document.getElementById('busy-end').value = busyVal.split('-')[1].trim();
-
             } else {
-
                 document.getElementById('busy-start').value = '';
-
                 document.getElementById('busy-end').value = '';
-
             }
 
-            const ttArr = item.thuThuat ? item.thuThuat.split(',').map(t => t.trim()).filter(Boolean) : [];
+            // Đảm bảo checkbox thủ thuật đã được render trước khi chọn
+            if (document.querySelectorAll('.pat-proc-cb').length === 0) {
+                if (typeof renderProcedureCheckboxes === 'function') {
+                    renderProcedureCheckboxes();
+                }
+            }
 
-            document.querySelectorAll('.pat-proc-cb').forEach(cb => { 
-                cb.checked = ttArr.some(t => matchProc(t, cb.value)); 
+            // Dọn dẹp các checkbox ngoài danh mục trước đó
+            document.querySelectorAll('.pat-proc-cb-extra-container, .extra-proc-item').forEach(el => el.remove());
+
+            const ttArr = extractPatientProcedures(item);
+            const matchedProcs = new Set();
+            const existingCbs = Array.from(document.querySelectorAll('.pat-proc-cb'));
+
+            existingCbs.forEach(cb => { 
+                const isMatched = ttArr.some(t => {
+                    if (matchProc(t, cb.value)) {
+                        matchedProcs.add(t);
+                        return true;
+                    }
+                    return false;
+                });
+                cb.checked = isMatched;
             });
 
-            document.getElementById('btn-save-pat').innerText = "Lưu Sửa";
+            // 🛡️ CHỐNG MẤT THỦ THUẬT: Nếu có thủ thuật của bệnh nhân không nằm trong danh mục chuẩn,
+            // tự động tạo checkbox bổ sung có đánh dấu checked để bảo toàn dữ liệu khi Lưu!
+            const unmatched = ttArr.filter(t => !matchedProcs.has(t));
+            if (unmatched.length > 0) {
+                let extraContainer = document.getElementById('pat-skills-extra');
+                if (!extraContainer) {
+                    const grid = document.querySelector('.skills-grid');
+                    if (grid) {
+                        extraContainer = document.createElement('div');
+                        extraContainer.id = 'pat-skills-extra';
+                        extraContainer.className = 'skills-col pat-proc-cb-extra-container';
+                        extraContainer.style.cssText = 'width: 100%; margin-top: 6px; padding: 6px 8px; background: #fff8e1; border: 1px dashed #f39c12; border-radius: 6px;';
+                        grid.appendChild(extraContainer);
+                    }
+                }
+                if (extraContainer) {
+                    let extraHtml = '<h4 style="color:#d35400; font-size:12px; margin:0 0 4px 0; font-weight:700;">📌 Thủ thuật bổ sung / ngoài danh mục:</h4>';
+                    unmatched.forEach(t => {
+                        const escaped = escapeHtml(t);
+                        extraHtml += `<label class="checkbox-item extra-proc-item" style="display:inline-flex; align-items:center; margin-right:12px; margin-bottom:4px; font-weight:600; color:#d35400;">
+                            <input type="checkbox" class="pat-proc-cb pat-proc-cb-extra" value="${escaped}" checked style="accent-color:#d35400; margin-right:4px;">
+                            ${escaped}
+                        </label>`;
+                    });
+                    extraContainer.innerHTML = extraHtml;
+                }
+            }
 
+            document.getElementById('btn-save-pat').innerText = "Lưu Sửa";
             document.getElementById('btn-cancel-pat').style.display = "inline-block";
 
         }
@@ -5382,7 +5443,12 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 if (window.showGlobalLoading) window.showGlobalLoading("Đang xóa bệnh nhân...");
 
-
+                // Nếu đang mở sửa chính bệnh nhân này, reset form
+                if (editIndex.pat === i) {
+                    cancelEdit('pat');
+                } else if (editIndex.pat > i) {
+                    editIndex.pat--;
+                }
 
                 // Xóa tạm trên giao diện
                 const deletedSheetIndex = p.sheetIndex !== undefined ? p.sheetIndex : i;
@@ -12923,7 +12989,7 @@ window.openHdsdModal = function() {
         }
     } catch(e) {}
     const curTheme = document.documentElement.getAttribute('data-theme') || localStorage.getItem('pm_app_theme') || 'light';
-    const targetUrl = `hdsd.html?role=${userRole}&theme=${curTheme}&v=4.0.3-rev3`;
+    const targetUrl = `hdsd.html?role=${userRole}&theme=${curTheme}&v=4.0.3-rev4`;
 
     if (iframe) {
         if (!iframe.src || iframe.src === 'about:blank' || !iframe.src.includes(`role=${userRole}`)) {

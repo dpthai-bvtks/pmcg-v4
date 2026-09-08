@@ -2056,3 +2056,40 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `js/app.js` (targetUrl HDSD v4.0.3-rev3)
   + `js/thongke.js` (pm_cleaned_cache_ver 4.0.3-rev3)
   + `PM-xeplich-v4.md` (nhật ký phát triển)
+
+### Phiên bản 4.0.3-rev4 (08/09/2026)
+- **Vấn đề khắc phục**:
+  + Bác sĩ phản ánh: "khi sửa 1 bệnh nhân thì thỉnh thoảng bị mất các thủ thuật đã chọn".
+- **Phân tích nguyên nhân**:
+  1. *Lệch chỉ mục dữ liệu trong bảng bệnh nhân (`renderPatientsTable`)*:
+     - `displayPatList` dùng `_origIndex: p.index !== undefined ? p.index : origIdx`. Khi danh sách bệnh nhân được tải từ máy chủ, import Excel, hoặc lọc theo loại BN / sắp xếp theo Ngày vào - Tên, thuộc tính `p.index` bị cũ hoặc không đồng bộ với chỉ mục thực trong mảng `dataCache.pat`.
+     - Khi bấm sửa một hàng, hàm `editPatient(parseInt(this.dataset.patIndex))` truyền `_origIndex` bị lệch, dẫn đến việc `dataCache.pat[targetIdx]` lấy nhầm sang bệnh nhân khác hoặc `undefined`. Bác sĩ thấy form trống hoặc sai thủ thuật, và khi bấm "Lưu Sửa" sẽ ghi đè nhầm sang dữ liệu bệnh nhân khác.
+  2. *Định dạng dữ liệu `thuThuat` biến thiên*:
+     - Trước đây `editPatient` gọi `item.thuThuat.split(',')`. Khi dữ liệu từ Cloudflare D1 / Worker hoặc JSON import có dạng mảng (`['Điện châm', 'Xoa bóp']`), việc gọi `.split()` ném ngoại lệ `TypeError: item.thuThuat.split is not a function`, làm toàn bộ quá trình tích chọn checkbox bị dừng giữa chừng.
+  3. *Hàm `matchProc` loại trừ nhầm các thủ thuật YHCT thông dụng*:
+     - Danh sách từ khóa phân biệt `distinctKeywords` chứa `'bấm huyệt'`. Khi bệnh nhân có thủ thuật "Xoa bóp" còn danh mục chuẩn là "Xoa bóp bấm huyệt điều trị", điều kiện phân biệt từ chối khớp, khiến checkbox không được tích.
+  4. *Mất các thủ thuật ngoài danh mục chuẩn khi bấm Lưu*:
+     - Nếu bệnh nhân có thủ thuật tùy biến hoặc từ nguồn dữ liệu khác không nằm trong bảng danh mục thủ thuật chuẩn (`dataCache.proc`), trên giao diện không có checkbox tương ứng. Khi bác sĩ bấm "Lưu Sửa", hàm `savePatient()` chỉ lấy các checkbox `.pat-proc-cb:checked` có trên màn hình, dẫn đến việc các thủ thuật này bị xóa vĩnh viễn.
+  5. *`renderProcedureCheckboxes()` làm trắng checkbox khi chuyển tab hoặc tải dữ liệu*:
+     - Khi chuyển tab hoặc danh mục thủ thuật được đồng bộ ngầm, hàm `renderProcedureCheckboxes()` ghi đè lại HTML của danh sách checkbox làm mất toàn bộ trạng thái đã chọn nếu form sửa đang mở.
+- **Giải pháp xử lý triệt để**:
+  1. *Xây dựng chuẩn hóa dữ liệu `extractPatientProcedures(item)`*:
+     - Tự động nhận diện và trích xuất an toàn mọi cấu trúc dữ liệu: chuỗi phân tách dấu phẩy/chấm phẩy/xuống dòng, mảng chuỗi, mảng đối tượng `{name, ten}`, chuỗi JSON array. Không bao giờ gây văng lỗi runtime.
+  2. *Chuẩn hóa chỉ mục mảng `dataCache.pat`*:
+     - Trong `renderPatientsTable`, luôn đồng bộ `p.index = origIdx` và dùng `_origIndex: origIdx` chuẩn xác 100%. Trong `editPatient`, bổ sung cơ chế tìm kiếm dự phòng an toàn theo ID / index nếu chỉ mục đầu vào không tồn tại.
+  3. *Nâng cấp bộ so khớp thủ thuật `matchProc`*:
+     - Bổ sung nhóm từ đồng nghĩa YHCT chuẩn xác (`xoa bóp`, `bấm huyệt`, `xbbh`). Bỏ qua việc chặn từ khóa `'bấm huyệt'` nếu thủ thuật đang xét thuộc nhóm xoa bóp.
+  4. *Cơ chế tự động bảo toàn thủ thuật ngoài danh mục (Dynamic Injection)*:
+     - Trong `editPatient`, sau khi khớp với danh mục chuẩn, bất kỳ thủ thuật nào của bệnh nhân chưa có checkbox sẽ được tự động tạo một checkbox nổi bật `[📌 Thủ thuật bổ sung / ngoài danh mục]` có đánh dấu checked. Nhờ đó, khi bấm "Lưu Sửa", các thủ thuật này được bảo toàn tuyệt đối 100%. Bác sĩ cũng có thể chủ động bỏ chọn nếu muốn xóa.
+  5. *Bảo vệ trạng thái form khi `renderProcedureCheckboxes()` được gọi lại*:
+     - Bổ sung bộ guard: Nếu `editIndex.pat > -1`, hàm tự động tái thiết lập các thủ thuật đang chọn cho bệnh nhân đang sửa, ngăn chặn hiện tượng bị trắng form.
+  6. *Dọn dẹp mã nguồn và đồng bộ phiên bản*:
+     - Loại bỏ khối hàm phác đồ bị khai báo trùng lặp trong `js/app.js`.
+     - Phiên bản: `4.0.3-rev4`, footer timestamp: `08:05 08/09/2026`.
+- **File sửa đổi**:
+  + `js/app.js` (`extractPatientProcedures`, `matchProc`, `editPatient`, `renderProcedureCheckboxes`, `renderPatientsTable`, `clearSelectedProcs`, `cancelEdit`, xóa block duplicate, HDSD targetUrl `v=4.0.3-rev4`)
+  + `index.html` (cache busters `?v=4.0.3-rev4`, `APP_VERSION = '4.0.3-rev4'`, footer timestamp `08:05 08/09/2026`)
+  + `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.3-rev4'`)
+  + `js/thongke.js` (`pm_cleaned_cache_ver = '4.0.3-rev4'`)
+  + `PM-xeplich-v4.md` (nhật ký phát triển)
+
