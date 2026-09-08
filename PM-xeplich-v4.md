@@ -2297,3 +2297,31 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `index.html` (cache buster `v=4.0.3-rev12`, `APP_VERSION = '4.0.3-rev12'`)
   + `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.3-rev12'`)
   + `PM-xeplich-v4.md`
+---
+
+### [v4.0.3-rev13] - 08/09/2026: Nâng Cấp Kích Thước & Độ Rõ Nét Cột Hệ Số Bảng Chấm Công (0.5 vs 0.3)
+
+- **Phản hồi của người dùng**:
+  + "Không nhìn rõ được hệ số 0.5 hay 0.3"
+- **Phân tích nguyên nhân gốc rễ**:
+  1. Thẻ `<input type="number">` của trình duyệt mặc định chèn hai nút bấm tăng giảm (stepper arrows) chiếm ~16px bên trong ô nhập liệu.
+  2. Chiều rộng cột Hệ số cũ chỉ 36px (desktop) và 38px (mobile), ô input chỉ 30px x 17px với cỡ chữ 10.5px.
+  3. Trừ đi 16px của nút stepper, không gian thực tế hiển thị chữ chỉ còn ~12px! Dẫn đến chuỗi `0,5` hoặc `0,3` bị co rút méo mó, đuôi số 5 và số 3 bị cắt lẹm và nhòe sát mép viền, người dùng không thể phân biệt được `0.5` hay `0.3`.
+- **Giải pháp triển khai**:
+  1. **Ẩn hoàn toàn nút Stepper Arrows**:
+     - Áp dụng `-webkit-appearance: none; margin: 0;` và `-moz-appearance: textfield;` cho `.heso-input`.
+  2. **Tăng kích thước cột & ô nhập liệu**:
+     - Chiều rộng cột Hệ số tăng từ 36px lên 48px (cả trên Desktop và Mobile/Tablet).
+     - Chiều rộng ô input `.heso-input` tăng từ 30px lên 42px, chiều cao tăng lên 22px.
+     - Cập nhật độ lệch ghim cố định `stickyOffset`: 238px (Desktop: 190px + 48px) và 208px (Mobile: 160px + 48px).
+  3. **Tăng cỡ chữ & độ tương phản cao**:
+     - Font size nâng lên **13px bold (font-weight: 800)** với font số học phẳng `font-variant-numeric: tabular-nums`, giúp các nét số `3` và `5` tách bạch, sắc nét.
+     - Thêm class `.heso-fraction` cho các hệ số thập phân lẻ (< 1, ví dụ 0.5, 0.3): Nền cam nhẹ `#fffbeb`, chữ cam đậm nổi bật `#b45309`, viền `#f59e0b` giúp phân biệt tức thì nhân sự bán thời gian với nhân sự hệ số 1.
+     - Bổ sung tooltip `title="Hệ số chấm công: ..."` khi rê chuột vào ô.
+- **File sửa đổi**:
+  + `css/style.css`
+  + `js/thongke.js`
+  + `index.html` (cache buster `v=4.0.3-rev13`, `APP_VERSION = '4.0.3-rev13'`)
+  + `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.3-rev13'`)
+  + `PM-xeplich-v4.md`
+
