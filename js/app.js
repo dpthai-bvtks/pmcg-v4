@@ -11396,12 +11396,16 @@ window.renderSttOrderControl = function (type, i, total) {
                     const nvChinh = (r[7] || '').trim();
                     const thuThuat = (r[4] || '').trim();
 
+                    // Luôn đếm thủ thuật vào YHCT/PHCN trước (bất kể có NV hay không)
+                    // → đảm bảo tổng "Phân Bổ Thủ Thuật" = tổng "Tải Trọng Nhân Viên"
+                    const cat = procCategoryMap[thuThuat.toLowerCase()] || 'PHCN';
+                    if (cat === 'YHCT') procCountYHCT[thuThuat] = (procCountYHCT[thuThuat] || 0) + 1;
+                    else procCountPHCN[thuThuat] = (procCountPHCN[thuThuat] || 0) + 1;
+
                     // Bỏ qua các tên slot ảo của engine xếp lịch (Phụ 1, Phụ 2, Phụ 3, Chính 1...)
+                    // Ghi vào nhóm "(Chưa phân công)" để tổng BS+KTV khớp với tổng thủ thuật
                     if (!nvChinh || /^(ph[uụ]|chinh|chính)\s*\d*$/i.test(nvChinh)) {
-                        // Vẫn đếm thủ thuật dù không có NV hợp lệ
-                        const cat = procCategoryMap[thuThuat.toLowerCase()] || 'PHCN';
-                        if (cat === 'YHCT') procCountYHCT[thuThuat] = (procCountYHCT[thuThuat] || 0) + 1;
-                        else procCountPHCN[thuThuat] = (procCountPHCN[thuThuat] || 0) + 1;
+                        staffLoadKTV['(Chưa phân công)'] = (staffLoadKTV['(Chưa phân công)'] || 0) + 1;
                         return;
                     }
 
@@ -11417,10 +11421,6 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     if (isDoctor) staffLoadBS[nvChinh] = (staffLoadBS[nvChinh] || 0) + 1;
                     else staffLoadKTV[nvChinh] = (staffLoadKTV[nvChinh] || 0) + 1;
-
-                    const cat = procCategoryMap[thuThuat.toLowerCase()] || 'PHCN';
-                    if (cat === 'YHCT') procCountYHCT[thuThuat] = (procCountYHCT[thuThuat] || 0) + 1;
-                    else procCountPHCN[thuThuat] = (procCountPHCN[thuThuat] || 0) + 1;
                 });
             } else {
                 // Fallback: Khi chưa xếp lịch, tính phân bổ thủ thuật từ danh sách bệnh nhân hiện tại (realtime)
