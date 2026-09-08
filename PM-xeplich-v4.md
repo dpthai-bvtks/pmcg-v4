@@ -2172,3 +2172,30 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.3-rev7'`)
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.3-rev8] - 08/09/2026: Tự Động Cập Nhật Phiên Bản Mới Trên Tất Cả Máy (Auto-Update Service Worker)
+
+- **Yêu cầu của người dùng**:
+  + Mỗi khi deploy bản sửa lỗi mới, các máy tính đang mở tab cũ không tự cập nhật — phải ấn Ctrl+F5 hoặc Ctrl+Shift+R mới nhận bản mới.
+- **Phân tích nguyên nhân cũ**:
+  + SW chỉ gọi `reg.update()` 1 lần lúc load trang. Máy đang mở tab từ hôm qua sẽ không bao giờ check update.
+  + Không lắng nghe sự kiện `controllerchange` → phát hiện SW mới nhưng không reload tự động.
+  + Logic unregister theo `?v=APP_VERSION` trong scriptURL không đáng tin cậy.
+- **Giải pháp triển khai (`index.html` — block SW Registration)**:
+  + **Polling mỗi 5 phút**: `setInterval(() => reg.update(), 5 * 60 * 1000)` — chủ động hỏi server có `sw.js` mới không dù tab đang mở cả ngày.
+  + **Lắng nghe `updatefound` + `statechange`**: Khi SW mới được tải về và ở trạng thái `installed`, lập tức gọi `applyUpdate()` → `skipWaiting()` để SW mới kiểm soát ngay mà không cần đóng tab.
+  + **Lắng nghe `controllerchange`**: Ngay khi SW mới kiểm soát trang, hiển thị toast "🔄 Phiên bản mới đã sẵn sàng — đang tải lại..." và tự động `window.location.reload()` sau 2 giây.
+  + **Chống reload vòng lặp**: Dùng `sessionStorage._sw_reloading` để đánh dấu, tránh `controllerchange` kích hoạt reload liên tiếp.
+  + **Đăng ký `./sw.js` không có `?v=`**: Trình duyệt tự kiểm tra byte-diff của sw.js để phát hiện thay đổi — đây là chuẩn PWA, không cần query string.
+- **Luồng hoạt động sau bản này**:
+  1. Dev deploy bản mới → `sw.js` thay đổi `CACHE_NAME`.
+  2. Máy người dùng: mỗi 5 phút hoặc khi load lại tab → SW phát hiện `sw.js` mới → tải về → `skipWaiting` → `controllerchange`.
+  3. Trang hiển thị toast xanh đẹp → tự reload sau 2s → người dùng thấy bản mới **hoàn toàn tự động**.
+- **File sửa đổi**:
+  + `index.html` (block SW Registration viết lại hoàn toàn)
+  + `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.3-rev8'`)
+  + `PM-xeplich-v4.md`
+
+
+
