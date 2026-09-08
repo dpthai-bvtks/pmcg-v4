@@ -53,13 +53,13 @@ var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi
 
         // Tự động dọn dẹp cache cũ bị ô nhiễm từ các phiên bản trước
         try {
-            if (typeof localStorage !== 'undefined' && localStorage.getItem('pm_cleaned_cache_ver') !== '4.0.3-rev5') {
+            if (typeof localStorage !== 'undefined' && localStorage.getItem('pm_cleaned_cache_ver') !== '4.0.3-rev6') {
                 Object.keys(localStorage).forEach(k => {
                     if (k.startsWith('pm_cache_cc_') || k.startsWith('pm_cache_tk_')) {
                         localStorage.removeItem(k);
                     }
                 });
-                localStorage.setItem('pm_cleaned_cache_ver', '4.0.3-rev5');
+                localStorage.setItem('pm_cleaned_cache_ver', '4.0.3-rev6');
             }
         } catch(e) {}
 
@@ -1562,12 +1562,13 @@ window.switchAdminSection = function(sectionId, btn) {
                     const rawVal = chamCongData[emp][d] || '';
                     tongCong += calcDayValue(rawVal);
                     const isOff = isHoliday(year, month, d);
+                    const isSundayOnly = (new Date(year, month - 1, d).getDay() === 0);
                     const isToday = isCurrentMonthView && (d === currentDay);
                     const bgClass = isOff ? 'bg-holiday' : '';
                     const todayClass = isToday ? 'col-today' : '';
                     const displayVal = formatDisplayValue(rawVal);
 
-                    if (isOff && !displayVal) {
+                    if (isSundayOnly && !displayVal) {
                         rowHtml += `
                             <td class="${bgClass} ${todayClass}" onclick="enableHolidayCell(this, '${emp}', ${d})">
                                 <div style="color: #a16207; font-style: italic; font-size: 10px; font-weight: 600; cursor: pointer; line-height: 20px; user-select: none;">Nghỉ</div>
@@ -1653,12 +1654,18 @@ window.switchAdminSection = function(sectionId, btn) {
                     } else if (e.key === 'ArrowLeft' && currentDay > 1) {
                         if (e.target.selectionStart === 0) {
                             e.preventDefault();
-                            nextInput = document.querySelector(`.cc-input-text[data-emp="${currentEmp}"][data-day="${currentDay - 1}"]`);
+                            for (let prevD = currentDay - 1; prevD >= 1; prevD--) {
+                                const target = document.querySelector(`.cc-input-text[data-emp="${currentEmp}"][data-day="${prevD}"]`);
+                                if (target) { nextInput = target; break; }
+                            }
                         }
                     } else if (e.key === 'ArrowRight' && currentDay < daysInMonth) {
                         if (e.target.selectionEnd === e.target.value.length) {
                             e.preventDefault();
-                            nextInput = document.querySelector(`.cc-input-text[data-emp="${currentEmp}"][data-day="${currentDay + 1}"]`);
+                            for (let nextD = currentDay + 1; nextD <= daysInMonth; nextD++) {
+                                const target = document.querySelector(`.cc-input-text[data-emp="${currentEmp}"][data-day="${nextD}"]`);
+                                if (target) { nextInput = target; break; }
+                            }
                         }
                     }
                     if (nextInput) {
@@ -2656,11 +2663,12 @@ window.switchAdminSection = function(sectionId, btn) {
                     const rawVal = chamCongData[emp] ? (chamCongData[emp][d] || '') : '';
                     tongCong += calcDayValue(rawVal);
                     const isOff = isHoliday(year, month, d);
+                    const isSundayOnly = (new Date(year, month - 1, d).getDay() === 0);
                     const cell = ws.getCell(r, colIdx);
                     cell.alignment = { vertical: 'middle', horizontal: 'center' };
 
                     const displayVal = formatDisplayValue(rawVal);
-                    if (isOff && !displayVal) {
+                    if (isSundayOnly && !displayVal) {
                         cell.value = 'Nghỉ';
                         cell.font = { name: 'Times New Roman', size: 9.5, italic: true, color: { argb: 'FFA16207' } };
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF9C3' } };

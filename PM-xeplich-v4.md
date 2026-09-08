@@ -2123,4 +2123,38 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `js/app.js` (targetUrl HDSD `v=4.0.3-rev5`)
   + `PM-xeplich-v4.md` (nhật ký phát triển)
 
+### Phiên bản 4.0.3-rev6 (08/09/2026)
+- **Yêu cầu người dùng**:
+  + "có chỉnh sửa được nội dung trong thứ 7 không, ngoài ra khi ấn phím Tab thì từ thứ 6 nhảy thẳng sang thứ 2, đúng ra phải nhảy sang thứ 7 rồi mới đến thứ 2".
+- **Phân tích & Tối ưu hóa trải nghiệm**:
+  1. *Nguyên nhân nhảy cóc qua Thứ 7 khi bấm Tab*:
+     - Trước đó, khi coi cả Thứ 7 là ngày nghỉ cố định như Chủ Nhật, các ô Thứ 7 bị render thành `<div ...>Nghỉ</div>` thay vì thẻ `<input>`.
+     - Vì `<div>` không phải là phần tử có thể nhận tiêu điểm (focusable), trình duyệt khi bấm `Tab` từ Thứ 6 sẽ tự động bỏ qua Thứ 7 & Chủ Nhật để nhảy thẳng sang Thứ 2 tuần kế tiếp.
+  2. *Giải pháp tách biệt Thứ 7 và Chủ Nhật*:
+     - **Thứ 7 (T7)**:
+       + Vẫn giữ nguyên màu nền vàng nổi bật (`bg-holiday`) ở cả Tiêu đề và Ô dữ liệu để phân biệt ngày cuối tuần.
+       + Luôn hiển thị thẻ `<input type="text" class="cc-input-text">` trực tiếp để Bác sĩ có thể bấm và gõ công bất cứ lúc nào mà không cần qua nút click trung gian.
+       + Khi ấn phím `Tab` từ Thứ 6, tiêu điểm nhảy ngay vào ô Thứ 7; ấn tiếp `Tab` sẽ bỏ qua Chủ Nhật (ngày nghỉ tuyệt đối) và nhảy sang Thứ 2 của tuần sau (`T6 -> T7 -> T2`).
+       + Bổ sung CSS cho ô input Thứ 7 trên nền vàng (`#fffde7`, viền `#fde047`, khi focus đổi màu xanh `#eff6ff`) hài hòa tuyệt đối cả Light mode lẫn Dark mode.
+     - **Chủ Nhật (CN)**:
+       + Là ngày nghỉ toàn diện, mặc định hiển thị nhãn "Nghỉ" (không có thẻ input để phím `Tab` tự động lướt qua sang Thứ 2 tuần sau); khi cần đặc cách chấm công ngày Chủ Nhật thì click để mở ô nhập.
+     - **Phím Mũi Tên (ArrowLeft / ArrowRight)**:
+       + Nâng cấp thuật toán duyệt tìm ô input kế tiếp / trước đó trong hàng để tự động nhảy qua Chủ Nhật mượt mà (từ T7 bấm mũi tên phải -> nhảy sang T2; từ T2 bấm mũi tên trái -> nhảy về T7).
+  3. *Đồng bộ phiên bản hệ thống theo RULES.md*:
+     - Phiên bản chính: `4.0.3` (Footer: `Phiên bản: 4.0.3`).
+     - Revision: `v4.0.3-rev6`.
+     - Footer timestamp: `10:55 08/09/2026`.
+     - `index.html`: Cập nhật toàn bộ cache busters `?v=4.0.3-rev6`, `APP_VERSION = '4.0.3-rev6'`.
+     - `sw.js`: Đổi `CACHE_NAME = 'pmcg-v4-cache-4.0.3-rev6'`.
+     - `js/thongke.js`: Đổi `pm_cleaned_cache_ver = '4.0.3-rev6'`.
+     - `js/app.js`: Đổi targetUrl HDSD sang `v=4.0.3-rev6`.
+- **File sửa đổi**:
+  + `js/thongke.js` (Thứ 7 có input trực tiếp, điều hướng Tab/Mũi tên thông minh, `pm_cleaned_cache_ver = '4.0.3-rev6'`)
+  + `css/style.css` (Style input trên nền vàng cuối tuần cho cả Light & Dark mode)
+  + `index.html` (cache busters `?v=4.0.3-rev6`, `APP_VERSION = '4.0.3-rev6'`, footer timestamp `10:55 08/09/2026`)
+  + `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.3-rev6'`)
+  + `js/app.js` (targetUrl HDSD `v=4.0.3-rev6`)
+  + `PM-xeplich-v4.md` (nhật ký phát triển)
+
+
 

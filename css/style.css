@@ -4398,6 +4398,15 @@ transition: box-shadow 0.3s;
         #table-chamcong tbody td.bg-holiday {
             background-color: #fff9c4 !important;
         }
+        #table-chamcong tbody td.bg-holiday .cc-input-text {
+            background-color: #fffde7;
+            border-color: #fde047;
+        }
+        #table-chamcong tbody td.bg-holiday .cc-input-text:focus {
+            background-color: #eff6ff !important;
+            border-color: #2563eb !important;
+            box-shadow: 0 0 0 1px rgba(37,99,235,0.4);
+        }
         #table-chamcong th.col-today {
             background: #1d4ed8 !important;
             color: #ffffff !important;
@@ -6737,6 +6746,14 @@ transition: box-shadow 0.3s;
 [data-theme="dark"] #table-chamcong tbody td.bg-holiday {
     background-color: rgba(239, 68, 68, 0.15) !important;
     color: #fca5a5 !important;
+}
+[data-theme="dark"] #table-chamcong tbody td.bg-holiday .cc-input-text {
+    background-color: rgba(239, 68, 68, 0.1) !important;
+    border-color: rgba(239, 68, 68, 0.25) !important;
+}
+[data-theme="dark"] #table-chamcong tbody td.bg-holiday .cc-input-text:focus {
+    background-color: #1e293b !important;
+    border-color: #3b82f6 !important;
 }
 [data-theme="dark"] #table-chamcong th.col-today,
 [data-theme="dark"] #table-chamcong td.col-today {
