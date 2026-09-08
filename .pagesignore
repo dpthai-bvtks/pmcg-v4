@@ -1,0 +1,5 @@
+backend/
+backups/
+node_modules/
+.git/
+*.sql

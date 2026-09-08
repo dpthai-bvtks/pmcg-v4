@@ -1,4 +1,4 @@
-﻿# 🤖 Project Rules for AI Assistants (PM-XepLich v4 - Multi-Tenant SaaS)
+# 🤖 Project Rules for AI Assistants (PM-XepLich v4 - Multi-Tenant SaaS)
 
 *Đây là bộ quy tắc bắt buộc áp dụng cho mọi tương tác của AI trong tương lai đối với phiên bản Thương mại PM-XepLich v4.*
 
@@ -21,16 +21,22 @@
 
 ---
 
-## 3. 🔄 Đồng bộ số phiên bản, Footer Timestamp & Cache Buster
-Mỗi khi có bản nâng cấp hoặc sửa đổi code, **bắt buộc** thực hiện đồng bộ 3 vị trí:
-1. **Footer Timestamp trong `index.html`**:
-   - Cập nhật chính xác ngày giờ hiện tại tại dòng:
-     `⏰ Cập nhật lần cuối: HH:mm DD/MM/YYYY` (ví dụ: `12:55 01/09/2026`).
-2. **Cache Buster Query Strings trong `index.html`**:
-   - Tăng số revision cho các thẻ nạp script và stylesheet:
-     `js/app.js?v=4.0.0-revN`, `js/init.js?v=4.0.0-revN`, `js/scheduler-engine.js?v=4.0.0-revN`, `sw.js?v=4.0.0-revN`...
-3. **Service Worker Cache Name trong `sw.js`**:
-   - Đổi tên cache tương ứng: `const CACHE_NAME = 'pmcg-v4-cache-4.0.0-revN';` để đảm bảo trình duyệt người dùng luôn nhận bản mới nhất ngay tức thì.
+## 3. 🔄 Quy tắc Đánh số Phiên bản, Footer Timestamp & Cache Buster
+- **Quy tắc phiên bản theo ngày (Daily Version Increment):**
+  - Bản thương mại v4 bắt đầu từ `4.0.0`.
+  - **Mỗi ngày chỉ tăng tối đa 1 phiên bản** (Ví dụ: ngày hôm nay là `4.0.0` thì toàn bộ các thay đổi trong ngày hôm nay vẫn giữ nguyên `4.0.0`; sang ngày mới tiếp theo mới tăng lên `4.0.1`, ngày kế tiếp là `4.0.2`...`4.0.9` tiếp đến là `4.1.0`...)
+  - Footer hiển thị phiên bản chính trong ngày tại `#app-footer-version`: `Phiên bản: 4.0.X`.
+- **Đánh số Revision trong ngày (`revN`):**
+  - Trong cùng một ngày, mỗi khi có chỉnh sửa hoặc cập nhật code, **chỉ tăng số revision `revN`** (ví dụ: `4.0.X-rev1`, `4.0.X-rev2`, `4.0.X-rev3`...).
+  - **Bắt buộc đồng bộ 3 vị trí**:
+    1. **Footer Timestamp trong `index.html`**:
+       - Cập nhật chính xác giờ phút ngày tháng hiện tại tại dòng:
+         `⏰ Cập nhật lần cuối: HH:mm DD/MM/YYYY` (ví dụ: `09:30 04/09/2026`).
+    2. **Cache Buster Query Strings trong `index.html`**:
+       - Cập nhật `?v=4.0.X-revN` cho toàn bộ các thẻ script và link CSS:
+         `css/style.css?v=4.0.X-revN`, `css/mobile.css?v=4.0.X-revN`, `js/app.js?v=4.0.X-revN`, `js/init.js?v=4.0.X-revN`, `js/scheduler-engine.js?v=4.0.X-revN`... và biến `const APP_VERSION = '4.0.X-revN';`.
+    3. **Service Worker Cache Name trong `sw.js`**:
+       - Đổi tên cache tương ứng: `const CACHE_NAME = 'pmcg-v4-cache-4.0.X-revN';` để trình duyệt người dùng luôn hủy cache cũ và nhận bản mới nhất ngay tức thì.
 
 ---
 
