@@ -1972,3 +1972,41 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `js/app.js` (targetUrl HDSD v4.0.3-rev1)
   + `js/thongke.js` (pm_cleaned_cache_ver 4.0.3-rev1)
   + `PM-xeplich-v4.md` (nhật ký phát triển)
+
+---
+
+### Khắc Phục Lỗi TypeError cloneNode Trong SortableJS Khi Kéo Thả (08/09/2026 - v4.0.3-rev2)
+
+- **Yêu cầu của người dùng**:
+  + Báo lỗi console:
+    ```
+    app.js?v=4.0.3-rev1:723 JS ERROR: Uncaught TypeError: Cannot read properties of null (reading 'cloneNode') at https://xeplichthuthuat.io.vn/js/sortable.min.js?v=3.2.6 line 2 TypeError: Cannot read properties of null (reading 'cloneNode')
+        at _ (sortable.min.js?v=3.2.6:2:6677)
+        at Ft._onDragStart (sortable.min.js?v=3.2.6:2:22963)
+    ```
+- **Phân tích nguyên nhân & Giải pháp**:
+  1. *Nguyên nhân cốt lõi*:
+     - Trong `js/sortable.min.js`, hàm `_onDragStart` gọi `et = _(V)` với `V` là element đang được kéo (`Ft.dragged`). Khi native HTML5 dragstart bắn ra ngoài luồng dự kiến (ví dụ click nhanh, bôi đen text, hoặc sau khi `_nulling` đã reset `V = null`), biến `V` là `null`. Hàm `_(t)` cố gắng gọi `t.cloneNode(!0)` trên giá trị `null`, sinh ra lỗi `TypeError: Cannot read properties of null (reading 'cloneNode')`.
+     - Đồng thời, thẻ nạp script `sortable.min.js` trong `index.html` trước đó đang gắn cache buster cũ `?v=3.2.6`, khiến trình duyệt và Service Worker tiếp tục lưu trữ và thực thi bản thư viện cũ chưa có cơ chế phòng thủ (defense guards).
+  2. *Giải pháp thực hiện*:
+     - **Vá an toàn thư viện `js/sortable.min.js`**:
+       + Bổ sung guard ngay đầu hàm `function _(t)`: `if(!t)return document.createElement("div");`
+       + Bổ sung guard ngay đầu phương thức `_onDragStart: function(t, e)`: `if(!V)return;`
+     - **Tối ưu cấu hình SortableJS trong `js/thongke.js`**:
+       + Thêm `draggable: 'tr'` để Sortable chỉ bắt các hàng `<tr>`, không bắt nhầm các container hay thẻ bọc.
+       + Thêm `filter: 'button, input, select, a'` và `preventOnFilter: false` để các thao tác bấm nút thao tác hoặc chỉnh sửa input không kích hoạt drag.
+     - **Đồng bộ toàn diện phiên bản hệ thống theo RULES.md**:
+       + Phiên bản chính: `4.0.3` (Footer: `Phiên bản: 4.0.3`).
+       + Revision: `v4.0.3-rev2`.
+       + Footer timestamp: `07:35 08/09/2026`.
+       + `index.html`: Cập nhật `<script src="js/sortable.min.js?v=4.0.3-rev2"></script>`, đồng bộ toàn bộ `?v=4.0.3-rev2` và `APP_VERSION = '4.0.3-rev2'`.
+       + `sw.js`: Nâng `CACHE_NAME = 'pmcg-v4-cache-4.0.3-rev2'` để ép Service Worker làm mới hoàn toàn.
+       + `js/app.js`: Cập nhật `targetUrl` modal HDSD sang `v=4.0.3-rev2`.
+       + `js/thongke.js`: Cập nhật `pm_cleaned_cache_ver = '4.0.3-rev2'`.
+- **File sửa đổi**:
+  + `js/sortable.min.js` (thêm defensive checks phòng thủ chống null cloneNode)
+  + `js/thongke.js` (draggable 'tr', filter button/input/select, pm_cleaned_cache_ver 4.0.3-rev2)
+  + `index.html` (script sortable.min.js?v=4.0.3-rev2, footer timestamp 07:35 08/09/2026, cache busters v4.0.3-rev2)
+  + `sw.js` (CACHE_NAME v4.0.3-rev2)
+  + `js/app.js` (targetUrl HDSD v4.0.3-rev2)
+  + `PM-xeplich-v4.md` (nhật ký phát triển)

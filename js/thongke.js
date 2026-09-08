@@ -53,13 +53,13 @@ var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi
 
         // Tự động dọn dẹp cache cũ bị ô nhiễm từ các phiên bản trước
         try {
-            if (typeof localStorage !== 'undefined' && localStorage.getItem('pm_cleaned_cache_ver') !== '4.0.3-rev1') {
+            if (typeof localStorage !== 'undefined' && localStorage.getItem('pm_cleaned_cache_ver') !== '4.0.3-rev2') {
                 Object.keys(localStorage).forEach(k => {
                     if (k.startsWith('pm_cache_cc_') || k.startsWith('pm_cache_tk_')) {
                         localStorage.removeItem(k);
                     }
                 });
-                localStorage.setItem('pm_cleaned_cache_ver', '4.0.3-rev1');
+                localStorage.setItem('pm_cleaned_cache_ver', '4.0.3-rev2');
             }
         } catch(e) {}
 
@@ -603,9 +603,12 @@ function renderAdminChamCongTable() {
             }
             ccTbody._sortableInstance = new Sortable(ccTbody, {
                 handle: '.drag-handle',
+                draggable: 'tr',
                 animation: 150,
                 ghostClass: 'dragging-row',
                 chosenClass: 'drag-over-row',
+                filter: 'button, input, select, a',
+                preventOnFilter: false,
                 onEnd: function(evt) {
                     if (evt.oldIndex !== evt.newIndex && evt.oldIndex != null && evt.newIndex != null) {
                         // Đọc thứ tự thực tế chính xác 100% từ các hàng DOM vừa được SortableJS kéo thả
