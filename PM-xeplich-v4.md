@@ -2273,3 +2273,27 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `index.html` (cache buster `v=4.0.3-rev11`, `APP_VERSION = '4.0.3-rev11'`)
   + `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.3-rev11'`)
   + `PM-xeplich-v4.md`
+---
+
+### [v4.0.3-rev12] - 08/09/2026: Loại Bỏ 100% Hardcode Tên Riêng - Thiết Kế Thuần Túy Dynamic Theo Vai Trò & Cài Đặt Của Admin
+
+- **Yêu cầu & Định hướng kiến trúc của người dùng**:
+  + "Sau này có thể đổi tên, thêm bớt nhân sự, nếu gán cứng các kỹ năng vào tên như thế thì không hay lắm, chỉ cần biết nhân sự có vai trò là Bác sĩ/Kỹ thuật viên thì sẽ được làm chính, còn lại làm chính thủ thuật nào thì do admin cài đặt."
+- **Khắc phục triệt để**:
+  1. **Xóa bỏ 100% mọi logic nhận diện dựa vào tên riêng**:
+     - Loại bỏ hoàn toàn regex bắt tên bác sĩ cũ `/(đạt|hoa|thảo|hằng|thái|khuyến)/i` trong lịch Thứ 7.
+     - Loại bỏ regex bắt tên phụ `/^phụ\b|^phu\s*\d+/i` trong engine.
+     - Nhân sự đổi tên, tuyển mới, thêm bớt thoải mái — hệ thống không bao giờ phụ thuộc vào tên riêng.
+  2. **Quy tắc phân quyền vai trò thuần túy (Role-based)**:
+     - Dựa 100% vào trường **Vai trò** (`vaiTro` / `role`) do Admin chọn trong Tab Nhân Sự:
+       + `Bác sĩ` hoặc `Kỹ thuật viên` -> Được xếp làm **NV Chính** (và có thể phụ nếu cần).
+       + `Điều dưỡng` -> Tuyệt đối **chỉ được làm NV Phụ**, không bao giờ làm NV Chính.
+  3. **Quy tắc kỹ năng thuần túy do Admin cài đặt (Skill-based)**:
+     - Nhân sự được làm thủ thuật nào là **hoàn toàn do Admin cài đặt** (tích chọn các ô checkbox thủ thuật trong Tab Nhân Sự).
+     - Không tự động gán hay đoán mò kỹ năng cho bất kỳ ai. Admin tích chọn thủ thuật nào thì nhân sự chỉ có kỹ năng làm thủ thuật đó.
+- **File sửa đổi**:
+  + `js/scheduler-engine.js`
+  + `js/cp-solver.js`
+  + `index.html` (cache buster `v=4.0.3-rev12`, `APP_VERSION = '4.0.3-rev12'`)
+  + `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.3-rev12'`)
+  + `PM-xeplich-v4.md`

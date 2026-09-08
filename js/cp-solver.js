@@ -174,7 +174,7 @@ window.MedicalCPSolver = (function () {
           const name = s[0];
           const roleRaw = s[1] || '';
           const isDoc = /bác sĩ|bac si|^bs\b/i.test(roleRaw) || /^bs\b/i.test(name);
-          const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly|\bphụ\b/i.test(roleRaw) || /^phụ\b|^phu\s*\d+/i.test(name);
+          const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(roleRaw);
           if (isNurse || (!isDoc && !/kỹ thuật viên|ky thuat vien|^ktv\b/i.test(roleRaw) && roleRaw !== '')) return false;
 
           const skillsList = s[2] ? String(s[2]).toLowerCase().split(",").map(x => x.trim()).filter(Boolean) : [];
