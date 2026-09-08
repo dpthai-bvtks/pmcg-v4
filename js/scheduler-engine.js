@@ -182,7 +182,8 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
     const tenNhanVien = r[0];
     const roleRaw = r[1] || '';
     const isDoc = /bác sĩ|bac si|^bs\b/i.test(roleRaw) || /^bs\b/i.test(tenNhanVien);
-    const normalizedRole = isDoc ? 'Bác sĩ' : (/điều dưỡng|dieu duong|^đd\b|^dd\b/i.test(roleRaw) ? 'Điều dưỡng' : 'Kỹ thuật viên');
+    const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly|\bphụ\b/i.test(roleRaw) || /^phụ\b|^phu\s*\d+/i.test(tenNhanVien);
+    const normalizedRole = isDoc ? 'Bác sĩ' : (isNurse ? 'Điều dưỡng' : 'Kỹ thuật viên');
 
     staffTimeline[tenNhanVien] = [];
     staffRole[tenNhanVien] = normalizedRole;
@@ -205,7 +206,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       if (hasAll) qualified = true;
       else if (hasYhct && isProcYhct) qualified = true;
       else if (hasPhcn && isProcPhcn) qualified = true;
-      else if (isDoc && (hasAll || !r[2] || isProcYhct)) qualified = true;
+      else if (isDoc && isProcYhct) qualified = true;
 
       if (qualified) {
         if (!staffBySkill[procKey]) staffBySkill[procKey] = [];
@@ -521,7 +522,12 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         
         if (!isSupplemental && !isBackfill && staffRole[tenNV] === 'Kỹ thuật viên' && (staffMyRooms[tenNV] || []).length > 0 && !staffMyRooms[tenNV].includes(targetRoom)) return;
 
-        if (staffRole[tenNV]?.toLowerCase() !== 'điều dưỡng') candidatesMain.push(tenNV);
+        const role = (staffRole[tenNV] || '').toLowerCase();
+        const isDoc = /bác sĩ|bac si|^bs\b/i.test(role) || /^bs\b/i.test(tenNV);
+        const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly|\bphụ\b/i.test(role) || /^phụ\b|^phu\s*\d+/i.test(tenNV);
+        const isKtv = !isDoc && !isNurse && (/kỹ thuật viên|ky thuat vien|^ktv\b/i.test(role) || staffRole[tenNV] === 'Kỹ thuật viên');
+
+        if ((isDoc || isKtv) && !isNurse) candidatesMain.push(tenNV);
         else candidatesSub.push(tenNV);
       });
       if (candidatesMain.length === 0) continue;
@@ -895,10 +901,12 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
           if (pat.leave !== 9999 && timeStart + tgCanThiet > pat.leave) continue;
           if (pat.busy.some(b => is_overlap(timeStart, timeStart + tgCanThiet, b[0], b[1]))) continue;
           let ktvThayThe = null;
-          // Loại cả Bác sĩ lẫn Điều dưỡng - chỉ KTV mới được làm NV Chính thay thế
+          // Chỉ KTV có kỹ năng phù hợp mới được làm NV Chính thay thế (loại bỏ cả Bác sĩ lẫn Điều dưỡng/Phụ)
           const dsKTV = (staffBySkill[(caDe.DICHVU || "").toLowerCase()] || []).filter(k => {
             const role = (staffRole[k] || '').toLowerCase();
-            return !/bác sĩ|bac si|^bs\b/i.test(role) && !/điều dưỡng|dieu duong|^đd\b|^dd\b/i.test(role);
+            const isDoc = /bác sĩ|bac si|^bs\b/i.test(role) || /^bs\b/i.test(k);
+            const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly|\bphụ\b/i.test(role) || /^phụ\b|^phu\s*\d+/i.test(k);
+            return !isDoc && !isNurse;
           });
           for (const ktv of dsKTV) { if (!(staffTimeline[ktv] || []).some(slot => is_overlap(timeStart, timeEnd, slot[0], slot[1]))) { ktvThayThe = ktv; break; } }
           if (ktvThayThe) {
@@ -1085,7 +1093,17 @@ function getSafeCache() {
     const staffList = cache.staff || [];
     staffList.forEach(s => {
       const ten = s.ten || s.name || s[1] || "";
-      const vaiTro = s.vaiTro || s.role || s[2] || "KTV";
+      const rawVaiTro = s.vaiTro || s.role || s[2] || "";
+      let vaiTro = "KTV";
+      if (/bác sĩ|bac si|^bs\b/i.test(rawVaiTro) || /^bs\b/i.test(ten)) {
+        vaiTro = "Bác sĩ";
+      } else if (/điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly|\bphụ\b/i.test(rawVaiTro) || /^phụ\b|^phu\s*\d+/i.test(ten)) {
+        vaiTro = "Điều dưỡng";
+      } else if (/kỹ thuật viên|ky thuat vien|^ktv\b/i.test(rawVaiTro)) {
+        vaiTro = "KTV";
+      } else {
+        vaiTro = rawVaiTro || "KTV";
+      }
       const trangThai = s.trangThai || s[3] || "Đi làm";
       const thayThe = s.nguoiThayThe || s[7] || "Không";
       if (thayThe && thayThe !== "Không" && ten) database.replacementMap[ten] = thayThe;
@@ -1553,13 +1571,16 @@ function getSafeCache() {
       });
 
       const isDoctorByName = /^(bs\b|bác sĩ|bac si)/i.test(tenNhanVien) || /\b(đạt|hoa|thảo|hằng|thái|khuyến)\b/i.test(normTen);
+      const isNurseByName = /^phụ\b|^phu\s*\d+/i.test(tenNhanVien) || /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly|\bphụ\b/i.test(tenNhanVien);
       let role = "Kỹ thuật viên";
       if (staffRow) {
         const rawRole = Array.isArray(staffRow) ? (staffRow[2] || "") : (staffRow.vaiTro || staffRow.role || "");
         if (/bác sĩ|bac si|^bs\b/i.test(rawRole) || isDoctorByName) role = "Bác sĩ";
-        else if (/điều dưỡng|dieu duong|^đd\b|^dd\b/i.test(rawRole)) role = "Điều dưỡng";
+        else if (/điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly|\bphụ\b/i.test(rawRole) || isNurseByName) role = "Điều dưỡng";
       } else if (isDoctorByName) {
         role = "Bác sĩ";
+      } else if (isNurseByName) {
+        role = "Điều dưỡng";
       }
 
       // Build shifts
@@ -1608,8 +1629,10 @@ function getSafeCache() {
       if (skillSet.size === 0) {
         if (role === "Bác sĩ") {
           allYhctProcs.forEach(p => skillSet.add(p.toLowerCase()));
-          allPhcnProcs.forEach(p => skillSet.add(p.toLowerCase()));
-        } else {
+          if (/cả hai|ca hai|toàn bộ|tat ca|all/i.test(quyen)) {
+            allPhcnProcs.forEach(p => skillSet.add(p.toLowerCase()));
+          }
+        } else if (role === "Kỹ thuật viên") {
           allProcs.forEach(p => skillSet.add(p.toLowerCase()));
         }
       }
@@ -1788,10 +1811,31 @@ const UnscheduledDiagnosticEngine = (function () {
     if (db && db.rawStaff) {
       db.rawStaff.forEach(r => {
         const name = r[0];
-        const skills = r[2] ? String(r[2]).toLowerCase().split(",").map(x => x.trim()) : [];
-        if (skills.includes(ttLower) || skills.includes((info[8] || "").toLowerCase()) || skills.includes((info[9] || "").toLowerCase())) {
-          qualifiedStaff.push(name);
+        const roleRaw = r[1] || '';
+        const isDoc = /bác sĩ|bac si|^bs\b/i.test(roleRaw) || /^bs\b/i.test(name);
+        const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly|\bphụ\b/i.test(roleRaw) || /^phụ\b|^phu\s*\d+/i.test(name);
+        if (isNurse) return;
+        if (!isDoc && !/kỹ thuật viên|ky thuat vien|^ktv\b/i.test(roleRaw) && roleRaw !== '') return;
+
+        const skillsStr = (r[2] || '').toLowerCase();
+        const hasAll = /cả hai|ca hai|toàn bộ|tat ca|all/i.test(skillsStr);
+        const hasYhct = /yhct/i.test(skillsStr);
+        const hasPhcn = /phcn/i.test(skillsStr);
+        const isProcYhct = info[3] === 'YHCT';
+        const isProcPhcn = info[3] === 'PHCN';
+
+        let ok = false;
+        if (hasAll) ok = true;
+        else if (hasYhct && isProcYhct) ok = true;
+        else if (hasPhcn && isProcPhcn) ok = true;
+        else if (isDoc && isProcYhct) ok = true;
+        else {
+          const skills = r[2] ? String(r[2]).toLowerCase().split(",").map(x => x.trim()) : [];
+          if (skills.includes(ttLower) || skills.includes((info[8] || "").toLowerCase()) || skills.includes((info[9] || "").toLowerCase())) {
+            ok = true;
+          }
         }
+        if (ok) qualifiedStaff.push(name);
       });
     }
 
@@ -1871,7 +1915,11 @@ const UnscheduledDiagnosticEngine = (function () {
       causeDetail = `Bệnh nhân ${bnName} có nhiều thủ thuật dài kẹp sát nhau trong ngày, chiếm hết khung giờ rảnh để làm thêm [${tt}].`;
     }
 
-    const targetStaff = qualifiedStaff[0] || (db.roomStaff && db.roomStaff[room] && db.roomStaff[room][0]) || "KTV Phụ Trách";
+    const targetStaff = qualifiedStaff[0] || (db.roomStaff && db.roomStaff[room] && db.roomStaff[room].find(s => {
+      const r = (db.rawStaff || []).find(st => st[0] === s);
+      const role = r ? r[1] : '';
+      return !/điều dưỡng|dieu duong|^đd\b|^dd\b|\bphụ\b/i.test(role) && !/^phụ\b|^phu\s*\d+/i.test(s);
+    })) || "KTV Phụ Trách";
     const advices = [];
 
     const overTimeStart = 675; // 11:15

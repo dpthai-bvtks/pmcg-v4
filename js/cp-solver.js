@@ -89,6 +89,10 @@ window.MedicalCPSolver = (function () {
 
     // 3. Ràng buộc máy móc không trùng
     if (machine && machine !== 'Thủ công') {
+      const assignedRoom = db.machineToRoom?.[machine];
+      if (assignedRoom && patRoom && assignedRoom !== patRoom) {
+        return false;
+      }
       for (const item of currentSched) {
         const iMay = item.may || item.MAY;
         if (iMay === machine) {
@@ -153,8 +157,10 @@ window.MedicalCPSolver = (function () {
       const tgNhanVien = parseInt(ttInfo[2]) || 5;
 
       // Danh sách máy khả dụng
-      const machineCandidates = (loaiMay !== "Thủ công" && db.machineTypes && db.machineTypes[loaiMay])
-        ? db.machineTypes[loaiMay]
+      const loaiMayKey = loaiMay.toLowerCase();
+      const roomSpecific = (db.roomMachines?.[patRoom]?.[loaiMayKey]) || (db.roomMachines?.[patRoom]?.[loaiMay]) || [];
+      const machineCandidates = (loaiMay !== "Thủ công")
+        ? (roomSpecific.length > 0 ? roomSpecific : (db.machineTypes && db.machineTypes[loaiMay]) || [])
         : ["Thủ công"];
 
       // Danh sách giường khả dụng
@@ -162,10 +168,27 @@ window.MedicalCPSolver = (function () {
         ? db.roomBeds[patRoom]
         : ["Giường 1", "Giường 2", "Giường 3", "Giường 4", "Giường 5"];
 
-      // Danh sách nhân viên đủ kỹ năng
+      // Danh sách nhân viên đủ kỹ năng (chỉ BS hoặc KTV có kỹ năng phù hợp, loại bỏ Điều dưỡng/Phụ)
       const staffCandidates = (db.rawStaff || [])
         .filter(s => {
+          const name = s[0];
+          const roleRaw = s[1] || '';
+          const isDoc = /bác sĩ|bac si|^bs\b/i.test(roleRaw) || /^bs\b/i.test(name);
+          const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly|\bphụ\b/i.test(roleRaw) || /^phụ\b|^phu\s*\d+/i.test(name);
+          if (isNurse || (!isDoc && !/kỹ thuật viên|ky thuat vien|^ktv\b/i.test(roleRaw) && roleRaw !== '')) return false;
+
           const skills = (s[2] || '').toLowerCase();
+          const hasAll = /cả hai|ca hai|toàn bộ|tat ca|all/i.test(skills);
+          const hasYhct = /yhct/i.test(skills);
+          const hasPhcn = /phcn/i.test(skills);
+          const isProcYhct = ttInfo[3] === 'YHCT';
+          const isProcPhcn = ttInfo[3] === 'PHCN';
+
+          if (hasAll) return true;
+          if (hasYhct && isProcYhct) return true;
+          if (hasPhcn && isProcPhcn) return true;
+          if (isDoc && isProcYhct) return true;
+
           return skills.includes(tenTT.toLowerCase()) || skills.includes((ttInfo[9] || '').toLowerCase());
         })
         .map(s => s[0]);

@@ -2196,6 +2196,53 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `index.html` (block SW Registration viết lại hoàn toàn)
   + `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.3-rev8'`)
   + `PM-xeplich-v4.md`
+---
 
+### [v4.0.3-rev9] - 08/09/2026: Khắc Phục Lỗi Đếm Lệch Số Lượng Thủ Thuật Giữa Dashboard và Bác Sĩ
 
+- **Yêu cầu của người dùng**:
+  + Phần đếm số lượng với hệ YHCT là 70 thủ thuật nhưng bên bác sĩ chỉ đếm được 69 ca.
+- **Phân tích nguyên nhân**:
+  + Tại `js/app.js` hàm `renderCharts`: Khi lịch có ca dùng placeholder slot ảo (`Phụ 3`), code cũ bỏ qua không đếm nhân sự, dẫn đến tổng số ca của nhân viên (69) bị lệch 1 so với tổng thủ thuật YHCT (70).
+- **Giải pháp xử lý**:
+  + Ghi các ca có placeholder slot ảo vào nhóm `'(Chưa phân công)'` trong `staffLoadKTV` để tổng tải trọng khớp tuyệt đối với số lượng thủ thuật.
+- **File sửa đổi**: `js/app.js`, `sw.js`.
 
+---
+
+### [v4.0.3-rev10] - 08/09/2026: Chuẩn Hóa Toàn Diện Quy Tắc NV Chính: Chỉ BS / KTV Có Kỹ Năng Phù Hợp Mới Được Làm NV Chính
+
+- **Yêu cầu của người dùng**:
+  + "Phải là nhân sự có kỹ năng phù hợp, BS, KTV mới được làm NV chính."
+  + Điều dưỡng (như Phụ 3) với vai trò điều dưỡng/hỗ trợ tuyệt đối không được làm NV chính, chỉ được làm NV phụ.
+- **Phân tích nguyên nhân sâu xa**:
+  1. **Nhận diện vai trò lỏng lẻo**:
+     - Các nhân sự có tên dạng `"Phụ 1..8"` hoặc có vai trò là `"Phụ"`, `"Trợ lý"`, `"Hộ lý"`, `"Y tá"` bị fallback về mặc định `'Kỹ thuật viên'` tại `scheduler-engine.js` và `buildBaseDatabase`.
+  2. **Điều kiện mở rộng kỹ năng Bác sĩ quá rộng (`!r[2]`)**:
+     - Dòng 208 cũ: `isDoc && (hasAll || !r[2] || isProcYhct)`. Khi bác sĩ không có chuỗi kỹ năng (`!r[2]` = true), bác sĩ bị tự động cấp kỹ năng cho CẢ CÁC THỦ THUẬT PHCN!
+  3. **Lọc ứng viên `candidatesMain` chỉ loại `!== 'điều dưỡng'`**:
+     - Nếu vai trò chưa chuẩn hóa (hoặc role lọt fallback), nhân sự hỗ trợ bị lọt vào `candidatesMain` và được gán làm `NV CHÍNH`.
+  4. **Fallback Backfill và CP-SAT Solver**:
+     - Thuật toán cứu ca rơi và solver CP-SAT chưa kiểm tra chặt chẽ vai trò và kỹ năng, có thể chọn nhân sự không phải KTV/BS hoặc thiếu kỹ năng thủ thuật đó.
+  5. **Bộ chẩn đoán kê toa (`UnscheduledDiagnosticEngine`)**:
+     - Danh sách `qualifiedStaff` và `targetStaff` chưa loại trừ Điều dưỡng/Phụ tá khi gợi ý điều chỉnh lịch.
+- **Giải pháp triển khai**:
+  1. **Chuẩn hóa nhận diện Điều dưỡng / Nhân sự hỗ trợ**:
+     - Regex bắt triệt để: `/điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly|\bphụ\b/i` kèm tên `/^phụ\b|^phu\s*\d+/i`.
+  2. **Quy tắc NV Chính tại mọi vị trí**:
+     - `candidatesMain`: Chỉ nhân sự có `(isDoc || isKtv) && !isNurse` MỚI ĐƯỢC vào danh sách ứng viên NV Chính.
+     - Điều dưỡng / Phụ tá luôn đi vào `candidatesSub` (chỉ làm NV Phụ).
+  3. **Kỹ năng phù hợp cho Bác sĩ & KTV**:
+     - Bác sĩ chỉ tự động có kỹ năng với hệ **YHCT** (`isDoc && isProcYhct`). Với hệ PHCN, Bác sĩ **BẮT BUỘC** phải có quyền "Cả hai", "PHCN", hoặc có tên thủ thuật PHCN cụ thể trong danh sách kỹ năng mới được xếp làm NV Chính.
+     - KTV bắt buộc phải có kỹ năng thủ thuật đó (qua chuỗi kỹ năng hoặc hệ tương ứng).
+  4. **Đồng bộ CP-SAT Solver & Diagnostic Engine**:
+     - `cp-solver.js` (`staffCandidates`): Lọc chỉ lấy BS/KTV có kỹ năng phù hợp, loại 100% Điều dưỡng/Phụ tá.
+     - `UnscheduledDiagnosticEngine`: Loại Điều dưỡng khỏi `qualifiedStaff` và fallback `targetStaff`.
+  5. **Đồng bộ lịch Thứ 7 (`runSaturdayScheduling`)**:
+     - Tự động nhận diện vai trò Điều dưỡng cho tên `Phụ 1..8`, không tự động gán `allProcs` cho Điều dưỡng khi `skillSet` rỗng.
+- **File sửa đổi**:
+  + `js/scheduler-engine.js`
+  + `js/cp-solver.js`
+  + `index.html` (cache buster `v=4.0.3-rev10`, `APP_VERSION = '4.0.3-rev10'`)
+  + `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.3-rev10'`)
+  + `PM-xeplich-v4.md`
