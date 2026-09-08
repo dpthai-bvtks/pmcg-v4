@@ -179,13 +179,49 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
   const staffRole = {}, staffLastProc = {}, staffMyRooms = {}, staffSetupReady = {}, staffCurrentRoom = {};
 
   db.rawStaff.forEach(r => {
-    const tenNhanVien = r[0], kyNangList = r[2] ? String(r[2]).split(",").map(x => x.trim()) : [];
-    staffTimeline[tenNhanVien] = []; staffRole[tenNhanVien] = r[1]; staffCurrentRoom[tenNhanVien] = null;
+    const tenNhanVien = r[0];
+    const roleRaw = r[1] || '';
+    const isDoc = /bác sĩ|bac si|^bs\b/i.test(roleRaw) || /^bs\b/i.test(tenNhanVien);
+    const normalizedRole = isDoc ? 'Bác sĩ' : (/điều dưỡng|dieu duong|^đd\b|^dd\b/i.test(roleRaw) ? 'Điều dưỡng' : 'Kỹ thuật viên');
+
+    staffTimeline[tenNhanVien] = [];
+    staffRole[tenNhanVien] = normalizedRole;
+    staffCurrentRoom[tenNhanVien] = null;
+
+    const kyNangList = r[2] ? String(r[2]).split(",").map(x => x.trim()).filter(Boolean) : [];
+    const rawSkillsStr = String(r[2] || '').toLowerCase();
+    const hasAll = /cả hai|ca hai|toàn bộ|tat ca|all/i.test(rawSkillsStr);
+    const hasYhct = /yhct/i.test(rawSkillsStr);
+    const hasPhcn = /phcn/i.test(rawSkillsStr);
+
+    // Mở rộng kỹ năng cho Bác sĩ hoặc nhân sự có quyền/kỹ năng generic
+    Object.keys(thuThuatInfo).forEach(procKey => {
+      const pInfo = thuThuatInfo[procKey];
+      if (!pInfo) return;
+      const isProcYhct = pInfo[3] === 'YHCT';
+      const isProcPhcn = pInfo[3] === 'PHCN';
+
+      let qualified = false;
+      if (hasAll) qualified = true;
+      else if (hasYhct && isProcYhct) qualified = true;
+      else if (hasPhcn && isProcPhcn) qualified = true;
+      else if (isDoc && (hasAll || !r[2] || isProcYhct)) qualified = true;
+
+      if (qualified) {
+        if (!staffBySkill[procKey]) staffBySkill[procKey] = [];
+        if (!staffBySkill[procKey].includes(tenNhanVien)) staffBySkill[procKey].push(tenNhanVien);
+        if (pInfo[9]) {
+          const vt = pInfo[9].trim().toLowerCase();
+          if (!staffBySkill[vt]) staffBySkill[vt] = [];
+          if (!staffBySkill[vt].includes(tenNhanVien)) staffBySkill[vt].push(tenNhanVien);
+        }
+      }
+    });
 
     kyNangList.forEach(kyNang => {
       const kyNangLower = kyNang.toLowerCase();
       if (!staffBySkill[kyNangLower]) staffBySkill[kyNangLower] = [];
-      staffBySkill[kyNangLower].push(tenNhanVien);
+      if (!staffBySkill[kyNangLower].includes(tenNhanVien)) staffBySkill[kyNangLower].push(tenNhanVien);
       if (thuThuatInfo[kyNangLower]?.length > 9 && thuThuatInfo[kyNangLower][9]) {
         const vietTat = thuThuatInfo[kyNangLower][9].trim().toLowerCase();
         if (!staffBySkill[vietTat]) staffBySkill[vietTat] = [];
@@ -497,13 +533,27 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         if (crA !== crB) return crA - crB;
         const lpA = staffLastProc[a] === tenThuThuat ? 0 : 1, lpB = staffLastProc[b] === tenThuThuat ? 0 : 1;
         if (lpA !== lpB) return lpA - lpB;
-        const roleA = (info[3] === "PHCN" && staffRole[a] === 'Kỹ thuật viên') || (info[3] === "YHCT" && staffRole[a] === 'Bác sĩ') ? 0 : 1;
-        const roleB = (info[3] === "PHCN" && staffRole[b] === 'Kỹ thuật viên') || (info[3] === "YHCT" && staffRole[b] === 'Bác sĩ') ? 0 : 1;
+        const isDocA = /bác sĩ|bac si|^bs\b/i.test(staffRole[a] || '');
+        const isDocB = /bác sĩ|bac si|^bs\b/i.test(staffRole[b] || '');
+        const isKtvA = /kỹ thuật viên|ky thuat vien|^ktv\b/i.test(staffRole[a] || '');
+        const isKtvB = /kỹ thuật viên|ky thuat vien|^ktv\b/i.test(staffRole[b] || '');
+
+        const roleA = (info[3] === "PHCN" && isKtvA) || (info[3] === "YHCT" && isDocA) ? 0 : 1;
+        const roleB = (info[3] === "PHCN" && isKtvB) || (info[3] === "YHCT" && isDocB) ? 0 : 1;
         if (roleA !== roleB) return roleA - roleB;
         return (staffLoad[a]?.used_mins || 0) - (staffLoad[b]?.used_mins || 0);
       });
 
-      const possibleMachines = loaiMay === "Thủ công" ? [loaiMay] : (machineTypes[loaiMay] || []);
+      let possibleMachines = [];
+      const loaiMayKey = loaiMay.toLowerCase();
+      const roomSpecific = (db.roomMachines?.[targetRoom]?.[loaiMayKey]) || (db.roomMachines?.[targetRoom]?.[loaiMay]) || [];
+      if (loaiMay === 'Thủ công') {
+        possibleMachines = [loaiMay];
+      } else if (roomSpecific.length > 0) {
+        possibleMachines = roomSpecific;
+      } else {
+        possibleMachines = machineTypes[loaiMay] || [];
+      }
       const availableMachines = scenario === 3 ? possibleMachines.filter(m => !reservedMachines.has(m)) : possibleMachines;
       const finalMachines = availableMachines.length === 0 ? possibleMachines : availableMachines;
       const selectedMachine = finalMachines.find(m => !(machineTimeline[m] || []).some(slot => is_overlap(tNow, gioKetThuc, slot[0], slot[1])));
@@ -624,7 +674,9 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
       let hasMachine = true;
       if (loaiMay !== "Thủ công") {
-        const macList = machineTypes[loaiMay];
+        const loaiMayKey = loaiMay.toLowerCase();
+        const roomSpecific = (db.roomMachines?.[patient.room]?.[loaiMayKey]) || (db.roomMachines?.[patient.room]?.[loaiMay]) || [];
+        const macList = roomSpecific.length > 0 ? roomSpecific : (machineTypes[loaiMay] || []);
         if (macList && macList.length > 0) {
           hasMachine = false;
           for (let m = 0; m < macList.length; m++) {
@@ -833,7 +885,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
     if (!saved && pat) {
       const minStart = Math.max(pat.arrive || startOfDay, startOfDay);
-      const dsBacSi = (staffBySkill[tenTT.toLowerCase()] || []).filter(s => staffRole[s] === 'Bác sĩ');
+      const dsBacSi = (staffBySkill[tenTT.toLowerCase()] || []).filter(s => /bác sĩ|bac si|^bs\b/i.test(staffRole[s] || ''));
       for (const bacSi of dsBacSi) {
         if (saved) break;
         const caDePHCN = (resultsByStaff.get(bacSi) || []).filter(r => (thuThuatInfo[(r.DICHVU || "").toLowerCase()] || ["", "", "", "PHCN"])[3] === "PHCN");
@@ -843,7 +895,11 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
           if (pat.leave !== 9999 && timeStart + tgCanThiet > pat.leave) continue;
           if (pat.busy.some(b => is_overlap(timeStart, timeStart + tgCanThiet, b[0], b[1]))) continue;
           let ktvThayThe = null;
-          const dsKTV = (staffBySkill[(caDe.DICHVU || "").toLowerCase()] || []).filter(k => staffRole[k] === 'Kỹ thuật viên');
+          // Loại cả Bác sĩ lẫn Điều dưỡng - chỉ KTV mới được làm NV Chính thay thế
+          const dsKTV = (staffBySkill[(caDe.DICHVU || "").toLowerCase()] || []).filter(k => {
+            const role = (staffRole[k] || '').toLowerCase();
+            return !/bác sĩ|bac si|^bs\b/i.test(role) && !/điều dưỡng|dieu duong|^đd\b|^dd\b/i.test(role);
+          });
           for (const ktv of dsKTV) { if (!(staffTimeline[ktv] || []).some(slot => is_overlap(timeStart, timeEnd, slot[0], slot[1]))) { ktvThayThe = ktv; break; } }
           if (ktvThayThe) {
             caDe["NV CHÍNH"] = ktvThayThe;
@@ -972,7 +1028,10 @@ function getSafeCache() {
     let cache = (typeof dataCache !== 'undefined' && dataCache) ? dataCache : (window.dataCache || null);
     if (!cache || !cache.staff || !cache.staff.length) {
       try {
-        const str = localStorage.getItem('times_bootstrap_cache');
+        const cacheKey = typeof window !== 'undefined' && typeof window.getBootstrapCacheKey === 'function'
+          ? window.getBootstrapCacheKey()
+          : ('times_bootstrap_cache_' + (localStorage.getItem('pm_unit_code') || 'bvtks-cs2'));
+        const str = localStorage.getItem(cacheKey) || localStorage.getItem('times_bootstrap_cache');
         if (str) {
           const parsed = JSON.parse(str);
           if (parsed) {
@@ -995,6 +1054,8 @@ function getSafeCache() {
 
     const database = {
       machineTypes: {},
+      roomMachines: {},
+      machineToRoom: {},
       thuThuatInfo: {},
       replacementMap: {},
       roomStaff: {},
@@ -1094,6 +1155,20 @@ function getSafeCache() {
       database.roomBeds[roomName] = (bedStr && bedStr !== 'None')
         ? bedStr.split(",").map(x => x.trim()).filter(Boolean)
         : Array.from({ length: soGiuong }, (_, i) => "Giường " + (i + 1));
+
+      const dsMayStr = String(r.danhSachMay || r[4] || "").trim();
+      database.roomMachines[roomName] = {};
+      if (dsMayStr) {
+        dsMayStr.split(',').map(x => x.trim()).filter(Boolean).forEach(code => {
+          database.machineToRoom[code] = roomName;
+          const mObj = (cache.machine || cache.machines || []).find(m => String(m.maMay || m.ma_may || (Array.isArray(m) ? m[2] : '') || m.ma || m.code || '').trim().toLowerCase() === code.toLowerCase());
+          const mType = (mObj ? String(mObj.tenLoai || mObj.ten_loai || (Array.isArray(mObj) ? mObj[1] : '') || mObj.ten || mObj.name || '') : '').trim().toLowerCase();
+          if (mType) {
+            if (!database.roomMachines[roomName][mType]) database.roomMachines[roomName][mType] = [];
+            database.roomMachines[roomName][mType].push(code);
+          }
+        });
+      }
 
       const bsStr = String(r.bacSi || r[2] || "");
       const ktvStr = String(r.ktv || r[3] || "");
@@ -1454,18 +1529,93 @@ function getSafeCache() {
       beds.forEach(b => allBeds.push(`${roomName}|${b}`));
     });
     baseDb.roomBeds["PHONG_CHUNG_T7"] = allBeds;
-    baseDb.roomStaff["PHONG_CHUNG_T7"] = [];
+    baseDb.roomStaff["PHONG_CHUNG_T7"] = [...(payload.allowed_staff || [])];
+    if (!baseDb.roomMachines) baseDb.roomMachines = {};
+    baseDb.roomMachines["PHONG_CHUNG_T7"] = baseDb.machineTypes || {};
 
-    const allStaff = (typeof dataCache !== 'undefined' && dataCache.staff) ? dataCache.staff : [];
+    const allStaff = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff)) ? dataCache.staff : [];
+    const procList = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.proc)) ? dataCache.proc : [];
     baseDb.rawStaff = [];
+
+    const normStr = str => (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().trim();
+
     (payload.allowed_staff || []).forEach(tenNhanVien => {
-      const staffRow = allStaff.find(r => (r.ten || r.name || r[1]) === tenNhanVien);
+      const normTen = normStr(tenNhanVien);
+      const staffRow = allStaff.find(r => {
+        const rName = (r.ten || r.name || (Array.isArray(r) ? r[1] : '') || '').trim();
+        if (!rName) return false;
+        if (rName === tenNhanVien) return true;
+        const normR = normStr(rName);
+        if (normR === normTen) return true;
+        const cleanR = normR.replace(/^(bs|bac si|ktv|dd|đd)\s*\.?\s*/i, '').trim();
+        const cleanT = normTen.replace(/^(bs|bac si|ktv|dd|đd)\s*\.?\s*/i, '').trim();
+        return cleanR && cleanT && (cleanR === cleanT || cleanR.endsWith(cleanT) || cleanT.endsWith(cleanR));
+      });
+
+      const isDoctorByName = /^(bs\b|bác sĩ|bac si)/i.test(tenNhanVien) || /\b(đạt|hoa|thảo|hằng|thái|khuyến)\b/i.test(normTen);
+      let role = "Kỹ thuật viên";
       if (staffRow) {
-        const shiftStr = (payload.staff_shifts_dict?.[tenNhanVien] || []).map(sh => `${sh[0]}-${sh[1]}`).join(', ');
-        const skills = staffRow.kyNang || staffRow.skills || staffRow[2] || "";
-        const role = staffRow.vaiTro || staffRow.role || staffRow[3] || "KTV";
-        baseDb.rawStaff.push([staffRow.ten || staffRow.name || staffRow[1], role, skills, shiftStr, "", "Đi làm"]);
+        const rawRole = Array.isArray(staffRow) ? (staffRow[2] || "") : (staffRow.vaiTro || staffRow.role || "");
+        if (/bác sĩ|bac si|^bs\b/i.test(rawRole) || isDoctorByName) role = "Bác sĩ";
+        else if (/điều dưỡng|dieu duong|^đd\b|^dd\b/i.test(rawRole)) role = "Điều dưỡng";
+      } else if (isDoctorByName) {
+        role = "Bác sĩ";
       }
+
+      // Build shifts
+      let shifts = (payload.staff_shifts_dict?.[tenNhanVien] || []).map(sh => `${sh[0]}-${sh[1]}`).filter(Boolean);
+      if (shifts.length === 0 && staffRow) {
+        const defaultShift = Array.isArray(staffRow) ? (staffRow[4] || "") : (staffRow.thoiGianLam || "");
+        if (defaultShift) shifts = [defaultShift];
+      }
+      if (shifts.length === 0) {
+        shifts = ["07:30-12:00", "13:00-16:30"];
+      }
+      const shiftStr = shifts.join(', ');
+
+      // Build skills
+      let rawSkills = "";
+      let quyen = "Cả hai";
+      if (Array.isArray(staffRow)) {
+        rawSkills = String(staffRow[5] || staffRow[2] || "").trim();
+        quyen = String(staffRow[3] || "Cả hai").trim();
+      } else if (staffRow && typeof staffRow === 'object') {
+        rawSkills = Array.isArray(staffRow.kyNang) ? staffRow.kyNang.join(", ") : String(staffRow.kyNang || staffRow.skills || "").trim();
+        quyen = String(staffRow.quyen || staffRow.system || staffRow.he || "Cả hai").trim();
+      }
+
+      const allYhctProcs = procList.filter(p => (p.he || p[3]) === "YHCT").map(p => p.ten || p.name || (Array.isArray(p) ? p[1] : "")).filter(Boolean);
+      const allPhcnProcs = procList.filter(p => (p.he || p[3]) === "PHCN").map(p => p.ten || p.name || (Array.isArray(p) ? p[1] : "")).filter(Boolean);
+      const allProcs = procList.map(p => p.ten || p.name || (Array.isArray(p) ? p[1] : "")).filter(Boolean);
+
+      const skillSet = new Set(rawSkills ? rawSkills.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : []);
+
+      if (role === "Bác sĩ") {
+        allYhctProcs.forEach(p => skillSet.add(p.toLowerCase()));
+        if (/cả hai|ca hai|toàn bộ|tat ca|all/i.test(quyen) || /cả hai|ca hai|toàn bộ|tat ca|all/i.test(rawSkills) || !quyen || quyen === "Cả hai") {
+          allPhcnProcs.forEach(p => skillSet.add(p.toLowerCase()));
+        }
+      } else {
+        if (/cả hai|ca hai|toàn bộ|tat ca|all/i.test(rawSkills)) {
+          allProcs.forEach(p => skillSet.add(p.toLowerCase()));
+        } else if (/yhct/i.test(rawSkills) && !allYhctProcs.some(p => skillSet.has(p.toLowerCase()))) {
+          allYhctProcs.forEach(p => skillSet.add(p.toLowerCase()));
+        } else if (/phcn/i.test(rawSkills) && !allPhcnProcs.some(p => skillSet.has(p.toLowerCase()))) {
+          allPhcnProcs.forEach(p => skillSet.add(p.toLowerCase()));
+        }
+      }
+
+      if (skillSet.size === 0) {
+        if (role === "Bác sĩ") {
+          allYhctProcs.forEach(p => skillSet.add(p.toLowerCase()));
+          allPhcnProcs.forEach(p => skillSet.add(p.toLowerCase()));
+        } else {
+          allProcs.forEach(p => skillSet.add(p.toLowerCase()));
+        }
+      }
+
+      const skillsStr = Array.from(skillSet).join(', ');
+      baseDb.rawStaff.push([tenNhanVien, role, skillsStr, shiftStr, "", "Đi làm"]);
     });
 
     baseDb.rawPatients = [];
@@ -1510,10 +1660,6 @@ function getSafeCache() {
       return { ...u, ngay: u.ngay || targetDate };
     });
 
-    const diagnosedRot = (typeof UnscheduledDiagnosticEngine !== 'undefined')
-      ? UnscheduledDiagnosticEngine.diagnose(rawRot, baseDb)
-      : rawRot;
-
     const formattedSched = (best.sched || []).map(item => {
       const { realRoom, realBed } = decodeRoom(item);
       return {
@@ -1529,6 +1675,25 @@ function getSafeCache() {
         may: item.MAY,
         giuong: realBed
       };
+    });
+
+    const compactedSched = (typeof compactTimelineGaps === 'function') ? compactTimelineGaps(formattedSched, baseDb) : formattedSched;
+
+    const diagnosedRot = (rawRot || []).map(item => {
+      if (typeof UnscheduledDiagnosticEngine !== 'undefined' && typeof UnscheduledDiagnosticEngine.diagnose === 'function') {
+        const diag = UnscheduledDiagnosticEngine.diagnose(item, baseDb, compactedSched);
+        if (diag) {
+          return {
+            ...item,
+            causeCode: diag.causeCode,
+            causeTitle: diag.causeTitle,
+            causeDetail: diag.causeDetail,
+            reason: diag.causeDetail || diag.causeTitle || item.reason || 'Thiếu nhân sự/Máy hoặc hết giờ',
+            advices: diag.advices
+          };
+        }
+      }
+      return item;
     });
 
     const elapsed = Math.round(performance.now() - startTime);
@@ -1587,6 +1752,9 @@ const UnscheduledDiagnosticEngine = (function () {
 
   function diagnose(rotItem, db, currentSched = []) {
     if (!rotItem) return null;
+    if (Array.isArray(rotItem)) {
+      return rotItem.map(item => diagnose(item, db, currentSched));
+    }
 
     const bnName = String(rotItem.bn || rotItem.tenBN || rotItem.HOTEN || '').toUpperCase().trim();
     const bnNs = String(rotItem.ns || rotItem.namSinh || rotItem.NAMSINH || '').trim();
@@ -1613,7 +1781,9 @@ const UnscheduledDiagnosticEngine = (function () {
     const loaiBN = (patientObj && patientObj.loaiBN) || 'NoiTru';
     const buoiDieuTri = (patientObj && patientObj.buoiDieuTri) || 'Sang';
 
-    const machinesOfCategory = (db && db.machineTypes && db.machineTypes[loaiMay]) || [];
+    const loaiMayKey = loaiMay.toLowerCase();
+    const roomSpecific = (db && db.roomMachines && (db.roomMachines[room]?.[loaiMayKey] || db.roomMachines[room]?.[loaiMay])) || [];
+    const machinesOfCategory = roomSpecific.length > 0 ? roomSpecific : ((db && db.machineTypes && db.machineTypes[loaiMay]) || []);
     const qualifiedStaff = [];
     if (db && db.rawStaff) {
       db.rawStaff.forEach(r => {
