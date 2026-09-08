@@ -2010,3 +2010,49 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `sw.js` (CACHE_NAME v4.0.3-rev2)
   + `js/app.js` (targetUrl HDSD v4.0.3-rev2)
   + `PM-xeplich-v4.md` (nhật ký phát triển)
+
+---
+
+### Triệt Tiêu Vĩnh Viễn Lỗi Telemetry / Web Vitals reportAllChanges (reading 'startTime') (08/09/2026 - v4.0.3-rev3)
+
+- **Yêu cầu của người dùng**:
+  + Báo lỗi console:
+    ```
+    VM402:2 Uncaught TypeError: Cannot read properties of undefined (reading 'startTime')
+        at et.reportAllChanges (<anonymous>:2:19429)
+        at <anonymous>:2:13070
+        at <anonymous>:2:331
+        at d (<anonymous>:2:6141)
+        at <anonymous>:2:6326
+        at <anonymous>:2:2895
+        at n.timeout (<anonymous>:2:5652)
+    ```
+- **Phân tích nguyên nhân & Giải pháp**:
+  1. *Nguyên nhân cốt lõi*:
+     - Cloudflare Edge tự động inject script module đo lường Real User Measurement (RUM) `<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/..." data-cf-beacon='...'>` vào trước thẻ đóng `</body>`.
+     - Trong `beacon.min.js`, thư viện `web-vitals` của Google được đóng gói và nạp các module Webpack trước khi kiểm tra cờ `__cfBeacon`.
+     - Trong module `web-vitals`, khi một tương tác hoặc sự kiện quan sát hiệu năng kết thúc, hàm `et.reportAllChanges` truy cập thuộc tính `entry.startTime` hoặc `entries[0].startTime`. Nếu danh sách quan sát bị rỗng (`undefined`), JavaScript ném ngoại lệ `TypeError: Cannot read properties of undefined (reading 'startTime')`. Vì callback này được gọi trực tiếp bởi browser/timer trong module mà không có khối `try/catch` bọc ngoài, nó biến thành lỗi chưa được bắt (`Uncaught TypeError`).
+  2. *Giải pháp 4 lớp phòng thủ triệt để*:
+     - **Lớp 1 (Service Worker `sw.js`)**:
+       + Bổ sung bộ lọc trong sự kiện `fetch` của Service Worker: Bắt tất cả các yêu cầu tải `cloudflareinsights.com` hoặc `beacon.min.js`, lập tức phản hồi giả lập `200 OK` với nội dung JS rỗng `/* cf-beacon disabled */`.
+       + Triệt tiêu việc tải và thực thi mã nguồn `beacon.min.js` từ gốc mạng.
+     - **Lớp 2 (DOM MutationObserver trong `index.html`)**:
+       + Khởi tạo `MutationObserver` ngay đầu thẻ `<head>` để tự động bóc gỡ mọi thẻ `<script>` trỏ đến `cloudflareinsights` hoặc mang thuộc tính `data-cf-beacon` ngay khi vừa được phân tích cú pháp HTML, đổi `type = 'javascript/blocked'` và remove khỏi DOM.
+     - **Lớp 3 (Bọc an toàn `PerformanceObserver`)**:
+       + Monkey-patch hàm dựng `window.PerformanceObserver` để bọc mọi callback theo dõi hiệu năng bằng cơ chế `try/catch`. Nếu phát sinh ngoại lệ chứa `startTime` hoặc `reportAllChanges`, hàm sẽ âm thầm nuốt lỗi thay vì để lỗi thoát ra ngoài thành `Uncaught TypeError`.
+     - **Lớp 4 (`window.addEventListener('error', ..., true)` & `window.onerror`)**:
+       + Lắng nghe sự kiện bắt lỗi toàn cục ở pha capture, tự động gọi `preventDefault()` và `stopImmediatePropagation()` để ngăn console hiển thị lỗi telemetry ngoại vi.
+     - **Đồng bộ toàn diện phiên bản hệ thống theo RULES.md**:
+       + Phiên bản chính: `4.0.3` (Footer: `Phiên bản: 4.0.3`).
+       + Revision: `v4.0.3-rev3`.
+       + Footer timestamp: `07:50 08/09/2026`.
+       + `index.html`: Cập nhật toàn bộ cache busters `?v=4.0.3-rev3`, `APP_VERSION = '4.0.3-rev3'`.
+       + `sw.js`: Đổi `CACHE_NAME = 'pmcg-v4-cache-4.0.3-rev3'`.
+       + `js/app.js`: Cập nhật `targetUrl` modal HDSD sang `v=4.0.3-rev3`.
+       + `js/thongke.js`: Cập nhật `pm_cleaned_cache_ver = '4.0.3-rev3'`.
+- **File sửa đổi**:
+  + `sw.js` (chặn bắt và vô hiệu hóa beacon.min.js qua Service Worker, CACHE_NAME v4.0.3-rev3)
+  + `index.html` (thêm MutationObserver & PerformanceObserver safe wrapper, footer timestamp 07:50 08/09/2026, cache busters v4.0.3-rev3)
+  + `js/app.js` (targetUrl HDSD v4.0.3-rev3)
+  + `js/thongke.js` (pm_cleaned_cache_ver 4.0.3-rev3)
+  + `PM-xeplich-v4.md` (nhật ký phát triển)

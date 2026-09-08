@@ -3,7 +3,7 @@
  * Quản lý Cache đệm tĩnh, cho phép mở App ngoại tuyến (Offline-first) và tải tức thì.
  */
 
-const CACHE_NAME = 'pmcg-v4-cache-4.0.3-rev2';
+const CACHE_NAME = 'pmcg-v4-cache-4.0.3-rev3';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -38,7 +38,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('[Service Worker] Một số tài sản chưa nạp được vào cache:', err);
+        console.warn('[Service Worker] Lỗi nạp cache tĩnh:', err);
       });
     })
   );
@@ -63,6 +63,20 @@ self.addEventListener('activate', (event) => {
 // 3. Xử lý yêu cầu nạp tài nguyên (Fetch Strategy: Network-First cho HTML & JS/CSS để luôn nạp bản mới nhất)
 self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
+
+  // Vô hiệu hóa triệt để Cloudflare Analytics Beacon và Web Vitals ngoại vi
+  if (
+    requestUrl.hostname.includes('cloudflareinsights.com') ||
+    requestUrl.pathname.includes('beacon.min.js')
+  ) {
+    event.respondWith(
+      new Response('/* cf-beacon disabled */', {
+        status: 200,
+        headers: { 'Content-Type': 'application/javascript; charset=utf-8' }
+      })
+    );
+    return;
+  }
 
   // Bỏ qua các yêu cầu API gửi tới Cloudflare Workers hoặc Google Apps Script (đã có offline-sync-engine xử lý)
   if (

@@ -9,10 +9,49 @@
     <base target="_top">
 
     <script>
-    // 1. Vô hiệu hóa an toàn Cloudflare Analytics Beacon để triệt tiêu vĩnh viễn lỗi Web Vitals (reportAllChanges / startTime)
+    // 1. Vô hiệu hóa an toàn Cloudflare Analytics Beacon (triệt tiêu vĩnh viễn lỗi Web Vitals reportAllChanges / startTime)
     window.__cfBeacon = { load: 'single' };
 
-    // 2. Chặn bắt và xử lý an toàn lỗi telemetry ngoại vi (Web Vitals / Cloudflare beacon reportAllChanges startTime)
+    // 2. Tự động bóc gỡ script beacon ngoại vi trước khi trình duyệt nạp thực thi
+    if (typeof MutationObserver !== 'undefined') {
+        const _cfObs = new MutationObserver(function(mutations) {
+            for (let i = 0; i < mutations.length; i++) {
+                const nodes = mutations[i].addedNodes;
+                for (let j = 0; j < nodes.length; j++) {
+                    const node = nodes[j];
+                    if (node && node.nodeType === 1 && node.tagName === 'SCRIPT') {
+                        if ((node.src && (node.src.includes('cloudflareinsights') || node.src.includes('beacon.min.js'))) || node.hasAttribute('data-cf-beacon')) {
+                            node.type = 'javascript/blocked';
+                            try { node.remove(); } catch(e) {}
+                        }
+                    }
+                }
+            }
+        });
+        _cfObs.observe(document.documentElement, { childList: true, subtree: true });
+    }
+
+    // 3. Phòng thủ tại gốc PerformanceObserver nếu có bất kỳ module Web Vitals nào kích hoạt
+    if (typeof window.PerformanceObserver !== 'undefined') {
+        const _OrigPO = window.PerformanceObserver;
+        window.PerformanceObserver = function(callback) {
+            const safeCallback = function(entryList, observer) {
+                try {
+                    return callback.call(this, entryList, observer);
+                } catch(err) {
+                    if (err && err.message && (err.message.includes('startTime') || err.message.includes('reportAllChanges'))) {
+                        return;
+                    }
+                    throw err;
+                }
+            };
+            return new _OrigPO(safeCallback);
+        };
+        window.PerformanceObserver.prototype = _OrigPO.prototype;
+        window.PerformanceObserver.supportedEntryTypes = _OrigPO.supportedEntryTypes;
+    }
+
+    // 4. Chặn bắt và xử lý an toàn mọi lỗi telemetry ngoại vi (Web Vitals / Cloudflare beacon reportAllChanges startTime)
     window.addEventListener('error', function (e) {
         if (e && (
             (e.message && (e.message.includes('startTime') || e.message.includes('reportAllChanges') || e.message.includes('beacon.min.js'))) ||
@@ -76,9 +115,9 @@
     }
     </script>
     <meta name="theme-color" content="#1e3d2b">
-    <link rel="icon" type="image/png" sizes="128x128" href="favicon-128.png?v=4.0.3-rev2">
+    <link rel="icon" type="image/png" sizes="128x128" href="favicon-128.png?v=4.0.3-rev3">
     <!-- Thêm icon cho iOS -->
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=4.0.3-rev2">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=4.0.3-rev3">
 
 
 
@@ -89,15 +128,15 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=4.0.3-rev2">
+    <link rel="stylesheet" href="css/style.css?v=4.0.3-rev3">
     <!-- PWA & Mobile Web App Meta Tags -->
-    <link rel="manifest" href="manifest.json?v=4.0.3-rev2">
+    <link rel="manifest" href="manifest.json?v=4.0.3-rev3">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.0.3-rev2">
+    <link rel="stylesheet" href="css/mobile.css?v=4.0.3-rev3">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
     <script src="js/dexie.min.js?v=3.2.6"></script>
@@ -108,7 +147,7 @@
     <script src="js/chart.min.js?v=3.2.6"></script>
     <script src="js/zod.min.js?v=3.2.6"></script>
     <!-- JS Thư viện kéo thả nội bộ -->
-    <script src="js/sortable.min.js?v=4.0.3-rev2"></script>
+    <script src="js/sortable.min.js?v=4.0.3-rev3"></script>
     <!-- Thư viện Dòng thời gian Timeline Frappe Gantt -->
     <link rel="stylesheet" href="css/frappe-gantt.css?v=3.2.6">
     <script src="js/frappe-gantt.min.js?v=3.2.6"></script>
@@ -3331,7 +3370,7 @@
 
                     <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 4.0.3</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 07:35 08/09/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 07:50 08/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -3849,18 +3888,18 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.0.3-rev2"></script>
-    <script src="js/ai-scheduler.js?v=4.0.3-rev2"></script>
-    <script src="js/cp-solver.js?v=4.0.3-rev2"></script>
-    <script src="js/scheduler-engine.js?v=4.0.3-rev2"></script>
-    <script src="js/app.js?v=4.0.3-rev2"></script>
-    <script src="js/init.js?v=4.0.3-rev2"></script>
-    <script src="js/sync.js?v=4.0.3-rev2"></script>
-    <script src="js/thongke.js?v=4.0.3-rev2"></script>
+    <script src="js/offline-sync-engine.js?v=4.0.3-rev3"></script>
+    <script src="js/ai-scheduler.js?v=4.0.3-rev3"></script>
+    <script src="js/cp-solver.js?v=4.0.3-rev3"></script>
+    <script src="js/scheduler-engine.js?v=4.0.3-rev3"></script>
+    <script src="js/app.js?v=4.0.3-rev3"></script>
+    <script src="js/init.js?v=4.0.3-rev3"></script>
+    <script src="js/sync.js?v=4.0.3-rev3"></script>
+    <script src="js/thongke.js?v=4.0.3-rev3"></script>
 
     <!-- PWA Service Worker Registration -->
     <script>
-    const APP_VERSION = '4.0.3-rev2';
+    const APP_VERSION = '4.0.3-rev3';
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             // Unregister old service workers if version changed
