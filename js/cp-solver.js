@@ -177,6 +177,7 @@ window.MedicalCPSolver = (function () {
           const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly|\bphụ\b/i.test(roleRaw) || /^phụ\b|^phu\s*\d+/i.test(name);
           if (isNurse || (!isDoc && !/kỹ thuật viên|ky thuat vien|^ktv\b/i.test(roleRaw) && roleRaw !== '')) return false;
 
+          const skillsList = s[2] ? String(s[2]).toLowerCase().split(",").map(x => x.trim()).filter(Boolean) : [];
           const skills = (s[2] || '').toLowerCase();
           const hasAll = /cả hai|ca hai|toàn bộ|tat ca|all/i.test(skills);
           const hasYhct = /yhct/i.test(skills);
@@ -185,11 +186,14 @@ window.MedicalCPSolver = (function () {
           const isProcPhcn = ttInfo[3] === 'PHCN';
 
           if (hasAll) return true;
-          if (hasYhct && isProcYhct) return true;
-          if (hasPhcn && isProcPhcn) return true;
-          if (isDoc && isProcYhct) return true;
+          if (hasYhct && isProcYhct && skillsList.length === 0) return true;
+          if (hasPhcn && isProcPhcn && skillsList.length === 0) return true;
+          if (isDoc && isProcYhct && skillsList.length === 0) return true;
 
-          return skills.includes(tenTT.toLowerCase()) || skills.includes((ttInfo[9] || '').toLowerCase());
+          const pName = tenTT.toLowerCase();
+          const pVt = (ttInfo[9] || '').toLowerCase();
+          const pTenGoc = (ttInfo[8] || '').toLowerCase();
+          return skillsList.some(sk => sk === pName || (pVt && sk === pVt) || (pTenGoc && sk === pTenGoc) || sk.includes(pName) || pName.includes(sk) || (pVt && (sk.includes(pVt) || pVt.includes(sk))));
         })
         .map(s => s[0]);
 

@@ -2246,3 +2246,30 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `index.html` (cache buster `v=4.0.3-rev10`, `APP_VERSION = '4.0.3-rev10'`)
   + `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.3-rev10'`)
   + `PM-xeplich-v4.md`
+---
+
+### [v4.0.3-rev11] - 08/09/2026: Tuân Thủ Tuyệt Đối Cài Đặt Vai Trò & Kỹ Năng Trong Tab Nhân Sự
+
+- **Yêu cầu của người dùng**:
+  + "Trong tab nhân sự có cài đặt kỹ năng, vai trò của từng người rồi."
+- **Phân tích nguyên nhân sâu xa**:
+  1. **Tự động cấp toàn bộ thủ thuật YHCT cho Bác sĩ**:
+     - Trước đây code có dòng `else if (isDoc && isProcYhct) qualified = true;` tự động coi Bác sĩ làm được tất cả thủ thuật YHCT, bất chấp trong Tab Nhân Sự người dùng chỉ tích chọn 4-5 thủ thuật cụ thể (ví dụ BS Hoa không có kỹ năng XBBH nhưng vẫn bị xếp ca XBBH).
+  2. **Lỗi ánh xạ tên viết tắt kỹ năng (`XBBH` vs `xoa bóp bấm huyệt`)**:
+     - Khi người dùng tích chọn kỹ năng lưu tên viết tắt (ví dụ `XBBH`), vòng lặp cũ tra cứu `thuThuatInfo['xbbh']` bị `undefined` (do key của bảng thủ thuật là `xoa bóp bấm huyệt`). Dẫn đến KTV/BS có kỹ năng `XBBH` không được ghi nhận vào danh sách có kỹ năng của `xoa bóp bấm huyệt`.
+- **Giải pháp triển khai toàn diện**:
+  1. **Ánh xạ kỹ năng 2 chiều thông minh theo Tab Nhân Sự**:
+     - Khi kiểm tra kỹ năng của nhân sự với thủ thuật: So khớp đồng thời cả tên thủ thuật (`pName`), tên viết tắt (`pVt`), tên gốc (`pTenGoc`) và quan hệ bao hàm chuỗi.
+     - Khi nhân sự có kỹ năng `XBBH`, hệ thống tự động ghi nhận nhân sự vào cả key `xoa bóp bấm huyệt` và `xbbh`.
+  2. **Tôn trọng 100% danh sách kỹ năng đã tích chọn**:
+     - Khi nhân sự có danh sách kỹ năng cụ thể (`kyNangList.length > 0`), nhân sự **CHỈ ĐƯỢC XẾP** các thủ thuật thực sự có trong danh sách được tích chọn ở Tab Nhân Sự.
+     - Không tự động cấp thêm bất kỳ thủ thuật nào ngoài danh sách đã cài đặt.
+  3. **Ưu tiên 100% Điều dưỡng làm NV Phụ**:
+     - Điều dưỡng trong Tab Nhân Sự tuyệt đối không bao giờ làm NV Chính.
+     - Khi thủ thuật yêu cầu NV Phụ (`canNguoiPhu = 'Có'`), Điều dưỡng có kỹ năng luôn được ưu tiên hàng đầu để làm NV Phụ.
+- **File sửa đổi**:
+  + `js/scheduler-engine.js`
+  + `js/cp-solver.js`
+  + `index.html` (cache buster `v=4.0.3-rev11`, `APP_VERSION = '4.0.3-rev11'`)
+  + `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.3-rev11'`)
+  + `PM-xeplich-v4.md`

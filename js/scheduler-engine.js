@@ -195,27 +195,39 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
     const hasYhct = /yhct/i.test(rawSkillsStr);
     const hasPhcn = /phcn/i.test(rawSkillsStr);
 
-    // Mở rộng kỹ năng cho Bác sĩ hoặc nhân sự có quyền/kỹ năng generic
+    // Ánh xạ kỹ năng chính xác theo cài đặt trong Tab Nhân sự (hỗ trợ tên thủ thuật, tên viết tắt, tên gốc)
     Object.keys(thuThuatInfo).forEach(procKey => {
       const pInfo = thuThuatInfo[procKey];
       if (!pInfo) return;
       const isProcYhct = pInfo[3] === 'YHCT';
       const isProcPhcn = pInfo[3] === 'PHCN';
+      const pName = procKey.toLowerCase();
+      const pVt = (pInfo[9] || '').trim().toLowerCase();
+      const pTenGoc = (pInfo[8] || '').trim().toLowerCase();
 
       let qualified = false;
       if (hasAll) qualified = true;
-      else if (hasYhct && isProcYhct) qualified = true;
-      else if (hasPhcn && isProcPhcn) qualified = true;
-      else if (isDoc && isProcYhct) qualified = true;
+      else if (hasYhct && isProcYhct && kyNangList.length === 0) qualified = true;
+      else if (hasPhcn && isProcPhcn && kyNangList.length === 0) qualified = true;
+      else if (isDoc && isProcYhct && kyNangList.length === 0) qualified = true;
+      else if (kyNangList.length > 0) {
+        qualified = kyNangList.some(skRaw => {
+          const sk = skRaw.toLowerCase();
+          if (sk === pName || (pVt && sk === pVt) || (pTenGoc && sk === pTenGoc)) return true;
+          if (sk.includes(pName) || pName.includes(sk)) return true;
+          if (pVt && (sk.includes(pVt) || pVt.includes(sk))) return true;
+          return false;
+        });
+      }
 
       if (qualified) {
-        if (!staffBySkill[procKey]) staffBySkill[procKey] = [];
-        if (!staffBySkill[procKey].includes(tenNhanVien)) staffBySkill[procKey].push(tenNhanVien);
-        if (pInfo[9]) {
-          const vt = pInfo[9].trim().toLowerCase();
-          if (!staffBySkill[vt]) staffBySkill[vt] = [];
-          if (!staffBySkill[vt].includes(tenNhanVien)) staffBySkill[vt].push(tenNhanVien);
-        }
+        const keys = [procKey, pName];
+        if (pVt) keys.push(pVt);
+        if (pTenGoc) keys.push(pTenGoc);
+        keys.forEach(k => {
+          if (!staffBySkill[k]) staffBySkill[k] = [];
+          if (!staffBySkill[k].includes(tenNhanVien)) staffBySkill[k].push(tenNhanVien);
+        });
       }
     });
 
@@ -223,11 +235,6 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       const kyNangLower = kyNang.toLowerCase();
       if (!staffBySkill[kyNangLower]) staffBySkill[kyNangLower] = [];
       if (!staffBySkill[kyNangLower].includes(tenNhanVien)) staffBySkill[kyNangLower].push(tenNhanVien);
-      if (thuThuatInfo[kyNangLower]?.length > 9 && thuThuatInfo[kyNangLower][9]) {
-        const vietTat = thuThuatInfo[kyNangLower][9].trim().toLowerCase();
-        if (!staffBySkill[vietTat]) staffBySkill[vietTat] = [];
-        if (!staffBySkill[vietTat].includes(tenNhanVien)) staffBySkill[vietTat].push(tenNhanVien);
-      }
     });
 
     const rawShifts = r[3] ? String(r[3]).split(",").filter(s => s.includes("-")).map(s => {
@@ -527,8 +534,13 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly|\bphụ\b/i.test(role) || /^phụ\b|^phu\s*\d+/i.test(tenNV);
         const isKtv = !isDoc && !isNurse && (/kỹ thuật viên|ky thuat vien|^ktv\b/i.test(role) || staffRole[tenNV] === 'Kỹ thuật viên');
 
-        if ((isDoc || isKtv) && !isNurse) candidatesMain.push(tenNV);
-        else candidatesSub.push(tenNV);
+        // Chỉ BS hoặc KTV mới được làm NV Chính; Điều dưỡng chỉ được làm NV Phụ
+        if ((isDoc || isKtv) && !isNurse) {
+          candidatesMain.push(tenNV);
+          candidatesSub.push(tenNV);
+        } else {
+          candidatesSub.push(tenNV);
+        }
       });
       if (candidatesMain.length === 0) continue;
 
@@ -607,6 +619,9 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
           if (filteredSubs.length === 0) continue;
 
           filteredSubs.sort((a, b) => {
+            const isNurseA = /điều dưỡng|dieu duong|^đd\b|^dd\b|\bphụ\b/i.test(staffRole[a] || '') || /^phụ\b|^phu\s*\d+/i.test(a) ? 0 : 1;
+            const isNurseB = /điều dưỡng|dieu duong|^đd\b|^dd\b|\bphụ\b/i.test(staffRole[b] || '') || /^phụ\b|^phu\s*\d+/i.test(b) ? 0 : 1;
+            if (isNurseA !== isNurseB) return isNurseA - isNurseB; // Ưu tiên 100% Điều dưỡng làm NV Phụ
             const aR = (staffMyRooms[a] || []).includes(targetRoom) ? 0 : 1, bR = (staffMyRooms[b] || []).includes(targetRoom) ? 0 : 1;
             return aR !== bR ? aR - bR : (staffLoad[a]?.used_mins || 0) - (staffLoad[b]?.used_mins || 0);
           });
@@ -1825,15 +1840,16 @@ const UnscheduledDiagnosticEngine = (function () {
         const isProcPhcn = info[3] === 'PHCN';
 
         let ok = false;
+        const skillsList = r[2] ? String(r[2]).toLowerCase().split(",").map(x => x.trim()).filter(Boolean) : [];
         if (hasAll) ok = true;
-        else if (hasYhct && isProcYhct) ok = true;
-        else if (hasPhcn && isProcPhcn) ok = true;
-        else if (isDoc && isProcYhct) ok = true;
-        else {
-          const skills = r[2] ? String(r[2]).toLowerCase().split(",").map(x => x.trim()) : [];
-          if (skills.includes(ttLower) || skills.includes((info[8] || "").toLowerCase()) || skills.includes((info[9] || "").toLowerCase())) {
-            ok = true;
-          }
+        else if (hasYhct && isProcYhct && skillsList.length === 0) ok = true;
+        else if (hasPhcn && isProcPhcn && skillsList.length === 0) ok = true;
+        else if (isDoc && isProcYhct && skillsList.length === 0) ok = true;
+        else if (skillsList.length > 0) {
+          const pName = ttLower;
+          const pVt = (info[9] || "").toLowerCase();
+          const pTenGoc = (info[8] || "").toLowerCase();
+          ok = skillsList.some(sk => sk === pName || (pVt && sk === pVt) || (pTenGoc && sk === pTenGoc) || sk.includes(pName) || pName.includes(sk) || (pVt && (sk.includes(pVt) || pVt.includes(sk))));
         }
         if (ok) qualifiedStaff.push(name);
       });
