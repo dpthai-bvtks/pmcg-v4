@@ -2734,6 +2734,13 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       return success({ deletedId: id });
     }
 
+    case "deleteGioBanCuByDate": {
+      const delDate = String(args[0] || '').trim();
+      if (!delDate) return error("Thiếu date cần xóa");
+      const delRes = await db.prepare("DELETE FROM gio_ban_cu WHERE unit_code = ? AND date = ?").bind(unitCode, delDate).run();
+      return success({ deletedDate: delDate, changes: delRes?.meta?.changes ?? '?' });
+    }
+
     case "getHistoryFullData": {
       const rawDate = String(args[0] || "").trim();
       let y = "", m = "", d = "";
@@ -2836,57 +2843,6 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         } catch(e) {}
       }
 
-      // Fallback thông minh 2: nếu cả 2 bảng lịch sử đều chưa có bản ghi, nhưng targetDate là hôm qua/hôm nay và nhan_su/benh_nhan vẫn còn lưu temp_busy
-      if (chungBusyRows.length === 0) {
-        try {
-          const nowVN = new Date(Date.now() + 7 * 60 * 60 * 1000);
-          const dd = String(nowVN.getUTCDate()).padStart(2, '0');
-          const mm = String(nowVN.getUTCMonth() + 1).padStart(2, '0');
-          const yyyy = nowVN.getUTCFullYear();
-          const todayYMD = `${yyyy}-${mm}-${dd}`;
-          
-          const yestVN = new Date(Date.now() + 7 * 60 * 60 * 1000 - 24 * 60 * 60 * 1000);
-          const ydd = String(yestVN.getUTCDate()).padStart(2, '0');
-          const ymm = String(yestVN.getUTCMonth() + 1).padStart(2, '0');
-          const yyyyy = yestVN.getUTCFullYear();
-          const yestYMD = `${yyyyy}-${ymm}-${ydd}`;
-
-          if (dateVariants.includes(todayYMD) || dateVariants.includes(yestYMD)) {
-            const stfRes = await db.prepare("SELECT name, temp_busy FROM nhan_su WHERE unit_code = ? AND temp_busy IS NOT NULL AND temp_busy != '' AND temp_busy != '[]'").bind(unitCode).all();
-            (stfRes.results || []).forEach(r => {
-              chungBusyRows.push({
-                date: ymd,
-                target_type: 'nhan_su',
-                name: r.name,
-                dob: '',
-                busy_ranges: r.temp_busy
-              });
-            });
-
-            const patRes = await db.prepare("SELECT name, dob, gio_ban, leave_time FROM benh_nhan WHERE unit_code = ? AND ((gio_ban IS NOT NULL AND TRIM(gio_ban) != '') OR (leave_time IS NOT NULL AND TRIM(leave_time) != ''))").bind(unitCode).all();
-            (patRes.results || []).forEach(r => {
-              if (r.gio_ban) {
-                chungBusyRows.push({
-                  date: ymd,
-                  target_type: 'benh_nhan',
-                  name: r.name,
-                  dob: r.dob || '',
-                  busy_ranges: r.gio_ban
-                });
-              }
-              if (r.leave_time) {
-                chungBusyRows.push({
-                  date: ymd,
-                  target_type: 'ra_vien',
-                  name: r.name,
-                  dob: r.dob || '',
-                  busy_ranges: r.leave_time
-                });
-              }
-            });
-          }
-        } catch(e) {}
-      }
 
       // Safe parse slots và phân bổ vào staffBusy / patBusyList / leavePatList
       const staffBusy = [];
