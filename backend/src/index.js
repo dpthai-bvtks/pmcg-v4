@@ -1104,9 +1104,6 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     return error("Database chưa được cấu hình (cần TURSO_URL hoặc D1 binding DB).", 500);
   }
 
-  await ensureSchema(db);
-  await checkAutoChotSo(db, unitCode);
-
   switch (action) {
     case "ping": {
       return success({ pong: true, time: Date.now(), unit_code: unitCode });
@@ -1618,6 +1615,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     // 1. BOOTSTRAP TOÀN DIỆN
     // ============================================================
     case "getBootstrapData": {
+      // Tự động kiểm tra chốt sổ khi nạp dữ liệu đầu ngày
+      await checkAutoChotSo(db, unitCode);
+
       // Lấy ngày từ client, hoặc tự tính theo múi giờ Việt Nam (UTC+7)
       const todayArg = args[0] || "";
       let todayVN = todayArg;
@@ -2529,7 +2529,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       });
 
       if (insertStatements.length > 0) {
-        const chunkSize = 50;
+        // Gửi batch lớn (250 câu lệnh/request) tối ưu hóa Turso Pipeline
+        const chunkSize = 250;
         for (let i = 0; i < insertStatements.length; i += chunkSize) {
           await db.batch(insertStatements.slice(i, i + chunkSize));
         }
@@ -2587,7 +2588,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       });
 
       if (statements.length > 0) {
-        const chunkSize = 50;
+        // Gửi batch lớn (250 câu lệnh/request) tối ưu hóa Turso Pipeline
+        const chunkSize = 250;
         for (let i = 0; i < statements.length; i += chunkSize) {
           await db.batch(statements.slice(i, i + chunkSize));
         }

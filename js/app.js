@@ -1370,6 +1370,7 @@ window.renderSttOrderControl = function (type, i, total) {
         function callApi(functionName, args, onSuccess, onError) {
             return new Promise((resolve, reject) => {
                 const isSilentMutation = functionName === 'saveChamCong' || functionName === 'saveReorderedData' || functionName === 'saveReorder'
+                    || functionName === 'saveSchedule' || functionName === 'saveLichTrinh'
                     || functionName === 'editBenhNhan' || functionName === 'editNhanSu' || functionName === 'editMayMoc' || functionName === 'editThuThuat' || functionName === 'editPhong';
                 const isMutation = functionName.startsWith('add') || functionName.startsWith('edit') || functionName.startsWith('delete') || functionName.startsWith('bulkUpdate') || functionName.startsWith('save') || functionName.startsWith('chotSo') || functionName.startsWith('runScheduling') || functionName.startsWith('chuyenNgayMoi');
                 
@@ -6733,10 +6734,12 @@ window.renderSttOrderControl = function (type, i, total) {
                 localStorage.setItem('meds_schedule_unit', curSchedUnit);
                 localStorage.setItem(getUnitStorageKey('meds_schedule_date'), dateVal);
                 localStorage.setItem('meds_schedule_date', dateVal);
-                localStorage.setItem(getUnitStorageKey('meds_success'), JSON.stringify(sched));
-                localStorage.setItem('meds_success', JSON.stringify(sched));
-                localStorage.setItem(getUnitStorageKey('meds_unscheduled'), JSON.stringify(unsch));
-                localStorage.setItem('meds_unscheduled', JSON.stringify(unsch));
+                const schedJson = JSON.stringify(sched);
+                const unschJson = JSON.stringify(unsch);
+                localStorage.setItem(getUnitStorageKey('meds_success'), schedJson);
+                localStorage.setItem('meds_success', schedJson);
+                localStorage.setItem(getUnitStorageKey('meds_unscheduled'), unschJson);
+                localStorage.setItem('meds_unscheduled', unschJson);
 
                 if (window.OfflineSyncEngine && typeof window.OfflineSyncEngine.saveCache === 'function') {
                     window.OfflineSyncEngine.saveCache('meds_success', sched);

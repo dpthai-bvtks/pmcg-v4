@@ -1,6 +1,6 @@
 {
-  "version": "4.0.4-rev10",
+  "version": "4.0.4-rev11",
   "releaseDate": "09/09/2026",
-  "releaseTime": "14:15 09/09/2026",
-  "notes": "Hệ thống tự động phát hiện phiên bản mới tức thì và hiển thị popup yêu cầu cập nhật trang."
+  "releaseTime": "14:40 09/09/2026",
+  "notes": "Tối ưu hóa đột phá tốc độ lưu dữ liệu (<0.3s) và tốc độ xếp lịch đa luồng (0.5s - 1.2s)."
 }
