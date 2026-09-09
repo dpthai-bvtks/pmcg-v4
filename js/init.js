@@ -98,12 +98,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 🧹 Dọn dẹp cache rò rỉ giữa các đơn vị (Multi-Tenant Cache Sanitization)
     if (!hasValidSession) {
-        const preserveKeys = ['pm_app_theme', 'doc_theme', 'times_backup_api_url'];
+        const preserveKeys = [
+            'pm_app_theme', 
+            'doc_theme', 
+            'times_backup_api_url',
+            'times_ai_learned_model',
+            'ai_auto_train_enable',
+            'ai_auto_train_time'
+        ];
         try {
             const keysToRemove = [];
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i);
-                if (key && !preserveKeys.includes(key)) {
+                if (key && !preserveKeys.includes(key) && !key.startsWith('times_ai_learned_model_')) {
                     keysToRemove.push(key);
                 }
             }

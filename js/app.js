@@ -3065,6 +3065,33 @@ window.renderSttOrderControl = function (type, i, total) {
                     console.error("Lỗi đồng bộ phác đồ từ server:", e);
                 }
             }
+
+            // 🤖 Đồng bộ mô hình AI từ CSDL Cloudflare D1 (nếu có)
+            if (res.ai_learned_model) {
+                try {
+                    const m = typeof res.ai_learned_model === 'string' ? JSON.parse(res.ai_learned_model) : res.ai_learned_model;
+                    if (m && window.AIScheduler && typeof window.AIScheduler.setModel === 'function') {
+                        window.AIScheduler.setModel(m, true, false);
+                    }
+                } catch(e) {
+                    console.warn('[AI] Lỗi phục hồi mô hình từ Cloud:', e);
+                }
+            }
+
+            // ⏰ Đồng bộ cấu hình tự động học AI
+            if (res.ai_auto_train_config) {
+                try {
+                    const cfg = typeof res.ai_auto_train_config === 'string' ? JSON.parse(res.ai_auto_train_config) : res.ai_auto_train_config;
+                    if (cfg) {
+                        localStorage.setItem('ai_auto_train_enable', cfg.enable ?? '1');
+                        localStorage.setItem('ai_auto_train_time', cfg.time || '17:00');
+                    }
+                } catch(e) {}
+            }
+
+            if (typeof window.renderAISettingsUI === 'function') {
+                window.renderAISettingsUI();
+            }
         }
 
         function restoreOfflineCache() {
@@ -12788,29 +12815,58 @@ window.saveAIAutoTrainConfig = function() {
     localStorage.setItem('ai_auto_train_time', time);
 
     const configObj = { enable, time };
-    callApi('saveSystemSettings', ['ai_auto_train_config', JSON.stringify(configObj)], null, null);
+    callApi('saveSystemSettings', [{ ai_auto_train_config: JSON.stringify(configObj) }], null, null);
 
     showCustomAlert("Thành công", `Đã lưu cấu hình tự động huấn luyện AI hàng ngày vào lúc ${time} thành công!`);
 };
 
 window.calibrateAIFromHistory = async function() {
-    if (window.showGlobalLoading) window.showGlobalLoading("Đang tải toàn bộ dữ liệu từ bảng lịch sử Cloudflare D1 để huấn luyện AI...");
+    if (window.showGlobalLoading) window.showGlobalLoading("Đang nạp dữ liệu từ Cloudflare D1 và lịch trình thực tế để huấn luyện AI...");
 
     const executeTraining = (historyRows) => {
         try {
-            if (!Array.isArray(historyRows) || historyRows.length === 0) {
+            // Gom tất cả nguồn dữ liệu khả dụng:
+            let combinedRows = Array.isArray(historyRows) ? [...historyRows] : [];
+            
+            // Bổ sung lịch trình hiện tại & bộ đệm
+            if (typeof dataCache !== 'undefined') {
+                if (Array.isArray(dataCache.schedule)) combinedRows = combinedRows.concat(dataCache.schedule);
+                if (Array.isArray(dataCache.lich_trinh)) combinedRows = combinedRows.concat(dataCache.lich_trinh);
+                if (Array.isArray(dataCache.history)) combinedRows = combinedRows.concat(dataCache.history);
+            }
+            if (Array.isArray(window.currentScheduleData)) {
+                combinedRows = combinedRows.concat(window.currentScheduleData);
+            }
+
+            // Đọc thêm từ bootstrap cache nếu có
+            try {
+                const cacheKey = typeof window.getBootstrapCacheKey === 'function' ? window.getBootstrapCacheKey() : 'times_bootstrap_cache';
+                const bStr = localStorage.getItem(cacheKey);
+                if (bStr) {
+                    const bObj = JSON.parse(bStr);
+                    if (Array.isArray(bObj.schedule)) combinedRows = combinedRows.concat(bObj.schedule);
+                    if (Array.isArray(bObj.history)) combinedRows = combinedRows.concat(bObj.history);
+                }
+            } catch(e) {}
+
+            if (combinedRows.length === 0) {
                 if (window.hideGlobalLoading) window.hideGlobalLoading();
-                showCustomAlert("Thông báo", "Không tải được dữ liệu lịch sử từ Cloudflare D1. Vui lòng kiểm tra lại kết nối mạng!");
+                showCustomAlert("Thông báo", "Chưa có dữ liệu lịch trình hoặc lịch sử điều trị để huấn luyện AI. Bác sĩ hãy xếp lịch hoặc nhập dữ liệu trước nhé!");
                 return;
             }
 
             let model = null;
             if (window.AIScheduler && typeof window.AIScheduler.trainFromHistory === 'function') {
-                model = window.AIScheduler.trainFromHistory(historyRows);
+                model = window.AIScheduler.trainFromHistory(combinedRows);
+            }
+
+            // ☁️ Lưu trực tiếp mô hình AI lên CSDL đám mây Cloudflare D1
+            if (model && typeof callApi === 'function') {
+                callApi('saveSystemSettings', [{ ai_learned_model: JSON.stringify(model) }], null, null);
             }
 
             if (window.hideGlobalLoading) window.hideGlobalLoading();
-            const trainedCount = model ? (model.trainedRows || 0) : historyRows.length;
+            const trainedCount = model ? (model.trainedRows || 0) : combinedRows.length;
             const affinityCount = model && model.staffAffinity ? Object.keys(model.staffAffinity).length : 0;
             
             if (typeof window.renderAISettingsUI === 'function') window.renderAISettingsUI();
@@ -12826,7 +12882,7 @@ window.calibrateAIFromHistory = async function() {
 
             showCustomAlert(
                 "Huấn luyện AI thành công",
-                `Đã cập nhật mô hình AI lúc ${timeStr}!\n\n📊 Dữ liệu thực tế: ${trainedCount.toLocaleString('vi-VN')} dòng từ bảng lịch sử (Cloudflare D1)\n👥 Cặp thói quen nhân sự: ${affinityCount.toLocaleString('vi-VN')} mẫu thói quen\n🚦 Tắc nghẽn máy móc & khung giờ vàng đã được tối ưu.`
+                `Đã cập nhật mô hình AI lúc ${timeStr}!\n\n📊 Dữ liệu thực tế: ${trainedCount.toLocaleString('vi-VN')} dòng (Đã đồng bộ lên CSDL Cloudflare D1)\n👥 Cặp thói quen nhân sự: ${affinityCount.toLocaleString('vi-VN')} mẫu thói quen\n🚦 Tắc nghẽn máy móc & khung giờ vàng đã được tối ưu.`
             );
         } catch(err) {
             if (window.hideGlobalLoading) window.hideGlobalLoading();
@@ -12837,10 +12893,11 @@ window.calibrateAIFromHistory = async function() {
     async function fetchDirectly() {
         try {
             const apiUrl = (typeof getApiUrl === 'function') ? getApiUrl() : 'https://pmcg-api.dpthai-ttytmk.workers.dev/';
+            const curUnit = (typeof getCurrentUnitCode === 'function') ? getCurrentUnitCode() : (localStorage.getItem('pm_unit_code') || 'bvtks-cs2');
             const response = await fetch(apiUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'getLichSu', args: [] })
+                headers: { 'Content-Type': 'application/json', 'x-unit-code': curUnit },
+                body: JSON.stringify({ action: 'getLichSu', args: [], unit_code: curUnit })
             });
             const json = await response.json();
             let rows = [];
@@ -12866,11 +12923,7 @@ window.calibrateAIFromHistory = async function() {
                     else if (Array.isArray(res.data)) rows = res.data;
                     else if (Array.isArray(res)) rows = res;
                 }
-                if (rows && rows.length > 0) {
-                    executeTraining(rows);
-                } else {
-                    fetchDirectly();
-                }
+                executeTraining(rows);
             }, (err) => {
                 console.warn('[AI] callApi getLichSu error, fetching directly:', err);
                 fetchDirectly();

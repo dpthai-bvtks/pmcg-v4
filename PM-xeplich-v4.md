@@ -2556,5 +2556,42 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.4-rev8] - 13:45 09/09/2026: Khắc Phục Lỗi Mất Dữ Liệu Huấn Luyện AI Khi F5 Hoặc Mở Trên Máy Tính Khác
+- **Bối cảnh & Vấn đề**:
+  1. Khi người dùng bấm Huấn luyện AI trong tab Admin (`tab-ai`), dữ liệu huấn luyện (số dòng, thời gian huấn luyện, số cặp thói quen) bị biến mất hoàn toàn (về 0 dòng, "Chưa huấn luyện") khi F5 lại trang hoặc khi đăng nhập trên máy tính/thiết bị khác.
+  2. Bắt nguồn từ việc mô hình AI chỉ được lưu cục bộ trong `localStorage` bằng key cố định `times_ai_learned_model`, hoàn toàn không được lưu trữ lên CSDL đám mây Cloudflare D1 (`cai_dat`).
+  3. Hàm `saveSystemSettings` trong backend xử lý tham số dạng Object khiến các lệnh lưu key-value dạng cặp chuỗi bị lỗi parse; đồng thời API `getLichSu` chỉ đọc từ bảng `lich_su` (chưa có dữ liệu nếu đơn vị chưa chốt sổ tháng nào).
+  4. Trong `init.js`, tiến trình sanitization dọn dẹp cache rò rỉ vô tình xóa bỏ `times_ai_learned_model` khi session chưa sẵn sàng.
+- **Giải pháp & Kỹ thuật triển khai**:
+  1. **Backend Cloudflare Worker (`backend/src/index.js`)**:
+     - Nâng cấp `saveSystemSettings`: Tự động tương thích cả 3 định dạng tham số (`{ key: val }`, `(key, val)`, hoặc JSON string).
+     - Bổ sung 2 action chuyên dụng: `saveAIModel` / `saveAILearnedModel` và `getAIModel` / `getAILearnedModel` ghi/đọc trường `ai_learned_model` trong bảng `cai_dat` độc lập theo từng đơn vị (`unit_code`).
+     - Tự động fallback trong `getLichSu`: Nếu bảng `lich_su` chưa có dữ liệu chốt sổ, tự động nạp toàn bộ các ca từ bảng `lich_trinh` để AI có dữ liệu thực tế để học.
+  2. **Bộ Não Học Máy AI Lâm Sàng (`js/ai-scheduler.js`)**:
+     - Tự động phân lập khóa lưu trữ theo đơn vị: `times_ai_learned_model_${unitCode}`.
+     - Hàm `saveModel`: Vừa lưu cache offline vừa tự động đồng bộ ngay lập tức lên CSDL đám mây Cloudflare D1.
+     - Hàm `loadSavedModel`: Ưu tiên đọc từ `dataCache.settings.ai_learned_model` được đồng bộ từ server về.
+     - Bổ sung hàm `setModel(model)` cho phép nạp và cập nhật mô hình linh hoạt từ server payload.
+  3. **Frontend Controller (`js/app.js`)**:
+     - `applySystemSettings`: Tự động nạp `ai_learned_model` và `ai_auto_train_config` từ CSDL đám mây khi khởi động phần mềm hoặc F5, sau đó gọi `renderAISettingsUI()` cập nhật ngay giao diện Admin.
+     - `calibrateAIFromHistory`: Tự động gom toàn bộ dữ liệu từ D1 History, Live Schedule (`dataCache.schedule`, `currentScheduleData`), và Bootstrap Cache. Huấn luyện xong tự động gọi API lưu vĩnh viễn lên Cloudflare D1.
+  4. **Bảo vệ Cache Trình Duyệt (`js/init.js`)**:
+     - Thêm `times_ai_learned_model`, `ai_auto_train_enable`, `ai_auto_train_time` và tiền tố `times_ai_learned_model_` vào danh sách `preserveKeys` để F5 không bao giờ bị xóa.
+- **Đồng bộ phiên bản**:
+  + Nâng cấp lên `4.0.4-rev8`.
+  + `index.html`: Cập nhật cache busters `v=4.0.4-rev8`, footer timestamp `13:45 09/09/2026`, `APP_VERSION = '4.0.4-rev8'`, giữ nguyên hiển thị chân trang `Phiên bản: 4.0.4`.
+  + `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.0.4-rev8'`.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `js/ai-scheduler.js`
+  + `js/app.js`
+  + `js/init.js`
+  + `index.html`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+
 
 

@@ -1827,8 +1827,14 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     case "getLichSu":
     case "getAllHistory":
     case "getHistoryForAI": {
-      const res = await db.prepare("SELECT date, patient_name, dob, room, procedure_name, staff_name, sub_staff_name, machine_name, bed, start_time, end_time FROM lich_su WHERE unit_code = ? ORDER BY id DESC").bind(unitCode).all();
-      const rows = (res.results || []).map(s => ({
+      const res = await db.prepare("SELECT date, patient_name, dob, room, procedure_name, staff_name, sub_staff_name, machine_name, bed, start_time, end_time FROM lich_su WHERE unit_code = ? ORDER BY id DESC").bind(unitCode).all().catch(() => ({ results: [] }));
+      let rawRows = res.results || [];
+      if (rawRows.length === 0) {
+        // Fallback: nếu chưa có dữ liệu lịch sử chốt sổ, nạp các ca từ bảng lịch trình để AI có dữ liệu học
+        const ltRes = await db.prepare("SELECT date, patient_name, dob, room, procedure_name, staff_name, sub_staff_name, machine_name, bed, start_time, end_time FROM lich_trinh WHERE unit_code = ? ORDER BY id DESC").bind(unitCode).all().catch(() => ({ results: [] }));
+        rawRows = ltRes.results || [];
+      }
+      const rows = rawRows.map(s => ({
         date: s.date,
         ngay: s.date,
         patient_name: s.patient_name,
@@ -3010,12 +3016,38 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     }
 
     case "saveSystemSettings": {
-      const settings = args[0] || {};
-      for (const [k, v] of Object.entries(settings)) {
-        await setCaiDat(db, unitCode, String(k), String(v ?? ""));
+      let settings = args[0] || {};
+      if (typeof settings === "string" && args.length >= 2) {
+        settings = { [settings]: args[1] };
+      } else if (typeof settings === "string" && args.length === 1) {
+        try { settings = JSON.parse(settings); } catch(e) {}
+      }
+      if (typeof settings === "object" && settings !== null) {
+        for (const [k, v] of Object.entries(settings)) {
+          await setCaiDat(db, unitCode, String(k), String(v ?? ""));
+        }
       }
       await bumpDataVersion(db, unitCode);
       return success(true);
+    }
+
+    case "saveAIModel":
+    case "saveAILearnedModel": {
+      const model = args[0] || {};
+      const modelStr = typeof model === "string" ? model : JSON.stringify(model);
+      await setCaiDat(db, unitCode, "ai_learned_model", modelStr);
+      await bumpDataVersion(db, unitCode);
+      return success({ message: "Đã lưu mô hình AI vào CSDL đám mây!" });
+    }
+
+    case "getAIModel":
+    case "getAILearnedModel": {
+      const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'ai_learned_model'").bind(unitCode).first();
+      let model = null;
+      if (rec && rec.value) {
+        try { model = JSON.parse(rec.value); } catch(e) {}
+      }
+      return success(model);
     }
 
     // ============================================================

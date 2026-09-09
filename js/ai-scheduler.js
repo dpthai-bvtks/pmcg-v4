@@ -9,6 +9,13 @@ window.AIScheduler = (function () {
 
   const STORAGE_KEY = 'times_ai_learned_model';
 
+  function getStorageKey() {
+    const u = (typeof window !== 'undefined' && typeof window.getCurrentUnitCode === 'function')
+      ? window.getCurrentUnitCode()
+      : ((typeof localStorage !== 'undefined' && localStorage.getItem('pm_unit_code')) || 'bvtks-cs2');
+    return 'times_ai_learned_model_' + String(u || 'default').toLowerCase();
+  }
+
   // Mô hình AI mặc định (Pre-trained Baseline) chuẩn lâm sàng YHCT & PHCN CS2
   const defaultModel = {
     version: '3.2.5-AI',
@@ -37,24 +44,71 @@ window.AIScheduler = (function () {
 
   function loadSavedModel() {
     try {
+      // 1. Đọc từ dataCache.settings (Cloudflare D1) nếu có
+      if (typeof window !== 'undefined' && window.dataCache && window.dataCache.settings && window.dataCache.settings.ai_learned_model) {
+        const raw = window.dataCache.settings.ai_learned_model;
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+      // 2. Đọc từ localStorage (hỗ trợ cả key theo unit và key chung)
       if (typeof localStorage !== 'undefined') {
-        const str = localStorage.getItem(STORAGE_KEY);
+        const unitKey = getStorageKey();
+        const str = localStorage.getItem(unitKey) || localStorage.getItem(STORAGE_KEY);
         if (str) return JSON.parse(str);
       }
     } catch (e) {
-      console.warn('[AIScheduler] Không thể đọc mô hình AI từ localStorage:', e);
+      console.warn('[AIScheduler] Không thể đọc mô hình AI từ bộ nhớ:', e);
     }
     return null;
   }
 
-  function saveModel(model) {
+  function saveModel(model, syncCloud = true) {
     try {
       if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(model));
+        const unitKey = getStorageKey();
+        const jsonStr = JSON.stringify(model);
+        localStorage.setItem(unitKey, jsonStr);
+        localStorage.setItem(STORAGE_KEY, jsonStr);
       }
       currentModel = model;
+
+      // ☁️ Tự động đồng bộ mô hình AI lên CSDL đám mây Cloudflare D1 (cai_dat)
+      if (syncCloud && typeof window !== 'undefined' && typeof window.callApi === 'function') {
+        try {
+          window.callApi('saveSystemSettings', [{ ai_learned_model: JSON.stringify(model) }], null, null);
+        } catch(err) {
+          console.warn('[AIScheduler] Lỗi gửi mô hình lên Cloud:', err);
+        }
+      }
     } catch (e) {
-      console.warn('[AIScheduler] Không thể lưu mô hình AI vào localStorage:', e);
+      console.warn('[AIScheduler] Không thể lưu mô hình AI:', e);
+    }
+  }
+
+  function setModel(model, saveLocal = true, syncCloud = false) {
+    if (!model || typeof model !== 'object') return;
+    currentModel = {
+      ...defaultModel,
+      ...model,
+      trainedRows: model.trainedRows || 0,
+      lastTrained: model.lastTrained || null,
+      staffAffinity: model.staffAffinity || {},
+      timeSlotDist: model.timeSlotDist || {},
+      machineCongestion: model.machineCongestion || defaultModel.machineCongestion,
+      patientWeights: model.patientWeights || defaultModel.patientWeights
+    };
+    if (saveLocal && typeof localStorage !== 'undefined') {
+      try {
+        const unitKey = getStorageKey();
+        const jsonStr = JSON.stringify(currentModel);
+        localStorage.setItem(unitKey, jsonStr);
+        localStorage.setItem(STORAGE_KEY, jsonStr);
+      } catch(e) {}
+    }
+    if (syncCloud && typeof window !== 'undefined' && typeof window.callApi === 'function') {
+      try {
+        window.callApi('saveSystemSettings', [{ ai_learned_model: JSON.stringify(currentModel) }], null, null);
+      } catch(e) {}
     }
   }
 
@@ -277,6 +331,7 @@ window.AIScheduler = (function () {
 
   return {
     getModel: () => currentModel,
+    setModel,
     trainFromHistory,
     scorePatientPriority,
     rankPatients,
