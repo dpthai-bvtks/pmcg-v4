@@ -2374,4 +2374,37 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.4-rev2] - 09/09/2026: Hợp Nhất Bảng Giờ Bận Lịch Sử Thành gio_ban_chung_cu & Làm Sạch Dữ Liệu Trên Turso Cloud
+
+- **Phản hồi của người dùng**:
+  + Phát hiện trong bảng `gio_ban_cu` trên CSDL Turso Cloud đang chứa lẫn lộn cả giờ bận của nhân viên và bệnh nhân (136 dòng nhân sự, 90 dòng bệnh nhân và 1 dòng ảo `ID`).
+  + Yêu cầu: Hợp nhất thành 1 bảng duy nhất mang tên `gio_ban_chung_cu`, di chuyển toàn bộ dữ liệu hợp lệ từ `gio_ban_cu` sang, phân loại rõ ràng theo cột `target_type` (`'nhan_su'` và `'benh_nhan'`), đồng thời loại bỏ triệt để dòng ảo/rác `ID`.
+- **Giải pháp triển khai**:
+  1. **Tạo bảng `gio_ban_chung_cu`**:
+     - Cấu trúc: `id`, `unit_code`, `date`, `target_type` ('nhan_su' | 'benh_nhan'), `name`, `dob`, `busy_ranges`, `created_at`.
+     - Tạo 2 chỉ mục: `idx_gio_ban_chung_cu_unit` và `idx_gio_ban_chung_cu_lookup(unit_code, date, target_type)`.
+  2. **Tự động chuyển đổi & làm sạch dữ liệu trên Turso libSQL Cloud**:
+     - Chuyển 136 dòng nhân sự (`target_type = 'nhan_su'`).
+     - Chuyển 90 dòng bệnh nhân (`target_type = 'benh_nhan'`).
+     - Bỏ qua dòng rác/ảo `staff_name = 'ID'`.
+     - Giữ nguyên trạng bảng cũ `gio_ban_cu` làm dự phòng tương thích ngược.
+  3. **Backend API (`backend/src/index.js`)**:
+     - `chotSo`/`chuyenNgayMoi` và `checkAutoChotSo`: Lưu giờ bận nhân viên và bệnh nhân trực tiếp vào `gio_ban_chung_cu` theo `target_type`.
+     - `getHistoryFullData`: Truy vấn `gio_ban_chung_cu`, phân tách chính xác vào `staffBusy` và `patBusy`. Có cơ chế dự phòng thông minh từ `gio_ban_cu` nếu ngày cũ chưa được nạp.
+     - `importHistoryBusy`: Nhập liệu vào `gio_ban_chung_cu`.
+     - Backup / export / restore: Bổ sung bảng `gio_ban_chung_cu` vào danh mục sao lưu.
+  4. **Đồng bộ phiên bản**:
+     - Nâng cấp lên `4.0.4-rev2`.
+     - `index.html`: Cập nhật cache busters, footer timestamp `08:05 09/09/2026`, `APP_VERSION = '4.0.4-rev2'`.
+     - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.0.4-rev2'`.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `backend/schema.sql`
+  + `index.html`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+
 

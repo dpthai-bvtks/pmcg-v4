@@ -1,4 +1,4 @@
-﻿-- ============================================================
+-- ============================================================
 -- CLOUDFLARE D1 DATABASE SCHEMA CHO PM-XEPLICH V4 THƯƠNG MẠI
 -- Hỗ trợ kiến trúc Đa Đơn Vị (Multi-Tenant SaaS Architecture)
 -- Mã đơn vị mặc định: bvtks_cs2
@@ -188,7 +188,21 @@ CREATE TABLE IF NOT EXISTS lich_su (
 );
 CREATE INDEX IF NOT EXISTS idx_lich_su_unit_date ON lich_su(unit_code, date);
 
--- 11. LỊCH SỬ GIỜ BẬN & RA VIỆN
+-- 11. LỊCH SỬ GIỜ BẬN & RA VIỆN (HỢP NHẤT NHÂN SỰ & BỆNH NHÂN)
+CREATE TABLE IF NOT EXISTS gio_ban_chung_cu (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+    date TEXT NOT NULL,
+    target_type TEXT NOT NULL DEFAULT 'nhan_su', -- 'nhan_su' | 'benh_nhan'
+    name TEXT NOT NULL,
+    dob TEXT DEFAULT '',
+    busy_ranges TEXT DEFAULT '',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_gio_ban_chung_cu_unit ON gio_ban_chung_cu(unit_code, date);
+CREATE INDEX IF NOT EXISTS idx_gio_ban_chung_cu_lookup ON gio_ban_chung_cu(unit_code, date, target_type);
+
+-- Bảng cũ dự phòng (legacy)
 CREATE TABLE IF NOT EXISTS gio_ban_cu (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',

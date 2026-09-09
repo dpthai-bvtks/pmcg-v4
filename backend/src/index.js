@@ -480,11 +480,12 @@ async function ensureSchema(db) {
         busy_ranges TEXT DEFAULT '',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`),
-      db.prepare(`CREATE TABLE IF NOT EXISTS gio_ban_bn_cu (
+      db.prepare(`CREATE TABLE IF NOT EXISTS gio_ban_chung_cu (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
         date TEXT NOT NULL,
-        patient_name TEXT NOT NULL,
+        target_type TEXT NOT NULL DEFAULT 'nhan_su',
+        name TEXT NOT NULL,
         dob TEXT DEFAULT '',
         busy_ranges TEXT DEFAULT '',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -563,7 +564,7 @@ async function ensureSchema(db) {
       "ALTER TABLE lich_trinh ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
       "ALTER TABLE lich_su ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
       "ALTER TABLE gio_ban_cu ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
-      "ALTER TABLE gio_ban_bn_cu ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
+      "ALTER TABLE gio_ban_chung_cu ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
       "ALTER TABLE cham_cong ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
       "ALTER TABLE thong_ke ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
       "ALTER TABLE tim_ranh ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
@@ -580,7 +581,8 @@ async function ensureSchema(db) {
       "CREATE INDEX IF NOT EXISTS idx_lich_trinh_unit ON lich_trinh(unit_code, date)",
       "CREATE INDEX IF NOT EXISTS idx_lich_su_unit ON lich_su(unit_code, date)",
       "CREATE INDEX IF NOT EXISTS idx_gio_ban_cu_unit ON gio_ban_cu(unit_code, date)",
-      "CREATE INDEX IF NOT EXISTS idx_gio_ban_bn_cu_unit ON gio_ban_bn_cu(unit_code, date)",
+      "CREATE INDEX IF NOT EXISTS idx_gio_ban_chung_cu_unit ON gio_ban_chung_cu(unit_code, date)",
+      "CREATE INDEX IF NOT EXISTS idx_gio_ban_chung_cu_lookup ON gio_ban_chung_cu(unit_code, date, target_type)",
       "CREATE INDEX IF NOT EXISTS idx_tai_khoan_unit ON tai_khoan(unit_code, username)",
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_cham_cong_unit_my ON cham_cong(unit_code, month_year)",
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_thong_ke_unit_my ON thong_ke(unit_code, month_year)",
@@ -608,6 +610,33 @@ async function ensureSchema(db) {
     try {
       await db.batch(migrations.map(sql => db.prepare(sql)));
     } catch(e) {}
+
+    // Multi-tenant auto-migration: chuyển dữ liệu từ gio_ban_cu sang gio_ban_chung_cu và lọc sạch dữ liệu ảo
+    try {
+      const cntChung = await db.prepare("SELECT count(*) as total FROM gio_ban_chung_cu").first();
+      if (!cntChung || cntChung.total === 0) {
+        // 1. Chuyển nhân sự (BS/KTV)
+        await db.prepare(`
+          INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, busy_ranges, created_at)
+          SELECT unit_code, date, 'nhan_su', staff_name, busy_ranges, created_at
+          FROM gio_ban_cu
+          WHERE (staff_name LIKE 'BS%' OR staff_name LIKE 'Bs%' OR staff_name LIKE 'KTV%')
+            AND staff_name != 'ID' AND busy_ranges != 'ID' AND busy_ranges IS NOT NULL AND busy_ranges != ''
+        `).run();
+
+        // 2. Chuyển bệnh nhân
+        await db.prepare(`
+          INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, busy_ranges, created_at)
+          SELECT unit_code, date, 'benh_nhan', staff_name, busy_ranges, created_at
+          FROM gio_ban_cu
+          WHERE staff_name NOT LIKE 'BS%' AND staff_name NOT LIKE 'Bs%' AND staff_name NOT LIKE 'KTV%'
+            AND staff_name != 'ID' AND busy_ranges != 'ID' AND busy_ranges IS NOT NULL AND busy_ranges != ''
+        `).run();
+      }
+    } catch(migErr) {
+      console.warn("[Migrate gio_ban_chung_cu warning]:", migErr);
+    }
+
     schemaEnsured = true;
     
     // Multi-tenant table unique constraint migrations
@@ -1382,7 +1411,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
       const tables = [
         'tenants', 'cai_dat', 'tai_khoan', 'nhan_su', 'may_moc', 'phong',
-        'thu_thuat', 'benh_nhan', 'lich_trinh', 'lich_su', 'gio_ban_cu', 'gio_ban_bn_cu',
+        'thu_thuat', 'benh_nhan', 'lich_trinh', 'lich_su', 'gio_ban_cu', 'gio_ban_chung_cu',
         'cham_cong', 'thong_ke', 'tim_ranh', 'tai_lieu', 'phac_do'
       ];
 
@@ -1414,7 +1443,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       // Dành riêng cho Super Admin: Xuất toàn bộ CSDL của tất cả các đơn vị
       const tables = [
         'tenants', 'cai_dat', 'tai_khoan', 'nhan_su', 'may_moc', 'phong',
-        'thu_thuat', 'benh_nhan', 'lich_trinh', 'lich_su', 'gio_ban_cu', 'gio_ban_bn_cu',
+        'thu_thuat', 'benh_nhan', 'lich_trinh', 'lich_su', 'gio_ban_cu', 'gio_ban_chung_cu',
         'cham_cong', 'thong_ke', 'tim_ranh', 'tai_lieu', 'phac_do'
       ];
 
@@ -1449,7 +1478,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         lich_trinh: results[8]?.results || [],
         lich_su: results[9]?.results || [],
         gio_ban_cu: results[10]?.results || [],
-        gio_ban_bn_cu: results[11]?.results || [],
+        gio_ban_chung_cu: results[11]?.results || [],
         cham_cong: results[12]?.results || [],
         thong_ke: results[13]?.results || [],
         tim_ranh: results[14]?.results || [],
@@ -1470,7 +1499,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
       const tables = [
         'cai_dat', 'tai_khoan', 'nhan_su', 'may_moc', 'phong',
-        'thu_thuat', 'benh_nhan', 'lich_trinh', 'lich_su', 'gio_ban_cu', 'gio_ban_bn_cu',
+        'thu_thuat', 'benh_nhan', 'lich_trinh', 'lich_su', 'gio_ban_cu', 'gio_ban_chung_cu',
         'cham_cong', 'thong_ke', 'tim_ranh', 'tai_lieu', 'phac_do'
       ];
 
@@ -2577,9 +2606,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
       // 1. Sao lưu giờ bận thực tế của nhân viên trước khi reset
       statements.push(
-        db.prepare("INSERT INTO gio_ban_cu (unit_code, date, staff_name, busy_ranges) SELECT unit_code, ?, name, temp_busy FROM nhan_su WHERE unit_code = ? AND temp_busy IS NOT NULL AND temp_busy != '' AND temp_busy != '[]' AND temp_busy != '[\"\"]'").bind(targetDateStr, unitCode),
+        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, busy_ranges) SELECT unit_code, ?, 'nhan_su', name, temp_busy FROM nhan_su WHERE unit_code = ? AND temp_busy IS NOT NULL AND temp_busy != '' AND temp_busy != '[]' AND temp_busy != '[\"\"]'").bind(targetDateStr, unitCode),
         // 2. Sao lưu giờ bận thực tế của bệnh nhân trước khi reset
-        db.prepare("INSERT INTO gio_ban_bn_cu (unit_code, date, patient_name, dob, busy_ranges) SELECT unit_code, ?, name, dob, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(targetDateStr, unitCode)
+        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'benh_nhan', name, dob, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(targetDateStr, unitCode)
       );
 
       if (date && typeof date === "string" && date.trim()) {
@@ -2637,9 +2666,11 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
       const stmts = [];
       for (const b of busyList) {
+        const bName = b.name || "";
+        const isStaff = b.target_type === 'nhan_su' || bName.startsWith('BS') || bName.startsWith('Bs') || bName.startsWith('KTV');
         stmts.push(
-          db.prepare(`INSERT INTO gio_ban_cu (unit_code, date, staff_name, busy_ranges) VALUES (?, ?, ?, ?)`)
-            .bind(unitCode, b.date || "", b.name || "", typeof b.busy_ranges === 'string' ? b.busy_ranges : JSON.stringify(b.busy_ranges || ""))
+          db.prepare(`INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) VALUES (?, ?, ?, ?, ?, ?)`)
+            .bind(unitCode, b.date || "", isStaff ? 'nhan_su' : 'benh_nhan', bName, b.dob || "", typeof b.busy_ranges === 'string' ? b.busy_ranges : JSON.stringify(b.busy_ranges || ""))
         );
       }
       for (let i = 0; i < stmts.length; i += 50) {
@@ -2695,24 +2726,6 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         }
       }
 
-      // Safe query for gio_ban_cu (Staff busy)
-      let busyRows = [];
-      try {
-        const busyRes = await db.prepare(`SELECT date, staff_name, busy_ranges FROM gio_ban_cu WHERE unit_code = ? AND date IN (${inPlaceholders})`).bind(unitCode, ...dateVariants).all();
-        busyRows = busyRes.results || [];
-      } catch (e) {
-        // gio_ban_cu optional
-      }
-
-      // Safe query for gio_ban_bn_cu (Patient busy)
-      let patBusyRows = [];
-      try {
-        const patBusyRes = await db.prepare(`SELECT date, patient_name, dob, busy_ranges FROM gio_ban_bn_cu WHERE unit_code = ? AND date IN (${inPlaceholders})`).bind(unitCode, ...dateVariants).all();
-        patBusyRows = patBusyRes.results || [];
-      } catch (e) {
-        // gio_ban_bn_cu optional
-      }
-
       const schedule = rows.map(r => ({
         ngay: r.date,
         tenBN: r.patient_name,
@@ -2740,47 +2753,65 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       });
       const benh_nhan = Object.values(patMap);
 
-      // Staff busy: CHỈ lấy từ gio_ban_cu, TUYỆT ĐỐI KHÔNG giả lập từ ca thủ thuật
+      // Safe query for gio_ban_chung_cu (Cả nhân sự và bệnh nhân)
+      let chungBusyRows = [];
+      try {
+        const chungRes = await db.prepare(`SELECT date, target_type, name, dob, busy_ranges FROM gio_ban_chung_cu WHERE unit_code = ? AND date IN (${inPlaceholders})`).bind(unitCode, ...dateVariants).all();
+        chungBusyRows = chungRes.results || [];
+      } catch (e) {
+        // gio_ban_chung_cu optional
+      }
+
+      // Fallback thông minh: nếu gio_ban_chung_cu chưa có dữ liệu ngày này, thử lấy từ bảng cũ gio_ban_cu
+      if (chungBusyRows.length === 0) {
+        try {
+          const oldRes = await db.prepare(`SELECT date, staff_name, busy_ranges FROM gio_ban_cu WHERE unit_code = ? AND date IN (${inPlaceholders}) AND staff_name != 'ID' AND busy_ranges != 'ID'`).bind(unitCode, ...dateVariants).all();
+          if (oldRes.results && oldRes.results.length > 0) {
+            chungBusyRows = oldRes.results.map(r => {
+              const isStaff = r.staff_name.startsWith('BS') || r.staff_name.startsWith('Bs') || r.staff_name.startsWith('KTV');
+              return {
+                date: r.date,
+                target_type: isStaff ? 'nhan_su' : 'benh_nhan',
+                name: r.staff_name,
+                dob: '',
+                busy_ranges: r.busy_ranges
+              };
+            });
+          }
+        } catch(e) {}
+      }
+
+      // Safe parse slots và phân bổ vào staffBusy / patBusyList
       const staffBusy = [];
-      if (busyRows.length > 0) {
-        busyRows.forEach(b => {
-          const str = String(b.busy_ranges || '');
-          let slots = [];
-          try {
-            const parsed = JSON.parse(str);
-            if (Array.isArray(parsed)) {
-              slots = parsed.map(s => {
-                const parts = String(s).split('-');
-                return parts.length === 2 ? { from: parts[0].trim(), to: parts[1].trim(), tt: 'Báo bận' } : null;
-              }).filter(Boolean);
-            }
-          } catch(e) {}
-          if (slots.length === 0) {
-            slots = str.split(',').map(s => {
-              const parts = s.split('-');
+      const patBusyList = [];
+
+      chungBusyRows.forEach(b => {
+        const str = String(b.busy_ranges || '').trim();
+        if (!str || str === 'ID' || str === '[]' || str === '[""]') return;
+        let slots = [];
+        try {
+          const parsed = JSON.parse(str);
+          if (Array.isArray(parsed)) {
+            slots = parsed.map(s => {
+              const parts = String(s).split('-');
               return parts.length === 2 ? { from: parts[0].trim(), to: parts[1].trim(), tt: 'Báo bận' } : null;
             }).filter(Boolean);
           }
-          if (slots.length > 0) {
-            staffBusy.push({ ten: b.staff_name, slots: slots });
-          }
-        });
-      }
-
-      // Patient busy: CHỈ lấy từ gio_ban_bn_cu, TUYỆT ĐỐI KHÔNG giả lập từ ca thủ thuật
-      const patBusyList = [];
-      if (patBusyRows.length > 0) {
-        patBusyRows.forEach(b => {
-          const str = String(b.busy_ranges || '');
-          const slots = str.split(',').map(s => {
+        } catch(e) {}
+        if (slots.length === 0) {
+          slots = str.split(',').map(s => {
             const parts = s.split('-');
             return parts.length === 2 ? { from: parts[0].trim(), to: parts[1].trim(), tt: 'Báo bận' } : null;
           }).filter(Boolean);
-          if (slots.length > 0) {
-            patBusyList.push({ tenBN: b.patient_name, namSinh: b.dob || "", slots: slots });
+        }
+        if (slots.length > 0) {
+          if (b.target_type === 'nhan_su') {
+            staffBusy.push({ ten: b.name, slots: slots });
+          } else {
+            patBusyList.push({ tenBN: b.name, namSinh: b.dob || "", slots: slots });
           }
-        });
-      }
+        }
+      });
 
       return success({
         schedule: schedule,
@@ -3881,9 +3912,9 @@ async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
       
       const statements = [
         // 1. Sao lưu giờ bận thực tế của nhân viên trước khi reset
-        db.prepare("INSERT INTO gio_ban_cu (unit_code, date, staff_name, busy_ranges) SELECT unit_code, ?, name, temp_busy FROM nhan_su WHERE unit_code = ? AND temp_busy IS NOT NULL AND temp_busy != '' AND temp_busy != '[]' AND temp_busy != '[\"\"]'").bind(todayDateStr, unitCode),
+        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, busy_ranges) SELECT unit_code, ?, 'nhan_su', name, temp_busy FROM nhan_su WHERE unit_code = ? AND temp_busy IS NOT NULL AND temp_busy != '' AND temp_busy != '[]' AND temp_busy != '[\"\"]'").bind(todayDateStr, unitCode),
         // 2. Sao lưu giờ bận thực tế của bệnh nhân trước khi reset
-        db.prepare("INSERT INTO gio_ban_bn_cu (unit_code, date, patient_name, dob, busy_ranges) SELECT unit_code, ?, name, dob, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(todayDateStr, unitCode),
+        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'benh_nhan', name, dob, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(todayDateStr, unitCode),
         db.prepare("INSERT INTO lich_su (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE unit_code = ?").bind(unitCode),
         db.prepare("DELETE FROM lich_trinh WHERE unit_code = ?").bind(unitCode),
         db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(unitCode),
