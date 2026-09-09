@@ -1,6 +1,6 @@
 {
-  "version": "4.0.4-rev11",
+  "version": "4.0.4-rev12",
   "releaseDate": "09/09/2026",
-  "releaseTime": "14:40 09/09/2026",
-  "notes": "Tối ưu hóa đột phá tốc độ lưu dữ liệu (<0.3s) và tốc độ xếp lịch đa luồng (0.5s - 1.2s)."
+  "releaseTime": "15:15 09/09/2026",
+  "notes": "Xóa bỏ phần chỉnh sửa nhân sự chấm công trong tab Admin, quy tụ quản lý nhân sự tại tab Chấm Công."
 }

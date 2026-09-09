@@ -795,7 +795,6 @@ window.showGlobalLoading = function (text) {
                 'free-doc-list',
                 'free-machine-list',
                 'acc-list',
-                'admin-employees-body',
                 'chamcong-body',
                 'tenants-table-body',
                 'preview-thuthuat-body',
@@ -10280,7 +10279,6 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const btnSettings = document.getElementById('nav-btn-settings');
             const btnAccounts = document.getElementById('nav-btn-accounts');
-            const btnEmployees = document.getElementById('nav-btn-employees');
             const btnAi = document.getElementById('nav-btn-ai');
             const btnBackup = document.getElementById('nav-btn-backup');
             const btnQuicklinks = document.getElementById('nav-btn-quicklinks');
@@ -10316,7 +10314,6 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (btnQuicklinks) btnQuicklinks.style.display = 'block';
                 if (btnSettings) btnSettings.style.display = 'none';
                 if (btnAccounts) btnAccounts.style.display = 'none';
-                if (btnEmployees) btnEmployees.style.display = 'none';
                 if (btnAi) btnAi.style.display = 'none';
 
                 if (typeof window.updateAppHeader === 'function') {
@@ -10340,7 +10337,6 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 if (btnSettings) btnSettings.style.display = 'block';
                 if (btnAccounts) btnAccounts.style.display = 'block';
-                if (btnEmployees) btnEmployees.style.display = 'block';
                 if (btnAi) btnAi.style.display = 'block';
                 if (btnBackup) btnBackup.style.display = 'none';
                 if (btnQuicklinks) btnQuicklinks.style.display = 'none';

@@ -659,7 +659,11 @@ window.switchChamCongSubTab = function(tabName) {
         if (viewGrid) viewGrid.style.display = 'none';
         if (viewStaff) viewStaff.style.display = 'flex';
         if (toolbar) toolbar.style.visibility = 'hidden';
-        renderAdminChamCongTable();
+        if ((!adminChamCongEmployees || adminChamCongEmployees.length === 0) && typeof loadAdminChamCongData === 'function') {
+            loadAdminChamCongData();
+        } else {
+            renderAdminChamCongTable();
+        }
     } else {
         if (btnGrid) btnGrid.classList.add('active');
         if (btnStaff) btnStaff.classList.remove('active');

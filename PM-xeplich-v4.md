@@ -2694,6 +2694,39 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `version.json`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.4-rev12] - 15:15 09/09/2026: Tinh Gọn Quản Trị - Quy Tụ Toàn Bộ Quản Lý Nhân Sự Chấm Công Sang Tab Chấm Công
+- **Yêu cầu của người dùng**:
+  + Đã có phần chỉnh sửa nhân sự chấm công ở tab-chamcong rồi thì xóa phần nhân sự chấm công trong tab-admin đi.
+- **Phân tích & Giải pháp triển khai**:
+  1. **Thực trạng**:
+     - Trước đây, chức năng quản lý danh sách nhân sự phục vụ tính năng chấm công và thống kê thủ thuật được đặt trong menu con của Tab Quản trị (`#nav-btn-employees` và `#admin-sec-employees`).
+     - Sau khi nâng cấp giao diện tích hợp trực tiếp Sub-tab "Danh Sách Nhân Sự" bên trong Tab Chấm Công (`#subtab-chamcong-staff-view`) với đầy đủ tính năng hiện đại (kéo thả ☰ bằng SortableJS, nút di chuyển ▲ ▼, thêm, sửa thông tin, khôi phục mẫu chuẩn 13 nhân sự), việc giữ lại một bảng nhân sự thứ hai trong Tab Quản trị là trùng lặp và gây rối mắt.
+  2. **Giải pháp thực hiện**:
+     - **Trong `index.html`**:
+       + Xóa nút menu `🧑‍⚕️ Nhân Sự Chấm Công` (`#nav-btn-employees`) khỏi sidebar menu của Tab Quản trị.
+       + Di dời khối "Cấu Hình Đơn Giá Thủ Thuật (VNĐ)" sang mục `⚙️ Cài Đặt Hệ Thống` (`#admin-sec-settings`) để quản trị viên vẫn thuận tiện thiết lập đơn giá thủ thuật loại 1, 2, 3 phục vụ tính tiền công cho nhân viên.
+       + Xóa bỏ hoàn toàn section `admin-sec-employees` và bảng tĩnh `#table-admin-employees`.
+     - **Trong `js/app.js`**:
+       + Loại bỏ ID `'admin-employees-body'` khỏi danh sách khởi tạo `tableBodyIds`.
+       + Loại bỏ các thao tác ẩn/hiện `#nav-btn-employees` trong phân quyền tài khoản `applyRolePermissions`.
+     - **Trong `js/thongke.js`**:
+       + Nâng cấp `switchChamCongSubTab('staff')`: Tự động nạp dữ liệu từ máy chủ nếu danh sách chưa có sẵn, đảm bảo Tab Chấm Công luôn hiển thị đủ 100% nhân sự độc lập.
+  3. **Đồng bộ phiên bản theo RULES.md**:
+     - Nâng cấp lên `v4.0.4-rev12`.
+     - `version.json`: Cập nhật `version: "4.0.4-rev12"`, `releaseTime: "15:15 09/09/2026"`.
+     - `index.html`: Cập nhật toàn bộ cache busters `v=4.0.4-rev12`, footer timestamp `15:15 09/09/2026`, `APP_VERSION = '4.0.4-rev12'`.
+     - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.0.4-rev12'`.
+- **File sửa đổi**:
+  + `index.html`
+  + `js/app.js`
+  + `js/thongke.js`
+  + `version.json`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+
 
 
 
