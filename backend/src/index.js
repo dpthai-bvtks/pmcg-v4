@@ -2542,7 +2542,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         ymd = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
       } else if (date.includes("-")) {
         const [y, m, d] = date.split("-");
-        dmy = `${d.padStart(2, "0")}/${m.padStart(2, "0")}/${y}`;
+        ymd = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
       }
       const res = await db.prepare("SELECT * FROM lich_trinh WHERE unit_code = ? AND (date = ? OR date = ?) ORDER BY order_idx ASC, start_time ASC").bind(unitCode, ymd, dmy).all();
       const rows = (res.results || []).map(s => [
@@ -2607,8 +2607,10 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       // 1. Sao lưu giờ bận thực tế của nhân viên trước khi reset
       statements.push(
         db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, busy_ranges) SELECT unit_code, ?, 'nhan_su', name, temp_busy FROM nhan_su WHERE unit_code = ? AND temp_busy IS NOT NULL AND temp_busy != '' AND temp_busy != '[]' AND temp_busy != '[\"\"]'").bind(targetDateStr, unitCode),
+        db.prepare("INSERT INTO gio_ban_cu (unit_code, date, staff_name, busy_ranges) SELECT unit_code, ?, name, temp_busy FROM nhan_su WHERE unit_code = ? AND temp_busy IS NOT NULL AND temp_busy != '' AND temp_busy != '[]' AND temp_busy != '[\"\"]'").bind(targetDateStr, unitCode),
         // 2. Sao lưu giờ bận thực tế của bệnh nhân trước khi reset
         db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'benh_nhan', name, dob, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(targetDateStr, unitCode),
+        db.prepare("INSERT INTO gio_ban_cu (unit_code, date, staff_name, busy_ranges) SELECT unit_code, ?, name, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(targetDateStr, unitCode),
         // 3. Sao lưu giờ ra viện của bệnh nhân trước khi reset
         db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'ra_vien', name, dob, leave_time FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(targetDateStr, unitCode)
       );
@@ -2815,7 +2817,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         // gio_ban_chung_cu optional
       }
 
-      // Fallback thông minh: nếu gio_ban_chung_cu chưa có dữ liệu ngày này, thử lấy từ bảng cũ gio_ban_cu
+      // Fallback thông minh 1: nếu gio_ban_chung_cu chưa có dữ liệu ngày này, thử lấy từ bảng cũ gio_ban_cu
       if (chungBusyRows.length === 0) {
         try {
           const oldRes = await db.prepare(`SELECT date, staff_name, busy_ranges FROM gio_ban_cu WHERE unit_code = ? AND date IN (${inPlaceholders}) AND staff_name != 'ID' AND busy_ranges != 'ID'`).bind(unitCode, ...dateVariants).all();
@@ -2829,6 +2831,58 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
                 dob: '',
                 busy_ranges: r.busy_ranges
               };
+            });
+          }
+        } catch(e) {}
+      }
+
+      // Fallback thông minh 2: nếu cả 2 bảng lịch sử đều chưa có bản ghi, nhưng targetDate là hôm qua/hôm nay và nhan_su/benh_nhan vẫn còn lưu temp_busy
+      if (chungBusyRows.length === 0) {
+        try {
+          const nowVN = new Date(Date.now() + 7 * 60 * 60 * 1000);
+          const dd = String(nowVN.getUTCDate()).padStart(2, '0');
+          const mm = String(nowVN.getUTCMonth() + 1).padStart(2, '0');
+          const yyyy = nowVN.getUTCFullYear();
+          const todayYMD = `${yyyy}-${mm}-${dd}`;
+          
+          const yestVN = new Date(Date.now() + 7 * 60 * 60 * 1000 - 24 * 60 * 60 * 1000);
+          const ydd = String(yestVN.getUTCDate()).padStart(2, '0');
+          const ymm = String(yestVN.getUTCMonth() + 1).padStart(2, '0');
+          const yyyyy = yestVN.getUTCFullYear();
+          const yestYMD = `${yyyyy}-${ymm}-${ydd}`;
+
+          if (dateVariants.includes(todayYMD) || dateVariants.includes(yestYMD)) {
+            const stfRes = await db.prepare("SELECT name, temp_busy FROM nhan_su WHERE unit_code = ? AND temp_busy IS NOT NULL AND temp_busy != '' AND temp_busy != '[]'").bind(unitCode).all();
+            (stfRes.results || []).forEach(r => {
+              chungBusyRows.push({
+                date: ymd,
+                target_type: 'nhan_su',
+                name: r.name,
+                dob: '',
+                busy_ranges: r.temp_busy
+              });
+            });
+
+            const patRes = await db.prepare("SELECT name, dob, gio_ban, leave_time FROM benh_nhan WHERE unit_code = ? AND ((gio_ban IS NOT NULL AND TRIM(gio_ban) != '') OR (leave_time IS NOT NULL AND TRIM(leave_time) != ''))").bind(unitCode).all();
+            (patRes.results || []).forEach(r => {
+              if (r.gio_ban) {
+                chungBusyRows.push({
+                  date: ymd,
+                  target_type: 'benh_nhan',
+                  name: r.name,
+                  dob: r.dob || '',
+                  busy_ranges: r.gio_ban
+                });
+              }
+              if (r.leave_time) {
+                chungBusyRows.push({
+                  date: ymd,
+                  target_type: 'ra_vien',
+                  name: r.name,
+                  dob: r.dob || '',
+                  busy_ranges: r.leave_time
+                });
+              }
             });
           }
         } catch(e) {}
@@ -3950,7 +4004,7 @@ async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
     let reason = "";
 
     // 1. Kích hoạt chốt sổ hôm nay khi đã đến hoặc qua giờ chốt sổ (ví dụ: >= 16:20)
-    if (lastChotSoDate !== todayDateStr && currentHourMin >= chotSoTime) {
+    if (lastChotSoDate !== todayDateStr && lastChotSoDate !== todayYMD && currentHourMin >= chotSoTime) {
       shouldClose = true;
       reason = `Đã đến giờ chốt sổ hàng ngày (${currentHourMin} >= ${chotSoTime})`;
     }
@@ -3972,12 +4026,14 @@ async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
       console.log(`[Worker Auto-ChotSo]: Triggering auto closure for unit '${unitCode}'. Lý do: ${reason}. today=${todayDateStr}, lastClosed=${lastChotSoDate}, time=${currentHourMin}, chotSoTime=${chotSoTime}`);
       
       const statements = [
-        // 1. Sao lưu giờ bận thực tế của nhân viên trước khi reset
-        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, busy_ranges) SELECT unit_code, ?, 'nhan_su', name, temp_busy FROM nhan_su WHERE unit_code = ? AND temp_busy IS NOT NULL AND temp_busy != '' AND temp_busy != '[]' AND temp_busy != '[\"\"]'").bind(todayDateStr, unitCode),
+        // 1. Sao lưu giờ bận thực tế của nhân viên trước khi reset (vào cả gio_ban_chung_cu và gio_ban_cu)
+        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, busy_ranges) SELECT unit_code, ?, 'nhan_su', name, temp_busy FROM nhan_su WHERE unit_code = ? AND temp_busy IS NOT NULL AND temp_busy != '' AND temp_busy != '[]' AND temp_busy != '[\"\"]'").bind(todayYMD, unitCode),
+        db.prepare("INSERT INTO gio_ban_cu (unit_code, date, staff_name, busy_ranges) SELECT unit_code, ?, name, temp_busy FROM nhan_su WHERE unit_code = ? AND temp_busy IS NOT NULL AND temp_busy != '' AND temp_busy != '[]' AND temp_busy != '[\"\"]'").bind(todayYMD, unitCode),
         // 2. Sao lưu giờ bận thực tế của bệnh nhân trước khi reset
-        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'benh_nhan', name, dob, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(todayDateStr, unitCode),
+        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'benh_nhan', name, dob, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(todayYMD, unitCode),
+        db.prepare("INSERT INTO gio_ban_cu (unit_code, date, staff_name, busy_ranges) SELECT unit_code, ?, name, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(todayYMD, unitCode),
         // 3. Sao lưu giờ ra viện của bệnh nhân trước khi reset
-        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'ra_vien', name, dob, leave_time FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(todayDateStr, unitCode),
+        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'ra_vien', name, dob, leave_time FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(todayYMD, unitCode),
         db.prepare("INSERT INTO lich_su (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE unit_code = ?").bind(unitCode),
         db.prepare("DELETE FROM lich_trinh WHERE unit_code = ?").bind(unitCode),
         db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(unitCode),
@@ -3986,7 +4042,7 @@ async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
       ];
 
       await db.batch(statements);
-      await setCaiDat(db, unitCode, 'lastChotSoDate', todayDateStr);
+      await setCaiDat(db, unitCode, 'lastChotSoDate', todayYMD);
       await bumpDataVersion(db, unitCode);
       console.log(`[Worker Auto-ChotSo]: Automated day closure executed successfully for unit '${unitCode}'!`);
     }
