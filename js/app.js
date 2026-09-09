@@ -10472,6 +10472,9 @@ window.renderSttOrderControl = function (type, i, total) {
             if (sectionId === 'admin-sec-ai' && typeof window.renderAISettingsUI === 'function') {
                 window.renderAISettingsUI();
             }
+            if (sectionId === 'admin-sec-busy-history' && typeof window.loadGioBanChungCuUI === 'function') {
+                window.loadGioBanChungCuUI('admin');
+            }
         }
 
         // ============================================================
@@ -13876,6 +13879,320 @@ window.submitChangePassword = function() {
         console.error('Change password error:', err);
         alert('❌ Lỗi kết nối máy chủ: ' + (err.message || String(err)));
     });
+};
+
+// ============================================================
+// 🕒 QUẢN LÝ & HIỂN THỊ BẢNG GIỜ BẬN CHUNG CŨ (gio_ban_chung_cu)
+// ============================================================
+window._gioBanChungCuData = { records: [], dates: [], total: 0 };
+window._gioBanChungCuLoaded = false;
+
+window.switchBusySubTab = function(mode) {
+    const liveView = document.getElementById('busy-view-live');
+    const histView = document.getElementById('busy-view-history');
+    const btnLive = document.getElementById('btn-busy-mode-live');
+    const btnHist = document.getElementById('btn-busy-mode-history');
+    const badgeContainer = document.getElementById('busy-history-badge-container');
+
+    if (mode === 'history') {
+        if (liveView) liveView.style.display = 'none';
+        if (histView) histView.style.display = 'flex';
+        if (btnLive) {
+            btnLive.classList.remove('active');
+            btnLive.style.background = '#f8fafc';
+            btnLive.style.color = '#334155';
+            btnLive.style.border = '1px solid #cbd5e1';
+            btnLive.style.boxShadow = 'none';
+        }
+        if (btnHist) {
+            btnHist.classList.add('active');
+            btnHist.style.background = '#d97706';
+            btnHist.style.color = '#ffffff';
+            btnHist.style.border = 'none';
+            btnHist.style.boxShadow = '0 2px 4px rgba(217,119,6,0.25)';
+        }
+        if (badgeContainer) badgeContainer.style.display = 'flex';
+
+        if (!window._gioBanChungCuLoaded) {
+            window.loadGioBanChungCuUI('busy');
+        }
+    } else {
+        if (liveView) liveView.style.display = 'block';
+        if (histView) histView.style.display = 'none';
+        if (btnLive) {
+            btnLive.classList.add('active');
+            btnLive.style.background = '#16a085';
+            btnLive.style.color = '#ffffff';
+            btnLive.style.border = 'none';
+            btnLive.style.boxShadow = '0 2px 4px rgba(22,160,133,0.2)';
+        }
+        if (btnHist) {
+            btnHist.classList.remove('active');
+            btnHist.style.background = '#f8fafc';
+            btnHist.style.color = '#334155';
+            btnHist.style.border = '1px solid #cbd5e1';
+            btnHist.style.boxShadow = 'none';
+        }
+        if (badgeContainer) badgeContainer.style.display = 'none';
+    }
+};
+
+window.onBusyHistFilterChange = function() {
+    window.loadGioBanChungCuUI('busy');
+};
+
+window.onAdminBusyHistFilterChange = function() {
+    window.loadGioBanChungCuUI('admin');
+};
+
+function formatDisplayDateVN(isoDate) {
+    if (!isoDate) return '';
+    const parts = String(isoDate).split('-');
+    if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return isoDate;
+}
+
+function populateGioBanChungCuDateDropdowns(dates = []) {
+    const selects = [
+        document.getElementById('busy-hist-date-select'),
+        document.getElementById('admin-busy-hist-date-select')
+    ];
+
+    selects.forEach(select => {
+        if (!select) return;
+        const currentVal = select.value || 'all';
+        let html = `<option value="all">-- Tất cả các ngày (${dates.length} ngày) --</option>`;
+        dates.forEach(d => {
+            const formatted = formatDisplayDateVN(d);
+            html += `<option value="${d}">${formatted}</option>`;
+        });
+        select.innerHTML = html;
+        if (dates.includes(currentVal)) {
+            select.value = currentVal;
+        } else {
+            select.value = 'all';
+        }
+    });
+}
+
+function updateGioBanChungCuBadges(filteredCount, totalCount) {
+    const totalEl = document.getElementById('busy-history-total-count');
+    if (totalEl) {
+        totalEl.textContent = `${filteredCount} / ${totalCount} bản ghi`;
+    }
+}
+
+function renderBusyRangePills(busyRangesStr) {
+    if (!busyRangesStr) return '<span style="color: #94a3b8; font-style: italic;">Không có</span>';
+    const slots = String(busyRangesStr).split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
+    if (slots.length === 0) return '<span style="color: #94a3b8; font-style: italic;">Không có</span>';
+    
+    return slots.map(slot => {
+        return `<span style="display: inline-block; margin: 2px 3px; padding: 2px 7px; border-radius: 4px; font-size: 12px; font-weight: 700; background: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1; font-family: 'Consolas', 'Courier New', monospace; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">⏱ ${escapeHtml(slot)}</span>`;
+    }).join(' ');
+}
+
+window.renderGioBanChungCuTable = function(records, context = 'busy') {
+    const tbodyId = (context === 'admin') ? 'admin-busy-chung-table-body' : 'busy-chung-table-body';
+    const tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+
+    if (!records || records.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 35px; color: #64748b; font-size: 13.5px;">📭 Không tìm thấy bản ghi giờ bận cũ nào phù hợp với bộ lọc hiện tại.</td></tr>`;
+        return;
+    }
+
+    let html = '';
+    records.forEach((rec, idx) => {
+        const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+        const isNhanSu = (rec.target_type === 'nhan_su');
+        const badgeClass = isNhanSu
+            ? '<span style="display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:12px; font-size:11.5px; font-weight:700; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;">🩺 Nhân Sự</span>'
+            : '<span style="display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:12px; font-size:11.5px; font-weight:700; background:#fef3c7; color:#92400e; border:1px solid #fde68a;">🧑 Bệnh Nhân</span>';
+
+        const formattedDate = formatDisplayDateVN(rec.date);
+        const nameDisplay = `<span style="font-weight: 700; color: #1e293b; font-size: 13.5px;">${escapeHtml(rec.name)}</span>`;
+        const dobDisplay = rec.dob ? `<span style="font-weight: 600; color: #475569;">${escapeHtml(rec.dob)}</span>` : '<span style="color:#94a3b8;">-</span>';
+        const busyPills = renderBusyRangePills(rec.busy_ranges);
+        const createdDisplay = rec.created_at ? `<span style="font-size: 12px; color: #64748b; font-family: monospace;">${escapeHtml(rec.created_at)}</span>` : '<span style="color:#94a3b8;">-</span>';
+
+        html += `
+        <tr style="background: ${rowBg}; border-bottom: 1px solid #e2e8f0; transition: background 0.15s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='${rowBg}'">
+            <td style="padding: 10px 12px; text-align: center; font-weight: 600; color: #64748b;">${idx + 1}</td>
+            <td style="padding: 10px 12px; text-align: center; font-weight: 700; color: #1e293b;">${formattedDate}</td>
+            <td style="padding: 10px 12px; text-align: center;">${badgeClass}</td>
+            <td style="padding: 10px 14px;">${nameDisplay}</td>
+            <td style="padding: 10px 12px; text-align: center;">${dobDisplay}</td>
+            <td style="padding: 8px 14px; line-height: 1.6;">${busyPills}</td>
+            <td style="padding: 10px 12px; text-align: center;">${createdDisplay}</td>
+            <td style="padding: 10px 12px; text-align: center;">
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteGioBanChungCuRow(${rec.id}, '${context}')"
+                    style="padding: 4px 8px; border-radius: 6px; border: 1px solid #fca5a5; background: #fff1f2; color: #b91c1c; cursor: pointer; font-size: 12px; transition: all 0.2s;"
+                    title="Xóa bản ghi giờ bận cũ này khỏi CSDL Turso">
+                    🗑 Xóa
+                </button>
+            </td>
+        </tr>`;
+    });
+
+    tbody.innerHTML = html;
+};
+
+window.loadGioBanChungCuUI = function(context = 'busy') {
+    const isBusy = (context === 'busy');
+    const dateSelect = isBusy ? document.getElementById('busy-hist-date-select') : document.getElementById('admin-busy-hist-date-select');
+    const typeSelect = isBusy ? document.getElementById('busy-hist-type-select') : document.getElementById('admin-busy-hist-type-select');
+    const searchInput = isBusy ? document.getElementById('busy-hist-search-input') : document.getElementById('admin-busy-hist-search-input');
+
+    const filterDate = (dateSelect && dateSelect.value) ? dateSelect.value : 'all';
+    const filterType = (typeSelect && typeSelect.value) ? typeSelect.value : 'all';
+    const keyword = (searchInput && searchInput.value) ? searchInput.value.trim() : '';
+
+    const tbodyId = isBusy ? 'busy-chung-table-body' : 'admin-busy-chung-table-body';
+    const tbody = document.getElementById(tbodyId);
+    if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 35px; color: #2563eb; font-size: 13.5px;">⏳ Đang tải dữ liệu từ CSDL Turso Cloud...</td></tr>`;
+    }
+
+    const onSuccess = function(res) {
+        const data = (res && res.records) ? res : (res && res.data) ? res.data : { records: [], dates: [], total: 0 };
+        window._gioBanChungCuData = data;
+        window._gioBanChungCuLoaded = true;
+
+        if (data.dates && data.dates.length > 0) {
+            populateGioBanChungCuDateDropdowns(data.dates);
+        }
+
+        window.renderGioBanChungCuTable(data.records, 'busy');
+        window.renderGioBanChungCuTable(data.records, 'admin');
+        updateGioBanChungCuBadges(data.records.length, data.total || data.records.length);
+    };
+
+    const onError = function(err) {
+        console.error("Lỗi tải bảng gio_ban_chung_cu:", err);
+        const errMsg = (err && err.message) ? err.message : String(err);
+        const errHtml = `<tr><td colspan="8" style="text-align: center; padding: 30px; color: #dc2626; font-size: 13.5px;">❌ Không thể tải dữ liệu: ${escapeHtml(errMsg)}</td></tr>`;
+        const b1 = document.getElementById('busy-chung-table-body');
+        if (b1) b1.innerHTML = errHtml;
+        const b2 = document.getElementById('admin-busy-chung-table-body');
+        if (b2) b2.innerHTML = errHtml;
+    };
+
+    if (typeof callApi === 'function') {
+        callApi('getGioBanChungCu', [filterDate, filterType, keyword], onSuccess, onError);
+    } else if (window.google && window.google.script && window.google.script.run) {
+        window.google.script.run
+            .withSuccessHandler(onSuccess)
+            .withFailureHandler(onError)
+            .getGioBanChungCu(filterDate, filterType, keyword);
+    }
+};
+
+window.filterGioBanChungCuClient = function(context = 'busy') {
+    const isBusy = (context === 'busy');
+    const inputEl = isBusy ? document.getElementById('busy-hist-search-input') : document.getElementById('admin-busy-hist-search-input');
+    const kw = (inputEl && inputEl.value) ? inputEl.value.trim().toLowerCase() : '';
+
+    if (!window._gioBanChungCuData || !window._gioBanChungCuData.records) return;
+
+    if (!kw) {
+        window.renderGioBanChungCuTable(window._gioBanChungCuData.records, context);
+        updateGioBanChungCuBadges(window._gioBanChungCuData.records.length, window._gioBanChungCuData.total || window._gioBanChungCuData.records.length);
+        return;
+    }
+
+    const filtered = window._gioBanChungCuData.records.filter(r => {
+        const name = (r.name || '').toLowerCase();
+        const busy = (r.busy_ranges || '').toLowerCase();
+        const date = (r.date || '').toLowerCase();
+        const dob = (r.dob || '').toLowerCase();
+        return name.includes(kw) || busy.includes(kw) || date.includes(kw) || dob.includes(kw);
+    });
+
+    window.renderGioBanChungCuTable(filtered, context);
+    updateGioBanChungCuBadges(filtered.length, window._gioBanChungCuData.total || window._gioBanChungCuData.records.length);
+};
+
+window.deleteGioBanChungCuRow = function(id, context = 'busy') {
+    if (!id) return;
+
+    try {
+        const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
+        if (sess.role === 'Viewer') {
+            alert("⚠️ Tài khoản Viewer (Chỉ xem) không có quyền xóa dữ liệu!");
+            return;
+        }
+    } catch(e) {}
+
+    if (!confirm(`Bạn có chắc chắn muốn xóa bản ghi giờ bận cũ (ID: ${id}) này khỏi CSDL Turso Cloud không?`)) {
+        return;
+    }
+
+    const onSuccess = function(res) {
+        alert("✅ Đã xóa bản ghi giờ bận cũ thành công!");
+        if (window._gioBanChungCuData && window._gioBanChungCuData.records) {
+            window._gioBanChungCuData.records = window._gioBanChungCuData.records.filter(r => String(r.id) !== String(id));
+            window._gioBanChungCuData.total = Math.max(0, (window._gioBanChungCuData.total || 1) - 1);
+            window.renderGioBanChungCuTable(window._gioBanChungCuData.records, 'busy');
+            window.renderGioBanChungCuTable(window._gioBanChungCuData.records, 'admin');
+            updateGioBanChungCuBadges(window._gioBanChungCuData.records.length, window._gioBanChungCuData.total);
+        }
+    };
+
+    const onError = function(err) {
+        console.error("Lỗi khi xóa bản ghi gio_ban_chung_cu:", err);
+        alert("❌ Lỗi khi xóa bản ghi: " + ((err && err.message) ? err.message : String(err)));
+    };
+
+    if (typeof callApi === 'function') {
+        callApi('deleteGioBanChungCu', [id], onSuccess, onError);
+    } else if (window.google && window.google.script && window.google.script.run) {
+        window.google.script.run
+            .withSuccessHandler(onSuccess)
+            .withFailureHandler(onError)
+            .deleteGioBanChungCu(id);
+    }
+};
+
+window.exportGioBanChungCuExcel = function(context = 'busy') {
+    if (typeof XLSX === 'undefined') {
+        alert("❌ Thư viện XLSX chưa sẵn sàng. Vui lòng thử lại sau vài giây.");
+        return;
+    }
+
+    const records = (window._gioBanChungCuData && window._gioBanChungCuData.records) ? window._gioBanChungCuData.records : [];
+    if (records.length === 0) {
+        alert("⚠️ Không có dữ liệu để xuất Excel!");
+        return;
+    }
+
+    const ws_data = [
+        ["STT", "Ngày", "Phân Loại", "Họ Và Tên", "Năm Sinh", "Các Khung Giờ Bận Lịch Sử", "Thời Gian Lưu"]
+    ];
+
+    records.forEach((r, idx) => {
+        const typeStr = (r.target_type === 'nhan_su') ? 'Nhân Sự' : 'Bệnh Nhân';
+        ws_data.push([
+            idx + 1,
+            r.date || '',
+            typeStr,
+            r.name || '',
+            r.dob || '',
+            r.busy_ranges || '',
+            r.created_at || ''
+        ]);
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    XLSX.utils.book_append_sheet(wb, ws, "GioBanChungCu");
+    
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+    const fileName = `Bang_Gio_Ban_Chung_Cu_${dateStr}.xlsx`;
+    XLSX.writeFile(wb, fileName);
 };
 
 // ============================================================

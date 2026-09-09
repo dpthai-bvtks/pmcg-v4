@@ -2679,6 +2679,57 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       return success({ count: busyList.length });
     }
 
+    case "getGioBanChungCu": {
+      const filterDate = String(args[0] || "").trim();
+      const filterType = String(args[1] || "").trim(); // 'nhan_su', 'benh_nhan', 'all'
+      const keyword = String(args[2] || "").trim();
+      
+      let sql = "SELECT id, unit_code, date, target_type, name, dob, busy_ranges, created_at FROM gio_ban_chung_cu WHERE unit_code = ?";
+      const params = [unitCode];
+      
+      if (filterDate && filterDate !== 'all') {
+        sql += " AND date = ?";
+        params.push(filterDate);
+      }
+      if (filterType && filterType !== 'all') {
+        sql += " AND target_type = ?";
+        params.push(filterType);
+      }
+      if (keyword) {
+        sql += " AND (name LIKE ? OR busy_ranges LIKE ?)";
+        params.push(`%${keyword}%`, `%${keyword}%`);
+      }
+      sql += " ORDER BY date DESC, id DESC LIMIT 1000";
+      
+      let records = [];
+      try {
+        const res = await db.prepare(sql).bind(...params).all();
+        records = res.results || [];
+      } catch (err) {
+        console.error("Error querying gio_ban_chung_cu:", err);
+      }
+      
+      // Lấy danh sách các ngày duy nhất để tiện chọn lọc trong dropdown
+      let dates = [];
+      try {
+        const dRes = await db.prepare("SELECT DISTINCT date FROM gio_ban_chung_cu WHERE unit_code = ? ORDER BY date DESC").bind(unitCode).all();
+        dates = (dRes.results || []).map(r => r.date).filter(Boolean);
+      } catch (err) {}
+      
+      return success({
+        records: records,
+        dates: dates,
+        total: records.length
+      });
+    }
+
+    case "deleteGioBanChungCu": {
+      const id = args[0];
+      if (!id) return error("Thiếu ID bản ghi cần xóa");
+      await db.prepare("DELETE FROM gio_ban_chung_cu WHERE id = ? AND unit_code = ?").bind(id, unitCode).run();
+      return success({ deletedId: id });
+    }
+
     case "getHistoryFullData": {
       const rawDate = String(args[0] || "").trim();
       let y = "", m = "", d = "";

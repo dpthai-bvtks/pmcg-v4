@@ -2422,13 +2422,40 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
 - **Đồng bộ phiên bản**:
   + Nâng cấp lên `4.0.4-rev3`.
   + `index.html`: Cập nhật cache busters `v=4.0.4-rev3`, footer timestamp `09:15 09/09/2026`, `APP_VERSION = '4.0.4-rev3'`.
-  + `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.0.4-rev3'`.
+---
+
+### [v4.0.4-rev4] - 09:35 09/09/2026: Triển Khai Giao Diện Tra Cứu & Quản Trị Toàn Diện Bảng Giờ Bận Chung Cũ (gio_ban_chung_cu)
+
+- **Bối cảnh & Yêu cầu**:
+  + Bảng `gio_ban_chung_cu` đã được khởi tạo và lưu trữ đầy đủ 226+ bản ghi lịch sử giờ bận của cả nhân viên và bệnh nhân trên CSDL đám mây Turso Cloud, nhưng trên phần mềm người dùng và quản trị viên chưa có giao diện trực quan để xem, tra cứu, tìm kiếm và quản lý.
+- **Giải pháp triển khai chi tiết**:
+  1. **Tab Giờ Bận / Ra Viện (`#tab-busy`)**:
+     - Tích hợp thanh chuyển Sub-tab trên đỉnh: `🟢 Giờ Bận Hôm Nay (Thời Gian Thực)` và `📜 Bảng Giờ Bận Chung Cũ (gio_ban_chung_cu)`.
+     - Khi chuyển sang chế độ Lịch Sử:
+       + Thanh công cụ thông minh: Dropdown chọn ngày (tự động nạp danh sách 40 ngày có dữ liệu từ Turso), dropdown lọc đối tượng (Tất cả / Nhân sự / Bệnh nhân), ô tìm kiếm tức thì theo tên, năm sinh, khung giờ bận.
+       + Badge thống kê động: Hiển thị số lượng bản ghi hiển thị / tổng số bản ghi trong CSDL.
+       + Bảng hiển thị tối ưu: Phân loại bằng badge màu sắc bắt mắt (`🩺 Nhân Sự` màu xanh lam, `🧑 Bệnh Nhân` màu vàng hổ phách), các khung giờ bận hiển thị dưới dạng pill tags monospace rõ nét.
+       + Các nút thao tác tiện ích: `🔄 Làm Mới`, `📥 Xuất Excel (.xlsx)`, `🗑 Xóa từng dòng`.
+  2. **Menu Quản Trị Hệ Thống (`#tab-admin`)**:
+     - Bổ sung nút điều hướng sidebar: `🕒 Bảng Giờ Bận Cũ (gio_ban_chung_cu)`.
+     - Màn hình quản trị chuyên sâu `#admin-sec-busy-history` với các công cụ tra cứu, lọc, xuất Excel và phân quyền xóa dữ liệu.
+  3. **Backend Cloudflare Worker & Turso Cloud (`backend/src/index.js`)**:
+     - Action `getGioBanChungCu`: Hỗ trợ bộ lọc ngày, loại đối tượng và từ khóa, phân trang giới hạn 1000 dòng mới nhất, trả về danh sách các ngày duy nhất để nạp dropdown.
+     - Action `deleteGioBanChungCu`: Xóa an toàn theo `id` và cô lập triệt để theo `unit_code`.
+  4. **Frontend Controller (`js/app.js`)**:
+     - `switchBusySubTab(mode)`: Điều hướng mượt mà giữa chế độ hiện tại và lịch sử.
+     - `loadGioBanChungCuUI(context)`: Nạp dữ liệu đám mây qua `callApi` / `google.script.run`.
+     - `filterGioBanChungCuClient(context)`: Lọc nhanh trên RAM máy trạm không gây trễ mạng.
+     - `deleteGioBanChungCuRow(id, context)`: Xóa có xác nhận, chặn quyền tài khoản Viewer.
+     - `exportGioBanChungCuExcel(context)`: Xuất bảng tính Excel hoàn chỉnh với thư viện `XLSX`.
+     - Tích hợp hook tự động tải trong `switchAdminSection`.
+- **Đồng bộ phiên bản**:
+  + Nâng cấp lên `4.0.4-rev4`.
+  + `index.html`: Cập nhật cache busters `v=4.0.4-rev4`, `APP_VERSION = '4.0.4-rev4'`.
+  + `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.0.4-rev4'`.
 - **File sửa đổi**:
+  + `backend/src/index.js`
   + `index.html`
   + `js/app.js`
   + `sw.js`
   + `PM-xeplich-v4.md`
-
-
-
-
