@@ -7773,6 +7773,67 @@ window.renderSttOrderControl = function (type, i, total) {
         }
         window.toggleScheduleViewMode = toggleScheduleViewMode;
 
+        // ============================================================
+        // ⚡ XUẤT DỮ LIỆU ĐỂ TỰ ĐỘNG NHẬP HIS (AUTO-HIS IMPORTER)
+        // ============================================================
+        function exportDataForHisAuto() {
+            const rawSched = (window.currentScheduleData && window.currentScheduleData.length) ? window.currentScheduleData : 
+                             ((typeof dataCache !== 'undefined' && dataCache.schedule) ? dataCache.schedule : []);
+            const safeSched = rawSched.map(normalizeScheduleRow).filter(r => !isDroppedScheduleRow(r));
+            
+            if (!safeSched.length) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast('⚠️ Chưa có dữ liệu lịch trình để xuất sang phần mềm HIS!', 'warning');
+                } else {
+                    alert('Chưa có dữ liệu lịch trình để xuất sang phần mềm HIS!');
+                }
+                return;
+            }
+
+            const activeDateVal = (document.getElementById('history-date')?.value) || 
+                                  (document.getElementById('schedule-date')?.value) || 
+                                  (safeSched[0]?.ngay) || '';
+
+            const exportObj = {
+                version: "1.0",
+                exportedAt: new Date().toISOString(),
+                date: activeDateVal,
+                totalProcedures: safeSched.length,
+                schedule: safeSched
+            };
+
+            const jsonStr = JSON.stringify(exportObj, null, 2);
+
+            // 1. Tự động Copy vào Clipboard
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(jsonStr).then(() => {
+                    console.log("Đã copy dữ liệu lịch vào Clipboard");
+                }).catch(e => console.warn("Lỗi copy clipboard:", e));
+            }
+
+            // 2. Tải file his_schedule.json
+            try {
+                const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `his_schedule_${activeDateVal || 'today'}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (err) {
+                console.error("Lỗi tải file JSON:", err);
+            }
+
+            const msg = `✅ ĐÃ XUẤT ${safeSched.length} CA THỦ THUẬT!\n\n1. Dữ liệu đã được tự động sao chép vào Clipboard (Bạn chỉ cần mở tool Auto-HIS và bấm '📋 Dán từ Clipboard').\n2. Đồng thời đã tải file 'his_schedule_${activeDateVal || 'today'}.json' về máy.`;
+            if (typeof window.showToast === 'function') {
+                window.showToast(`✅ Đã xuất ${safeSched.length} ca sang Auto-HIS (đã copy & tải file)!`, 'success');
+            }
+            alert(msg);
+        }
+        window.exportDataForHisAuto = exportDataForHisAuto;
+
         function renderScheduleGanttTimeline() {
             const target = document.getElementById('schedule-gantt-target');
             if (!target) return;

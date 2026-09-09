@@ -1,6 +1,6 @@
 {
-  "version": "4.0.4-rev12",
+  "version": "4.0.4-rev13",
   "releaseDate": "09/09/2026",
-  "releaseTime": "15:15 09/09/2026",
-  "notes": "Xóa bỏ phần chỉnh sửa nhân sự chấm công trong tab Admin, quy tụ quản lý nhân sự tại tab Chấm Công."
+  "releaseTime": "16:45 09/09/2026",
+  "notes": "Bổ sung chức năng Xuất HIS Auto kết nối công cụ tự động nhập dữ liệu vào phần mềm emrHIS."
 }
