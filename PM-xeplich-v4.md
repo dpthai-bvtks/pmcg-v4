@@ -2726,6 +2726,42 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+---
+
+### ⚡ Công Cụ Auto-HIS Importer & Khắc Phục Đồng Bộ Phiên Bản (09/09/2026 - v4.0.4-rev13)
+- **Yêu cầu của người dùng**:
+  + Tự động hóa quy trình nhập ca xếp lịch từ Web PM-xeplich vào phần mềm bệnh viện `emrHIS (v2026.9.7.2)`: Tìm bệnh nhân theo tên đầy đủ, bấm Bắt đầu thực hiện -> Có, chuột phải mở Nhập Thông Tin PTTT, điền ngày giờ bắt đầu/kết thúc, phương pháp vô cảm (Khác), tình hình PTTT (Chủ động), máy y tế, mô tả (.), ê-kíp TT viên chính, ấn Lưu+Đóng, và ấn Trả Kết Quả cho ca cuối của bệnh nhân.
+  + Đọc kỹ `RULES.md` và khắc phục ngay lỗi hiển thị thông báo cập nhật phiên bản liên tục làm khóa phần mềm.
+- **Phân tích & Giải pháp triển khai**:
+  1. **Nguyên nhân lỗi thông báo update khóa màn hình**:
+     - Trong lần chỉnh sửa trước, file `version.json` đã được đẩy lên bản `4.0.4-rev13`, nhưng hằng số `APP_VERSION` bên trong `index.html` vẫn chưa được đồng bộ (vẫn giữ `4.0.4-rev12`).
+     - Cơ chế kiểm tra định kỳ của `checkVersionDirectly()` phát hiện có sự sai lệch giữa `version.json` (`4.0.4-rev13`) và trang web (`4.0.4-rev12`) nên đã kích hoạt modal popup ép người dùng tải lại trang (`showForceUpdateModal`). Khi người dùng ấn F5 hoặc bấm Cập Nhật, trang tải lại vẫn mang `APP_VERSION` cũ trên server dẫn đến vòng lặp khóa màn hình.
+  2. **Khắc phục triệt để theo chuẩn RULES.md**:
+     - Đồng bộ 100% tất cả các vị trí theo Rule 3:
+       + `index.html`: Cập nhật `const APP_VERSION = '4.0.4-rev13';`, cập nhật toàn bộ Cache Buster query strings `?v=4.0.4-rev13` trên tất cả file script/css/manifest/favicon, cập nhật Footer Timestamp `⏰ Cập nhật lần cuối: 18:55 09/09/2026`.
+       + `version.json`: Cập nhật `version: "4.0.4-rev13"`, `releaseTime: "18:55 09/09/2026"`.
+       + `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.0.4-rev13'`.
+     - Kiểm tra cú pháp theo Rule 1: Chạy `node -c js/init.js && node -c js/app.js && node -c js/scheduler-engine.js && node -c backend/src/index.js` (hoàn tất 0 lỗi).
+     - Deploy lên Cloudflare Pages theo Rule 4: Chạy `npm run deploy:web` từ thư mục `backend/` đẩy trực tiếp lên nhánh `main` của dự án `pmcg-v3`.
+  3. **Xây dựng bộ công cụ RPA Auto-HIS Importer (`tools/his_importer/`)**:
+     - `his_driver.py`: Điều khiển cửa sổ `emrHIS.exe` (WinForms) bằng Windows UI Automation và PyAutoGUI, tự động tìm BN theo tên đầy đủ, bấm Bắt đầu thực hiện -> Có, mở form chi tiết, điền 7 trường thông tin bằng chuột + gõ phím, bấm Lưu + Đóng, và bấm Trả Kết Quả.
+     - `auto_runner.py`: Bộ điều phối tuần tự từng ca, phân nhóm theo nhân viên, tự động phát hiện ca cuối trong ngày của bệnh nhân để bấm Trả Kết Quả, tích hợp phím tắt dừng khẩn cấp toàn cục **`F12`**.
+     - `app_gui.py` & `run_auto_his.bat`: Giao diện Tkinter tiện lợi, nút bấm 1-click khởi động, hỗ trợ nạp dữ liệu trực tiếp từ Clipboard.
+     - `HDSD_AUTO_HIS.md`: Hướng dẫn vận hành chi tiết 3 bước cho nhân viên y tế.
+     - Web UI: Thêm nút **`⚡ Xuất HIS Auto`** trên thanh công cụ Tab Xếp Lịch.
+- **File sửa đổi**:
+  + `index.html`
+  + `js/app.js`
+  + `sw.js`
+  + `version.json`
+  + `tools/his_importer/his_driver.py`
+  + `tools/his_importer/auto_runner.py`
+  + `tools/his_importer/app_gui.py`
+  + `tools/his_importer/run_auto_his.bat`
+  + `tools/his_importer/HDSD_AUTO_HIS.md`
+  + `PM-xeplich-v4.md`
+
+
 
 
 
