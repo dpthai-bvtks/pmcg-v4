@@ -2325,3 +2325,53 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.3-rev13'`)
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.4-rev1] - 09/09/2026: Sửa Lỗi Tìm Giờ Rảnh Ngày Lịch Sử & Xóa Bỏ Hoàn Toàn Giờ Bận Lịch Sử Ảo
+
+- **Phản hồi của người dùng**:
+  1. Khi chọn ngày trong lịch sử (ví dụ ngày hôm qua 08/09/2026) xong ấn tìm giờ thì lại báo *"Không có Nhân sự rảnh lúc này"*.
+  2. Khi xem lịch cũ thì giờ bận của nhân sự và bệnh nhân đều bị sai, bị nhảy ra rất nhiều giờ sai.
+- **Phân tích nguyên nhân gốc rễ**:
+  1. **Lỗi giờ bận ảo hàng loạt khi xem lịch cũ**:
+     - Trong Backend `backend/src/index.js`, hàm `getHistoryFullData` trước đây có một đoạn fallback giả lập: duyệt qua từng thủ thuật đã xếp trong lịch (`rows.forEach`) rồi tự ý nhét `{ from: r.start_time, to: r.end_time, tt: r.procedure_name }` vào `staffBusy` và `patBusyMap`!
+     - Khi giao diện Frontend (`js/app.js` trong `applyHistoryDataToTabs`) nhận được dữ liệu này, nó đã nối hàng chục ca thủ thuật đó vào trường `p.gioBan` và `s.gioBan`. Hậu quả: Toàn bộ danh sách thủ thuật của ngày cũ bị biến thành "giờ bận", làm xuất hiện hàng chục dòng giờ bận sai lệch vô lý cho cả nhân sự và bệnh nhân.
+  2. **Lỗi "Không có Nhân sự rảnh lúc này" khi tìm giờ rảnh ngày cũ**:
+     - `applyHistoryDataToTabs` trước đây ghi đè mảng `dataCache.staff` bằng các object nhân sự trích xuất thô từ dòng lịch với `vaiTro: ''` (rỗng). Khi người dùng nhấn "Tìm Bác Sĩ", hàm `timBacSiRanh()` lọc theo `vt.includes('bác sĩ') || vt.includes('ktv')` nên danh sách bác sĩ rỗng (`docs = []`), lập tức báo không có ai rảnh!
+     - `timBacSiRanh()` yêu cầu người dùng phải bấm "📊 Xem Lịch" trước; nếu người dùng chỉ chọn ngày ở ô lịch mà ấn "Tìm Bác Sĩ" thì bị báo lỗi hoặc tìm nhầm trên dữ liệu ngày đang hiển thị cũ.
+     - `timBacSiRanh()` đem cả `doc.gioBan` của ngày hôm nay áp đặt vào ngày quá khứ.
+     - So khớp tên nhân sự bị lỗi nếu lịch lưu `BS. Thái` hoặc `KTV. Tùng` trong khi danh sách nhân sự lưu `Thái` hoặc `Tùng`.
+- **Giải pháp triển khai**:
+  1. **Backend (`backend/src/index.js`)**:
+     - Tạo bảng D1 mới `gio_ban_bn_cu` (`tenant_id`, `ngay`, `bn_id`, `gio_ban`, `created_at`) để lưu trữ chính xác giờ bận thực tế của bệnh nhân khi chốt sổ hàng ngày.
+     - Cập nhật hàm `chotSo`/`chuyenNgayMoi` và `checkAutoChotSo`: lưu trữ giờ bận thực tế của nhân viên (`temp_busy`) vào `gio_ban_cu` và bệnh nhân (`gio_ban`) vào `gio_ban_bn_cu` trước khi reset.
+     - Cập nhật `getHistoryFullData`: truy vấn chuẩn hóa ngày qua mảng biến thể (`ymd`, `dmy`, `dmyNoPad`...).
+     - **Xóa bỏ hoàn toàn cơ chế tự sinh giờ bận ảo từ thủ thuật**: `staffBusy` chỉ lấy từ bảng `gio_ban_cu`, `patBusy` chỉ lấy từ `gio_ban_bn_cu`. Nếu không có đăng ký giờ bận, trả về rỗng. Tuyệt đối không biến thủ thuật đã làm thành giờ bận.
+     - Bổ sung `gio_ban_bn_cu` vào các luồng sao lưu/khôi phục: `exportTenantData`, `exportAllDatabaseForSuperAdmin`, `importTenantData`.
+  2. **Frontend (`js/app.js` & `index.html`)**:
+     - Sửa `applyHistoryDataToTabs`: bảo lưu đầy đủ thông tin nhân sự gốc (`vaiTro`, `kyNang`, `thoiGianLam`...), chỉ gắn `gioBan` nếu ngày đó nhân sự có đăng ký bận thực sự trong `fullData.staffBusy`. Bệnh nhân chỉ nhận `gioBan` nếu có trong `fullData.patBusy`.
+     - Nâng cấp `taiLichTheoNgay(callback)`: tự động lưu cache `window.utilsScheduleData`, `window.utilsScheduleDate`, `window.utilsStaffBusy`.
+     - Nâng cấp `timBacSiRanh()` & `timMayRanh()`:
+       + Tự động tải lịch nếu ngày chưa được tải hoặc bị lệch ngày, sau đó mới tìm kiếm.
+       + Mặc định giờ tìm kiếm là `07:30` nếu ô giờ để trống.
+       + Lọc nhân sự chuẩn (`vaiTro` là bác sĩ/KTV hoặc có kỹ năng thực hiện thủ thuật).
+       + So khớp tên thông minh, tự bóc tách các tiền tố danh xưng (`BS.`, `KTV.`, `ĐD.`...).
+       + Ngày cũ không bị ảnh hưởng bởi giờ bận tạm thời của ngày hôm nay.
+       + Nếu ngày cũ không có thủ thuật nào, toàn bộ nhân sự được xếp là rảnh 100% thay vì báo lỗi.
+       + Đồng bộ dropdown `#filter-doc-name` theo danh sách nhân sự tìm được.
+     - Cập nhật `index.html`: thêm sự kiện `onchange="taiLichTheoNgay()"` vào ô chọn ngày `#utils-search-date`, tự động tải lại khi bấm "Hôm nay", thêm phím tắt Enter cho ô nhập giờ tìm kiếm.
+     - Tự động nạp lịch khi chuyển sang tab `tab-utils`.
+  3. **Đồng bộ phiên bản**:
+     - Phiên bản ngày 09/09/2026: `4.0.4-rev1`.
+     - `index.html`: cập nhật cache busters, footer `Phiên bản: 4.0.4`, `Cập nhật lần cuối: 07:45 09/09/2026`, và `APP_VERSION = '4.0.4-rev1'`.
+     - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.0.4-rev1'`.
+     - `backend/package.json`: `"version": "4.0.4"`.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `backend/package.json`
+  + `js/app.js`
+  + `index.html`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+

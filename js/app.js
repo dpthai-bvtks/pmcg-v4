@@ -2813,6 +2813,18 @@ window.renderSttOrderControl = function (type, i, total) {
                             }
                         }
 
+                        if (targetTab === 'tab-utils') {
+                            const utilsDateEl = document.getElementById('utils-search-date');
+                            if (utilsDateEl && !utilsDateEl.value) {
+                                const todayStr = new Date().toISOString().slice(0, 10);
+                                utilsDateEl.value = todayStr;
+                                if (utilsDateEl._flatpickr) utilsDateEl._flatpickr.setDate(todayStr, false);
+                            }
+                            if (typeof taiLichTheoNgay === 'function' && !window.utilsScheduleData) {
+                                taiLichTheoNgay();
+                            }
+                        }
+
                         // Cập nhật URL hash để hỗ trợ chia sẻ / mở trực tiếp tab
                         window.location.hash = '#' + targetTab;
 
@@ -8038,28 +8050,42 @@ window.renderSttOrderControl = function (type, i, total) {
             }
 
             // Build dataCache.pat từ dữ liệu lịch sử (unique patients)
-            const histPat = (fullData.patients || []).map(p => ({
-                ten: p.tenBN, namSinh: p.namSinh, phong: p.phong,
-                thuThuat: Array.isArray(p.dsThuThuat) ? p.dsThuThuat.join(', ') : String(p.dsThuThuat || p.thuThuat || ''),
-                ngayVao: '', gioVao: '',
-                gioBan: (fullData.patBusy || []).find(pb => pb.tenBN === p.tenBN && pb.namSinh === p.namSinh)
-                    ?.slots.map(s => s.from + '-' + s.to).join(', ') || '',
-                gioRa: '', index: 0, sheetIndex: 0
-            }));
+            // gioBan chỉ lấy từ fullData.patBusy thực tế (báo bận thật sự, không lấy từ ca thủ thuật)
+            const histPat = (fullData.patients || []).map(p => {
+                const foundBusy = (fullData.patBusy || []).find(pb => {
+                    const pbName = String(pb.tenBN || '').trim().toLowerCase();
+                    const pName = String(p.tenBN || '').trim().toLowerCase();
+                    const pbNs = String(pb.namSinh || '').trim();
+                    const pNs = String(p.namSinh || '').trim();
+                    return pbName === pName && (!pNs || !pbNs || pbNs === pNs);
+                });
+                const gioBanStr = foundBusy?.slots?.length ? foundBusy.slots.map(s => s.from + '-' + s.to).join(', ') : '';
+
+                return {
+                    ten: p.tenBN, namSinh: p.namSinh, phong: p.phong,
+                    thuThuat: Array.isArray(p.dsThuThuat) ? p.dsThuThuat.join(', ') : String(p.dsThuThuat || p.thuThuat || ''),
+                    ngayVao: '', gioVao: '',
+                    gioBan: gioBanStr,
+                    gioRa: '', index: 0, sheetIndex: 0
+                };
+            });
             dataCache.pat = histPat;
 
-            // Build dataCache.staff từ dữ liệu lịch sử (giờ bận = giờ làm thủ thuật ngày đó, đã gộp)
-            const histStaff = (fullData.staffBusy || []).map(s => ({
-                ten: s.ten,
-                gioBan: s.slots.map(sl => sl.from + '-' + sl.to).join(', '),
-                vaiTro: '', trangThai: 'Đi làm', kyNang: '', index: 0, sheetIndex: 0
-            }));
-            // Gộp các slot trùng nhau cho cùng 1 nhân viên
-            histStaff.forEach(s => {
-                const unique = [...new Set(s.gioBan.split(',').map(x => x.trim()).filter(x => x))];
-                s.gioBan = unique.join(', ');
+            // Build dataCache.staff: Bảo toàn vai trò Bác sĩ/KTV, thời gian làm việc, kỹ năng từ base live staff
+            const baseStaff = JSON.parse(JSON.stringify(window._liveDataCacheBackup.staff || []));
+            baseStaff.forEach(s => {
+                const sNameClean = String(s.ten || '').trim().toLowerCase().replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd)\s+/i, '');
+                const foundBusy = (fullData.staffBusy || []).find(sb => {
+                    const sbClean = String(sb.ten || '').trim().toLowerCase().replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd)\s+/i, '');
+                    return sbClean === sNameClean;
+                });
+                if (foundBusy && foundBusy.slots && foundBusy.slots.length > 0) {
+                    s.gioBan = [...new Set(foundBusy.slots.map(sl => sl.from + '-' + sl.to).filter(Boolean))].join(', ');
+                } else {
+                    s.gioBan = '';
+                }
             });
-            dataCache.staff = histStaff;
+            dataCache.staff = baseStaff;
 
             // Cập nhật header trạng thái lịch cũ
             const parts = dateStr.split('-');
@@ -8206,32 +8232,38 @@ window.renderSttOrderControl = function (type, i, total) {
 
         };
 
-        function taiLichTheoNgay() {
+        function taiLichTheoNgay(callback) {
             var dateEl = document.getElementById('utils-search-date');
             var date = dateEl ? dateEl.value : '';
-            if (!date) return alert('Vui lòng chọn ngày!');
+            if (!date) {
+                if (typeof callback === 'function') callback([]);
+                return alert('Vui lòng chọn ngày!');
+            }
             var statusEl = document.getElementById('utils-lich-status');
             var btn = document.getElementById('btn-tai-lich-utils');
 
-            var handleSuccess = function (sched) {
-                window.utilsScheduleData = sched;
+            var handleSuccess = function (sched, staffBusy) {
+                window.utilsScheduleData = sched || [];
                 window.utilsScheduleDate = date;
+                window.utilsStaffBusy = staffBusy || [];
                 var dd = date.split('-').reverse().join('/');
                 if (statusEl) {
-                    if (sched.length > 0) {
-                        statusEl.innerText = '✅ Ngày ' + dd + ': ' + sched.length + ' ca. Có thể Tìm rảnh!';
+                    if (window.utilsScheduleData.length > 0) {
+                        statusEl.innerText = '✅ Ngày ' + dd + ': ' + window.utilsScheduleData.length + ' ca. Sẵn sàng tìm rảnh!';
                         statusEl.style.color = '#27ae60';
                     } else {
-                        statusEl.innerText = '⚠️ Ngày ' + dd + ' chưa có lịch.';
-                        statusEl.style.color = '#e67e22';
+                        statusEl.innerText = 'ℹ️ Ngày ' + dd + ': 0 ca (Nhân sự rảnh cả ngày).';
+                        statusEl.style.color = '#2980b9';
                     }
                 }
                 if (btn) { btn.disabled = false; btn.innerText = '📊 Xem Lịch'; }
+                if (typeof callback === 'function') callback(window.utilsScheduleData);
             };
 
-            if (window._systemActiveYMD && date === window._systemActiveYMD) {
+            const isToday = (window._systemActiveYMD && date === window._systemActiveYMD) || (date === new Date().toISOString().slice(0, 10));
+            if (isToday && window.currentScheduleData && window.currentScheduleData.length > 0) {
                 if (statusEl) { statusEl.innerText = '⏳ Đang nạp lịch hiện tại...'; statusEl.style.color = '#3498db'; }
-                setTimeout(() => handleSuccess(window.currentScheduleData || []), 100);
+                setTimeout(() => handleSuccess(window.currentScheduleData || [], []), 50);
                 return;
             }
 
@@ -8240,12 +8272,14 @@ window.renderSttOrderControl = function (type, i, total) {
             google.script.run
                 .withSuccessHandler(function (data) {
                     var sched = (data && data.schedule) ? data.schedule : (Array.isArray(data) ? data : []);
-                    handleSuccess(sched);
+                    var sb = (data && data.staffBusy) ? data.staffBusy : [];
+                    handleSuccess(sched, sb);
                 })
                 .withFailureHandler(function (err) {
                     if (statusEl) { statusEl.innerText = '❌ Lỗi tải dữ liệu!'; statusEl.style.color = '#c0392b'; }
                     if (btn) { btn.disabled = false; btn.innerText = '📊 Xem Lịch'; }
                     console.error('taiLichTheoNgay error:', err);
+                    if (typeof callback === 'function') callback([]);
                 })
                 .getHistoryFullData(date);
         }
@@ -8283,105 +8317,111 @@ window.renderSttOrderControl = function (type, i, total) {
                 previousSelection = document.getElementById('filter-doc-name').value;
             }
 
-            // Bắt buộc chọn ngày (Phương án B)
             const searchDate = document.getElementById('utils-search-date')?.value || '';
             if (!searchDate) return alert("Vui lòng chọn Ngày cần tìm ở trên trước!");
 
-            if (!window.utilsScheduleData || !window.utilsScheduleData.length) return alert("Vui lòng bấm '📊 Xem Lịch' trước để tải lịch ngày " + searchDate.split('-').reverse().join('/') + " rồi mới tìm!");
+            // Tự động tải lịch nếu chưa tải hoặc ngày tìm khác ngày trong cache
+            if (!window.utilsScheduleData || window.utilsScheduleDate !== searchDate) {
+                taiLichTheoNgay(function () {
+                    timBacSiRanh();
+                });
+                return;
+            }
 
-            const vao_str = document.getElementById('search-doc-time').value;
+            let vao_str = (document.getElementById('search-doc-time')?.value || '').trim();
+            if (!vao_str) {
+                vao_str = "07:30";
+                const timeInput = document.getElementById('search-doc-time');
+                if (timeInput) timeInput.value = "07:30";
+            }
 
-            if (!vao_str) return alert("Vui lòng nhập 'Giờ cần tìm' (VD: 14:00)!");
-
-            let sourceData = window.utilsScheduleData;
-
+            let sourceData = window.utilsScheduleData || [];
             const t_vao = t2m(vao_str);
-
             const tbody = document.getElementById('free-doc-list');
-
             tbody.innerHTML = '';
-
             let found = false;
 
-            const docs = dataCache.staff.filter(s => {
+            // Đảm bảo lấy danh sách nhân sự chuẩn (bảo toàn vai trò, kỹ năng)
+            const staffList = (window._liveDataCacheBackup && window._liveDataCacheBackup.staff && window._liveDataCacheBackup.staff.length > 0)
+                ? window._liveDataCacheBackup.staff
+                : (dataCache.staff || []);
 
-                const vt = String(s.vaiTro).toLowerCase();
-
-                return (vt.includes('bác sĩ') || vt.includes('kỹ thuật viên') || vt.includes('ktv')) && s.trangThai !==
-
-                    'Nghỉ cả ngày';
-
+            const docs = staffList.filter(s => {
+                if (!s || !s.ten) return false;
+                const vt = String(s.vaiTro || s.role || '').toLowerCase();
+                const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(vt);
+                if (isNurse) return false;
+                const isDocOrKtv = vt.includes('bác sĩ') || vt.includes('kỹ thuật viên') || vt.includes('ktv') || !vt;
+                return isDocOrKtv && s.trangThai !== 'Nghỉ cả ngày';
             });
 
-            docs.forEach(doc => {
+            const isToday = (!searchDate || searchDate === new Date().toISOString().slice(0, 10) || searchDate === window._systemActiveYMD);
 
+            docs.forEach(doc => {
                 let busy = [];
+                const dNameClean = String(doc.ten).trim().toLowerCase().replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd)\s+/i, '');
 
                 sourceData.forEach(row => {
-
                     const nvChinh = String(row.nvChinh || row[7] || '').trim().toLowerCase();
-
                     const nvPhu = String(row.nvPhu || row[8] || '').trim().toLowerCase();
+                    const cleanNvChinh = nvChinh.replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd)\s+/i, '');
+                    const cleanNvPhu = nvPhu.replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd)\s+/i, '');
 
-                    const dName = String(doc.ten).trim().toLowerCase();
-
-                    if (nvChinh !== dName && nvPhu !== dName) return;
+                    if (cleanNvChinh !== dNameClean && cleanNvPhu !== dNameClean) return;
 
                     const tStart = t2m(row.gioDienRa || row[5]), tEnd = t2m(row.gioKetThuc || row[6]);
+                    if (isNaN(tStart) || isNaN(tEnd) || tEnd <= tStart) return;
 
                     const thuThuat = String(row.thuThuat || row[4] || '').trim().toLowerCase();
-
-                    const procInfo = dataCache.proc?.find(p =>
-
-                        p.ten.toLowerCase() === thuThuat ||
-
-                        (p.vietTat && p.vietTat.toLowerCase() === thuThuat)
-
+                    const procInfo = (dataCache.proc || []).find(p =>
+                        String(p.ten || '').toLowerCase() === thuThuat ||
+                        (p.vietTat && String(p.vietTat || '').toLowerCase() === thuThuat)
                     );
 
-
-
-                    const tgNhanVien = procInfo && procInfo.thoiGianThucHien ? parseInt(procInfo.thoiGianThucHien) : Math.min(5,
-
-                        tEnd - tStart);
-
+                    const tgNhanVien = procInfo && procInfo.thoiGianThucHien ? parseInt(procInfo.thoiGianThucHien) : Math.min(5, tEnd - tStart);
                     const khoangCachRaw = procInfo && procInfo.khoangCach ? parseInt(procInfo.khoangCach) : tgNhanVien;
-
                     const khoangCach = Math.max(khoangCachRaw, tgNhanVien + 1);
 
-
-
                     busy.push([tStart, tStart + khoangCach]);
-
                     if (tEnd > tStart + tgNhanVien) {
-
                         busy.push([tEnd, tEnd + 1]);
-
                     }
-
                 });
 
-                if (doc.gioBan) doc.gioBan.split(',').forEach(b => {
-                    const pts = b.split('-'); if (pts.length === 2)
-
-                        busy.push([t2m(pts[0].trim()), t2m(pts[1].trim()) + 1]);
-                });
+                // Chỉ áp dụng giờ bận tạm thời nếu đang tìm lịch hôm nay
+                if (isToday && doc.gioBan) {
+                    String(doc.gioBan).split(',').forEach(b => {
+                        const pts = b.split('-');
+                        if (pts.length === 2) {
+                            busy.push([t2m(pts[0].trim()), t2m(pts[1].trim()) + 1]);
+                        }
+                    });
+                } else if (!isToday && window.utilsStaffBusy && window.utilsStaffBusy.length > 0) {
+                    // Nếu tìm ngày cũ, lấy giờ bận thực tế lưu trong utilsStaffBusy (từ gio_ban_cu)
+                    const foundSb = window.utilsStaffBusy.find(sb => {
+                        const sbClean = String(sb.ten || '').trim().toLowerCase().replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd)\s+/i, '');
+                        return sbClean === dNameClean;
+                    });
+                    if (foundSb && Array.isArray(foundSb.slots)) {
+                        foundSb.slots.forEach(sl => {
+                            if (sl.from && sl.to) {
+                                busy.push([t2m(sl.from), t2m(sl.to) + 1]);
+                            }
+                        });
+                    }
+                }
 
                 busy.sort((a, b) => a[0] - b[0]);
 
                 let merged = [];
-
                 busy.forEach(b => {
-
                     if (!merged.length) { merged.push(b); return; }
-
                     const last = merged[merged.length - 1];
-
                     b[0] <= last[1] ? merged[merged.length - 1] = [last[0], Math.max(last[1], b[1])] : merged.push(b);
-                }); let
+                });
 
-                    shifts = []; 
-                if (doc.thoiGianLam) doc.thoiGianLam.split(',').forEach(sh => {
+                let shifts = []; 
+                if (doc.thoiGianLam) String(doc.thoiGianLam).split(',').forEach(sh => {
                     const pts = sh.split('-');
                     if (pts.length === 2) shifts.push([t2m(pts[0].trim()), t2m(pts[1].trim())]);
                 });
@@ -8434,14 +8474,15 @@ window.renderSttOrderControl = function (type, i, total) {
             });
 
             if (!found) {
-                tbody.innerHTML = `<tr> <td colspan="3" align="center" style="color:#c0392b; font-weight:bold;">Không có Nhân sự
-                                rảnh lúc này</td>
-                        </tr>`;
+                tbody.innerHTML = `<tr> <td colspan="3" align="center" style="color:#c0392b; font-weight:bold;">Không có Nhân sự rảnh lúc này</td></tr>`;
             }
 
+            // Đồng bộ dropdown lọc tên bác sĩ
             const filterSelect = document.getElementById('filter-doc-name');
             if (filterSelect) {
-                if (previousSelection) {
+                const uniqueDocs = [...new Set(docs.map(d => d.ten))].sort();
+                filterSelect.innerHTML = '<option value="">🔍 Lọc tên bác sĩ...</option>' + uniqueDocs.map(d => `<option value="${d}">${d}</option>`).join('');
+                if (previousSelection && uniqueDocs.includes(previousSelection)) {
                     filterSelect.value = previousSelection;
                 }
                 filterDoctorTable();
@@ -8449,25 +8490,31 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         function timMayRanh() {
-
-            // Bắt buộc chọn ngày (Phương án B)
             const searchDate = document.getElementById('utils-search-date')?.value || '';
             if (!searchDate) return alert("Vui lòng chọn Ngày cần tìm ở trên trước!");
 
-            if (!window.utilsScheduleData || !window.utilsScheduleData.length) return alert("Vui lòng bấm '📊 Xem Lịch' trước để tải lịch ngày " + searchDate.split('-').reverse().join('/') + " rồi mới tìm!");
+            // Tự động tải lịch nếu chưa tải hoặc ngày tìm khác ngày trong cache
+            if (!window.utilsScheduleData || window.utilsScheduleDate !== searchDate) {
+                taiLichTheoNgay(function () {
+                    timMayRanh();
+                });
+                return;
+            }
 
             const loai = document.getElementById('search-machine-type').value;
+            let gio_str = (document.getElementById('search-machine-time')?.value || '').trim();
+            if (!gio_str) {
+                gio_str = "07:30";
+                const timeInput = document.getElementById('search-machine-time');
+                if (timeInput) timeInput.value = "07:30";
+            }
 
-            const gio_str = document.getElementById('search-machine-time').value;
+            let sourceData = window.utilsScheduleData || [];
 
-            let sourceData = window.utilsScheduleData;
-
-            if (!loai || loai.includes("Chọn loại") || !gio_str) return alert("Vui lòng chọn Loại máy và nhập Giờ!");
+            if (!loai || loai.includes("Chọn loại")) return alert("Vui lòng chọn Loại máy cần tìm!");
 
             const t_vao = t2m(gio_str);
-
             const tbody = document.getElementById('free-machine-list');
-
             tbody.innerHTML = '';
 
             const may_thuoc_loai = (dataCache.machine || []).filter(m => {
@@ -8478,77 +8525,53 @@ window.renderSttOrderControl = function (type, i, total) {
             }).map(m => String(m.maMay || m.ma_may || (Array.isArray(m) ? m[2] : '') || '').trim()).filter(Boolean);
 
             if (!may_thuoc_loai.length) {
-                tbody.innerHTML = `<tr> <td colspan="2" align="center" style="color:#c0392b; font-weight:bold;">Máy đang hỏng/bảo
+                tbody.innerHTML = `<tr> <td colspan="2" align="center" style="color:#c0392b; font-weight:bold;">Máy đang hỏng/bảo trì hết</td></tr>`;
+                return;
+            }
 
-                                trì hết</td>
-
-                        </tr>`; return;
-            } const m_busy = {};
-
+            const m_busy = {};
             may_thuoc_loai.forEach(m => m_busy[m] = []);
 
             sourceData.forEach(row => {
-
                 const rowMay = String(row.may || row[9] || '').trim().toLowerCase();
-
                 const gVao = row.gioDienRa || row[5];
-
                 const gRa = row.gioKetThuc || row[6];
-
                 const mMatch = may_thuoc_loai.find(x => x.toLowerCase() === rowMay);
-
                 if (mMatch) m_busy[mMatch].push([t2m(gVao), t2m(gRa) + 1]);
-
             });
 
             let found = false;
-
             may_thuoc_loai.forEach(m => {
-
                 const busy = m_busy[m].sort((a, b) => a[0] - b[0]);
-
                 let merged = [];
-
                 busy.forEach(b => {
-
                     if (!merged.length) { merged.push(b); return; }
-
                     const last = merged[merged.length - 1];
-
                     b[0] <= last[1] ? merged[merged.length - 1] = [last[0], Math.max(last[1], b[1])] : merged.push(b);
+                });
 
-                }); let is_free = true, free_until = 1440; for (const b of merged) {
-                    if (b[0] <= t_vao && t_vao <
-
-                        b[1]) { is_free = false; break; } if (b[1] <= t_vao) continue; if (b[0] > t_vao) free_until =
-
-                            Math.min(free_until, b[0]);
-
+                let is_free = true, free_until = 1440;
+                for (const b of merged) {
+                    if (b[0] <= t_vao && t_vao < b[1]) {
+                        is_free = false;
+                        break;
+                    }
+                    if (b[1] <= t_vao) continue;
+                    if (b[0] > t_vao) free_until = Math.min(free_until, b[0]);
                 }
 
                 if (is_free) {
-
                     tbody.innerHTML += `<tr>
-
-                                <td><strong>${m}</strong></td>
-
-                                <td style="color:#27ae60; font-weight:bold;">${free_until === 1440 ? "Hết ngày" : `Đến
-
-                                    ${m2t(free_until - 1)}`}</td>
-
-                            </tr>`;
-
+                        <td><strong>${m}</strong></td>
+                        <td style="color:#27ae60; font-weight:bold;">${free_until === 1440 ? "Hết ngày" : `Đến ${m2t(free_until - 1)}`}</td>
+                    </tr>`;
                     found = true;
-
                 }
-
             });
 
-            if (!found) tbody.innerHTML = `<tr> <td colspan="2" align="center" style="color:#c0392b; font-weight:bold;">Hết máy rảnh
-
-                                </td>
-
-                            </tr>`;
+            if (!found) {
+                tbody.innerHTML = `<tr> <td colspan="2" align="center" style="color:#c0392b; font-weight:bold;">Hết máy rảnh</td></tr>`;
+            }
         }
 
 
