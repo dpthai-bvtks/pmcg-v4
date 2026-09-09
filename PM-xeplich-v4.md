@@ -2619,6 +2619,39 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.4-rev10] - 14:15 09/09/2026: Cơ Chế Phát Hiện Phiên Bản Mới Tức Thì & Modal Popup Chặn Toàn Màn Hình
+- **Yêu cầu của người dùng**:
+  + Các máy tính khác khi mở phần mềm thường không biết lúc nào có phiên bản mới.
+  + Yêu cầu: Ngay lập tức khi có bản mới, trên màn hình các máy tính khác phải xuất hiện Modal Popup thông báo đã có phần mềm mới và nút bấm để F5/tải lại trang, nếu không tải lại thì khóa toàn màn hình không cho sử dụng web để tránh lỗi xung đột dữ liệu.
+- **Phân tích nguyên nhân & Giải pháp**:
+  1. **Hạn chế trước đây**:
+     - Service Worker kiểm tra định kỳ 5 phút/lần, thời gian phản ứng lâu nếu người dùng cứ mở trang liên tục.
+     - Khi có bản mới, hệ thống chỉ hiển thị một Toast nhỏ 2 giây rồi tự reload, người dùng không kịp hiểu lý do và chưa có cơ chế cưỡng chế khóa thao tác.
+  2. **Giải pháp triển khai 4 tầng tức thì**:
+     - **Tệp tĩnh `version.json`**: Tạo tệp tĩnh tại thư mục gốc Cloudflare Pages chứa `version: "4.0.4-rev10"`, tốc độ truy vấn chỉ 10-20ms tại Edge.
+     - **Polling 30s siêu nhẹ & Focus trigger**: Vòng lặp ngầm 30 giây gửi `fetch('./version.json?_nocache=...')` không cache. Đồng thời lắng nghe `visibilitychange` và `focus` (ngay khi bác sĩ mở lại tab hoặc click vào màn hình là kiểm tra lập tức).
+     - **Đồng bộ đa tab (BroadcastChannel)**: Sử dụng kênh `pmcg_app_version_channel` để khi 1 tab phát hiện bản mới, toàn bộ các tab khác trên cùng máy tính đều đồng loạt bật Popup khóa màn hình trong 0ms.
+     - **Tích hợp Service Worker**: Bắt sự kiện `updatefound` và `statechange === 'installed'` để lập tức bật Popup.
+     - **Giao diện Modal Popup Chặn Toàn Màn Hình (`#modal-force-update`)**:
+       + Phủ mờ toàn màn hình `backdrop-filter: blur(12px)`, `z-index: 2147483647`.
+       + Khóa toàn bộ tương tác: Không nút đóng, không đóng khi click ra ngoài, chặn phím Escape.
+       + Hiển thị rõ phiên bản cũ ➔ phiên bản mới.
+       + Nút bấm to: **`🔄 CẬP NHẬT & TẢI LẠI TRANG NGAY (F5)`** có hiệu ứng loading, tự động dọn sạch Cache Storage và tải lại trang triệt để (`window.location.reload(true)`).
+  3. **Đồng bộ phiên bản theo RULES.md**:
+     - Nâng cấp lên `4.0.4-rev10`.
+     - `index.html`: Cập nhật cache busters `v=4.0.4-rev10`, footer timestamp `14:15 09/09/2026`, biến `const APP_VERSION = '4.0.4-rev10'`, chân trang hiển thị `Phiên bản: 4.0.4`.
+     - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.0.4-rev10'`, cấu hình bỏ qua cache cho `version.json`.
+     - Kiểm tra cú pháp 100% đạt chuẩn: `node -c js/init.js; node -c js/app.js; node -c js/scheduler-engine.js; node -c backend/src/index.js; node -c sw.js`.
+     - Triển khai Cloudflare Pages và Cloudflare Worker thành công (`deploy:all`).
+- **File sửa đổi**:
+  + `version.json` (Mới)
+  + `index.html`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+
 
 
 

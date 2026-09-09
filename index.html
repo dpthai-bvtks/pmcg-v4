@@ -192,7 +192,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.0.4-rev9">
+    <link rel="stylesheet" href="css/mobile.css?v=4.0.4-rev10">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
     <script src="js/dexie.min.js?v=3.2.6"></script>
@@ -203,7 +203,7 @@
     <script src="js/chart.min.js?v=3.2.6"></script>
     <script src="js/zod.min.js?v=3.2.6"></script>
     <!-- JS Thư viện kéo thả nội bộ -->
-    <script src="js/sortable.min.js?v=4.0.4-rev9"></script>
+    <script src="js/sortable.min.js?v=4.0.4-rev10"></script>
     <!-- Thư viện Dòng thời gian Timeline Frappe Gantt -->
     <link rel="stylesheet" href="css/frappe-gantt.css?v=3.2.6">
     <script src="js/frappe-gantt.min.js?v=3.2.6"></script>
@@ -3475,7 +3475,7 @@
 
                     <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 4.0.4</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 14:02 09/09/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 14:15 09/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -3993,87 +3993,181 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.0.4-rev9"></script>
-    <script src="js/ai-scheduler.js?v=4.0.4-rev9"></script>
-    <script src="js/cp-solver.js?v=4.0.4-rev9"></script>
-    <script src="js/scheduler-engine.js?v=4.0.4-rev9"></script>
-    <script src="js/app.js?v=4.0.4-rev9"></script>
-    <script src="js/init.js?v=4.0.4-rev9"></script>
-    <script src="js/sync.js?v=4.0.4-rev9"></script>
-    <script src="js/thongke.js?v=4.0.4-rev9"></script>
+    <script src="js/offline-sync-engine.js?v=4.0.4-rev10"></script>
+    <script src="js/ai-scheduler.js?v=4.0.4-rev10"></script>
+    <script src="js/cp-solver.js?v=4.0.4-rev10"></script>
+    <script src="js/scheduler-engine.js?v=4.0.4-rev10"></script>
+    <script src="js/app.js?v=4.0.4-rev10"></script>
+    <script src="js/init.js?v=4.0.4-rev10"></script>
+    <script src="js/sync.js?v=4.0.4-rev10"></script>
+    <script src="js/thongke.js?v=4.0.4-rev10"></script>
 
-    <!-- PWA Service Worker Registration + Auto-Update -->
+    <!-- PWA Service Worker Registration + Instant Auto-Update Detection & Blocking Modal -->
     <script>
-    const APP_VERSION = '4.0.4-rev9';
+    const APP_VERSION = '4.0.4-rev10';
 
     (function registerAndAutoUpdate() {
-        if (!('serviceWorker' in navigator)) return;
-
-        // ─── Hàm hiển thị toast nhẹ nhàng khi sắp reload ───────────────────
-        function showUpdateToast(msg, delayMs) {
-            const toast = document.createElement('div');
-            toast.id = 'sw-update-toast';
-            toast.style.cssText = [
-                'position:fixed', 'bottom:24px', 'left:50%', 'transform:translateX(-50%)',
-                'background:linear-gradient(135deg,#0f4c81,#1a73e8)',
-                'color:#fff', 'padding:12px 22px', 'border-radius:12px',
-                'font-size:13.5px', 'font-weight:600', 'z-index:2147483647',
-                'box-shadow:0 8px 32px rgba(0,0,0,0.25)',
-                'display:flex', 'align-items:center', 'gap:10px',
-                'opacity:0', 'transition:opacity 0.4s ease',
-                'pointer-events:none'
-            ].join(';');
-            toast.innerHTML = '🔄 ' + msg;
-            document.body.appendChild(toast);
-            requestAnimationFrame(() => { toast.style.opacity = '1'; });
-            setTimeout(() => { toast.style.opacity = '0'; }, delayMs - 400);
-        }
-
-        // ─── Hàm kích hoạt SW mới và reload trang ───────────────────────────
-        function applyUpdate(worker) {
-            worker.postMessage({ type: 'SKIP_WAITING' });
-        }
-
-        // ─── Lắng nghe SW mới kiểm soát trang → tự reload ──────────────────
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-            // Tránh reload vòng lặp nếu đã được đánh dấu
-            if (sessionStorage.getItem('_sw_reloading')) return;
-            sessionStorage.setItem('_sw_reloading', '1');
-            showUpdateToast('Phiên bản mới đã sẵn sàng — đang tải lại...', 2200);
-            setTimeout(() => {
-                sessionStorage.removeItem('_sw_reloading');
-                window.location.reload();
-            }, 2000);
-        });
-
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js')
-                .then(reg => {
-                    console.log('[PWA] SW đã đăng ký:', reg.scope);
-
-                    // Nếu đang có SW mới chờ kích hoạt ngay lúc load
-                    if (reg.waiting) {
-                        applyUpdate(reg.waiting);
+        // 1. Kênh BroadcastChannel đồng bộ tức thì mọi tab đang mở trên cùng một máy
+        let versionChannel = null;
+        try {
+            if ('BroadcastChannel' in window) {
+                versionChannel = new BroadcastChannel('pmcg_app_version_channel');
+                versionChannel.onmessage = function(event) {
+                    if (event.data && event.data.type === 'FORCE_UPDATE_REQUIRED') {
+                        showForceUpdateModal(event.data.newVersion);
                     }
+                };
+            }
+        } catch(e) {}
 
-                    // Lắng nghe SW mới được tải về trong tương lai
-                    reg.addEventListener('updatefound', () => {
-                        const newWorker = reg.installing;
-                        if (!newWorker) return;
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                // SW mới đã sẵn sàng → kích hoạt ngay
-                                applyUpdate(newWorker);
-                            }
-                        });
+        let isUpdateModalShown = false;
+
+        // 2. Hàm hiển thị Modal Popup Khóa Toàn Bộ Màn Hình (Chặn sử dụng)
+        window.showForceUpdateModal = function(newVersion) {
+            if (isUpdateModalShown) return;
+            isUpdateModalShown = true;
+
+            const modal = document.getElementById('modal-force-update');
+            if (modal) {
+                const oldVerEl = document.getElementById('force-update-old-ver');
+                const newVerEl = document.getElementById('force-update-new-ver');
+                if (oldVerEl) oldVerEl.textContent = APP_VERSION;
+                if (newVerEl) newVerEl.textContent = newVersion || 'Bản mới';
+                modal.style.display = 'flex';
+
+                // Khóa thanh cuộn và vô hiệu hóa phím Escape
+                document.body.style.overflow = 'hidden';
+                window.addEventListener('keydown', function(e) {
+                    if (isUpdateModalShown && (e.key === 'Escape' || e.keyCode === 27)) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                }, true);
+            }
+
+            // Phát tín hiệu cho các tab khác cùng máy tính
+            try {
+                if (versionChannel) {
+                    versionChannel.postMessage({
+                        type: 'FORCE_UPDATE_REQUIRED',
+                        newVersion: newVersion || 'Bản mới'
                     });
+                }
+            } catch(e) {}
+        };
 
-                    // ─── Polling mỗi 5 phút: chủ động hỏi server có bản mới không ───
-                    setInterval(() => {
-                        reg.update().catch(() => {}); // im lặng nếu offline
-                    }, 5 * 60 * 1000);
-                })
-                .catch(err => console.warn('[PWA] SW đăng ký thất bại:', err));
+        // 3. Hàm kích hoạt Cập nhật & Tải lại trang triệt để khi người dùng bấm nút
+        window.triggerAppForceUpdate = async function() {
+            const btn = document.getElementById('btn-force-update-reload');
+            const icon = document.getElementById('btn-force-update-icon');
+            const text = document.getElementById('btn-force-update-text');
+            if (btn) btn.disabled = true;
+            if (icon) icon.textContent = '⏳';
+            if (text) text.textContent = 'Đang dọn cache & nạp phiên bản mới...';
+
+            try {
+                // Xóa sạch Cache Storage
+                if ('caches' in window) {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map(k => caches.delete(k)));
+                }
+                // Gửi lệnh kích hoạt Service Worker mới
+                if ('serviceWorker' in navigator) {
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    for (let r of regs) {
+                        if (r.waiting) r.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                }
+            } catch(e) {
+                console.warn('[AutoUpdate] Lỗi dọn cache:', e);
+            }
+
+            // Tải lại trang triệt để
+            setTimeout(() => {
+                window.location.reload(true);
+            }, 300);
+        };
+
+        // 4. Hàm thăm dò phiên bản mới trực tiếp từ version.json (siêu nhẹ, 10-20ms)
+        let isCheckingVersion = false;
+        async function checkVersionDirectly() {
+            if (isUpdateModalShown || isCheckingVersion) return;
+            isCheckingVersion = true;
+            try {
+                const res = await fetch('./version.json?_nocache=' + Date.now(), {
+                    cache: 'no-store',
+                    headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.version && String(data.version).trim() !== APP_VERSION.trim()) {
+                        console.log(`[AutoUpdate] Phát hiện phiên bản mới: ${data.version} (Hiện tại: ${APP_VERSION})`);
+                        showForceUpdateModal(data.version);
+                    }
+                }
+            } catch(e) {
+                // Im lặng nếu offline
+            } finally {
+                isCheckingVersion = false;
+            }
+        }
+
+        // 5. Khởi tạo Service Worker và hook các sự kiện cập nhật
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => {
+                        console.log('[PWA] SW đã đăng ký:', reg.scope);
+
+                        // Nếu đã có SW mới đang chờ kích hoạt
+                        if (reg.waiting) {
+                            checkVersionDirectly();
+                        }
+
+                        // Lắng nghe khi có SW mới bắt đầu cài đặt
+                        reg.addEventListener('updatefound', () => {
+                            const newWorker = reg.installing;
+                            if (!newWorker) return;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // Bản mới đã được tải xong -> Hiển thị Modal popup khóa màn hình ngay lập tức!
+                                    checkVersionDirectly();
+                                    showForceUpdateModal();
+                                }
+                            });
+                        });
+
+                        // Thăm dò Service Worker định kỳ mỗi 60 giây
+                        setInterval(() => {
+                            reg.update().catch(() => {});
+                        }, 60 * 1000);
+                    })
+                    .catch(err => console.warn('[PWA] SW đăng ký thất bại:', err));
+            });
+
+            // Nếu controllerchange kích hoạt (khi SW mới chiếm quyền)
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                showForceUpdateModal();
+            });
+        }
+
+        // 6. Kích hoạt kiểm tra phiên bản trực tiếp:
+        // - Lần đầu sau 2 giây khi mở trang
+        setTimeout(checkVersionDirectly, 2000);
+        // - Định kỳ mỗi 30 giây (nhanh, nhẹ và tức thì)
+        setInterval(checkVersionDirectly, 30 * 1000);
+
+        // - Kiểm tra tức thì mỗi khi người dùng quay lại tab hoặc focus cửa sổ
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                checkVersionDirectly();
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistration().then(r => { if (r) r.update().catch(()=>{}); });
+                }
+            }
+        });
+        window.addEventListener('focus', () => {
+            checkVersionDirectly();
         });
     })();
     </script>
@@ -4305,6 +4399,54 @@
                         <span>💾</span> Lưu Cấu Hình
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- 🚀 MODAL KHÓA MÀN HÌNH BẮT BUỘC CẬP NHẬT PHIÊN BẢN MỚI      -->
+    <!-- ============================================================ -->
+    <div id="modal-force-update" style="display: none; position: fixed; inset: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); z-index: 2147483647; align-items: center; justify-content: center; user-select: none;">
+        <div style="background: #ffffff; width: 490px; max-width: 92%; border-radius: 20px; padding: 32px 28px; box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(59, 130, 246, 0.3); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-align: center; animation: modalPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
+            
+            <!-- Animated Icon Badge -->
+            <div style="width: 72px; height: 72px; margin: 0 auto 20px auto; border-radius: 50%; background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 2px solid #bfdbfe; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(37, 99, 235, 0.15);">
+                <span style="font-size: 38px; display: inline-block;">🚀</span>
+            </div>
+
+            <!-- Heading -->
+            <h2 style="margin: 0 0 10px 0; font-size: 21px; font-weight: 800; color: #0f172a; letter-spacing: -0.3px;">
+                ĐÃ CÓ PHIÊN BẢN MỚI!
+            </h2>
+            <p style="margin: 0 0 18px 0; font-size: 13.5px; line-height: 1.6; color: #475569;">
+                Hệ thống <b>T.I.M.E.S System</b> đã phát hành bản nâng cấp mới. Để đảm bảo an toàn dữ liệu lịch khám và tránh lỗi xung đột phiên bản, phần mềm yêu cầu bạn cập nhật trang trước khi tiếp tục.
+            </p>
+
+            <!-- Version Comparison Box -->
+            <div style="background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 12px; padding: 12px 16px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-around; font-size: 13px;">
+                <div style="text-align: center;">
+                    <div style="font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">Phiên bản cũ</div>
+                    <div id="force-update-old-ver" style="font-weight: 700; color: #64748b; font-family: monospace; font-size: 13.5px;">4.0.4-rev9</div>
+                </div>
+                <div style="color: #3b82f6; font-size: 18px; font-weight: bold;">➜</div>
+                <div style="text-align: center;">
+                    <div style="font-size: 11px; font-weight: 700; color: #16a34a; text-transform: uppercase; margin-bottom: 2px;">Phiên bản mới</div>
+                    <div id="force-update-new-ver" style="font-weight: 800; color: #15803d; font-family: monospace; font-size: 14.5px; background: #dcfce7; padding: 2px 10px; border-radius: 6px;">4.0.4-rev10</div>
+                </div>
+            </div>
+
+            <!-- Action Button -->
+            <button type="button" id="btn-force-update-reload" onclick="window.triggerAppForceUpdate()" 
+                style="width: 100%; padding: 14px 20px; font-size: 15px; font-weight: 800; color: #ffffff; background: linear-gradient(135deg, #1d4ed8, #2563eb); border: none; border-radius: 12px; cursor: pointer; box-shadow: 0 10px 25px rgba(37, 99, 235, 0.4); display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.2s ease;"
+                onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 14px 28px rgba(37, 99, 235, 0.45)';"
+                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 10px 25px rgba(37, 99, 235, 0.4)';"
+            >
+                <span id="btn-force-update-icon">🔄</span>
+                <span id="btn-force-update-text">CẬP NHẬT & TẢI LẠI TRANG NGAY (F5)</span>
+            </button>
+
+            <div style="margin-top: 14px; font-size: 12px; color: #94a3b8;">
+                💡 <i>Mẹo: Hoặc bạn có thể bấm phím tắt <b>Ctrl + F5</b> trên bàn phím.</i>
             </div>
         </div>
     </div>

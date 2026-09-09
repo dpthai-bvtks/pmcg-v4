@@ -3,7 +3,7 @@
  * Quản lý Cache đệm tĩnh, cho phép mở App ngoại tuyến (Offline-first) và tải tức thì.
  */
 
-const CACHE_NAME = 'pmcg-v4-cache-4.0.4-rev9';
+const CACHE_NAME = 'pmcg-v4-cache-4.0.4-rev10';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -75,6 +75,12 @@ self.addEventListener('fetch', (event) => {
         headers: { 'Content-Type': 'application/javascript; charset=utf-8' }
       })
     );
+    return;
+  }
+
+  // Luôn nạp trực tiếp version.json từ mạng để kiểm tra phiên bản mới tức thì
+  if (requestUrl.pathname.endsWith('version.json')) {
+    event.respondWith(fetch(event.request, { cache: 'no-store' }).catch(() => caches.match(event.request)));
     return;
   }
 
