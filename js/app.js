@@ -2830,18 +2830,20 @@ window.renderSttOrderControl = function (type, i, total) {
                             }
                         }
 
+                        if (targetTab === 'tab-busy') {
+                            if (typeof window.loadBusyHistoryDates === 'function') {
+                                window.loadBusyHistoryDates();
+                            }
+                        }
+
                         // Cập nhật URL hash để hỗ trợ chia sẻ / mở trực tiếp tab
                         window.location.hash = '#' + targetTab;
-
-
 
                     } catch (error) { console.error("Lỗi chuyển tab:", error); }
 
                 });
 
             });
-
-
 
             // Phần 3: Khởi tạo ngày mặc định và nạp Bootstrap
             const today = new Date();
@@ -2850,6 +2852,10 @@ window.renderSttOrderControl = function (type, i, total) {
                 const el = document.getElementById(id);
                 if (el && !el.value) el.value = todayYMD;
             });
+
+            if (typeof window.loadBusyHistoryDates === 'function') {
+                window.loadBusyHistoryDates();
+            }
 
             if (typeof populateMonthYearDropdown === 'function') {
                 populateMonthYearDropdown();
@@ -5559,24 +5565,56 @@ window.renderSttOrderControl = function (type, i, total) {
         function renderBusyPat() {
             const tbody = document.getElementById('busy-pat-tbody');
             if (!tbody) return;
+
+            const isHistory = !!window._forceHistoryMode;
+            const targetDate = window._viewingHistoryDate || (document.getElementById('busy-date-filter') ? document.getElementById('busy-date-filter').value : '');
+            const parts = (targetDate || '').split('-');
+            const dmy = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : targetDate;
+
             let html = '';
             let stt = 1;
+            let count = 0;
+
             (dataCache.pat || []).forEach((p, idx) => {
                 if (!p.gioBan) return;
                 const escapedTen = escapeHtml(p.ten);
                 const ns = p.namSinh || '';
                 const phong = p.phong || '';
-                p.gioBan.split(',').map(s => s.trim()).filter(s => s).forEach(slot => {
-                    html += `<tr class="editable-row" onclick="editBusyPat('${p.ten}', '${ns}', '${slot}', ${idx})" title="Bấm để sửa/xóa">
-                        <td align="center" style="font-weight: 600; color: #475569; width: 32px;">${stt++}</td>
-                        <td style="white-space: nowrap; font-weight: 600; text-align: left;">${escapedTen}</td>
-                        <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 65px;">${ns}</td>
-                        <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 75px;">${phong}</td>
-                        <td align="center" style="color:#d35400; font-weight:bold; white-space: nowrap; width: 110px; min-width: 100px; font-family: monospace, sans-serif;">${formatSlotDisplay(slot)}</td>
-                    </tr>`;
+                const slots = p.gioBan.split(',').map(s => s.trim()).filter(Boolean);
+                if (slots.length > 0) count++;
+
+                slots.forEach(slot => {
+                    if (isHistory) {
+                        html += `<tr>
+                            <td align="center" style="font-weight: 600; color: #475569; width: 32px;">${stt++}</td>
+                            <td style="white-space: nowrap; font-weight: 600; text-align: left; color:#1e293b;">${escapedTen}</td>
+                            <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 65px;">${ns}</td>
+                            <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 75px;">${phong}</td>
+                            <td align="center" style="white-space: nowrap; width: 110px; min-width: 100px;">
+                                <span style="display:inline-block; padding:2px 7px; background:#f0fdfa; color:#0f766e; border:1px solid #ccfbf1; border-radius:12px; font-weight:700; font-size:11.5px; font-family:monospace;">⏱ ${formatSlotDisplay(slot)}</span>
+                            </td>
+                        </tr>`;
+                    } else {
+                        html += `<tr class="editable-row" onclick="editBusyPat('${p.ten}', '${ns}', '${slot}', ${idx})" title="Bấm để sửa/xóa">
+                            <td align="center" style="font-weight: 600; color: #475569; width: 32px;">${stt++}</td>
+                            <td style="white-space: nowrap; font-weight: 600; text-align: left;">${escapedTen}</td>
+                            <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 65px;">${ns}</td>
+                            <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 75px;">${phong}</td>
+                            <td align="center" style="color:#d35400; font-weight:bold; white-space: nowrap; width: 110px; min-width: 100px; font-family: monospace, sans-serif;">${formatSlotDisplay(slot)}</td>
+                        </tr>`;
+                    }
                 });
             });
-            tbody.innerHTML = html || `<tr><td colspan="5" align="center" style="color:gray; padding:10px;">Chưa có bệnh nhân bận</td></tr>`;
+
+            const countBadge = document.getElementById('busy-pat-count-badge');
+            if (countBadge) {
+                countBadge.innerText = `${count} bệnh nhân bận`;
+            }
+
+            const emptyMsg = isHistory
+                ? `📭 Ngày ${dmy || 'này'} không có bệnh nhân báo bận`
+                : 'Chưa có bệnh nhân bận';
+            tbody.innerHTML = html || `<tr><td colspan="5" align="center" style="color:#64748b; padding:${isHistory ? '24px' : '10px'} 10px; font-style:italic;">${emptyMsg}</td></tr>`;
         }
 
         function editBusyPat(ten, namSinh, singleSlot, idx) {
@@ -5729,21 +5767,49 @@ window.renderSttOrderControl = function (type, i, total) {
         function renderLeavePat() {
             const tbody = document.getElementById('leave-pat-tbody');
             if (!tbody) return;
-            let html = '', stt = 1;
+
+            const isHistory = !!window._forceHistoryMode;
+            const targetDate = window._viewingHistoryDate || (document.getElementById('busy-date-filter') ? document.getElementById('busy-date-filter').value : '');
+            const parts = (targetDate || '').split('-');
+            const dmy = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : targetDate;
+
+            let html = '', stt = 1, count = 0;
             (dataCache.pat || []).forEach((p, idx) => {
                 if (!p.gioRa) return;
+                count++;
                 const escapedTen = escapeHtml(p.ten);
                 const ns = p.namSinh || '';
                 const phong = p.phong || '';
-                html += `<tr class="editable-row" onclick="editLeavePat('${p.ten}', '${ns}', '${p.gioRa}', ${idx})" title="Bấm để sửa/xóa">
-                    <td align="center" style="font-weight: 600; color: #475569; width: 32px;">${stt++}</td>
-                    <td style="white-space: nowrap; font-weight: 600; text-align: left;">${escapedTen}</td>
-                    <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 65px;">${ns}</td>
-                    <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 75px;">${phong}</td>
-                    <td align="center" style="color:#8e44ad; font-weight:bold; white-space: nowrap; width: 80px; min-width: 75px; font-family: monospace, sans-serif;">${p.gioRa}</td>
-                </tr>`;
+                if (isHistory) {
+                    html += `<tr>
+                        <td align="center" style="font-weight: 600; color: #475569; width: 32px;">${stt++}</td>
+                        <td style="white-space: nowrap; font-weight: 600; text-align: left; color:#1e293b;">${escapedTen}</td>
+                        <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 65px;">${ns}</td>
+                        <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 75px;">${phong}</td>
+                        <td align="center" style="white-space: nowrap; width: 80px; min-width: 75px;">
+                            <span style="display:inline-block; padding:2px 7px; background:#faf5ff; color:#6b21a8; border:1px solid #f3e8ff; border-radius:12px; font-weight:700; font-size:11.5px; font-family:monospace;">🚪 ${p.gioRa}</span>
+                        </td>
+                    </tr>`;
+                } else {
+                    html += `<tr class="editable-row" onclick="editLeavePat('${p.ten}', '${ns}', '${p.gioRa}', ${idx})" title="Bấm để sửa/xóa">
+                        <td align="center" style="font-weight: 600; color: #475569; width: 32px;">${stt++}</td>
+                        <td style="white-space: nowrap; font-weight: 600; text-align: left;">${escapedTen}</td>
+                        <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 65px;">${ns}</td>
+                        <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 75px;">${phong}</td>
+                        <td align="center" style="color:#8e44ad; font-weight:bold; white-space: nowrap; width: 80px; min-width: 75px; font-family: monospace, sans-serif;">${p.gioRa}</td>
+                    </tr>`;
+                }
             });
-            tbody.innerHTML = html || `<tr><td colspan="5" align="center" style="color:gray; padding:10px;">Chưa có bệnh nhân ra viện</td></tr>`;
+
+            const countBadge = document.getElementById('busy-leave-count-badge');
+            if (countBadge) {
+                countBadge.innerText = `${count} bệnh nhân ra viện`;
+            }
+
+            const emptyMsg = isHistory
+                ? `📭 Ngày ${dmy || 'này'} không có bệnh nhân ra viện`
+                : 'Chưa có bệnh nhân ra viện';
+            tbody.innerHTML = html || `<tr><td colspan="5" align="center" style="color:#64748b; padding:${isHistory ? '24px' : '10px'} 10px; font-style:italic;">${emptyMsg}</td></tr>`;
         }
 
         function editLeavePat(ten, namSinh, gioRa, idx) {
@@ -5865,12 +5931,68 @@ window.renderSttOrderControl = function (type, i, total) {
             const select = document.getElementById('busy-staff-select');
             const thead = document.getElementById('busy-staff-thead');
             const tbody = document.getElementById('busy-staff-tbody');
-            if (!select || !thead || !tbody) return;
+            if (!thead || !tbody) return;
 
-            const prevVal = select.value;
-            select.innerHTML = (dataCache.staff || []).map((s, i) => `<option value="${i}">${escapeHtml(String(s.ten || '').toUpperCase())}</option>`).join('');
-            if (prevVal !== "" && prevVal !== null && select.querySelector(`option[value="${prevVal}"]`)) {
-                select.value = prevVal;
+            const isHistory = !!window._forceHistoryMode;
+            const targetDate = window._viewingHistoryDate || (document.getElementById('busy-date-filter') ? document.getElementById('busy-date-filter').value : '');
+            const parts = (targetDate || '').split('-');
+            const dmy = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : targetDate;
+
+            // Lọc danh sách nhân sự bận
+            const busyStaffList = (dataCache.staff || []).filter(s => s && s.gioBan && String(s.gioBan).trim());
+
+            // Cập nhật badge trên header lịch sử
+            const countBadge = document.getElementById('busy-staff-count-badge');
+            if (countBadge) {
+                countBadge.innerText = `${busyStaffList.length} nhân sự bận`;
+            }
+
+            if (isHistory) {
+                // --- CHẾ ĐỘ LỊCH SỬ (READ-ONLY LIST VIEW VỚI PILLS CHUYÊN NGHIỆP) ---
+                if (busyStaffList.length === 0) {
+                    thead.innerHTML = `<tr>
+                        <th style="width: 36px; text-align: center;">STT</th>
+                        <th style="text-align: left;">Tên Nhân Viên</th>
+                        <th style="text-align: center; width: 105px;">Vai Trò</th>
+                        <th style="text-align: center; width: 140px;">Khung Giờ Bận Lịch Sử</th>
+                    </tr>`;
+                    tbody.innerHTML = `<tr><td colspan="4" align="center" style="color:#64748b; padding:24px 10px; font-style:italic;">📭 Ngày ${dmy || 'này'} không có nhân viên nào báo bận</td></tr>`;
+                    return;
+                }
+
+                thead.innerHTML = `<tr>
+                    <th style="width: 36px; text-align: center;">STT</th>
+                    <th style="text-align: left;">Tên Nhân Viên</th>
+                    <th style="text-align: center; width: 105px;">Vai Trò</th>
+                    <th style="text-align: center; width: 150px;">Khung Giờ Bận</th>
+                </tr>`;
+
+                let tbHtml = '';
+                let stt = 1;
+                busyStaffList.forEach(s => {
+                    const sName = escapeHtml(String(s.ten || '').toUpperCase());
+                    const vaiTro = escapeHtml(s.vaiTro || (s.ten.toLowerCase().includes('ktv') ? 'Kỹ thuật viên' : 'Bác sĩ'));
+                    const slots = String(s.gioBan).split(',').map(x => x.trim()).filter(Boolean);
+                    const slotBadges = slots.map(sl => `<span style="display:inline-block; margin:2px; padding:2px 7px; background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; border-radius:12px; font-weight:700; font-size:11.5px; font-family:monospace;">⏱ ${formatSlotDisplay(sl)}</span>`).join(' ');
+
+                    tbHtml += `<tr>
+                        <td align="center" style="font-weight: 700; color: #475569;">${stt++}</td>
+                        <td style="text-align: left; font-weight: 700; color: #1e293b; white-space: nowrap;">👨‍⚕️ ${sName}</td>
+                        <td align="center"><span style="font-size: 11px; padding: 2px 6px; border-radius: 4px; background: #e0f2fe; color: #0369a1; font-weight: 600;">${vaiTro}</span></td>
+                        <td align="center" style="white-space: normal;">${slotBadges}</td>
+                    </tr>`;
+                });
+                tbody.innerHTML = tbHtml;
+                return;
+            }
+
+            // --- CHẾ ĐỘ LIVE (NHẬP LIỆU/SỬA) ---
+            if (select) {
+                const prevVal = select.value;
+                select.innerHTML = (dataCache.staff || []).map((s, i) => `<option value="${i}">${escapeHtml(String(s.ten || '').toUpperCase())}</option>`).join('');
+                if (prevVal !== "" && prevVal !== null && select.querySelector(`option[value="${prevVal}"]`)) {
+                    select.value = prevVal;
+                }
             }
 
             const busyIndices = (dataCache.staff || []).map((s, i) => (s && s.gioBan && String(s.gioBan).trim()) ? i : -1).filter(i => i > -1);
@@ -8093,6 +8215,31 @@ window.renderSttOrderControl = function (type, i, total) {
                         ngayVao: '', gioVao: '',
                         gioBan: gioBanStr,
                         gioRa: '', index: 0, sheetIndex: 0
+                    });
+                }
+            });
+
+            // Bổ sung giờ ra viện (nếu có trong fullData.leavePat)
+            (fullData.leavePat || []).forEach(lp => {
+                const lpName = String(lp.tenBN || '').trim().toLowerCase();
+                const lpNs = String(lp.namSinh || '').trim();
+                const found = histPat.find(p => {
+                    const pName = String(p.ten || '').trim().toLowerCase();
+                    const pNs = String(p.namSinh || '').trim();
+                    return pName === lpName && (!lpNs || !pNs || lpNs === pNs);
+                });
+                if (found) {
+                    found.gioRa = lp.gioRa || '';
+                } else if (lp.tenBN) {
+                    histPat.push({
+                        ten: lp.tenBN,
+                        namSinh: lp.namSinh || '',
+                        phong: lp.phong || '',
+                        thuThuat: '',
+                        ngayVao: '', gioVao: '',
+                        gioBan: '',
+                        gioRa: lp.gioRa || '',
+                        index: 0, sheetIndex: 0
                     });
                 }
             });
@@ -13968,7 +14115,7 @@ window.onAppDateChange = function(dateStr, sourceTab) {
     const busyNotice = document.getElementById('busy-history-notice');
     if (busyBadge) {
         if (isToday) {
-            busyBadge.innerHTML = '🟢 Đang xem: Hôm nay';
+            busyBadge.innerHTML = '🟢 Đang xem: Hôm nay (Thời gian thực)';
             busyBadge.style.background = '#dcfce7';
             busyBadge.style.color = '#15803d';
             busyBadge.style.borderColor = '#bbf7d0';
@@ -13981,6 +14128,36 @@ window.onAppDateChange = function(dateStr, sourceTab) {
     }
     if (busyNotice) {
         busyNotice.style.display = isToday ? 'none' : 'inline-flex';
+    }
+
+    // Toggle khối nhập liệu (Live) vs tiêu đề thông tin (History) trên cả 3 cột của tab-busy
+    const liveFormIds = ['busy-staff-live-form', 'busy-pat-live-form', 'busy-leave-live-form'];
+    const histHeaderIds = ['busy-staff-hist-header', 'busy-pat-hist-header', 'busy-leave-hist-header'];
+
+    if (isToday) {
+        liveFormIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = (id === 'busy-staff-live-form' ? 'flex' : 'block');
+        });
+        histHeaderIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+    } else {
+        liveFormIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+        histHeaderIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'flex';
+        });
+    }
+
+    // Đồng bộ giá trị dropdown chọn nhanh ngày có lịch sử bận
+    const quickSelect = document.getElementById('busy-quick-date-select');
+    if (quickSelect) {
+        quickSelect.value = isToday ? '' : targetDate;
     }
 
     if (isToday) {
@@ -14029,6 +14206,10 @@ window.onAppDateChange = function(dateStr, sourceTab) {
         // Áp dụng dữ liệu lịch sử vào dataCache để cập nhật tab-busy, tab-schedule, tab-patients
         if (typeof applyHistoryDataToTabs === 'function') {
             applyHistoryDataToTabs(fullData, targetDate);
+        } else {
+            if (typeof renderBusyStaff === 'function') renderBusyStaff();
+            if (typeof renderBusyPat === 'function') renderBusyPat();
+            if (typeof renderLeavePat === 'function') renderLeavePat();
         }
 
         // Cập nhật tab-schedule
@@ -14098,6 +14279,45 @@ window.setAppDateToToday = function(sourceTab) {
     const d = new Date();
     const todayYMD = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     window.onAppDateChange(todayYMD, sourceTab);
+};
+
+// ============================================================
+// 📜 TẢI DANH SÁCH CÁC NGÀY CÓ LỊCH SỬ BẬN TỪ CSDL ĐÁM MÂY TURSO
+// ============================================================
+window.loadBusyHistoryDates = function() {
+    const quickSelect = document.getElementById('busy-quick-date-select');
+    if (!quickSelect) return;
+    if (quickSelect._loaded) return;
+
+    const populateDates = function(dates) {
+        if (!dates || !Array.isArray(dates) || dates.length === 0) return;
+        quickSelect._loaded = true;
+        let html = '<option value="">-- Chọn ngày có lịch sử bận --</option>';
+        dates.forEach(d => {
+            const parts = d.split('-');
+            const dmy = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : d;
+            html += `<option value="${d}">📅 Ngày ${dmy}</option>`;
+        });
+        quickSelect.innerHTML = html;
+        const currentTarget = window._viewingHistoryDate || (document.getElementById('busy-date-filter') ? document.getElementById('busy-date-filter').value : '');
+        if (currentTarget && window._forceHistoryMode) {
+            quickSelect.value = currentTarget;
+        }
+    };
+
+    if (typeof callApi === 'function') {
+        callApi('getGioBanChungCu', ['all', 'all', ''], res => {
+            const dates = (res && res.data && res.data.dates) ? res.data.dates : (res && res.dates ? res.dates : []);
+            populateDates(dates);
+        }, () => {});
+    } else if (window.google && window.google.script && window.google.script.run && window.google.script.run.getGioBanChungCu) {
+        window.google.script.run
+            .withSuccessHandler(res => {
+                const dates = (res && res.dates) ? res.dates : [];
+                populateDates(dates);
+            })
+            .getGioBanChungCu('all', 'all', '');
+    }
 };
 
 // Khởi tạo và tương thích ngược

@@ -2491,3 +2491,37 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.4-rev6] - 10:35 09/09/2026: Tinh Chỉnh Giao Diện Tab Giờ Bận (`#tab-busy`) Cho Chế Độ Xem Lịch Sử Ngày Cũ
+- **Bối cảnh & Vấn đề**:
+  1. Khi xem giờ bận của ngày cũ (như ngày `08/09/2026`), trên giao diện của cả 3 cột (`👨‍⚕️ NV`, `🧑 BN`, `🚪 Ra Viện`) vẫn hiển thị các khối form nhập liệu/sửa/xóa của ngày hôm nay, gây chật chội và rối mắt vì ngày cũ không cho phép sửa trực tiếp.
+  2. Bảng Giờ bận nhân sự cột 1 hiển thị dạng ma trận rỗng không có tiêu đề cột khi ngày đó không có ai báo bận, thông báo mặc định "Hiện tại chưa có nhân viên nào báo bận" gây nhầm lẫn là tính năng bị lỗi.
+  3. Người dùng không biết ngày nào trong quá khứ thực sự có dữ liệu giờ bận đã lưu trên Turso Cloud để chọn xem.
+- **Giải pháp & Cải tiến đã triển khai**:
+  1. **Dual Header View (Chế độ kép thông minh cho 3 cột)**:
+     - **Hôm nay (Live Mode)**: Hiển thị đầy đủ form chọn nhân sự, nhập khung giờ, nút Lưu/Xóa/Xóa hết để nhập liệu thời gian thực.
+     - **Lịch sử (History Mode)**: Tự động ẩn hoàn toàn form nhập liệu, hiển thị thanh tiêu đề chuyên nghiệp kèm huy hiệu đếm số lượng:
+       + Cột 1: `👨‍⚕️ GIỜ BẬN NHÂN VIÊN` + badge `X nhân sự bận`.
+       + Cột 2: `🧑 BỆNH NHÂN BÁO BẬN` + badge `X bệnh nhân bận`.
+       + Cột 3: `🚪 BỆNH NHÂN RA VIỆN` + badge `X bệnh nhân ra viện`.
+  2. **Render Chuyên Biệt Cho Chế Độ Lịch Sử**:
+     - Cột 1 (Nhân sự): Khi xem ngày cũ, chuyển sang dạng danh sách chuẩn (`STT | Tên Nhân Viên | Vai Trò | Khung Giờ Bận`) với các khung giờ hiển thị dạng thẻ pill tag (`⏱ 08:00 - 09:00`), đồng bộ trực quan với cột Bệnh nhân và Ra viện.
+     - Cả 3 cột: Vô hiệu hóa tính năng click sửa/xóa khi đang xem lịch sử; nếu không có bản ghi nào, hiển thị thông báo trang trọng `📭 Ngày dd/mm/yyyy không có nhân viên/bệnh nhân nào báo bận / ra viện`.
+  3. **Dropdown Chọn Nhanh Ngày Có Dữ Liệu Lịch Sử (`#busy-quick-date-select`)**:
+     - Bổ sung menu xổ xuống trên thanh công cụ `tab-busy`, tự động nạp danh sách các ngày thực sự có dữ liệu giờ bận từ bảng `gio_ban_chung_cu` (hiện có 40 ngày đến `21/08/2026`), người dùng chỉ cần bấm chọn ngày là tải ngay kết quả.
+  4. **Backend Worker (`backend/src/index.js`)**:
+     - Bổ sung hỗ trợ lưu trữ và truy vấn đối tượng `ra_vien` vào bảng `gio_ban_chung_cu` trong các hàm chốt sổ `chotSo` và `autoChotSo`.
+     - Cập nhật `getHistoryFullData` trả về mảng `leavePat` phân loại từ `target_type = 'ra_vien'`, tích hợp vào `applyHistoryDataToTabs` trên Frontend.
+- **Đồng bộ phiên bản**:
+  + Nâng cấp lên `4.0.4-rev6`.
+  + `index.html`: Cập nhật cache busters `v=4.0.4-rev6`, footer timestamp `10:35 09/09/2026`, `APP_VERSION = '4.0.4-rev6'`.
+  + `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.0.4-rev6'`.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `index.html`
+  + `js/app.js`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+

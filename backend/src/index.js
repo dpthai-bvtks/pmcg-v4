@@ -2608,7 +2608,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       statements.push(
         db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, busy_ranges) SELECT unit_code, ?, 'nhan_su', name, temp_busy FROM nhan_su WHERE unit_code = ? AND temp_busy IS NOT NULL AND temp_busy != '' AND temp_busy != '[]' AND temp_busy != '[\"\"]'").bind(targetDateStr, unitCode),
         // 2. Sao lưu giờ bận thực tế của bệnh nhân trước khi reset
-        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'benh_nhan', name, dob, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(targetDateStr, unitCode)
+        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'benh_nhan', name, dob, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(targetDateStr, unitCode),
+        // 3. Sao lưu giờ ra viện của bệnh nhân trước khi reset
+        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'ra_vien', name, dob, leave_time FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(targetDateStr, unitCode)
       );
 
       if (date && typeof date === "string" && date.trim()) {
@@ -2832,13 +2834,20 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         } catch(e) {}
       }
 
-      // Safe parse slots và phân bổ vào staffBusy / patBusyList
+      // Safe parse slots và phân bổ vào staffBusy / patBusyList / leavePatList
       const staffBusy = [];
       const patBusyList = [];
+      const leavePatList = [];
 
       chungBusyRows.forEach(b => {
         const str = String(b.busy_ranges || '').trim();
         if (!str || str === 'ID' || str === '[]' || str === '[""]') return;
+
+        if (b.target_type === 'ra_vien') {
+          leavePatList.push({ tenBN: b.name, namSinh: b.dob || "", gioRa: str });
+          return;
+        }
+
         let slots = [];
         try {
           const parsed = JSON.parse(str);
@@ -2869,7 +2878,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         patients: benh_nhan,
         benh_nhan: benh_nhan,
         staffBusy: staffBusy,
-        patBusy: patBusyList
+        patBusy: patBusyList,
+        leavePat: leavePatList
       });
     }
 
@@ -3966,6 +3976,8 @@ async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
         db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, busy_ranges) SELECT unit_code, ?, 'nhan_su', name, temp_busy FROM nhan_su WHERE unit_code = ? AND temp_busy IS NOT NULL AND temp_busy != '' AND temp_busy != '[]' AND temp_busy != '[\"\"]'").bind(todayDateStr, unitCode),
         // 2. Sao lưu giờ bận thực tế của bệnh nhân trước khi reset
         db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'benh_nhan', name, dob, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(todayDateStr, unitCode),
+        // 3. Sao lưu giờ ra viện của bệnh nhân trước khi reset
+        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'ra_vien', name, dob, leave_time FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(todayDateStr, unitCode),
         db.prepare("INSERT INTO lich_su (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE unit_code = ?").bind(unitCode),
         db.prepare("DELETE FROM lich_trinh WHERE unit_code = ?").bind(unitCode),
         db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(unitCode),

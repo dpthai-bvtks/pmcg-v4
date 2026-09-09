@@ -171,9 +171,9 @@
     }
     </script>
     <meta name="theme-color" content="#1e3d2b">
-    <link rel="icon" type="image/png" sizes="128x128" href="favicon-128.png?v=4.0.4-rev5">
+    <link rel="icon" type="image/png" sizes="128x128" href="favicon-128.png?v=4.0.4-rev6">
     <!-- Thêm icon cho iOS -->
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=4.0.4-rev5">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=4.0.4-rev6">
 
 
 
@@ -184,15 +184,15 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=4.0.4-rev5">
+    <link rel="stylesheet" href="css/style.css?v=4.0.4-rev6">
     <!-- PWA & Mobile Web App Meta Tags -->
-    <link rel="manifest" href="manifest.json?v=4.0.4-rev5">
+    <link rel="manifest" href="manifest.json?v=4.0.4-rev6">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.0.4-rev5">
+    <link rel="stylesheet" href="css/mobile.css?v=4.0.4-rev6">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
     <script src="js/dexie.min.js?v=3.2.6"></script>
@@ -203,7 +203,7 @@
     <script src="js/chart.min.js?v=3.2.6"></script>
     <script src="js/zod.min.js?v=3.2.6"></script>
     <!-- JS Thư viện kéo thả nội bộ -->
-    <script src="js/sortable.min.js?v=4.0.4-rev5"></script>
+    <script src="js/sortable.min.js?v=4.0.4-rev6"></script>
     <!-- Thư viện Dòng thời gian Timeline Frappe Gantt -->
     <link rel="stylesheet" href="css/frappe-gantt.css?v=3.2.6">
     <script src="js/frappe-gantt.min.js?v=3.2.6"></script>
@@ -1459,15 +1459,23 @@
                             <label style="font-size: 13px; font-weight: 700; color: #1e293b; margin: 0; white-space: nowrap;">Chọn ngày xem:</label>
                             <input type="date" id="busy-date-filter" onchange="onAppDateChange(this.value, 'busy')"
                                 style="padding: 6px 12px; border-radius: 6px; border: 1.5px solid #0d9488; font-size: 13px; font-weight: 700; color: #0f172a; outline: none; cursor: pointer; background: #f0fdfa;">
+                            
+                            <!-- Dropdown chọn nhanh ngày có dữ liệu lịch sử bận trên đám mây -->
+                            <label style="font-size: 12.5px; font-weight: 600; color: #475569; margin: 0; margin-left: 4px; white-space: nowrap;">📜 Ngày có lịch sử bận:</label>
+                            <select id="busy-quick-date-select" onchange="if(this.value) onAppDateChange(this.value, 'busy');"
+                                style="padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 12.5px; font-weight: 600; color: #1e293b; outline: none; background: #f8fafc; cursor: pointer; max-width: 250px;"
+                                title="Danh sách các ngày có ghi nhận giờ bận trong CSDL đám mây Turso">
+                                <option value="">-- Chọn ngày có lịch sử bận --</option>
+                            </select>
+
                             <button type="button" onclick="setAppDateToToday('busy')" class="btn btn-sm"
                                 style="padding: 6px 14px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f1f5f9; color: #1e293b; font-size: 12.5px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 5px;"
                                 title="Quay về ngày hôm nay (Thời gian thực)">
                                 <span>🟢</span> Về Hôm Nay
                             </button>
-                            <span id="busy-date-badge" style="font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 12px; background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;">🟢 Đang xem: Hôm nay</span>
                         </div>
-                        <div id="busy-history-notice" style="display: none; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: #b45309; background: #fef3c7; padding: 5px 12px; border-radius: 6px; border: 1px solid #fde68a;">
-                            <span>📜</span> Đang xem lịch sử giờ bận ngày cũ từ CSDL Turso Cloud (Chế độ xem lại)
+                        <div>
+                            <span id="busy-date-badge" style="font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 14px; background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; display: inline-flex; align-items: center; gap: 5px;">🟢 Đang xem: Hôm nay (Thời gian thực)</span>
                         </div>
                     </div>
 
@@ -1477,7 +1485,8 @@
 
                         <div class="busy-col-card card-staff" style="flex: 1 1 auto; min-width: 360px; background: #fdfefe;">
 
-                            <div class="busy-form-header"
+                            <!-- Khối nhập liệu thời gian thực (chỉ hiện khi xem Hôm nay) -->
+                            <div class="busy-form-header" id="busy-staff-live-form"
                                 style="display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; border-bottom: 2px solid #e67e22; padding-bottom:10px;">
 
                                 <label style="color:#d35400; font-weight:bold; font-size:13px;">👨‍⚕️ NV:</label>
@@ -1508,6 +1517,15 @@
 
                             </div>
 
+                            <!-- Tiêu đề xem lịch sử (chỉ hiện khi xem ngày cũ) -->
+                            <div class="busy-hist-header" id="busy-staff-hist-header"
+                                style="display:none; align-items:center; justify-content:space-between; margin-bottom:10px; padding-bottom:8px; border-bottom: 2px solid #e67e22;">
+                                <div style="display:flex; align-items:center; gap:6px; font-weight:700; color:#d35400; font-size:13.5px;">
+                                    <span>👨‍⚕️</span> <span>GIỜ BẬN NHÂN VIÊN</span>
+                                </div>
+                                <span id="busy-staff-count-badge" style="font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:10px; background:#fff7ed; color:#c2410c; border:1px solid #ffedd5;">0 nhân sự bận</span>
+                            </div>
+
                             <div class="busy-container">
 
                                 <table id="busy-staff-table">
@@ -1534,7 +1552,8 @@
 
                         <div class="busy-col-card card-pat" style="flex: 0 0 395px; width: 395px; min-width: 395px; max-width: 395px; background: #e8f8f5;">
 
-                            <div class="busy-form-header" style="margin-bottom: 8px;">
+                            <!-- Khối nhập liệu thời gian thực (chỉ hiện khi xem Hôm nay) -->
+                            <div class="busy-form-header" id="busy-pat-live-form" style="margin-bottom: 8px;">
                                 <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
 
                                     <label style="color:#16a085; font-weight:bold; font-size:13px;">🛌 BN (Bận):</label>
@@ -1584,10 +1603,19 @@
                                 </div>
                             </div>
 
+                            <!-- Tiêu đề xem lịch sử (chỉ hiện khi xem ngày cũ) -->
+                            <div class="busy-hist-header" id="busy-pat-hist-header"
+                                style="display:none; align-items:center; justify-content:space-between; margin-bottom:10px; padding-bottom:8px; border-bottom: 2px solid #16a085;">
+                                <div style="display:flex; align-items:center; gap:6px; font-weight:700; color:#0f766e; font-size:13.5px;">
+                                    <span>🧑</span> <span>BỆNH NHÂN BÁO BẬN</span>
+                                </div>
+                                <span id="busy-pat-count-badge" style="font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:10px; background:#f0fdfa; color:#0f766e; border:1px solid #ccfbf1;">0 bệnh nhân bận</span>
+                            </div>
+
                             <div class="busy-container">
 
                                 <table id="busy-pat-table">
-                                    <thead>
+                                    <thead id="busy-pat-thead">
                                         <tr>
                                             <th style="width: 32px; text-align: center;">STT</th>
                                             <th style="white-space: nowrap; text-align: left;">Tên Bệnh Nhân</th>
@@ -1611,7 +1639,8 @@
 
                         <div class="busy-col-card card-leave" style="flex: 0 0 395px; width: 395px; min-width: 395px; max-width: 400px; background: #f5eef8;">
 
-                            <div class="busy-form-header" style="margin-bottom: 8px;">
+                            <!-- Khối nhập liệu thời gian thực (chỉ hiện khi xem Hôm nay) -->
+                            <div class="busy-form-header" id="busy-leave-live-form" style="margin-bottom: 8px;">
                                 <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
 
                                     <label style="color:#8e44ad; font-weight:bold; font-size:13px;">🏃 RA VIỆN:</label>
@@ -1651,10 +1680,19 @@
                                 </div>
                             </div>
 
+                            <!-- Tiêu đề xem lịch sử (chỉ hiện khi xem ngày cũ) -->
+                            <div class="busy-hist-header" id="busy-leave-hist-header"
+                                style="display:none; align-items:center; justify-content:space-between; margin-bottom:10px; padding-bottom:8px; border-bottom: 2px solid #8e44ad;">
+                                <div style="display:flex; align-items:center; gap:6px; font-weight:700; color:#6b21a8; font-size:13.5px;">
+                                    <span>🚪</span> <span>BỆNH NHÂN RA VIỆN</span>
+                                </div>
+                                <span id="busy-leave-count-badge" style="font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:10px; background:#faf5ff; color:#6b21a8; border:1px solid #f3e8ff;">0 bệnh nhân ra viện</span>
+                            </div>
+
                             <div class="busy-container">
 
                                 <table id="leave-pat-table">
-                                    <thead>
+                                    <thead id="leave-pat-thead">
                                         <tr>
                                             <th style="width: 32px; text-align: center;">STT</th>
                                             <th style="white-space: nowrap; text-align: left;">Tên Bệnh Nhân</th>
@@ -3435,9 +3473,9 @@
 
                     <h4><span class="f-icon">⚙️</span> <span>THÔNG TIN HỆ THỐNG</span></h4>
 
-                    <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 4.0.4</span></p>
+                    <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 4.0.4-rev6</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 10:15 09/09/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 10:35 09/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -3955,18 +3993,18 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.0.4-rev5"></script>
-    <script src="js/ai-scheduler.js?v=4.0.4-rev5"></script>
-    <script src="js/cp-solver.js?v=4.0.4-rev5"></script>
-    <script src="js/scheduler-engine.js?v=4.0.4-rev5"></script>
-    <script src="js/app.js?v=4.0.4-rev5"></script>
-    <script src="js/init.js?v=4.0.4-rev5"></script>
-    <script src="js/sync.js?v=4.0.4-rev5"></script>
-    <script src="js/thongke.js?v=4.0.4-rev5"></script>
+    <script src="js/offline-sync-engine.js?v=4.0.4-rev6"></script>
+    <script src="js/ai-scheduler.js?v=4.0.4-rev6"></script>
+    <script src="js/cp-solver.js?v=4.0.4-rev6"></script>
+    <script src="js/scheduler-engine.js?v=4.0.4-rev6"></script>
+    <script src="js/app.js?v=4.0.4-rev6"></script>
+    <script src="js/init.js?v=4.0.4-rev6"></script>
+    <script src="js/sync.js?v=4.0.4-rev6"></script>
+    <script src="js/thongke.js?v=4.0.4-rev6"></script>
 
     <!-- PWA Service Worker Registration + Auto-Update -->
     <script>
-    const APP_VERSION = '4.0.4-rev5';
+    const APP_VERSION = '4.0.4-rev6';
 
     (function registerAndAutoUpdate() {
         if (!('serviceWorker' in navigator)) return;
