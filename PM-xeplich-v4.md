@@ -2592,6 +2592,34 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.4-rev9] - 14:02 09/09/2026: Chuẩn Hóa Chức Năng Chốt Sổ - Loại Bỏ Hoàn Toàn Ghi Kép Vào Bảng Cũ gio_ban_cu
+- **Yêu cầu của người dùng**:
+  + Rà soát kỹ lưỡng chức năng chốt sổ xem cụ thể chốt những gì.
+  + Sau khi phát hiện code backend vẫn còn cơ chế "ghi kép" (dual-write) vào bảng cũ `gio_ban_cu`, người dùng yêu cầu loại bỏ hoàn toàn việc ghi vào bảng `gio_ban_cu`, chỉ lưu duy nhất vào bảng chuẩn `gio_ban_chung_cu`.
+- **Phân tích nguyên nhân & Giải pháp**:
+  1. **Nguyên nhân**:
+     - Trước đây khi nâng cấp từ bảng cũ `gio_ban_cu` sang bảng chuẩn mới `gio_ban_chung_cu` (hỗ trợ phân loại `target_type`: 'nhan_su', 'benh_nhan', 'ra_vien' và cột `dob` năm sinh), hệ thống giữ lại lệnh ghi kép vào `gio_ban_cu` làm dự phòng tương thích ngược.
+     - Hiện tại toàn bộ hệ thống (từ `getHistoryFullData`, xuất báo cáo, xem lại lịch sử...) đều ưu tiên đọc trực tiếp từ `gio_ban_chung_cu`. Việc tiếp tục INSERT vào `gio_ban_cu` mỗi lần chốt sổ làm CSDL phát sinh các câu lệnh dư thừa và làm phình bảng cũ với dữ liệu không chuẩn.
+  2. **Giải pháp triển khai**:
+     - Trong `backend/src/index.js`:
+       + Tại action `chuyenNgayMoi` / `chotSo`: Xóa bỏ 2 lệnh `INSERT INTO gio_ban_cu` (cho nhân viên và bệnh nhân). Chỉ thực hiện INSERT vào bảng chuẩn `gio_ban_chung_cu`.
+       + Tại hàm `checkAutoChotSo` (CRON chốt sổ tự động đám mây): Xóa bỏ 2 lệnh `INSERT INTO gio_ban_cu`. Chỉ thực hiện INSERT vào `gio_ban_chung_cu`.
+       + Giữ bảng `gio_ban_cu` ở chế độ chỉ đọc (read-only) phục vụ fallback tra cứu các ngày lịch sử từ trước thời điểm nâng cấp hệ thống.
+  3. **Đồng bộ phiên bản theo RULES.md**:
+     - Nâng cấp phiên bản lên `4.0.4-rev9`.
+     - `index.html`: Cập nhật cache busters `v=4.0.4-rev9`, footer timestamp `14:02 09/09/2026`, biến `const APP_VERSION = '4.0.4-rev9'`, chân trang hiển thị `Phiên bản: 4.0.4`.
+     - `sw.js`: Đổi `CACHE_NAME = 'pmcg-v4-cache-4.0.4-rev9'`.
+     - Kiểm tra cú pháp 100% đạt chuẩn: `node -c js/init.js`, `node -c js/app.js`, `node -c js/scheduler-engine.js`, `node -c backend/src/index.js`.
+     - Triển khai Cloudflare Pages và Cloudflare Worker thành công (`deploy:all`).
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `index.html`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+
 
 
 

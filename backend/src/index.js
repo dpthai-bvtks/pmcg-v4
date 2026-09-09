@@ -2610,13 +2610,11 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       
       const statements = [];
 
-      // 1. Sao lưu giờ bận thực tế của nhân viên trước khi reset
+      // 1. Sao lưu giờ bận thực tế của nhân viên trước khi reset (chỉ lưu vào gio_ban_chung_cu)
       statements.push(
         db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, busy_ranges) SELECT unit_code, ?, 'nhan_su', name, temp_busy FROM nhan_su WHERE unit_code = ? AND temp_busy IS NOT NULL AND temp_busy != '' AND temp_busy != '[]' AND temp_busy != '[\"\"]'").bind(targetDateStr, unitCode),
-        db.prepare("INSERT INTO gio_ban_cu (unit_code, date, staff_name, busy_ranges) SELECT unit_code, ?, name, temp_busy FROM nhan_su WHERE unit_code = ? AND temp_busy IS NOT NULL AND temp_busy != '' AND temp_busy != '[]' AND temp_busy != '[\"\"]'").bind(targetDateStr, unitCode),
         // 2. Sao lưu giờ bận thực tế của bệnh nhân trước khi reset
         db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'benh_nhan', name, dob, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(targetDateStr, unitCode),
-        db.prepare("INSERT INTO gio_ban_cu (unit_code, date, staff_name, busy_ranges) SELECT unit_code, ?, name, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(targetDateStr, unitCode),
         // 3. Sao lưu giờ ra viện của bệnh nhân trước khi reset
         db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'ra_vien', name, dob, leave_time FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(targetDateStr, unitCode)
       );
@@ -4014,12 +4012,10 @@ async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
       console.log(`[Worker Auto-ChotSo]: Triggering auto closure for unit '${unitCode}'. Lý do: ${reason}. today=${todayDateStr}, lastClosed=${lastChotSoDate}, time=${currentHourMin}, chotSoTime=${chotSoTime}`);
       
       const statements = [
-        // 1. Sao lưu giờ bận thực tế của nhân viên trước khi reset (vào cả gio_ban_chung_cu và gio_ban_cu)
+        // 1. Sao lưu giờ bận thực tế của nhân viên trước khi reset (chỉ lưu vào gio_ban_chung_cu)
         db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, busy_ranges) SELECT unit_code, ?, 'nhan_su', name, temp_busy FROM nhan_su WHERE unit_code = ? AND temp_busy IS NOT NULL AND temp_busy != '' AND temp_busy != '[]' AND temp_busy != '[\"\"]'").bind(todayYMD, unitCode),
-        db.prepare("INSERT INTO gio_ban_cu (unit_code, date, staff_name, busy_ranges) SELECT unit_code, ?, name, temp_busy FROM nhan_su WHERE unit_code = ? AND temp_busy IS NOT NULL AND temp_busy != '' AND temp_busy != '[]' AND temp_busy != '[\"\"]'").bind(todayYMD, unitCode),
         // 2. Sao lưu giờ bận thực tế của bệnh nhân trước khi reset
         db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'benh_nhan', name, dob, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(todayYMD, unitCode),
-        db.prepare("INSERT INTO gio_ban_cu (unit_code, date, staff_name, busy_ranges) SELECT unit_code, ?, name, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(todayYMD, unitCode),
         // 3. Sao lưu giờ ra viện của bệnh nhân trước khi reset
         db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'ra_vien', name, dob, leave_time FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(todayYMD, unitCode),
         db.prepare("INSERT INTO lich_su (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE unit_code = ?").bind(unitCode),
