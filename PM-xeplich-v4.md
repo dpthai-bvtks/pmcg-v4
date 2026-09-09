@@ -2459,3 +2459,35 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `js/app.js`
   + `sw.js`
   + `PM-xeplich-v4.md`
+
+### [v4.0.4-rev5] - 10:15 09/09/2026: Tích Hợp Ô Chọn Ngày Xem Lịch Sử Trên Các Tab Vận Hành & Khắc Phục Lỗi Hiển Thị Tab Chấm Công
+- **Bối cảnh & Yêu cầu của người dùng**:
+  1. Người dùng muốn các tab vận hành như `tab-home`, `tab-busy`, `tab-schedule`, `tab-utils` có ngay ô chọn ngày để có thể xem lại dữ liệu/lịch sử cũ một cách trực quan, liền mạch mà không nhất thiết phải tách riêng thành màn hình riêng trong Quản Trị hay chia sub-tab riêng biệt trong `tab-busy`.
+  2. Khắc phục lỗi tab Chấm Công (`tab-chamcong`) bị che khuất mất giao diện do thẻ div của bảng quản trị đặt nhầm vị trí.
+- **Giải pháp triển khai chi tiết**:
+  1. **Khắc phục triệt để Tab Chấm Công (`tab-chamcong`)**:
+     - Xóa bỏ khối thẻ `#admin-sec-busy-history` bị lồng nhầm trong container `#tab-chamcong`.
+     - Phục hồi lại toàn vẹn 100% cấu trúc giao diện `#tab-chamcong` gồm cả 2 sub-view (Bảng chấm công theo tháng & Sắp xếp nhân sự kéo thả) hoạt động mượt mà, không bị che khuất.
+  2. **Tích hợp bộ chọn ngày trực tiếp trên Tab Giờ Bận (`#tab-busy`)**:
+     - Loại bỏ sub-tab bar rườm rà và khôi phục layout 3 cột gốc (`👨‍⚕️ NV`, `🧑 BN`, `🚪 Ra Viện`).
+     - Bổ sung thanh công cụ chọn ngày trên đỉnh: Ô chọn ngày `<input type="date" id="busy-date-filter">`, nút `🟢 Về Hôm Nay`, badge trạng thái động (`🟢 Đang xem: Hôm nay` vs `📜 Đang xem lịch sử: dd/mm/yyyy`), và banner thông báo khi đang ở chế độ xem lại lịch sử.
+     - Bảo vệ dữ liệu: Khi ở chế độ xem lịch sử, hệ thống tự động khóa tính năng sửa/xóa với thông báo nhắc nhở thân thiện để tránh ghi đè dữ liệu quá khứ.
+  3. **Tích hợp & Đồng bộ bộ chọn ngày trên các Tab: `tab-home`, `tab-schedule`, `tab-utils`**:
+     - `tab-home`: `#dashboard-date-filter` kích hoạt cập nhật toàn bộ thống kê ca xếp, ca rớt, biểu đồ thủ thuật và công của ngày được chọn.
+     - `tab-schedule`: `#history-date` và `#schedule-date` đồng bộ tải và hiển thị danh sách xếp lịch thực tế của ngày được chọn.
+     - `tab-utils`: `#utils-search-date` đồng bộ nạp lịch và dữ liệu giờ bận nhân sự của ngày được chọn để phục vụ tính năng Tìm Bác Sĩ Rảnh.
+  4. **Frontend Controller (`js/app.js`)**:
+     - Triển khai hàm điều phối trung tâm `window.onAppDateChange(dateStr, sourceTab)`: Tự động đồng bộ giá trị ngày trên tất cả các input ở 4 tab, phân luồng tải dữ liệu thời gian thực (Live) hoặc lịch sử (History) thông qua `getHistoryFullData(dateStr)`.
+     - `window.setAppDateToToday(sourceTab)`: Phím tắt 1 chạm đưa tất cả 4 tab quay trở lại ngày hiện tại.
+     - Nâng cấp `applyHistoryDataToTabs(fullData, dateStr)`: Tự động bổ sung các nhân sự và bệnh nhân có trong `fullData.staffBusy` và `fullData.patBusy` (được truy vấn từ bảng `gio_ban_chung_cu` trên Turso Cloud) vào `dataCache` để hiển thị đầy đủ trên cả 3 cột của `tab-busy`, đồng thời hỗ trợ gọi `renderLeavePat()`.
+     - Khởi tạo mặc định ngày hôm nay cho toàn bộ các ô date picker khi tải trang.
+- **Đồng bộ phiên bản**:
+  + Nâng cấp lên `4.0.4-rev5`.
+  + `index.html`: Cập nhật cache busters `v=4.0.4-rev5`, footer timestamp `10:15 09/09/2026`, `APP_VERSION = '4.0.4-rev5'`.
+  + `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.0.4-rev5'`.
+- **File sửa đổi**:
+  + `index.html`
+  + `js/app.js`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+

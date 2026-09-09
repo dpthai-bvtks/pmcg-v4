@@ -2843,14 +2843,13 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-                        // Phần 3: Khởi tạo ngày mặc định và nạp Bootstrap
+            // Phần 3: Khởi tạo ngày mặc định và nạp Bootstrap
             const today = new Date();
-            if (document.getElementById('schedule-date')) {
-                const y = today.getFullYear();
-                const m = String(today.getMonth() + 1).padStart(2, '0');
-                const d = String(today.getDate()).padStart(2, '0');
-                document.getElementById('schedule-date').value = `${y}-${m}-${d}`;
-            }
+            const todayYMD = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            ['schedule-date', 'busy-date-filter', 'history-date', 'dashboard-date-filter', 'utils-search-date'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && !el.value) el.value = todayYMD;
+            });
 
             if (typeof populateMonthYearDropdown === 'function') {
                 populateMonthYearDropdown();
@@ -8074,6 +8073,29 @@ window.renderSttOrderControl = function (type, i, total) {
                     gioRa: '', index: 0, sheetIndex: 0
                 };
             });
+
+            // Bổ sung các bệnh nhân có trong fullData.patBusy (từ bảng gio_ban_chung_cu / gio_ban_cu) nhưng chưa có trong danh sách ca
+            (fullData.patBusy || []).forEach(pb => {
+                const pbName = String(pb.tenBN || '').trim().toLowerCase();
+                const pbNs = String(pb.namSinh || '').trim();
+                const exists = histPat.some(p => {
+                    const pName = String(p.ten || '').trim().toLowerCase();
+                    const pNs = String(p.namSinh || '').trim();
+                    return pName === pbName && (!pbNs || !pNs || pbNs === pNs);
+                });
+                if (!exists && pb.tenBN) {
+                    const gioBanStr = pb.slots?.length ? pb.slots.map(s => s.from + '-' + s.to).join(', ') : '';
+                    histPat.push({
+                        ten: pb.tenBN,
+                        namSinh: pb.namSinh || '',
+                        phong: pb.phong || '',
+                        thuThuat: '',
+                        ngayVao: '', gioVao: '',
+                        gioBan: gioBanStr,
+                        gioRa: '', index: 0, sheetIndex: 0
+                    });
+                }
+            });
             dataCache.pat = histPat;
 
             // Build dataCache.staff: Bảo toàn vai trò Bác sĩ/KTV, thời gian làm việc, kỹ năng từ base live staff
@@ -8090,6 +8112,24 @@ window.renderSttOrderControl = function (type, i, total) {
                     s.gioBan = '';
                 }
             });
+
+            // Bổ sung các nhân sự có trong fullData.staffBusy (từ gio_ban_chung_cu) nhưng chưa có trong baseStaff
+            (fullData.staffBusy || []).forEach(sb => {
+                const sbClean = String(sb.ten || '').trim().toLowerCase().replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd)\s+/i, '');
+                const exists = baseStaff.some(s => {
+                    const sNameClean = String(s.ten || '').trim().toLowerCase().replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd)\s+/i, '');
+                    return sNameClean === sbClean;
+                });
+                if (!exists && sb.ten) {
+                    const busyStr = sb.slots?.length ? [...new Set(sb.slots.map(sl => sl.from + '-' + sl.to).filter(Boolean))].join(', ') : '';
+                    baseStaff.push({
+                        ten: sb.ten,
+                        vaiTro: sb.ten.toLowerCase().includes('ktv') ? 'Kỹ thuật viên' : 'Bác sĩ',
+                        gioBan: busyStr,
+                        thoiGianLamViec: '07:30-16:30'
+                    });
+                }
+            });
             dataCache.staff = baseStaff;
 
             // Cập nhật header trạng thái lịch cũ
@@ -8101,6 +8141,7 @@ window.renderSttOrderControl = function (type, i, total) {
             if (typeof renderPatientsTable === 'function') renderPatientsTable(true);
             if (typeof renderBusyPat === 'function') renderBusyPat();
             if (typeof renderBusyStaff === 'function') renderBusyStaff();
+            if (typeof renderLeavePat === 'function') renderLeavePat();
         }
 
         function restoreHistoryTabs() {
@@ -8112,26 +8153,26 @@ window.renderSttOrderControl = function (type, i, total) {
             if (typeof renderPatientsTable === 'function') renderPatientsTable(true);
             if (typeof renderBusyPat === 'function') renderBusyPat();
             if (typeof renderBusyStaff === 'function') renderBusyStaff();
+            if (typeof renderLeavePat === 'function') renderLeavePat();
             // Xóa panel cũ nếu còn
             const old = document.getElementById('history-detail-panel');
             if (old) old.remove();
         }
 
         function xemLichSu() {
-            const d = document.getElementById('history-date').value;
+            const d = document.getElementById('history-date')?.value || '';
             if (!d) return window.showToast ? window.showToast("Vui lòng chọn ngày!", "error") : alert("Chọn ngày!");
-
-            const dp = document.getElementById('dashboard-date-filter');
-            if (dp && dp.value !== d) {
-                dp.value = d;
-                const displayEl = document.getElementById('display-date');
-                if (displayEl) displayEl.textContent = d.split('-').reverse().join('/');
-            }
-
-            window._forceHistoryMode = true;
-
-            if (typeof loadDashboard === 'function') {
-                loadDashboard();
+            if (typeof window.onAppDateChange === 'function') {
+                window.onAppDateChange(d, 'schedule');
+            } else {
+                const dp = document.getElementById('dashboard-date-filter');
+                if (dp && dp.value !== d) {
+                    dp.value = d;
+                    const displayEl = document.getElementById('display-date');
+                    if (displayEl) displayEl.textContent = d.split('-').reverse().join('/');
+                }
+                window._forceHistoryMode = true;
+                if (typeof loadDashboard === 'function') loadDashboard();
             }
         }
 
@@ -10472,9 +10513,6 @@ window.renderSttOrderControl = function (type, i, total) {
             if (sectionId === 'admin-sec-ai' && typeof window.renderAISettingsUI === 'function') {
                 window.renderAISettingsUI();
             }
-            if (sectionId === 'admin-sec-busy-history' && typeof window.loadGioBanChungCuUI === 'function') {
-                window.loadGioBanChungCuUI('admin');
-            }
         }
 
         // ============================================================
@@ -11683,6 +11721,17 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
         function checkUnclosedDay() {
+            if (window._forceHistoryMode || window.viewingImportedScheduleFile) {
+                if (typeof showCustomAlert === 'function') {
+                    showCustomAlert("📜 ĐANG Ở CHẾ ĐỘ XEM LỊCH SỬ",
+                        "Bạn đang xem dữ liệu lịch sử của ngày cũ.<br><br>Các thao tác chỉnh sửa, thêm mới hoặc xóa bị khóa để bảo toàn dữ liệu gốc.<br><br>Vui lòng bấm nút <b>'Về Hôm Nay'</b> để quay về chế độ làm việc thời gian thực.",
+                        "ℹ️", "#3b82f6");
+                } else {
+                    alert("📜 BẠN ĐANG XEM LỊCH SỬ NGÀY CŨ\n\nKhông thể chỉnh sửa dữ liệu ở chế độ xem lại. Vui lòng bấm 'Về Hôm Nay' để chỉnh sửa.");
+                }
+                return true;
+            }
+
             const d = new Date();
             const safeTodayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
             if (window._systemActiveYMD && window._systemActiveYMD < safeTodayStr) {
@@ -13882,318 +13931,182 @@ window.submitChangePassword = function() {
 };
 
 // ============================================================
-// 🕒 QUẢN LÝ & HIỂN THỊ BẢNG GIỜ BẬN CHUNG CŨ (gio_ban_chung_cu)
+// 📅 HỆ THỐNG ĐỒNG BỘ CHỌN NGÀY & XEM LỊCH SỬ ĐA TAB
+// (tab-home, tab-busy, tab-schedule, tab-utils)
 // ============================================================
-window._gioBanChungCuData = { records: [], dates: [], total: 0 };
-window._gioBanChungCuLoaded = false;
+window.onAppDateChange = function(dateStr, sourceTab) {
+    const rawDate = (dateStr || '').trim();
+    const d = new Date();
+    const todayYMD = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const targetDate = rawDate || todayYMD;
 
-window.switchBusySubTab = function(mode) {
-    const liveView = document.getElementById('busy-view-live');
-    const histView = document.getElementById('busy-view-history');
-    const btnLive = document.getElementById('btn-busy-mode-live');
-    const btnHist = document.getElementById('btn-busy-mode-history');
-    const badgeContainer = document.getElementById('busy-history-badge-container');
-
-    if (mode === 'history') {
-        if (liveView) liveView.style.display = 'none';
-        if (histView) histView.style.display = 'flex';
-        if (btnLive) {
-            btnLive.classList.remove('active');
-            btnLive.style.background = '#f8fafc';
-            btnLive.style.color = '#334155';
-            btnLive.style.border = '1px solid #cbd5e1';
-            btnLive.style.boxShadow = 'none';
-        }
-        if (btnHist) {
-            btnHist.classList.add('active');
-            btnHist.style.background = '#d97706';
-            btnHist.style.color = '#ffffff';
-            btnHist.style.border = 'none';
-            btnHist.style.boxShadow = '0 2px 4px rgba(217,119,6,0.25)';
-        }
-        if (badgeContainer) badgeContainer.style.display = 'flex';
-
-        if (!window._gioBanChungCuLoaded) {
-            window.loadGioBanChungCuUI('busy');
-        }
-    } else {
-        if (liveView) liveView.style.display = 'block';
-        if (histView) histView.style.display = 'none';
-        if (btnLive) {
-            btnLive.classList.add('active');
-            btnLive.style.background = '#16a085';
-            btnLive.style.color = '#ffffff';
-            btnLive.style.border = 'none';
-            btnLive.style.boxShadow = '0 2px 4px rgba(22,160,133,0.2)';
-        }
-        if (btnHist) {
-            btnHist.classList.remove('active');
-            btnHist.style.background = '#f8fafc';
-            btnHist.style.color = '#334155';
-            btnHist.style.border = '1px solid #cbd5e1';
-            btnHist.style.boxShadow = 'none';
-        }
-        if (badgeContainer) badgeContainer.style.display = 'none';
-    }
-};
-
-window.onBusyHistFilterChange = function() {
-    window.loadGioBanChungCuUI('busy');
-};
-
-window.onAdminBusyHistFilterChange = function() {
-    window.loadGioBanChungCuUI('admin');
-};
-
-function formatDisplayDateVN(isoDate) {
-    if (!isoDate) return '';
-    const parts = String(isoDate).split('-');
-    if (parts.length === 3) {
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    }
-    return isoDate;
-}
-
-function populateGioBanChungCuDateDropdowns(dates = []) {
-    const selects = [
-        document.getElementById('busy-hist-date-select'),
-        document.getElementById('admin-busy-hist-date-select')
+    // 1. Đồng bộ giá trị ô chọn ngày trên tất cả các tab
+    const dateInputIds = [
+        'dashboard-date-filter',
+        'busy-date-filter',
+        'history-date',
+        'schedule-date',
+        'utils-search-date'
     ];
+    dateInputIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.value !== targetDate) {
+            el.value = targetDate;
+        }
+    });
 
-    selects.forEach(select => {
-        if (!select) return;
-        const currentVal = select.value || 'all';
-        let html = `<option value="all">-- Tất cả các ngày (${dates.length} ngày) --</option>`;
-        dates.forEach(d => {
-            const formatted = formatDisplayDateVN(d);
-            html += `<option value="${d}">${formatted}</option>`;
-        });
-        select.innerHTML = html;
-        if (dates.includes(currentVal)) {
-            select.value = currentVal;
+    const parts = targetDate.split('-');
+    const dmy = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : targetDate;
+    const displayEl = document.getElementById('display-date');
+    if (displayEl) displayEl.textContent = dmy;
+
+    // 2. Xác định chế độ: Hôm nay (Live) hay Lịch sử (History)
+    const isToday = (targetDate === todayYMD) || (window._systemActiveYMD && targetDate === window._systemActiveYMD);
+
+    // Cập nhật huy hiệu trạng thái trên Tab Giờ Bận (tab-busy)
+    const busyBadge = document.getElementById('busy-date-badge');
+    const busyNotice = document.getElementById('busy-history-notice');
+    if (busyBadge) {
+        if (isToday) {
+            busyBadge.innerHTML = '🟢 Đang xem: Hôm nay';
+            busyBadge.style.background = '#dcfce7';
+            busyBadge.style.color = '#15803d';
+            busyBadge.style.borderColor = '#bbf7d0';
         } else {
-            select.value = 'all';
+            busyBadge.innerHTML = `📜 Đang xem lịch sử: ${dmy}`;
+            busyBadge.style.background = '#fef3c7';
+            busyBadge.style.color = '#b45309';
+            busyBadge.style.borderColor = '#fde68a';
         }
-    });
-}
-
-function updateGioBanChungCuBadges(filteredCount, totalCount) {
-    const totalEl = document.getElementById('busy-history-total-count');
-    if (totalEl) {
-        totalEl.textContent = `${filteredCount} / ${totalCount} bản ghi`;
     }
-}
+    if (busyNotice) {
+        busyNotice.style.display = isToday ? 'none' : 'inline-flex';
+    }
 
-function renderBusyRangePills(busyRangesStr) {
-    if (!busyRangesStr) return '<span style="color: #94a3b8; font-style: italic;">Không có</span>';
-    const slots = String(busyRangesStr).split(/[,;\n]+/).map(s => s.trim()).filter(Boolean);
-    if (slots.length === 0) return '<span style="color: #94a3b8; font-style: italic;">Không có</span>';
-    
-    return slots.map(slot => {
-        return `<span style="display: inline-block; margin: 2px 3px; padding: 2px 7px; border-radius: 4px; font-size: 12px; font-weight: 700; background: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1; font-family: 'Consolas', 'Courier New', monospace; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">⏱ ${escapeHtml(slot)}</span>`;
-    }).join(' ');
-}
+    if (isToday) {
+        // --- CHẾ ĐỘ HÔM NAY (LIVE) ---
+        window._forceHistoryMode = false;
+        window.viewingImportedScheduleFile = false;
+        if (typeof restoreHistoryTabs === 'function') {
+            restoreHistoryTabs();
+        }
+        if (typeof loadDashboard === 'function') {
+            loadDashboard();
+        }
+        if (typeof filterSchedule === 'function') {
+            filterSchedule();
+        }
+        if (typeof renderBusyStaff === 'function') renderBusyStaff();
+        if (typeof renderBusyPat === 'function') renderBusyPat();
+        if (typeof renderLeavePat === 'function') renderLeavePat();
+        if (typeof renderPatientsTable === 'function') renderPatientsTable(true);
 
-window.renderGioBanChungCuTable = function(records, context = 'busy') {
-    const tbodyId = (context === 'admin') ? 'admin-busy-chung-table-body' : 'busy-chung-table-body';
-    const tbody = document.getElementById(tbodyId);
-    if (!tbody) return;
-
-    if (!records || records.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 35px; color: #64748b; font-size: 13.5px;">📭 Không tìm thấy bản ghi giờ bận cũ nào phù hợp với bộ lọc hiện tại.</td></tr>`;
+        const statusEl = document.getElementById('utils-lich-status');
+        if (statusEl) {
+            statusEl.innerText = '🟢 Hôm nay (Live)';
+            statusEl.style.color = '#15803d';
+        }
+        if (window.showToast) window.showToast(`Đã chuyển về ngày hôm nay (${dmy})`, 'success', 1800);
         return;
     }
 
-    let html = '';
-    records.forEach((rec, idx) => {
-        const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
-        const isNhanSu = (rec.target_type === 'nhan_su');
-        const badgeClass = isNhanSu
-            ? '<span style="display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:12px; font-size:11.5px; font-weight:700; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;">🩺 Nhân Sự</span>'
-            : '<span style="display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:12px; font-size:11.5px; font-weight:700; background:#fef3c7; color:#92400e; border:1px solid #fde68a;">🧑 Bệnh Nhân</span>';
+    // --- CHẾ ĐỘ LỊCH SỬ (HISTORY) ---
+    window._forceHistoryMode = true;
 
-        const formattedDate = formatDisplayDateVN(rec.date);
-        const nameDisplay = `<span style="font-weight: 700; color: #1e293b; font-size: 13.5px;">${escapeHtml(rec.name)}</span>`;
-        const dobDisplay = rec.dob ? `<span style="font-weight: 600; color: #475569;">${escapeHtml(rec.dob)}</span>` : '<span style="color:#94a3b8;">-</span>';
-        const busyPills = renderBusyRangePills(rec.busy_ranges);
-        const createdDisplay = rec.created_at ? `<span style="font-size: 12px; color: #64748b; font-family: monospace;">${escapeHtml(rec.created_at)}</span>` : '<span style="color:#94a3b8;">-</span>';
+    const handleLoadedHistory = function(data) {
+        const fullData = Array.isArray(data) ? { schedule: data, patients: [], staffBusy: [], patBusy: [] } : (data || { schedule: [], patients: [], staffBusy: [], patBusy: [] });
+        window._historyCache = window._historyCache || {};
+        window._historyCache[targetDate] = fullData;
 
-        html += `
-        <tr style="background: ${rowBg}; border-bottom: 1px solid #e2e8f0; transition: background 0.15s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='${rowBg}'">
-            <td style="padding: 10px 12px; text-align: center; font-weight: 600; color: #64748b;">${idx + 1}</td>
-            <td style="padding: 10px 12px; text-align: center; font-weight: 700; color: #1e293b;">${formattedDate}</td>
-            <td style="padding: 10px 12px; text-align: center;">${badgeClass}</td>
-            <td style="padding: 10px 14px;">${nameDisplay}</td>
-            <td style="padding: 10px 12px; text-align: center;">${dobDisplay}</td>
-            <td style="padding: 8px 14px; line-height: 1.6;">${busyPills}</td>
-            <td style="padding: 10px 12px; text-align: center;">${createdDisplay}</td>
-            <td style="padding: 10px 12px; text-align: center;">
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteGioBanChungCuRow(${rec.id}, '${context}')"
-                    style="padding: 4px 8px; border-radius: 6px; border: 1px solid #fca5a5; background: #fff1f2; color: #b91c1c; cursor: pointer; font-size: 12px; transition: all 0.2s;"
-                    title="Xóa bản ghi giờ bận cũ này khỏi CSDL Turso">
-                    🗑 Xóa
-                </button>
-            </td>
-        </tr>`;
-    });
-
-    tbody.innerHTML = html;
-};
-
-window.loadGioBanChungCuUI = function(context = 'busy') {
-    const isBusy = (context === 'busy');
-    const dateSelect = isBusy ? document.getElementById('busy-hist-date-select') : document.getElementById('admin-busy-hist-date-select');
-    const typeSelect = isBusy ? document.getElementById('busy-hist-type-select') : document.getElementById('admin-busy-hist-type-select');
-    const searchInput = isBusy ? document.getElementById('busy-hist-search-input') : document.getElementById('admin-busy-hist-search-input');
-
-    const filterDate = (dateSelect && dateSelect.value) ? dateSelect.value : 'all';
-    const filterType = (typeSelect && typeSelect.value) ? typeSelect.value : 'all';
-    const keyword = (searchInput && searchInput.value) ? searchInput.value.trim() : '';
-
-    const tbodyId = isBusy ? 'busy-chung-table-body' : 'admin-busy-chung-table-body';
-    const tbody = document.getElementById(tbodyId);
-    if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 35px; color: #2563eb; font-size: 13.5px;">⏳ Đang tải dữ liệu từ CSDL Turso Cloud...</td></tr>`;
-    }
-
-    const onSuccess = function(res) {
-        const data = (res && res.records) ? res : (res && res.data) ? res.data : { records: [], dates: [], total: 0 };
-        window._gioBanChungCuData = data;
-        window._gioBanChungCuLoaded = true;
-
-        if (data.dates && data.dates.length > 0) {
-            populateGioBanChungCuDateDropdowns(data.dates);
+        window.viewingImportedScheduleFile = true;
+        window._viewingHistoryDate = targetDate;
+        if (typeof markDischargedInSchedule === 'function') {
+            window.currentScheduleData = markDischargedInSchedule(fullData.schedule || []);
+        } else {
+            window.currentScheduleData = fullData.schedule || [];
         }
 
-        window.renderGioBanChungCuTable(data.records, 'busy');
-        window.renderGioBanChungCuTable(data.records, 'admin');
-        updateGioBanChungCuBadges(data.records.length, data.total || data.records.length);
+        // Áp dụng dữ liệu lịch sử vào dataCache để cập nhật tab-busy, tab-schedule, tab-patients
+        if (typeof applyHistoryDataToTabs === 'function') {
+            applyHistoryDataToTabs(fullData, targetDate);
+        }
+
+        // Cập nhật tab-schedule
+        if (typeof filterSchedule === 'function') {
+            filterSchedule();
+        }
+
+        // Cập nhật tab-home (Dashboard)
+        if (typeof loadDashboard === 'function') {
+            loadDashboard();
+        }
+
+        // Cập nhật tab-utils (Tiện ích tìm rảnh)
+        window.utilsScheduleData = fullData.schedule || [];
+        window.utilsScheduleDate = targetDate;
+        window.utilsStaffBusy = fullData.staffBusy || [];
+        const statusEl = document.getElementById('utils-lich-status');
+        if (statusEl) {
+            const count = (fullData.schedule || []).length;
+            statusEl.innerText = `✅ Ngày ${dmy}: ${count} ca`;
+            statusEl.style.color = '#27ae60';
+        }
+
+        if (window.showToast) {
+            window.showToast(`Đã tải dữ liệu lịch sử ngày ${dmy}!`, 'info', 2500);
+        }
+    };
+
+    // Kiểm tra cache trước
+    if (window._historyCache && window._historyCache[targetDate]) {
+        handleLoadedHistory(window._historyCache[targetDate]);
+        return;
+    }
+
+    if (window.showGlobalLoading) window.showGlobalLoading(`Đang tải lịch sử ngày ${dmy}...`);
+
+    const onSuccess = function(res) {
+        if (window.hideGlobalLoading) window.hideGlobalLoading();
+        const data = (res && res.data) ? res.data : res;
+        handleLoadedHistory(data);
     };
 
     const onError = function(err) {
-        console.error("Lỗi tải bảng gio_ban_chung_cu:", err);
+        if (window.hideGlobalLoading) window.hideGlobalLoading();
+        console.error(`Lỗi tải lịch sử ngày ${targetDate}:`, err);
         const errMsg = (err && err.message) ? err.message : String(err);
-        const errHtml = `<tr><td colspan="8" style="text-align: center; padding: 30px; color: #dc2626; font-size: 13.5px;">❌ Không thể tải dữ liệu: ${escapeHtml(errMsg)}</td></tr>`;
-        const b1 = document.getElementById('busy-chung-table-body');
-        if (b1) b1.innerHTML = errHtml;
-        const b2 = document.getElementById('admin-busy-chung-table-body');
-        if (b2) b2.innerHTML = errHtml;
+        if (window.showToast) {
+            window.showToast(`Không thể tải dữ liệu ngày ${dmy}: ${errMsg}`, 'error', 4000);
+        } else {
+            alert(`❌ Không thể tải dữ liệu lịch sử ngày ${dmy}: ${errMsg}`);
+        }
     };
 
     if (typeof callApi === 'function') {
-        callApi('getGioBanChungCu', [filterDate, filterType, keyword], onSuccess, onError);
+        callApi('getHistoryFullData', [targetDate], onSuccess, onError);
     } else if (window.google && window.google.script && window.google.script.run) {
         window.google.script.run
             .withSuccessHandler(onSuccess)
             .withFailureHandler(onError)
-            .getGioBanChungCu(filterDate, filterType, keyword);
+            .getHistoryFullData(targetDate);
+    } else {
+        if (window.hideGlobalLoading) window.hideGlobalLoading();
     }
 };
 
-window.filterGioBanChungCuClient = function(context = 'busy') {
-    const isBusy = (context === 'busy');
-    const inputEl = isBusy ? document.getElementById('busy-hist-search-input') : document.getElementById('admin-busy-hist-search-input');
-    const kw = (inputEl && inputEl.value) ? inputEl.value.trim().toLowerCase() : '';
-
-    if (!window._gioBanChungCuData || !window._gioBanChungCuData.records) return;
-
-    if (!kw) {
-        window.renderGioBanChungCuTable(window._gioBanChungCuData.records, context);
-        updateGioBanChungCuBadges(window._gioBanChungCuData.records.length, window._gioBanChungCuData.total || window._gioBanChungCuData.records.length);
-        return;
-    }
-
-    const filtered = window._gioBanChungCuData.records.filter(r => {
-        const name = (r.name || '').toLowerCase();
-        const busy = (r.busy_ranges || '').toLowerCase();
-        const date = (r.date || '').toLowerCase();
-        const dob = (r.dob || '').toLowerCase();
-        return name.includes(kw) || busy.includes(kw) || date.includes(kw) || dob.includes(kw);
-    });
-
-    window.renderGioBanChungCuTable(filtered, context);
-    updateGioBanChungCuBadges(filtered.length, window._gioBanChungCuData.total || window._gioBanChungCuData.records.length);
+window.setAppDateToToday = function(sourceTab) {
+    const d = new Date();
+    const todayYMD = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    window.onAppDateChange(todayYMD, sourceTab);
 };
 
-window.deleteGioBanChungCuRow = function(id, context = 'busy') {
-    if (!id) return;
-
-    try {
-        const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
-        if (sess.role === 'Viewer') {
-            alert("⚠️ Tài khoản Viewer (Chỉ xem) không có quyền xóa dữ liệu!");
-            return;
-        }
-    } catch(e) {}
-
-    if (!confirm(`Bạn có chắc chắn muốn xóa bản ghi giờ bận cũ (ID: ${id}) này khỏi CSDL Turso Cloud không?`)) {
-        return;
-    }
-
-    const onSuccess = function(res) {
-        alert("✅ Đã xóa bản ghi giờ bận cũ thành công!");
-        if (window._gioBanChungCuData && window._gioBanChungCuData.records) {
-            window._gioBanChungCuData.records = window._gioBanChungCuData.records.filter(r => String(r.id) !== String(id));
-            window._gioBanChungCuData.total = Math.max(0, (window._gioBanChungCuData.total || 1) - 1);
-            window.renderGioBanChungCuTable(window._gioBanChungCuData.records, 'busy');
-            window.renderGioBanChungCuTable(window._gioBanChungCuData.records, 'admin');
-            updateGioBanChungCuBadges(window._gioBanChungCuData.records.length, window._gioBanChungCuData.total);
-        }
-    };
-
-    const onError = function(err) {
-        console.error("Lỗi khi xóa bản ghi gio_ban_chung_cu:", err);
-        alert("❌ Lỗi khi xóa bản ghi: " + ((err && err.message) ? err.message : String(err)));
-    };
-
-    if (typeof callApi === 'function') {
-        callApi('deleteGioBanChungCu', [id], onSuccess, onError);
-    } else if (window.google && window.google.script && window.google.script.run) {
-        window.google.script.run
-            .withSuccessHandler(onSuccess)
-            .withFailureHandler(onError)
-            .deleteGioBanChungCu(id);
-    }
-};
-
-window.exportGioBanChungCuExcel = function(context = 'busy') {
-    if (typeof XLSX === 'undefined') {
-        alert("❌ Thư viện XLSX chưa sẵn sàng. Vui lòng thử lại sau vài giây.");
-        return;
-    }
-
-    const records = (window._gioBanChungCuData && window._gioBanChungCuData.records) ? window._gioBanChungCuData.records : [];
-    if (records.length === 0) {
-        alert("⚠️ Không có dữ liệu để xuất Excel!");
-        return;
-    }
-
-    const ws_data = [
-        ["STT", "Ngày", "Phân Loại", "Họ Và Tên", "Năm Sinh", "Các Khung Giờ Bận Lịch Sử", "Thời Gian Lưu"]
-    ];
-
-    records.forEach((r, idx) => {
-        const typeStr = (r.target_type === 'nhan_su') ? 'Nhân Sự' : 'Bệnh Nhân';
-        ws_data.push([
-            idx + 1,
-            r.date || '',
-            typeStr,
-            r.name || '',
-            r.dob || '',
-            r.busy_ranges || '',
-            r.created_at || ''
-        ]);
-    });
-
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(ws_data);
-    XLSX.utils.book_append_sheet(wb, ws, "GioBanChungCu");
-    
-    const now = new Date();
-    const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
-    const fileName = `Bang_Gio_Ban_Chung_Cu_${dateStr}.xlsx`;
-    XLSX.writeFile(wb, fileName);
-};
+// Khởi tạo và tương thích ngược
+window.switchBusySubTab = function(mode) {};
+window.onBusyHistFilterChange = function() {};
+window.onAdminBusyHistFilterChange = function() {};
+window.loadGioBanChungCuUI = function() {};
+window.renderGioBanChungCuTable = function() {};
+window.filterGioBanChungCuClient = function() {};
 
 // ============================================================
 // ⏰ TỰ ĐỘNG THEO DÕI & ĐỒNG BỘ CHỐT SỔ ĐÁM MÂY (CLIENT-SIDE LISTENER)
