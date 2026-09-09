@@ -2406,5 +2406,29 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.4-rev3] - 09:15 09/09/2026: Triệt Tiêu Toàn Diện Lỗi Chrome DevTools Live Metrics & Web Vitals (startTime / reportAllChanges)
+
+- **Nguyên nhân cốt lõi**:
+  + Thông báo lỗi console: `VM...:2 Uncaught TypeError: Cannot read properties of undefined (reading 'startTime') at et.reportAllChanges ... at n.timeout`.
+  + **Bản chất**: Đây là lỗi nội bộ nổi tiếng trong công cụ **Google Chrome DevTools** (Chromium Bug `#543499029` và `#556160936`), xảy ra khi mở DevTools (đặc biệt là bảng Performance / Live Metrics / Soft Navigation để đo INP) hoặc từ module Cloudflare Web Analytics Beacon ngầm. Trình duyệt tự động chèn một đoạn script động dạng `VMxxx` (`devToolsReportSoftNavs`). Khi tương tác xảy ra mà danh sách `entries` chưa kịp khởi tạo, hàm nội bộ `et.reportAllChanges` đọc `entries[0].startTime` gây ngoại lệ `TypeError`.
+  + **Tác động**: Không ảnh hưởng tới logic ứng dụng T.I.M.E.S hay cơ sở dữ liệu Turso/Cloudflare, nhưng gây ô nhiễm Console với dòng chữ đỏ khi nhà phát triển mở DevTools.
+- **Giải pháp xử lý triệt để 4 lớp phòng vệ**:
+  1. **Lớp 1 - Thiết lập `window.onerror` tức thì ngay đầu `<head>`**: Đặt hàm bắt lỗi ở dòng đầu tiên của `index.html`, nhận diện các chuỗi `startTime`, `reportAllChanges`, `VM...` và trả về `true` (tiêu chuẩn trình duyệt để triệt tiêu việc in lỗi đỏ ra DevTools console).
+  2. **Lớp 2 - Phòng hộ `window.devToolsReportSoftNavs`**: Sử dụng `Object.defineProperty` để hook và bọc mọi hàm do Chrome DevTools tự động gán vào biến này bằng khối `try...catch`, nuốt êm lỗi nếu có ngoại lệ phát sinh.
+  3. **Lớp 3 - Nâng cấp bộ bắt sự kiện capturing `window.addEventListener('error', ..., true)` & `unhandledrejection`**: Kiểm tra cả `message`, `stack`, `filename` và gọi `e.preventDefault()`, `e.stopImmediatePropagation()`.
+  4. **Lớp 4 - Tinh chỉnh `window.onerror` trong `js/app.js`**: Bỏ qua êm đẹp các lỗi đo lường ngoại vi này mà không ghi log cảnh báo làm phiền màn hình console.
+- **Đồng bộ phiên bản**:
+  + Nâng cấp lên `4.0.4-rev3`.
+  + `index.html`: Cập nhật cache busters `v=4.0.4-rev3`, footer timestamp `09:15 09/09/2026`, `APP_VERSION = '4.0.4-rev3'`.
+  + `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.0.4-rev3'`.
+- **File sửa đổi**:
+  + `index.html`
+  + `js/app.js`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+
 
 

@@ -710,22 +710,27 @@ window.showGlobalLoading = function (text) {
         window.onerror = function (msg, url, lineNo, columnNo, error) {
             // Bỏ qua lỗi cross-origin (Script error. dòng 0) từ CDN/extension/JSONP
             if (msg === 'Script error.' || lineNo === 0 || !lineNo) {
-                console.warn('[Notice] Bỏ qua thông báo cross-origin script:', msg);
                 return true;
             }
-            // Bỏ qua lỗi từ extension/Web Vitals/Cloudflare beacon bên ngoài (reportAllChanges / startTime)
+            // Bỏ qua lỗi từ extension/Web Vitals/Cloudflare beacon/Chrome DevTools Live Metrics bên ngoài (reportAllChanges / startTime)
             const msgStr = String(msg || '');
             const urlStr = String(url || '');
-            if (msgStr.includes('startTime') || msgStr.includes('reportAllChanges') || urlStr.includes('VM')) {
-                console.warn('[Notice] Bỏ qua lỗi đo lường hiệu năng bên ngoài (Web Vitals / Extension):', msg);
-                return true;
+            const stackStr = (error && error.stack) ? String(error.stack) : '';
+            if (
+                msgStr.includes('startTime') || 
+                msgStr.includes('reportAllChanges') || 
+                stackStr.includes('startTime') || 
+                stackStr.includes('reportAllChanges') || 
+                (urlStr.includes('VM') && (msgStr.includes('startTime') || stackStr.includes('startTime')))
+            ) {
+                return true; // Triệt tiêu việc hiển thị lỗi đỏ ra DevTools console
             }
             console.error('JS ERROR:', msg, 'at', url, 'line', lineNo, error);
             return false;
         };
 
         window.addEventListener('unhandledrejection', function (event) {
-            const reasonStr = String(event.reason || '');
+            const reasonStr = String(event.reason && (event.reason.stack || event.reason.message || event.reason) || '');
             if (reasonStr.includes('startTime') || reasonStr.includes('reportAllChanges')) {
                 event.preventDefault();
                 return;
