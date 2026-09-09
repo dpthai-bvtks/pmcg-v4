@@ -965,10 +965,15 @@ function getPatientSignature(pat) {
     return (pat.name || pat.pId || '') + '_' + (pat.pending ? pat.pending.join('|') : '');
   }
 
-  function runBestIteration(db, dateVal, existingSched = [], scenario = 1, crowdedOverride = -1, weights = { drop: 10000, overtime: 2, imbalance: 0.1 }, baseSeed = 42, maxSteps = 15) {
+  function runBestIteration(db, dateVal, existingSched = [], scenario = 1, crowdedOverride = -1, weights = { drop: 10000, overtime: 2, imbalance: 0.1 }, baseSeed = 42, maxSteps = null) {
     let bestSched = null;
     let bestRot = null;
     let bestScore = Infinity;
+
+    const patCount = (db && db.rawPatients) ? db.rawPatients.length : 0;
+    const actualMaxSteps = (typeof maxSteps === 'number' && maxSteps > 0)
+      ? maxSteps
+      : (patCount > 60 ? 22 : patCount > 30 ? 18 : 14);
 
     // 🤖 AI Smart Patient Ranking: Xếp thứ tự ban đầu theo định lượng AI
     let initialPatients = db.rawPatients;
@@ -993,7 +998,7 @@ function getPatientSignature(pat) {
     const lahcBuffer = new Array(lahcLength).fill(bestScore);
     let lahcIdx = 0;
 
-    for (let step = 0; step < maxSteps; step++) {
+    for (let step = 0; step < actualMaxSteps; step++) {
       const stepSeed = (baseSeed * 1000 + step * 37) % 2147483647;
       const randFn = createSeededRandom(stepSeed);
       const droppedNames = bestRot ? bestRot.map(r => String(r.bn || r.tenBN || r.name || '').toUpperCase()) : [];
@@ -1318,7 +1323,7 @@ function getSafeCache() {
     const scenarioMap = { opt_rare: 1, opt_math: 1 };
     const scenario = scenarioMap[strategyKey] || 1;
 
-    let best = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, { drop: 10000, overtime: 2, imbalance: 0.1 }, 42, 14);
+    let best = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, { drop: 10000, overtime: 2, imbalance: 0.1 }, 42);
     let engineName = '🤖 AI-Guided Turbo-Engine';
 
     // 🧠 Pha 2: Tối ưu hóa Toán học Chuyên sâu (Constraint Programming CP-SAT / MIP Optimizer)
@@ -1426,13 +1431,16 @@ function getSafeCache() {
 
         self.onmessage = function(e) {
           const { db, dateVal, existingSched, scenario, crowdedOverride, weights, seed } = e.data;
-          const result = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, weights, seed, 15);
+          const result = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, weights, seed);
           self.postMessage(result);
         };
       `;
 
       const blob = new Blob([workerScript], { type: 'application/javascript' });
       const workerUrl = URL.createObjectURL(blob);
+
+      const patCount = (db && db.rawPatients) ? db.rawPatients.length : 0;
+      const adaptiveTimeout = Math.min(4500, Math.max(2500, 2000 + patCount * 25));
 
       const workerPromises = seeds.map(seed => {
         return new Promise((resolve) => {
@@ -1441,7 +1449,7 @@ function getSafeCache() {
             const timeout = setTimeout(() => {
               w.terminate();
               resolve(null);
-            }, 2500);
+            }, adaptiveTimeout);
 
             w.onmessage = (e) => {
               clearTimeout(timeout);
@@ -1935,59 +1943,171 @@ const UnscheduledDiagnosticEngine = (function () {
     })) || "KTV Phụ Trách";
     const advices = [];
 
-    const overTimeStart = 675; // 11:15
-    const overTimeEnd = overTimeStart + tgMay;
-    advices.push({
-      id: 1,
-      title: `⚡ Cho phép KTV ${targetStaff} làm lố ${Math.max(5, overTimeEnd - 690)} phút cuối ca sáng (${m2t(overTimeStart)} - ${m2t(overTimeEnd)})`,
-      description: `Nới lỏng giờ làm ca sáng thêm 5-10 phút để KTV ${targetStaff} hoàn thành ca thủ thuật [${tt}] cho BN ${bnName}.`,
-      actionType: 'OVERTIME',
-      patch: {
-        gioDienRa: m2t(overTimeStart),
-        gioKetThuc: m2t(overTimeEnd),
-        nvChinh: targetStaff,
-        nvPhu: "",
-        may: (machinesOfCategory[0] || "Thủ công"),
-        giuong: "Giường 1",
-        phong: room
-      }
-    });
+    // 🔍 Tìm slot RẢNH THỰC SỰ theo tài nguyên nhân sự, máy móc và lịch bệnh nhân
+    function getStaffShifts(sName) {
+      const r = (db.rawStaff || []).find(st => st[0] === sName);
+      const rawShifts = r && r[3] ? String(r[3]).split(",").filter(s => s.includes("-")).map(s => {
+        const pts = s.split("-"); return [t2m(pts[0].trim()), t2m(pts[1].trim())];
+      }) : [];
+      return rawShifts.length > 0 ? rawShifts : [[420, 690], [780, 990]];
+    }
 
-    const aftStart = 810; // 13:30
-    const aftEnd = aftStart + tgMay;
-    advices.push({
-      id: 2,
-      title: `⚡ Chuyển xếp ca sang buổi Chiều (${m2t(aftStart)} - ${m2t(aftEnd)})`,
-      description: `Tận dụng các khoảng trống vắng khách đầu ca chiều để xếp thủ thuật [${tt}] với đầy đủ máy móc và KTV rảnh.`,
-      actionType: 'SWITCH_SESSION',
-      patch: {
-        gioDienRa: m2t(aftStart),
-        gioKetThuc: m2t(aftEnd),
-        nvChinh: targetStaff,
-        nvPhu: "",
-        may: (machinesOfCategory[0] || "Thủ công"),
-        giuong: "Giường 1",
-        phong: room
-      }
-    });
+    function getStaffBusy(sName) {
+      const r = (db.rawStaff || []).find(st => st[0] === sName);
+      if (!r || !r[4]) return [];
+      return String(r[4]).split(",").filter(s => s.includes("-")).map(s => {
+        const tp = s.includes(")") ? s.split(")").pop().trim() : s;
+        const pts = tp.split("-");
+        return [t2m(pts[0].trim()), t2m(pts[1].trim())];
+      });
+    }
 
-    const earlyStart = 450; // 07:30
-    const earlyEnd = earlyStart + tgMay;
-    advices.push({
-      id: 3,
-      title: `⚡ Dời giờ Y lệnh / Cho BN làm ca đầu giờ sáng (${m2t(earlyStart)} - ${m2t(earlyEnd)})`,
-      description: `Xếp BN thực hiện ca [${tt}] vào đầu giờ sáng lúc 07:30 trước khung giờ cao điểm tắc nghẽn.`,
-      actionType: 'SHIFT_WINDOW',
-      patch: {
-        gioDienRa: m2t(earlyStart),
-        gioKetThuc: m2t(earlyEnd),
-        nvChinh: targetStaff,
-        nvPhu: "",
-        may: (machinesOfCategory[0] || "Thủ công"),
-        giuong: "Giường 1",
-        phong: room
+    function isStaffFree(sName, slotStart, slotEnd, allowOvertime = false) {
+      const shifts = getStaffShifts(sName);
+      if (!allowOvertime) {
+        const inShift = shifts.some(sh => slotStart >= sh[0] && slotEnd <= sh[1]);
+        if (!inShift) return false;
+      } else {
+        const inShiftOrOvertime = shifts.some(sh => slotStart >= sh[0] && slotEnd <= (sh[1] + 15));
+        if (!inShiftOrOvertime) return false;
       }
-    });
+      const busyList = getStaffBusy(sName);
+      if (busyList.some(b => is_overlap(slotStart, slotEnd, b[0], b[1]))) return false;
+      const occ = staffOccupancy[sName] || [];
+      if (occ.some(b => is_overlap(slotStart, slotEnd, b[0], b[1]))) return false;
+      return true;
+    }
+
+    function isMachineFree(mName, slotStart, slotEnd) {
+      if (!mName || mName === 'Thủ công') return true;
+      const occ = machineOccupancy[mName] || [];
+      return !occ.some(b => is_overlap(slotStart, slotEnd, b[0], b[1]));
+    }
+
+    function isPatientFree(slotStart, slotEnd) {
+      if (slotStart < arriveMins || slotEnd > leaveMins) return false;
+      if (patientObj && patientObj.busy && patientObj.busy.some(b => is_overlap(slotStart, slotEnd, b[0], b[1]))) {
+        return false;
+      }
+      if (patientOccupancy.some(b => is_overlap(slotStart, slotEnd, b[0], b[1]))) {
+        return false;
+      }
+      return true;
+    }
+
+    const candidateStaff = qualifiedStaff.length > 0
+      ? qualifiedStaff
+      : (targetStaff !== "KTV Phụ Trách" ? [targetStaff] : []);
+
+    const candidateMachines = machinesOfCategory.length > 0 ? machinesOfCategory : ['Thủ công'];
+
+    // Các khung giờ khảo sát linh hoạt:
+    const scanWindows = [
+      { label: 'Sáng sớm (07:15 - 08:30)', from: 435, to: 510, overtime: false },
+      { label: 'Giữa ca sáng (08:30 - 10:30)', from: 510, to: 630, overtime: false },
+      { label: 'Cuối ca sáng (10:30 - 11:30)', from: 630, to: 690, overtime: false },
+      { label: 'Đầu ca chiều (13:00 - 14:30)', from: 780, to: 870, overtime: false },
+      { label: 'Giữa ca chiều (14:30 - 16:30)', from: 870, to: 990, overtime: false },
+      { label: 'Làm lố cuối ca sáng (11:15 - 11:45)', from: 675, to: 705, overtime: true }
+    ];
+
+    // Ưu tiên thứ tự quét theo buổi điều trị của bệnh nhân
+    let orderedWindows = scanWindows;
+    if (buoiDieuTri === 'Chieu') {
+      orderedWindows = [
+        scanWindows[3], scanWindows[4], scanWindows[0], scanWindows[1], scanWindows[2], scanWindows[5]
+      ];
+    }
+
+    const foundSlots = [];
+    for (const win of orderedWindows) {
+      let foundInWindow = false;
+      for (let t = win.from; t <= win.to - tgMay; t += 5) {
+        const slotEnd = t + tgMay;
+        if (!isPatientFree(t, slotEnd)) continue;
+
+        let availStaff = candidateStaff.find(s => isStaffFree(s, t, slotEnd, win.overtime));
+        if (!availStaff && candidateStaff.length === 0) {
+          availStaff = targetStaff;
+        }
+        if (!availStaff) continue;
+
+        const availMachine = candidateMachines.find(m => isMachineFree(m, t, slotEnd));
+        if (!availMachine) continue;
+
+        foundSlots.push({
+          time: t,
+          end: slotEnd,
+          staff: availStaff,
+          machine: availMachine,
+          windowLabel: win.label,
+          isOvertime: win.overtime
+        });
+        foundInWindow = true;
+        break;
+      }
+      if (foundSlots.length >= 3) break;
+    }
+
+    if (foundSlots.length > 0) {
+      foundSlots.forEach((slot, idx) => {
+        const actionType = slot.isOvertime ? 'OVERTIME' : (slot.time >= 780 && buoiDieuTri === 'Sang' ? 'SWITCH_SESSION' : 'EXACT_SLOT');
+        advices.push({
+          id: idx + 1,
+          title: `⚡ [Đã xác minh] ${m2t(slot.time)} – ${m2t(slot.end)} (${slot.staff}${slot.machine !== 'Thủ công' ? ', ' + slot.machine : ''})`,
+          description: `Khung giờ ${slot.windowLabel} khả dụng: ${slot.staff} rảnh, ${slot.machine !== 'Thủ công' ? 'máy ' + slot.machine + ' rảnh, ' : ''}BN rảnh không trùng thủ thuật khác.`,
+          actionType: actionType,
+          patch: {
+            gioDienRa: m2t(slot.time),
+            gioKetThuc: m2t(slot.end),
+            nvChinh: slot.staff,
+            nvPhu: "",
+            may: slot.machine,
+            giuong: "Giường 1",
+            phong: room
+          }
+        });
+      });
+    }
+
+    // Fallback: Nếu không tìm thấy slot rảnh hoàn toàn, đề xuất gợi ý có cảnh báo rõ ràng
+    if (advices.length === 0) {
+      const overTimeStart = 675; // 11:15
+      const overTimeEnd = overTimeStart + tgMay;
+      advices.push({
+        id: 1,
+        title: `⚡ [Cần xác nhận] Làm lố cuối ca sáng (${m2t(overTimeStart)} – ${m2t(overTimeEnd)}) với ${targetStaff}`,
+        description: `Không tìm được slot rảnh hoàn toàn. Phương án này nới lỏng thêm giờ cuối ca sáng cho ${targetStaff}. Cần đối soát trước khi ấn cứu.`,
+        actionType: 'OVERTIME',
+        patch: {
+          gioDienRa: m2t(overTimeStart),
+          gioKetThuc: m2t(overTimeEnd),
+          nvChinh: targetStaff,
+          nvPhu: "",
+          may: (machinesOfCategory[0] || "Thủ công"),
+          giuong: "Giường 1",
+          phong: room
+        }
+      });
+
+      const aftStart = 810; // 13:30
+      const aftEnd = aftStart + tgMay;
+      advices.push({
+        id: 2,
+        title: `⚡ [Cần xác nhận] Chuyển ca sang buổi Chiều (${m2t(aftStart)} – ${m2t(aftEnd)})`,
+        description: `Đề xuất xếp [${tt}] vào đầu ca chiều. Vui lòng kiểm tra lịch rảnh của BN và nhân sự trước khi áp dụng.`,
+        actionType: 'SWITCH_SESSION',
+        patch: {
+          gioDienRa: m2t(aftStart),
+          gioKetThuc: m2t(aftEnd),
+          nvChinh: targetStaff,
+          nvPhu: "",
+          may: (machinesOfCategory[0] || "Thủ công"),
+          giuong: "Giường 1",
+          phong: room
+        }
+      });
+    }
 
     return {
       rotItem,

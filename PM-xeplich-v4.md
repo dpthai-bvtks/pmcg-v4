@@ -2524,4 +2524,37 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `sw.js`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.4-rev7] - 13:30 09/09/2026: Tối Ưu Thuật Toán Xếp Lịch, Tốc Độ Đa Luồng & Nâng Cấp Tư Vấn Cứu Ca Rớt Thông Minh
+- **Bối cảnh & Yêu cầu của người dùng**:
+  1. Khi bấm "Cứu ca rớt thông minh", ca thủ thuật bị nhân đôi/trùng lặp trong lịch trình và dashboard.
+  2. Phần tư vấn cứu ca rớt còn đơn giản và dùng các mốc giờ cố định (`11:15` hoặc `13:30`), chưa phân tích các khoảng rảnh thực tế của nhân sự, máy móc và bệnh nhân.
+  3. Rà soát thuật toán và tốc độ xếp lịch để đảm bảo hiệu năng khi số lượng bệnh nhân thay đổi.
+- **Giải pháp & Kỹ thuật triển khai**:
+  1. **Khắc phục lỗi trùng lặp khi giải cứu ca (`js/app.js`)**:
+     - Bổ sung **Dedup Guard**: Kiểm tra khóa định danh duy nhất `[tên BN, thủ thuật, giờ diễn ra, ngày]`. Nếu ca đã tồn tại trong `window.currentScheduleData`, ngăn chặn chèn thêm và phát cảnh báo toast thân thiện.
+     - **Chuẩn hóa Single Source of Truth**: Loại bỏ việc `push` độc lập vào 2 mảng `window.currentScheduleData` và `dataCache.schedule`. Nay chỉ push vào `window.currentScheduleData` rồi gán `dataCache.schedule = window.currentScheduleData` để các view (filterSchedule, loadDashboard) luôn đồng nhất 100%.
+  2. **Bộ Tư Vấn Cứu Ca Rớt 3 Chiều Thực Tế (`js/scheduler-engine.js`)**:
+     - Nâng cấp `UnscheduledDiagnosticEngine.diagnose()`:
+       + Chiều 1 (Bệnh nhân): Quét khoảng giờ đến (`arrive`), giờ ra (`leave`), các khoảng báo bận (`gioBan`) và các ca thủ thuật khác đã xếp trong ngày của bệnh nhân để không bị trùng kẹp ca.
+       + Chiều 2 (Nhân sự): Kiểm tra ca làm việc (`staffShifts`), giờ báo bận (`rawStaff[4]`), và các ca đang xếp trong `currentSched` để chọn đúng KTV đủ điều kiện và rảnh thực sự.
+       + Chiều 3 (Máy móc): Kiểm tra máy tương ứng trong phòng/khoa có bị trùng lịch hay không.
+     - Khảo sát 6 cửa sổ giờ làm việc (Sáng sớm, Giữa ca sáng, Cuối ca sáng, Đầu ca chiều, Giữa ca chiều, Làm lố cuối ca sáng) với ưu tiên tự động theo ca đăng ký của BN (Sáng/Chiều).
+     - Gắn nhãn phân loại: `⚡ [Đã xác minh]` (khả thi 100% không xung đột) và `⚡ [Cần xác nhận]` (phương án mở rộng có cảnh báo khi toàn bộ các khung đều kín).
+  3. **Tối ưu hóa Thuật Toán & Tốc Độ Xếp Lịch (`js/scheduler-engine.js`)**:
+     - **Adaptive MaxSteps**: Thích ứng bước lặp Simulated Annealing theo kích thước đoàn khám (>60 BN: 22 bước; >30 BN: 18 bước; ≤30 BN: 14 bước).
+     - **Adaptive Worker Timeout**: Tự động co giãn timeout từ 2500ms đến 4500ms theo công thức `2000 + patCount * 25`, đảm bảo Web Worker không bị ngắt quãng giữa chừng khi xử lý danh sách lớn.
+- **Đồng bộ phiên bản**:
+  + Nâng cấp lên `4.0.4-rev7`.
+  + `index.html`: Cập nhật cache busters `v=4.0.4-rev7`, footer timestamp `13:30 09/09/2026`, `APP_VERSION = '4.0.4-rev7'`.
+  + `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.0.4-rev7'`.
+- **File sửa đổi**:
+  + `index.html`
+  + `js/app.js`
+  + `js/scheduler-engine.js`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
+
 

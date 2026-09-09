@@ -7071,9 +7071,27 @@ window.renderSttOrderControl = function (type, i, total) {
             };
 
             if (!window.currentScheduleData) window.currentScheduleData = [];
+
+            // 🔒 DEDUP GUARD: Kiểm tra ca giải cứu chưa tồn tại trong lịch (để tránh trùng lặp)
+            const _dupKey = [rescuedRow.tenBN, rescuedRow.thuThuat, rescuedRow.gioDienRa, rescuedRow.ngay]
+                .map(x => String(x || '').trim().toLowerCase()).join('|');
+            const _alreadyExists = window.currentScheduleData.some(x =>
+                [x.tenBN, x.thuThuat, x.gioDienRa, x.ngay]
+                    .map(v => String(v || '').trim().toLowerCase()).join('|') === _dupKey
+            );
+            if (_alreadyExists) {
+                if (typeof showToast === 'function') {
+                    showToast(`⚠️ Ca [${rescuedRow.thuThuat}] cho BN ${rescuedRow.tenBN} lúc ${rescuedRow.gioDienRa} đã có trong lịch, không thêm lại!`, 'warning', 3500);
+                }
+                return;
+            }
+
+            // ✅ CHỈ push vào currentScheduleData (nguồn sự thật duy nhất)
             window.currentScheduleData.push(rescuedRow);
-            if (typeof dataCache !== 'undefined' && dataCache.schedule) {
-                dataCache.schedule.push(rescuedRow);
+
+            // 🔄 Sync ngược dataCache.schedule để filterSchedule() và loadDashboard() đọ cùng source
+            if (typeof dataCache !== 'undefined') {
+                dataCache.schedule = window.currentScheduleData;
             }
 
             unscheduled.splice(rotIndex, 1);
@@ -7104,7 +7122,7 @@ window.renderSttOrderControl = function (type, i, total) {
             callApi('saveSchedule', [targetDate, backendSched], null, null);
 
             if (typeof showToast === 'function') {
-                showToast(`⚡ Đã giải cứu thành công ca [${rescuedRow.thuThuat}] cho BN ${rescuedRow.tenBN}!`, 'success');
+                showToast(`⚡ Đã giải cứu ca [${rescuedRow.thuThuat}] cho BN ${rescuedRow.tenBN} (${rescuedRow.gioDienRa}–${rescuedRow.gioKetThuc}, ${rescuedRow.nvChinh})!`, 'success');
             } else {
                 alert(`⚡ Đã giải cứu thành công ca [${rescuedRow.thuThuat}] cho BN ${rescuedRow.tenBN}!`);
             }
