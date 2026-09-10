@@ -4,6 +4,7 @@ Module: his_driver.py
 Tự động tương tác với phần mềm emrHIS (WinForms .NET) thông qua Windows UI Automation & PyAutoGUI.
 """
 
+import os
 import sys
 import time
 import ctypes
@@ -85,6 +86,7 @@ class HISDriver:
     def search_patient(self, patient_name):
         """
         Tìm kiếm bệnh nhân theo họ tên đầy đủ trên ô txtSearch
+        Lưu ý: Chỉ paste/nhập tên, KHÔNG bấm Enter (vì phím Enter sẽ kích hoạt tìm tất cả các ngày có y lệnh trong lịch sử)
         """
         win = self.bring_to_front()
         txt_search = win.EditControl(AutomationId="txtSearch")
@@ -104,9 +106,9 @@ class HISDriver:
         # Dùng clipboard để gõ tiếng Việt có dấu chuẩn xác 100%
         pyperclip.copy(patient_name)
         pyautogui.hotkey('ctrl', 'v')
-        time.sleep(0.3)
-        pyautogui.press('enter')
-        time.sleep(1.2) # Đợi HIS lọc danh sách bệnh nhân
+        time.sleep(0.5)
+        # KHÔNG bấm phím Enter: HIS tự động lọc ngay trên danh sách trong ngày hiện tại
+        time.sleep(1.0) # Đợi HIS tự động lọc danh sách bệnh nhân
 
     def select_first_patient_in_list(self):
         """Click chọn bệnh nhân đầu tiên trong danh sách mListViewData"""
@@ -197,7 +199,7 @@ class HISDriver:
         Quy trình chuẩn:
         1. Click chuột trái chọn dòng thủ thuật cần nhập trong bảng mListViewKetQua.
         2. Chuột phải vào chính dòng đó để mở menu tác vụ (ContextMenu).
-        3. Click chọn mục 'Nhập Thông Tin PTTT' để mở form cập nhật thủ thuật.
+        3. Chọn đúng dòng 2: 'Nhập Thông Tin PTTT' (qua nhận diện hình ảnh OpenCV hoặc phím Down x 2 + Enter).
         """
         win = self.bring_to_front()
         lv_kq = win.ListControl(AutomationId="mListViewKetQua")
@@ -227,67 +229,78 @@ class HISDriver:
             target_rect = items[target_idx].BoundingRectangle
 
         if target_rect:
-            click_x = target_rect.left + 140
+            click_x = target_rect.left + 80
             click_y = (target_rect.top + target_rect.bottom) // 2
         else:
-            # Tiêu đề bảng ~24px, mỗi dòng ~22px
-            click_x = rect.left + 140
-            click_y = rect.top + 35 + (target_idx * 22)
+            # Tiêu đề bảng ~20px, mỗi dòng ~16px (tâm dòng 0: rect.top + 28px)
+            click_x = rect.left + 80
+            click_y = rect.top + 28 + (target_idx * 16)
 
-        # Bước 1: Click chuột trái chọn dòng thủ thuật
+        # Bước 1: Click chuột trái chọn dòng thủ thuật cần nhập
         self.log(f"-> [Bước 1] Click chọn thủ thuật thứ {target_idx + 1} ({procedure_name or 'theo thứ tự'}) tại ({click_x}, {click_y})...")
         user32.SetForegroundWindow(win.NativeWindowHandle)
         time.sleep(0.2)
         pyautogui.click(click_x, click_y)
-        time.sleep(0.35)
+        time.sleep(0.4)
 
-        # Bước 2: Chuột phải vào dòng thủ thuật để mở Menu tác vụ
+        # Bước 2: Chuột phải vào dòng thủ thuật để mở Context Menu
         self.log(f"-> [Bước 2] Chuột phải vào thủ thuật để mở Context Menu...")
         pyautogui.rightClick(click_x, click_y)
-        time.sleep(0.5)
+        time.sleep(0.6)
 
-        # Bước 3: Click chọn 'Nhập Thông Tin PTTT'
-        # Menu mở ra ngay tại vị trí (click_x, click_y)
-        # Mục 'Dịch Vụ' (tiêu đề): Y = 0..22px
-        # Mục 'Thanh Toán': Y = 22..44px
-        # Mục 'Nhập Thông Tin PTTT': Y = 44..66px (tâm y = click_y + 55px, x = click_x + 65px)
-        menu_x = click_x + 65
-        menu_y = click_y + 55
-        self.log(f"-> [Bước 3] Di chuyển chuột và chọn 'Nhập Thông Tin PTTT' tại ({menu_x}, {menu_y})...")
-        pyautogui.moveTo(menu_x, menu_y, duration=0.25)
-        time.sleep(0.15)
-        pyautogui.click(menu_x, menu_y)
+        # Bước 3: Chọn đúng dòng 2 - 'Nhập Thông Tin PTTT'
+        # Cách 1: Dùng OpenCV Template Matching tìm chính xác nút trên màn hình
+        needle_path = os.path.join(os.path.dirname(__file__), "assets", "needle_pttt.png")
+        found_by_vision = False
+        if os.path.exists(needle_path):
+            try:
+                # Quét quanh khu vực vừa click chuột phải
+                search_region = (max(0, click_x - 30), max(0, click_y - 10), 320, 260)
+                box = pyautogui.locateOnScreen(needle_path, confidence=0.78, region=search_region)
+                if not box:
+                    # Thử quét toàn màn hình nếu vùng thu hẹp chưa khớp
+                    box = pyautogui.locateOnScreen(needle_path, confidence=0.75)
+
+                if box:
+                    cx, cy = pyautogui.center(box)
+                    self.log(f"-> [Bước 3 - Nhận diện hình ảnh] Tìm thấy dòng 2 'Nhập Thông Tin PTTT' tại ({cx}, {cy}) -> Click...")
+                    pyautogui.moveTo(cx, cy, duration=0.2)
+                    time.sleep(0.1)
+                    pyautogui.click(cx, cy)
+                    found_by_vision = True
+            except Exception as e:
+                self.log(f"ℹ️ Không quét được hình ảnh: {e}")
+
+        # Cách 2: Nếu chưa tìm thấy qua hình ảnh, dùng bàn phím Down 2 lần rồi Enter (Dòng 1: Thanh toán, Dòng 2: Nhập thông tin PTTT)
+        if not found_by_vision:
+            self.log("-> [Bước 3 - Bàn phím] Gửi phím Down (2 lần) để chọn đúng dòng 2 'Nhập Thông Tin PTTT'...")
+            time.sleep(0.2)
+            pyautogui.press('down')
+            time.sleep(0.18)
+            pyautogui.press('down')
+            time.sleep(0.18)
+            pyautogui.press('enter')
 
         # Kiểm tra xem form modal đã xuất hiện chưa
         form = self.get_procedure_form(timeout=2.0)
 
-        # Nếu chuột chưa kích hoạt được menu, dùng bàn phím Down 2 lần (1: Thanh toán, 2: Nhập thông tin PTTT) rồi Enter
+        # Cách 3: Nếu form vẫn chưa mở, thử gửi lại phím Down x 2 + Enter
         if not form:
-            self.log("ℹ️ Chưa phát hiện form, thử chọn bằng phím: Down (2 lần) + Enter...")
+            self.log("ℹ️ Chưa phát hiện form, thử gửi lại phím: Down x 2 + Enter...")
             pyautogui.press('down')
-            time.sleep(0.12)
+            time.sleep(0.15)
             pyautogui.press('down')
-            time.sleep(0.12)
-            pyautogui.press('enter')
-            form = self.get_procedure_form(timeout=2.0)
-
-        # Nếu vẫn chưa mở, thử phím tắt 'n' (Nhập thông tin) + Enter
-        if not form:
-            self.log("ℹ️ Thử lại bằng phím tắt 'n' + Enter...")
-            pyautogui.press('n')
             time.sleep(0.15)
             pyautogui.press('enter')
             form = self.get_procedure_form(timeout=2.0)
 
-        # Nếu vẫn chưa mở, thử tìm MenuItemControl qua UI Automation
+        # Cách 4: Thử click tọa độ fallback chuẩn xác (click_x + 65, click_y + 58)
         if not form:
-            self.log("ℹ️ Quét tìm MenuItemControl qua UI Automation...")
-            for w in auto.GetRootControl().GetChildren():
-                m = w.MenuItemControl(searchDepth=3, RegexName="(?i).*Nhập Thông Tin PTTT.*")
-                if m.Exists(0, 0):
-                    m.Click()
-                    break
-            form = self.get_procedure_form(timeout=2.5)
+            fb_x = click_x + 65
+            fb_y = click_y + 58
+            self.log(f"ℹ️ Thử click tọa độ fallback tại ({fb_x}, {fb_y})...")
+            pyautogui.click(fb_x, fb_y)
+            form = self.get_procedure_form(timeout=2.0)
 
         if not form:
             raise RuntimeError("Không thể mở form 'Cập Nhật Thông Tin Thủ Thuật'! Vui lòng kiểm tra lại màn hình HIS.")
