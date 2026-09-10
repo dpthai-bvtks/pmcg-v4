@@ -10,6 +10,10 @@ import time
 import ctypes
 import traceback
 from datetime import datetime
+try:
+    from his_driver import get_his_full_name
+except ImportError:
+    from tools.his_importer.his_driver import get_his_full_name
 
 user32 = ctypes.windll.user32
 VK_F12 = 0x7B
@@ -39,18 +43,20 @@ class AutoRunner:
             return True
         return False
 
-    def wait_with_stop_check(self, seconds):
-        """Chờ một khoảng thời gian nhưng vẫn phản hồi ngay lập tức nếu bấm F12"""
-        start = time.time()
-        while time.time() - start < seconds:
-            if self.check_emergency_stop():
+    def wait_with_stop_check(self, seconds, step=0.1):
+        """Chờ một khoảng thời gian nhưng vẫn lắng nghe F12 liên tục"""
+        elapsed = 0.0
+        while elapsed < seconds:
+            if self.check_emergency_stop() or self.should_stop:
                 return False
-            time.sleep(0.05)
+            time.sleep(step)
+            elapsed += step
         return True
 
     def run_for_staff(self, staff_name, patient_groups):
         """
-        Chạy tự động cho 1 nhân viên cụ thể.
+        Thực hiện quy trình tự động cho một nhân sự cụ thể
+        patient_groups: Dict[patient_name -> List[ProcedureDict]]
         """
         self.is_running = True
         self.should_stop = False
@@ -58,7 +64,8 @@ class AutoRunner:
             ctypes.windll.ole32.CoInitialize(None)
         except Exception:
             pass
-        self.log(f"🚀 Bắt đầu tiến trình tự động nhập HIS cho nhân sự: {staff_name}")
+        his_full_staff = get_his_full_name(staff_name)
+        self.log(f"🚀 Bắt đầu tiến trình tự động nhập HIS cho nhân sự: {staff_name} (Tên đầy đủ HIS: {his_full_staff})")
 
         try:
             # 1. Khôi phục cửa sổ emrHIS
@@ -106,9 +113,10 @@ class AutoRunner:
                         start_str = f"{p.get('gioDienRa', '')} {p.get('ngay', '')}".strip()
                         end_str = f"{p.get('gioKetThuc', '')} {p.get('ngay', '')}".strip()
                         may = p.get("may", "")
-                        nv = p.get("nvChinh", staff_name)
+                        nv_raw = p.get("nvChinh", staff_name)
+                        nv_his = get_his_full_name(nv_raw)
 
-                        self.log(f"--- Thủ thuật {p_idx+1}/{len(procs)}: {tt_name} ---")
+                        self.log(f"--- Thủ thuật {p_idx+1}/{len(procs)}: {tt_name} | TT viên chính: {nv_his} ---")
                         try:
                             form = self.driver.open_procedure_modal(p_idx, procedure_name=tt_name)
                             if not self.wait_with_stop_check(0.8):
@@ -119,7 +127,7 @@ class AutoRunner:
                                 start_time_str=start_str,
                                 end_time_str=end_str,
                                 may_y_te=may,
-                                nv_chinh=nv
+                                nv_chinh=nv_his
                             )
                             self.log(f"✅ Đã Lưu + Đóng thành công: {tt_name}")
                             if not self.wait_with_stop_check(1.0):

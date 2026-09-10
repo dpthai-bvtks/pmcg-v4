@@ -9,9 +9,124 @@ import sys
 import time
 import ctypes
 from ctypes import wintypes
+from datetime import datetime, timedelta
 import uiautomation as auto
 import pyautogui
 import pyperclip
+
+# ==========================================
+# BẢNG ÁNH XẠ HỌ TÊN ĐẦY ĐỦ NHÂN SỰ CHUẨN TRÊN PHẦN MỀM HIS
+# ==========================================
+STAFF_HIS_FULL_NAMES = {
+    # Bác sĩ
+    'bs thái': 'Đặng Phong Thái',
+    'bs thai': 'Đặng Phong Thái',
+    'phong thái': 'Đặng Phong Thái',
+    'đặng phong thái': 'Đặng Phong Thái',
+    'thái': 'Đặng Phong Thái',
+    'dpt': 'Đặng Phong Thái',
+    
+    'bs đạt': 'Hoàng Đức Đạt',
+    'bs dat': 'Hoàng Đức Đạt',
+    'hoàng đức đạt': 'Hoàng Đức Đạt',
+    'đạt': 'Hoàng Đức Đạt',
+    
+    'bs hoa': 'Lê Thị Thu Hoa',
+    'thu hoa': 'Lê Thị Thu Hoa',
+    'lê thị thu hoa': 'Lê Thị Thu Hoa',
+    'hoa': 'Lê Thị Thu Hoa',
+    
+    'bs thảo': 'Nguyễn Thị Duyên Thảo',
+    'bs thao': 'Nguyễn Thị Duyên Thảo',
+    'duyên thảo': 'Nguyễn Thị Duyên Thảo',
+    'nguyễn thị duyên thảo': 'Nguyễn Thị Duyên Thảo',
+    'thảo': 'Nguyễn Thị Duyên Thảo',
+    
+    'bs hằng': 'Nguyễn Thu Hằng',
+    'bs hang': 'Nguyễn Thu Hằng',
+    'thu hằng': 'Nguyễn Thu Hằng',
+    'nguyễn thu hằng': 'Nguyễn Thu Hằng',
+    'hằng': 'Nguyễn Thu Hằng',
+    
+    'bs khuyến': 'Phạm Thạch Khuyến',
+    'bs khuyen': 'Phạm Thạch Khuyến',
+    'thạch khuyến': 'Phạm Thạch Khuyến',
+    'phạm thạch khuyến': 'Phạm Thạch Khuyến',
+    'khuyến': 'Phạm Thạch Khuyến',
+    
+    # Kỹ thuật viên & Điều dưỡng
+    'ktv lương': 'Nguyễn Thị Xuân Lương',
+    'xuân lương': 'Nguyễn Thị Xuân Lương',
+    'nguyễn thị xuân lương': 'Nguyễn Thị Xuân Lương',
+    'lương': 'Nguyễn Thị Xuân Lương',
+    
+    'ktv hà': 'Nguyễn Thị Hà',
+    'ktv hà chip': 'Nguyễn Thị Hà',
+    'hà chip': 'Nguyễn Thị Hà',
+    'nguyễn thị hà': 'Nguyễn Thị Hà',
+    'hà': 'Nguyễn Thị Hà',
+    
+    'phan thị thu hiền': 'Phan Thị Thu Hiền',
+    'ktv phan hiền': 'Phan Thị Thu Hiền',
+    'phan hiền': 'Phan Thị Thu Hiền',
+    
+    'lê thị thu hiền': 'Lê Thị Thu Hiền',
+    'ktv lê hiền': 'Lê Thị Thu Hiền',
+    'ltv lê hiền': 'Lê Thị Thu Hiền',
+    'lê hiền': 'Lê Thị Thu Hiền',
+    
+    'nguyễn văn khính': 'Nguyễn Văn Khính',
+    'ktv khính': 'Nguyễn Văn Khính',
+    'khính': 'Nguyễn Văn Khính',
+    
+    'đd thuyến': 'Phạm Thị Thuyến',
+    'ktv thuyến': 'Phạm Thị Thuyến',
+    'thuyến': 'Phạm Thị Thuyến',
+    'phạm thị thuyến': 'Phạm Thị Thuyến',
+    
+    'đd duyên': 'Trần Thị Duyên',
+    'ktv duyên': 'Trần Thị Duyên',
+    'duyên': 'Trần Thị Duyên',
+    'trần thị duyên': 'Trần Thị Duyên',
+}
+
+def get_his_full_name(name):
+    if not name:
+        return ""
+    clean = str(name).strip()
+    lower = clean.lower()
+    if lower in STAFF_HIS_FULL_NAMES:
+        return STAFF_HIS_FULL_NAMES[lower]
+    for k, full in STAFF_HIS_FULL_NAMES.items():
+        if k in lower:
+            return full
+    return clean
+
+def normalize_date(d_str):
+    if not d_str:
+        return datetime.now().strftime("%d/%m/%Y")
+    d_str = str(d_str).strip()
+    if "-" in d_str:
+        parts = d_str.split("-")
+        if len(parts) == 3 and len(parts[0]) == 4:
+            return f"{parts[2].zfill(2)}/{parts[1].zfill(2)}/{parts[0]}"
+    if "/" in d_str:
+        parts = d_str.split("/")
+        if len(parts) == 3:
+            if len(parts[2]) == 4:
+                return f"{parts[0].zfill(2)}/{parts[1].zfill(2)}/{parts[2]}"
+            elif len(parts[0]) == 4:
+                return f"{parts[2].zfill(2)}/{parts[1].zfill(2)}/{parts[0]}"
+    return d_str
+
+def normalize_time(t_str):
+    if not t_str:
+        return "08:00"
+    t_str = str(t_str).strip()
+    parts = t_str.split(":")
+    if len(parts) >= 2:
+        return f"{parts[0].zfill(2)}:{parts[1].zfill(2)}"
+    return t_str.zfill(5)
 
 # Cấu hình PyAutoGUI
 pyautogui.FAILSAFE = True
@@ -326,16 +441,15 @@ class HISDriver:
 
     def fill_procedure_form(self, form=None, start_time_str="", end_time_str="", may_y_te="", nv_chinh=""):
         """
-        Điền chuẩn xác các thông tin vào form 'Cập Nhật Thông Tin Thủ Thuật'
-        Tọa độ được tính theo tỉ lệ phần trăm chuẩn xác từ ảnh thực tế giao diện:
-        - Thời gian bắt đầu: (X: 41.50%, Y: 20.99%)
-        - Thời gian kết thúc: (X: 63.96%, Y: 20.99%)
-        - Phương pháp vô cảm: (X: 52.73%, Y: 50.83%) -> 'Khác'
-        - Tình hình PTTT: (X: 17.58%, Y: 54.70%) -> 'Chủ động'
-        - Máy y tế: (X: 62.50%, Y: 58.56%) -> [may_y_te]
-        - Mô tả thủ thuật: (X: 21.48%, Y: 81.03%) -> '.'
-        - Ê-kíp PTTT - TT viên chính: (X: 87.89%, Y: 21.92%) -> [nv_chinh]
-        - Lưu + Đóng: (X: 94.73%, Y: 97.24%)
+        Điền chuẩn xác 100% các thông tin vào form 'Cập Nhật Thông Tin Thủ Thuật':
+        - Thời gian bắt đầu: (X: 40.33%, Y: 20.99%) -> Gõ theo phân đoạn: [Giờ] -> Right -> [Phút] -> Right -> [Ngày] -> Right -> [Tháng] -> Right -> [Năm].
+        - Thời gian kết thúc: (X: 66.11%, Y: 20.99%) -> Gõ theo phân đoạn (Đảm bảo giờ kết thúc luôn sau giờ bắt đầu).
+        - Phương pháp vô cảm: (X: 52.73%, Y: 50.83%) -> 'Khác'.
+        - Tình hình PTTT: (X: 16.60%, Y: 54.92%) -> 'Chủ động'.
+        - Máy y tế: (X: 62.50%, Y: 58.56%) -> [may_y_te].
+        - Mô tả thủ thuật: (X: 21.48%, Y: 81.03%) -> '.'.
+        - Ê-kíp PTTT - TT viên chính: (X: 87.89%, Y: 20.99%) -> Họ tên đầy đủ chuẩn HIS (ví dụ: 'Đặng Phong Thái').
+        - Lưu + Đóng: (X: 93.55%, Y: 96.35%).
         """
         if not form:
             form = self.get_procedure_form(timeout=5)
@@ -353,45 +467,94 @@ class HISDriver:
         fy = form_rect.top
         self.log(f"Form PTTT: Kích thước {fw}x{fh} tại ({fx}, {fy})")
 
-        # 1. Thời gian bắt đầu: ô giờ bắt đầu (X: 41.50%, Y: 20.99%)
-        self.log(f"-> [1] Điền Thời gian bắt đầu: {start_time_str}")
-        self._click_and_type(fx + int(fw * 0.4150), fy + int(fh * 0.2099), start_time_str)
+        # 1. Tách và chuẩn hóa thời gian - ngày tháng
+        t_start = "08:00"
+        d_start = datetime.now().strftime("%d/%m/%Y")
+        if start_time_str:
+            parts = str(start_time_str).strip().split(" ")
+            if len(parts) >= 1 and parts[0]:
+                t_start = normalize_time(parts[0])
+            if len(parts) >= 2 and parts[1]:
+                d_start = normalize_date(parts[1])
 
-        # 2. Thời gian kết thúc: ô giờ kết thúc (X: 63.96%, Y: 20.99%)
-        self.log(f"-> [2] Điền Thời gian kết thúc: {end_time_str}")
-        self._click_and_type(fx + int(fw * 0.6396), fy + int(fh * 0.2099), end_time_str)
+        t_end = "08:30"
+        d_end = d_start
+        if end_time_str:
+            parts = str(end_time_str).strip().split(" ")
+            if len(parts) >= 1 and parts[0]:
+                t_end = normalize_time(parts[0])
+            if len(parts) >= 2 and parts[1]:
+                d_end = normalize_date(parts[1])
 
-        # 3. Phương pháp vô cảm (mặc định 'Khác') (X: 52.73%, Y: 50.83%)
+        # Đảm bảo giờ kết thúc luôn sau giờ bắt đầu
+        try:
+            dt_s = datetime.strptime(f"{t_start} {d_start}", "%H:%M %d/%m/%Y")
+            dt_e = datetime.strptime(f"{t_end} {d_end}", "%H:%M %d/%m/%Y")
+            if dt_e <= dt_s:
+                dt_e = dt_s + timedelta(minutes=30)
+                t_end = dt_e.strftime("%H:%M")
+                d_end = dt_e.strftime("%d/%m/%Y")
+        except Exception:
+            pass
+
+        # 2. Ánh xạ tên nhân sự sang Họ và tên đầy đủ theo chuẩn HIS
+        nv_full = get_his_full_name(nv_chinh)
+        if not nv_full:
+            # Fallback lấy người đang đăng nhập nếu không truyền tên
+            nv_full = self.get_current_logged_in_user() or "Đặng Phong Thái"
+
+        # [1] Thời gian bắt đầu: (Tọa độ X: 40.33%, Y: 20.99%)
+        self.log(f"-> [1] Điền Thời gian bắt đầu: {t_start} {d_start}")
+        x_batdau = fx + int(fw * 0.4033) - 20
+        y_batdau = fy + int(fh * 0.2099)
+        self._fill_datetime(x_batdau, y_batdau, t_start, d_start)
+
+        # [2] Thời gian kết thúc: (Tọa độ X: 66.11%, Y: 20.99%)
+        self.log(f"-> [2] Điền Thời gian kết thúc: {t_end} {d_end}")
+        x_ketthuc = fx + int(fw * 0.6611) - 20
+        y_ketthuc = fy + int(fh * 0.2099)
+        self._fill_datetime(x_ketthuc, y_ketthuc, t_end, d_end)
+
+        # [3] Phương pháp vô cảm (mặc định 'Khác') (X: 52.73%, Y: 50.83%)
         self.log("-> [3] Chọn Phương pháp vô cảm: Khác")
         self._select_dropdown(fx + int(fw * 0.5273), fy + int(fh * 0.5083), "Khác")
 
-        # 4. Tình hình PTTT (mặc định 'Chủ động') (X: 17.58%, Y: 54.70%)
+        # [4] Tình hình PTTT (mặc định 'Chủ động') (X: 16.60%, Y: 54.92%)
         self.log("-> [4] Chọn Tình hình PTTT: Chủ động")
-        self._select_dropdown(fx + int(fw * 0.1758), fy + int(fh * 0.5470), "Chủ động")
+        self._select_tinh_hinh_pttt(fx + int(fw * 0.1660), fy + int(fh * 0.5492))
 
-        # 5. Máy y tế (X: 62.50%, Y: 58.56%)
+        # [5] Máy y tế (X: 62.50%, Y: 58.56%)
         if may_y_te:
             self.log(f"-> [5] Chọn Máy y tế: {may_y_te}")
             self._select_dropdown(fx + int(fw * 0.6250), fy + int(fh * 0.5856), may_y_te)
 
-        # 6. Mô tả thủ thuật (mặc định '.') (X: 21.48%, Y: 81.03%)
+        # [6] Mô tả thủ thuật (mặc định '.') (X: 21.48%, Y: 81.03%)
         self.log("-> [6] Điền Mô tả thủ thuật: .")
         self._click_and_type(fx + int(fw * 0.2148), fy + int(fh * 0.8103), ".")
 
-        # 7. Ê-kíp PTTT: Dòng 1 (TT viên chính) (X: 87.89%, Y: 21.92%)
-        if nv_chinh:
-            self.log(f"-> [7] Điền TT viên chính: {nv_chinh}")
-            self._fill_grid_cell(fx + int(fw * 0.8789), fy + int(fh * 0.2192), nv_chinh)
+        # [7] Ê-kíp PTTT: Dòng 1 TT viên chính (X: 87.89%, Y: 20.99%)
+        if nv_full:
+            self.log(f"-> [7] Điền TT viên chính (Tên đầy đủ chuẩn HIS): '{nv_full}'")
+            self._fill_grid_cell(fx + int(fw * 0.8789), fy + int(fh * 0.2099), nv_full)
 
-        # 8. Bấm Lưu + Đóng (X: 94.73%, Y: 97.24%)
+        # [8] Bấm Lưu + Đóng (X: 93.55%, Y: 96.35%)
         self.log("-> [8] Bấm Lưu + Đóng...")
         btn_save_close = form.ButtonControl(RegexName=r"(?i).*lưu \+ đóng.*")
         if btn_save_close.Exists(0.5, 0):
             btn_save_close.Click()
         else:
-            pyautogui.click(fx + int(fw * 0.9473), fy + int(fh * 0.9724))
+            pyautogui.click(fx + int(fw * 0.9355), fy + int(fh * 0.9635))
 
-        time.sleep(1.5)
+        # Đợi form đóng hoặc xử lý thông báo popup xác nhận
+        time.sleep(1.0)
+        for _ in range(5):
+            popup = auto.GetRootControl().WindowControl(searchDepth=2, RegexName="(?i).*thông báo.*|.*cảnh báo.*")
+            if popup.Exists(0, 0):
+                self.log("Xác nhận hộp thoại popup...")
+                pyautogui.press('enter')
+                time.sleep(0.5)
+                break
+            time.sleep(0.3)
 
     def click_tra_ket_qua(self):
         """
@@ -416,6 +579,77 @@ class HISDriver:
             self.log("Nút 'Trả Kết Quả' không hiển thị hoặc ca này đã được trả kết quả trước đó.")
             return False
 
+    def _fill_datetime(self, x, y, time_str, date_str):
+        """
+        Điền DateTimePicker WinForms định dạng 'HH:mm dd/MM/yyyy' theo từng phân đoạn
+        [Giờ] -> Right -> [Phút] -> Right -> [Ngày] -> Right -> [Tháng] -> Right -> [Năm]
+        """
+        time_norm = normalize_time(time_str)
+        date_norm = normalize_date(date_str)
+        
+        t_parts = time_norm.split(":")
+        d_parts = date_norm.split("/")
+        
+        h_val = t_parts[0].zfill(2)
+        m_val = t_parts[1].zfill(2) if len(t_parts) > 1 else "00"
+        
+        d_val = d_parts[0].zfill(2) if len(d_parts) > 0 else "01"
+        mo_val = d_parts[1].zfill(2) if len(d_parts) > 1 else "01"
+        y_val = d_parts[2] if len(d_parts) > 2 else "2026"
+
+        # 1. Click vào bên trong ô
+        pyautogui.click(x, y)
+        time.sleep(0.15)
+        
+        # 2. Về đầu tiên (Hour)
+        pyautogui.press('home')
+        time.sleep(0.06)
+        pyautogui.press('home')
+        time.sleep(0.06)
+        
+        # 3. Gõ từng phân đoạn kèm phím Right
+        pyautogui.write(h_val, interval=0.04)
+        time.sleep(0.06)
+        pyautogui.press('right')
+        time.sleep(0.06)
+        
+        pyautogui.write(m_val, interval=0.04)
+        time.sleep(0.06)
+        pyautogui.press('right')
+        time.sleep(0.06)
+        
+        pyautogui.write(d_val, interval=0.04)
+        time.sleep(0.06)
+        pyautogui.press('right')
+        time.sleep(0.06)
+        
+        pyautogui.write(mo_val, interval=0.04)
+        time.sleep(0.06)
+        pyautogui.press('right')
+        time.sleep(0.06)
+        
+        pyautogui.write(y_val, interval=0.04)
+        time.sleep(0.08)
+
+    def _select_tinh_hinh_pttt(self, x, y):
+        """
+        Chọn Tình hình PTTT: mặc định là 'Chủ động'
+        Hỗ trợ cả DropDownList và DropDown thường
+        """
+        pyautogui.click(x, y)
+        time.sleep(0.15)
+        # Thử paste trước (nếu là DropDown editable)
+        pyperclip.copy("Chủ động")
+        pyautogui.hotkey('ctrl', 'a')
+        time.sleep(0.05)
+        pyautogui.hotkey('ctrl', 'v')
+        time.sleep(0.1)
+        # Với WinForms DropDownList: phím 'c' hoặc 'C' nhảy tới 'Chủ động'
+        pyautogui.press('c')
+        time.sleep(0.1)
+        pyautogui.press('enter')
+        time.sleep(0.1)
+
     def _click_and_type(self, x, y, text):
         pyautogui.click(x, y)
         time.sleep(0.15)
@@ -425,8 +659,6 @@ class HISDriver:
         pyperclip.copy(text)
         pyautogui.hotkey('ctrl', 'v')
         time.sleep(0.15)
-        pyautogui.press('tab')
-        time.sleep(0.1)
 
     def _select_dropdown(self, x, y, value):
         pyautogui.click(x, y)
@@ -436,20 +668,26 @@ class HISDriver:
         pyautogui.hotkey('ctrl', 'v')
         time.sleep(0.15)
         pyautogui.press('enter')
-        time.sleep(0.15)
-        pyautogui.press('tab')
         time.sleep(0.1)
 
     def _fill_grid_cell(self, x, y, value):
+        """
+        Điền ô Nhân Viên trong bảng Ê-kíp PTTT:
+        - Click chọn ô
+        - Nhấn F2 để vào chế độ soạn thảo
+        - Copy và paste Họ tên đầy đủ chuẩn HIS
+        - Nhấn Enter 1 lần để xác nhận chọn
+        """
+        if not value:
+            return
         pyautogui.click(x, y)
-        time.sleep(0.15)
-        pyautogui.doubleClick(x, y)
-        time.sleep(0.15)
-        pyautogui.hotkey('ctrl', 'a')
+        time.sleep(0.2)
+        pyautogui.press('f2')
+        time.sleep(0.1)
         pyperclip.copy(value)
+        pyautogui.hotkey('ctrl', 'a')
+        time.sleep(0.08)
         pyautogui.hotkey('ctrl', 'v')
         time.sleep(0.2)
         pyautogui.press('enter')
-        time.sleep(0.15)
-        pyautogui.press('tab')
-        time.sleep(0.1)
+        time.sleep(0.2)

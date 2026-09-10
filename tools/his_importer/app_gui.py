@@ -16,10 +16,10 @@ from datetime import datetime
 
 # Import driver và runner
 try:
-    from his_driver import HISDriver
+    from his_driver import HISDriver, get_his_full_name
     from auto_runner import AutoRunner
 except ImportError:
-    from tools.his_importer.his_driver import HISDriver
+    from tools.his_importer.his_driver import HISDriver, get_his_full_name
     from tools.his_importer.auto_runner import AutoRunner
 
 class HISImporterApp:
@@ -221,7 +221,8 @@ class HISImporterApp:
 
         patients = self.grouped_by_staff[staff]
         total_procs = sum(len(p_list) for p_list in patients.values())
-        self.lbl_staff_count.config(text=f"{len(patients)} bệnh nhân ({total_procs} thủ thuật)")
+        his_name = get_his_full_name(staff)
+        self.lbl_staff_count.config(text=f"👉 Chuẩn HIS: {his_name} | {len(patients)} BN ({total_procs} thủ thuật)", fg="#1d4ed8", font=("Arial", 9, "bold"))
 
         # Hiển thị lên bảng Treeview
         for item in self.tree.get_children():
