@@ -41,15 +41,15 @@ Công cụ giúp tự động hóa 100% quá trình nhập ca thủ thuật từ
    - Click chọn bệnh nhân trong danh sách.
    - Bấm **`Bắt đầu thực hiện`** -> xác nhận **`Có`** (nếu chưa thực hiện).
    - Chuột phải vào từng thủ thuật -> chọn **`Nhập Thông Tin PTTT`**.
-   - Click chuột và điền chính xác từng trường:
-     - **Thời gian bắt đầu \***: Định dạng chuẩn `HH:MM mm/dd/yyyy` (Giờ - Phút - Tháng - Ngày - Năm).
-     - **Thời gian kết thúc \***: Định dạng chuẩn `HH:MM mm/dd/yyyy` (Giờ - Phút - Tháng - Ngày - Năm).
-     - **Phương pháp vô cảm \***: `Khác`.
-     - **Tình hình PTTT \***: `Chủ động`.
-     - **Máy y tế**: Theo máy đã xếp (hoặc để trống nếu không có máy).
-     - **Mô tả thủ thuật**: `.`.
-     - **Ê-kíp PTTT (Dòng 1 TT viên chính)**: Tự động điền Họ và tên đầy đủ theo chuẩn HIS (ví dụ: *Đặng Phong Thái*).
-     - Bấm **`💾 Lưu + Đóng`**.
+    - Click chuột và điền chính xác từng trường:
+      - **Thời gian bắt đầu \***: Định dạng chuẩn `HH:mm dd/MM/yyyy` (Giờ - Phút - Ngày - Tháng - Năm).
+      - **Thời gian kết thúc \***: Định dạng chuẩn `HH:mm dd/MM/yyyy` (Giờ - Phút - Ngày - Tháng - Năm).
+      - **Phương pháp vô cảm \***: `Khác`.
+      - **Tình hình PTTT \***: `Chủ động`.
+      - **Máy y tế**: Gõ mã số máy -> Tự động chọn từ danh sách gợi ý.
+      - **Mô tả thủ thuật**: `.`.
+      - **Ê-kíp PTTT (Dòng 1 TT viên chính)**: Tự động gõ tên -> Chọn nhân viên từ danh sách gợi ý (Down + Enter).
+      - Bấm **`💾 Lưu + Đóng`** (Tự động xác nhận Có nếu có popup cảnh báo trùng lịch).
    - Sau khi hoàn thành thủ thuật cuối của bệnh nhân: Tự động bấm nút **`Trả Kết Quả`** ở góc dưới bên phải màn hình HIS!
 5. Khi hoàn tất nhân viên đó, chuyển sang đăng nhập nhân viên tiếp theo và lặp lại bước 3.
 

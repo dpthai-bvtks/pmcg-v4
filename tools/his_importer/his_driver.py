@@ -566,13 +566,13 @@ class HISDriver:
             x_save = fx + int(fw * 0.9355)
             y_save = fy + int(fh * 0.9635)
 
-        # [1] Thời gian bắt đầu: định dạng HH:MM mm/dd/yyyy
-        self.log(f"-> [1] Điền Thời gian bắt đầu (HH:MM mm/dd/yyyy): {h_s}:{m_s} {mo_s}/{d_s}/{y_s}")
-        self._fill_datetime(x_batdau, y_batdau, h_s, m_s, mo_s, d_s, y_s)
+        # [1] Thời gian bắt đầu: định dạng HH:mm dd/MM/yyyy
+        self.log(f"-> [1] Điền Thời gian bắt đầu (HH:mm dd/MM/yyyy): {h_s}:{m_s} {d_s}/{mo_s}/{y_s}")
+        self._fill_datetime(x_batdau, y_batdau, h_s, m_s, d_s, mo_s, y_s)
 
-        # [2] Thời gian kết thúc: định dạng HH:MM mm/dd/yyyy
-        self.log(f"-> [2] Điền Thời gian kết thúc (HH:MM mm/dd/yyyy): {h_e}:{m_e} {mo_e}/{d_e}/{y_e}")
-        self._fill_datetime(x_ketthuc, y_ketthuc, h_e, m_e, mo_e, d_e, y_e)
+        # [2] Thời gian kết thúc: định dạng HH:mm dd/MM/yyyy
+        self.log(f"-> [2] Điền Thời gian kết thúc (HH:mm dd/MM/yyyy): {h_e}:{m_e} {d_e}/{mo_e}/{y_e}")
+        self._fill_datetime(x_ketthuc, y_ketthuc, h_e, m_e, d_e, mo_e, y_e)
 
         # [3] Phương pháp vô cảm (mặc định 'Khác')
         self.log("-> [3] Chọn Phương pháp vô cảm: Khác")
@@ -585,7 +585,7 @@ class HISDriver:
         # [5] Máy y tế
         if may_y_te:
             self.log(f"-> [5] Chọn Máy y tế: {may_y_te}")
-            self._select_dropdown(x_may, y_may, may_y_te)
+            self._select_may_y_te(x_may, y_may, may_y_te)
 
         # [6] Mô tả thủ thuật (mặc định '.')
         self.log("-> [6] Điền Mô tả thủ thuật: .")
@@ -604,18 +604,17 @@ class HISDriver:
         else:
             pyautogui.click(x_save, y_save)
 
-        # Đợi form đóng hoặc xử lý thông báo popup xác nhận
+        # Đợi form đóng hoặc xử lý thông báo popup xác nhận (ví dụ trùng giờ bác sĩ)
         time.sleep(1.2)
-        for _ in range(5):
-            popup = auto.GetRootControl().WindowControl(searchDepth=2, RegexName="(?i).*thông báo.*|.*cảnh báo.*")
-            if popup.Exists(0, 0):
-                self.log("Xác nhận hộp thoại popup...")
-                # Trên popup 'Chưa nhập thông tin phẫu thuật viên chính. Bạn có muốn tiếp tục không?':
-                # Nút mặc định là 'Không'. Bấm phím Left để chuyển sang 'Có', rồi bấm Enter!
+        for _ in range(8):
+            popup = auto.GetRootControl().WindowControl(searchDepth=2, RegexName="(?i).*thông báo.*|.*cảnh báo.*|.*emrhis.*")
+            if popup.Exists(0, 0) and popup.BoundingRectangle.width() < 700:
+                self.log("Phát hiện hộp thoại xác nhận (trùng giờ bác sĩ/cảnh báo) -> Chọn 'Có' để tiếp tục...")
+                # Trên popup xác nhận, nút mặc định là 'Không'. Bấm phím Left để chuyển sang 'Có', rồi bấm Enter!
                 pyautogui.press('left')
-                time.sleep(0.1)
+                time.sleep(0.12)
                 pyautogui.press('enter')
-                time.sleep(0.5)
+                time.sleep(0.8)
                 break
             time.sleep(0.3)
 
@@ -630,7 +629,7 @@ class HISDriver:
 
         btn_tra_kq = panel_bottom.ButtonControl(AutomationId="btnTraKetQua")
         if not btn_tra_kq.Exists(0, 0):
-            btn_tra_kq = panel_bottom.ButtonControl(RegexName="(?i).*trả kết quả.*")
+            btn_tra_kq = panel_bottom.ButtonControl(RegexName=r"(?i).*trả kết quả.*")
 
         if btn_tra_kq.Exists(1, 0) and btn_tra_kq.BoundingRectangle.width() > 0:
             self.log("Đang bấm nút 'Trả Kết Quả'...")
@@ -642,16 +641,16 @@ class HISDriver:
             self.log("Nút 'Trả Kết Quả' không hiển thị hoặc ca này đã được trả kết quả trước đó.")
             return False
 
-    def _fill_datetime(self, x, y, h_val, m_val, mo_val, d_val, y_val):
+    def _fill_datetime(self, x, y, h_val, m_val, d_val, mo_val, y_val):
         """
-        Điền DateTimePicker WinForms định dạng 'HH:MM mm/dd/yyyy'
-        Gõ 12 chữ số liên tiếp: [Giờ (2)] + [Phút (2)] + [Tháng (2)] + [Ngày (2)] + [Năm (4)]
+        Điền DateTimePicker WinForms định dạng 'HH:mm dd/MM/yyyy'
+        Gõ 12 chữ số liên tiếp: [Giờ (2)] + [Phút (2)] + [Ngày (2)] + [Tháng (2)] + [Năm (4)]
         - Click vào vị trí Giờ ở bên trái ô.
         - Gửi 5 lần phím Left để ép con trỏ chuột về tuyệt đối phân đoạn đầu tiên (Giờ - HH).
-        - Gõ liên tiếp 12 chữ số: HH MM mm dd yyyy.
+        - Gõ liên tiếp 12 chữ số: HH mm dd MM yyyy.
         - TUYỆT ĐỐI KHÔNG gửi phím Right (tránh nhảy đúp và tràn phím sang ô khác).
         """
-        digits_12 = f"{h_val}{m_val}{mo_val}{d_val}{y_val}"
+        digits_12 = f"{h_val}{m_val}{d_val}{mo_val}{y_val}"
 
         # 1. Click vào bên trong ô (phần Giờ)
         pyautogui.click(x, y)
@@ -683,6 +682,32 @@ class HISDriver:
         pyautogui.press('enter')
         time.sleep(0.1)
 
+    def _select_may_y_te(self, x, y, may_name):
+        """
+        Chọn Máy y tế:
+        - Click vào ô Máy y tế
+        - Gõ mã số máy (ví dụ '1177')
+        - Danh sách gợi ý popup xuất hiện
+        - Bấm Down rồi Enter để chọn
+        """
+        if not may_name:
+            return
+        # Lấy số hiệu máy nếu có (ví dụ '1177' từ 'Máy ĐC MS: 1177')
+        digits = "".join(filter(str.isdigit, str(may_name)))
+        search_term = digits if digits else str(may_name)
+        
+        pyautogui.click(x, y)
+        time.sleep(0.15)
+        pyautogui.hotkey('ctrl', 'a')
+        time.sleep(0.05)
+        pyperclip.copy(search_term)
+        pyautogui.hotkey('ctrl', 'v')
+        time.sleep(0.35)
+        pyautogui.press('down')
+        time.sleep(0.1)
+        pyautogui.press('enter')
+        time.sleep(0.15)
+
     def _click_and_type(self, x, y, text):
         pyautogui.click(x, y)
         time.sleep(0.15)
@@ -709,8 +734,10 @@ class HISDriver:
         - Click vào tâm ô Nhân Viên dòng 1
         - Double-click để vào chế độ soạn thảo của ô
         - Nhấn F2
-        - Dán Họ tên đầy đủ chuẩn HIS (ví dụ: 'Đặng Phong Thái')
-        - Nhấn Enter để xác nhận chọn nhân viên từ danh sách gợi ý
+        - Dán tên nhân sự chuẩn HIS (ví dụ: 'Đặng Phong Thái')
+        - Danh sách gợi ý (Autocomplete popup) sẽ hiện lên
+        - Chờ 0.35s cho popup hiển thị, nhấn phím Down để chọn dòng đầu tiên, rồi nhấn Enter để chốt chọn!
+        (TUYỆT ĐỐI KHÔNG nhấn Tab vì Tab sẽ làm mất dữ liệu vừa chọn)
         """
         if not value:
             return
@@ -720,12 +747,15 @@ class HISDriver:
         time.sleep(0.15)
         pyautogui.press('f2')
         time.sleep(0.08)
-        pyperclip.copy(value)
         pyautogui.hotkey('ctrl', 'a')
-        time.sleep(0.06)
+        time.sleep(0.05)
+        pyperclip.copy(value)
         pyautogui.hotkey('ctrl', 'v')
+        time.sleep(0.35) # Chờ danh sách popup gợi ý hiện ra
+        pyautogui.press('down') # Chọn dòng đầu tiên trong popup
+        time.sleep(0.12)
+        pyautogui.press('enter') # Chốt chọn nhân viên
         time.sleep(0.25)
-        pyautogui.press('enter')
-        time.sleep(0.25)
+
 
 
