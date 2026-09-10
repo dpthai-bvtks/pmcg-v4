@@ -8,6 +8,7 @@ import sys
 import os
 import time
 import ctypes
+import traceback
 from datetime import datetime
 
 user32 = ctypes.windll.user32
@@ -18,6 +19,9 @@ class AutoRunner:
     def __init__(self, driver, log_callback=None):
         self.driver = driver
         self.log_callback = log_callback or print
+        # Đồng bộ log_callback cho cả driver
+        if hasattr(self.driver, 'log_callback'):
+            self.driver.log_callback = self.log
         self.is_running = False
         self.is_paused = False
         self.should_stop = False
@@ -29,7 +33,6 @@ class AutoRunner:
 
     def check_emergency_stop(self):
         """Kiểm tra phím F12 để dừng khẩn cấp"""
-        # GetAsyncKeyState returns negative if key is currently pressed
         if (user32.GetAsyncKeyState(VK_F12) & 0x8000) != 0:
             self.log("⚠️ PHÁT HIỆN PHÍM F12 - DỪNG KHẨN CẤP TOÀN BỘ TIẾN TRÌNH!")
             self.should_stop = True
@@ -48,20 +51,6 @@ class AutoRunner:
     def run_for_staff(self, staff_name, patient_groups):
         """
         Chạy tự động cho 1 nhân viên cụ thể.
-        patient_groups: {
-            "tenBN": [
-                {
-                    "thuThuat": "...",
-                    "gioDienRa": "08:56",
-                    "gioKetThuc": "09:11",
-                    "ngay": "09/09/2026",
-                    "may": "...",
-                    "nvChinh": "...",
-                    "isFinalOfPatient": True/False
-                },
-                ...
-            ]
-        }
         """
         self.is_running = True
         self.should_stop = False
@@ -69,9 +58,9 @@ class AutoRunner:
 
         try:
             # 1. Khôi phục cửa sổ emrHIS
-            self.log("Đang kích hoạt cửa sổ phần mềm emrHIS...")
+            self.log("Đang kích hoạt và hiển thị cửa sổ phần mềm emrHIS...")
             self.driver.bring_to_front()
-            self.wait_with_stop_check(0.8)
+            self.wait_with_stop_check(1.0)
 
             total_patients = len(patient_groups)
             current_idx = 0
@@ -81,60 +70,70 @@ class AutoRunner:
                     break
 
                 current_idx += 1
-                self.log(f"--- ({current_idx}/{total_patients}) Xử lý Bệnh nhân: {patient_name} ({len(procs)} thủ thuật) ---")
+                self.log(f"==================================================")
+                self.log(f"👉 ({current_idx}/{total_patients}) Bệnh nhân: {patient_name} ({len(procs)} thủ thuật)")
+                self.log(f"==================================================")
 
-                # Tìm kiếm bệnh nhân
-                self.log(f"Tìm bệnh nhân: {patient_name}")
-                self.driver.search_patient(patient_name)
-                if not self.wait_with_stop_check(1.0):
-                    break
-
-                # Chọn bệnh nhân đầu tiên trong danh sách
-                self.driver.select_first_patient_in_list()
-                if not self.wait_with_stop_check(1.0):
-                    break
-
-                # Bắt đầu thực hiện (nếu chưa bắt đầu)
-                self.driver.check_and_start_execution()
-                if not self.wait_with_stop_check(0.8):
-                    break
-
-                # Nhập từng thủ thuật
-                for p_idx, p in enumerate(procs):
-                    if self.check_emergency_stop() or self.should_stop:
-                        break
-
-                    tt_name = p.get("thuThuat", "")
-                    start_str = f"{p.get('gioDienRa', '')} {p.get('ngay', '')}".strip()
-                    end_str = f"{p.get('gioKetThuc', '')} {p.get('ngay', '')}".strip()
-                    may = p.get("may", "")
-                    nv = p.get("nvChinh", staff_name)
-
-                    self.log(f"  + [{p_idx+1}/{len(procs)}] Chuột phải mở: {tt_name}...")
-                    self.driver.open_procedure_modal(p_idx)
+                try:
+                    # Tìm kiếm bệnh nhân
+                    self.log(f"1. Gõ tìm bệnh nhân: '{patient_name}'...")
+                    self.driver.search_patient(patient_name)
                     if not self.wait_with_stop_check(1.2):
                         break
 
-                    self.log(f"    Điền thông tin: {start_str} -> {end_str}, Máy: {may}")
-                    self.driver.fill_procedure_form(
-                        start_time_str=start_str,
-                        end_time_str=end_str,
-                        may_y_te=may,
-                        nv_chinh=nv
-                    )
-                    self.log(f"    ✅ Đã Lưu + Đóng thủ thuật: {tt_name}")
+                    # Chọn bệnh nhân trong danh sách
+                    self.log("2. Chọn bệnh nhân đầu tiên trong danh sách...")
+                    self.driver.select_first_patient_in_list()
+                    if not self.wait_with_stop_check(1.2):
+                        break
+
+                    # Bắt đầu thực hiện (nếu chưa bắt đầu)
+                    self.log("3. Kiểm tra trạng thái 'Bắt Đầu Thực Hiện'...")
+                    self.driver.check_and_start_execution()
                     if not self.wait_with_stop_check(1.0):
                         break
 
-                # Kiểm tra nếu bệnh nhân đã hoàn thành tất cả thủ thuật thì ấn Trả kết quả
-                has_final = any(p.get("isFinalOfPatient", False) for p in procs)
-                if has_final and not self.should_stop:
-                    self.log(f"Bệnh nhân {patient_name} đã hoàn tất ca cuối trong ngày -> Tiến hành bấm 'Trả Kết Quả'...")
-                    res = self.driver.click_tra_ket_qua()
-                    if res:
-                        self.log(f"✅ Đã bấm Trả Kết Quả thành công cho BN {patient_name}")
-                    else:
-                        self.log(f"ℹ️ Không cần bấm Trả Kết Quả hoặc đã trả trước đó.")
+                    # Nhập từng thủ thuật
+                    for p_idx, p in enumerate(procs):
+                        if self.check_emergency_stop() or self.should_stop:
+                            break
+
+                        tt_name = p.get("thuThuat", "")
+                        start_str = f"{p.get('gioDienRa', '')} {p.get('ngay', '')}".strip()
+                        end_str = f"{p.get('gioKetThuc', '')} {p.get('ngay', '')}".strip()
+                        may = p.get("may", "")
+                        nv = p.get("nvChinh", staff_name)
+
+                        self.log(f"--- Thủ thuật {p_idx+1}/{len(procs)}: {tt_name} ---")
+                        try:
+                            self.driver.open_procedure_modal(p_idx)
+                            if not self.wait_with_stop_check(1.0):
+                                break
+
+                            self.driver.fill_procedure_form(
+                                start_time_str=start_str,
+                                end_time_str=end_str,
+                                may_y_te=may,
+                                nv_chinh=nv
+                            )
+                            self.log(f"✅ Đã Lưu + Đóng thành công: {tt_name}")
+                            if not self.wait_with_stop_check(1.0):
+                                break
+                        except Exception as p_err:
+                            self.log(f"⚠️ Lỗi ở thủ thuật {tt_name}: {p_err}")
+                            self.wait_with_stop_check(1.0)
+
+                    # Kiểm tra nếu bệnh nhân đã hoàn thành ca cuối trong ngày thì ấn Trả kết quả
+                    has_final = any(p.get("isFinalOfPatient", False) for p in procs)
+                    if has_final and not self.should_stop:
+                        self.log(f"Bệnh nhân {patient_name} đã nhập xong ca cuối -> Bấm 'Trả Kết Quả'...")
+                        res = self.driver.click_tra_ket_qua()
+                        if res:
+                            self.log(f"✅ Đã bấm Trả Kết Quả thành công cho BN: {patient_name}")
+                        self.wait_with_stop_check(1.0)
+
+                except Exception as bn_err:
+                    self.log(f"⚠️ Lỗi xử lý BN {patient_name}: {bn_err}")
                     self.wait_with_stop_check(1.0)
 
             if not self.should_stop:
@@ -143,6 +142,7 @@ class AutoRunner:
                 self.log(f"🛑 ĐÃ DỪNG TIẾN TRÌNH THEO LỆNH NGƯỜI DÙNG.")
 
         except Exception as e:
-            self.log(f"❌ Xảy ra lỗi trong quá trình tự động: {e}")
+            self.log(f"❌ Xảy ra lỗi ngoài mong muốn: {e}")
+            self.log(traceback.format_exc())
         finally:
             self.is_running = False
