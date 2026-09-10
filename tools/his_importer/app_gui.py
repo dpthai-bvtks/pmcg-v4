@@ -162,24 +162,50 @@ class HISImporterApp:
             messagebox.showerror("Lỗi mở file", f"Không thể đọc file dữ liệu:\n{e}")
 
     def _process_loaded_data(self, data):
-        # Data có thể là mảng danh sách lịch hoặc Object đã group
+        # Data có thể là mảng danh sách lịch hoặc Object đã group (hỗ trợ cả schema tools/auto và his_importer)
         rows = []
+        default_date = ""
         if isinstance(data, list):
             rows = data
         elif isinstance(data, dict):
+            default_date = data.get("date", "")
             if "schedule" in data and isinstance(data["schedule"], list):
                 rows = data["schedule"]
             elif "data" in data and isinstance(data["data"], list):
                 rows = data["data"]
+            elif "shifts" in data and isinstance(data["shifts"], list):
+                rows = data["shifts"]
             else:
                 rows = [data]
 
-        self.schedule_data = rows
-
-        # Tìm các thủ thuật cuối cùng trong ngày của mỗi bệnh nhân
-        # Để đánh dấu khi nào cần bấm "Trả Kết Quả"
-        patient_max_time = {}
+        # Chuẩn hóa linh hoạt các trường tiếng Anh / tiếng Việt (kế thừa từ tools/auto)
+        normalized_rows = []
         for r in rows:
+            p_name = (r.get("tenBN") or r.get("patient") or "").strip()
+            if not p_name:
+                continue
+            staff = (r.get("nvChinh") or r.get("employee") or "Chưa phân công").strip()
+            thu_thuat = (r.get("thuThuat") or r.get("procedure") or "").strip()
+            start_t = (r.get("gioDienRa") or r.get("start_time") or "").strip()
+            end_t = (r.get("gioKetThuc") or r.get("end_time") or "").strip()
+            may = (r.get("may") or r.get("device_code") or "").strip()
+            ngay = (r.get("ngay") or r.get("date") or default_date).strip()
+
+            norm_r = dict(r)
+            norm_r["tenBN"] = p_name
+            norm_r["nvChinh"] = staff
+            norm_r["thuThuat"] = thu_thuat
+            norm_r["gioDienRa"] = start_t
+            norm_r["gioKetThuc"] = end_t
+            norm_r["may"] = may
+            norm_r["ngay"] = ngay
+            normalized_rows.append(norm_r)
+
+        self.schedule_data = normalized_rows
+
+        # Tìm các thủ thuật cuối cùng trong ngày của mỗi bệnh nhân để bấm "Trả Kết Quả"
+        patient_max_time = {}
+        for r in normalized_rows:
             p_name = r.get("tenBN", "")
             end_t = r.get("gioKetThuc", "")
             if p_name and end_t:
@@ -188,15 +214,11 @@ class HISImporterApp:
 
         # Gom nhóm theo Nhân sự -> Bệnh nhân -> Thủ thuật
         self.grouped_by_staff = {}
-        for r in rows:
-            staff = (r.get("nvChinh") or "Chưa phân công").strip()
-            p_name = (r.get("tenBN") or "").strip()
-            if not p_name:
-                continue
-
+        for r in normalized_rows:
+            staff = r.get("nvChinh", "Chưa phân công")
+            p_name = r.get("tenBN", "")
             if staff not in self.grouped_by_staff:
                 self.grouped_by_staff[staff] = {}
-            
             if p_name not in self.grouped_by_staff[staff]:
                 self.grouped_by_staff[staff][p_name] = []
 
@@ -212,7 +234,7 @@ class HISImporterApp:
             self.cbo_staff.current(0)
             self.on_staff_selected()
 
-        self.lbl_data_status.config(text=f"Đã nạp {len(rows)} ca ({len(staff_names)} nhân viên)", fg="#16a34a")
+        self.lbl_data_status.config(text=f"Đã nạp {len(normalized_rows)} ca ({len(staff_names)} nhân viên)", fg="#16a34a")
 
     def on_staff_selected(self, event=None):
         staff = self.cbo_staff.get()
