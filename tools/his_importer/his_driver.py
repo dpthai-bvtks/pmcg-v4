@@ -461,6 +461,12 @@ class HISDriver:
         user32.SetForegroundWindow(form_hwnd)
         time.sleep(0.3)
 
+        # Phóng to cửa sổ (SW_MAXIMIZE = 3) để đảm bảo giao diện luôn hiển thị đồng nhất
+        user32.ShowWindow(form_hwnd, 3)
+        time.sleep(0.4)
+
+        # Lấy kích thước thực tế sau khi phóng to
+        form_rect = form.BoundingRectangle
         fw = form_rect.width()
         fh = form_rect.height()
         fx = form_rect.left
@@ -519,54 +525,92 @@ class HISDriver:
         if not nv_full:
             nv_full = self.get_current_logged_in_user() or "Đặng Phong Thái"
 
-        # [1] Thời gian bắt đầu: (Tọa độ X: 36.60%, Y: 21.83%) định dạng HH:MM mm/dd/yyyy
+        # 3. Tính toán tọa độ chính xác theo độ phân giải hiển thị (Maximized vs Restored)
+        if fw >= 1400:
+            # Giao diện toàn màn hình (1920x1080 / 1900x998 theo video test.mp4)
+            x_batdau = fx + int(fw * 0.3237)
+            y_batdau = fy + int(fh * 0.1583)
+            x_ketthuc = fx + int(fw * 0.5500)
+            y_ketthuc = fy + int(fh * 0.1583)
+            x_vocam = fx + int(fw * 0.3800)
+            y_vocam = fy + int(fh * 0.4910)
+            x_tinhhinh = fx + int(fw * 0.1589)
+            y_tinhhinh = fy + int(fh * 0.5210)
+            x_may = fx + int(fw * 0.5674)
+            y_may = fy + int(fh * 0.5511)
+            x_mota = fx + int(fw * 0.1579)
+            y_mota = fy + int(fh * 0.7515)
+            x_ekip = fx + int(fw * 0.7789)
+            y_ekip = fy + int(fh * 0.2064)
+            x_save = fx + int(fw * 0.9710)
+            y_save = fy + int(fh * 0.8818)
+        else:
+            # Giao diện thu nhỏ / mặc định (1024x545)
+            x_batdau = fx + int(fw * 0.3660)
+            y_batdau = fy + int(fh * 0.2183)
+            x_ketthuc = fx + int(fw * 0.6185)
+            y_ketthuc = fy + int(fh * 0.2183)
+            x_vocam = fx + int(fw * 0.5273)
+            y_vocam = fy + int(fh * 0.5083)
+            x_tinhhinh = fx + int(fw * 0.1660)
+            y_tinhhinh = fy + int(fh * 0.5492)
+            x_may = fx + int(fw * 0.6250)
+            y_may = fy + int(fh * 0.5856)
+            x_mota = fx + int(fw * 0.2148)
+            y_mota = fy + int(fh * 0.8103)
+            x_ekip = fx + int(fw * 0.8800)
+            y_ekip = fy + int(fh * 0.2201)
+            x_save = fx + int(fw * 0.9355)
+            y_save = fy + int(fh * 0.9635)
+
+        # [1] Thời gian bắt đầu: định dạng HH:MM mm/dd/yyyy
         self.log(f"-> [1] Điền Thời gian bắt đầu (HH:MM mm/dd/yyyy): {h_s}:{m_s} {mo_s}/{d_s}/{y_s}")
-        x_batdau = fx + int(fw * 0.3660)
-        y_batdau = fy + int(fh * 0.2183)
         self._fill_datetime(x_batdau, y_batdau, h_s, m_s, mo_s, d_s, y_s)
 
-        # [2] Thời gian kết thúc: (Tọa độ X: 61.85%, Y: 21.83%) định dạng HH:MM mm/dd/yyyy
+        # [2] Thời gian kết thúc: định dạng HH:MM mm/dd/yyyy
         self.log(f"-> [2] Điền Thời gian kết thúc (HH:MM mm/dd/yyyy): {h_e}:{m_e} {mo_e}/{d_e}/{y_e}")
-        x_ketthuc = fx + int(fw * 0.6185)
-        y_ketthuc = fy + int(fh * 0.2183)
         self._fill_datetime(x_ketthuc, y_ketthuc, h_e, m_e, mo_e, d_e, y_e)
 
-        # [3] Phương pháp vô cảm (mặc định 'Khác') (X: 52.73%, Y: 50.83%)
+        # [3] Phương pháp vô cảm (mặc định 'Khác')
         self.log("-> [3] Chọn Phương pháp vô cảm: Khác")
-        self._select_dropdown(fx + int(fw * 0.5273), fy + int(fh * 0.5083), "Khác")
+        self._select_dropdown(x_vocam, y_vocam, "Khác")
 
-        # [4] Tình hình PTTT (mặc định 'Chủ động') (X: 16.60%, Y: 54.92%)
+        # [4] Tình hình PTTT (mặc định 'Chủ động')
         self.log("-> [4] Chọn Tình hình PTTT: Chủ động")
-        self._select_tinh_hinh_pttt(fx + int(fw * 0.1660), fy + int(fh * 0.5492))
+        self._select_tinh_hinh_pttt(x_tinhhinh, y_tinhhinh)
 
-        # [5] Máy y tế (X: 62.50%, Y: 58.56%)
+        # [5] Máy y tế
         if may_y_te:
             self.log(f"-> [5] Chọn Máy y tế: {may_y_te}")
-            self._select_dropdown(fx + int(fw * 0.6250), fy + int(fh * 0.5856), may_y_te)
+            self._select_dropdown(x_may, y_may, may_y_te)
 
-        # [6] Mô tả thủ thuật (mặc định '.') (X: 21.48%, Y: 81.03%)
+        # [6] Mô tả thủ thuật (mặc định '.')
         self.log("-> [6] Điền Mô tả thủ thuật: .")
-        self._click_and_type(fx + int(fw * 0.2148), fy + int(fh * 0.8103), ".")
+        self._click_and_type(x_mota, y_mota, ".")
 
-        # [7] Ê-kíp PTTT: Dòng 1 TT viên chính (X: 88.00%, Y: 22.01%)
+        # [7] Ê-kíp PTTT: Dòng 1 TT viên chính
         if nv_full:
             self.log(f"-> [7] Điền TT viên chính (Tên đầy đủ chuẩn HIS): '{nv_full}'")
-            self._fill_grid_cell(fx + int(fw * 0.8800), fy + int(fh * 0.2201), nv_full)
+            self._fill_grid_cell(x_ekip, y_ekip, nv_full)
 
-        # [8] Bấm Lưu + Đóng (X: 93.55%, Y: 96.35%)
+        # [8] Bấm Lưu + Đóng
         self.log("-> [8] Bấm Lưu + Đóng...")
         btn_save_close = form.ButtonControl(RegexName=r"(?i).*lưu \+ đóng.*")
         if btn_save_close.Exists(0.5, 0):
             btn_save_close.Click()
         else:
-            pyautogui.click(fx + int(fw * 0.9355), fy + int(fh * 0.9635))
+            pyautogui.click(x_save, y_save)
 
         # Đợi form đóng hoặc xử lý thông báo popup xác nhận
-        time.sleep(1.0)
+        time.sleep(1.2)
         for _ in range(5):
             popup = auto.GetRootControl().WindowControl(searchDepth=2, RegexName="(?i).*thông báo.*|.*cảnh báo.*")
             if popup.Exists(0, 0):
                 self.log("Xác nhận hộp thoại popup...")
+                # Trên popup 'Chưa nhập thông tin phẫu thuật viên chính. Bạn có muốn tiếp tục không?':
+                # Nút mặc định là 'Không'. Bấm phím Left để chuyển sang 'Có', rồi bấm Enter!
+                pyautogui.press('left')
+                time.sleep(0.1)
                 pyautogui.press('enter')
                 time.sleep(0.5)
                 break
@@ -622,11 +666,16 @@ class HISDriver:
     def _select_tinh_hinh_pttt(self, x, y):
         """
         Chọn Tình hình PTTT: luôn chọn 'Chủ động'
+        Trong combobox emrHIS:
+        - Mục 0 (trên cùng): 'Cấp cứu'
+        - Mục 1 (ở dưới): 'Chủ động'
+        Gửi Home để về mục 0, sau đó gửi Down để nhảy xuống 'Chủ động', rồi bấm Enter!
         """
         pyautogui.click(x, y)
         time.sleep(0.15)
-        # Bấm Home để luôn về mục đầu tiên là 'Chủ động' (tránh bấm 'c' bị nhảy sang 'Cấp cứu')
         pyautogui.press('home')
+        time.sleep(0.08)
+        pyautogui.press('down')
         time.sleep(0.08)
         pyautogui.press('enter')
         time.sleep(0.1)
@@ -658,7 +707,7 @@ class HISDriver:
         - Double-click để vào chế độ soạn thảo của ô
         - Nhấn F2
         - Dán Họ tên đầy đủ chuẩn HIS (ví dụ: 'Đặng Phong Thái')
-        - Nhấn Enter và Tab để xác nhận và lưu giá trị ô
+        - Nhấn Enter để xác nhận chọn nhân viên từ danh sách gợi ý
         """
         if not value:
             return
@@ -672,9 +721,8 @@ class HISDriver:
         pyautogui.hotkey('ctrl', 'a')
         time.sleep(0.06)
         pyautogui.hotkey('ctrl', 'v')
-        time.sleep(0.2)
+        time.sleep(0.25)
         pyautogui.press('enter')
-        time.sleep(0.15)
-        pyautogui.press('tab')
-        time.sleep(0.1)
+        time.sleep(0.25)
+
 
