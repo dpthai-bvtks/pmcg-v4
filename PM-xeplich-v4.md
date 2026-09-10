@@ -2859,5 +2859,41 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `version.json`
   + `PM-xeplich-v4.md`
 
+### 👑 Thiết Lập Bản Quyền Vĩnh Viễn Trọn Đời Cho Đơn Vị bvtks-cs2 (10/09/2026 - v4.0.5-rev4)
+- **Yêu cầu của người dùng**:
+  + Cấu hình trạng thái bản quyền của mã đơn vị `bvtks-cs2` (Bệnh viện Than - Khoáng sản Cơ sở 2 - đơn vị sáng lập) thành **Vĩnh viễn**.
+  + Tuân thủ nghiêm ngặt toàn bộ quy tắc trong `RULES.md`.
+- **Phân tích nguyên nhân & Giải pháp triển khai**:
+  1. **Backend Cloudflare Worker (`backend/src/index.js`)**:
+     - Thêm gói cước `ENTERPRISE` ("Bản Quyền Vĩnh Viễn") vào từ điển `SUBSCRIPTION_PLANS` với hạn dùng 99.999 ngày, đơn giá "Sở Hữu Trọn Đời" và huy hiệu "Vĩnh Viễn 👑".
+     - Trong hàm `calculateSubscriptionInfo(tenant)`: Nhận diện mã đơn vị `bvtks-cs2`, `bvtks_cs2` hoặc gói `ENTERPRISE` / `LIFETIME`, luôn trả về:
+       + `plan_code: 'ENTERPRISE'`
+       + `plan_name: 'Bản Quyền Vĩnh Viễn'`
+       + `days_left: 99999`
+       + `expires_at: '2099-12-31'`
+       + `is_lifetime: true`
+       + `is_expired: false`, `is_expiring_soon: false`
+  2. **CSDL Cloudflare D1 Remote (`pmcg-db`)**:
+     - Đã thực thi lệnh cập nhật trực tiếp trên CSDL đám mây:
+       `UPDATE tenants SET plan_tier = 'ENTERPRISE', expires_at = '2099-12-31', is_active = 1 WHERE unit_code IN ('bvtks-cs2', 'bvtks_cs2')`.
+  3. **Giao diện Client Frontend (`index.html`, `js/app.js`, `js/init.js`)**:
+     - *Huy hiệu bản quyền Header (`#header-subscription-badge`)*: Khi đơn vị đang đăng nhập là `bvtks-cs2` hoặc gói `ENTERPRISE`, hiển thị huy hiệu ngọc lục bảo **`💎 Bản Quyền Vĩnh Viễn`** sang trọng, không đếm ngược ngày hết hạn.
+     - *Bảng Quản lý Đơn vị Super Admin (`loadTenantsList`)*: Dòng `bvtks-cs2` hiển thị cột Gói Cước là **`💎 VĨNH VIỄN`** và Cột Hạn Dùng là **`💎 Vĩnh viễn`**, bảo vệ an toàn không hiển thị nút xóa đơn vị này.
+     - *Khởi tạo & Đăng nhập (`doLogin` & `DOMContentLoaded`)*: Lưu trữ và khôi phục chính xác `pm_plan_tier = 'ENTERPRISE'`, `pm_plan_name = 'Bản Quyền Vĩnh Viễn'` cho `bvtks-cs2`.
+  4. **Tuân thủ RULES.md**:
+     - Rule 1: Kiểm tra cú pháp toàn diện bằng `node -c js/init.js; node -c js/app.js; node -c js/scheduler-engine.js; node -c backend/src/index.js` (100% không lỗi).
+     - Rule 3: Trong ngày 10/09/2026, tăng revision lên `4.0.5-rev4`. Đồng bộ `version.json`, `index.html` (cache buster `?v=4.0.5-rev4`, footer timestamp `16:35 10/09/2026`, `APP_VERSION = '4.0.5-rev4'`), `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.5-rev4'`).
+     - Rule 4: Tự động deploy lên Cloudflare bằng `cmd.exe /c "npm run deploy:all"`.
+     - Rule 5: Commit và push mã nguồn lên nhánh `main` trên GitHub.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `index.html`
+  + `js/app.js`
+  + `js/init.js`
+  + `sw.js`
+  + `version.json`
+  + `PM-xeplich-v4.md`
+
+
 
 

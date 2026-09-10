@@ -1,6 +1,6 @@
 {
-  "version": "4.0.5-rev3",
+  "version": "4.0.5-rev4",
   "releaseDate": "10/09/2026",
-  "releaseTime": "16:20 10/09/2026",
-  "notes": "Hệ thống 5 gói cước SaaS chuẩn hóa (Dùng thử 15 ngày miễn phí, 1 tháng 400k, 3 tháng 1125k, 6 tháng 2100k, 1 năm 3900k) - Tất cả full 100% chức năng, cổng tự đăng ký dùng thử 15 ngày 1-Click và quản lý gia hạn bản quyền."
+  "releaseTime": "16:35 10/09/2026",
+  "notes": "Xác lập trạng thái bản quyền Vĩnh viễn (Lifetime Enterprise) trọn đời cho đơn vị bvtks-cs2 (Bệnh viện Than - Khoáng sản Cơ sở 2) cả ở CSDL Turso/D1, backend Worker và giao diện huy hiệu header."
 }

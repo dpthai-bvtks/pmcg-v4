@@ -618,15 +618,52 @@ const SUBSCRIPTION_PLANS = {
       "Cập nhật miễn phí các thuật toán AI mới nhất",
       "Hỗ trợ kỹ thuật VIP & Đào tạo trực tiếp"
     ]
+  },
+  ENTERPRISE: {
+    code: "ENTERPRISE",
+    name: "Bản Quyền Vĩnh Viễn",
+    durationDays: 99999,
+    days: 99999,
+    price: 0,
+    priceText: "Vĩnh Viễn",
+    monthlyRate: "Trọn Đời",
+    monthlyEquiv: "Sở Hữu Trọn Đời",
+    badge: "Vĩnh Viễn 👑",
+    bestValue: true,
+    description: "Bản quyền sở hữu trọn đời không giới hạn thời gian",
+    features: [
+      "Bản quyền sở hữu vĩnh viễn không giới hạn thời hạn",
+      "Full 100% tính năng AI Xếp Lịch T.I.M.E.S",
+      "Không giới hạn số lượng KTV và Bệnh nhân",
+      "Đồng bộ đa thiết bị không giới hạn",
+      "Cập nhật miễn phí các thuật toán AI mới nhất",
+      "Hỗ trợ kỹ thuật trực tiếp ưu tiên cao nhất"
+    ]
   }
 };
 
 function calculateSubscriptionInfo(tenant) {
-  if (!tenant) return { plan_code: "PRO", plan_name: "Chuyên Nghiệp", days_left: 0, is_expired: false, is_expiring_soon: false };
-  const rawTier = String(tenant.plan_tier || "PRO").trim();
+  if (!tenant) return { plan_code: "ENTERPRISE", plan_name: "Bản Quyền Vĩnh Viễn", days_left: 99999, is_expired: false, is_expiring_soon: false, is_lifetime: true };
+  const uCode = String(tenant.unit_code || "").trim().toLowerCase();
+  const rawTier = String(tenant.plan_tier || "PRO").trim().toUpperCase();
+
+  // Đơn vị bvtks-cs2 hoặc gói ENTERPRISE luôn có bản quyền Vĩnh viễn tuyệt đối
+  if (uCode === "bvtks-cs2" || uCode === "bvtks_cs2" || rawTier === "ENTERPRISE" || rawTier === "LIFETIME") {
+    return {
+      plan_code: "ENTERPRISE",
+      plan_name: "Bản Quyền Vĩnh Viễn",
+      expires_at: "2099-12-31",
+      days_left: 99999,
+      is_expired: false,
+      is_expiring_soon: false,
+      is_lifetime: true,
+      status_text: "Vĩnh Viễn"
+    };
+  }
+
   const plan = SUBSCRIPTION_PLANS[rawTier] || {
     code: rawTier,
-    name: rawTier === "ENTERPRISE" ? "Doanh Nghiệp (Vĩnh Viễn)" : (rawTier === "MASTER" ? "Chủ Quản Hệ Thống" : rawTier),
+    name: rawTier === "MASTER" ? "Chủ Quản Hệ Thống" : rawTier,
     days: 365,
     priceText: "Liên hệ"
   };

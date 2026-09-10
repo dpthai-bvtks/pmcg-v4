@@ -157,10 +157,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof applyPermissions === 'function') applyPermissions(sess.role, sess.permissions || 'all');
         }
         if (typeof window.updateSubscriptionHeaderBadge === 'function' && (sess.username || sess.role)) {
-            const pTier = localStorage.getItem('pm_plan_tier') || sess.plan_tier;
-            const pExp = localStorage.getItem('pm_expires_at') || sess.expires_at;
-            const pName = localStorage.getItem('pm_plan_name') || sess.plan_name;
-            const pDays = localStorage.getItem('pm_days_left') || sess.days_left;
+            const isBvtks = (sess.unit_code === 'bvtks-cs2' || sess.unit_code === 'bvtks_cs2');
+            const pTier = isBvtks ? 'ENTERPRISE' : (localStorage.getItem('pm_plan_tier') || sess.plan_tier);
+            const pExp = isBvtks ? '2099-12-31' : (localStorage.getItem('pm_expires_at') || sess.expires_at);
+            const pName = isBvtks ? 'Bản Quyền Vĩnh Viễn' : (localStorage.getItem('pm_plan_name') || sess.plan_name);
+            const pDays = isBvtks ? 99999 : (localStorage.getItem('pm_days_left') || sess.days_left);
             window.updateSubscriptionHeaderBadge(pTier, pExp, pName, pDays);
         }
     } catch(e) {}
@@ -280,10 +281,11 @@ window.doLogin = function () {
                 if (res.token) {
                     localStorage.setItem('pm_jwt_token', res.token);
                 }
-                const pTier = res.plan_tier || 'PLAN_1Y';
-                const pExp = res.expires_at || '2099-12-31';
-                const pName = res.subInfo ? res.subInfo.plan_name : (res.plan_name || 'Bản Quyền');
-                const pDays = res.subInfo ? res.subInfo.days_left : (res.days_left !== undefined ? res.days_left : 999);
+                const isBvtks = (uUnit === 'bvtks-cs2' || uUnit === 'bvtks_cs2');
+                const pTier = isBvtks ? 'ENTERPRISE' : (res.plan_tier || 'PLAN_1Y');
+                const pExp = isBvtks ? '2099-12-31' : (res.expires_at || '2099-12-31');
+                const pName = isBvtks ? 'Bản Quyền Vĩnh Viễn' : (res.subInfo ? res.subInfo.plan_name : (res.plan_name || 'Bản Quyền'));
+                const pDays = isBvtks ? 99999 : (res.subInfo ? res.subInfo.days_left : (res.days_left !== undefined ? res.days_left : 999));
 
                 localStorage.setItem('pm_plan_tier', pTier);
                 localStorage.setItem('pm_expires_at', pExp);

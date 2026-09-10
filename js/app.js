@@ -1640,10 +1640,11 @@ window.renderSttOrderControl = function (type, i, total) {
                     if (res.token) {
                         localStorage.setItem('pm_jwt_token', res.token);
                     }
-                    const pTier = res.plan_tier || 'PLAN_1Y';
-                    const pExp = res.expires_at || '2099-12-31';
-                    const pName = res.subInfo ? res.subInfo.plan_name : (res.plan_name || 'Bản Quyền');
-                    const pDays = res.subInfo ? res.subInfo.days_left : (res.days_left !== undefined ? res.days_left : 999);
+                    const isBvtks = (uUnit === 'bvtks-cs2' || uUnit === 'bvtks_cs2');
+                    const pTier = isBvtks ? 'ENTERPRISE' : (res.plan_tier || 'PLAN_1Y');
+                    const pExp = isBvtks ? '2099-12-31' : (res.expires_at || '2099-12-31');
+                    const pName = isBvtks ? 'Bản Quyền Vĩnh Viễn' : (res.subInfo ? res.subInfo.plan_name : (res.plan_name || 'Bản Quyền'));
+                    const pDays = isBvtks ? 99999 : (res.subInfo ? res.subInfo.days_left : (res.days_left !== undefined ? res.days_left : 999));
 
                     localStorage.setItem('pm_plan_tier', pTier);
                     localStorage.setItem('pm_expires_at', pExp);
@@ -13949,14 +13950,21 @@ window.loadTenantsList = function () {
                     ? '<span style="background:#dcfce7; color:#15803d; padding:4px 8px; border-radius:6px; font-weight:700; font-size:11px;">🟢 Hoạt Động</span>'
                     : '<span style="background:#fee2e2; color:#b91c1c; padding:4px 8px; border-radius:6px; font-weight:700; font-size:11px;">🔴 Tạm Khóa</span>';
 
-                const planBadge = `<span style="background:#e0e7ff; color:#3730a3; padding:3px 8px; border-radius:6px; font-weight:700; font-size:11px;">${t.plan_tier || 'PRO'}</span>`;
+                const isLifetime = t.unit_code === 'bvtks-cs2' || t.unit_code === 'bvtks_cs2' || t.plan_tier === 'ENTERPRISE';
+                const planBadge = isLifetime
+                    ? '<span style="background:#dcfce7; color:#15803d; padding:3px 8px; border-radius:6px; font-weight:700; font-size:11px;">💎 VĨNH VIỄN</span>'
+                    : `<span style="background:#e0e7ff; color:#3730a3; padding:3px 8px; border-radius:6px; font-weight:700; font-size:11px;">${t.plan_tier || 'PRO'}</span>`;
+
+                const expiresDisplay = isLifetime
+                    ? '<span style="color:#059669; font-weight:700;">💎 Vĩnh viễn</span>'
+                    : (t.expires_at || 'Vĩnh viễn');
 
                 return `
                     <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
                         <td style="padding:12px 14px; font-weight:700; color:#1e40af;">${t.unit_code}</td>
                         <td style="padding:12px 14px; font-weight:600; color:#1e293b;">${t.unit_name}</td>
                         <td style="padding:12px 14px;">${planBadge}</td>
-                        <td style="padding:12px 14px; color:#475569;">${t.expires_at || 'Vĩnh viễn'}</td>
+                        <td style="padding:12px 14px;">${expiresDisplay}</td>
                         <td style="padding:12px 14px; font-size:12px; color:#64748b;">${t.max_staff || 30} KTV / ${t.max_patients || 150} BN</td>
                         <td style="padding:12px 14px; font-size:12px; color:#64748b;">${t.phone || '-'}</td>
                         <td style="padding:12px 14px; text-align:center;">${statusBadge}</td>
@@ -13966,7 +13974,7 @@ window.loadTenantsList = function () {
                                 <button class="btn btn-sm btn-info" onclick="exportTenantDataPrompt('${t.unit_code}', '${encodeURIComponent(t.unit_name)}')" title="Xuất dữ liệu sao lưu (JSON) riêng cho đơn vị này">📥 Xuất</button>
                                 <button class="btn btn-sm btn-warning" onclick="resetTenantPasswordPrompt('${t.unit_code}')" title="Đặt lại mật khẩu Admin">🔑 Pass</button>
                                 <button class="btn btn-sm ${isActive ? 'btn-danger' : 'btn-success'}" onclick="toggleTenantStatus('${t.unit_code}', ${isActive ? 0 : 1})" title="${isActive ? 'Khóa đơn vị' : 'Mở khóa đơn vị'}">${isActive ? '🔒 Khóa' : '🔓 Mở'}</button>
-                                ${t.unit_code !== 'bvtks-cs2' ? `<button class="btn btn-sm btn-danger" onclick="deleteTenantPrompt('${t.unit_code}', '${encodeURIComponent(t.unit_name)}')" title="Xóa vĩnh viễn">🗑️ Xóa</button>` : ''}
+                                ${t.unit_code !== 'bvtks-cs2' && t.unit_code !== 'bvtks_cs2' ? `<button class="btn btn-sm btn-danger" onclick="deleteTenantPrompt('${t.unit_code}', '${encodeURIComponent(t.unit_name)}')" title="Xóa vĩnh viễn">🗑️ Xóa</button>` : ''}
                             </div>
                         </td>
                     </tr>
@@ -14809,6 +14817,16 @@ window.updateSubscriptionHeaderBadge = function (planTier, expiresAt, planName, 
         badge.title = 'Tài khoản Quản trị Tối cao (Super Admin) - Toàn quyền quản trị hệ thống';
         if (iconEl) iconEl.innerText = '👑';
         if (textEl) textEl.innerText = 'Hệ Thống T.I.M.E.S';
+        return;
+    }
+
+    const currentUnit = (sess.unit_code || localStorage.getItem('pm_unit_code') || '').toLowerCase();
+    // Đơn vị bvtks-cs2 hoặc gói ENTERPRISE: Luôn là Bản quyền Vĩnh viễn
+    if (currentUnit === 'bvtks-cs2' || currentUnit === 'bvtks_cs2' || pTier === 'ENTERPRISE' || pName.toLowerCase().includes('vĩnh viễn')) {
+        badge.style.background = 'linear-gradient(135deg, #059669, #10b981)';
+        badge.title = 'Bệnh viện Than - Khoáng sản Cơ sở 2 - Bản quyền Vĩnh viễn trọn đời';
+        if (iconEl) iconEl.innerText = '💎';
+        if (textEl) textEl.innerText = 'Bản Quyền Vĩnh Viễn';
         return;
     }
 
