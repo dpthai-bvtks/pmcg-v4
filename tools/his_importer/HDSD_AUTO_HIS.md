@@ -42,13 +42,13 @@ Công cụ giúp tự động hóa 100% quá trình nhập ca thủ thuật từ
    - Bấm **`Bắt đầu thực hiện`** -> xác nhận **`Có`** (nếu chưa thực hiện).
    - Chuột phải vào từng thủ thuật -> chọn **`Nhập Thông Tin PTTT`**.
    - Click chuột và điền chính xác từng trường:
-     - **Thời gian bắt đầu \*** (hh:mm dd/MM/yyyy).
-     - **Thời gian kết thúc \*** (hh:mm dd/MM/yyyy).
+     - **Thời gian bắt đầu \***: Định dạng chuẩn `HH:MM mm/dd/yyyy` (Giờ - Phút - Tháng - Ngày - Năm).
+     - **Thời gian kết thúc \***: Định dạng chuẩn `HH:MM mm/dd/yyyy` (Giờ - Phút - Tháng - Ngày - Năm).
      - **Phương pháp vô cảm \***: `Khác`.
      - **Tình hình PTTT \***: `Chủ động`.
-     - **Máy y tế**: Theo máy đã xếp.
+     - **Máy y tế**: Theo máy đã xếp (hoặc để trống nếu không có máy).
      - **Mô tả thủ thuật**: `.`.
-     - **Ê-kíp thực hiện**: TT viên chính.
+     - **Ê-kíp PTTT (Dòng 1 TT viên chính)**: Tự động điền Họ và tên đầy đủ theo chuẩn HIS (ví dụ: *Đặng Phong Thái*).
      - Bấm **`💾 Lưu + Đóng`**.
    - Sau khi hoàn thành thủ thuật cuối của bệnh nhân: Tự động bấm nút **`Trả Kết Quả`** ở góc dưới bên phải màn hình HIS!
 5. Khi hoàn tất nhân viên đó, chuyển sang đăng nhập nhân viên tiếp theo và lặp lại bước 3.
