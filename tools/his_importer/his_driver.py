@@ -192,74 +192,131 @@ class HISDriver:
             self.log("ℹ️ Nút 'Bắt Đầu Thực Hiện' không khả dụng hoặc ca đã bắt đầu.")
             return True
 
-    def open_procedure_modal(self, row_index=0):
+    def open_procedure_modal(self, row_index=0, procedure_name=""):
         """
-        Chuột phải vào dòng thủ thuật (mListViewKetQua) -> chọn 'Nhập Thông Tin PTTT'
+        Quy trình chuẩn:
+        1. Click chuột trái chọn dòng thủ thuật cần nhập trong bảng mListViewKetQua.
+        2. Chuột phải vào chính dòng đó để mở menu tác vụ (ContextMenu).
+        3. Click chọn mục 'Nhập Thông Tin PTTT' để mở form cập nhật thủ thuật.
         """
         win = self.bring_to_front()
         lv_kq = win.ListControl(AutomationId="mListViewKetQua")
         if not lv_kq.Exists(3, 0):
             raise RuntimeError("Không tìm thấy danh sách thủ thuật (mListViewKetQua)!")
 
-        items = [c for c in lv_kq.GetChildren() if c.ControlTypeName == 'ListItemControl']
-        if items and row_index < len(items):
-            item_rect = items[row_index].BoundingRectangle
-            click_x = item_rect.left + 120
-            click_y = (item_rect.top + item_rect.bottom) // 2
-        elif items:
-            item_rect = items[-1].BoundingRectangle
-            click_x = item_rect.left + 120
-            click_y = (item_rect.top + item_rect.bottom) // 2
-        else:
-            rect = lv_kq.BoundingRectangle
-            click_x = rect.left + 120
-            click_y = rect.top + 45 + (row_index * 26)
+        rect = lv_kq.BoundingRectangle
+        items = [c for c in lv_kq.GetChildren() if c.ControlTypeName in ('ListItemControl', 'DataItemControl', 'CustomControl')]
 
-        # 1. Click chuột trái chọn dòng thủ thuật
+        target_idx = row_index
+        target_rect = None
+
+        # 1. Tìm chính xác dòng thủ thuật theo tên nếu có danh sách item
+        if procedure_name and items:
+            proc_clean = procedure_name.lower().strip()
+            for idx, it in enumerate(items):
+                item_text = it.Name.lower()
+                for sub in it.GetChildren():
+                    item_text += " " + sub.Name.lower()
+                if proc_clean in item_text or any(w in item_text for w in proc_clean.split() if len(w) > 4):
+                    target_rect = it.BoundingRectangle
+                    target_idx = idx
+                    self.log(f"-> Đã khớp thủ thuật '{procedure_name}' tại dòng {idx+1}")
+                    break
+
+        if not target_rect and items and target_idx < len(items):
+            target_rect = items[target_idx].BoundingRectangle
+
+        if target_rect:
+            click_x = target_rect.left + 140
+            click_y = (target_rect.top + target_rect.bottom) // 2
+        else:
+            # Tiêu đề bảng ~24px, mỗi dòng ~22px
+            click_x = rect.left + 140
+            click_y = rect.top + 35 + (target_idx * 22)
+
+        # Bước 1: Click chuột trái chọn dòng thủ thuật
+        self.log(f"-> [Bước 1] Click chọn thủ thuật thứ {target_idx + 1} ({procedure_name or 'theo thứ tự'}) tại ({click_x}, {click_y})...")
         user32.SetForegroundWindow(win.NativeWindowHandle)
         time.sleep(0.2)
         pyautogui.click(click_x, click_y)
-        time.sleep(0.4)
+        time.sleep(0.35)
 
-        # 2. Click chuột phải mở Context Menu
-        self.log(f"Chuột phải vào dòng thủ thuật thứ {row_index+1}...")
+        # Bước 2: Chuột phải vào dòng thủ thuật để mở Menu tác vụ
+        self.log(f"-> [Bước 2] Chuột phải vào thủ thuật để mở Context Menu...")
         pyautogui.rightClick(click_x, click_y)
-        time.sleep(0.6)
+        time.sleep(0.5)
 
-        # 3. Chọn 'Nhập Thông Tin PTTT'
-        menu_item = auto.GetRootControl().MenuItemControl(searchDepth=3, RegexName="(?i).*Nhập Thông Tin PTTT.*")
-        if menu_item.Exists(0.5, 0):
-            self.log("Click mục menu 'Nhập Thông Tin PTTT'...")
-            menu_item.Click()
-        else:
-            self.log("Dùng phím Down 3 lần để chọn 'Nhập Thông Tin PTTT'...")
-            pyautogui.press('down')
-            time.sleep(0.12)
+        # Bước 3: Click chọn 'Nhập Thông Tin PTTT'
+        # Menu mở ra ngay tại vị trí (click_x, click_y)
+        # Mục 'Dịch Vụ' (tiêu đề): Y = 0..22px
+        # Mục 'Thanh Toán': Y = 22..44px
+        # Mục 'Nhập Thông Tin PTTT': Y = 44..66px (tâm y = click_y + 55px, x = click_x + 65px)
+        menu_x = click_x + 65
+        menu_y = click_y + 55
+        self.log(f"-> [Bước 3] Di chuyển chuột và chọn 'Nhập Thông Tin PTTT' tại ({menu_x}, {menu_y})...")
+        pyautogui.moveTo(menu_x, menu_y, duration=0.25)
+        time.sleep(0.15)
+        pyautogui.click(menu_x, menu_y)
+
+        # Kiểm tra xem form modal đã xuất hiện chưa
+        form = self.get_procedure_form(timeout=2.0)
+
+        # Nếu chuột chưa kích hoạt được menu, dùng bàn phím Down 2 lần (1: Thanh toán, 2: Nhập thông tin PTTT) rồi Enter
+        if not form:
+            self.log("ℹ️ Chưa phát hiện form, thử chọn bằng phím: Down (2 lần) + Enter...")
             pyautogui.press('down')
             time.sleep(0.12)
             pyautogui.press('down')
             time.sleep(0.12)
             pyautogui.press('enter')
+            form = self.get_procedure_form(timeout=2.0)
 
-        # Chờ modal form mở
-        time.sleep(1.2)
+        # Nếu vẫn chưa mở, thử phím tắt 'n' (Nhập thông tin) + Enter
+        if not form:
+            self.log("ℹ️ Thử lại bằng phím tắt 'n' + Enter...")
+            pyautogui.press('n')
+            time.sleep(0.15)
+            pyautogui.press('enter')
+            form = self.get_procedure_form(timeout=2.0)
 
-    def get_procedure_form(self, timeout=8):
+        # Nếu vẫn chưa mở, thử tìm MenuItemControl qua UI Automation
+        if not form:
+            self.log("ℹ️ Quét tìm MenuItemControl qua UI Automation...")
+            for w in auto.GetRootControl().GetChildren():
+                m = w.MenuItemControl(searchDepth=3, RegexName="(?i).*Nhập Thông Tin PTTT.*")
+                if m.Exists(0, 0):
+                    m.Click()
+                    break
+            form = self.get_procedure_form(timeout=2.5)
+
+        if not form:
+            raise RuntimeError("Không thể mở form 'Cập Nhật Thông Tin Thủ Thuật'! Vui lòng kiểm tra lại màn hình HIS.")
+
+        self.log("✅ Đã mở thành công form 'Cập Nhật Thông Tin Thủ Thuật'.")
+        return form
+
+    def get_procedure_form(self, timeout=6):
         """Tìm cửa sổ modal 'Cập Nhật Thông Tin Thủ Thuật' từ Desktop Root"""
         self.ensure_default_desktop()
         start_t = time.time()
         while time.time() - start_t < timeout:
-            modal = auto.GetRootControl().WindowControl(searchDepth=2, RegexName=".*Cập Nhật Thông Tin Thủ Thuật.*")
-            if modal.Exists(0, 0) and modal.BoundingRectangle.width() > 100:
+            modal = auto.GetRootControl().WindowControl(searchDepth=3, RegexName="(?i).*cập nhật thông tin.*|.*thủ thuật.*|.*pttt.*")
+            if modal.Exists(0, 0) and modal.BoundingRectangle.width() > 150:
                 return modal
-            time.sleep(0.3)
+            for w in auto.GetRootControl().GetChildren():
+                if w.ControlTypeName == 'WindowControl' and w.BoundingRectangle.width() > 150:
+                    n = w.Name.lower()
+                    if "thủ thuật" in n or "cập nhật thông tin" in n or "pttt" in n:
+                        return w
+            time.sleep(0.25)
         return None
 
-    def fill_procedure_form(self, start_time_str, end_time_str, may_y_te="", nv_chinh=""):
+    def fill_procedure_form(self, form=None, start_time_str="", end_time_str="", may_y_te="", nv_chinh=""):
         """
         Điền các thông tin vào form 'Cập Nhật Thông Tin Thủ Thuật'
         """
-        form = self.get_procedure_form(timeout=8)
+        if not form:
+            form = self.get_procedure_form(timeout=5)
         if not form:
             raise RuntimeError("Không tìm thấy form 'Cập Nhật Thông Tin Thủ Thuật' sau khi mở menu!")
 
@@ -270,6 +327,7 @@ class HISDriver:
 
         fx = form_rect.left
         fy = form_rect.top
+        self.log(f"Form PTTT kích thước: {form_rect.width()}x{form_rect.height()} tại ({fx}, {fy})")
 
         # 1. Thời gian bắt đầu: ô giờ bắt đầu
         self.log(f"-> Điền Thời gian bắt đầu: {start_time_str}")

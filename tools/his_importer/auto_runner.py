@@ -110,11 +110,12 @@ class AutoRunner:
 
                         self.log(f"--- Thủ thuật {p_idx+1}/{len(procs)}: {tt_name} ---")
                         try:
-                            self.driver.open_procedure_modal(p_idx)
-                            if not self.wait_with_stop_check(1.0):
+                            form = self.driver.open_procedure_modal(p_idx, procedure_name=tt_name)
+                            if not self.wait_with_stop_check(0.8):
                                 break
 
                             self.driver.fill_procedure_form(
+                                form=form,
                                 start_time_str=start_str,
                                 end_time_str=end_str,
                                 may_y_te=may,
