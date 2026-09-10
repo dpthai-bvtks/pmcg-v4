@@ -326,7 +326,16 @@ class HISDriver:
 
     def fill_procedure_form(self, form=None, start_time_str="", end_time_str="", may_y_te="", nv_chinh=""):
         """
-        Điền các thông tin vào form 'Cập Nhật Thông Tin Thủ Thuật'
+        Điền chuẩn xác các thông tin vào form 'Cập Nhật Thông Tin Thủ Thuật'
+        Tọa độ được tính theo tỉ lệ phần trăm chuẩn xác từ ảnh thực tế giao diện:
+        - Thời gian bắt đầu: (X: 41.50%, Y: 20.99%)
+        - Thời gian kết thúc: (X: 63.96%, Y: 20.99%)
+        - Phương pháp vô cảm: (X: 52.73%, Y: 50.83%) -> 'Khác'
+        - Tình hình PTTT: (X: 17.58%, Y: 54.70%) -> 'Chủ động'
+        - Máy y tế: (X: 62.50%, Y: 58.56%) -> [may_y_te]
+        - Mô tả thủ thuật: (X: 21.48%, Y: 81.03%) -> '.'
+        - Ê-kíp PTTT - TT viên chính: (X: 87.89%, Y: 21.92%) -> [nv_chinh]
+        - Lưu + Đóng: (X: 94.73%, Y: 97.24%)
         """
         if not form:
             form = self.get_procedure_form(timeout=5)
@@ -338,50 +347,49 @@ class HISDriver:
         user32.SetForegroundWindow(form_hwnd)
         time.sleep(0.3)
 
+        fw = form_rect.width()
+        fh = form_rect.height()
         fx = form_rect.left
         fy = form_rect.top
-        self.log(f"Form PTTT kích thước: {form_rect.width()}x{form_rect.height()} tại ({fx}, {fy})")
+        self.log(f"Form PTTT: Kích thước {fw}x{fh} tại ({fx}, {fy})")
 
-        # 1. Thời gian bắt đầu: ô giờ bắt đầu
-        self.log(f"-> Điền Thời gian bắt đầu: {start_time_str}")
-        self._click_and_type(fx + 310, fy + 215, start_time_str)
+        # 1. Thời gian bắt đầu: ô giờ bắt đầu (X: 41.50%, Y: 20.99%)
+        self.log(f"-> [1] Điền Thời gian bắt đầu: {start_time_str}")
+        self._click_and_type(fx + int(fw * 0.4150), fy + int(fh * 0.2099), start_time_str)
 
-        # 2. Thời gian kết thúc: ô giờ kết thúc
-        self.log(f"-> Điền Thời gian kết thúc: {end_time_str}")
-        self._click_and_type(fx + 650, fy + 215, end_time_str)
+        # 2. Thời gian kết thúc: ô giờ kết thúc (X: 63.96%, Y: 20.99%)
+        self.log(f"-> [2] Điền Thời gian kết thúc: {end_time_str}")
+        self._click_and_type(fx + int(fw * 0.6396), fy + int(fh * 0.2099), end_time_str)
 
-        # 3. Phương pháp vô cảm (mặc định 'Khác')
-        self.log("-> Chọn Phương pháp vô cảm: Khác")
-        self._select_dropdown(fx + 350, fy + 515, "Khác")
+        # 3. Phương pháp vô cảm (mặc định 'Khác') (X: 52.73%, Y: 50.83%)
+        self.log("-> [3] Chọn Phương pháp vô cảm: Khác")
+        self._select_dropdown(fx + int(fw * 0.5273), fy + int(fh * 0.5083), "Khác")
 
-        # 4. Tình hình PTTT (mặc định 'Chủ động')
-        self.log("-> Chọn Tình hình PTTT: Chủ động")
-        self._select_dropdown(fx + 160, fy + 545, "Chủ động")
+        # 4. Tình hình PTTT (mặc định 'Chủ động') (X: 17.58%, Y: 54.70%)
+        self.log("-> [4] Chọn Tình hình PTTT: Chủ động")
+        self._select_dropdown(fx + int(fw * 0.1758), fy + int(fh * 0.5470), "Chủ động")
 
-        # 5. Máy y tế
+        # 5. Máy y tế (X: 62.50%, Y: 58.56%)
         if may_y_te:
-            self.log(f"-> Chọn Máy y tế: {may_y_te}")
-            self._select_dropdown(fx + 620, fy + 580, may_y_te)
+            self.log(f"-> [5] Chọn Máy y tế: {may_y_te}")
+            self._select_dropdown(fx + int(fw * 0.6250), fy + int(fh * 0.5856), may_y_te)
 
-        # 6. Mô tả thủ thuật (mặc định '.')
-        self.log("-> Điền Mô tả thủ thuật: .")
-        self._click_and_type(fx + 100, fy + 750, ".")
+        # 6. Mô tả thủ thuật (mặc định '.') (X: 21.48%, Y: 81.03%)
+        self.log("-> [6] Điền Mô tả thủ thuật: .")
+        self._click_and_type(fx + int(fw * 0.2148), fy + int(fh * 0.8103), ".")
 
-        # 7. Ê-kíp PTTT: Dòng 1 (TT viên chính)
+        # 7. Ê-kíp PTTT: Dòng 1 (TT viên chính) (X: 87.89%, Y: 21.92%)
         if nv_chinh:
-            self.log(f"-> Điền TT viên chính: {nv_chinh}")
-            self._click_and_type(fx + 850, fy + 215, nv_chinh)
+            self.log(f"-> [7] Điền TT viên chính: {nv_chinh}")
+            self._fill_grid_cell(fx + int(fw * 0.8789), fy + int(fh * 0.2192), nv_chinh)
 
-        # 8. Bấm Lưu + Đóng
-        self.log("-> Bấm Lưu + Đóng...")
-        btn_save_close = form.ButtonControl(Name="Lưu + Đóng")
-        if not btn_save_close.Exists(0, 0):
-            btn_save_close = form.ButtonControl(RegexName=r"(?i).*lưu \+ đóng.*")
-
+        # 8. Bấm Lưu + Đóng (X: 94.73%, Y: 97.24%)
+        self.log("-> [8] Bấm Lưu + Đóng...")
+        btn_save_close = form.ButtonControl(RegexName=r"(?i).*lưu \+ đóng.*")
         if btn_save_close.Exists(0.5, 0):
             btn_save_close.Click()
         else:
-            pyautogui.click(form_rect.right - 55, form_rect.bottom - 25)
+            pyautogui.click(fx + int(fw * 0.9473), fy + int(fh * 0.9724))
 
         time.sleep(1.5)
 
@@ -429,3 +437,19 @@ class HISDriver:
         time.sleep(0.15)
         pyautogui.press('enter')
         time.sleep(0.15)
+        pyautogui.press('tab')
+        time.sleep(0.1)
+
+    def _fill_grid_cell(self, x, y, value):
+        pyautogui.click(x, y)
+        time.sleep(0.15)
+        pyautogui.doubleClick(x, y)
+        time.sleep(0.15)
+        pyautogui.hotkey('ctrl', 'a')
+        pyperclip.copy(value)
+        pyautogui.hotkey('ctrl', 'v')
+        time.sleep(0.2)
+        pyautogui.press('enter')
+        time.sleep(0.15)
+        pyautogui.press('tab')
+        time.sleep(0.1)
