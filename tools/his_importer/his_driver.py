@@ -442,13 +442,13 @@ class HISDriver:
     def fill_procedure_form(self, form=None, start_time_str="", end_time_str="", may_y_te="", nv_chinh=""):
         """
         Điền chuẩn xác 100% các thông tin vào form 'Cập Nhật Thông Tin Thủ Thuật':
-        - Thời gian bắt đầu: (X: 40.33%, Y: 20.99%) -> Gõ theo phân đoạn: [Giờ] -> Right -> [Phút] -> Right -> [Ngày] -> Right -> [Tháng] -> Right -> [Năm].
-        - Thời gian kết thúc: (X: 66.11%, Y: 20.99%) -> Gõ theo phân đoạn (Đảm bảo giờ kết thúc luôn sau giờ bắt đầu).
+        - Thời gian bắt đầu & kết thúc: Định dạng 'HH:MM mm/dd/yyyy' ([Giờ] [Phút] [Tháng] [Ngày] [Năm]).
+          Gõ đúng 12 chữ số liên tiếp (tự động chuyển phân đoạn, KHÔNG gửi phím Right).
         - Phương pháp vô cảm: (X: 52.73%, Y: 50.83%) -> 'Khác'.
-        - Tình hình PTTT: (X: 16.60%, Y: 54.92%) -> 'Chủ động'.
+        - Tình hình PTTT: (X: 16.60%, Y: 54.92%) -> Luôn chọn 'Chủ động' (Home + Enter).
         - Máy y tế: (X: 62.50%, Y: 58.56%) -> [may_y_te].
         - Mô tả thủ thuật: (X: 21.48%, Y: 81.03%) -> '.'.
-        - Ê-kíp PTTT - TT viên chính: (X: 87.89%, Y: 20.99%) -> Họ tên đầy đủ chuẩn HIS (ví dụ: 'Đặng Phong Thái').
+        - Ê-kíp PTTT - TT viên chính: (X: 90.82%, Y: 22.01%) -> Họ tên đầy đủ chuẩn HIS (ví dụ: 'Đặng Phong Thái').
         - Lưu + Đóng: (X: 93.55%, Y: 96.35%).
         """
         if not form:
@@ -497,23 +497,39 @@ class HISDriver:
         except Exception:
             pass
 
+        # Tách các thành phần Giờ, Phút, Tháng, Ngày, Năm theo chuẩn HH:MM mm/dd/yyyy
+        t_s_parts = t_start.split(":")
+        d_s_parts = d_start.split("/")
+        h_s = t_s_parts[0].zfill(2)
+        m_s = t_s_parts[1].zfill(2) if len(t_s_parts) > 1 else "00"
+        d_s = d_s_parts[0].zfill(2) if len(d_s_parts) > 0 else "10"
+        mo_s = d_s_parts[1].zfill(2) if len(d_s_parts) > 1 else "09"
+        y_s = d_s_parts[2] if len(d_s_parts) > 2 else "2026"
+
+        t_e_parts = t_end.split(":")
+        d_e_parts = d_end.split("/")
+        h_e = t_e_parts[0].zfill(2)
+        m_e = t_e_parts[1].zfill(2) if len(t_e_parts) > 1 else "30"
+        d_e = d_e_parts[0].zfill(2) if len(d_e_parts) > 0 else "10"
+        mo_e = d_e_parts[1].zfill(2) if len(d_e_parts) > 1 else "09"
+        y_e = d_e_parts[2] if len(d_e_parts) > 2 else "2026"
+
         # 2. Ánh xạ tên nhân sự sang Họ và tên đầy đủ theo chuẩn HIS
         nv_full = get_his_full_name(nv_chinh)
         if not nv_full:
-            # Fallback lấy người đang đăng nhập nếu không truyền tên
             nv_full = self.get_current_logged_in_user() or "Đặng Phong Thái"
 
-        # [1] Thời gian bắt đầu: (Tọa độ X: 40.33%, Y: 20.99%)
-        self.log(f"-> [1] Điền Thời gian bắt đầu: {t_start} {d_start}")
-        x_batdau = fx + int(fw * 0.4033) - 20
-        y_batdau = fy + int(fh * 0.2099)
-        self._fill_datetime(x_batdau, y_batdau, t_start, d_start)
+        # [1] Thời gian bắt đầu: (Tọa độ X: 36.60%, Y: 21.83%) định dạng HH:MM mm/dd/yyyy
+        self.log(f"-> [1] Điền Thời gian bắt đầu (HH:MM mm/dd/yyyy): {h_s}:{m_s} {mo_s}/{d_s}/{y_s}")
+        x_batdau = fx + int(fw * 0.3660)
+        y_batdau = fy + int(fh * 0.2183)
+        self._fill_datetime(x_batdau, y_batdau, h_s, m_s, mo_s, d_s, y_s)
 
-        # [2] Thời gian kết thúc: (Tọa độ X: 66.11%, Y: 20.99%)
-        self.log(f"-> [2] Điền Thời gian kết thúc: {t_end} {d_end}")
-        x_ketthuc = fx + int(fw * 0.6611) - 20
-        y_ketthuc = fy + int(fh * 0.2099)
-        self._fill_datetime(x_ketthuc, y_ketthuc, t_end, d_end)
+        # [2] Thời gian kết thúc: (Tọa độ X: 61.85%, Y: 21.83%) định dạng HH:MM mm/dd/yyyy
+        self.log(f"-> [2] Điền Thời gian kết thúc (HH:MM mm/dd/yyyy): {h_e}:{m_e} {mo_e}/{d_e}/{y_e}")
+        x_ketthuc = fx + int(fw * 0.6185)
+        y_ketthuc = fy + int(fh * 0.2183)
+        self._fill_datetime(x_ketthuc, y_ketthuc, h_e, m_e, mo_e, d_e, y_e)
 
         # [3] Phương pháp vô cảm (mặc định 'Khác') (X: 52.73%, Y: 50.83%)
         self.log("-> [3] Chọn Phương pháp vô cảm: Khác")
@@ -532,10 +548,10 @@ class HISDriver:
         self.log("-> [6] Điền Mô tả thủ thuật: .")
         self._click_and_type(fx + int(fw * 0.2148), fy + int(fh * 0.8103), ".")
 
-        # [7] Ê-kíp PTTT: Dòng 1 TT viên chính (X: 87.89%, Y: 20.99%)
+        # [7] Ê-kíp PTTT: Dòng 1 TT viên chính (X: 88.00%, Y: 22.01%)
         if nv_full:
             self.log(f"-> [7] Điền TT viên chính (Tên đầy đủ chuẩn HIS): '{nv_full}'")
-            self._fill_grid_cell(fx + int(fw * 0.8789), fy + int(fh * 0.2099), nv_full)
+            self._fill_grid_cell(fx + int(fw * 0.8800), fy + int(fh * 0.2201), nv_full)
 
         # [8] Bấm Lưu + Đóng (X: 93.55%, Y: 96.35%)
         self.log("-> [8] Bấm Lưu + Đóng...")
@@ -579,74 +595,39 @@ class HISDriver:
             self.log("Nút 'Trả Kết Quả' không hiển thị hoặc ca này đã được trả kết quả trước đó.")
             return False
 
-    def _fill_datetime(self, x, y, time_str, date_str):
+    def _fill_datetime(self, x, y, h_val, m_val, mo_val, d_val, y_val):
         """
-        Điền DateTimePicker WinForms định dạng 'HH:mm dd/MM/yyyy' theo từng phân đoạn
-        [Giờ] -> Right -> [Phút] -> Right -> [Ngày] -> Right -> [Tháng] -> Right -> [Năm]
+        Điền DateTimePicker WinForms định dạng 'HH:MM mm/dd/yyyy'
+        Gõ 12 chữ số liên tiếp: [Giờ (2)] + [Phút (2)] + [Tháng (2)] + [Ngày (2)] + [Năm (4)]
+        - Click vào vị trí Giờ ở bên trái ô.
+        - Gửi 5 lần phím Left để ép con trỏ chuột về tuyệt đối phân đoạn đầu tiên (Giờ - HH).
+        - Gõ liên tiếp 12 chữ số: HH MM mm dd yyyy.
+        - TUYỆT ĐỐI KHÔNG gửi phím Right (tránh nhảy đúp và tràn phím sang ô khác).
         """
-        time_norm = normalize_time(time_str)
-        date_norm = normalize_date(date_str)
-        
-        t_parts = time_norm.split(":")
-        d_parts = date_norm.split("/")
-        
-        h_val = t_parts[0].zfill(2)
-        m_val = t_parts[1].zfill(2) if len(t_parts) > 1 else "00"
-        
-        d_val = d_parts[0].zfill(2) if len(d_parts) > 0 else "01"
-        mo_val = d_parts[1].zfill(2) if len(d_parts) > 1 else "01"
-        y_val = d_parts[2] if len(d_parts) > 2 else "2026"
+        digits_12 = f"{h_val}{m_val}{mo_val}{d_val}{y_val}"
 
-        # 1. Click vào bên trong ô
+        # 1. Click vào bên trong ô (phần Giờ)
         pyautogui.click(x, y)
-        time.sleep(0.15)
+        time.sleep(0.12)
         
-        # 2. Về đầu tiên (Hour)
-        pyautogui.press('home')
-        time.sleep(0.06)
-        pyautogui.press('home')
-        time.sleep(0.06)
+        # 2. Bấm phím Left 5 lần để đảm bảo 100% con trỏ đang ở phân đoạn đầu tiên (Giờ)
+        for _ in range(5):
+            pyautogui.press('left')
+            time.sleep(0.03)
         
-        # 3. Gõ từng phân đoạn kèm phím Right
-        pyautogui.write(h_val, interval=0.04)
-        time.sleep(0.06)
-        pyautogui.press('right')
-        time.sleep(0.06)
-        
-        pyautogui.write(m_val, interval=0.04)
-        time.sleep(0.06)
-        pyautogui.press('right')
-        time.sleep(0.06)
-        
-        pyautogui.write(d_val, interval=0.04)
-        time.sleep(0.06)
-        pyautogui.press('right')
-        time.sleep(0.06)
-        
-        pyautogui.write(mo_val, interval=0.04)
-        time.sleep(0.06)
-        pyautogui.press('right')
-        time.sleep(0.06)
-        
-        pyautogui.write(y_val, interval=0.04)
-        time.sleep(0.08)
+        # 3. Gõ đúng 12 chữ số liên tiếp với tốc độ 0.05s/phím
+        pyautogui.write(digits_12, interval=0.05)
+        time.sleep(0.12)
 
     def _select_tinh_hinh_pttt(self, x, y):
         """
-        Chọn Tình hình PTTT: mặc định là 'Chủ động'
-        Hỗ trợ cả DropDownList và DropDown thường
+        Chọn Tình hình PTTT: luôn chọn 'Chủ động'
         """
         pyautogui.click(x, y)
         time.sleep(0.15)
-        # Thử paste trước (nếu là DropDown editable)
-        pyperclip.copy("Chủ động")
-        pyautogui.hotkey('ctrl', 'a')
-        time.sleep(0.05)
-        pyautogui.hotkey('ctrl', 'v')
-        time.sleep(0.1)
-        # Với WinForms DropDownList: phím 'c' hoặc 'C' nhảy tới 'Chủ động'
-        pyautogui.press('c')
-        time.sleep(0.1)
+        # Bấm Home để luôn về mục đầu tiên là 'Chủ động' (tránh bấm 'c' bị nhảy sang 'Cấp cứu')
+        pyautogui.press('home')
+        time.sleep(0.08)
         pyautogui.press('enter')
         time.sleep(0.1)
 
@@ -672,22 +653,28 @@ class HISDriver:
 
     def _fill_grid_cell(self, x, y, value):
         """
-        Điền ô Nhân Viên trong bảng Ê-kíp PTTT:
-        - Click chọn ô
-        - Nhấn F2 để vào chế độ soạn thảo
-        - Copy và paste Họ tên đầy đủ chuẩn HIS
-        - Nhấn Enter 1 lần để xác nhận chọn
+        Điền ô Nhân Viên trong bảng Ê-kíp PTTT (Dòng 1 TT viên chính):
+        - Click vào tâm ô Nhân Viên dòng 1
+        - Double-click để vào chế độ soạn thảo của ô
+        - Nhấn F2
+        - Dán Họ tên đầy đủ chuẩn HIS (ví dụ: 'Đặng Phong Thái')
+        - Nhấn Enter và Tab để xác nhận và lưu giá trị ô
         """
         if not value:
             return
         pyautogui.click(x, y)
-        time.sleep(0.2)
+        time.sleep(0.15)
+        pyautogui.doubleClick(x, y)
+        time.sleep(0.15)
         pyautogui.press('f2')
-        time.sleep(0.1)
+        time.sleep(0.08)
         pyperclip.copy(value)
         pyautogui.hotkey('ctrl', 'a')
-        time.sleep(0.08)
+        time.sleep(0.06)
         pyautogui.hotkey('ctrl', 'v')
         time.sleep(0.2)
         pyautogui.press('enter')
-        time.sleep(0.2)
+        time.sleep(0.15)
+        pyautogui.press('tab')
+        time.sleep(0.1)
+
