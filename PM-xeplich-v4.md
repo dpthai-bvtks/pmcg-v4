@@ -2758,8 +2758,38 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `tools/his_importer/auto_runner.py`
   + `tools/his_importer/app_gui.py`
   + `tools/his_importer/run_auto_his.bat`
-  + `tools/his_importer/HDSD_AUTO_HIS.md`
   + `PM-xeplich-v4.md`
+
+### ⏱ Tối Ưu Dải Thời Lượng Thủ Thuật Theo Chuẩn Bội Số 5 Phút (10/09/2026 - v4.0.5-rev1)
+- **Yêu cầu của người dùng**:
+  + Xem xét trường hợp ca "sóng ngắn" của bệnh nhân Ngô Văn Tùng được xếp từ 08:11 - 08:27 (tổng 16 phút), trong khi cấu hình thủ thuật là Min 15 phút, Max 20 phút.
+  + Áp dụng Phương án 2: Ưu tiên các mốc chẵn chia hết cho 5 phút trước (15p, 20p, 25p...), dùng phút lẻ làm phương án dự phòng để cứu ca không bị rớt.
+  + Tuân thủ nghiêm ngặt toàn bộ quy tắc trong `RULES.md`.
+- **Phân tích nguyên nhân & Giải pháp triển khai**:
+  1. **Nguyên nhân thời lượng 16 phút**:
+     - Trước đây, vòng lặp sinh các cặp ứng viên `candidatePairs` cho dải Min-Max trong `js/scheduler-engine.js` duyệt tuyến tính `m++` (`15 -> 16 -> 17 -> 18 -> 19 -> 20`).
+     - Khi bắt đầu lúc 08:11, mốc 15 phút kết thúc lúc 08:26. Tại phút 08:26, KTV Phan Hiền bận thao tác cho ca khác nên vướng kiểm tra teardown (tháo máy).
+     - Do vòng lặp thử số 16 ngay sau 15, và tại 08:27 KTV rảnh tay nên thuật toán chọn ngay 16 phút trước khi kịp xét đến mốc chuẩn 20 phút.
+  2. **Giải pháp thực hiện (Phương án 2)**:
+     - Bổ sung hàm `getCandidateDurations(minD, maxD)` trong `_turbo_core_logic`:
+       + Luôn đưa mốc tối thiểu `minD` vào đầu tiên.
+       + Ưu tiên gom toàn bộ các mốc chia hết cho 5 phút (`d % 5 === 0`) trong khoảng `[minD, maxD]` lên trước (ví dụ với dải 15-20: `[15, 20]`; với dải 20-30: `[20, 25, 30]`).
+       + Các mốc phút lẻ (`16, 17, 18, 19...`) được xếp vào nhóm sau cùng làm phương án dự phòng.
+       + Nhờ đó, nếu mốc 15 phút bị vướng KTV bận rút máy, thuật toán sẽ thử ngay mốc 20 phút (hoặc mốc tròn 5 phút tiếp theo) trước khi dùng đến các số phút lẻ.
+     - Áp dụng đồng bộ cho cả thủ thuật liên tục 1:1 (`isContinuous`) và thủ thuật máy móc có dải thời gian (`tgMayMax > baseTgMay || tgNvMax > tgNvMin`).
+  3. **Tuân thủ RULES.md**:
+     - Rule 1: Kiểm tra cú pháp toàn diện bằng `node -c js/init.js; node -c js/app.js; node -c js/scheduler-engine.js; node -c backend/src/index.js` (100% không lỗi).
+     - Rule 3: Sang ngày mới 10/09/2026, nâng version chính lên `4.0.5`, revision `rev1`. Đồng bộ `version.json`, `index.html` (cache buster `?v=4.0.5-rev1`, footer timestamp `14:20 10/09/2026`, `APP_VERSION = '4.0.5-rev1'`), `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.5-rev1'`), và `backend/package.json` (`4.0.5`).
+     - Rule 4: Deploy Cloudflare Pages bằng lệnh `npm run deploy:web` từ thư mục `backend/`.
+     - Rule 5: Commit và push mã nguồn lên nhánh `main` trên GitHub.
+- **File sửa đổi**:
+  + `js/scheduler-engine.js`
+  + `index.html`
+  + `sw.js`
+  + `version.json`
+  + `backend/package.json`
+  + `PM-xeplich-v4.md`
+
 
 
 

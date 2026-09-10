@@ -484,17 +484,36 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
                       || (loaiMay === 'Thủ công' && baseTgMay === tgNvMin)
                       || (baseTgMay === tgNvMin && tgNvMin >= 10);
     
+    // Phương án 2: Ưu tiên các mốc chẵn chia hết cho 5 phút trước (chuẩn nghiệp vụ YHCT-PHCN),
+    // sau đó mới đến các mốc phút lẻ làm dự phòng để cứu ca không bị rớt.
+    function getCandidateDurations(minD, maxD) {
+      if (minD >= maxD) return [minD];
+      const roundSteps = [minD];
+      const oddSteps = [];
+      for (let d = minD + 1; d <= maxD; d++) {
+        if (d % 5 === 0) {
+          roundSteps.push(d);
+        } else {
+          oddSteps.push(d);
+        }
+      }
+      return [...roundSteps, ...oddSteps];
+    }
+
     let candidatePairs = [];
     if (isContinuous) {
       // Đối với thủ thuật liên tục: Thời gian thực hiện (NV bận) BẮT BUỘC BẰNG Thời gian thủ thuật (BN điều trị)
       const minDur = Math.max(baseTgMay, tgNvMin);
       const maxDur = Math.max(tgMayMax, tgNvMax);
-      for (let d = minDur; d <= maxDur; d++) {
+      const durCandidates = getCandidateDurations(minDur, maxDur);
+      for (const d of durCandidates) {
         candidatePairs.push({ tgMay: d, tgNv: d });
       }
     } else if (tgMayMax > baseTgMay || tgNvMax > tgNvMin) {
-      for (let m = baseTgMay; m <= tgMayMax; m++) {
-        for (let nv = tgNvMin; nv <= tgNvMax; nv++) {
+      const mCandidates = getCandidateDurations(baseTgMay, tgMayMax);
+      const nvCandidates = getCandidateDurations(tgNvMin, tgNvMax);
+      for (const m of mCandidates) {
+        for (const nv of nvCandidates) {
           if (nv <= m) {
             candidatePairs.push({ tgMay: m, tgNv: nv });
           }
