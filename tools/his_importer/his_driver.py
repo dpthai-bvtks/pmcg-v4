@@ -464,11 +464,13 @@ class HISDriver:
         user32.SetForegroundWindow(form_hwnd)
         time.sleep(0.3)
 
-        # Phóng to cửa sổ (SW_MAXIMIZE = 3) để đảm bảo giao diện luôn hiển thị đồng nhất
-        user32.ShowWindow(form_hwnd, 3)
-        time.sleep(0.4)
+        # Cố định cửa sổ tại (0, 0) với kích thước chuẩn 1686x856 khớp 100% video thực tế test2.mp4
+        user32.ShowWindow(form_hwnd, 1) # SW_SHOWNORMAL = 1
+        time.sleep(0.1)
+        user32.MoveWindow(form_hwnd, 0, 0, 1686, 856, True)
+        time.sleep(0.3)
 
-        # Lấy kích thước thực tế sau khi phóng to
+        # Lấy kích thước và vị trí thực tế của form
         form_rect = form.BoundingRectangle
         fw = form_rect.width()
         fh = form_rect.height()
@@ -506,7 +508,7 @@ class HISDriver:
         except Exception:
             pass
 
-        # Tách các thành phần Giờ, Phút, Tháng, Ngày, Năm theo chuẩn HH:MM mm/dd/yyyy
+        # Tách các thành phần Giờ, Phút, Ngày, Tháng, Năm theo chuẩn HH:mm dd/MM/yyyy
         t_s_parts = t_start.split(":")
         d_s_parts = d_start.split("/")
         h_s = t_s_parts[0].zfill(2)
@@ -528,43 +530,31 @@ class HISDriver:
         if not nv_full:
             nv_full = self.get_current_logged_in_user() or "Đặng Phong Thái"
 
-        # 3. Tính toán tọa độ chính xác theo độ phân giải hiển thị (Maximized vs Restored)
-        if fw >= 1400:
-            # Giao diện toàn màn hình (1920x1080 / 1900x998 theo video test.mp4)
-            x_batdau = fx + int(fw * 0.3237)
-            y_batdau = fy + int(fh * 0.1583)
-            x_ketthuc = fx + int(fw * 0.5500)
-            y_ketthuc = fy + int(fh * 0.1583)
-            x_vocam = fx + int(fw * 0.3800)
-            y_vocam = fy + int(fh * 0.4910)
-            x_tinhhinh = fx + int(fw * 0.1589)
-            y_tinhhinh = fy + int(fh * 0.5210)
-            x_may = fx + int(fw * 0.5674)
-            y_may = fy + int(fh * 0.5511)
-            x_mota = fx + int(fw * 0.1579)
-            y_mota = fy + int(fh * 0.7515)
-            x_ekip = fx + int(fw * 0.7789)
-            y_ekip = fy + int(fh * 0.2064)
-            x_save = fx + int(fw * 0.9710)
-            y_save = fy + int(fh * 0.8818)
-        else:
-            # Giao diện thu nhỏ / mặc định (1024x545)
-            x_batdau = fx + int(fw * 0.3660)
-            y_batdau = fy + int(fh * 0.2183)
-            x_ketthuc = fx + int(fw * 0.6185)
-            y_ketthuc = fy + int(fh * 0.2183)
-            x_vocam = fx + int(fw * 0.5273)
-            y_vocam = fy + int(fh * 0.5083)
-            x_tinhhinh = fx + int(fw * 0.1660)
-            y_tinhhinh = fy + int(fh * 0.5492)
-            x_may = fx + int(fw * 0.6250)
-            y_may = fy + int(fh * 0.5856)
-            x_mota = fx + int(fw * 0.2148)
-            y_mota = fy + int(fh * 0.8103)
-            x_ekip = fx + int(fw * 0.8800)
-            y_ekip = fy + int(fh * 0.2201)
-            x_save = fx + int(fw * 0.9355)
-            y_save = fy + int(fh * 0.9635)
+        # 3. Tọa độ pixel cố định chuẩn 100% trích xuất từ pixel thực tế trong video test2.mp4:
+        # Form Thông Tin PTTT có kích thước cố định 1686x856 (Top-Left tại fx, fy):
+        x_batdau = fx + 600
+        y_batdau = fy + 154
+
+        x_ketthuc = fx + 1070
+        y_ketthuc = fy + 154
+
+        x_vocam = fx + 650
+        y_vocam = fy + 428
+
+        x_tinhhinh = fx + 240
+        y_tinhhinh = fy + 455
+
+        x_may = fx + 1060
+        y_may = fy + 484
+
+        x_mota = fx + 250
+        y_mota = fy + 660
+
+        x_ekip = fx + 1500
+        y_ekip = fy + 160
+
+        x_save = fx + 1600
+        y_save = fy + 835
 
         # [1] Thời gian bắt đầu: định dạng HH:mm dd/MM/yyyy
         self.log(f"-> [1] Điền Thời gian bắt đầu (HH:mm dd/MM/yyyy): {h_s}:{m_s} {d_s}/{mo_s}/{y_s}")
@@ -645,25 +635,19 @@ class HISDriver:
         """
         Điền DateTimePicker WinForms định dạng 'HH:mm dd/MM/yyyy'
         Gõ 12 chữ số liên tiếp: [Giờ (2)] + [Phút (2)] + [Ngày (2)] + [Tháng (2)] + [Năm (4)]
-        - Click vào vị trí Giờ ở bên trái ô.
-        - Gửi 5 lần phím Left để ép con trỏ chuột về tuyệt đối phân đoạn đầu tiên (Giờ - HH).
-        - Gõ liên tiếp 12 chữ số: HH mm dd MM yyyy.
-        - TUYỆT ĐỐI KHÔNG gửi phím Right (tránh nhảy đúp và tràn phím sang ô khác).
+        - Click trực tiếp vào vị trí 2 chữ số Giờ (HH). Khi click, toàn bộ phân đoạn Giờ được bôi xanh.
+        - Gõ liên tiếp 12 chữ số: HH mm dd MM yyyy. Hệ thống DateTimePicker tự động nhảy qua từng phân đoạn.
+        - Tuyệt đối không bấm phím điều hướng Left/Right/Home/End tránh làm sai lệch con trỏ.
         """
         digits_12 = f"{h_val}{m_val}{d_val}{mo_val}{y_val}"
 
-        # 1. Click vào bên trong ô (phần Giờ)
+        # 1. Click trực tiếp vào vị trí 2 chữ số Giờ
         pyautogui.click(x, y)
-        time.sleep(0.12)
+        time.sleep(0.15)
         
-        # 2. Bấm phím Left 5 lần để đảm bảo 100% con trỏ đang ở phân đoạn đầu tiên (Giờ)
-        for _ in range(5):
-            pyautogui.press('left')
-            time.sleep(0.03)
-        
-        # 3. Gõ đúng 12 chữ số liên tiếp với tốc độ 0.05s/phím
+        # 2. Gõ đúng 12 chữ số liên tiếp với tốc độ 0.05s/phím
         pyautogui.write(digits_12, interval=0.05)
-        time.sleep(0.12)
+        time.sleep(0.15)
 
     def _select_tinh_hinh_pttt(self, x, y):
         """
