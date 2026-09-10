@@ -89,7 +89,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let hasValidSession = false;
     try {
         const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
-        if (sess && (sess.username || sess.role)) hasValidSession = true;
+        const token = localStorage.getItem('pm_jwt_token');
+        if (sess && (sess.username || sess.role) && token) hasValidSession = true;
     } catch(e) {}
 
     const savedUnit = hasValidSession ? (localStorage.getItem('pm_unit_code') || '') : '';
@@ -269,6 +270,9 @@ window.doLogin = function () {
                 const uUnit = (res.unit_code || unit).toLowerCase();
                 const uUnitName = res.unit_name || (uRole === 'SUPER_ADMIN' ? 'T.I.M.E.S SYSTEM' : 'Bệnh viện Than - Khoáng sản Cơ sở 2');
 
+                if (res.token) {
+                    localStorage.setItem('pm_jwt_token', res.token);
+                }
                 localStorage.setItem('pm_unit_code', uUnit);
                 localStorage.setItem('pm_unit_name', uUnitName);
                 localStorage.setItem('meds_session', JSON.stringify({

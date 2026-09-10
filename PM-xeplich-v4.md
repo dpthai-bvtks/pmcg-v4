@@ -2787,15 +2787,34 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `index.html`
   + `sw.js`
   + `version.json`
-  + `backend/package.json`
+### 🛡️ Triển Khai Bảo Mật Toàn Diện Giai Đoạn 1 & Giai Đoạn 2 (10/09/2026 - v4.0.5-rev2)
+- **Yêu cầu của người dùng**:
+  + Đọc toàn bộ các file trong thư mục `v4-thuongmai`, đánh giá các nguy cơ xâm nhập trái phép và thực hiện ngay Giai đoạn 1 & Giai đoạn 2 của phương án bảo mật toàn diện.
+  + Loại bỏ mọi backdoor, khắc phục lỗ hổng không có token xác thực, siết chặt CORS và phân quyền đa tầng RBAC.
+  + Tuân thủ nghiêm ngặt quy tắc trong `RULES.md`.
+- **Phân tích nguyên nhân & Giải pháp triển khai**:
+  1. **Các lỗ hổng nghiêm trọng đã được khắc phục**:
+     - *Loại bỏ kiến trúc Zero-Token*: Trước đây API chỉ nhận `x-unit-code` mà không có token kiểm tra phiên, ai cũng có thể giả mạo để đọc/ghi dữ liệu của bất kỳ đơn vị nào. Đã triển khai cơ chế xác thực vô trạng thái **JWT (JSON Web Token)** ký bằng thuật toán HMAC-SHA256 chuẩn Web Crypto API (`crypto.subtle`).
+     - *Xóa bỏ toàn bộ Backdoor*: Đã loại bỏ mật khẩu hardcode của SuperAdmin (`Master@2026!`, `admin123`) và backdoor quản trị đa đơn vị (`admin`, `dpt` với mật khẩu `123456`, `dpthai`, `bvtks`), cũng như bỏ kiểm tra so sánh mật khẩu plaintext `user.password_hash === password`.
+     - *Khắc phục BOLA / IDOR*: Mã đơn vị `unit_code` được bóc tách trực tiếp từ chữ ký số của JWT Token đã xác thực, người dùng không thể đổi mã đơn vị qua header hay body để tấn công chéo.
+     - *Phân quyền RBAC nghiêm ngặt*: Các action đặc quyền của Super Admin (`getTenantsList`, `addTenant`, `updateTenant`, `deleteTenant`, `toggleTenantStatus`, `exportAllDatabase`...) bắt buộc phải có `token.role === 'SUPER_ADMIN'`. Các action quản trị đơn vị (`saveAccount`, `deleteAccount`, `saveSystemSettings`...) chỉ cho phép Quản trị viên của chính đơn vị đó.
+     - *Siết chặt CORS Whitelist*: Thay thế `Access-Control-Allow-Origin: *` bằng whitelist domain chính thức (`https://www.xeplichthuthuat.io.vn`, `https://pmcg-v4.pages.dev`, localhost cho dev), bổ sung các Security Headers `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`.
+  2. **Nâng cấp Client Frontend**:
+     - Cập nhật `executeApiTask` trong `js/app.js`: Tự động đính kèm `Authorization: Bearer <token>` và bẫy lỗi 401 khi token hết hạn để kích hoạt modal đăng nhập lại kịp thời.
+     - Cập nhật `doLogin` trong cả `js/app.js` và `js/init.js`: Lưu trữ an toàn `pm_jwt_token`.
+     - Cập nhật quy trình kiểm tra session lúc khởi động: Yêu cầu cả `meds_session` và `pm_jwt_token` mới khôi phục đăng nhập, xóa sạch token khi đăng xuất.
+  3. **Tuân thủ RULES.md**:
+     - Rule 1: Kiểm tra cú pháp toàn diện bằng `node -c js/init.js; node -c js/app.js; node -c js/scheduler-engine.js; node -c backend/src/index.js` (100% không lỗi).
+     - Rule 3: Trong ngày 10/09/2026, tăng revision lên `4.0.5-rev2`. Đồng bộ `version.json`, `index.html` (cache buster `?v=4.0.5-rev2`, footer timestamp `15:45 10/09/2026`, `APP_VERSION = '4.0.5-rev2'`), `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.5-rev2'`), và `backend/package.json`.
+     - Rule 4: Tự động deploy lên Cloudflare bằng `cmd.exe /c "npm run deploy:all"`.
+     - Rule 5: Commit và push mã nguồn lên nhánh `main` trên GitHub.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `js/app.js`
+  + `js/init.js`
+  + `index.html`
+  + `sw.js`
+  + `version.json`
   + `PM-xeplich-v4.md`
-
-
-
-
-
-
-
-
 
 

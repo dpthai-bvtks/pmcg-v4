@@ -1,6 +1,6 @@
 {
-  "version": "4.0.5-rev1",
+  "version": "4.0.5-rev2",
   "releaseDate": "10/09/2026",
-  "releaseTime": "14:20 10/09/2026",
-  "notes": "Tối ưu thuật toán dải thời lượng thủ thuật: ưu tiên các mốc chẵn 5 phút (15p, 20p, 25p...) trước, dùng phút lẻ làm phương án dự phòng chống rớt ca."
+  "releaseTime": "15:45 10/09/2026",
+  "notes": "Triển khai bảo mật toàn diện: Xác thực JWT Token không trạng thái, loại bỏ hoàn toàn các backdoor hardcode, siết chặt CORS whitelist và phân quyền RBAC đa tầng."
 }

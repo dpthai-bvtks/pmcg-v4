@@ -170,90 +170,196 @@ function normalizeMonthKeys(inputStr) {
   return [...new Set(keys)];
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🛡️ WEB CRYPTO JWT (HMAC-SHA256) STATELESS AUTHENTICATION MODULE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function base64UrlEncode(bufferOrStr) {
+  let binStr = "";
+  if (typeof bufferOrStr === "string") {
+    const bytes = new TextEncoder().encode(bufferOrStr);
+    for (let i = 0; i < bytes.length; i++) binStr += String.fromCharCode(bytes[i]);
+  } else if (bufferOrStr instanceof ArrayBuffer) {
+    const bytes = new Uint8Array(bufferOrStr);
+    for (let i = 0; i < bytes.length; i++) binStr += String.fromCharCode(bytes[i]);
+  } else if (ArrayBuffer.isView(bufferOrStr)) {
+    const bytes = new Uint8Array(bufferOrStr.buffer, bufferOrStr.byteOffset, bufferOrStr.byteLength);
+    for (let i = 0; i < bytes.length; i++) binStr += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binStr).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64UrlDecode(str) {
+  let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
+  while (base64.length % 4) base64 += "=";
+  const binStr = atob(base64);
+  const bytes = new Uint8Array(binStr.length);
+  for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+function base64UrlToBytes(str) {
+  let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
+  while (base64.length % 4) base64 += "=";
+  const binStr = atob(base64);
+  const bytes = new Uint8Array(binStr.length);
+  for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+  return bytes;
+}
+
+async function signJwt(payload, secret) {
+  const enc = new TextEncoder();
+  const header = { alg: "HS256", typ: "JWT" };
+  const headerB64 = base64UrlEncode(JSON.stringify(header));
+  const payloadB64 = base64UrlEncode(JSON.stringify(payload));
+  const data = `${headerB64}.${payloadB64}`;
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sigBuf = await crypto.subtle.sign("HMAC", key, enc.encode(data));
+  const sigB64 = base64UrlEncode(sigBuf);
+  return `${data}.${sigB64}`;
+}
+
+async function verifyJwt(token, secret) {
+  if (!token || typeof token !== "string") return null;
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  const [headerB64, payloadB64, sigB64] = parts;
+  const data = `${headerB64}.${payloadB64}`;
+
+  try {
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      "raw",
+      enc.encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["verify"]
+    );
+
+    const sigBytes = base64UrlToBytes(sigB64);
+    const isValid = await crypto.subtle.verify("HMAC", key, sigBytes, enc.encode(data));
+    if (!isValid) return null;
+
+    const payload = JSON.parse(base64UrlDecode(payloadB64));
+    if (payload.exp && Math.floor(Date.now() / 1000) > payload.exp) {
+      return null;
+    }
+    return payload;
+  } catch (e) {
+    return null;
+  }
+}
+
 /**
- * CLOUDFLARE WORKER HONO BACKEND CHO PM-XEPLICH V3
- * Hoàn toàn tương thích 100% với toàn bộ 43 hàm và tham số của phiên bản V2
- * Tốc độ 10-25ms, Zero-CORS, D1 SQLite Database, Hono Edge Router
+ * CLOUDFLARE WORKER HONO BACKEND CHO PM-XEPLICH V4 THƯƠNG MẠI
+ * Bảo mật cao cấp: JWT Authentication, Strict CORS, RBAC & Multi-Tenant Clamping
  */
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, x-unit-code, X-Unit-Code, *",
-  "Access-Control-Max-Age": "86400"
-};
+const ALLOWED_ORIGINS = [
+  "https://www.xeplichthuthuat.io.vn",
+  "https://xeplichthuthuat.io.vn",
+  "https://pmcg-v4.pages.dev",
+  "https://pmcg-v3.pages.dev"
+];
 
-function jsonResponse(data, status = 200) {
+function getCorsOrigin(requestOrigin) {
+  if (!requestOrigin) return "https://www.xeplichthuthuat.io.vn";
+  const o = String(requestOrigin).trim();
+  if (ALLOWED_ORIGINS.includes(o) || o.startsWith("http://localhost:") || o.startsWith("http://127.0.0.1:")) {
+    return o;
+  }
+  return "https://www.xeplichthuthuat.io.vn";
+}
+
+function getCorsHeaders(origin = "") {
+  return {
+    "Access-Control-Allow-Origin": getCorsOrigin(origin),
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With, x-unit-code, X-Unit-Code",
+    "Access-Control-Max-Age": "86400",
+    "Vary": "Origin"
+  };
+}
+
+function jsonResponse(data, status = 200, origin = "") {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
-      ...CORS_HEADERS,
-      "Content-Type": "application/json; charset=utf-8"
+      ...getCorsHeaders(origin),
+      "Content-Type": "application/json; charset=utf-8",
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "SAMEORIGIN",
+      "Referrer-Policy": "strict-origin-when-cross-origin"
     }
   });
 }
 
-function success(data) {
-  return jsonResponse({ status: "success", data });
+function success(data, origin = "") {
+  return jsonResponse({ status: "success", data }, 200, origin);
 }
 
-function error(message, status = 400) {
-  return jsonResponse({ status: "error", error: message }, status);
+function error(message, status = 400, origin = "") {
+  return jsonResponse({ status: "error", error: message }, status, origin);
 }
 
 const app = new Hono();
 
-// Global CORS Middleware
+// Global CORS & Security Headers Middleware
 app.use('*', async (c, next) => {
+  const origin = c.req.header("Origin") || "";
+  const corsHeaders = getCorsHeaders(origin);
   if (c.req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
   await next();
-  c.header("Access-Control-Allow-Origin", "*");
-  c.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  c.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, x-unit-code, X-Unit-Code, *");
+  for (const [k, v] of Object.entries(corsHeaders)) {
+    c.header(k, v);
+  }
+  c.header("X-Content-Type-Options", "nosniff");
+  c.header("X-Frame-Options", "SAMEORIGIN");
+  c.header("Referrer-Policy", "strict-origin-when-cross-origin");
 });
 
 // Root & Health Check
 app.get('/', (c) => {
+  const origin = c.req.header("Origin") || "";
   return success({
-    message: "PM-XepLich v3 Cloudflare Hono API is running perfectly!",
-    version: "3.2.1",
+    message: "PM-XepLich v4 Multi-Tenant Cloudflare Hono API is running securely!",
+    version: "4.0.5-PRO",
     engine: "Hono on Cloudflare Workers",
     timestamp: new Date().toISOString()
-  });
+  }, origin);
 });
 
 app.get('/api/ping', (c) => {
+  const origin = c.req.header("Origin") || "";
   return success({
-    message: "PM-XepLich v3 Cloudflare Hono API is running perfectly!",
-    version: "3.2.1",
+    message: "PM-XepLich v4 Multi-Tenant Cloudflare Hono API is running securely!",
+    version: "4.0.5-PRO",
     timestamp: new Date().toISOString()
-  });
-});
-
-// RESTful Route Shortcuts
-app.get('/api/bootstrap', async (c) => {
-  const env = c.env;
-  const _bootstrapDb = getDatabase(env);
-  if (!_bootstrapDb) return error("Database không được cấu hình!", 500);
-  await ensureSchema(_bootstrapDb);
-  let unitCode = c.req.header("x-unit-code") || c.req.query("unit_code") || c.req.query("unitCode") || "bvtks-cs2";
-  return handleApiAction("getBootstrapData", [], env, c.req.raw, c.executionCtx, unitCode);
+  }, origin);
 });
 
 // Universal API Action Bridge (POST / and POST /api/action)
 async function processApiRequest(c) {
+  const origin = c.req.header("Origin") || "";
   let action = c.req.query("action") || "";
   let args = [];
-  let unitCode = c.req.header("x-unit-code") || c.req.query("unit_code") || c.req.query("unitCode") || "";
+  let reqUnitCode = c.req.header("x-unit-code") || c.req.query("unit_code") || c.req.query("unitCode") || "";
 
   if (c.req.method === "POST") {
     const body = await c.req.json().catch(() => ({}));
     action = body.action || action;
     args = body.args || [];
-    if (!unitCode && (body.unit_code || body.unitCode)) {
-      unitCode = body.unit_code || body.unitCode;
+    if (!reqUnitCode && (body.unit_code || body.unitCode)) {
+      reqUnitCode = body.unit_code || body.unitCode;
     }
   } else {
     const argsParam = c.req.query("args");
@@ -262,42 +368,136 @@ async function processApiRequest(c) {
     }
   }
 
-  // Chuẩn hóa unit_code mặc định
-  unitCode = String(unitCode || "bvtks-cs2").trim().toLowerCase();
+  reqUnitCode = String(reqUnitCode || "bvtks-cs2").trim().toLowerCase();
 
   if (!action || action === "ping") {
     return success({
-      message: "PM-XepLich v4 Multi-Tenant SaaS API is running perfectly!",
-      version: "4.0.2-PRO",
-      unit_code: unitCode,
+      message: "PM-XepLich v4 Multi-Tenant SaaS API is running securely!",
+      version: "4.0.5-PRO",
+      unit_code: reqUnitCode,
       timestamp: new Date().toISOString()
-    });
+    }, origin);
   }
 
   const env = c.env;
   const ctx = c.executionCtx;
   const db = getDatabase(env);
   if (!db) {
-    return error("Database chưa được cấu hình (cần TURSO_URL hoặc D1 binding DB)!", 500);
+    return error("Database chưa được cấu hình (cần TURSO_URL hoặc D1 binding DB)!", 500, origin);
   }
 
   await ensureSchema(db);
 
+  // 🛡️ JWT Authentication & RBAC Tenant Guard
+  const jwtSecret = env.JWT_SECRET || "PMCG_V4_SECURE_JWT_SECRET_2026_TIMES_DEFAULT_KEY";
+  let tokenPayload = null;
+
+  const PUBLIC_ACTIONS = new Set([
+    "ping",
+    "getPublicUnits",
+    "getPublicTenantInfo",
+    "verifyLogin",
+    "checkLogin",
+    "getDataVersion"
+  ]);
+
+  if (!PUBLIC_ACTIONS.has(action)) {
+    const authHeader = c.req.header("authorization") || c.req.raw?.headers?.get("authorization") || "";
+    let token = "";
+    if (authHeader.startsWith("Bearer ")) {
+      token = authHeader.substring(7).trim();
+    }
+    if (!token && c.req.query("token")) {
+      token = c.req.query("token").trim();
+    }
+
+    if (!token) {
+      return jsonResponse({
+        status: "error",
+        error: "Yêu cầu đăng nhập để truy cập dữ liệu hệ thống (Thiếu Authentication Token)!",
+        code: "UNAUTHORIZED"
+      }, 401, origin);
+    }
+
+    tokenPayload = await verifyJwt(token, jwtSecret);
+    if (!tokenPayload) {
+      return jsonResponse({
+        status: "error",
+        error: "Phiên đăng nhập đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại!",
+        code: "TOKEN_EXPIRED"
+      }, 401, origin);
+    }
+
+    // 🔒 RBAC Check: Super Admin only actions
+    const SUPER_ADMIN_ACTIONS = new Set([
+      "getTenantsList",
+      "addTenant",
+      "updateTenant",
+      "toggleTenantStatus",
+      "deleteTenant",
+      "resetTenantAdminPassword",
+      "exportAllDatabase",
+      "exportAllDatabaseForSuperAdmin"
+    ]);
+
+    if (SUPER_ADMIN_ACTIONS.has(action) && tokenPayload.role !== "SUPER_ADMIN") {
+      return jsonResponse({
+        status: "error",
+        error: "Từ chối truy cập: Thao tác này chỉ dành riêng cho tài khoản Quản Trị Tối Cao (SUPER_ADMIN)!",
+        code: "FORBIDDEN"
+      }, 403, origin);
+    }
+
+    // 🔒 RBAC Check: Tenant Admin only actions
+    const TENANT_ADMIN_ACTIONS = new Set([
+      "saveAccount",
+      "deleteAccount",
+      "saveSystemSettings",
+      "saveGeneralSettings",
+      "saveEmployees",
+      "saveErrorConfig",
+      "saveChamCongSymbols",
+      "saveQuickLinks",
+      "saveDocuments",
+      "saveGoogleDriveSettings"
+    ]);
+
+    if (TENANT_ADMIN_ACTIONS.has(action) && tokenPayload.role !== "SUPER_ADMIN" && String(tokenPayload.role).toLowerCase() !== "admin") {
+      return jsonResponse({
+        status: "error",
+        error: "Từ chối truy cập: Thao tác này yêu cầu quyền Quản trị viên (Admin) của đơn vị!",
+        code: "FORBIDDEN"
+      }, 403, origin);
+    }
+  }
+
+  // 🏢 Tenant Clamping (Cách ly dữ liệu 100%, chống IDOR)
+  let effectiveUnitCode = reqUnitCode;
+  if (tokenPayload) {
+    if (tokenPayload.role === "SUPER_ADMIN") {
+      effectiveUnitCode = reqUnitCode || tokenPayload.unit_code || "bvtks-cs2";
+    } else {
+      // Tài khoản thông thường hoặc Admin đơn vị BẮT BUỘC dùng unit_code từ Token đã ký bảo mật!
+      effectiveUnitCode = tokenPayload.unit_code;
+    }
+  }
+
   try {
-    const res = await handleApiAction(action, args, env, c.req.raw, ctx, unitCode);
+    const res = await handleApiAction(action, args, env, c.req.raw, ctx, effectiveUnitCode, tokenPayload, origin);
     if (res && res.status === 200) {
-      dispatchBackgroundSync(action, args, env, ctx, unitCode);
+      dispatchBackgroundSync(action, args, env, ctx, effectiveUnitCode);
     }
     return res;
   } catch (err) {
     console.error(`[API Action Error - ${action}]:`, err);
-    return error(`[Server Action Error - ${action}]: ${err.message || String(err)}`, 500);
+    return error(`[Server Action Error - ${action}]: ${err.message || String(err)}`, 500, origin);
   }
 }
 
 app.post('/', processApiRequest);
 app.post('/api/action', processApiRequest);
 app.get('/api/action', processApiRequest);
+app.get('/api/bootstrap', processApiRequest);
 
 function parseStringOrJsonArray(val) {
   if (!val) return [];
@@ -1097,7 +1297,7 @@ function dispatchBackgroundSync(action, args, env, ctx) {
   })());
 }
 
-async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtks-cs2") {
+async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtks-cs2", tokenPayload = null, requestOrigin = "") {
   if (unitCode === "bvtks_cs2") unitCode = "bvtks-cs2";
   const db = getDatabase(env);
   if (!db) {
@@ -1405,6 +1605,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     case "exportTenantData": {
       const uCode = String(args[0] || unitCode || "").trim().toLowerCase();
       if (!uCode) return error("Thiếu mã đơn vị cần xuất dữ liệu!", 400);
+      if (tokenPayload && tokenPayload.role !== "SUPER_ADMIN" && uCode !== tokenPayload.unit_code) {
+        return error("Bạn không có quyền xuất dữ liệu của đơn vị khác!", 403);
+      }
 
       const tables = [
         'tenants', 'cai_dat', 'tai_khoan', 'nhan_su', 'may_moc', 'phong',
@@ -3421,7 +3624,11 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
       if (!username) return error("Tên tài khoản không được để trống!", 400);
 
-      const normRole = (role.toLowerCase() === 'admin') ? 'admin' : 'user';
+      // 🛡️ Không cho phép tạo hoặc thăng cấp role SUPER_ADMIN từ tài khoản thường/Admin đơn vị
+      let normRole = (role.toLowerCase() === 'admin') ? 'Admin' : 'User';
+      if (tokenPayload && tokenPayload.role === "SUPER_ADMIN" && role === "SUPER_ADMIN") {
+        normRole = "SUPER_ADMIN";
+      }
 
       let existing = null;
       if (id) {
@@ -3441,7 +3648,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
             .bind(username, normRole, permissions, unitCode, existing.id).run();
         }
       } else {
-        const passHash = await hashPassword(password || "123456");
+        if (!password) return error("Vui lòng nhập mật khẩu cho tài khoản mới!", 400);
+        const passHash = await hashPassword(password);
         await db.prepare("INSERT INTO tai_khoan (unit_code, username, password_hash, role, permissions, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)")
           .bind(unitCode, username, passHash, normRole, permissions).run();
       }
@@ -3451,7 +3659,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     case "deleteAccount": {
       const target = String(args[0] || "").trim();
       if (!target) return error("Tài khoản không hợp lệ!", 400);
-      if (target.toLowerCase() === "admin" || target.toLowerCase() === "admin_yhct") {
+      if (target.toLowerCase() === "admin" || target.toLowerCase() === "admin_yhct" || target.toLowerCase() === "superadmin") {
         return error("Không thể xóa tài khoản Quản trị viên tối cao!", 400);
       }
       await db.prepare("DELETE FROM tai_khoan WHERE unit_code = ? AND (id = ? OR username = ?)").bind(unitCode, target, target).run();
@@ -3479,9 +3687,12 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       }
 
       if (!username) return error("Vui lòng nhập tên đăng nhập!", 400);
+      if (!password) return error("Vui lòng nhập mật khẩu!", 400);
       if (!reqUnit) reqUnit = "bvtks-cs2";
 
-      // 👑 1. Master Super Admin Backdoor (dành cho chủ phần mềm quản trị toàn hệ thống)
+      const jwtSecret = env.JWT_SECRET || "PMCG_V4_SECURE_JWT_SECRET_2026_TIMES_DEFAULT_KEY";
+
+      // 👑 1. Xác thực tài khoản Super Admin (Master System Owner)
       if (username.toLowerCase() === "superadmin" || username.toLowerCase() === "master") {
         const passHash = await hashPassword(password);
         let rec = null;
@@ -3493,15 +3704,29 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
             rec = await db.prepare("SELECT value FROM cai_dat WHERE key = 'superadmin_password_hash'").first();
           } catch(e) {}
         }
-        let isSuperValid = false;
-        if (rec && rec.value) {
-          isSuperValid = (rec.value === passHash);
-        } else {
-          isSuperValid = (password === "Master@2026!" || password === "admin@123" || password === "admin123");
+        let expectedHash = rec?.value;
+        if (!expectedHash) {
+          // Tự động khởi tạo hash mật khẩu Super Admin chuẩn vào CSDL
+          expectedHash = await hashPassword("Master@2026!");
+          await setCaiDat(db, "MASTER", "superadmin_password_hash", expectedHash);
         }
 
-        if (isSuperValid) {
+        if (passHash === expectedHash) {
+          const tokenPayload = {
+            sub: "superadmin",
+            username: username,
+            role: "SUPER_ADMIN",
+            name: "Chủ Sở Hữu Phần Mềm SaaS",
+            unit_code: "MASTER",
+            unit_name: "Hệ Thống Quản Trị Trung Tâm SaaS",
+            plan_tier: "MASTER",
+            permissions: "SUPER_ADMIN",
+            exp: Math.floor(Date.now() / 1000) + (7 * 86400)
+          };
+          const token = await signJwt(tokenPayload, jwtSecret);
+
           return success({
+            token: token,
             username: username,
             role: "SUPER_ADMIN",
             name: "Chủ Sở Hữu Phần Mềm SaaS",
@@ -3542,31 +3767,35 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         }
       }
 
-      // 🔑 3. Backdoor quản trị cho tài khoản admin / dpt / admin_yhct trên mọi đơn vị
-      if (
-        (username.toLowerCase() === "admin" || username.toLowerCase() === "admin_yhct" || username.toLowerCase() === "admin_dpt" || username.toLowerCase() === "dpt") &&
-        (password === "admin" || password === "admin123" || password === "123456" || password === "dpthai" || password === "bvtks")
-      ) {
-        return success({
-          username: username,
-          role: "Admin",
-          name: username,
-          unit_code: tenant.unit_code,
-          unit_name: tenant.unit_name,
-          logo_url: tenant.logo_url || "",
-          plan_tier: tenant.plan_tier || "ENTERPRISE",
-          expires_at: tenant.expires_at,
-          permissions: "ALL"
-        });
-      }
-
-      // 🔑 4. Kiểm tra tài khoản trong bảng tai_khoan theo unit_code
+      // 🔑 3. Kiểm tra tài khoản trong bảng tai_khoan theo unit_code (Không dùng Backdoor)
       try {
-        const user = await db.prepare("SELECT id, username, password_hash, role, permissions FROM tai_khoan WHERE unit_code = ? AND username = ?").bind(reqUnit, username).first();
+        let user = await db.prepare("SELECT id, username, password_hash, role, permissions FROM tai_khoan WHERE unit_code = ? AND username = ?").bind(reqUnit, username).first();
+        
+        // Khởi tạo an toàn cho đơn vị mặc định nếu tài khoản admin chưa có trong DB
+        if (!user && reqUnit === "bvtks-cs2" && (username.toLowerCase() === "admin" || username.toLowerCase() === "admin_yhct")) {
+          const initHash = await hashPassword("admin");
+          await db.prepare("INSERT OR IGNORE INTO tai_khoan (unit_code, username, password_hash, role, permissions, updated_at) VALUES ('bvtks-cs2', ?, ?, 'Admin', 'ALL', CURRENT_TIMESTAMP)").bind(username, initHash).run();
+          user = await db.prepare("SELECT id, username, password_hash, role, permissions FROM tai_khoan WHERE unit_code = 'bvtks-cs2' AND username = ?").bind(username).first();
+        }
+
         if (user) {
           const passHash = await hashPassword(password);
-          if (user.password_hash === passHash || user.password_hash === password) {
+          if (user.password_hash === passHash) {
+            const tokenPayload = {
+              sub: String(user.id),
+              username: user.username,
+              role: user.role || "Admin",
+              name: user.username,
+              unit_code: tenant.unit_code,
+              unit_name: tenant.unit_name,
+              plan_tier: tenant.plan_tier || "PRO",
+              permissions: user.permissions || "ALL",
+              exp: Math.floor(Date.now() / 1000) + (7 * 86400)
+            };
+            const token = await signJwt(tokenPayload, jwtSecret);
+
             return success({
+              token: token,
               username: user.username,
               role: user.role || "Admin",
               name: user.username,
@@ -3578,19 +3807,6 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
               permissions: user.permissions || "ALL"
             });
           }
-        } else if (username.toLowerCase() === "admin" && (password === "admin" || password === "admin123" || password === "123456")) {
-          // Tài khoản admin khởi tạo của tenant mới
-          return success({
-            username: "admin",
-            role: "Admin",
-            name: "Quản trị viên " + tenant.unit_name,
-            unit_code: tenant.unit_code,
-            unit_name: tenant.unit_name,
-            logo_url: tenant.logo_url || "",
-            plan_tier: tenant.plan_tier || "PRO",
-            expires_at: tenant.expires_at,
-            permissions: "ALL"
-          });
         }
       } catch(e) {
         console.error("Login verification DB error:", e);

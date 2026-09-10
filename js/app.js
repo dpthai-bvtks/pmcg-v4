@@ -1226,13 +1226,19 @@ window.renderSttOrderControl = function (type, i, total) {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 15000);
                 const currentUnit = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
+                const token = localStorage.getItem('pm_jwt_token') || '';
+
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'x-unit-code': currentUnit
+                };
+                if (token) {
+                    headers['Authorization'] = 'Bearer ' + token;
+                }
 
                 const response = await fetch(getApiUrl(), {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-unit-code': currentUnit
-                    },
+                    headers: headers,
                     body: JSON.stringify({
                         action: functionName,
                         args: args || [],
@@ -1264,6 +1270,21 @@ window.renderSttOrderControl = function (type, i, total) {
                         try { onSuccess(result.data); } catch(e) { console.error(`Error in onSuccess for ${functionName}:`, e); }
                     }
                 } else {
+                    // 🛡️ Xử lý phiên đăng nhập hết hạn hoặc chưa xác thực (401)
+                    if (result && (result.code === 'UNAUTHORIZED' || result.code === 'TOKEN_EXPIRED' || response.status === 401)) {
+                        console.warn('[Auth Guard] Phiên làm việc đã hết hạn hoặc không hợp lệ. Hiển thị lại màn hình đăng nhập.');
+                        localStorage.removeItem('pm_jwt_token');
+                        localStorage.removeItem('meds_session');
+                        const overlay = document.getElementById('login-overlay');
+                        if (overlay) {
+                            overlay.style.display = 'flex';
+                            const errDiv = document.getElementById('login-error');
+                            if (errDiv) {
+                                errDiv.innerText = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!';
+                                errDiv.style.display = 'block';
+                            }
+                        }
+                    }
                     const errMsg = (result && result.error) ? result.error : 'Lỗi không xác định từ máy chủ.';
                     if (onError) onError(errMsg);
                     else alert('Lỗi: ' + errMsg);
@@ -1616,6 +1637,9 @@ window.renderSttOrderControl = function (type, i, total) {
                     const uUnit = (res.unit_code || unit).toLowerCase();
                     const uUnitName = res.unit_name || (uRole === 'SUPER_ADMIN' ? 'T.I.M.E.S SYSTEM' : 'Bệnh viện Than - Khoáng sản Cơ sở 2');
 
+                    if (res.token) {
+                        localStorage.setItem('pm_jwt_token', res.token);
+                    }
                     localStorage.setItem('pm_unit_code', uUnit);
                     localStorage.setItem('pm_unit_name', uUnitName);
                     localStorage.setItem('meds_session', JSON.stringify({
@@ -10690,13 +10714,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
         window.onload = function () {
-
             const sessionStr = localStorage.getItem('meds_session');
+            const token = localStorage.getItem('pm_jwt_token');
 
-            if (sessionStr) {
-
+            if (sessionStr && token) {
                 const session = JSON.parse(sessionStr);
-
                 document.getElementById('login-overlay').style.display = 'none';
 
                 updateLogoutButton(session.username);
