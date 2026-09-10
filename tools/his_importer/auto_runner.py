@@ -54,6 +54,10 @@ class AutoRunner:
         """
         self.is_running = True
         self.should_stop = False
+        try:
+            ctypes.windll.ole32.CoInitialize(None)
+        except Exception:
+            pass
         self.log(f"🚀 Bắt đầu tiến trình tự động nhập HIS cho nhân sự: {staff_name}")
 
         try:

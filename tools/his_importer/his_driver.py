@@ -34,7 +34,11 @@ class HISDriver:
             print(msg)
 
     def ensure_default_desktop(self):
-        """Chuyển thread hiện tại sang Default desktop để nhìn thấy toàn bộ cửa sổ đồ họa"""
+        """Khởi tạo COM và chuyển thread hiện tại sang Default desktop để nhìn thấy toàn bộ cửa sổ đồ họa"""
+        try:
+            ctypes.windll.ole32.CoInitialize(None)
+        except Exception:
+            pass
         try:
             h_desk = user32.OpenDesktopW("Default", 0, False, DESKTOP_ALL)
             if h_desk:

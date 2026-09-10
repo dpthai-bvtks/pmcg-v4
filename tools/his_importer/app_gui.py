@@ -267,8 +267,18 @@ class HISImporterApp:
 
         def _worker():
             try:
+                import ctypes
+                try:
+                    ctypes.windll.ole32.CoInitialize(None)
+                except Exception:
+                    pass
                 self.runner.run_for_staff(staff, patient_groups)
             finally:
+                try:
+                    import ctypes
+                    ctypes.windll.ole32.CoUninitialize()
+                except Exception:
+                    pass
                 self.root.after(0, lambda: self.btn_start.config(state=tk.NORMAL, bg="#16a34a"))
 
         self.worker_thread = threading.Thread(target=_worker, daemon=True)

@@ -9,3 +9,5 @@ backups/
 *.sql
 *.xls
 *.xlsx
+*.log
+@AutomationLog.txt
