@@ -171,9 +171,9 @@
     }
     </script>
     <meta name="theme-color" content="#1e3d2b">
-    <link rel="icon" type="image/png" sizes="128x128" href="favicon-128.png?v=4.0.5-rev2">
+    <link rel="icon" type="image/png" sizes="128x128" href="favicon-128.png?v=4.0.5-rev3">
     <!-- Thêm icon cho iOS -->
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=4.0.5-rev2">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=4.0.5-rev3">
 
 
 
@@ -184,15 +184,15 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=4.0.5-rev2">
+    <link rel="stylesheet" href="css/style.css?v=4.0.5-rev3">
     <!-- PWA & Mobile Web App Meta Tags -->
-    <link rel="manifest" href="manifest.json?v=4.0.5-rev2">
+    <link rel="manifest" href="manifest.json?v=4.0.5-rev3">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.0.5-rev2">
+    <link rel="stylesheet" href="css/mobile.css?v=4.0.5-rev3">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
     <script src="js/dexie.min.js?v=3.2.6"></script>
@@ -203,7 +203,7 @@
     <script src="js/chart.min.js?v=3.2.6"></script>
     <script src="js/zod.min.js?v=3.2.6"></script>
     <!-- JS Thư viện kéo thả nội bộ -->
-    <script src="js/sortable.min.js?v=4.0.5-rev2"></script>
+    <script src="js/sortable.min.js?v=4.0.5-rev3"></script>
     <!-- Thư viện Dòng thời gian Timeline Frappe Gantt -->
     <link rel="stylesheet" href="css/frappe-gantt.css?v=3.2.6">
     <script src="js/frappe-gantt.min.js?v=3.2.6"></script>
@@ -332,6 +332,15 @@
 
                 <button class="btn-login" id="btn-do-login" onclick="doLogin()" style="width:100%; padding:12px; font-size:15px; font-weight:700; border-radius:8px; background:linear-gradient(135deg, #2563eb, #1d4ed8); color:#fff; border:none; cursor:pointer; box-shadow:0 4px 12px rgba(37,99,235,0.3); transition:all 0.2s;">Đăng Nhập ➔</button>
 
+                <div style="margin-top:16px; padding-top:14px; border-top:1px solid #e2e8f0; display:flex; flex-direction:column; gap:8px;">
+                    <button type="button" onclick="openTrialRegisterModal()" style="width:100%; padding:10px 12px; font-size:13px; font-weight:700; border-radius:8px; background:linear-gradient(135deg, #059669, #10b981); color:#ffffff; border:none; cursor:pointer; box-shadow:0 4px 12px rgba(16,185,129,0.3); transition:all 0.2s; display:flex; align-items:center; justify-content:center; gap:6px;">
+                        <span>🎁</span> Dùng Thử 15 Ngày Miễn Phí ➔
+                    </button>
+                    <button type="button" onclick="openPricingModal()" style="width:100%; padding:8px 12px; font-size:12px; font-weight:600; border-radius:8px; background:#f8fafc; color:#475569; border:1px solid #cbd5e1; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; justify-content:center; gap:6px;">
+                        <span>💎</span> Bảng Giá Các Gói Bản Quyền
+                    </button>
+                </div>
+
             </div>
 
         </div>
@@ -436,6 +445,11 @@
                                 <div id="clock-date">Thứ Hai, 01/01/2026</div>
                             </div>
                             <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+                                <button id="header-subscription-badge" type="button" class="status-badge"
+                                    title="Xem gói bản quyền & thời hạn sử dụng" onclick="window.openPricingModal()"
+                                    style="cursor: pointer; padding: 3px 10px; border-radius: 14px; font-size: 11px; font-weight: 700; background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 1px 3px rgba(79,70,229,0.3); border: none; outline: none; z-index: 100; pointer-events: auto;">
+                                    <span id="header-sub-icon">💎</span> <span id="header-sub-text">Gói Bản Quyền</span>
+                                </button>
                                 <button id="server-status-badge" type="button" class="status-badge status-primary"
                                     title="Trạng thái kết nối Cloudflare Worker & Turso Cloud DB" onclick="window.openServerStatusModal(event)"
                                     style="cursor: pointer; padding: 3px 10px; border-radius: 14px; font-size: 11px; font-weight: 700; background: #059669; color: white; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 1px 3px rgba(5,150,105,0.25); border: none; outline: none; z-index: 100; pointer-events: auto;">
@@ -458,6 +472,14 @@
                                 <div class="user-dropdown-menu" id="user-dropdown-menu"
                                     style="display: none; position: absolute; right: 0; top: 100%; margin-top: 6px; background: white; min-width: 175px; box-shadow: 0 10px 25px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.05); border-radius: 8px; z-index: 10000; overflow: hidden; border: 1px solid rgba(0,0,0,0.06); padding: 4px 0; text-align: left;">
                                     
+                                    <!-- 💎 0. GÓI BẢN QUYỀN & GIA HẠN -->
+                                    <a href="javascript:void(0)" id="user-menu-pricing-btn"
+                                        style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; font-size: 11.5px; color: #4f46e5; text-decoration: none; font-weight: 700; transition: background 0.15s;"
+                                        onclick="window.openPricingModal()">
+                                        <span style="font-size: 13px;">💎</span> Gói Bản Quyền & Gia Hạn
+                                    </a>
+                                    <div style="height: 1px; background: #edf2f7; margin: 4px 0;"></div>
+
                                     <!-- 🔒 1. NÚT QUẢN TRỊ (Admin đơn vị & Super Admin) -->
                                     <a href="javascript:void(0)" id="user-menu-admin-btn"
                                         style="display: none; align-items: center; gap: 8px; padding: 10px 14px; font-size: 11.5px; color: #2c3e50; text-decoration: none; font-weight: 700; transition: background 0.15s;"
@@ -3049,11 +3071,13 @@
                             <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
                                 <div>
                                     <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">Gói Cước (Plan Tier):</label>
-                                    <select id="tenant-form-plan" class="form-control" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #cbd5e1;">
-                                        <option value="TRIAL">Dùng Thử (TRIAL)</option>
-                                        <option value="BASIC">Cơ Bản (BASIC)</option>
-                                        <option value="PRO" selected>Chuyên Nghiệp (PRO)</option>
-                                        <option value="ENTERPRISE">Doanh Nghiệp (ENTERPRISE)</option>
+                                    <select id="tenant-form-plan" class="form-control" onchange="window.onTenantPlanSelectChange(this.value)" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #cbd5e1;">
+                                        <option value="TRIAL_15D">🎁 Dùng Thử 15 Ngày (0 đ)</option>
+                                        <option value="PLAN_1M">📦 Gói 1 Tháng (400.000 đ)</option>
+                                        <option value="PLAN_3M">📦 Gói 3 Tháng (1.125.000 đ - 375k/tháng)</option>
+                                        <option value="PLAN_6M">⭐ Gói 6 Tháng (2.100.000 đ - 350k/tháng)</option>
+                                        <option value="PLAN_1Y" selected>🔥 Gói 1 Năm (3.900.000 đ - 325k/tháng)</option>
+                                        <option value="ENTERPRISE">🏢 Doanh Nghiệp Đặc Biệt (Vĩnh Viễn)</option>
                                     </select>
                                 </div>
                                 <div>
@@ -3063,12 +3087,12 @@
                             </div>
                             <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
                                 <div>
-                                    <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">Số KTV Tối Đa:</label>
-                                    <input type="number" id="tenant-form-max-staff" class="form-control" value="30" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #cbd5e1;">
+                                    <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">Số KTV Tối Đa (Full tính năng):</label>
+                                    <input type="number" id="tenant-form-max-staff" class="form-control" value="999" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #cbd5e1;">
                                 </div>
                                 <div>
-                                    <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">Số BN Tối Đa / Ngày:</label>
-                                    <input type="number" id="tenant-form-max-patients" class="form-control" value="150" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #cbd5e1;">
+                                    <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">Số BN Tối Đa (Full tính năng):</label>
+                                    <input type="number" id="tenant-form-max-patients" class="form-control" value="9999" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #cbd5e1;">
                                 </div>
                             </div>
                             <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
@@ -3095,6 +3119,285 @@
                                 <button type="submit" class="btn btn-primary" id="btn-save-tenant" style="padding:9px 20px; background:linear-gradient(135deg, #2563eb, #1d4ed8); font-weight:700;">💾 Lưu Đơn Vị</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- 💎 MODAL BẢNG GIÁ 5 GÓI CƯỚC BẢN QUYỀN T.I.M.E.S SAAS        -->
+                <!-- ============================================================ -->
+                <div id="modal-pricing-plans" onclick="if(event.target===this) window.closePricingModal()" style="display:none; position:fixed; inset:0; width:100vw; height:100vh; background:rgba(15,23,42,0.72); backdrop-filter:blur(8px); z-index:99999; justify-content:center; align-items:center; padding:15px; box-sizing:border-box;">
+                    <div style="background:#ffffff; width:100%; max-width:1120px; max-height:92vh; border-radius:24px; padding:28px 24px; box-shadow:0 25px 60px -15px rgba(0,0,0,0.4); display:flex; flex-direction:column; overflow-y:auto; border:1px solid #e2e8f0; position:relative; animation:modalPop 0.25s ease-out;">
+                        
+                        <!-- Header -->
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; border-bottom:1px solid #f1f5f9; padding-bottom:14px;">
+                            <div>
+                                <div style="display:inline-flex; align-items:center; gap:6px; background:#eff6ff; color:#2563eb; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:700; margin-bottom:6px;">
+                                    <span>💎</span> BẢN QUYỀN CHÍNH THỨC • T.I.M.E.S SAAS 2026
+                                </div>
+                                <h2 style="margin:0; font-size:1.5rem; font-weight:800; color:#0f172a; letter-spacing:-0.4px;">
+                                    Bảng Giá Các Gói Bản Quyền Hệ Thống Xếp Lịch
+                                </h2>
+                                <p style="margin:4px 0 0 0; color:#64748b; font-size:13px;">
+                                    Hệ thống Xếp lịch Thủ thuật T.I.M.E.S YHCT & PHCN • <b>Tất cả các gói đều FULL 100% TÍNH NĂNG</b>
+                                </p>
+                            </div>
+                            <button type="button" onclick="closePricingModal()" style="background:#f1f5f9; border:none; width:36px; height:36px; border-radius:50%; font-size:18px; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center; transition:all 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">✕</button>
+                        </div>
+
+                        <!-- Top Highlights Banner -->
+                        <div style="background:linear-gradient(135deg, #f0fdf4, #ecfdf5); border:1.5px solid #a7f3d0; border-radius:14px; padding:12px 18px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <span style="font-size:24px;">✨</span>
+                                <div style="font-size:13px; color:#065f46; line-height:1.5;">
+                                    <b>Cam Kết Trọn Đời:</b> Mọi gói cước đều mở khóa <b>100% tính năng cao cấp nhất</b> (Không giới hạn KTV, không giới hạn bệnh nhân, thuật toán AI T.I.M.E.S, đồng bộ đa thiết bị, xuất báo cáo & chấm công tự động).
+                                </div>
+                            </div>
+                            <div style="display:inline-flex; align-items:center; gap:8px;">
+                                <span style="font-size:12px; font-weight:700; color:#047857; background:#d1fae5; padding:4px 10px; border-radius:8px;">📞 Hotline: 0392.283.473</span>
+                            </div>
+                        </div>
+
+                        <!-- Pricing Cards Grid -->
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:20px;">
+                            
+                            <!-- Card 1: Dùng Thử 15 Ngày -->
+                            <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:16px; padding:20px 16px; display:flex; flex-direction:column; justify-content:space-between; transition:all 0.2s; box-shadow:0 2px 8px rgba(0,0,0,0.03);" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.03)'">
+                                <div>
+                                    <span style="display:inline-block; background:#e0f2fe; color:#0369a1; font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; margin-bottom:10px;">TRẢI NGHIỆM</span>
+                                    <h3 style="margin:0 0 6px 0; font-size:16px; font-weight:800; color:#0f172a;">Dùng Thử 15 Ngày</h3>
+                                    <div style="margin-bottom:8px;">
+                                        <span style="font-size:24px; font-weight:800; color:#0284c7;">0 đ</span>
+                                        <span style="font-size:11px; color:#64748b; display:block;">Miễn phí 100%</span>
+                                    </div>
+                                    <p style="font-size:12px; color:#64748b; line-height:1.4; margin-bottom:14px;">Trải nghiệm đầy đủ 100% tính năng trong 15 ngày, không giới hạn.</p>
+                                    <div style="border-top:1px solid #f1f5f9; padding-top:12px; margin-bottom:16px; font-size:12px; color:#334155; display:flex; flex-direction:column; gap:6px;">
+                                        <div>✔️ Full tính năng AI Xếp Lịch</div>
+                                        <div>✔️ Không giới hạn KTV & BN</div>
+                                        <div>✔️ 13 thủ thuật chuẩn Bộ Y Tế</div>
+                                        <div>✔️ Xuất Excel, PDF & Chấm công</div>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="closePricingModal(); openTrialRegisterModal();" style="width:100%; padding:10px; border-radius:10px; background:#0284c7; color:#fff; border:none; font-weight:700; font-size:13px; cursor:pointer; transition:all 0.2s;">
+                                    🎁 Dùng Thử Ngay
+                                </button>
+                            </div>
+
+                            <!-- Card 2: Gói 1 Tháng -->
+                            <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:16px; padding:20px 16px; display:flex; flex-direction:column; justify-content:space-between; transition:all 0.2s; box-shadow:0 2px 8px rgba(0,0,0,0.03);" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.03)'">
+                                <div>
+                                    <span style="display:inline-block; background:#f1f5f9; color:#475569; font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; margin-bottom:10px;">1 THÁNG</span>
+                                    <h3 style="margin:0 0 6px 0; font-size:16px; font-weight:800; color:#0f172a;">Gói 1 Tháng</h3>
+                                    <div style="margin-bottom:8px;">
+                                        <span style="font-size:24px; font-weight:800; color:#2563eb;">400.000 đ</span>
+                                        <span style="font-size:11px; color:#64748b; display:block;">400.000 đ / tháng</span>
+                                    </div>
+                                    <p style="font-size:12px; color:#64748b; line-height:1.4; margin-bottom:14px;">Linh hoạt cho 1 tháng vận hành và kiểm nghiệm thực tế.</p>
+                                    <div style="border-top:1px solid #f1f5f9; padding-top:12px; margin-bottom:16px; font-size:12px; color:#334155; display:flex; flex-direction:column; gap:6px;">
+                                        <div>✔️ Full tính năng AI Xếp Lịch</div>
+                                        <div>✔️ Không giới hạn KTV & BN</div>
+                                        <div>✔️ Đồng bộ Cloudflare D1</div>
+                                        <div>✔️ Hỗ trợ kỹ thuật 24/7</div>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="openRenewModal('PLAN_1M')" style="width:100%; padding:10px; border-radius:10px; background:#f8fafc; color:#1e40af; border:1.5px solid #bfdbfe; font-weight:700; font-size:13px; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#f8fafc'">
+                                    Chọn Gói 1 Tháng
+                                </button>
+                            </div>
+
+                            <!-- Card 3: Gói 3 Tháng -->
+                            <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:16px; padding:20px 16px; display:flex; flex-direction:column; justify-content:space-between; transition:all 0.2s; box-shadow:0 2px 8px rgba(0,0,0,0.03);" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.03)'">
+                                <div>
+                                    <span style="display:inline-block; background:#fef3c7; color:#b45309; font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; margin-bottom:10px;">TIẾT KIỆM 6%</span>
+                                    <h3 style="margin:0 0 6px 0; font-size:16px; font-weight:800; color:#0f172a;">Gói 3 Tháng</h3>
+                                    <div style="margin-bottom:8px;">
+                                        <span style="font-size:24px; font-weight:800; color:#d97706;">1.125.000 đ</span>
+                                        <span style="font-size:11px; color:#64748b; display:block;">~375.000 đ / tháng</span>
+                                    </div>
+                                    <p style="font-size:12px; color:#64748b; line-height:1.4; margin-bottom:14px;">Lựa chọn hợp lý theo quý cho cơ sở y tế vừa & nhỏ.</p>
+                                    <div style="border-top:1px solid #f1f5f9; padding-top:12px; margin-bottom:16px; font-size:12px; color:#334155; display:flex; flex-direction:column; gap:6px;">
+                                        <div>✔️ Full tính năng AI Xếp Lịch</div>
+                                        <div>✔️ Không giới hạn KTV & BN</div>
+                                        <div>✔️ Đồng bộ Cloudflare D1</div>
+                                        <div>✔️ Sao lưu dữ liệu an toàn</div>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="openRenewModal('PLAN_3M')" style="width:100%; padding:10px; border-radius:10px; background:#f8fafc; color:#b45309; border:1.5px solid #fde68a; font-weight:700; font-size:13px; cursor:pointer; transition:all 0.2s;" onmouseover="this.style.background='#fffbeb'" onmouseout="this.style.background='#f8fafc'">
+                                    Chọn Gói 3 Tháng
+                                </button>
+                            </div>
+
+                            <!-- Card 4: Gói 6 Tháng (Highlighted Popular) -->
+                            <div style="background:#ffffff; border:2px solid #2563eb; border-radius:16px; padding:20px 16px; display:flex; flex-direction:column; justify-content:space-between; transition:all 0.2s; box-shadow:0 8px 24px rgba(37,99,235,0.12); position:relative;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 12px 28px rgba(37,99,235,0.2)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 24px rgba(37,99,235,0.12)'">
+                                <div>
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                        <span style="display:inline-block; background:#dbeafe; color:#1d4ed8; font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px;">⭐ PHỔ BIẾN NHẤT</span>
+                                        <span style="font-size:11px; font-weight:700; color:#15803d;">Tiết kiệm 12.5%</span>
+                                    </div>
+                                    <h3 style="margin:0 0 6px 0; font-size:16px; font-weight:800; color:#0f172a;">Gói 6 Tháng</h3>
+                                    <div style="margin-bottom:8px;">
+                                        <span style="font-size:24px; font-weight:800; color:#1d4ed8;">2.100.000 đ</span>
+                                        <span style="font-size:11px; color:#64748b; display:block;">~350.000 đ / tháng</span>
+                                    </div>
+                                    <p style="font-size:12px; color:#64748b; line-height:1.4; margin-bottom:14px;">Khuyên dùng cho khoa phòng bệnh viện hoạt động liên tục.</p>
+                                    <div style="border-top:1px solid #f1f5f9; padding-top:12px; margin-bottom:16px; font-size:12px; color:#334155; display:flex; flex-direction:column; gap:6px;">
+                                        <div>✔️ Full tính năng AI Xếp Lịch</div>
+                                        <div>✔️ Không giới hạn KTV & BN</div>
+                                        <div>✔️ Bảo mật phân quyền đa tầng</div>
+                                        <div>✔️ Hỗ trợ kỹ thuật chuyên sâu</div>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="openRenewModal('PLAN_6M')" style="width:100%; padding:10px; border-radius:10px; background:linear-gradient(135deg, #2563eb, #1d4ed8); color:#fff; border:none; font-weight:700; font-size:13px; cursor:pointer; box-shadow:0 4px 12px rgba(37,99,235,0.3); transition:all 0.2s;">
+                                    ⭐ Chọn Gói 6 Tháng
+                                </button>
+                            </div>
+
+                            <!-- Card 5: Gói 1 Năm (Best Value) -->
+                            <div style="background:linear-gradient(180deg, #fefce8 0%, #ffffff 100%); border:2px solid #eab308; border-radius:16px; padding:20px 16px; display:flex; flex-direction:column; justify-content:space-between; transition:all 0.2s; box-shadow:0 8px 24px rgba(234,179,8,0.15); position:relative;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 12px 28px rgba(234,179,8,0.25)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 24px rgba(234,179,8,0.15)'">
+                                <div>
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                        <span style="display:inline-block; background:#fef08a; color:#854d0e; font-size:11px; font-weight:800; padding:3px 8px; border-radius:6px;">🔥 TIẾT KIỆM NHẤT</span>
+                                        <span style="font-size:11px; font-weight:800; color:#b45309;">-18.75%</span>
+                                    </div>
+                                    <h3 style="margin:0 0 6px 0; font-size:16px; font-weight:800; color:#0f172a;">Gói 1 Năm</h3>
+                                    <div style="margin-bottom:8px;">
+                                        <span style="font-size:24px; font-weight:800; color:#b45309;">3.900.000 đ</span>
+                                        <span style="font-size:11px; color:#64748b; display:block;">chỉ <b>325.000 đ / tháng</b></span>
+                                    </div>
+                                    <p style="font-size:12px; color:#64748b; line-height:1.4; margin-bottom:14px;">Giải pháp toàn diện và kinh tế nhất cho đơn vị y tế.</p>
+                                    <div style="border-top:1px solid #fef08a; padding-top:12px; margin-bottom:16px; font-size:12px; color:#334155; display:flex; flex-direction:column; gap:6px;">
+                                        <div>✔️ Full tính năng AI Xếp Lịch</div>
+                                        <div>✔️ Không giới hạn KTV & BN</div>
+                                        <div>✔️ Đồng bộ đa thiết bị liên tục</div>
+                                        <div>✔️ Nâng cấp AI miễn phí & VIP Support</div>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="openRenewModal('PLAN_1Y')" style="width:100%; padding:10px; border-radius:10px; background:linear-gradient(135deg, #d97706, #b45309); color:#fff; border:none; font-weight:800; font-size:13px; cursor:pointer; box-shadow:0 4px 12px rgba(180,83,9,0.3); transition:all 0.2s;">
+                                    🔥 Chọn Gói 1 Năm
+                                </button>
+                            </div>
+
+                        </div>
+
+                        <!-- Footer Hotline -->
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-top:1px solid #f1f5f9; padding-top:14px; font-size:12.5px; color:#64748b;">
+                            <div>
+                                💡 Cần xuất hóa đơn VAT hoặc gói Doanh nghiệp quy mô lớn? Liên hệ hotline/Zalo: <b>0392.283.473</b> (Bác sĩ Thái).
+                            </div>
+                            <button type="button" onclick="closePricingModal()" class="btn btn-secondary" style="padding:7px 18px; font-size:12.5px;">Đóng</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- 🎁 MODAL ĐĂNG KÝ DÙNG THỬ 15 NGÀY (1-CLICK ONBOARDING)        -->
+                <!-- ============================================================ -->
+                <div id="modal-trial-register" onclick="if(event.target===this) window.closeTrialRegisterModal()" style="display:none; position:fixed; inset:0; width:100vw; height:100vh; background:rgba(15,23,42,0.7); backdrop-filter:blur(6px); z-index:999999; justify-content:center; align-items:center; padding:15px; box-sizing:border-box;">
+                    <div style="background:#ffffff; width:100%; max-width:520px; border-radius:20px; padding:26px 22px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35); border:1px solid #e2e8f0; animation:modalPop 0.25s ease-out;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid #f1f5f9; padding-bottom:12px;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="font-size:24px;">🎁</span>
+                                <div>
+                                    <h3 style="margin:0; font-size:17px; font-weight:800; color:#0f172a;">Đăng Ký Dùng Thử 15 Ngày</h3>
+                                    <p style="margin:2px 0 0 0; font-size:12px; color:#64748b;">Miễn phí 100% • Full tính năng • Bắt đầu ngay trong 1 phút</p>
+                                </div>
+                            </div>
+                            <button type="button" onclick="closeTrialRegisterModal()" style="background:none; border:none; font-size:20px; color:#94a3b8; cursor:pointer;">✕</button>
+                        </div>
+
+                        <form id="form-trial-register" onsubmit="event.preventDefault(); submitTrialRegistration();">
+                            <div style="margin-bottom:12px;">
+                                <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">Tên Bệnh Viện / Phòng Khám: <span style="color:#e11d48;">*</span></label>
+                                <input type="text" id="trial-unit-name" class="form-control" required placeholder="VD: Phòng Khám Đa Khoa An Bình" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; box-sizing:border-box;" oninput="window.autoSuggestTrialCode(this.value)">
+                            </div>
+
+                            <div style="margin-bottom:12px;">
+                                <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">Mã Đơn Vị (Viết liền không dấu): <span style="color:#e11d48;">*</span></label>
+                                <input type="text" id="trial-unit-code" class="form-control" required placeholder="VD: pk-anbinh, bv-than" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; font-weight:700; color:#1e40af; box-sizing:border-box;">
+                                <small style="display:block; font-size:11px; color:#64748b; margin-top:3px;">Mã định danh riêng của cơ sở để đăng nhập và bảo mật dữ liệu độc lập.</small>
+                            </div>
+
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                                <div>
+                                    <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">Số Điện Thoại: <span style="color:#e11d48;">*</span></label>
+                                    <input type="tel" id="trial-phone" class="form-control" required placeholder="0987654321" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; box-sizing:border-box;">
+                                </div>
+                                <div>
+                                    <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">Mật Khẩu Quản Trị: <span style="color:#e11d48;">*</span></label>
+                                    <input type="text" id="trial-password" class="form-control" required minlength="4" value="123456" placeholder="Tối thiểu 4 ký tự" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; font-weight:700; box-sizing:border-box;">
+                                </div>
+                            </div>
+
+                            <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px 14px; margin-bottom:16px;">
+                                <div style="display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:#166534;">
+                                    <span>✨</span> Tự động tạo bộ danh mục YHCT - PHCN chuẩn mẫu
+                                </div>
+                                <div style="font-size:11px; color:#15803d; margin-top:2px;">
+                                    Sẵn sàng 13 thủ thuật chuẩn Bộ Y Tế, 5 phòng khám, 9 máy móc và 3 nhân sự để xếp lịch được ngay lập tức.
+                                </div>
+                            </div>
+
+                            <div id="trial-error-msg" style="display:none; background:#fff1f2; border:1px solid #fecdd3; color:#e11d48; padding:8px 12px; border-radius:8px; font-size:12px; margin-bottom:14px; font-weight:600;"></div>
+
+                            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                                <button type="button" onclick="closeTrialRegisterModal()" class="btn btn-secondary" style="padding:9px 16px;">Hủy Bỏ</button>
+                                <button type="submit" id="btn-submit-trial" class="btn btn-success" style="padding:9px 22px; background:linear-gradient(135deg, #059669, #10b981); font-weight:800; font-size:13px; border:none; box-shadow:0 4px 12px rgba(16,185,129,0.3);">
+                                    🚀 Kích Hoạt Dùng Thử 15 Ngày
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- 💳 MODAL HƯỚNG DẪN THANH TOÁN & GIA HẠN GÓI CƯỚC             -->
+                <!-- ============================================================ -->
+                <div id="modal-renew-info" onclick="if(event.target===this) window.closeRenewModal()" style="display:none; position:fixed; inset:0; width:100vw; height:100vh; background:rgba(15,23,42,0.7); backdrop-filter:blur(6px); z-index:999999; justify-content:center; align-items:center; padding:15px; box-sizing:border-box;">
+                    <div style="background:#ffffff; width:100%; max-width:540px; border-radius:20px; padding:26px 22px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35); border:1px solid #e2e8f0; animation:modalPop 0.25s ease-out;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid #f1f5f9; padding-bottom:12px;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="font-size:24px;">💳</span>
+                                <div>
+                                    <h3 style="margin:0; font-size:17px; font-weight:800; color:#0f172a;">Thông Tin Kích Hoạt & Gia Hạn</h3>
+                                    <p style="margin:2px 0 0 0; font-size:12px; color:#64748b;" id="renew-modal-subtitle">Gia hạn bản quyền hệ thống xếp lịch T.I.M.E.S</p>
+                                </div>
+                            </div>
+                            <button type="button" onclick="closeRenewModal()" style="background:none; border:none; font-size:20px; color:#94a3b8; cursor:pointer;">✕</button>
+                        </div>
+
+                        <!-- Gói đã chọn -->
+                        <div style="background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:12px; padding:14px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <span style="font-size:11px; font-weight:700; color:#1e40af; text-transform:uppercase;">Gói cước đã chọn:</span>
+                                <div id="renew-plan-name" style="font-size:17px; font-weight:800; color:#1e3a8a; margin-top:2px;">Gói 6 Tháng</div>
+                                <div id="renew-unit-display" style="font-size:12px; color:#3b82f6; margin-top:2px;">Đơn vị: bvtks-cs2</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div id="renew-plan-price" style="font-size:20px; font-weight:800; color:#1d4ed8;">2.100.000 đ</div>
+                                <span style="font-size:11px; color:#64748b;" id="renew-plan-equiv">~350.000 đ / tháng</span>
+                            </div>
+                        </div>
+
+                        <!-- Thông tin chuyển khoản -->
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:16px; font-size:13px; color:#334155; line-height:1.6;">
+                            <div style="font-weight:700; color:#0f172a; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                                <span>🏦</span> THÔNG TIN CHUYỂN KHOẢN (VIETQR):
+                            </div>
+                            <div>• <b>Ngân hàng:</b> MB Bank (Ngân hàng TMCP Quân Đội)</div>
+                            <div>• <b>Số tài khoản:</b> <span style="font-family:monospace; font-weight:800; font-size:15px; color:#1d4ed8;">0392283473</span></div>
+                            <div>• <b>Chủ tài khoản:</b> <span style="font-weight:700; color:#0f172a;">ĐẶNG PHONG THÁI</span></div>
+                            <div style="margin-top:8px; padding:8px 12px; background:#fef3c7; border:1px dashed #f59e0b; border-radius:8px;">
+                                <div>• <b>Nội dung CK:</b> <span id="renew-transfer-memo" style="font-family:monospace; font-weight:800; font-size:14px; color:#b45309;">PMCG [MÃ ĐƠN VỊ] [GÓI]</span></div>
+                                <small style="display:block; font-size:11px; color:#92400e; margin-top:2px;">(Hệ thống tự động kích hoạt ngay khi nhận được giao dịch)</small>
+                            </div>
+                        </div>
+
+                        <!-- Hotline hỗ trợ kích hoạt -->
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; font-size:12px; color:#64748b;">
+                            <div>
+                                📞 Hỗ trợ nhanh 24/7 qua Zalo: <b>0392.283.473</b> (Bác sĩ Thái)
+                            </div>
+                            <button type="button" onclick="closeRenewModal()" class="btn btn-primary" style="padding:8px 20px; font-weight:700;">Đã Hiểu ➔</button>
+                        </div>
                     </div>
                 </div>
 <div class="tab-content" id="tab-thongke">
@@ -3396,7 +3699,7 @@
 
                     <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 4.0.5</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 15:45 10/09/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 16:20 10/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -3914,18 +4217,18 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.0.5-rev2"></script>
-    <script src="js/ai-scheduler.js?v=4.0.5-rev2"></script>
-    <script src="js/cp-solver.js?v=4.0.5-rev2"></script>
-    <script src="js/scheduler-engine.js?v=4.0.5-rev2"></script>
-    <script src="js/app.js?v=4.0.5-rev2"></script>
-    <script src="js/init.js?v=4.0.5-rev2"></script>
-    <script src="js/sync.js?v=4.0.5-rev2"></script>
-    <script src="js/thongke.js?v=4.0.5-rev2"></script>
+    <script src="js/offline-sync-engine.js?v=4.0.5-rev3"></script>
+    <script src="js/ai-scheduler.js?v=4.0.5-rev3"></script>
+    <script src="js/cp-solver.js?v=4.0.5-rev3"></script>
+    <script src="js/scheduler-engine.js?v=4.0.5-rev3"></script>
+    <script src="js/app.js?v=4.0.5-rev3"></script>
+    <script src="js/init.js?v=4.0.5-rev3"></script>
+    <script src="js/sync.js?v=4.0.5-rev3"></script>
+    <script src="js/thongke.js?v=4.0.5-rev3"></script>
 
     <!-- PWA Service Worker Registration + Instant Auto-Update Detection & Blocking Modal -->
     <script>
-    const APP_VERSION = '4.0.5-rev2';
+    const APP_VERSION = '4.0.5-rev3';
 
     (function registerAndAutoUpdate() {
         // 1. Kênh BroadcastChannel đồng bộ tức thì mọi tab đang mở trên cùng một máy
@@ -4352,7 +4655,7 @@
                 <div style="color: #3b82f6; font-size: 18px; font-weight: bold;">➜</div>
                 <div style="text-align: center;">
                     <div style="font-size: 11px; font-weight: 700; color: #16a34a; text-transform: uppercase; margin-bottom: 2px;">Phiên bản mới</div>
-                    <div id="force-update-new-ver" style="font-weight: 800; color: #15803d; font-family: monospace; font-size: 14.5px; background: #dcfce7; padding: 2px 10px; border-radius: 6px;">4.0.5-rev2</div>
+                    <div id="force-update-new-ver" style="font-weight: 800; color: #15803d; font-family: monospace; font-size: 14.5px; background: #dcfce7; padding: 2px 10px; border-radius: 6px;">4.0.5-rev3</div>
                 </div>
             </div>
 

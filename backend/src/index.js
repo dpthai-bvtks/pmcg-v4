@@ -398,7 +398,9 @@ async function processApiRequest(c) {
     "getPublicTenantInfo",
     "verifyLogin",
     "checkLogin",
-    "getDataVersion"
+    "getDataVersion",
+    "getSubscriptionPlans",
+    "registerTrialTenant"
   ]);
 
   if (!PUBLIC_ACTIONS.has(action)) {
@@ -512,6 +514,144 @@ function parseStringOrJsonArray(val) {
 }
 
 
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 💎 HỆ THỐNG 5 GÓI CƯỚC THƯƠNG MẠI T.I.M.E.S SAAS (FULL CHỨC NĂNG 100%)
+// ═══════════════════════════════════════════════════════════════════════════════
+const SUBSCRIPTION_PLANS = {
+  TRIAL_15D: {
+    code: "TRIAL_15D",
+    name: "Dùng Thử 15 Ngày",
+    durationDays: 15,
+    days: 15,
+    price: 0,
+    priceText: "0 đ (Miễn phí)",
+    monthlyRate: "Miễn phí 100%",
+    monthlyEquiv: "Miễn phí",
+    badge: "Trải Nghiệm",
+    description: "Trải nghiệm đầy đủ 100% tính năng trong 15 ngày, không giới hạn",
+    popular: false,
+    features: [
+      "Full 100% tính năng AI Xếp Lịch T.I.M.E.S",
+      "Không giới hạn số lượng KTV và Bệnh nhân",
+      "Đầy đủ danh mục Thủ thuật, Máy móc, Phòng khám",
+      "Xuất báo cáo Excel, PDF & Chấm công tự động",
+      "Hỗ trợ kỹ thuật trực tiếp"
+    ]
+  },
+  PLAN_1M: {
+    code: "PLAN_1M",
+    name: "Gói 1 Tháng",
+    durationDays: 30,
+    days: 30,
+    price: 400000,
+    priceText: "400.000 đ",
+    monthlyRate: "400.000 đ/tháng",
+    monthlyEquiv: "400.000 đ / tháng",
+    badge: "1 Tháng",
+    description: "Linh hoạt cho 1 tháng vận hành và kiểm nghiệm thực tế",
+    popular: false,
+    features: [
+      "Full 100% tính năng AI Xếp Lịch T.I.M.E.S",
+      "Không giới hạn số lượng KTV và Bệnh nhân",
+      "Đồng bộ dữ liệu thời gian thực trên Cloudflare D1",
+      "Xuất báo cáo Excel, PDF & Chấm công tự động",
+      "Hỗ trợ kỹ thuật 24/7"
+    ]
+  },
+  PLAN_3M: {
+    code: "PLAN_3M",
+    name: "Gói 3 Tháng",
+    durationDays: 90,
+    days: 90,
+    price: 1125000,
+    priceText: "1.125.000 đ",
+    monthlyRate: "375.000 đ/tháng",
+    monthlyEquiv: "375.000 đ / tháng",
+    badge: "Tiết kiệm 6%",
+    description: "Tiết kiệm 6% chi phí cho phòng khám vừa và nhỏ (375k/tháng)",
+    popular: false,
+    features: [
+      "Full 100% tính năng AI Xếp Lịch T.I.M.E.S",
+      "Không giới hạn số lượng KTV và Bệnh nhân",
+      "Đồng bộ dữ liệu thời gian thực trên Cloudflare D1",
+      "Sao lưu và phục hồi dữ liệu an toàn",
+      "Hỗ trợ kỹ thuật ưu tiên 24/7"
+    ]
+  },
+  PLAN_6M: {
+    code: "PLAN_6M",
+    name: "Gói 6 Tháng",
+    durationDays: 180,
+    days: 180,
+    price: 2100000,
+    priceText: "2.100.000 đ",
+    monthlyRate: "350.000 đ/tháng",
+    monthlyEquiv: "350.000 đ / tháng",
+    badge: "Phổ Biến ⭐",
+    popular: true,
+    description: "Khuyên dùng cho khoa phòng bệnh viện hoạt động liên tục (350k/tháng)",
+    features: [
+      "Full 100% tính năng AI Xếp Lịch T.I.M.E.S",
+      "Không giới hạn số lượng KTV và Bệnh nhân",
+      "Đồng bộ dữ liệu thời gian thực trên Cloudflare D1",
+      "Sao lưu tự động & Bảo mật phân quyền RBAC đa tầng",
+      "Hỗ trợ kỹ thuật chuyên sâu 24/7"
+    ]
+  },
+  PLAN_1Y: {
+    code: "PLAN_1Y",
+    name: "Gói 1 Năm",
+    durationDays: 365,
+    days: 365,
+    price: 3900000,
+    priceText: "3.900.000 đ",
+    monthlyRate: "325.000 đ/tháng",
+    monthlyEquiv: "325.000 đ / tháng",
+    badge: "Tiết Kiệm Nhất 🔥",
+    bestValue: true,
+    description: "Tiết kiệm tối đa 18.75% chi phí (chỉ 325.000 đ/tháng)",
+    features: [
+      "Full 100% tính năng AI Xếp Lịch T.I.M.E.S",
+      "Không giới hạn số lượng KTV và Bệnh nhân",
+      "Đồng bộ đa thiết bị không giới hạn",
+      "Cập nhật miễn phí các thuật toán AI mới nhất",
+      "Hỗ trợ kỹ thuật VIP & Đào tạo trực tiếp"
+    ]
+  }
+};
+
+function calculateSubscriptionInfo(tenant) {
+  if (!tenant) return { plan_code: "PRO", plan_name: "Chuyên Nghiệp", days_left: 0, is_expired: false, is_expiring_soon: false };
+  const rawTier = String(tenant.plan_tier || "PRO").trim();
+  const plan = SUBSCRIPTION_PLANS[rawTier] || {
+    code: rawTier,
+    name: rawTier === "ENTERPRISE" ? "Doanh Nghiệp (Vĩnh Viễn)" : (rawTier === "MASTER" ? "Chủ Quản Hệ Thống" : rawTier),
+    days: 365,
+    priceText: "Liên hệ"
+  };
+
+  const nowVN = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+  let daysLeft = 0;
+  let isExpired = false;
+  if (tenant.expires_at) {
+    const diffTime = new Date(tenant.expires_at).getTime() - new Date(nowVN).getTime();
+    daysLeft = Math.ceil(diffTime / (1000 * 3600 * 24));
+    if (daysLeft < 0) {
+      isExpired = true;
+      daysLeft = 0;
+    }
+  }
+
+  return {
+    plan_code: rawTier,
+    plan_name: plan.name,
+    expires_at: tenant.expires_at || "2099-12-31",
+    days_left: daysLeft,
+    is_expired: isExpired,
+    is_expiring_soon: (!isExpired && daysLeft <= 7 && rawTier !== "ENTERPRISE" && rawTier !== "MASTER")
+  };
+}
 
 let schemaEnsured = false;
 async function ensureSchema(db) {
@@ -1321,11 +1461,259 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       }
     }
 
+    case "getSubscriptionPlans": {
+      return success({
+        plans: SUBSCRIPTION_PLANS,
+        list: Object.values(SUBSCRIPTION_PLANS)
+      });
+    }
+
     case "getPublicTenantInfo": {
       const targetUnit = String(args[0] || unitCode || "bvtks-cs2").trim().toLowerCase();
       const tenant = await db.prepare("SELECT unit_code, unit_name, logo_url, plan_tier, is_active, expires_at FROM tenants WHERE unit_code = ?").bind(targetUnit).first();
       if (!tenant) return error(`Đơn vị '${targetUnit}' không tồn tại!`, 404);
-      return success(tenant);
+      const subInfo = calculateSubscriptionInfo(tenant);
+      return success({ ...tenant, ...subInfo });
+    }
+
+    case "registerTrialTenant": {
+      const payload = args[0] || {};
+      let uCode = String(payload.unit_code || payload.code || "").trim().toLowerCase();
+      const uName = String(payload.unit_name || payload.name || "").trim();
+      const uPhone = String(payload.phone || "").trim();
+      const uEmail = String(payload.email || "").trim();
+      const uPass = String(payload.password || payload.admin_password || "").trim();
+
+      if (!uName) return error("Vui lòng nhập Tên bệnh viện hoặc Phòng khám!", 400);
+      if (!uPhone) return error("Vui lòng nhập Số điện thoại liên hệ!", 400);
+      if (!uPass || uPass.length < 4) return error("Mật khẩu quản trị phải có ít nhất 4 ký tự!", 400);
+
+      // Nếu người dùng không nhập mã đơn vị, tự động tạo mã slug đẹp từ tên
+      if (!uCode) {
+        uCode = uName.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+          .replace(/đ/g, "d").replace(/Đ/g, "D")
+          .toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+        if (uCode.length < 3) uCode = "pk-" + Math.floor(1000 + Math.random() * 9000);
+      }
+
+      // Kiểm tra định dạng mã đơn vị
+      if (!/^[a-z0-9_-]{3,35}$/.test(uCode)) {
+        return error("Mã đơn vị phải từ 3 đến 35 ký tự, chỉ gồm chữ thường không dấu, số, gạch nối (- hoặc _)!", 400);
+      }
+
+      // Kiểm tra trùng mã đơn vị
+      const exist = await db.prepare("SELECT id FROM tenants WHERE unit_code = ?").bind(uCode).first();
+      if (exist) {
+        return error(`Mã đơn vị '${uCode}' đã có người đăng ký! Vui lòng chọn mã khác (ví dụ: ${uCode}-${Math.floor(10 + Math.random() * 90)}).`, 400);
+      }
+
+      // 1. Tính toán ngày hết hạn 15 ngày kể từ ngày đăng ký
+      const nowVN = new Date(Date.now() + 7 * 3600 * 1000);
+      const expDate = new Date(nowVN.getTime() + 15 * 86400 * 1000).toISOString().slice(0, 10);
+
+      // 2. Tạo bản ghi đơn vị trong bảng tenants (Full chức năng: max_staff = 999, max_patients = 9999)
+      await db.prepare(`
+        INSERT INTO tenants (unit_code, unit_name, phone, email, plan_tier, max_staff, max_patients, expires_at, is_active)
+        VALUES (?, ?, ?, ?, 'TRIAL_15D', 999, 9999, ?, 1)
+      `).bind(uCode, uName, uPhone, uEmail, expDate).run();
+
+      // 3. Tạo tài khoản admin mặc định cho đơn vị mới
+      const passHash = await hashPassword(uPass);
+      await db.prepare(`
+        INSERT INTO tai_khoan (unit_code, username, password_hash, role, permissions)
+        VALUES (?, 'admin', ?, 'Admin', 'ALL')
+      `).bind(uCode, passHash).run();
+
+      // 4. Batch Seed danh mục mẫu 1-Click Onboarding
+      const seedBatch = [];
+      const defaultSettings = [
+        ["hospital_name", uName],
+        ["app_title", uName + " - Quản Lý Xếp Lịch T.I.M.E.S"],
+        ["system_theme", "glass-dark"],
+        ["thoi_gian_lam_viec", "07:30-11:30, 13:00-16:30"],
+        ["so_ca_toi_da_ktv", "12"],
+        ["tg_nghi_chuyen_ca", "5"],
+        ["cho_phep_xep_thu_7", "1"],
+        ["gio_chieu_sang_sang", "13:00"],
+        ["gio_chieu_sang_chieu", "16:30"],
+        ["ai_auto_learning", "1"],
+        ["ai_active_engine", "CP_SOLVER"],
+        ["gio_mo_cua", "07:30"],
+        ["gio_dong_cua", "16:30"]
+      ];
+      for (const [k, v] of defaultSettings) {
+        seedBatch.push(db.prepare("INSERT OR REPLACE INTO cai_dat (unit_code, key, value) VALUES (?, ?, ?)").bind(uCode, k, v));
+      }
+
+      // Danh mục phòng điều trị mẫu
+      const sampleRooms = [
+        { name: "Phòng Điện trị liệu (Phòng 1)", bs: "BS. Quản Lý Khoa", ktv: "KTV. Nguyễn Văn A", beds: 6 },
+        { name: "Phòng Kéo giãn cột sống (Phòng 2)", bs: "", ktv: "KTV. Nguyễn Văn A", beds: 4 },
+        { name: "Phòng Vận động trị liệu (Phòng 3)", bs: "", ktv: "KTV. Trần Thị B", beds: 5 },
+        { name: "Phòng Châm cứu & Cấy chỉ (Phòng 4)", bs: "BS. Quản Lý Khoa", ktv: "KTV. Trần Thị B", beds: 6 },
+        { name: "Phòng Xoa bóp bấm huyệt (Phòng 5)", bs: "", ktv: "KTV. Trần Thị B", beds: 4 }
+      ];
+      sampleRooms.forEach((r, idx) => {
+        seedBatch.push(db.prepare(`
+          INSERT OR IGNORE INTO phong (unit_code, ten_phong, bac_si, ktv, so_giuong, order_idx, is_active)
+          VALUES (?, ?, ?, ?, ?, ?, 1)
+        `).bind(uCode, r.name, r.bs, r.ktv, r.beds, idx + 1));
+      });
+
+      // Danh mục máy móc điều trị mẫu
+      const sampleMachines = [
+        { type: "Máy Siêu âm điều trị", code: "SA-01" },
+        { type: "Máy Siêu âm điều trị", code: "SA-02" },
+        { type: "Máy Điện xung đa năng", code: "DX-01" },
+        { type: "Máy Điện xung đa năng", code: "DX-02" },
+        { type: "Máy Laser công suất thấp", code: "LS-01" },
+        { type: "Máy Kéo giãn cột sống cổ/lưng", code: "KG-01" },
+        { type: "Máy Sóng ngắn trị liệu", code: "SN-01" },
+        { type: "Đèn Hồng ngoại", code: "HN-01" },
+        { type: "Đèn Hồng ngoại", code: "HN-02" }
+      ];
+      sampleMachines.forEach((m, idx) => {
+        seedBatch.push(db.prepare(`
+          INSERT OR IGNORE INTO may_moc (unit_code, ten_loai, ma_may, order_idx, is_active)
+          VALUES (?, ?, ?, ?, 1)
+        `).bind(uCode, m.type, m.code, idx + 1));
+      });
+
+      // 13 Thủ thuật mẫu YHCT & PHCN chuẩn Bộ Y Tế
+      const sampleProcs = [
+        { name: "Siêu âm điều trị", vt: "SA", he: "PHCN", may: "SA", tg: 30, lien_tuc: 0 },
+        { name: "Điện xung điều trị", vt: "DX", he: "PHCN", may: "DX", tg: 30, lien_tuc: 0 },
+        { name: "Điện phân dẫn thuốc", vt: "DP", he: "PHCN", may: "DX", tg: 30, lien_tuc: 0 },
+        { name: "Kéo giãn cột sống bằng máy", vt: "KG", he: "PHCN", may: "KG", tg: 30, lien_tuc: 0 },
+        { name: "Chiếu đèn hồng ngoại", vt: "HN", he: "PHCN", may: "HN", tg: 30, lien_tuc: 0 },
+        { name: "Laser điều trị", vt: "LS", he: "PHCN", may: "LS", tg: 20, lien_tuc: 0 },
+        { name: "Sóng ngắn điều trị", vt: "SN", he: "PHCN", may: "SN", tg: 20, lien_tuc: 0 },
+        { name: "Tập vận động thụ động", vt: "VĐ-TD", he: "PHCN", may: "", tg: 30, lien_tuc: 0 },
+        { name: "Tập vận động có trợ giúp", vt: "VĐ-TG", he: "PHCN", may: "", tg: 30, lien_tuc: 0 },
+        { name: "Xoa bóp bấm huyệt điều trị", vt: "XBBH", he: "YHCT", may: "", tg: 30, lien_tuc: 0 },
+        { name: "Điện châm điều trị", vt: "ĐC", he: "YHCT", may: "", tg: 30, lien_tuc: 0 },
+        { name: "Cứu ngải điều trị", vt: "CN", he: "YHCT", may: "", tg: 20, lien_tuc: 0 },
+        { name: "Thủy châm điều trị", vt: "TC", he: "YHCT", may: "", tg: 15, lien_tuc: 0 }
+      ];
+      sampleProcs.forEach((p, idx) => {
+        seedBatch.push(db.prepare(`
+          INSERT OR IGNORE INTO thu_thuat (unit_code, ten_thu_thuat, viet_tat, he, may, tg_thuc_hien, tg_thu_thuat, lien_tuc, order_idx, is_active)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        `).bind(uCode, p.name, p.vt, p.he, p.may, p.tg, p.tg, p.lien_tuc, idx + 1));
+      });
+
+      // Phác đồ điều trị mẫu
+      const sampleProtocols = [
+        { name: "Phác đồ Thoái hóa cột sống thắt lưng", procs: JSON.stringify(["Kéo giãn cột sống bằng máy", "Điện xung điều trị", "Chiếu đèn hồng ngoại"]) },
+        { name: "Phác đồ Đau vai gáy / Cột sống cổ", procs: JSON.stringify(["Siêu âm điều trị", "Điện xung điều trị", "Xoa bóp bấm huyệt điều trị"]) },
+        { name: "Phác đồ Di chứng tai biến / Liệt nửa người", procs: JSON.stringify(["Tập vận động thụ động", "Điện châm điều trị", "Xoa bóp bấm huyệt điều trị"]) }
+      ];
+      sampleProtocols.forEach((proto, idx) => {
+        seedBatch.push(db.prepare(`
+          INSERT OR IGNORE INTO phac_do (unit_code, ten_phac_do, danh_sach_thu_thuat, order_idx, is_active)
+          VALUES (?, ?, ?, ?, 1)
+        `).bind(uCode, proto.name, proto.procs, idx + 1));
+      });
+
+      // Nhân sự mẫu
+      const sampleStaff = [
+        { name: "KTV. Nguyễn Văn A", role: "KTV", system: "PHCN", priority: 1, time: "07:30-11:30, 13:00-16:30" },
+        { name: "KTV. Trần Thị B", role: "KTV", system: "YHCT", priority: 2, time: "07:30-11:30, 13:00-16:30" },
+        { name: "BS. Quản Lý Khoa", role: "BS", system: "ALL", priority: 0, time: "07:30-11:30, 13:00-16:30" }
+      ];
+      sampleStaff.forEach((s, idx) => {
+        seedBatch.push(db.prepare(`
+          INSERT OR IGNORE INTO nhan_su (unit_code, name, role, system, priority, thoi_gian_lam, trang_thai, is_active)
+          VALUES (?, ?, ?, ?, ?, ?, 'Đi làm', 1)
+        `).bind(uCode, s.name, s.role, s.system, s.priority, s.time));
+      });
+
+      if (seedBatch.length > 0) {
+        await db.batch(seedBatch);
+      }
+
+      // Cấp JWT Token để client tự động đăng nhập tức thì
+      const jwtSecret = env.JWT_SECRET || "PMCG_V4_SECURE_JWT_SECRET_2026_TIMES_DEFAULT_KEY";
+      const tokenPayload = {
+        sub: "trial-admin-" + uCode,
+        username: "admin",
+        role: "Admin",
+        name: "Quản trị viên " + uName,
+        unit_code: uCode,
+        unit_name: uName,
+        plan_tier: "TRIAL_15D",
+        permissions: "ALL",
+        exp: Math.floor(Date.now() / 1000) + (15 * 86400)
+      };
+      const token = await signJwt(tokenPayload, jwtSecret);
+
+      return success({
+        message: `Đăng ký thành công! Chào mừng '${uName}' đến với Hệ thống Xếp lịch T.I.M.E.S. Gói Dùng thử 15 ngày miễn phí đã sẵn sàng!`,
+        token: token,
+        unit_code: uCode,
+        unit_name: uName,
+        username: "admin",
+        role: "Admin",
+        plan_tier: "TRIAL_15D",
+        plan_name: "Dùng Thử 15 Ngày",
+        days_left: 15,
+        expires_at: expDate
+      });
+    }
+
+    case "renewTenantSubscription": {
+      const payload = args[0] || {};
+      const uCode = String(payload.unit_code || payload.code || args[0] || unitCode || "").trim().toLowerCase();
+      const planCode = String(payload.plan_tier || payload.plan_code || payload.plan || args[1] || "PLAN_1M").trim().toUpperCase();
+
+      if (!uCode) return error("Thiếu mã đơn vị cần gia hạn!", 400);
+
+      // Kiểm tra quyền: Chỉ SUPER_ADMIN hoặc chính đơn vị đó mới được thao tác
+      if (tokenPayload && tokenPayload.role !== "SUPER_ADMIN" && tokenPayload.unit_code !== uCode) {
+        return error("Từ chối truy cập: Bạn không có quyền gia hạn cho đơn vị khác!", 403);
+      }
+
+      const plan = SUBSCRIPTION_PLANS[planCode];
+      if (!plan) {
+        return error(`Gói cước '${planCode}' không tồn tại trong danh mục hệ thống!`, 400);
+      }
+
+      const tenant = await db.prepare("SELECT unit_code, unit_name, plan_tier, expires_at FROM tenants WHERE unit_code = ?").bind(uCode).first();
+      if (!tenant) return error(`Đơn vị '${uCode}' không tồn tại!`, 404);
+
+      // Tính ngày hết hạn mới (cộng nối tiếp nếu còn hạn, hoặc từ hôm nay nếu đã quá hạn)
+      const nowVN = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+      let baseDate;
+      if (tenant.expires_at && tenant.expires_at >= nowVN) {
+        baseDate = new Date(tenant.expires_at);
+      } else {
+        baseDate = new Date(nowVN);
+      }
+
+      const newExpDate = new Date(baseDate.getTime() + plan.days * 86400 * 1000).toISOString().slice(0, 10);
+
+      await db.prepare(`
+        UPDATE tenants SET
+          plan_tier = ?,
+          expires_at = ?,
+          max_staff = 999,
+          max_patients = 9999,
+          is_active = 1,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE unit_code = ?
+      `).bind(planCode, newExpDate, uCode).run();
+
+      const subInfo = calculateSubscriptionInfo({ ...tenant, plan_tier: planCode, expires_at: newExpDate });
+
+      return success({
+        message: `Đã kích hoạt thành công '${plan.name}' cho '${tenant.unit_name}' đến ngày ${newExpDate}!`,
+        unit_code: uCode,
+        unit_name: tenant.unit_name,
+        plan_tier: planCode,
+        plan_name: plan.name,
+        expires_at: newExpDate,
+        days_left: subInfo.days_left
+      });
     }
 
     case "getTenantsList": {
@@ -3793,6 +4181,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
               exp: Math.floor(Date.now() / 1000) + (7 * 86400)
             };
             const token = await signJwt(tokenPayload, jwtSecret);
+            const subInfo = calculateSubscriptionInfo(tenant);
 
             return success({
               token: token,
@@ -3803,6 +4192,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
               unit_name: tenant.unit_name,
               logo_url: tenant.logo_url || "",
               plan_tier: tenant.plan_tier || "PRO",
+              plan_name: subInfo.plan_name,
+              days_left: subInfo.days_left,
+              is_expiring_soon: subInfo.is_expiring_soon,
               expires_at: tenant.expires_at,
               permissions: user.permissions || "ALL"
             });

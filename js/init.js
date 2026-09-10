@@ -156,6 +156,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (superTab) superTab.style.display = 'none';
             if (typeof applyPermissions === 'function') applyPermissions(sess.role, sess.permissions || 'all');
         }
+        if (typeof window.updateSubscriptionHeaderBadge === 'function' && (sess.username || sess.role)) {
+            const pTier = localStorage.getItem('pm_plan_tier') || sess.plan_tier;
+            const pExp = localStorage.getItem('pm_expires_at') || sess.expires_at;
+            const pName = localStorage.getItem('pm_plan_name') || sess.plan_name;
+            const pDays = localStorage.getItem('pm_days_left') || sess.days_left;
+            window.updateSubscriptionHeaderBadge(pTier, pExp, pName, pDays);
+        }
     } catch(e) {}
 
     // loadSystemSettings() is automatically handled by loadBootstrapData with offline-first cache
@@ -273,15 +280,26 @@ window.doLogin = function () {
                 if (res.token) {
                     localStorage.setItem('pm_jwt_token', res.token);
                 }
-                localStorage.setItem('pm_unit_code', uUnit);
-                localStorage.setItem('pm_unit_name', uUnitName);
+                const pTier = res.plan_tier || 'PLAN_1Y';
+                const pExp = res.expires_at || '2099-12-31';
+                const pName = res.subInfo ? res.subInfo.plan_name : (res.plan_name || 'Bản Quyền');
+                const pDays = res.subInfo ? res.subInfo.days_left : (res.days_left !== undefined ? res.days_left : 999);
+
+                localStorage.setItem('pm_plan_tier', pTier);
+                localStorage.setItem('pm_expires_at', pExp);
+                localStorage.setItem('pm_plan_name', pName);
+                localStorage.setItem('pm_days_left', String(pDays));
+
                 localStorage.setItem('meds_session', JSON.stringify({
                     username: uName,
                     role: uRole,
                     permissions: uPerms,
                     unit_code: uUnit,
                     unit_name: uUnitName,
-                    plan_tier: res.plan_tier || 'PRO',
+                    plan_tier: pTier,
+                    plan_name: pName,
+                    expires_at: pExp,
+                    days_left: pDays,
                     sessionId: res.sessionId || ('sess_' + Date.now())
                 }));
 
@@ -352,6 +370,9 @@ window.doLogin = function () {
                 }
                 if (typeof updateLogoutButton === 'function') {
                     updateLogoutButton(uName);
+                }
+                if (typeof window.updateSubscriptionHeaderBadge === 'function') {
+                    window.updateSubscriptionHeaderBadge(pTier, pExp, pName, pDays);
                 }
 
                 // ✅ 4. Tải dữ liệu Bootstrap mới nhất của đơn vị này ngay lập tức (forceRefresh = true)

@@ -1640,15 +1640,26 @@ window.renderSttOrderControl = function (type, i, total) {
                     if (res.token) {
                         localStorage.setItem('pm_jwt_token', res.token);
                     }
-                    localStorage.setItem('pm_unit_code', uUnit);
-                    localStorage.setItem('pm_unit_name', uUnitName);
+                    const pTier = res.plan_tier || 'PLAN_1Y';
+                    const pExp = res.expires_at || '2099-12-31';
+                    const pName = res.subInfo ? res.subInfo.plan_name : (res.plan_name || 'Bản Quyền');
+                    const pDays = res.subInfo ? res.subInfo.days_left : (res.days_left !== undefined ? res.days_left : 999);
+
+                    localStorage.setItem('pm_plan_tier', pTier);
+                    localStorage.setItem('pm_expires_at', pExp);
+                    localStorage.setItem('pm_plan_name', pName);
+                    localStorage.setItem('pm_days_left', String(pDays));
+
                     localStorage.setItem('meds_session', JSON.stringify({
                         username: uName,
                         role: uRole,
                         permissions: uPerms,
                         unit_code: uUnit,
                         unit_name: uUnitName,
-                        plan_tier: res.plan_tier || 'PRO',
+                        plan_tier: pTier,
+                        plan_name: pName,
+                        expires_at: pExp,
+                        days_left: pDays,
                         sessionId: 'sess_' + Date.now()
                     }));
 
@@ -1715,6 +1726,9 @@ window.renderSttOrderControl = function (type, i, total) {
                     document.querySelectorAll('.app-user-role').forEach(el => el.innerText = uRole);
                     if (typeof applyPermissions === 'function') applyPermissions(uRole, uPerms);
                     if (typeof updateLogoutButton === 'function') updateLogoutButton(uName);
+                    if (typeof window.updateSubscriptionHeaderBadge === 'function') {
+                        window.updateSubscriptionHeaderBadge(pTier, pExp, pName, pDays);
+                    }
 
                     // ✅ 4. Tải dữ liệu Bootstrap mới nhất của đơn vị này ngay lập tức (forceRefresh = true)
                     if (typeof window.loadBootstrapData === 'function') {
@@ -13970,10 +13984,14 @@ window.openAddTenantModal = function () {
     document.getElementById('tenant-form-code').value = '';
     document.getElementById('tenant-form-code').disabled = false;
     document.getElementById('tenant-form-name').value = '';
-    document.getElementById('tenant-form-plan').value = 'PRO';
-    document.getElementById('tenant-form-expires').value = '2099-12-31';
-    document.getElementById('tenant-form-max-staff').value = '30';
-    document.getElementById('tenant-form-max-patients').value = '150';
+    document.getElementById('tenant-form-plan').value = 'PLAN_1Y';
+    if (typeof window.onTenantPlanSelectChange === 'function') {
+        window.onTenantPlanSelectChange('PLAN_1Y');
+    } else {
+        document.getElementById('tenant-form-expires').value = '2099-12-31';
+        document.getElementById('tenant-form-max-staff').value = '999';
+        document.getElementById('tenant-form-max-patients').value = '9999';
+    }
     document.getElementById('tenant-form-phone').value = '';
     document.getElementById('tenant-form-password').value = 'admin123';
     if (document.getElementById('tenant-form-seed-group')) {
@@ -13991,10 +14009,10 @@ window.openEditTenantModal = function (code, encName, plan, expires, maxStaff, m
     document.getElementById('tenant-form-code').value = code;
     document.getElementById('tenant-form-code').disabled = false;
     document.getElementById('tenant-form-name').value = decodeURIComponent(encName);
-    document.getElementById('tenant-form-plan').value = plan || 'PRO';
+    document.getElementById('tenant-form-plan').value = plan || 'PLAN_1Y';
     document.getElementById('tenant-form-expires').value = expires || '2099-12-31';
-    document.getElementById('tenant-form-max-staff').value = maxStaff || 30;
-    document.getElementById('tenant-form-max-patients').value = maxPatients || 150;
+    document.getElementById('tenant-form-max-staff').value = maxStaff || 999;
+    document.getElementById('tenant-form-max-patients').value = maxPatients || 9999;
     document.getElementById('tenant-form-phone').value = phone || '';
     document.getElementById('tenant-form-password').value = '';
     if (document.getElementById('tenant-form-seed-group')) {
@@ -14512,4 +14530,317 @@ window.filterGioBanChungCuClient = function() {};
         } catch(e) {}
     }, 30000);
 })();
+
+/* ============================================================
+   💎 HỆ THỐNG GÓI BẢN QUYỀN, DÙNG THỬ & GIA HẠN (SAAS LICENSING)
+   ============================================================ */
+
+window.openPricingModal = function () {
+    const m = document.getElementById('modal-pricing-plans');
+    if (m) m.style.display = 'flex';
+};
+
+window.closePricingModal = function () {
+    const m = document.getElementById('modal-pricing-plans');
+    if (m) m.style.display = 'none';
+};
+
+window.openTrialRegisterModal = function (chosenPlan) {
+    window.closePricingModal();
+    const m = document.getElementById('modal-trial-register');
+    if (m) {
+        m.style.display = 'flex';
+        const errDiv = document.getElementById('trial-reg-error');
+        if (errDiv) errDiv.style.display = 'none';
+        const nameInput = document.getElementById('trial-reg-name');
+        if (nameInput) {
+            nameInput.value = '';
+            setTimeout(() => nameInput.focus(), 150);
+        }
+        if (document.getElementById('trial-reg-code')) document.getElementById('trial-reg-code').value = '';
+        if (document.getElementById('trial-reg-phone')) document.getElementById('trial-reg-phone').value = '';
+        if (document.getElementById('trial-reg-password')) document.getElementById('trial-reg-password').value = 'admin123';
+    }
+};
+
+window.closeTrialRegisterModal = function () {
+    const m = document.getElementById('modal-trial-register');
+    if (m) m.style.display = 'none';
+};
+
+window.autoSuggestTrialCode = function (name) {
+    if (!name) return;
+    const codeInput = document.getElementById('trial-reg-code');
+    if (!codeInput) return;
+    // Bỏ dấu tiếng Việt và ký tự đặc biệt
+    let slug = name.toLowerCase().trim()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[đĐ]/g, 'd')
+        .replace(/[^a-z0-9\s]/g, '')
+        .replace(/\s+/g, '-');
+    if (slug.length > 20) slug = slug.substring(0, 20);
+    codeInput.value = slug;
+};
+
+window.submitTrialRegistration = function () {
+    const name = (document.getElementById('trial-reg-name')?.value || '').trim();
+    const code = (document.getElementById('trial-reg-code')?.value || '').trim().toLowerCase();
+    const phone = (document.getElementById('trial-reg-phone')?.value || '').trim();
+    const password = (document.getElementById('trial-reg-password')?.value || '').trim();
+    const errDiv = document.getElementById('trial-reg-error');
+    const btn = document.getElementById('btn-submit-trial');
+
+    if (!name || !code) {
+        if (errDiv) {
+            errDiv.innerText = 'Vui lòng nhập Tên bệnh viện/phòng khám và Mã đơn vị!';
+            errDiv.style.display = 'block';
+        }
+        return;
+    }
+
+    if (!/^[a-z0-9_-]{3,30}$/.test(code)) {
+        if (errDiv) {
+            errDiv.innerText = 'Mã đơn vị chỉ chứa chữ thường không dấu, số, dấu gạch nối (3-30 ký tự)!';
+            errDiv.style.display = 'block';
+        }
+        return;
+    }
+
+    if (!password || password.length < 4) {
+        if (errDiv) {
+            errDiv.innerText = 'Mật khẩu quản trị phải có ít nhất 4 ký tự!';
+            errDiv.style.display = 'block';
+        }
+        return;
+    }
+
+    if (errDiv) errDiv.style.display = 'none';
+    if (btn) {
+        btn.innerText = '⏳ Đang khởi tạo đơn vị...';
+        btn.disabled = true;
+    }
+
+    const payload = {
+        unit_name: name,
+        unit_code: code,
+        phone: phone,
+        admin_password: password
+    };
+
+    if (typeof callApi === 'function') {
+        callApi('registerTrialTenant', [payload], res => {
+            if (btn) {
+                btn.innerText = '🚀 Kích Hoạt Dùng Thử 15 Ngày';
+                btn.disabled = false;
+            }
+            if (!res || !res.success) {
+                if (errDiv) {
+                    errDiv.innerText = res && res.error ? res.error : 'Đăng ký không thành công. Vui lòng thử lại!';
+                    errDiv.style.display = 'block';
+                }
+                return;
+            }
+
+            // Đăng ký thành công -> Tự động đăng nhập
+            window.closeTrialRegisterModal();
+            const token = res.token;
+            if (token) localStorage.setItem('pm_jwt_token', token);
+            localStorage.setItem('pm_unit_code', code);
+            localStorage.setItem('pm_unit_name', name);
+            localStorage.setItem('pm_plan_tier', 'TRIAL_15D');
+            localStorage.setItem('pm_plan_name', 'Dùng thử 15 ngày');
+            localStorage.setItem('pm_expires_at', res.tenant?.expires_at || '');
+            localStorage.setItem('pm_days_left', '15');
+
+            localStorage.setItem('meds_session', JSON.stringify({
+                username: 'admin',
+                role: 'Admin',
+                permissions: 'all',
+                unit_code: code,
+                unit_name: name,
+                plan_tier: 'TRIAL_15D',
+                sessionId: 'sess_' + Date.now()
+            }));
+
+            // Reset RAM
+            window.currentScheduleData = null;
+            window.chamCongData = {};
+            window.thongKeData = {};
+            window.adminChamCongEmployees = [];
+
+            // Đóng login overlay
+            const overlay = document.getElementById('login-overlay');
+            if (overlay) overlay.style.display = 'none';
+            const userMenu = document.getElementById('user-menu-container');
+            const displayName = document.getElementById('user-display-name');
+            if (userMenu) userMenu.style.display = 'flex';
+            if (displayName) displayName.innerText = '👤 admin';
+
+            if (typeof window.applyPermissions === 'function') window.applyPermissions('Admin', 'all');
+            if (typeof window.updateAppHeader === 'function') window.updateAppHeader(code, 'Admin');
+            if (typeof window.updateSubscriptionHeaderBadge === 'function') {
+                window.updateSubscriptionHeaderBadge('TRIAL_15D', res.tenant?.expires_at, 'Dùng thử 15 ngày', 15);
+            }
+
+            // Tải dữ liệu mẫu
+            if (typeof window.loadBootstrapData === 'function') {
+                window.loadBootstrapData(true);
+            }
+
+            alert(`🎉 CHÚC MỪNG!\n\nĐơn vị "${name}" đã được kích hoạt gói Dùng Thử 15 Ngày Miễn Phí (Full 100% Chức Năng)!\n\n• Mã đơn vị: ${code}\n• Tên đăng nhập: admin\n• Mật khẩu: ${password}\n\nHệ thống đã tạo sẵn danh mục thủ thuật và phòng điều trị chuẩn Bộ Y Tế. Bạn có thể bắt đầu xếp lịch ngay!`);
+        }, err => {
+            if (btn) {
+                btn.innerText = '🚀 Kích Hoạt Dùng Thử 15 Ngày';
+                btn.disabled = false;
+            }
+            if (errDiv) {
+                errDiv.innerText = 'Lỗi kết nối máy chủ: ' + (err && err.message ? err.message : String(err));
+                errDiv.style.display = 'block';
+            }
+        });
+    } else {
+        alert('Lỗi: Hệ thống chưa sẵn sàng kết nối API.');
+        if (btn) { btn.innerText = '🚀 Kích Hoạt Dùng Thử 15 Ngày'; btn.disabled = false; }
+    }
+};
+
+window.openRenewModal = function (planCode) {
+    window.closePricingModal();
+    const m = document.getElementById('modal-renew-info');
+    if (!m) return;
+
+    const currentUnit = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
+    const selectedPlan = planCode || 'PLAN_1Y';
+
+    const planData = {
+        'PLAN_1M': { name: 'Gói 1 Tháng', price: '400.000 đ', equiv: '400.000 đ / tháng', code: '1T' },
+        'PLAN_3M': { name: 'Gói 3 Tháng', price: '1.125.000 đ', equiv: '~375.000 đ / tháng (Tiết kiệm 6%)', code: '3T' },
+        'PLAN_6M': { name: 'Gói 6 Tháng', price: '2.100.000 đ', equiv: '~350.000 đ / tháng (Tiết kiệm 12.5%)', code: '6T' },
+        'PLAN_1Y': { name: 'Gói 1 Năm', price: '3.900.000 đ', equiv: '~325.000 đ / tháng (Tiết kiệm 18.75%)', code: '1N' }
+    };
+
+    const target = planData[selectedPlan] || planData['PLAN_1Y'];
+
+    const nameEl = document.getElementById('renew-plan-name');
+    const priceEl = document.getElementById('renew-plan-price');
+    const equivEl = document.getElementById('renew-plan-equiv');
+    const unitEl = document.getElementById('renew-unit-display');
+    const memoEl = document.getElementById('renew-transfer-memo');
+
+    if (nameEl) nameEl.innerText = target.name;
+    if (priceEl) priceEl.innerText = target.price;
+    if (equivEl) equivEl.innerText = target.equiv;
+    if (unitEl) unitEl.innerText = 'Đơn vị: ' + currentUnit;
+    if (memoEl) memoEl.innerText = `PMCG ${currentUnit.toUpperCase()} ${target.code}`;
+
+    m.style.display = 'flex';
+};
+
+window.closeRenewModal = function () {
+    const m = document.getElementById('modal-renew-info');
+    if (m) m.style.display = 'none';
+};
+
+window.onTenantPlanSelectChange = function (planCode) {
+    const expInput = document.getElementById('tenant-form-expires');
+    const staffInput = document.getElementById('tenant-form-max-staff');
+    const patInput = document.getElementById('tenant-form-max-patients');
+
+    if (staffInput) staffInput.value = '999';
+    if (patInput) patInput.value = '9999';
+
+    if (!expInput) return;
+    const now = new Date();
+    let daysToAdd = 365;
+
+    switch (planCode) {
+        case 'TRIAL_15D':
+            daysToAdd = 15;
+            break;
+        case 'PLAN_1M':
+            daysToAdd = 30;
+            break;
+        case 'PLAN_3M':
+            daysToAdd = 90;
+            break;
+        case 'PLAN_6M':
+            daysToAdd = 180;
+            break;
+        case 'PLAN_1Y':
+            daysToAdd = 365;
+            break;
+        case 'ENTERPRISE':
+            expInput.value = '2099-12-31';
+            return;
+        default:
+            daysToAdd = 365;
+    }
+
+    const targetDate = new Date(now.getTime() + daysToAdd * 86400000);
+    const yyyy = targetDate.getFullYear();
+    const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(targetDate.getDate()).padStart(2, '0');
+    expInput.value = `${yyyy}-${mm}-${dd}`;
+};
+
+window.updateSubscriptionHeaderBadge = function (planTier, expiresAt, planName, daysLeft) {
+    const badge = document.getElementById('header-subscription-badge');
+    if (!badge) return;
+
+    let sess = {};
+    try {
+        sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
+    } catch (e) {}
+
+    const role = (sess.role || '').toUpperCase();
+    const isSuper = role === 'SUPER_ADMIN' || role === 'SUPERADMIN';
+
+    const pTier = planTier || localStorage.getItem('pm_plan_tier') || sess.plan_tier || 'PLAN_1Y';
+    const pName = planName || localStorage.getItem('pm_plan_name') || 'Bản Quyền';
+    const pDays = daysLeft !== undefined ? parseInt(daysLeft, 10) : parseInt(localStorage.getItem('pm_days_left') || '999', 10);
+
+    const iconEl = document.getElementById('header-sub-icon');
+    const textEl = document.getElementById('header-sub-text');
+
+    badge.style.display = 'inline-flex';
+
+    if (isSuper) {
+        badge.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+        badge.title = 'Tài khoản Quản trị Tối cao (Super Admin) - Toàn quyền quản trị hệ thống';
+        if (iconEl) iconEl.innerText = '👑';
+        if (textEl) textEl.innerText = 'Hệ Thống T.I.M.E.S';
+        return;
+    }
+
+    if (pTier === 'TRIAL_15D') {
+        if (pDays <= 0) {
+            badge.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+            badge.title = 'Gói dùng thử đã hết hạn. Bấm để gia hạn gói cước!';
+            if (iconEl) iconEl.innerText = '⚠️';
+            if (textEl) textEl.innerText = 'Dùng thử: Hết hạn';
+        } else {
+            badge.style.background = 'linear-gradient(135deg, #f59e0b, #ea580c)';
+            badge.title = `Gói dùng thử 15 ngày miễn phí - Còn lại ${pDays} ngày. Bấm để nâng cấp!`;
+            if (iconEl) iconEl.innerText = '🎁';
+            if (textEl) textEl.innerText = `Dùng thử: Còn ${pDays} ngày`;
+        }
+    } else {
+        if (pDays <= 7 && pDays > 0) {
+            badge.style.background = 'linear-gradient(135deg, #f97316, #ea580c)';
+            badge.title = `${pName} - Sắp hết hạn (còn ${pDays} ngày). Bấm để gia hạn!`;
+            if (iconEl) iconEl.innerText = '⏳';
+            if (textEl) textEl.innerText = `${pName} (Còn ${pDays} ngày)`;
+        } else if (pDays <= 0) {
+            badge.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+            badge.title = `${pName} đã hết hạn sử dụng. Bấm để gia hạn!`;
+            if (iconEl) iconEl.innerText = '🔒';
+            if (textEl) textEl.innerText = `${pName} (Hết hạn)`;
+        } else {
+            badge.style.background = 'linear-gradient(135deg, #4f46e5, #7c3aed)';
+            badge.title = `${pName} - Hạn dùng đến ${expiresAt || 'vô thời hạn'}. Bấm để xem thông tin!`;
+            if (iconEl) iconEl.innerText = '💎';
+            if (textEl) textEl.innerText = `${pName} (Còn ${pDays} ngày)`;
+        }
+    }
+};
 

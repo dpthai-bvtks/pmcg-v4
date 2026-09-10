@@ -1,6 +1,6 @@
 {
-  "version": "4.0.5-rev2",
+  "version": "4.0.5-rev3",
   "releaseDate": "10/09/2026",
-  "releaseTime": "15:45 10/09/2026",
-  "notes": "Triển khai bảo mật toàn diện: Xác thực JWT Token không trạng thái, loại bỏ hoàn toàn các backdoor hardcode, siết chặt CORS whitelist và phân quyền RBAC đa tầng."
+  "releaseTime": "16:20 10/09/2026",
+  "notes": "Hệ thống 5 gói cước SaaS chuẩn hóa (Dùng thử 15 ngày miễn phí, 1 tháng 400k, 3 tháng 1125k, 6 tháng 2100k, 1 năm 3900k) - Tất cả full 100% chức năng, cổng tự đăng ký dùng thử 15 ngày 1-Click và quản lý gia hạn bản quyền."
 }

@@ -2817,4 +2817,47 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `version.json`
   + `PM-xeplich-v4.md`
 
+### 💎 Triển Khai Hệ Thống 5 Gói Cước Thương Mại SaaS, Đăng Ký Dùng Thử 15 Ngày Tự Động & Gia Hạn Bản Quyền (10/09/2026 - v4.0.5-rev3)
+- **Yêu cầu của người dùng**:
+  + Thiết lập 5 gói cước thương mại chuẩn hóa:
+    1. Gói Dùng thử 15 ngày: Miễn phí để các đơn vị trải nghiệm thực tế.
+    2. Gói 1 tháng: Giá 400.000 đ (400k/tháng).
+    3. Gói 3 tháng: Giá 1.125.000 đ (375k/tháng - Tiết kiệm 6%).
+    4. Gói 6 tháng: Giá 2.100.000 đ (350k/tháng - Tiết kiệm 12.5%).
+    5. Gói 1 năm: Giá 3.900.000 đ (325k/tháng - Tiết kiệm 18.75%).
+  + **Tất cả các gói đều FULL 100% CHỨC NĂNG** (không giới hạn nhân sự, bệnh nhân, máy móc, phòng, thuật toán AI và báo cáo).
+  + Xây dựng luồng tự động đăng ký dùng thử 1-Click trên Web cho các phòng khám/bệnh viện mới và quy trình gia hạn bản quyền.
+  + Tuân thủ nghiêm ngặt toàn bộ quy tắc trong `RULES.md`.
+- **Phân tích nguyên nhân & Giải pháp triển khai**:
+  1. **Backend Cloudflare Worker (`backend/src/index.js`)**:
+     - Định nghĩa từ điển 5 gói cước `SUBSCRIPTION_PLANS`: `TRIAL_15D`, `PLAN_1M`, `PLAN_3M`, `PLAN_6M`, `PLAN_1Y` (kèm gói đặc biệt `ENTERPRISE` và các gói cũ để tương thích ngược).
+     - Thiết lập dung lượng tối đa `max_staff = 999` và `max_patients = 9999` cho tất cả các gói mới, cam kết không hạn chế tính năng hay dung lượng giữa các gói.
+     - Hàm tiện ích `calculateSubscriptionInfo(tenant)` tính toán số ngày còn lại (`days_left`), trạng thái hết hạn (`is_expired`), sắp hết hạn (`is_expiring_soon`).
+     - Đưa `getSubscriptionPlans` và `registerTrialTenant` vào danh sách `PUBLIC_ACTIONS` (truy cập công khai không yêu cầu token).
+     - Action `registerTrialTenant`: Tiếp nhận đăng ký đơn vị dùng thử tự động, khởi tạo đơn vị với hạn dùng 15 ngày, tự động gieo dữ liệu danh mục mẫu (13 thủ thuật YHCT/PHCN chuẩn Bộ Y Tế, 1 phòng, 1 nhân viên mẫu) và cấp JWT token đăng nhập tức thì.
+     - Action `renewTenantSubscription`: Hỗ trợ Super Admin và đơn vị gia hạn gói (cộng dồn hạn dùng nếu còn hạn, hoặc tính từ ngày hôm nay nếu đã quá hạn).
+     - Cập nhật `verifyLogin` & `getPublicTenantInfo`: Bổ sung trường `subInfo` chứa thông tin chi tiết gói và thời hạn.
+  2. **Giao diện Client Frontend (`index.html`, `js/app.js`, `js/init.js`)**:
+     - *Màn hình đăng nhập*: Bổ sung nút **"🎁 Dùng Thử 15 Ngày Miễn Phí ➔"** và **"💎 Bảng Giá Các Gói Bản Quyền"**.
+     - *Thanh tiêu đề Header*: Bổ sung huy hiệu bản quyền `#header-subscription-badge` hiển thị trạng thái gói và số ngày còn lại (màu xanh/tím khi còn hạn, màu cam khi sắp hết hạn <= 7 ngày, màu đỏ khi hết hạn; Super Admin hiển thị vương miện hoàng gia `👑 Hệ Thống T.I.M.E.S`).
+     - *Menu tài khoản*: Thêm mục **"💎 Gói Bản Quyền & Gia Hạn"** trong dropdown người dùng.
+     - *Modal Bảng Giá (`#modal-pricing-plans`)*: Thiết kế giao diện hiện đại với 5 thẻ gói cước đầy đủ giá, mức tiết kiệm, tính năng và nút kích hoạt nhanh.
+     - *Modal Đăng Ký Dùng Thử (`#modal-trial-register`)*: Form 1-Click tự động gợi ý mã slug đơn vị từ tên phòng khám/bệnh viện (`autoSuggestTrialCode`), kết nối API `registerTrialTenant` và đăng nhập tự động.
+     - *Modal Gia Hạn & Thanh Toán (`#modal-renew-info`)*: Hiển thị thông tin chuyển khoản VietQR MB Bank kèm cú pháp thanh toán chuẩn `PMCG [MÃ ĐƠN VỊ] [GÓI]` và hotline kích hoạt 24/7.
+     - *Form Super Admin Quản Lý Đơn Vị*: Cập nhật select `#tenant-form-plan` gồm 5 gói cước mới, hàm `onTenantPlanSelectChange` tự động cộng ngày hết hạn tương ứng (+15d, +30d, +90d, +180d, +365d) và mặc định dung lượng 999 nhân viên / 9999 bệnh nhân.
+  3. **Tuân thủ RULES.md**:
+     - Rule 1: Kiểm tra cú pháp toàn diện bằng `node -c js/init.js; node -c js/app.js; node -c js/scheduler-engine.js; node -c backend/src/index.js` (100% không lỗi).
+     - Rule 3: Trong ngày 10/09/2026, tăng revision lên `4.0.5-rev3`. Đồng bộ `version.json`, `index.html` (cache buster `?v=4.0.5-rev3`, footer timestamp `16:20 10/09/2026`, `APP_VERSION = '4.0.5-rev3'`), `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.5-rev3'`).
+     - Rule 4: Tự động deploy lên Cloudflare bằng `cmd.exe /c "npm run deploy:all"`.
+     - Rule 5: Commit và push mã nguồn lên nhánh `main` trên GitHub.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `index.html`
+  + `js/app.js`
+  + `js/init.js`
+  + `sw.js`
+  + `version.json`
+  + `PM-xeplich-v4.md`
+
+
 
