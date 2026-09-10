@@ -1,8 +1,8 @@
 @echo off
 chcp 65001 > nul
-title T.I.M.E.S - Auto-HIS Importer
+title TIMES - Auto-HIS Importer
 echo ========================================================
-echo   ⚡ T.I.M.E.S - KHỞI ĐỘNG CÔNG CỤ TỰ ĐỘNG NHẬP HIS
+echo   [TIMES] - KHOI DONG CONG CU TU DONG NHAP HIS
 echo ========================================================
 echo.
 cd /d "%~dp0"

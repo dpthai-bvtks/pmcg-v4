@@ -10,6 +10,7 @@ import time
 import ctypes
 from ctypes import wintypes
 from datetime import datetime, timedelta
+from PIL import Image
 import uiautomation as auto
 import pyautogui
 import pyperclip
@@ -369,12 +370,14 @@ class HISDriver:
         found_by_vision = False
         if os.path.exists(needle_path):
             try:
+                # Dùng PIL mở ảnh để tránh lỗi đường dẫn Unicode (tiếng Việt có dấu) trên Windows với OpenCV cv2.imread
+                needle_img = Image.open(needle_path)
                 # Quét quanh khu vực vừa click chuột phải
                 search_region = (max(0, click_x - 30), max(0, click_y - 10), 320, 260)
-                box = pyautogui.locateOnScreen(needle_path, confidence=0.78, region=search_region)
+                box = pyautogui.locateOnScreen(needle_img, confidence=0.78, region=search_region)
                 if not box:
                     # Thử quét toàn màn hình nếu vùng thu hẹp chưa khớp
-                    box = pyautogui.locateOnScreen(needle_path, confidence=0.75)
+                    box = pyautogui.locateOnScreen(needle_img, confidence=0.75)
 
                 if box:
                     cx, cy = pyautogui.center(box)
