@@ -2789,8 +2789,9 @@ window.renderSttOrderControl = function (type, i, total) {
                     document.querySelectorAll('.tab-content, .page').forEach(tab => tab.insertAdjacentHTML('beforeend', noiDungFooter));
 
                     if (typeof APP_VERSION !== 'undefined') {
+                        const cleanVer = String(APP_VERSION).replace(/-rev\d+.*$/i, '').trim();
                         document.querySelectorAll('#app-footer-version, [id="app-footer-version"]').forEach(el => {
-                            el.textContent = `Phiên bản: ${APP_VERSION}`;
+                            el.textContent = `Phiên bản: ${cleanVer}`;
                         });
                     }
                 }

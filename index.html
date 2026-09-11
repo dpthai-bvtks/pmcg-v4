@@ -3893,7 +3893,7 @@
 
                     <h4><span class="f-icon">⚙️</span> <span>THÔNG TIN HỆ THỐNG</span></h4>
 
-                    <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 4.0.6-rev13</span></p>
+                    <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 4.0.6</span></p>
 
                     <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 14:32 11/09/2026</span></p>
 
@@ -4527,8 +4527,9 @@
                             });
                         }
                         if (data.version) {
+                            const cleanVer = String(data.version).replace(/-rev\d+.*$/i, '').trim();
                             document.querySelectorAll('#app-footer-version, [id="app-footer-version"]').forEach(el => {
-                                el.textContent = `Phiên bản: ${data.version}`;
+                                el.textContent = `Phiên bản: ${cleanVer}`;
                             });
                         }
                     }

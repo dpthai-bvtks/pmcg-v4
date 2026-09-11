@@ -24,19 +24,25 @@
 ## 3. 🔄 Quy tắc Đánh số Phiên bản, Footer Timestamp & Cache Buster
 - **Quy tắc phiên bản theo ngày (Daily Version Increment):**
   - Bản thương mại v4 bắt đầu từ `4.0.0`.
-  - **Mỗi ngày chỉ tăng tối đa 1 phiên bản** (Ví dụ: ngày hôm nay là `4.0.0` thì toàn bộ các thay đổi trong ngày hôm nay vẫn giữ nguyên `4.0.0`; sang ngày mới tiếp theo mới tăng lên `4.0.1`, ngày kế tiếp là `4.0.2`...`4.0.9` tiếp đến là `4.1.0`...)
-  - Footer hiển thị phiên bản chính trong ngày tại `#app-footer-version`: `Phiên bản: 4.0.X`.
+  - **Mỗi ngày chỉ tăng tối đa 1 phiên bản** (Ví dụ: ngày hôm nay là `4.0.0` thì toàn bộ các thay đổi trong ngày hôm nay vẫn giữ nguyên `4.0.0`; sang ngày mới tiếp theo mới tăng lên `4.0.1`, ngày kế tiếp là `4.0.2`...`4.0.9` tiếp đến là `4.1.0`...).
+  - ⚠️ **QUY TẮC HIỂN THỊ PHIÊN BẢN Ở CHÂN TRANG (FOOTER):**
+    + Tại thẻ `#app-footer-version` (trong khối *THÔNG TIN HỆ THỐNG* ở chân trang): **CHỈ HIỂN THỊ PHIÊN BẢN CHÍNH (ví dụ: `Phiên bản: 4.0.6`), TUYỆT ĐỐI KHÔNG HIỂN THỊ ĐOẠN HẬU TỐ `revN` (KHÔNG ĐỂ `rev13` Ở CHÂN TRANG)**.
+    + Hậu tố `revN` chỉ dùng cho kỹ thuật nội bộ: Cache Buster (`?v=4.0.X-revN`), Service Worker `CACHE_NAME`, popup `modal-force-update` và tệp `version.json`.
 - **Đánh số Revision trong ngày (`revN`):**
   - Trong cùng một ngày, mỗi khi có chỉnh sửa hoặc cập nhật code, **chỉ tăng số revision `revN`** (ví dụ: `4.0.X-rev1`, `4.0.X-rev2`, `4.0.X-rev3`...).
-  - **Bắt buộc đồng bộ 3 vị trí**:
-    1. **Footer Timestamp trong `index.html`**:
-       - Cập nhật chính xác giờ phút ngày tháng hiện tại tại dòng:
-         `⏰ Cập nhật lần cuối: HH:mm DD/MM/YYYY` (ví dụ: `09:30 04/09/2026`).
+  - **Bắt buộc đồng bộ các vị trí**:
+    1. **Footer Timestamp ("Cập nhật lần cuối")**:
+       - Cập nhật chính xác giờ phút ngày tháng hiện tại tại thẻ `#sys-last-update`:
+         `⏱ Cập nhật lần cuối: HH:mm DD/MM/YYYY` (ví dụ: `14:32 11/09/2026`).
+       - Đồng bộ trong tệp `version.json` trường `releaseTime`.
+       - Hàm `checkVersionDirectly()` sẽ tự động đồng bộ giá trị `releaseTime` này vào giao diện mọi tab.
     2. **Cache Buster Query Strings trong `index.html`**:
        - Cập nhật `?v=4.0.X-revN` cho toàn bộ các thẻ script và link CSS:
          `css/style.css?v=4.0.X-revN`, `css/mobile.css?v=4.0.X-revN`, `js/app.js?v=4.0.X-revN`, `js/init.js?v=4.0.X-revN`, `js/scheduler-engine.js?v=4.0.X-revN`... và biến `const APP_VERSION = '4.0.X-revN';`.
     3. **Service Worker Cache Name trong `sw.js`**:
        - Đổi tên cache tương ứng: `const CACHE_NAME = 'pmcg-v4-cache-4.0.X-revN';` để trình duyệt người dùng luôn hủy cache cũ và nhận bản mới nhất ngay tức thì.
+    4. **Tệp `version.json`**:
+       - Cập nhật `version`: `"4.0.X-revN"`, `releaseTime`: `"HH:mm DD/MM/YYYY"` và `notes`.
 
 ---
 
