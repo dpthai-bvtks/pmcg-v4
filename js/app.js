@@ -6768,12 +6768,13 @@ window.renderSttOrderControl = function (type, i, total) {
             const list = document.getElementById('schedule-list');
             const btn = document.getElementById('btn-run-sched');
 
-            btn.innerText = '⏳ ĐANG XẾP LỊCH (ĐA LUỒNG)...'; btn.disabled = true; btn.style.background = '#f39c12';
+            btn.innerText = '⏳ ĐANG XẾP LỊCH (AI + CP-SAT)...'; btn.disabled = true; btn.style.background = '#f39c12';
             res.innerHTML = '';
             list.innerHTML = '<tr><td colspan="12" align="center"><div class="spinner"></div></td></tr>';
 
             const startTime = performance.now();
-            if (window.showGlobalLoading) window.showGlobalLoading("Đang chạy thuật toán tối ưu xếp lịch (Đa Luồng)...");
+            if (window.showGlobalLoading) window.showGlobalLoading("Đang chạy thuật toán tối ưu xếp lịch (AI + CP-SAT)...");
+            await new Promise(r => setTimeout(r, 16)); // Yield 1 frame for silky-smooth UI paint
 
             try {
                 let out = null;

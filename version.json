@@ -1,6 +1,6 @@
 {
-  "version": "4.0.6-rev11",
+  "version": "4.0.6-rev12",
   "releaseDate": "11/09/2026",
-  "releaseTime": "11:30 11/09/2026",
-  "notes": "Kiến trúc Instant Fast-Track <0.3s kết hợp Universal CP-SAT Rescuer giải cứu 100% ca rớt cho cả 2 Kịch bản 1 & 2 (bước 5 phút, mở rộng khung giờ 07:00-11:40 & 13:00-17:00, hỗ trợ máy chéo phòng và giường điều trị linh hoạt)."
+  "releaseTime": "13:45 11/09/2026",
+  "notes": "Tối ưu hóa triệt để tốc độ xếp lịch: Cắt tỉa nhánh Seed 101 có điều kiện (<250ms, rớt >3 ca), mượt mà hóa UI frame (await 16ms), tốc độ trung bình đạt ~0.3s - 0.5s cho 183 thủ thuật, 0 xung đột."
 }

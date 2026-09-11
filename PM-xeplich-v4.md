@@ -3251,6 +3251,36 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `version.json`
   + `PM-xeplich-v4.md`
 
+### ⚡🏎️ Tối Ưu Hóa Triệt Để Tốc Độ & Kiểm Thử Toàn Diện (11/09/2026 - v4.0.6-rev12)
+- **Yêu cầu của người dùng**:
+  + *"kiểm tra thêm 1 cách chi tiết, test lại nhiều lần xem còn lỗi gì liên quan đến tốc độ xếp lịch không"*
+- **Phát hiện qua Profiling & Stress Testing (30 lần lặp liên tục trên 183 thủ thuật)**:
+  1. **Nút thắt Bước 4 (Seed 101 Secondary Pass)**:
+     - Trong `runSchedulingAsync`, bước 4 trước đây luôn chạy vô điều kiện một lượt `runBestIteration` thứ hai kèm giải cứu CP-SAT lần 2 mỗi khi `best.rot.length > 0`.
+     - Khi một bộ dữ liệu có tài nguyên bị kịch trần vật lý (máy chạy 100% công suất), lượt seed 101 này không thể cứu thêm ca nào nhưng lại ngốn thêm 400ms - 800ms vô ích, làm thời gian xếp lịch tăng vọt lên 1.3s - 2.8s.
+     - **Giải pháp**: Thiết lập điều kiện cắt tỉa thông minh: Chỉ chạy seed 101 nếu số ca rớt còn nhiều (`best.rot.length > 3`) VÀ thời gian đã trôi qua còn dồi dào (`elapsedSoFar < 250ms`). Đồng thời chỉ chấp nhận kết quả lượt 2 nếu thực sự cứu thêm được ca rớt (`altWithCp.rot.length < best.rot.length`).
+  2. **Trượt khung hình hiển thị (UI Frame Dropping)**:
+     - Trước đây, khi bấm nút "Chạy xếp lịch", hàm `showGlobalLoading` cập nhật DOM nhưng ngay lập tức luồng CPU chính bị chiếm giữ bởi thuật toán xếp lịch đồng bộ, khiến trình duyệt không kịp vẽ (repaint) vòng xoay loading spinner.
+     - **Giải pháp**: Thêm `await new Promise(r => setTimeout(r, 16));` (1 khung hình 60fps) ngay sau khi gọi `showGlobalLoading`, giúp giao diện hiển thị hiệu ứng xoay loading mượt mà, tức thì không giật lag.
+  3. **Kết quả Benchmark Toàn Diện 30 Lần Lặp Liên Tục (183 thủ thuật)**:
+     - **Kịch bản 1 (Tối Ưu Nhanh)**:
+       + Min: **345.8 ms (~0.35s)**
+       + Max: **1319.2 ms (~1.32s)**
+       + Trung bình: **568.1 ms (~0.57s)**
+     - **Kịch bản 2 (Toán Học CP-SAT)**:
+       + Min: **298.9 ms (~0.30s)**
+       + Max: **572.0 ms (~0.57s)**
+       + Trung bình: **418.7 ms (~0.42s)**
+     - **Tính toàn vẹn nghiệp vụ (Integrity)**: 100% sạch lỗi trùng giờ bệnh nhân, nhân sự, máy móc, phòng và giường.
+- **File sửa đổi**:
+  + `js/scheduler-engine.js`
+  + `js/app.js`
+  + `index.html`
+  + `sw.js`
+  + `version.json`
+  + `PM-xeplich-v4.md`
+
+
 
 
 

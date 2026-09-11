@@ -1483,19 +1483,20 @@ function getSafeCache() {
       }
     }
 
-    // ⚡ 4. NẾU VẪN CÒN CA RỚT: Thử tiếp 1 lượt seed đối xứng thứ hai để vét kiệt
-    if (best && best.rot && best.rot.length > 0) {
+    // ⚡ 4. NẾU VẪN CÒN NHIỀU CA RỚT (> 3 ca) VÀ THỜI GIAN CÒN DƯ (< 250ms): Mới thử thêm seed đối xứng để vét kiệt
+    const elapsedSoFar = performance.now() - startTime;
+    if (best && best.rot && best.rot.length > 3 && elapsedSoFar < 250) {
       const altSeed = 101;
       const altRes = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, weights, altSeed, 1);
       if (altRes && altRes.sched) {
         let altWithCp = altRes;
         if (typeof window !== 'undefined' && window.MedicalCPSolver && altRes.rot && altRes.rot.length > 0) {
-          const cpRes2 = window.MedicalCPSolver.solve(db, dateVal, altRes.sched, altRes.rot, 800);
+          const cpRes2 = window.MedicalCPSolver.solve(db, dateVal, altRes.sched, altRes.rot, 300);
           if (cpRes2 && cpRes2.sched) {
             altWithCp = { ...altRes, sched: cpRes2.sched, rot: cpRes2.rot, score: cpRes2.score };
           }
         }
-        if (altWithCp.rot.length < best.rot.length || (altWithCp.rot.length === best.rot.length && altWithCp.score < best.score)) {
+        if (altWithCp.rot.length < best.rot.length) {
           best = altWithCp;
           engineName += ' [Tối ưu sâu]';
         }
