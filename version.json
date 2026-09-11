@@ -1,6 +1,6 @@
 {
-  "version": "4.0.6-rev13",
+  "version": "4.0.6-rev14",
   "releaseDate": "11/09/2026",
-  "releaseTime": "14:32 11/09/2026",
-  "notes": "Sửa lỗi không đăng nhập được (bổ sung verifyLogin vào PUBLIC_API_ACTIONS) và tự động đồng bộ hóa thông tin 'Cập nhật lần cuối' trên toàn bộ chân trang hệ thống."
+  "releaseTime": "15:00 11/09/2026",
+  "notes": "Lọc bỏ bệnh nhân ra viện trong tab Thứ 7: Loại trừ bệnh nhân có giờ ra viện khi chưa chốt sổ (giảm đúng 28 BN ra viện, chỉ giữ lại 35 BN điều trị Thứ 7)."
 }

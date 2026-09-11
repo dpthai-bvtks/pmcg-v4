@@ -5966,6 +5966,7 @@ window.renderSttOrderControl = function (type, i, total) {
             }
             renderPatientsTable();
             if (typeof renderLeavePat === 'function') renderLeavePat();
+            satCache = {}; // Làm mới bộ đệm Thứ 7 để phản ánh danh sách mới nhất
             leaveObj.value = ''; leaveObj.focus();
             const leaveInput = document.getElementById('leave-pat-input');
             if (leaveInput) leaveInput.value = '';
@@ -6011,6 +6012,7 @@ window.renderSttOrderControl = function (type, i, total) {
             }
             renderPatientsTable();
             if (typeof renderLeavePat === 'function') renderLeavePat();
+            satCache = {}; // Làm mới bộ đệm Thứ 7 để phản ánh danh sách mới nhất
             document.getElementById('leave-pat-time').value = '';
             const leaveInput = document.getElementById('leave-pat-input');
             if (leaveInput) leaveInput.value = '';
@@ -9093,13 +9095,41 @@ window.renderSttOrderControl = function (type, i, total) {
                 frDsLeft.innerHTML = '';
                 frDsRight.innerHTML = '';
                 satCache = {};
-                const midPoint = Math.ceil(data.patients.length / 2);
+
+                // 🛡️ LỌC BỎ BỆNH NHÂN ĐÃ CÓ GIỜ RA VIỆN (KHI CHƯA CHỐT SỔ)
+                const dischargedSet = new Set();
+                if (window.dataCache && Array.isArray(window.dataCache.pat)) {
+                    window.dataCache.pat.forEach(p => {
+                        if (p && p.gioRa && String(p.gioRa).trim() !== '' && String(p.gioRa).trim().toLowerCase() !== 'none') {
+                            dischargedSet.add(String(p.ten || '').trim().toLowerCase() + '|' + String(p.namSinh || '').trim());
+                            if (p.id) dischargedSet.add(String(p.id));
+                        }
+                    });
+                }
+
+                const filteredPatients = (data.patients || []).filter(r => {
+                    if (!r || !r.ten) return false;
+                    const rLeave = String(r.gioRa || r.leave_time || r.leaveTime || '').trim();
+                    if (rLeave && rLeave.toLowerCase() !== 'none') return false;
+
+                    const key = String(r.ten || '').trim().toLowerCase() + '|' + String(r.namSinh || '').trim();
+                    if (dischargedSet.has(key)) return false;
+                    if (r.id && dischargedSet.has(String(r.id))) return false;
+
+                    return true;
+                });
+
+                const countBadge = document.getElementById('sat-patient-count-badge');
+                if (countBadge) {
+                    countBadge.innerText = `${filteredPatients.length} BN`;
+                    countBadge.title = `Tổng cộng ${filteredPatients.length} bệnh nhân điều trị Thứ 7 (Đã loại bỏ bệnh nhân ra viện)`;
+                }
 
                 // Sắp xếp A-Z theo tên bệnh nhân
+                filteredPatients.sort((a, b) => (a.ten || '').localeCompare(b.ten || '', 'vi'));
+                const midPoint = Math.ceil(filteredPatients.length / 2);
 
-                data.patients.sort((a, b) => (a.ten || '').localeCompare(b.ten || '', 'vi'));
-
-                data.patients.forEach((r, pIdx) => {
+                filteredPatients.forEach((r, pIdx) => {
 
                     const bn_id = "BN_" + pIdx + "_" + (r.id || "0");
 

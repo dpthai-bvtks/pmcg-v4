@@ -3316,4 +3316,38 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `version.json`
   + `PM-xeplich-v4.md`
 
+### 🛌📅 Lọc Bỏ Triệt Để Bệnh Nhân Ra Viện Trong Tab Thứ 7 (11/09/2026 - v4.0.6-rev14)
+- **Yêu cầu của người dùng**:
+  + *"danh sách bệnh nhân tab-sat chưa loại bỏ bệnh nhân ra viện, vẫn hiện danh sách toàn bộ bệnh nhân khi chưa chốt sổ, ví dụ hôm nay có 63 bệnh nhân trong đó có 28 bệnh nhân ra viện thì danh sách bệnh nhân thứ 7 phải còn 35 bệnh nhân"*
+- **Phân tích nguyên nhân gốc rễ**:
+  1. Khi một bệnh nhân được chỉ định ra viện trong ngày thứ Sáu, trường `leave_time` (hoặc `gioRa`) được gán giờ ra viện trong bảng `benh_nhan`.
+  2. Bệnh nhân này chỉ bị xóa khỏi `benh_nhan` khi thực hiện chốt sổ (`chotSo` / `chuyenNgayMoi` lúc cuối ngày).
+  3. Trước khi chốt sổ, khi Bác sĩ mở tab **Thứ 7 (`tab-sat`)** để chuẩn bị lịch làm việc cuối tuần, hàm `getSatData` tại Backend (`backend/src/index.js`) thực hiện truy vấn:
+     `SELECT id, name, age, arrive_time, room, thu_thuat FROM benh_nhan WHERE unit_code = ? AND is_saturday = 0`
+     $\rightarrow$ Truy vấn này hoàn toàn **chưa có mệnh đề loại trừ `leave_time`**, khiến cả 28 bệnh nhân đã có giờ ra viện vẫn bị nạp vào danh sách Thứ 7, dẫn đến tổng số hiển thị là 63 thay vì 35.
+  4. Phía Frontend (`taiDsSat()` trong `js/app.js`) cũng chưa có bộ lọc kiểm tra chéo với `gioRa` của bệnh nhân.
+- **Giải pháp triển khai (v4.0.6-rev14)**:
+  1. **Nâng cấp Backend Worker API (`getSatData`)**:
+     - Thêm điều kiện lọc trực tiếp trong SQL:
+       `AND (leave_time IS NULL OR TRIM(leave_time) = '' OR LOWER(leave_time) = 'none')`
+     - Bổ sung trường `leave_time` vào danh sách cột và ánh xạ vào `gioRa` của đối tượng bệnh nhân.
+  2. **Bộ lọc phòng vệ 2 lớp tại Frontend (`taiDsSat()`)**:
+     - Lọc bỏ mọi bệnh nhân có `gioRa` / `leave_time` trên dữ liệu trả về từ server.
+     - Kiểm tra chéo với bộ đệm `dataCache.pat` phía client để loại bỏ ngay lập tức nếu bệnh nhân vừa được đặt giờ ra viện trên giao diện mà chưa kịp tải lại trang.
+     - Tự động reset `satCache = {}` khi người dùng thêm hoặc hủy giờ ra viện trong tab Bệnh nhân (`editLeavePat`, `clearPatLeave`).
+  3. **Thêm huy hiệu hiển thị số lượng bệnh nhân Thứ 7**:
+     - Thêm phần tử `#sat-patient-count-badge` vào thanh tiêu đề tab Thứ 7: hiển thị rõ số lượng bệnh nhân thực tế (ví dụ: `35 BN`), giúp bác sĩ nắm bắt ngay số ca nội trú còn lại.
+  4. **Quy chuẩn phiên bản & Triển khai**:
+     - Tăng phiên bản lên `v4.0.6-rev14`.
+     - Tuân thủ quy tắc `RULES.md`: Chân trang hiển thị gọn gàng `Phiên bản: 4.0.6` và `Cập nhật lần cuối: 15:00 11/09/2026`.
+     - Chạy `deploy:all` cho cả Backend Worker API và Frontend Pages.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `js/app.js`
+  + `index.html`
+  + `sw.js`
+  + `version.json`
+  + `PM-xeplich-v4.md`
+
+
 
