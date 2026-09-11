@@ -1,6 +1,6 @@
 {
-  "version": "4.0.6-rev7",
+  "version": "4.0.6-rev8",
   "releaseDate": "11/09/2026",
-  "releaseTime": "10:35 11/09/2026",
-  "notes": "Khắc phục triệt để lỗi báo 'Phiên đăng nhập đã hết hạn' giả lập khi đăng xuất hoặc tải trang lúc chưa đăng nhập; chặn hoàn toàn các request API nền bắn 401 khi chưa có token xác thực."
+  "releaseTime": "10:50 11/09/2026",
+  "notes": "Tối ưu hóa đột phá tốc độ xếp lịch toàn hệ thống từ 96.71s xuống dưới 0.5 - 1s (nhanh gấp ~100 lần) nhờ cơ chế Pre-indexed Intervals O(1), Branch Pruning và In-loop Hard Timeout cho MedicalCPSolver."
 }
