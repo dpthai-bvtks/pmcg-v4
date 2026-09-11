@@ -97,6 +97,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const unitInput = document.getElementById('login-unit');
     if (unitInput) unitInput.value = savedUnit;
 
+    const loginErr = document.getElementById('login-error');
+    if (loginErr) {
+        loginErr.innerText = '';
+        loginErr.style.display = 'none';
+    }
+
     // 🧹 Dọn dẹp cache rò rỉ giữa các đơn vị (Multi-Tenant Cache Sanitization)
     if (!hasValidSession) {
         const preserveKeys = [
@@ -217,6 +223,14 @@ document.addEventListener('DOMContentLoaded', () => {
 window.dataCacheTime = window.dataCacheTime || {};
 
 window.loadTimRanhDataFromServer = function () {
+    const token = localStorage.getItem('pm_jwt_token');
+    let hasValidSession = false;
+    try {
+        const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
+        if (sess && (sess.username || sess.role)) hasValidSession = true;
+    } catch(e) {}
+    if (!token || !hasValidSession) return;
+
     const statusEl = document.getElementById('utils-file-status');
     if (statusEl) {
         statusEl.innerText = '⏳ Đang kết nối máy chủ để lấy dữ liệu Tìm Rảnh chung...';

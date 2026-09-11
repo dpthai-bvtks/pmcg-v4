@@ -1272,16 +1272,24 @@ window.renderSttOrderControl = function (type, i, total) {
                 } else {
                     // 🛡️ Xử lý phiên đăng nhập hết hạn hoặc chưa xác thực (401)
                     if (result && (result.code === 'UNAUTHORIZED' || result.code === 'TOKEN_EXPIRED' || response.status === 401)) {
-                        console.warn('[Auth Guard] Phiên làm việc đã hết hạn hoặc không hợp lệ. Hiển thị lại màn hình đăng nhập.');
+                        const hadSession = !!(localStorage.getItem('pm_jwt_token') || localStorage.getItem('meds_session'));
                         localStorage.removeItem('pm_jwt_token');
                         localStorage.removeItem('meds_session');
                         const overlay = document.getElementById('login-overlay');
                         if (overlay) {
+                            const isOverlayAlreadyOpen = overlay.style.display !== 'none';
                             overlay.style.display = 'flex';
                             const errDiv = document.getElementById('login-error');
                             if (errDiv) {
-                                errDiv.innerText = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!';
-                                errDiv.style.display = 'block';
+                                // Chỉ hiển thị thông báo nếu người dùng đang đăng nhập mà bị rớt phiên đột ngột
+                                if (hadSession && !isOverlayAlreadyOpen) {
+                                    console.warn('[Auth Guard] Phiên làm việc đã hết hạn hoặc không hợp lệ. Hiển thị lại màn hình đăng nhập.');
+                                    errDiv.innerText = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!';
+                                    errDiv.style.display = 'block';
+                                } else {
+                                    errDiv.innerText = '';
+                                    errDiv.style.display = 'none';
+                                }
                             }
                         }
                     }
@@ -1387,8 +1395,34 @@ window.renderSttOrderControl = function (type, i, total) {
             executeApiTask(nextTask);
         }
 
+        const PUBLIC_API_ACTIONS = new Set([
+            'checkLogin',
+            'login',
+            'getDataVersion',
+            'getSubscriptionPlans',
+            'registerTrialTenant',
+            'createPaymentOrder',
+            'checkPaymentStatus',
+            'paymentWebhook'
+        ]);
+
         function callApi(functionName, args, onSuccess, onError) {
             return new Promise((resolve, reject) => {
+                // Kiểm tra trạng thái xác thực: nếu chưa đăng nhập và không phải API công khai -> bỏ qua, không gửi request 401
+                const token = localStorage.getItem('pm_jwt_token');
+                let hasValidSession = false;
+                try {
+                    const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
+                    if (sess && (sess.username || sess.role)) hasValidSession = true;
+                } catch(e) {}
+
+                if (!PUBLIC_API_ACTIONS.has(functionName) && (!token || !hasValidSession)) {
+                    if (onError) {
+                        try { onError('Chưa đăng nhập'); } catch(e) {}
+                    }
+                    return resolve(null);
+                }
+
                 const isSilentMutation = functionName === 'saveChamCong' || functionName === 'saveReorderedData' || functionName === 'saveReorder'
                     || functionName === 'saveSchedule' || functionName === 'saveLichTrinh'
                     || functionName === 'editBenhNhan' || functionName === 'editNhanSu' || functionName === 'editMayMoc' || functionName === 'editThuThuat' || functionName === 'editPhong';
@@ -10317,6 +10351,18 @@ window.renderSttOrderControl = function (type, i, total) {
                 try { window.stopAutoSync(); } catch(e) {}
             }
 
+            // 0. Hủy hàng đợi API dở dang & tắt loading để tránh request 401 sau khi đăng xuất
+            apiQueue = [];
+            inFlightRequests.clear();
+            activeApiRequests = 0;
+            mutationCount = 0;
+            if (window.hideGlobalLoading) window.hideGlobalLoading();
+            const loginErr = document.getElementById('login-error');
+            if (loginErr) {
+                loginErr.innerText = '';
+                loginErr.style.display = 'none';
+            }
+
             // 1. Quét sạch tất cả key của phiên & đơn vị trong localStorage, chỉ giữ lại cấu hình giao diện & backup URL
             const preserveKeys = ['pm_app_theme', 'doc_theme', 'times_backup_api_url'];
             try {
@@ -12732,7 +12778,11 @@ window.renderSttOrderControl = function (type, i, total) {
         document.addEventListener('DOMContentLoaded', () => {
             initErrorChecker();
             setTimeout(() => {
-                if (typeof window.checkBackupReminder === 'function') window.checkBackupReminder();
+                const token = localStorage.getItem('pm_jwt_token');
+                const sess = localStorage.getItem('meds_session');
+                if (token && sess) {
+                    if (typeof window.checkBackupReminder === 'function') window.checkBackupReminder();
+                }
                 if (typeof window.loadQuickLinks === 'function') window.loadQuickLinks();
             }, 1500);
         });
@@ -13181,34 +13231,51 @@ window.loadGoogleDriveSettingsUI = function() {
 // ============================================================
 
 window.loadQuickLinks = function() {
+    const uls = document.querySelectorAll('.khu-vuc-lien-ket');
+    const defaultList = [
+        { icon: "📜", ten: "Tra cứu Văn bản & BHXH", url: "javascript:openDocLookupModal()" },
+        { icon: "📖", ten: "Hướng dẫn sử dụng phần mềm", url: "javascript:openHdsdModal()" },
+        { icon: "📋", ten: "Quy trình Kỹ thuật PHCN", url: "https://kcb.vn/" }
+    ];
+
+    const renderLinks = (list) => {
+        if (!uls.length) return;
+        const htmlContent = list.map(item => {
+            const itemTen = String(item.ten || item.name || '');
+            const itemUrl = String(item.url || '');
+            const isDocLookup = itemUrl.includes('tracuu') || itemUrl.includes('openDocLookupModal') || itemTen.includes('Tra cứu') || itemTen.includes('Văn bản');
+            const isHdsd = itemUrl.includes('hdsd') || itemUrl.includes('huong-dan') || itemUrl.includes('openHdsdModal') || itemTen.includes('Hướng dẫn') || itemTen.includes('HDSD');
+
+            if (isDocLookup) {
+                return `<li><a href="javascript:void(0)" onclick="openDocLookupModal()"><span class="f-icon">${item.icon || '📜'}</span> <span>${itemTen}</span></a></li>`;
+            }
+            if (isHdsd) {
+                return `<li><a href="javascript:void(0)" onclick="openHdsdModal()"><span class="f-icon">${item.icon || '📖'}</span> <span>${itemTen}</span></a></li>`;
+            }
+            return `<li><a href="${itemUrl || '#'}" target="_blank" rel="noopener"><span class="f-icon">${item.icon || '🔗'}</span> <span>${itemTen}</span></a></li>`;
+        }).join('');
+        uls.forEach(ul => { ul.innerHTML = htmlContent; });
+    };
+
+    const token = localStorage.getItem('pm_jwt_token');
+    let hasValidSession = false;
+    try {
+        const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
+        if (sess && (sess.username || sess.role)) hasValidSession = true;
+    } catch(e) {}
+
+    // Chưa đăng nhập: render liên kết mặc định mà không gọi API
+    if (!token || !hasValidSession) {
+        renderLinks(defaultList);
+        return;
+    }
+
     callApi('getQuickLinks', [], links => {
-        const uls = document.querySelectorAll('.khu-vuc-lien-ket');
-        if (uls.length) {
-            let list = (links && Array.isArray(links) && links.length) ? links : [
-                { icon: "📜", ten: "Tra cứu Văn bản & BHXH", url: "javascript:openDocLookupModal()" },
-                { icon: "📖", ten: "Hướng dẫn sử dụng phần mềm", url: "javascript:openHdsdModal()" },
-                { icon: "📋", ten: "Quy trình Kỹ thuật PHCN", url: "https://kcb.vn/" }
-            ];
-
-            const htmlContent = list.map(item => {
-                const itemTen = String(item.ten || item.name || '');
-                const itemUrl = String(item.url || '');
-                const isDocLookup = itemUrl.includes('tracuu') || itemUrl.includes('openDocLookupModal') || itemTen.includes('Tra cứu') || itemTen.includes('Văn bản');
-                const isHdsd = itemUrl.includes('hdsd') || itemUrl.includes('huong-dan') || itemUrl.includes('openHdsdModal') || itemTen.includes('Hướng dẫn') || itemTen.includes('HDSD');
-
-                if (isDocLookup) {
-                    return `<li><a href="javascript:void(0)" onclick="openDocLookupModal()"><span class="f-icon">${item.icon || '📜'}</span> <span>${itemTen}</span></a></li>`;
-                }
-                if (isHdsd) {
-                    return `<li><a href="javascript:void(0)" onclick="openHdsdModal()"><span class="f-icon">${item.icon || '📖'}</span> <span>${itemTen}</span></a></li>`;
-                }
-                return `<li><a href="${itemUrl || '#'}" target="_blank" rel="noopener"><span class="f-icon">${item.icon || '🔗'}</span> <span>${itemTen}</span></a></li>`;
-            }).join('');
-            uls.forEach(ul => { ul.innerHTML = htmlContent; });
-        }
+        const list = (links && Array.isArray(links) && links.length) ? links : defaultList;
+        renderLinks(list);
         window.renderAdminQuickLinksUI(links);
     }, err => {
-        console.warn("[QuickLinks] Lỗi tải danh sách liên kết:", err);
+        renderLinks(defaultList);
     });
 };
 

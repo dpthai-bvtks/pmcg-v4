@@ -901,6 +901,19 @@ window.switchAdminSection = function(sectionId, btn) {
         window.applySymbolStyleToInput = applySymbolStyleToInput;
 
         function loadChamCongSymbols(callback) {
+            const token = localStorage.getItem('pm_jwt_token');
+            let hasValidSession = false;
+            try {
+                const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
+                if (sess && (sess.username || sess.role)) hasValidSession = true;
+            } catch(e) {}
+
+            if (!token || !hasValidSession) {
+                renderChamCongLegend();
+                if (callback) callback(chamCongSymbols);
+                return;
+            }
+
             const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
             if (!apiFn) {
                 renderChamCongLegend();
@@ -1769,6 +1782,18 @@ window.switchAdminSection = function(sectionId, btn) {
             if (yearEl) yearEl.value = curY;
             if (tkM) tkM.value = curM;
             if (tkY) tkY.value = curY;
+
+            const token = localStorage.getItem('pm_jwt_token');
+            let hasValidSession = false;
+            try {
+                const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
+                if (sess && (sess.username || sess.role)) hasValidSession = true;
+            } catch(e) {}
+
+            if (!token || !hasValidSession) {
+                renderChamCongLegend();
+                return;
+            }
 
             loadChamCongSymbols(() => {
                 renderChamCongLegend();

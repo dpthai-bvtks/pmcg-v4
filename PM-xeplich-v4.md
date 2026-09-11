@@ -3091,3 +3091,39 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `version.json`
   + `PM-xeplich-v4.md`
 
+### 🛡️ Khắc Phục Triệt Để Báo Lỗi "Phiên Đăng Nhập Đã Hết Hạn" Giả Lập & Chặn Request 401 Khi Chưa Đăng Nhập (11/09/2026 - v4.0.6-rev7)
+- **Yêu cầu của người dùng**:
+  + *"khi đăng xuất 1 tài khoản thì màn hình đăng nhập cứ báo 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!', console báo..."* kèm log console xuất hiện hàng loạt lỗi HTTP 401 và Unhandled Rejection khi thiếu JWT Token.
+- **Phân tích nguyên nhân gốc rễ**:
+  1. Khi người dùng bấm Đăng xuất (`doLogout`), trang web xóa session và reload lại giao diện đăng nhập.
+  2. Tại sự kiện `DOMContentLoaded` khi tải trang mới, một số module nền (`js/thongke.js: loadChamCongSymbols`, `js/init.js: loadTimRanhDataFromServer`, `js/app.js: loadQuickLinks`) vẫn tự động kích hoạt gọi API về máy chủ Cloudflare Worker (`pmcg-api`).
+  3. Do người dùng chưa đăng nhập (không có JWT Token), Cloudflare Worker trả về HTTP 401 Unauthorized (`result.code === 'UNAUTHORIZED'`).
+  4. Bộ lọc `Auth Guard` trong `executeApiTask` (`js/app.js`) khi bắt gặp mã 401 lại mặc định gán nội dung vào thẻ lỗi `#login-error`: `"Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!"` và hiển thị khung màu đỏ ngay trên màn hình đăng nhập dù người dùng vừa chủ động đăng xuất hoặc mới vào trang lần đầu.
+  5. Việc `callApi` gửi request không có token cũng làm nghẽn hàng đợi mạng và gây ra lỗi Unhandled Rejection `Yêu cầu đăng nhập để truy cập dữ liệu hệ thống (Thiếu Authentication Token)!`.
+- **Giải pháp triển khai**:
+  1. **Thắt chặt Auth Guard (`executeApiTask` trong `js/app.js`)**:
+     - Chỉ hiển thị thông báo đỏ *"Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!"* nếu trước đó người dùng **thực sự đang có phiên làm việc hợp lệ** (`hadSession === true`) và **khung đăng nhập đang đóng** (`isOverlayAlreadyOpen === false`) - nghĩa là bị rớt phiên đột ngột trong lúc đang thao tác.
+     - Nếu người dùng vừa chủ động bấm Đăng xuất hoặc chưa từng đăng nhập, `#login-error` luôn được xóa trắng và ẩn (`display: none`).
+  2. **Bộ lọc Gatekeeper trung tâm tại `callApi` (`js/app.js`)**:
+     - Thiết lập danh sách trắng `PUBLIC_API_ACTIONS` (`checkLogin`, `login`, `getDataVersion`, `getSubscriptionPlans`, `registerTrialTenant`, `createPaymentOrder`, `checkPaymentStatus`, `paymentWebhook`).
+     - Đối với tất cả các API yêu cầu dữ liệu đơn vị nội bộ: nếu chưa có JWT token và chưa có session hợp lệ, `callApi` sẽ **chủ động bỏ qua ngay từ đầu**, không gửi request vô ích lên Cloudflare Worker, không làm phát sinh mã lỗi 401 và trả về `Promise.resolve(null)` an toàn.
+  3. **Tối ưu hàm Đăng xuất (`doLogout` trong `js/app.js`)**:
+     - Xóa sạch hàng đợi API `apiQueue = []`, `inFlightRequests.clear()`, tắt loading toàn cục và dọn sạch thẻ lỗi `#login-error` ngay lập tức trước khi reload.
+  4. **Kiểm tra Session tại các module tải nền (`js/init.js`, `js/thongke.js`, `js/app.js`)**:
+     - `loadTimRanhDataFromServer`: Kiểm tra session trước khi gọi `getTimRanhData`.
+     - `loadChamCongSymbols`: Kiểm tra session trước khi gọi `getChamCongSymbols`; nếu chưa đăng nhập thì hiển thị danh mục ký hiệu mặc định (Legend).
+     - `loadQuickLinks`: Hiển thị 3 liên kết nhanh mặc định ngay lập tức mà không gọi API nếu chưa đăng nhập.
+     - `DOMContentLoaded` trong `js/init.js`: Tự động reset và ẩn `#login-error` khi mở trang.
+  5. **Tuân thủ RULES.md**:
+     - Kiểm tra cú pháp toàn bộ các file JS (`node -c`) vượt qua 100%.
+     - Tăng revision lên `v4.0.6-rev7`, đồng bộ `version.json`, `index.html` (cache buster `?v=4.0.6-rev7`, footer timestamp `10:35 11/09/2026`, `APP_VERSION = '4.0.6-rev7'`), `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.6-rev7'`).
+     - Deploy lên Cloudflare Pages và commit/push GitHub.
+- **File sửa đổi**:
+  + `index.html`
+  + `js/app.js`
+  + `js/init.js`
+  + `js/thongke.js`
+  + `sw.js`
+  + `version.json`
+  + `PM-xeplich-v4.md`
+

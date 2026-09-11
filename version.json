@@ -1,6 +1,6 @@
 {
-  "version": "4.0.6-rev6",
+  "version": "4.0.6-rev7",
   "releaseDate": "11/09/2026",
-  "releaseTime": "10:25 11/09/2026",
-  "notes": "Tùy chỉnh thông tin Bên A ký kết hợp đồng qua Modal Popup trực quan; cập nhật email Bên B thành dpthai.ttytmk@gmail.com; chuẩn hóa chữ ký đại diện kèm tên đơn vị trên Hợp đồng và Phụ lục PDF."
+  "releaseTime": "10:35 11/09/2026",
+  "notes": "Khắc phục triệt để lỗi báo 'Phiên đăng nhập đã hết hạn' giả lập khi đăng xuất hoặc tải trang lúc chưa đăng nhập; chặn hoàn toàn các request API nền bắn 401 khi chưa có token xác thực."
 }
