@@ -2929,6 +2929,39 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `version.json`
   + `PM-xeplich-v4.md`
 
+### 📜 Tích Hợp Chức Năng Xuất "Hợp Đồng Dịch Vụ & Giấy Chứng Nhận Cấp Bản Quyền Phần Mềm (PDF)" (11/09/2026 - v4.0.6-rev2)
+- **Yêu cầu của người dùng**:
+  + Bổ sung chức năng xuất *"📥 Tải Hợp Đồng & Giấy Chứng Nhận Kích Hoạt Bản Quyền (PDF)"* để giải quyết vấn đề cá nhân không thể xuất hóa đơn VAT, cung cấp chứng từ pháp lý và kế toán đầy đủ cho các bệnh viện/phòng khám hạch toán chi phí hợp lý hợp lệ.
+  + Tuân thủ nghiêm ngặt quy tắc trong `RULES.md` (tăng version lên `4.0.6-rev2`, kiểm tra cú pháp, deploy Cloudflare, git commit & push).
+- **Phân tích nguyên nhân & Giải pháp triển khai**:
+  1. **Cơ sở pháp lý kế toán thuế tại Việt Nam**:
+     - Theo Thông tư số 219/2013/TT-BTC: Phần mềm và dịch vụ phần mềm thuộc đối tượng **không chịu thuế GTGT (thuế suất 0%)**.
+     - Theo Thông tư số 96/2015/TT-BTC của Bộ Tài chính: Doanh nghiệp, bệnh viện, phòng khám được tính vào chi phí được trừ khi tính thuế TNDN mà **không cần hóa đơn VAT** nếu có đầy đủ: (1) Hợp đồng dịch vụ phần mềm ký với cá nhân tác giả; (2) Giấy chứng nhận bàn giao / cấp quyền sử dụng phần mềm; (3) Chứng từ chuyển khoản ngân hàng (Ủy nhiệm chi vào STK MB Bank 0392283473 của Bác sĩ Thái).
+  2. **Kiến trúc PDF Engine (`pdfMake`)**:
+     - Xây dựng hàm `window.downloadLicenseContractPDF(optUnitCode, optPlanCode, optUnitName)` tạo file PDF 2 trang chuẩn mực:
+       + **Trang 1: GIẤY XÁC NHẬN CẤP QUYỀN SỬ DỤNG BẢN QUYỀN PHẦN MỀM (CERTIFICATE OF SOFTWARE LICENSE)**:
+         - Viền khung chứng nhận sang trọng, quốc hiệu tiêu ngữ.
+         - Căn cứ Bộ luật Dân sự 2015, Luật Sở hữu trí tuệ 2005 (sửa đổi 2022), Nghị định 123/2020/NĐ-CP và Thông tư 219/2013/TT-BTC.
+         - Đầy đủ thông tin đơn vị thụ hưởng, mã định danh slug, gói cước đăng ký, thời hạn sử dụng, phạm vi bản quyền Full 100% chức năng.
+         - Thông tin bên cấp bản quyền: Bác sĩ Đặng Phong Thái (MB Bank: 0392283473, SĐT: 0392.283.473).
+         - Dấu chứng thực chữ ký điện tử: `★ VALID CERTIFIED LICENSE ★`.
+       + **Trang 2: HỢP ĐỒNG DỊCH VỤ CUNG CẤP & CHUYỂN GIAO QUYỀN SỬ DỤNG PHẦN MỀM**:
+         - Đầy đủ các điều khoản thương mại chuẩn mực: Điều 1 (Đối tượng hợp đồng & Gói cước), Điều 2 (Giá trị hợp đồng & Thuế suất GTGT 0% & Chuyển khoản MB Bank), Điều 3 (Cam kết uptime 99.9% của Bên B, bảo mật dữ liệu y tế, hỗ trợ 24/7), Điều 4 (Nghĩa vụ Bên A), Điều 5 (Hiệu lực hợp đồng và phần ký tên hai bên).
+  3. **Giao diện Client Frontend (`index.html`, `js/app.js`)**:
+     - Đặt nút **"📥 Hợp Đồng & Chứng Nhận (PDF)"** ngay tại chân modal thanh toán VietQR (`#modal-renew-info`), tại màn hình chúc mừng thành công (`#renew-success-view`), và trong bảng Quản trị đơn vị của Super Admin (`loadTenantsList`) để cả khách hàng và chủ sở hữu đều có thể tải về chỉ bằng 1 cú nhấp chuột.
+  4. **Tuân thủ RULES.md**:
+     - Rule 1: Kiểm tra cú pháp toàn diện bằng `node -c js/init.js; node -c js/app.js; node -c js/scheduler-engine.js; node -c backend/src/index.js` (100% PASS).
+     - Rule 3: Trong ngày 11/09/2026, tăng revision lên `4.0.6-rev2`. Đồng bộ `version.json`, `index.html` (cache buster `?v=4.0.6-rev2`, footer timestamp `09:45 11/09/2026`, `APP_VERSION = '4.0.6-rev2'`), `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.6-rev2'`).
+     - Rule 4: Tự động deploy lên Cloudflare bằng `cmd.exe /c "npm run deploy:web"`.
+     - Rule 5: Commit và push mã nguồn lên nhánh `main` trên GitHub.
+- **File sửa đổi**:
+  + `index.html`
+  + `js/app.js`
+  + `sw.js`
+  + `version.json`
+  + `PM-xeplich-v4.md`
+
+
 
 
 
