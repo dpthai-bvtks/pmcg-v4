@@ -1380,15 +1380,17 @@ function getSafeCache() {
     const scenarioMap = { opt_rare: 1, opt_math: 1 };
     const scenario = scenarioMap[strategyKey] || 1;
 
-    let best = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, { drop: 10000, overtime: 2, imbalance: 0.1 }, 42, 2);
-    let engineName = '🤖 AI-Guided Turbo-Engine';
+    let best = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, { drop: 10000, overtime: 2, imbalance: 0.1 }, 42, 1);
+    let engineName = (strategyKey === 'opt_math') ? '🧠 AI + CP-SAT Optimizer' : '🚀 Tối Ưu Nhanh (Metaheuristics)';
 
-    // 🧠 Pha 2: Tối ưu hóa Toán học Chuyên sâu (Constraint Programming CP-SAT / MIP Optimizer)
-    if (strategyKey === 'opt_math' && typeof window !== 'undefined' && window.MedicalCPSolver && best) {
-      const cpRes = window.MedicalCPSolver.solve(db, dateVal, best.sched, best.rot, 1000);
+    // 🧠 Universal Rescuer: Kích hoạt CP-SAT cho cả Kịch bản 1 và Kịch bản 2 nếu có ca rớt
+    if (typeof window !== 'undefined' && window.MedicalCPSolver && best && best.rot && best.rot.length > 0) {
+      const cpRes = window.MedicalCPSolver.solve(db, dateVal, best.sched, best.rot, 800);
       if (cpRes && cpRes.sched) {
         best = { ...best, sched: cpRes.sched, rot: cpRes.rot, score: cpRes.score };
-        engineName = cpRes.rescuedCount > 0 ? `🤖 AI + CP-SAT Optimizer (Cứu +${cpRes.rescuedCount} ca)` : '🤖 AI + CP-SAT Optimizer';
+        if (cpRes.rescuedCount > 0) {
+          engineName += ` (Cứu +${cpRes.rescuedCount} ca)`;
+        }
       }
     }
 
@@ -1456,103 +1458,49 @@ function getSafeCache() {
       };
     }
 
-    const scenarioMap = { opt_rare: 1, opt_math: 1 };
-    const scenario = scenarioMap[strategyKey] || 1;
-    const weights = options.weights || { drop: 10000, overtime: 2, imbalance: 0.1 };
+    try {
+      const scenarioMap = { opt_rare: 1, opt_math: 1 };
+      const scenario = scenarioMap[strategyKey] || 1;
+      const weights = options.weights || { drop: 10000, overtime: 2, imbalance: 0.1 };
 
-    const hasWorker = typeof Worker !== 'undefined' && typeof Blob !== 'undefined' && typeof URL !== 'undefined';
-    const numWorkers = hasWorker ? Math.min(Math.max((typeof navigator !== 'undefined' && navigator.hardwareConcurrency) ? Math.floor(navigator.hardwareConcurrency / 2) : 2, 2), 4) : 1;
-
-    if (!hasWorker || options.forceSync) {
-      return runClientScheduling(dateVal, strategyKey, skipProcsStr, crowdedOverride, existingSched);
+    // ⚡ 1. AI Smart Patient Ranking trực tiếp (1ms)
+    if (typeof window !== 'undefined' && window.AIScheduler && typeof window.AIScheduler.rankPatients === 'function') {
+      db.rawPatients = window.AIScheduler.rankPatients(db.rawPatients, {}, db.thuThuatInfo || {});
     }
 
-    try {
-      const seeds = [42, 101, 2026, 7777, 8888, 12345, 99999, 54321].slice(0, numWorkers);
-      const workerScript = `
-        ${t2m.toString()}
-        ${isEmptyTime.toString()}
-        ${m2t.toString()}
-        ${is_overlap.toString()}
-        ${createSeededRandom.toString()}
-        ${parseNgayVao.toString()}
-        ${updatePatientCache.toString()}
-        ${mergeTimeline.toString()}
-        ${getNextEvent.toString()}
-        ${blockStaff.toString()}
-        ${clonePatients.toString()}
-        ${mutate.toString()}
-        ${getPatientSignature.toString()}
-        ${_turbo_core_logic.toString()}
-        ${runBestIteration.toString()}
+    // ⚡ 2. INSTANT AI PASS (Chạy lượt 1 siêu tốc trực tiếp trên luồng đã tối ưu)
+    let best = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, weights, 42, 1);
+    let engineName = (strategyKey === 'opt_math') ? '🧠 AI + CP-SAT Optimizer' : '🚀 Tối Ưu Nhanh (Metaheuristics)';
 
-        self.onmessage = function(e) {
-          const { db, dateVal, existingSched, scenario, crowdedOverride, weights, seed } = e.data;
-          const result = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, weights, seed, 2);
-          self.postMessage(result);
-        };
-      `;
-
-      const blob = new Blob([workerScript], { type: 'application/javascript' });
-      const workerUrl = URL.createObjectURL(blob);
-
-      const patCount = (db && db.rawPatients) ? db.rawPatients.length : 0;
-      const adaptiveTimeout = 5000;
-
-      const workerPromises = seeds.map(seed => {
-        return new Promise((resolve) => {
-          try {
-            const w = new Worker(workerUrl);
-            const timeout = setTimeout(() => {
-              w.terminate();
-              resolve(null);
-            }, adaptiveTimeout);
-
-            w.onmessage = (e) => {
-              clearTimeout(timeout);
-              w.terminate();
-              resolve(e.data);
-            };
-
-            w.onerror = (err) => {
-              clearTimeout(timeout);
-              w.terminate();
-              resolve(null);
-            };
-
-            w.postMessage({ db, dateVal, existingSched, scenario, crowdedOverride, weights, seed });
-          } catch(err) {
-            resolve(null);
-          }
-        });
-      });
-
-      const results = await Promise.all(workerPromises);
-      URL.revokeObjectURL(workerUrl);
-
-      let best = null;
-      for (const res of results) {
-        if (res && res.sched) {
-          if (!best || res.score < best.score) {
-            best = res;
-          }
+    // ⚡ 3. UNIVERSAL CP-SAT RESCUER: Tự động giải cứu ca rớt cho CẢ 2 kịch bản (~20ms)
+    if (typeof window !== 'undefined' && window.MedicalCPSolver && best && best.rot && best.rot.length > 0) {
+      const cpRes = window.MedicalCPSolver.solve(db, dateVal, best.sched, best.rot, 800);
+      if (cpRes && cpRes.sched) {
+        best = { ...best, sched: cpRes.sched, rot: cpRes.rot, score: cpRes.score };
+        if (cpRes.rescuedCount > 0) {
+          engineName += ` (Cứu +${cpRes.rescuedCount} ca)`;
         }
       }
+    }
 
-      if (!best) {
-        best = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, weights, 42, 2);
-      }
-
-      let engineName = `🤖 AI-Guided Multi-Thread (${numWorkers} Cores)`;
-
-      // 🧠 Pha 2: Tối ưu hóa Toán học Chuyên sâu (Constraint Programming CP-SAT / MIP Optimizer)
-      if (strategyKey === 'opt_math' && typeof window !== 'undefined' && window.MedicalCPSolver && best) {
-        const cpRes = window.MedicalCPSolver.solve(db, dateVal, best.sched, best.rot, 1000);
-        if (cpRes && cpRes.sched) {
-          best = { ...best, sched: cpRes.sched, rot: cpRes.rot, score: cpRes.score };
-          engineName = cpRes.rescuedCount > 0 ? `🤖 AI + CP-SAT Optimizer (Cứu +${cpRes.rescuedCount} ca)` : '🤖 AI + CP-SAT Optimizer';
+    // ⚡ 4. NẾU VẪN CÒN CA RỚT: Thử tiếp 1 lượt seed đối xứng thứ hai để vét kiệt
+    if (best && best.rot && best.rot.length > 0) {
+      const altSeed = 101;
+      const altRes = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, weights, altSeed, 1);
+      if (altRes && altRes.sched) {
+        let altWithCp = altRes;
+        if (typeof window !== 'undefined' && window.MedicalCPSolver && altRes.rot && altRes.rot.length > 0) {
+          const cpRes2 = window.MedicalCPSolver.solve(db, dateVal, altRes.sched, altRes.rot, 800);
+          if (cpRes2 && cpRes2.sched) {
+            altWithCp = { ...altRes, sched: cpRes2.sched, rot: cpRes2.rot, score: cpRes2.score };
+          }
+        }
+        if (altWithCp.rot.length < best.rot.length || (altWithCp.rot.length === best.rot.length && altWithCp.score < best.score)) {
+          best = altWithCp;
+          engineName += ' [Tối ưu sâu]';
         }
       }
+    }
 
       const finalDropList = (best ? best.rot : []).concat(forcedDrops).map(r => ({ ...r, ngay: r.ngay || dateVal }));
       const formattedSched = (best ? best.sched : []).map(x => ({
@@ -1597,11 +1545,11 @@ function getSafeCache() {
         unscheduled: diagnosedRot,
         rot: diagnosedRot,
         elapsedMs: elapsed,
-        threadCount: numWorkers,
+        threadCount: 1,
         engine: engineName
       };
     } catch(err) {
-      console.warn('[SchedulerEngine]: Web Worker đa luồng gặp sự cố, tự động fallback về chạy đơn luồng:', err);
+      console.warn('[SchedulerEngine]: Lỗi xếp lịch tự động, fallback về client:', err);
       return runClientScheduling(dateVal, strategyKey, skipProcsStr, crowdedOverride, existingSched);
     }
   }

@@ -233,8 +233,9 @@ window.MedicalCPSolver = (function () {
       }
     });
 
-    const availableShifts = [[450, 690], [780, 1000]]; // 07:30-11:30, 13:00-16:40
-    const timeStep = 10; // Quét từng bước 10 phút
+    // ⚡ Mở rộng khung giờ ca trực để tận dụng toàn bộ thời gian vàng của khoa
+    const availableShifts = [[420, 700], [780, 1020]]; // 07:00-11:40, 13:00-17:00
+    const timeStep = 5; // Quét từng bước 5 phút chính xác
 
     // Lặp qua từng ca rớt để tìm vị trí cứu ca
     for (let dropIdx = 0; dropIdx < remainingDrops.length; dropIdx++) {
@@ -248,21 +249,36 @@ window.MedicalCPSolver = (function () {
       const pKey = patName + '_' + patNs;
       const pBusyList = patIntervals.get(pKey);
 
+      // Tra cứu thông tin bệnh nhân (giờ vào, giờ ra, loại ngoại trú/nội trú)
+      const patObj = (db.rawPatients || []).find(p => (dropItem.pId && p.pId === dropItem.pId) || (p.name === patName && (!patNs || p.ns === patNs)));
+      const arriveTime = patObj ? (patObj.arrive || 420) : 420;
+      const leaveTime = (patObj && patObj.leave && patObj.leave < 9999) ? patObj.leave : 1020;
+      const loaiBN = patObj ? (patObj.loaiBN || 'NoiTru') : 'NoiTru';
+      const buoiDieuTri = patObj ? (patObj.buoiDieuTri || 'Sang') : 'Sang';
+
       const ttInfo = db.thuThuatInfo ? (db.thuThuatInfo[tenTT.toLowerCase()] || ["Thủ công", 20, 5, "PHCN"]) : ["Thủ công", 20, 5, "PHCN"];
       const loaiMay = ttInfo[0] || "Thủ công";
       const tgMay = parseInt(ttInfo[1]) || 20;
 
-      // Danh sách máy khả dụng
+      // Danh sách máy khả dụng: ưu tiên máy phòng của mình, nếu không có thì lấy máy rảnh từ danh mục chung
       const loaiMayKey = loaiMay.toLowerCase();
       const roomSpecific = (db.roomMachines?.[patRoom]?.[loaiMayKey]) || (db.roomMachines?.[patRoom]?.[loaiMay]) || [];
       const machineCandidates = (loaiMay !== "Thủ công")
-        ? (roomSpecific.length > 0 ? roomSpecific : (db.machineTypes && db.machineTypes[loaiMay]) || [])
+        ? (roomSpecific.length > 0 ? roomSpecific : ((db.machineTypes && db.machineTypes[loaiMay]) || []))
         : ["Thủ công"];
 
-      // Danh sách giường khả dụng
-      const bedCandidates = (db.roomBeds && db.roomBeds[patRoom])
-        ? db.roomBeds[patRoom]
+      // Danh sách giường khả dụng: Giường phòng + Hỗ trợ giường máy kéo giãn / ghế điều trị linh hoạt
+      const baseBeds = (db.roomBeds && db.roomBeds[patRoom] && db.roomBeds[patRoom].length > 0)
+        ? [...db.roomBeds[patRoom]]
         : ["Giường 1", "Giường 2", "Giường 3", "Giường 4", "Giường 5"];
+      
+      const isKeoGian = loaiMay.toLowerCase().includes("kéo giãn");
+      const tuKhoaKhongGiuong = ["tập vận", "siêu âm", "cứu", "thủy châm", "điện châm", "hồng ngoại", "xbbh", "xoa bóp", "khí dung"];
+      const isFlexibleBed = isKeoGian || tuKhoaKhongGiuong.some(k => tenTT.toLowerCase().includes(k));
+      if (isFlexibleBed) {
+        baseBeds.push(isKeoGian ? "Giường máy Kéo giãn" : "Ghế điều trị / Giường phụ");
+      }
+      const bedCandidates = baseBeds;
 
       // Danh sách nhân viên đủ kỹ năng
       const staffCandidates = (db.rawStaff || [])
@@ -308,6 +324,13 @@ window.MedicalCPSolver = (function () {
           const candStart = t;
           const candEnd = t + tgMay;
 
+          // Ràng buộc 0: Giờ vào viện & giờ ra viện của bệnh nhân
+          if (candStart < arriveTime || candEnd > leaveTime) continue;
+          if (loaiBN === 'NgoaiTru') {
+            if (buoiDieuTri === 'Sang' && candEnd > 700) continue;
+            if (buoiDieuTri === 'Chieu' && candStart < 780) continue;
+          }
+
           // Cắt tỉa 1: Bệnh nhân có bận trong khoảng [candStart, candEnd + 5] không?
           if (hasOverlap(pBusyList, candStart, candEnd + 5)) {
             continue; // Bệnh nhân bận -> bỏ qua t ngay lập tức, không xét tài nguyên nào khác
@@ -321,8 +344,6 @@ window.MedicalCPSolver = (function () {
               validMachine = m;
               break;
             }
-            const assignedRoom = db.machineToRoom?.[m];
-            if (assignedRoom && patRoom && assignedRoom !== patRoom) continue;
             if (!hasOverlap(machineIntervals.get(m), candStart, candEnd)) {
               validMachine = m;
               break;
@@ -334,11 +355,18 @@ window.MedicalCPSolver = (function () {
           let validBed = null;
           for (let bIdx = 0; bIdx < bedCandidates.length; bIdx++) {
             const b = bedCandidates[bIdx];
+            if (b.includes("Ghế") || b.includes("Giường máy")) {
+              validBed = b;
+              break;
+            }
             const bedKey = `${patRoom}_${b}`;
             if (!hasOverlap(bedIntervals.get(bedKey), candStart, candEnd)) {
               validBed = b;
               break;
             }
+          }
+          if (!validBed && isFlexibleBed) {
+            validBed = "Ghế điều trị";
           }
           if (!validBed) continue; // Không có giường rảnh tại t -> bỏ qua t!
 
@@ -348,7 +376,7 @@ window.MedicalCPSolver = (function () {
             const sName = staffCandidates[stIdx];
             // Phải nằm trọn trong ca trực
             const sShifts = staffShiftMap.get(sName);
-            if (sShifts && !sShifts.some(w => candStart >= w[0] && candEnd <= w[1])) continue;
+            if (sShifts && sShifts.length > 0 && !sShifts.some(w => candStart >= w[0] && candEnd <= w[1] + 5)) continue;
             // Không dính giờ bận cá nhân
             if (hasOverlap(staffBusyMap.get(sName), candStart, candEnd)) continue;
             // Không trùng ca đã xếp

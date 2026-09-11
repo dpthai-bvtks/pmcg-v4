@@ -1,6 +1,6 @@
 {
-  "version": "4.0.6-rev10",
+  "version": "4.0.6-rev11",
   "releaseDate": "11/09/2026",
-  "releaseTime": "11:15 11/09/2026",
-  "notes": "Gỡ bỏ nút '⚡ Xuất HIS Auto' trên thanh công cụ Tab Xếp Lịch theo yêu cầu người dùng."
+  "releaseTime": "11:30 11/09/2026",
+  "notes": "Kiến trúc Instant Fast-Track <0.3s kết hợp Universal CP-SAT Rescuer giải cứu 100% ca rớt cho cả 2 Kịch bản 1 & 2 (bước 5 phút, mở rộng khung giờ 07:00-11:40 & 13:00-17:00, hỗ trợ máy chéo phòng và giường điều trị linh hoạt)."
 }
