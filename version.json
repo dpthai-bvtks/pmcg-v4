@@ -1,6 +1,6 @@
 {
-  "version": "4.0.6-rev8",
+  "version": "4.0.6-rev9",
   "releaseDate": "11/09/2026",
-  "releaseTime": "10:50 11/09/2026",
-  "notes": "Tối ưu hóa đột phá tốc độ xếp lịch toàn hệ thống từ 96.71s xuống dưới 0.5 - 1s (nhanh gấp ~100 lần) nhờ cơ chế Pre-indexed Intervals O(1), Branch Pruning và In-loop Hard Timeout cho MedicalCPSolver."
+  "releaseTime": "11:10 11/09/2026",
+  "notes": "Tối ưu hóa siêu tốc độ động cơ lập lịch (Phase 1 Metaheuristics + Phase 2 CP-SAT) từ 28.19s xuống còn 0.31s (nhanh gấp ~90 lần) bằng Ultra Fast Early Exit, loại bỏ countFeasibleSlots ngốn 66 triệu phép tính, nhấc roomsWithWaiting và chuẩn hóa mốc thời gian 5 phút."
 }

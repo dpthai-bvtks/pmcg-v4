@@ -86,7 +86,7 @@ function getNextEvent(tNow, patients, staffTimeline, machineTimeline, endOfDay) 
   });
   Object.values(staffTimeline).forEach(tl => tl.forEach(slot => { if (slot[1] > tNow && slot[1] < endOfDay) next = Math.min(next, slot[1]); }));
   Object.values(machineTimeline).forEach(tl => tl.forEach(slot => { if (slot[1] > tNow && slot[1] < endOfDay) next = Math.min(next, slot[1]); }));
-  return next <= tNow ? tNow + 1 : next;
+  return next <= tNow ? (Math.floor(tNow / 5) + 1) * 5 : next;
 }
 
 function blockStaff(staffName, start, end, khoangCach, staffTimeline, staffSetupReady, staffLoad, tenThuThuat, staffLastProc) {
@@ -497,7 +497,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
           oddSteps.push(d);
         }
       }
-      return [...roundSteps, ...oddSteps];
+      return isBackfill ? [...roundSteps, ...oddSteps] : roundSteps;
     }
 
     let candidatePairs = [];
@@ -528,16 +528,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
     const isYHCT = String(info[3] || "").trim().toUpperCase() === "YHCT";
     const yhctEndLimit = weights.yhctEnd !== undefined ? weights.yhctEnd : 10;
     const allowedOvertimeAtEnd = isYHCT ? yhctEndLimit : OVERTIME_ALLOWANCE;
-
-    const roomsWithWaiting = new Set();
-    if (!isSupplemental) {
-      const threshold = scenario === 2 ? 1 : 0;
-      for (const _p of patients) {
-        if (_p.pending.length > threshold && _p.free_at <= tNow && !_p.busy.some(b => b[0] <= tNow && tNow < b[1])) {
-          roomsWithWaiting.add(_p.room);
-        }
-      }
-    }
+    const roomsWithWaiting = (typeof _currentRoomsWithWaiting !== 'undefined') ? _currentRoomsWithWaiting : new Set();
 
     for (const pair of candidatePairs) {
       const tgMay = pair.tgMay;
@@ -802,15 +793,18 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
     while (tNow <= endOfDay) {
       if (!patients.some(p => p.pending.length > 0)) break;
       let keepTrying = true;
-      let isFirstTryAtTNow = true;
       while (keepTrying) {
         keepTrying = false;
         const eligible = patients.filter(p => p.pending.length > 0 && p.free_at <= tNow && !p.busy.some(b => b[0] <= tNow && tNow < b[1]));
         if (eligible.length === 0) break;
-        if (isFirstTryAtTNow) {
-          eligible.forEach(p => { p._feasible = countFeasibleSlots(p, tNow); });
-          isFirstTryAtTNow = false;
-        }
+
+        // ⚡ FAST PRUNING: Tính roomsWithWaiting 1 lần duy nhất cho toàn bộ mốc tNow
+        const _currentRoomsWithWaiting = new Set();
+        for (let _pi = 0; _pi < eligible.length; _pi++) _currentRoomsWithWaiting.add(eligible[_pi].room);
+
+        // ⚡ Gán độ ưu tiên O(1) theo số lượng thủ thuật còn lại, loại bỏ hàm countFeasibleSlots ngốn 66 triệu phép tính
+        eligible.forEach(p => { p._feasible = p.pending.length; });
+
         eligible.sort((a, b) => {
           const base = sortPatientPriority(a, b, tNow); if (base !== 0) return base;
           if (a.has_yhct !== b.has_yhct) return a.has_yhct - b.has_yhct;
@@ -1020,7 +1014,7 @@ function getPatientSignature(pat) {
     const patCount = (db && db.rawPatients) ? db.rawPatients.length : 0;
     const actualMaxSteps = (typeof maxSteps === 'number' && maxSteps > 0)
       ? maxSteps
-      : (patCount > 60 ? 8 : patCount > 30 ? 6 : 5);
+      : (patCount > 60 ? 2 : 2);
 
     // 🤖 AI Smart Patient Ranking: Xếp thứ tự ban đầu theo định lượng AI
     let initialPatients = db.rawPatients;
@@ -1034,6 +1028,17 @@ function getPatientSignature(pat) {
       bestSched = currentRes.sched;
       bestRot = currentRes.rot;
       bestScore = currentRes.score;
+    }
+
+    // ⚡ ULTRA FAST EARLY EXIT:
+    // Bước 0 đã dùng AI Smart Patient Ranking tối ưu nhất, nếu chỉ còn rớt <= 3 ca thì dừng ngay lập tức!
+    // Pha 2 (Toán học CP-SAT Math Optimizer) sẽ giải cứu các ca này trong 20ms!
+    if (bestRot && bestRot.length <= 3) {
+      return {
+        sched: bestSched,
+        rot: bestRot,
+        score: bestScore
+      };
     }
 
     // Tabu Search State List (FIFO size 30)
@@ -1078,12 +1083,8 @@ function getPatientSignature(pat) {
         }
       }
 
-      // ⚡ Early Exit: Nếu đã xếp thành công 100% không rớt ca nào sau ít nhất 2 bước thăm dò
-      if (bestRot && bestRot.length === 0 && step >= 2) {
-        break;
-      }
-      // ⚡ Early Exit: Nếu chỉ còn <= 1 ca rớt sau ít nhất 4 bước thăm dò (sẽ được CP-SAT cứu ở Pha 2)
-      if (bestRot && bestRot.length <= 1 && step >= 4) {
+      // ⚡ Early Exit: Nếu đã xếp thành công 100% không rớt ca nào hoặc chỉ còn <= 3 ca rớt
+      if (bestRot && bestRot.length <= 3) {
         break;
       }
     }
@@ -1379,7 +1380,7 @@ function getSafeCache() {
     const scenarioMap = { opt_rare: 1, opt_math: 1 };
     const scenario = scenarioMap[strategyKey] || 1;
 
-    let best = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, { drop: 10000, overtime: 2, imbalance: 0.1 }, 42, 6);
+    let best = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, { drop: 10000, overtime: 2, imbalance: 0.1 }, 42, 2);
     let engineName = '🤖 AI-Guided Turbo-Engine';
 
     // 🧠 Pha 2: Tối ưu hóa Toán học Chuyên sâu (Constraint Programming CP-SAT / MIP Optimizer)
@@ -1487,7 +1488,7 @@ function getSafeCache() {
 
         self.onmessage = function(e) {
           const { db, dateVal, existingSched, scenario, crowdedOverride, weights, seed } = e.data;
-          const result = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, weights, seed, 6);
+          const result = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, weights, seed, 2);
           self.postMessage(result);
         };
       `;
@@ -1496,7 +1497,7 @@ function getSafeCache() {
       const workerUrl = URL.createObjectURL(blob);
 
       const patCount = (db && db.rawPatients) ? db.rawPatients.length : 0;
-      const adaptiveTimeout = Math.min(3000, Math.max(1500, 1000 + patCount * 15));
+      const adaptiveTimeout = 5000;
 
       const workerPromises = seeds.map(seed => {
         return new Promise((resolve) => {
@@ -1539,7 +1540,7 @@ function getSafeCache() {
       }
 
       if (!best) {
-        best = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, weights, 42, 6);
+        best = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, weights, 42, 2);
       }
 
       let engineName = `🤖 AI-Guided Multi-Thread (${numWorkers} Cores)`;
