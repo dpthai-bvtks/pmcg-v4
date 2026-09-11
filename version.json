@@ -1,6 +1,6 @@
 {
-  "version": "4.0.5-rev4",
-  "releaseDate": "10/09/2026",
-  "releaseTime": "16:35 10/09/2026",
-  "notes": "Xác lập trạng thái bản quyền Vĩnh viễn (Lifetime Enterprise) trọn đời cho đơn vị bvtks-cs2 (Bệnh viện Than - Khoáng sản Cơ sở 2) cả ở CSDL Turso/D1, backend Worker và giao diện huy hiệu header."
+  "version": "4.0.6-rev1",
+  "releaseDate": "11/09/2026",
+  "releaseTime": "09:20 11/09/2026",
+  "notes": "Tích hợp mã QR VietQR động MB Bank 0392283473 với cú pháp chuyển khoản chính xác, hỗ trợ tự động nâng cấp gói bản quyền ngay khi tiền về tài khoản và giao diện duyệt nhanh 1-Click cho Super Admin."
 }

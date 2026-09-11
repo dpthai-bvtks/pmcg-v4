@@ -13980,6 +13980,11 @@ window.loadTenantsList = function () {
                     </tr>
                 `;
             }).join('');
+
+            // Tự động tải luôn danh sách giao dịch thanh toán VietQR
+            if (typeof window.loadPaymentTransactionsList === 'function') {
+                window.loadPaymentTransactionsList();
+            }
         }, err => {
             tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:#e11d48;">Lỗi khi tải danh sách: ${err && err.message ? err.message : 'Không xác định'}</td></tr>`;
         });
@@ -14712,41 +14717,269 @@ window.submitTrialRegistration = function () {
     }
 };
 
+// ============================================================
+// 💳 HỆ THỐNG THANH TOÁN VIETQR & TỰ ĐỘNG NÂNG CẤP GÓI SAAS
+// ============================================================
+
+window.copyPaymentText = function (text, label) {
+    if (!text) return;
+    const str = String(text).trim();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(str).then(() => {
+            if (typeof showToast === 'function') {
+                showToast(`Đã sao chép ${label || 'thông tin'}: ${str}`, 'success');
+            } else {
+                alert(`Đã sao chép ${label || 'thông tin'}: ${str}`);
+            }
+        }).catch(() => fallbackCopy(str, label));
+    } else {
+        fallbackCopy(str, label);
+    }
+
+    function fallbackCopy(val, lbl) {
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = val;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            if (typeof showToast === 'function') {
+                showToast(`Đã sao chép ${lbl || 'thông tin'}: ${val}`, 'success');
+            } else {
+                alert(`Đã sao chép: ${val}`);
+            }
+        } catch (e) {
+            prompt(`Vui lòng sao chép ${lbl || 'thông tin'} thủ công:`, val);
+        }
+    }
+};
+
 window.openRenewModal = function (planCode) {
-    window.closePricingModal();
+    if (typeof window.closePricingModal === 'function') window.closePricingModal();
     const m = document.getElementById('modal-renew-info');
     if (!m) return;
+
+    // Reset lại trạng thái các màn hình trong modal
+    const payingView = document.getElementById('renew-paying-view');
+    const succView = document.getElementById('renew-success-view');
+    if (payingView) payingView.style.display = 'block';
+    if (succView) succView.style.display = 'none';
 
     const currentUnit = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
     const selectedPlan = planCode || 'PLAN_1Y';
 
     const planData = {
-        'PLAN_1M': { name: 'Gói 1 Tháng', price: '400.000 đ', equiv: '400.000 đ / tháng', code: '1T' },
-        'PLAN_3M': { name: 'Gói 3 Tháng', price: '1.125.000 đ', equiv: '~375.000 đ / tháng (Tiết kiệm 6%)', code: '3T' },
-        'PLAN_6M': { name: 'Gói 6 Tháng', price: '2.100.000 đ', equiv: '~350.000 đ / tháng (Tiết kiệm 12.5%)', code: '6T' },
-        'PLAN_1Y': { name: 'Gói 1 Năm', price: '3.900.000 đ', equiv: '~325.000 đ / tháng (Tiết kiệm 18.75%)', code: '1N' }
+        'PLAN_1M': { name: 'Gói 1 Tháng', amount: 400000, price: '400.000 đ', equiv: '400.000 đ / tháng', code: '1T' },
+        'PLAN_3M': { name: 'Gói 3 Tháng', amount: 1125000, price: '1.125.000 đ', equiv: '~375.000 đ / tháng (Tiết kiệm 6%)', code: '3T' },
+        'PLAN_6M': { name: 'Gói 6 Tháng', amount: 2100000, price: '2.100.000 đ', equiv: '~350.000 đ / tháng (Tiết kiệm 12.5%)', code: '6T' },
+        'PLAN_1Y': { name: 'Gói 1 Năm', amount: 3900000, price: '3.900.000 đ', equiv: '~325.000 đ / tháng (Tiết kiệm 18.75%)', code: '1N' }
     };
 
     const target = planData[selectedPlan] || planData['PLAN_1Y'];
 
     const nameEl = document.getElementById('renew-plan-name');
     const priceEl = document.getElementById('renew-plan-price');
+    const amountEl = document.getElementById('renew-amount-number');
     const equivEl = document.getElementById('renew-plan-equiv');
     const unitEl = document.getElementById('renew-unit-display');
     const memoEl = document.getElementById('renew-transfer-memo');
+    const qrImg = document.getElementById('renew-qr-img');
 
     if (nameEl) nameEl.innerText = target.name;
     if (priceEl) priceEl.innerText = target.price;
+    if (amountEl) amountEl.innerText = target.price;
     if (equivEl) equivEl.innerText = target.equiv;
     if (unitEl) unitEl.innerText = 'Đơn vị: ' + currentUnit;
-    if (memoEl) memoEl.innerText = `PMCG ${currentUnit.toUpperCase()} ${target.code}`;
+
+    window._currentOrderAmount = target.amount;
+    const defaultMemo = `PMCG ${currentUnit.toUpperCase()} ${target.code}`;
+    if (memoEl) memoEl.innerText = defaultMemo;
+
+    // Ảnh QR ban đầu
+    const defaultQrUrl = `https://img.vietqr.io/image/MB-0392283473-compact2.png?amount=${target.amount}&addInfo=${encodeURIComponent(defaultMemo)}&accountName=DANG%20PHONG%20THAI`;
+    if (qrImg) qrImg.src = defaultQrUrl;
 
     m.style.display = 'flex';
+
+    // Tạo đơn hàng trên backend Worker
+    if (typeof callApi === 'function') {
+        callApi('createPaymentOrder', [{ unit_code: currentUnit, plan_tier: selectedPlan }], res => {
+            const data = (res && res.order_code) ? res : (res?.data || {});
+            if (data && data.order_code) {
+                window._currentOrderCode = data.order_code;
+                if (qrImg && data.qr_url) qrImg.src = data.qr_url;
+                if (memoEl && data.content) memoEl.innerText = data.content;
+                const bankAccEl = document.getElementById('renew-bank-acc');
+                if (bankAccEl && data.bank_account) bankAccEl.innerText = data.bank_account;
+
+                // Bắt đầu lắng nghe tự động chuyển trạng thái gói
+                window._startPaymentPolling(data.order_code, currentUnit, selectedPlan);
+            }
+        }, err => {
+            console.warn('[Payment] createPaymentOrder failed, using default info:', err);
+            window._startPaymentPolling('', currentUnit, selectedPlan);
+        });
+    }
+};
+
+window._startPaymentPolling = function (orderCode, unitCode, planTier) {
+    if (window._paymentPollInterval) {
+        clearInterval(window._paymentPollInterval);
+        window._paymentPollInterval = null;
+    }
+
+    let pollCount = 0;
+    const maxPolls = 600; // Thăm dò tối đa 30 phút (mỗi 3 giây)
+
+    window._paymentPollInterval = setInterval(() => {
+        pollCount++;
+        if (pollCount > maxPolls) {
+            clearInterval(window._paymentPollInterval);
+            window._paymentPollInterval = null;
+            return;
+        }
+
+        if (typeof callApi === 'function') {
+            callApi('checkPaymentStatus', [{ order_code: orderCode || '', unit_code: unitCode }], res => {
+                const data = (res && res.payment_status) ? res : (res?.data || {});
+                if (data && data.payment_status === 'SUCCESS') {
+                    // Chủ tài khoản đã nhận được tiền! Tự động nâng cấp gói cước
+                    clearInterval(window._paymentPollInterval);
+                    window._paymentPollInterval = null;
+                    window._handlePaymentSuccess(data, planTier);
+                }
+            }, () => {});
+        }
+    }, 3000);
+};
+
+window._handlePaymentSuccess = function (data, fallbackPlan) {
+    const planTier = data.plan_tier || fallbackPlan || 'PLAN_1Y';
+    const planName = data.plan_name || 'Bản Quyền Đã Nâng Cấp';
+    const expiresAt = data.expires_at || '';
+    const daysLeft = data.days_left !== undefined ? data.days_left : 365;
+
+    // 1. Cập nhật localStorage
+    localStorage.setItem('pm_plan_tier', planTier);
+    localStorage.setItem('pm_plan_name', planName);
+    localStorage.setItem('pm_expires_at', expiresAt);
+    localStorage.setItem('pm_days_left', daysLeft);
+
+    // 2. Cập nhật meds_session
+    try {
+        const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
+        sess.plan_tier = planTier;
+        sess.plan_name = planName;
+        sess.expires_at = expiresAt;
+        sess.days_left = daysLeft;
+        localStorage.setItem('meds_session', JSON.stringify(sess));
+    } catch (e) {}
+
+    // 3. Cập nhật Badge trên Header
+    if (typeof window.updateSubscriptionHeaderBadge === 'function') {
+        window.updateSubscriptionHeaderBadge(planTier, expiresAt, planName, daysLeft);
+    }
+
+    // 4. Chuyển sang màn hình chúc mừng thành công
+    const payingView = document.getElementById('renew-paying-view');
+    const succView = document.getElementById('renew-success-view');
+    if (payingView) payingView.style.display = 'none';
+    if (succView) {
+        succView.style.display = 'block';
+        const succPlan = document.getElementById('renew-succ-plan');
+        const succExp = document.getElementById('renew-succ-exp');
+        const succDays = document.getElementById('renew-succ-days');
+        if (succPlan) succPlan.innerText = planName;
+        if (succExp) succExp.innerText = expiresAt;
+        if (succDays) succDays.innerText = `${daysLeft} ngày`;
+    }
+
+    // 5. Bắn thông báo Toast
+    if (typeof showToast === 'function') {
+        showToast(`🎉 Chúc mừng! Đơn vị của bạn đã được nâng cấp lên ${planName}!`, 'success');
+    }
 };
 
 window.closeRenewModal = function () {
+    if (window._paymentPollInterval) {
+        clearInterval(window._paymentPollInterval);
+        window._paymentPollInterval = null;
+    }
     const m = document.getElementById('modal-renew-info');
     if (m) m.style.display = 'none';
+};
+
+// ============================================================
+// 💳 QUẢN LÝ GIAO DỊCH THANH TOÁN VIETQR (SUPER ADMIN)
+// ============================================================
+window.loadPaymentTransactionsList = function () {
+    const tbody = document.getElementById('payment-transactions-body');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:#64748b;">⏳ Đang tải lịch sử giao dịch thanh toán...</td></tr>';
+
+    if (typeof callApi === 'function') {
+        callApi('getPaymentTransactions', [{ limit: 50 }], res => {
+            const list = Array.isArray(res) ? res : (res?.data || []);
+            if (!list || list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:#94a3b8;">Chưa có giao dịch thanh toán nào được tạo.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = list.map(t => {
+                const isSuccess = t.status === 'SUCCESS';
+                const statusBadge = isSuccess
+                    ? '<span style="background:#dcfce7; color:#15803d; padding:3px 8px; border-radius:6px; font-weight:700; font-size:11px;">✅ Thành Công</span>'
+                    : '<span style="background:#fef3c7; color:#b45309; padding:3px 8px; border-radius:6px; font-weight:700; font-size:11px;">⏳ Chờ Thanh Toán</span>';
+
+                const formattedAmount = (parseInt(t.amount || 0, 10)).toLocaleString('vi-VN') + ' đ';
+                const timeDisplay = t.created_at || '-';
+
+                const actionBtn = isSuccess
+                    ? '<span style="color:#15803d; font-size:12px; font-weight:600;">Đã kích hoạt</span>'
+                    : `<button class="btn btn-sm btn-success" onclick="window.manualApprovePaymentPrompt('${t.order_code}', '${t.unit_code}', '${t.plan_tier}')" style="padding:3px 8px; font-size:11px; font-weight:700;" title="Duyệt nhanh và nâng cấp gói cho đơn vị ngay lập tức">⚡ Duyệt 1-Click</button>`;
+
+                return `
+                    <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                        <td style="padding:10px 12px; font-family:monospace; font-weight:700; color:#1e40af;">${t.order_code}</td>
+                        <td style="padding:10px 12px; font-weight:700; color:#0f172a;">${t.unit_code}</td>
+                        <td style="padding:10px 12px;"><span style="background:#e0e7ff; color:#3730a3; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:700;">${t.plan_tier}</span></td>
+                        <td style="padding:10px 12px; font-weight:800; color:#e11d48;">${formattedAmount}</td>
+                        <td style="padding:10px 12px; font-family:monospace; font-size:12px; color:#475569;">${t.content || '-'}</td>
+                        <td style="padding:10px 12px; font-size:12px; color:#64748b;">${timeDisplay}</td>
+                        <td style="padding:10px 12px; text-align:center;">${statusBadge}</td>
+                        <td style="padding:10px 12px; text-align:center;">${actionBtn}</td>
+                    </tr>
+                `;
+            }).join('');
+        }, err => {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:#ef4444;">❌ Lỗi tải lịch sử giao dịch: ' + (err?.message || err) + '</td></tr>';
+        });
+    }
+};
+
+window.manualApprovePaymentPrompt = function (orderCode, unitCode, planTier) {
+    if (!confirm(`Xác nhận duyệt thanh toán cho mã đơn: ${orderCode}?\n\nĐơn vị: ${unitCode}\nGói cước: ${planTier}\n\nHệ thống sẽ gia hạn tài khoản đơn vị ngay lập tức!`)) {
+        return;
+    }
+
+    if (typeof callApi === 'function') {
+        callApi('manualApprovePayment', [{ order_code: orderCode, unit_code: unitCode, plan_tier: planTier }], res => {
+            if (typeof showToast === 'function') {
+                showToast(`Đã duyệt thành công giao dịch ${orderCode}!`, 'success');
+            } else {
+                alert(`Đã duyệt thành công giao dịch ${orderCode}!`);
+            }
+            window.loadPaymentTransactionsList();
+            if (typeof window.loadTenantsList === 'function') {
+                window.loadTenantsList();
+            }
+        }, err => {
+            alert('Lỗi duyệt thanh toán: ' + (err?.message || err));
+        });
+    }
 };
 
 window.onTenantPlanSelectChange = function (planCode) {

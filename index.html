@@ -171,9 +171,9 @@
     }
     </script>
     <meta name="theme-color" content="#1e3d2b">
-    <link rel="icon" type="image/png" sizes="128x128" href="favicon-128.png?v=4.0.5-rev4">
+    <link rel="icon" type="image/png" sizes="128x128" href="favicon-128.png?v=4.0.6-rev1">
     <!-- Thêm icon cho iOS -->
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=4.0.5-rev4">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=4.0.6-rev1">
 
 
 
@@ -184,15 +184,15 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=4.0.5-rev4">
+    <link rel="stylesheet" href="css/style.css?v=4.0.6-rev1">
     <!-- PWA & Mobile Web App Meta Tags -->
-    <link rel="manifest" href="manifest.json?v=4.0.5-rev4">
+    <link rel="manifest" href="manifest.json?v=4.0.6-rev1">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.0.5-rev4">
+    <link rel="stylesheet" href="css/mobile.css?v=4.0.6-rev1">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
     <script src="js/dexie.min.js?v=3.2.6"></script>
@@ -203,7 +203,7 @@
     <script src="js/chart.min.js?v=3.2.6"></script>
     <script src="js/zod.min.js?v=3.2.6"></script>
     <!-- JS Thư viện kéo thả nội bộ -->
-    <script src="js/sortable.min.js?v=4.0.5-rev4"></script>
+    <script src="js/sortable.min.js?v=4.0.6-rev1"></script>
     <!-- Thư viện Dòng thời gian Timeline Frappe Gantt -->
     <link rel="stylesheet" href="css/frappe-gantt.css?v=3.2.6">
     <script src="js/frappe-gantt.min.js?v=3.2.6"></script>
@@ -3048,6 +3048,46 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- Bảng Quản Lý Giao Dịch Thanh Toán VietQR & Duyệt 1-Click (Super Admin) -->
+                    <div style="margin-top:28px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                        <div>
+                            <h3 style="margin:0; font-size:1.15rem; font-weight:800; color:#1e293b; display:flex; align-items:center; gap:8px;">
+                                <span>💳</span> Lịch Sử Nạp Tiền / Thanh Toán VietQR & Duyệt Nhanh 1-Click
+                            </h3>
+                            <div style="font-size:12px; color:#64748b; margin-top:3px;">
+                                Tự động ghi nhận khi quét mã QR hoặc nhận webhook ngân hàng MB Bank. Super Admin có thể duyệt nhanh thủ công.
+                            </div>
+                        </div>
+                        <button class="btn btn-sm btn-secondary" onclick="loadPaymentTransactionsList()" style="padding:6px 14px; font-weight:600; display:flex; align-items:center; gap:6px;">
+                            <span>🔄</span> Tải Lại Giao Dịch
+                        </button>
+                    </div>
+                    <div class="card" style="background:#fff; border-radius:12px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05); border:1px solid #e2e8f0; overflow:hidden;">
+                        <div style="overflow-x: auto;">
+                            <table class="table-custom" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+                                <thead>
+                                    <tr style="background: #f8fafc; color: #475569; font-weight: 700; border-bottom: 2px solid #e2e8f0;">
+                                        <th style="padding: 10px 12px;">MÃ ĐƠN</th>
+                                        <th style="padding: 10px 12px;">ĐƠN VỊ</th>
+                                        <th style="padding: 10px 12px;">GÓI CƯỚC</th>
+                                        <th style="padding: 10px 12px;">SỐ TIỀN</th>
+                                        <th style="padding: 10px 12px;">NỘI DUNG CK</th>
+                                        <th style="padding: 10px 12px;">THỜI GIAN TẠO</th>
+                                        <th style="padding: 10px 12px; text-align:center;">TRẠNG THÁI</th>
+                                        <th style="padding: 10px 12px; text-align:center;">THAO TÁC</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="payment-transactions-body">
+                                    <tr>
+                                        <td colspan="8" style="text-align:center; padding:20px; color:#94a3b8;">
+                                            Chưa có giao dịch nạp tiền nào.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Modal Thêm / Sửa Đơn Vị SaaS -->
@@ -3352,8 +3392,8 @@
                 <!-- 💳 MODAL HƯỚNG DẪN THANH TOÁN & GIA HẠN GÓI CƯỚC             -->
                 <!-- ============================================================ -->
                 <div id="modal-renew-info" onclick="if(event.target===this) window.closeRenewModal()" style="display:none; position:fixed; inset:0; width:100vw; height:100vh; background:rgba(15,23,42,0.7); backdrop-filter:blur(6px); z-index:999999; justify-content:center; align-items:center; padding:15px; box-sizing:border-box;">
-                    <div style="background:#ffffff; width:100%; max-width:540px; border-radius:20px; padding:26px 22px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35); border:1px solid #e2e8f0; animation:modalPop 0.25s ease-out;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid #f1f5f9; padding-bottom:12px;">
+                    <div style="background:#ffffff; width:100%; max-width:630px; border-radius:22px; padding:24px 22px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35); border:1px solid #e2e8f0; animation:modalPop 0.25s ease-out; max-height:94vh; overflow-y:auto;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid #f1f5f9; padding-bottom:10px;">
                             <div style="display:flex; align-items:center; gap:8px;">
                                 <span style="font-size:24px;">💳</span>
                                 <div>
@@ -3364,39 +3404,119 @@
                             <button type="button" onclick="closeRenewModal()" style="background:none; border:none; font-size:20px; color:#94a3b8; cursor:pointer;">✕</button>
                         </div>
 
-                        <!-- Gói đã chọn -->
-                        <div style="background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:12px; padding:14px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
-                            <div>
-                                <span style="font-size:11px; font-weight:700; color:#1e40af; text-transform:uppercase;">Gói cước đã chọn:</span>
-                                <div id="renew-plan-name" style="font-size:17px; font-weight:800; color:#1e3a8a; margin-top:2px;">Gói 6 Tháng</div>
-                                <div id="renew-unit-display" style="font-size:12px; color:#3b82f6; margin-top:2px;">Đơn vị: bvtks-cs2</div>
+                        <!-- MÀN HÌNH 1: ĐANG CHỜ THANH TOÁN (PAYING VIEW) -->
+                        <div id="renew-paying-view">
+                            <!-- Gói đã chọn -->
+                            <div style="background:#eff6ff; border:1.5px solid #bfdbfe; border-radius:12px; padding:12px 14px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                                <div>
+                                    <span style="font-size:11px; font-weight:700; color:#1e40af; text-transform:uppercase;">Gói cước đã chọn:</span>
+                                    <div id="renew-plan-name" style="font-size:16px; font-weight:800; color:#1e3a8a; margin-top:1px;">Gói 6 Tháng</div>
+                                    <div id="renew-unit-display" style="font-size:12px; color:#3b82f6; margin-top:2px;">Đơn vị: bvtks-cs2</div>
+                                </div>
+                                <div style="text-align:right;">
+                                    <div id="renew-plan-price" style="font-size:20px; font-weight:800; color:#1d4ed8;">2.100.000 đ</div>
+                                    <span style="font-size:11px; color:#64748b;" id="renew-plan-equiv">~350.000 đ / tháng</span>
+                                </div>
                             </div>
-                            <div style="text-align:right;">
-                                <div id="renew-plan-price" style="font-size:20px; font-weight:800; color:#1d4ed8;">2.100.000 đ</div>
-                                <span style="font-size:11px; color:#64748b;" id="renew-plan-equiv">~350.000 đ / tháng</span>
+
+                            <!-- Khung chứa QR và thông tin chuyển khoản 2 cột -->
+                            <style>
+                                @media (max-width: 620px) {
+                                    .renew-grid-wrap {
+                                        grid-template-columns: 1fr !important;
+                                    }
+                                }
+                            </style>
+                            <div style="display:grid; grid-template-columns: 240px 1fr; gap:16px; margin-bottom:14px; align-items:stretch;" class="renew-grid-wrap">
+                                <!-- Cột 1: Mã QR VietQR Động -->
+                                <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:14px; padding:12px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.04); display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                                    <div style="font-size:11px; font-weight:800; color:#0f172a; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">
+                                        ⚡ Quét Mã VietQR Nhanh
+                                    </div>
+                                    <div style="position:relative; width:195px; height:195px; margin:0 auto; background:#f8fafc; border-radius:10px; overflow:hidden; border:1px solid #cbd5e1; display:flex; align-items:center; justify-content:center;">
+                                        <img id="renew-qr-img" src="" alt="Mã VietQR" style="width:100%; height:100%; object-fit:contain; display:block;" onerror="this.src='https://img.vietqr.io/image/MB-0392283473-compact2.png'">
+                                    </div>
+                                    <div style="margin-top:8px; font-size:11px; color:#475569; line-height:1.4;">
+                                        📱 Mở bất kỳ App Ngân hàng để quét mã 1 chạm
+                                    </div>
+                                    <!-- Trạng thái chờ nhận tiền (Loading Pulse) -->
+                                    <div style="margin-top:10px; display:inline-flex; align-items:center; gap:6px; background:#f0fdf4; border:1px solid #bbf7d0; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; color:#166534;">
+                                        <span class="spinner" style="width:10px; height:10px; border-width:2px; border-color:#22c55e transparent #22c55e transparent;"></span>
+                                        <span>Đang chờ tiền về...</span>
+                                    </div>
+                                </div>
+
+                                <!-- Cột 2: Thông tin tài khoản & nút sao chép -->
+                                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:14px; font-size:12.5px; color:#334155; line-height:1.5; display:flex; flex-direction:column; justify-content:space-between;">
+                                    <div style="display:flex; flex-direction:column; gap:8px;">
+                                        <div style="font-weight:700; color:#0f172a; margin-bottom:2px; font-size:13px; display:flex; align-items:center; gap:6px;">
+                                            <span>🏦</span> THÔNG TIN CHUYỂN KHOẢN:
+                                        </div>
+                                        <div>
+                                            <div style="font-size:11px; color:#64748b;">Ngân hàng thụ hưởng:</div>
+                                            <div style="font-weight:700; color:#0f172a;">MB Bank (Ngân hàng TMCP Quân Đội)</div>
+                                        </div>
+                                        <div>
+                                            <div style="font-size:11px; color:#64748b;">Số tài khoản:</div>
+                                            <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                                                <span style="font-family:monospace; font-weight:800; font-size:15px; color:#1d4ed8;" id="renew-bank-acc">0392283473</span>
+                                                <button type="button" onclick="window.copyPaymentText('0392283473', 'Số tài khoản')" class="btn btn-sm" style="padding:2px 8px; font-size:11px; background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; border-radius:4px; cursor:pointer;">📋 Chép</button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div style="font-size:11px; color:#64748b;">Chủ tài khoản:</div>
+                                            <div style="font-weight:700; color:#0f172a;">ĐẶNG PHONG THÁI</div>
+                                        </div>
+                                        <div>
+                                            <div style="font-size:11px; color:#64748b;">Số tiền:</div>
+                                            <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                                                <span style="font-weight:800; font-size:14px; color:#e11d48;" id="renew-amount-number">400.000 đ</span>
+                                                <button type="button" id="btn-copy-amount" onclick="window.copyPaymentText(window._currentOrderAmount || '400000', 'Số tiền')" class="btn btn-sm" style="padding:2px 8px; font-size:11px; background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; border-radius:4px; cursor:pointer;">📋 Chép</button>
+                                            </div>
+                                        </div>
+                                        <!-- Cú pháp chuyển khoản -->
+                                        <div style="padding:8px 10px; background:#fef3c7; border:1px dashed #f59e0b; border-radius:8px;">
+                                            <div style="font-size:11px; font-weight:700; color:#92400e; margin-bottom:2px;">Nội dung chuyển khoản (bắt buộc chính xác):</div>
+                                            <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                                                <span id="renew-transfer-memo" style="font-family:monospace; font-weight:800; font-size:13.5px; color:#b45309;">PMCG BVTKS-CS2 1T</span>
+                                                <button type="button" onclick="window.copyPaymentText(document.getElementById('renew-transfer-memo').innerText, 'Nội dung CK')" class="btn btn-sm" style="padding:2px 8px; font-size:11px; background:#fff; color:#b45309; border:1px solid #f59e0b; border-radius:4px; cursor:pointer;">📋 Chép</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style="margin-top:8px; font-size:11px; color:#15803d; font-weight:600; display:flex; align-items:center; gap:4px;">
+                                        <span>⚡</span> Hệ thống tự động nâng cấp ngay khi tiền vào tài khoản.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Hotline hỗ trợ & nút đóng -->
+                            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; font-size:12px; color:#64748b; border-top:1px solid #f1f5f9; padding-top:12px;">
+                                <div>
+                                    📞 Hotline / Zalo kích hoạt 24/7: <b>0392.283.473</b> (Bác sĩ Thái)
+                                </div>
+                                <button type="button" onclick="closeRenewModal()" class="btn btn-secondary" style="padding:7px 18px; font-weight:600;">Đóng</button>
                             </div>
                         </div>
 
-                        <!-- Thông tin chuyển khoản -->
-                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:16px; font-size:13px; color:#334155; line-height:1.6;">
-                            <div style="font-weight:700; color:#0f172a; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-                                <span>🏦</span> THÔNG TIN CHUYỂN KHOẢN (VIETQR):
+                        <!-- MÀN HÌNH 2: THANH TOÁN THÀNH CÔNG (SUCCESS VIEW) -->
+                        <div id="renew-success-view" style="display:none; text-align:center; padding:26px 12px;">
+                            <div style="width:76px; height:76px; margin:0 auto 16px auto; background:#dcfce7; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 10px 25px rgba(22,163,74,0.25); border:3px solid #86efac;">
+                                <span style="font-size:38px;">🎉</span>
                             </div>
-                            <div>• <b>Ngân hàng:</b> MB Bank (Ngân hàng TMCP Quân Đội)</div>
-                            <div>• <b>Số tài khoản:</b> <span style="font-family:monospace; font-weight:800; font-size:15px; color:#1d4ed8;">0392283473</span></div>
-                            <div>• <b>Chủ tài khoản:</b> <span style="font-weight:700; color:#0f172a;">ĐẶNG PHONG THÁI</span></div>
-                            <div style="margin-top:8px; padding:8px 12px; background:#fef3c7; border:1px dashed #f59e0b; border-radius:8px;">
-                                <div>• <b>Nội dung CK:</b> <span id="renew-transfer-memo" style="font-family:monospace; font-weight:800; font-size:14px; color:#b45309;">PMCG [MÃ ĐƠN VỊ] [GÓI]</span></div>
-                                <small style="display:block; font-size:11px; color:#92400e; margin-top:2px;">(Hệ thống tự động kích hoạt ngay khi nhận được giao dịch)</small>
+                            <h2 style="margin:0 0 8px 0; color:#15803d; font-size:21px; font-weight:800;">THANH TOÁN THÀNH CÔNG!</h2>
+                            <p style="margin:0 0 16px 0; font-size:13.5px; color:#334155; line-height:1.6;" id="renew-success-msg">
+                                Hệ thống đã xác nhận giao dịch chuyển khoản thành công. Đơn vị của bạn đã được nâng cấp bản quyền tự động!
+                            </p>
+                            <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:14px; margin-bottom:20px; display:inline-block; text-align:left; font-size:13px; min-width:280px; line-height:1.8;">
+                                <div>• <b>Gói bản quyền:</b> <span id="renew-succ-plan" style="color:#15803d; font-weight:700;">Gói 1 Năm</span></div>
+                                <div>• <b>Thời hạn mới:</b> <span id="renew-succ-exp" style="color:#0f172a; font-weight:700;">31/12/2027</span></div>
+                                <div>• <b>Số ngày còn lại:</b> <span id="renew-succ-days" style="color:#1d4ed8; font-weight:700;">365 ngày</span></div>
                             </div>
-                        </div>
-
-                        <!-- Hotline hỗ trợ kích hoạt -->
-                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; font-size:12px; color:#64748b;">
                             <div>
-                                📞 Hỗ trợ nhanh 24/7 qua Zalo: <b>0392.283.473</b> (Bác sĩ Thái)
+                                <button type="button" onclick="closeRenewModal();" class="btn btn-success" style="padding:11px 28px; font-size:13.5px; font-weight:800; background:linear-gradient(135deg, #15803d, #22c55e); border:none; border-radius:10px; box-shadow:0 8px 20px rgba(34,197,94,0.35); cursor:pointer;">
+                                    🚀 Bắt Đầu Sử Dụng Ngay ➔
+                                </button>
                             </div>
-                            <button type="button" onclick="closeRenewModal()" class="btn btn-primary" style="padding:8px 20px; font-weight:700;">Đã Hiểu ➔</button>
                         </div>
                     </div>
                 </div>
@@ -3697,9 +3817,9 @@
 
                     <h4><span class="f-icon">⚙️</span> <span>THÔNG TIN HỆ THỐNG</span></h4>
 
-                    <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 4.0.5</span></p>
+                    <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 4.0.6</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 16:35 10/09/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 09:20 11/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -4217,18 +4337,18 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.0.5-rev4"></script>
-    <script src="js/ai-scheduler.js?v=4.0.5-rev4"></script>
-    <script src="js/cp-solver.js?v=4.0.5-rev4"></script>
-    <script src="js/scheduler-engine.js?v=4.0.5-rev4"></script>
-    <script src="js/app.js?v=4.0.5-rev4"></script>
-    <script src="js/init.js?v=4.0.5-rev4"></script>
-    <script src="js/sync.js?v=4.0.5-rev4"></script>
-    <script src="js/thongke.js?v=4.0.5-rev4"></script>
+    <script src="js/offline-sync-engine.js?v=4.0.6-rev1"></script>
+    <script src="js/ai-scheduler.js?v=4.0.6-rev1"></script>
+    <script src="js/cp-solver.js?v=4.0.6-rev1"></script>
+    <script src="js/scheduler-engine.js?v=4.0.6-rev1"></script>
+    <script src="js/app.js?v=4.0.6-rev1"></script>
+    <script src="js/init.js?v=4.0.6-rev1"></script>
+    <script src="js/sync.js?v=4.0.6-rev1"></script>
+    <script src="js/thongke.js?v=4.0.6-rev1"></script>
 
     <!-- PWA Service Worker Registration + Instant Auto-Update Detection & Blocking Modal -->
     <script>
-    const APP_VERSION = '4.0.5-rev4';
+    const APP_VERSION = '4.0.6-rev1';
 
     (function registerAndAutoUpdate() {
         // 1. Kênh BroadcastChannel đồng bộ tức thì mọi tab đang mở trên cùng một máy
@@ -4650,12 +4770,12 @@
             <div style="background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 12px; padding: 12px 16px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-around; font-size: 13px;">
                 <div style="text-align: center;">
                     <div style="font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">Phiên bản cũ</div>
-                    <div id="force-update-old-ver" style="font-weight: 700; color: #64748b; font-family: monospace; font-size: 13.5px;">4.0.4-rev13</div>
+                    <div id="force-update-old-ver" style="font-weight: 700; color: #64748b; font-family: monospace; font-size: 13.5px;">4.0.5-rev4</div>
                 </div>
                 <div style="color: #3b82f6; font-size: 18px; font-weight: bold;">➜</div>
                 <div style="text-align: center;">
                     <div style="font-size: 11px; font-weight: 700; color: #16a34a; text-transform: uppercase; margin-bottom: 2px;">Phiên bản mới</div>
-                    <div id="force-update-new-ver" style="font-weight: 800; color: #15803d; font-family: monospace; font-size: 14.5px; background: #dcfce7; padding: 2px 10px; border-radius: 6px;">4.0.5-rev4</div>
+                    <div id="force-update-new-ver" style="font-weight: 800; color: #15803d; font-family: monospace; font-size: 14.5px; background: #dcfce7; padding: 2px 10px; border-radius: 6px;">4.0.6-rev1</div>
                 </div>
             </div>
 

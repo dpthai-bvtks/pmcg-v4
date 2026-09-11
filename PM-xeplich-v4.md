@@ -2894,6 +2894,42 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `version.json`
   + `PM-xeplich-v4.md`
 
+### ⚡ Tích Hợp Mã QR VietQR Động Nhận Tiền & Tự Động Nâng Cấp Gói Bản Quyền Khi Tiền Về (11/09/2026 - v4.0.6-rev1)
+- **Yêu cầu của người dùng**:
+  + Bổ sung mã VietQR nhận tiền tự động vào giao diện khi chọn gói tài khoản (Modal kích hoạt & gia hạn).
+  + Khi tài khoản chủ sở hữu (Bác sĩ Đặng Phong Thái, MB Bank 0392283473) nhận được tiền, hệ thống tự động nhận diện và chuyển trạng thái tài khoản đơn vị sang gói đã đăng ký (không cần tải lại trang).
+  + Tuân thủ nghiêm ngặt quy tắc trong `RULES.md` (ngày mới 11/09/2026, tăng version lên `4.0.6-rev1`, kiểm tra cú pháp, deploy Cloudflare, git commit & push).
+- **Phân tích nguyên nhân & Giải pháp triển khai**:
+  1. **Backend Cloudflare Worker (`backend/src/index.js`)**:
+     - *CSDL D1*: Thêm bảng `payment_transactions` (`order_code, unit_code, plan_tier, amount, content, bank_account, bank_name, status, transaction_ref, gateway, created_at, confirmed_at`) vào hàm `ensureSchema`.
+     - *API `createPaymentOrder`*: Sinh mã đơn ngẫu nhiên `PMCG_xxxxxx`, tạo cú pháp nạp tiền chuẩn `PMCG <UNIT> <SUFFIX>`, sinh URL VietQR động (`https://img.vietqr.io/image/MB-0392283473-compact2.png?...`) tương thích tất cả ngân hàng, lưu trạng thái `PENDING`.
+     - *API `checkPaymentStatus`*: Kiểm tra trạng thái đơn hàng và kiểm tra xem đơn vị đã được gia hạn thành công hay chưa, trả về `SUCCESS` kèm hạn dùng mới.
+     - *API `manualApprovePayment`*: Cung cấp cho Super Admin công cụ duyệt nhanh 1-Click khi thấy tiền về tài khoản ngân hàng, lập tức cộng hạn dùng và đổi trạng thái `SUCCESS`.
+     - *API `paymentWebhook`*: Tiếp nhận Webhook từ SePay / Casso / PayOS / Google Apps Script khi có biến động số dư tài khoản MB Bank, tự động bóc tách mã đơn hoặc mã đơn vị và nâng cấp tài khoản tức thì.
+     - *API `getPaymentTransactions`*: Trả về 50 giao dịch thanh toán gần nhất cho Super Admin theo dõi và đối soát.
+  2. **Giao diện Client Frontend (`index.html`, `js/app.js`)**:
+     - *Modal Gia Hạn (`#modal-renew-info`)*:
+       + Bố cục 2 cột đáp ứng: Cột 1 là Mã QR VietQR động kích thước 195x195 rõ nét cùng chỉ báo nhấp nháy "Đang chờ tiền về...", Cột 2 là chi tiết tài khoản MB Bank thụ hưởng (STK: `0392283473` - Chủ TK: ĐẶNG PHONG THÁI), số tiền và nội dung chuyển khoản bắt buộc.
+       + Bổ sung các nút bấm sao chép nhanh 1 chạm (`window.copyPaymentText`) cho STK, Số tiền và Cú pháp chuyển khoản.
+       + Cơ chế Polling tự động (`_startPaymentPolling`): Cứ 3 giây gọi API `checkPaymentStatus` một lần trong lúc modal đang mở.
+       + Màn hình Chúc Mừng Thành Công (`#renew-success-view`): Ngay khi tiền về, tự động dừng polling, cập nhật `localStorage` (`pm_plan_tier`, `pm_plan_name`, `pm_expires_at`, `pm_days_left`) và `meds_session`, gọi `updateSubscriptionHeaderBadge` cập nhật huy hiệu bản quyền và chuyển modal sang giao diện chúc mừng với hiệu ứng pháo hoa rực rỡ và nút "Bắt Đầu Sử Dụng Ngay ➔".
+     - *Tab Super Admin Quản Trị Đơn Vị*:
+       + Bổ sung bảng **"Lịch Sử Nạp Tiền / Thanh Toán VietQR & Duyệt Nhanh 1-Click"** bên dưới danh sách đơn vị.
+       + Hiển thị mã đơn, đơn vị, gói, số tiền, nội dung CK, thời gian và nút **"⚡ Duyệt 1-Click"** giúp chủ sở hữu duyệt ngay lập tức nếu khách chuyển khoản trực tiếp.
+  3. **Tuân thủ RULES.md**:
+     - Rule 1: Kiểm tra cú pháp toàn diện bằng `node -c js/init.js; node -c js/app.js; node -c js/scheduler-engine.js; node -c backend/src/index.js` (100% không lỗi).
+     - Rule 3: Sang ngày mới 11/09/2026, nâng version chính lên `4.0.6-rev1`. Đồng bộ `version.json`, `index.html` (cache buster `?v=4.0.6-rev1`, footer timestamp `09:20 11/09/2026`, `APP_VERSION = '4.0.6-rev1'`), `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.6-rev1'`).
+     - Rule 4: Tự động deploy lên Cloudflare bằng `cmd.exe /c "npm run deploy:all"`.
+     - Rule 5: Commit và push mã nguồn lên nhánh `main` trên GitHub.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `index.html`
+  + `js/app.js`
+  + `sw.js`
+  + `version.json`
+  + `PM-xeplich-v4.md`
+
+
 
 
 

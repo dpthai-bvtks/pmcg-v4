@@ -400,7 +400,10 @@ async function processApiRequest(c) {
     "checkLogin",
     "getDataVersion",
     "getSubscriptionPlans",
-    "registerTrialTenant"
+    "registerTrialTenant",
+    "createPaymentOrder",
+    "checkPaymentStatus",
+    "paymentWebhook"
   ]);
 
   if (!PUBLIC_ACTIONS.has(action)) {
@@ -439,7 +442,9 @@ async function processApiRequest(c) {
       "deleteTenant",
       "resetTenantAdminPassword",
       "exportAllDatabase",
-      "exportAllDatabaseForSuperAdmin"
+      "exportAllDatabaseForSuperAdmin",
+      "getPaymentTransactions",
+      "manualApprovePayment"
     ]);
 
     if (SUPER_ADMIN_ACTIONS.has(action) && tokenPayload.role !== "SUPER_ADMIN") {
@@ -923,6 +928,21 @@ async function ensureSchema(db) {
         action TEXT NOT NULL,
         details TEXT DEFAULT '',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`),
+      db.prepare(`CREATE TABLE IF NOT EXISTS payment_transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_code TEXT UNIQUE NOT NULL,
+        unit_code TEXT NOT NULL,
+        plan_tier TEXT NOT NULL,
+        amount INTEGER NOT NULL,
+        content TEXT NOT NULL,
+        bank_account TEXT DEFAULT '0392283473',
+        bank_name TEXT DEFAULT 'MBBank',
+        status TEXT DEFAULT 'PENDING',
+        transaction_ref TEXT DEFAULT '',
+        gateway TEXT DEFAULT 'VIETQR',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        confirmed_at DATETIME
       )`)
     ];
     await db.batch(stmts);
@@ -1750,6 +1770,265 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         plan_name: plan.name,
         expires_at: newExpDate,
         days_left: subInfo.days_left
+      });
+    }
+
+    // ============================================================
+    // 💳 PAYMENT & VIETQR AUTOMATION
+    // ============================================================
+    case "createPaymentOrder": {
+      const payload = args[0] || {};
+      const uCode = String(payload.unit_code || unitCode || "").trim().toLowerCase();
+      const planCode = String(payload.plan_tier || payload.plan_code || "PLAN_1M").trim().toUpperCase();
+
+      if (!uCode) return error("Thiếu mã đơn vị thanh toán!", 400);
+
+      const plan = SUBSCRIPTION_PLANS[planCode] || SUBSCRIPTION_PLANS["PLAN_1M"];
+      const amount = Number(payload.amount || plan.price || 400000);
+
+      if (uCode === "bvtks-cs2" || uCode === "bvtks_cs2") {
+        return error("Đơn vị bvtks-cs2 đã sở hữu bản quyền Vĩnh viễn trọn đời, không cần thanh toán!", 400);
+      }
+
+      const planSuffixMap = { 'PLAN_1M': '1T', 'PLAN_3M': '3T', 'PLAN_6M': '6T', 'PLAN_1Y': '1N' };
+      const suffix = planSuffixMap[planCode] || '1T';
+      const transferContent = `PMCG ${uCode.toUpperCase()} ${suffix}`;
+
+      const orderCode = `ORD_${Date.now()}_${uCode.replace(/[^a-z0-9]/gi, '').slice(0, 8)}`;
+      const bankAccount = "0392283473";
+      const bankName = "MB";
+      const accountName = "DANG PHONG THAI";
+
+      const qrUrl = `https://img.vietqr.io/image/${bankName}-${bankAccount}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(transferContent)}&accountName=${encodeURIComponent(accountName)}`;
+
+      try {
+        await db.prepare(`
+          INSERT INTO payment_transactions (order_code, unit_code, plan_tier, amount, content, bank_account, bank_name, status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING')
+        `).bind(orderCode, uCode, planCode, amount, transferContent, bankAccount, "MB Bank").run();
+      } catch (e) {
+        console.warn("Lưu payment_transactions thất bại:", e);
+      }
+
+      return success({
+        order_code: orderCode,
+        unit_code: uCode,
+        plan_tier: planCode,
+        plan_name: plan.name,
+        amount: amount,
+        amount_text: plan.priceText || (amount.toLocaleString('vi-VN') + ' đ'),
+        content: transferContent,
+        bank_name: "MB Bank (Ngân hàng TMCP Quân Đội)",
+        bank_account: bankAccount,
+        account_name: "ĐẶNG PHONG THÁI",
+        qr_url: qrUrl
+      });
+    }
+
+    case "checkPaymentStatus": {
+      const payload = args[0] || {};
+      const orderCode = String(payload.order_code || args[0] || "").trim();
+      const uCode = String(payload.unit_code || args[1] || unitCode || "").trim().toLowerCase();
+      const requestedPlan = String(payload.plan_tier || args[2] || "").trim().toUpperCase();
+
+      if (!orderCode && !uCode) {
+        return error("Cần mã đơn hàng (order_code) hoặc mã đơn vị (unit_code)!", 400);
+      }
+
+      let trans = null;
+      if (orderCode) {
+        trans = await db.prepare("SELECT * FROM payment_transactions WHERE order_code = ?").bind(orderCode).first();
+      } else if (uCode) {
+        trans = await db.prepare("SELECT * FROM payment_transactions WHERE unit_code = ? ORDER BY id DESC LIMIT 1").bind(uCode).first();
+      }
+
+      const targetUnit = trans ? trans.unit_code : uCode;
+      const tenant = await db.prepare("SELECT unit_code, unit_name, plan_tier, expires_at FROM tenants WHERE unit_code = ?").bind(targetUnit).first();
+
+      if (!tenant) return error("Đơn vị không tồn tại!", 404);
+
+      const subInfo = calculateSubscriptionInfo(tenant);
+
+      if (trans && trans.status === "SUCCESS") {
+        return success({
+          payment_status: "SUCCESS",
+          order_code: trans.order_code,
+          unit_code: targetUnit,
+          unit_name: tenant.unit_name,
+          plan_tier: tenant.plan_tier,
+          plan_name: subInfo.plan_name,
+          expires_at: tenant.expires_at,
+          days_left: subInfo.days_left,
+          confirmed_at: trans.confirmed_at
+        });
+      }
+
+      if (requestedPlan && tenant.plan_tier === requestedPlan && !subInfo.is_expired) {
+        return success({
+          payment_status: "SUCCESS",
+          unit_code: targetUnit,
+          unit_name: tenant.unit_name,
+          plan_tier: tenant.plan_tier,
+          plan_name: subInfo.plan_name,
+          expires_at: tenant.expires_at,
+          days_left: subInfo.days_left
+        });
+      }
+
+      return success({
+        payment_status: trans ? trans.status : "PENDING",
+        order_code: orderCode,
+        unit_code: targetUnit,
+        plan_tier: tenant.plan_tier,
+        plan_name: subInfo.plan_name,
+        expires_at: tenant.expires_at,
+        days_left: subInfo.days_left
+      });
+    }
+
+    case "manualApprovePayment": {
+      const payload = args[0] || {};
+      const orderCode = String(payload.order_code || args[0] || "").trim();
+      const uCode = String(payload.unit_code || args[1] || "").trim().toLowerCase();
+      const targetPlan = String(payload.plan_tier || args[2] || "PLAN_1M").trim().toUpperCase();
+
+      let trans = null;
+      if (orderCode) {
+        trans = await db.prepare("SELECT * FROM payment_transactions WHERE order_code = ?").bind(orderCode).first();
+      }
+
+      const finalUnit = (trans ? trans.unit_code : uCode).toLowerCase();
+      const finalPlan = (trans ? trans.plan_tier : targetPlan).toUpperCase();
+
+      if (!finalUnit) return error("Thiếu mã đơn vị cần xác nhận thanh toán!", 400);
+
+      const plan = SUBSCRIPTION_PLANS[finalPlan] || SUBSCRIPTION_PLANS["PLAN_1M"];
+      const tenant = await db.prepare("SELECT unit_code, unit_name, plan_tier, expires_at FROM tenants WHERE unit_code = ?").bind(finalUnit).first();
+      if (!tenant) return error(`Đơn vị '${finalUnit}' không tồn tại!`, 404);
+
+      const nowVN = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+      let baseDate;
+      if (tenant.expires_at && tenant.expires_at >= nowVN) {
+        baseDate = new Date(tenant.expires_at);
+      } else {
+        baseDate = new Date(nowVN);
+      }
+      const newExpDate = new Date(baseDate.getTime() + plan.days * 86400 * 1000).toISOString().slice(0, 10);
+
+      await db.prepare(`
+        UPDATE tenants SET
+          plan_tier = ?,
+          expires_at = ?,
+          max_staff = 999,
+          max_patients = 9999,
+          is_active = 1,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE unit_code = ?
+      `).bind(finalPlan, newExpDate, finalUnit).run();
+
+      if (trans) {
+        await db.prepare(`
+          UPDATE payment_transactions SET
+            status = 'SUCCESS',
+            confirmed_at = CURRENT_TIMESTAMP,
+            transaction_ref = 'MANUAL_SUPERADMIN'
+          WHERE id = ?
+        `).bind(trans.id).run();
+      } else {
+        try {
+          await db.prepare(`
+            INSERT INTO payment_transactions (order_code, unit_code, plan_tier, amount, content, status, confirmed_at, transaction_ref)
+            VALUES (?, ?, ?, ?, ?, 'SUCCESS', CURRENT_TIMESTAMP, 'MANUAL_SUPERADMIN')
+          `).bind(`MANUAL_${Date.now()}`, finalUnit, finalPlan, plan.price || 0, `Xác nhận thủ công bởi Chủ sở hữu`).run();
+        } catch (e) {}
+      }
+
+      const subInfo = calculateSubscriptionInfo({ ...tenant, plan_tier: finalPlan, expires_at: newExpDate });
+
+      return success({
+        message: `Đã xác nhận nhận tiền thành công! Đơn vị '${tenant.unit_name}' (${finalUnit}) đã nâng cấp lên '${plan.name}' đến ngày ${newExpDate}.`,
+        order_code: trans?.order_code,
+        unit_code: finalUnit,
+        unit_name: tenant.unit_name,
+        plan_tier: finalPlan,
+        plan_name: plan.name,
+        expires_at: newExpDate,
+        days_left: subInfo.days_left
+      });
+    }
+
+    case "getPaymentTransactions": {
+      try {
+        const list = await db.prepare("SELECT * FROM payment_transactions ORDER BY id DESC LIMIT 50").all();
+        return success(list.results || []);
+      } catch(e) {
+        return success([]);
+      }
+    }
+
+    case "paymentWebhook": {
+      const payload = args[0] || {};
+      const rawContent = String(payload.content || payload.description || payload.message || payload.order_code || payload.memo || "").trim();
+      const transferAmount = Number(payload.amount || payload.transferAmount || 0);
+      const refNo = String(payload.referenceCode || payload.transactionId || payload.id || payload.ref || "").trim();
+
+      const match = rawContent.match(/PMCG\s+([A-Za-z0-9_-]+)(?:\s+([A-Za-z0-9_]+))?/i);
+      if (!match) {
+        return error("Không tìm thấy cú pháp thanh toán PMCG hợp lệ trong nội dung chuyển khoản!", 400);
+      }
+
+      const targetUnit = match[1].toLowerCase();
+      const suffix = (match[2] || "1T").toUpperCase();
+
+      const suffixMap = {
+        '1T': 'PLAN_1M',
+        '3T': 'PLAN_3M',
+        '6T': 'PLAN_6M',
+        '1N': 'PLAN_1Y',
+        '1M': 'PLAN_1M',
+        '3M': 'PLAN_3M',
+        '6M': 'PLAN_6M',
+        '1Y': 'PLAN_1Y'
+      };
+
+      const targetPlan = suffixMap[suffix] || 'PLAN_1M';
+      const plan = SUBSCRIPTION_PLANS[targetPlan] || SUBSCRIPTION_PLANS['PLAN_1M'];
+
+      const tenant = await db.prepare("SELECT unit_code, unit_name, plan_tier, expires_at FROM tenants WHERE unit_code = ?").bind(targetUnit).first();
+      if (!tenant) return error(`Đơn vị '${targetUnit}' không tồn tại trên hệ thống!`, 404);
+
+      const nowVN = new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10);
+      let baseDate;
+      if (tenant.expires_at && tenant.expires_at >= nowVN) {
+        baseDate = new Date(tenant.expires_at);
+      } else {
+        baseDate = new Date(nowVN);
+      }
+      const newExpDate = new Date(baseDate.getTime() + plan.days * 86400 * 1000).toISOString().slice(0, 10);
+
+      await db.prepare(`
+        UPDATE tenants SET
+          plan_tier = ?,
+          expires_at = ?,
+          max_staff = 999,
+          max_patients = 9999,
+          is_active = 1,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE unit_code = ?
+      `).bind(targetPlan, newExpDate, targetUnit).run();
+
+      try {
+        await db.prepare(`
+          INSERT INTO payment_transactions (order_code, unit_code, plan_tier, amount, content, status, confirmed_at, transaction_ref, gateway)
+          VALUES (?, ?, ?, ?, ?, 'SUCCESS', CURRENT_TIMESTAMP, ?, 'BANK_WEBHOOK')
+        `).bind(`WH_${Date.now()}_${targetUnit}`, targetUnit, targetPlan, transferAmount || plan.price, rawContent, refNo).run();
+      } catch (e) {}
+
+      return success({
+        message: `Đã tự động xác nhận thanh toán Webhook và kích hoạt '${plan.name}' cho đơn vị '${tenant.unit_name}'!`,
+        unit_code: targetUnit,
+        plan_tier: targetPlan,
+        expires_at: newExpDate
       });
     }
 
