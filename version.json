@@ -1,6 +1,6 @@
 {
-  "version": "4.0.6-rev2",
+  "version": "4.0.6-rev3",
   "releaseDate": "11/09/2026",
-  "releaseTime": "09:45 11/09/2026",
-  "notes": "Bổ sung chức năng xuất 'Hợp Đồng Dịch Vụ & Giấy Chứng Nhận Cấp Bản Quyền Phần Mềm' chuẩn định dạng PDF (2 trang pháp lý) phục vụ hạch toán kế toán và lưu trữ nội bộ cho Bệnh viện / Phòng khám."
+  "releaseTime": "10:05 11/09/2026",
+  "notes": "Chuẩn hóa toàn diện bộ hồ sơ Hợp đồng dịch vụ phần mềm (PDF 4 trang) theo cấu trúc mẫu MEDS: Giấy chứng nhận bản quyền, Hợp đồng kinh tế 11 điều khoản, Phụ lục I (Bảng giá 5 gói cước) và Phụ lục II (11 chức năng hệ thống T.I.M.E.S)."
 }

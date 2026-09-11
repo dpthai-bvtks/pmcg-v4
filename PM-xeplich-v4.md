@@ -2961,6 +2961,44 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `version.json`
   + `PM-xeplich-v4.md`
 
+### 📑 Chuẩn Hóa Toàn Diện Hợp Đồng Dịch Vụ SaaS & Phụ Lục Theo Mẫu MEDS Docx (11/09/2026 - v4.0.6-rev3)
+- **Yêu cầu của người dùng**:
+  + Dựa vào tài liệu mẫu `hop-dong-dich-vu-meds.docx` của đơn vị phần mềm khác để nâng cấp và chuẩn hóa toàn diện tài liệu xuất PDF hợp đồng bản quyền cho hệ thống T.I.M.E.S.
+  + Tuân thủ nghiêm ngặt quy tắc trong `RULES.md` (tăng version lên `4.0.6-rev3`, kiểm tra cú pháp, deploy Cloudflare, git commit & push).
+- **Phân tích nguyên nhân & Giải pháp triển khai**:
+  1. **Nghiên cứu tài liệu đối sánh `hop-dong-dich-vu-meds.docx`**:
+     - Phân tích cấu trúc gồm 3 phần cốt lõi: Hợp đồng dịch vụ 11 điều khoản, Phụ lục I (Bảng giá biểu phí) và Phụ lục II (Mô tả chức năng chi tiết dịch vụ).
+  2. **Nâng cấp tài liệu xuất PDF hoàn chỉnh 4 trang chuyên nghiệp (`downloadLicenseContractPDF`)**:
+     - **Trang 1: Giấy Xác Nhận Cấp Bản Quyền Phần Mềm (Certificate)**: Đóng khung trang trọng, số chứng nhận, căn cứ pháp lý, thông tin đơn vị thụ hưởng, phạm vi bản quyền Full 100%, đại diện BS. Đặng Phong Thái và huy hiệu chứng thực điện tử.
+     - **Trang 2 & 3: Hợp Đồng Dịch Vụ Phần Mềm Chuẩn Mực 11 Điều Khoản**:
+       + Căn cứ: Bộ luật Dân sự 2015, Luật Thương mại 2005, Luật CNTT 2006, Luật Sở hữu trí tuệ (sửa đổi 2022).
+       + Điều 1: Các bên trong hợp đồng (Bên A & Bên B: BS. Đặng Phong Thái, MB Bank 0392283473).
+       + Điều 2: Đối tượng hợp đồng (Mô hình SaaS Cloud qua internet tại `https://xeplichthuthuat.io.vn`).
+       + Điều 3: Phạm vi dịch vụ (Vận hành theo Phụ lục II, đào tạo, hỗ trợ kỹ thuật 24/7).
+       + Điều 4: Thời hạn hợp đồng.
+       + Điều 5: Giá trị và phương thức thanh toán (Gói cước, số tiền, thuế suất GTGT 0% theo Thông tư 219/2013/TT-BTC, chuyển khoản MB Bank).
+       + Điều 6: Quyền và nghĩa vụ của Bên A.
+       + Điều 7: Quyền và nghĩa vụ của Bên B.
+       + Điều 8: Bảo mật dữ liệu bệnh án và quyền sở hữu dữ liệu của khách hàng.
+       + Điều 9: Chấm dứt hợp đồng.
+       + Điều 10: Giải quyết tranh chấp.
+       + Điều 11: Điều khoản chung & Phần ký tên đóng dấu của hai bên.
+     - **Trang 4: Các Phụ Lục Kèm Theo**:
+       + **Phụ lục I: Bảng Giá Dịch Vụ T.I.M.E.S Năm 2026**: Bảng 5 gói cước chuẩn mực (15 ngày, 1 tháng, 3 tháng, 6 tháng, 1 năm, Vĩnh viễn), tự động đánh dấu tích `[☑ ĐÃ CHỌN]` vào gói cước của đơn vị.
+       + **Phụ lục II: Mô Tả Chức Năng Dịch Vụ**: Liệt kê 11 chức năng chuyên sâu (danh mục kỹ thuật, KTV/Bác sĩ, máy móc, bệnh nhân, AI CP-SAT Engine xếp lịch, ca trực cuối tuần, quản lý y lệnh, xuất bảng KETQUA, xuất PDF lịch phòng, xuất Excel KTV, Cloudflare D1/Google Drive, WebApp). Kèm phần ký xác nhận phụ lục.
+  3. **Tuân thủ RULES.md**:
+     - Rule 1: Kiểm tra cú pháp toàn diện bằng `node -c js/init.js; node -c js/app.js; node -c js/scheduler-engine.js; node -c backend/src/index.js` (100% PASS).
+     - Rule 3: Trong ngày 11/09/2026, tăng revision lên `4.0.6-rev3`. Đồng bộ `version.json`, `index.html` (cache buster `?v=4.0.6-rev3`, footer timestamp `10:05 11/09/2026`, `APP_VERSION = '4.0.6-rev3'`), `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.6-rev3'`).
+     - Rule 4: Tự động deploy lên Cloudflare bằng `cmd.exe /c "npm run deploy:web"`.
+     - Rule 5: Commit và push mã nguồn lên nhánh `main` trên GitHub.
+- **File sửa đổi**:
+  + `index.html`
+  + `js/app.js`
+  + `sw.js`
+  + `version.json`
+  + `PM-xeplich-v4.md`
+
+
 
 
 

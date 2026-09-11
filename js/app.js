@@ -14759,7 +14759,7 @@ window.copyPaymentText = function (text, label) {
 };
 
 // ============================================================
-// 📄 XUẤT HỢP ĐỒNG & GIẤY CHỨNG NHẬN BẢN QUYỀN PDF (PDFMAKE)
+// 📄 XUẤT HỢP ĐỒNG & GIẤY CHỨNG NHẬN BẢN QUYỀN PDF (CHUẨN MẪU MEDS DOCX)
 // ============================================================
 window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitName) {
     if (typeof pdfMake === 'undefined') {
@@ -14774,12 +14774,12 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
     const planCode = String(optPlanCode || window._currentSelectedPlan || localStorage.getItem('pm_plan_tier') || sess.plan_tier || 'PLAN_1Y').toUpperCase();
 
     const planCatalog = {
-        'TRIAL_15D': { name: 'Gói Dùng Thử 15 Ngày', duration: '15 ngày', price: '0 đ', priceText: 'Không đồng (Trải nghiệm miễn phí)' },
-        'PLAN_1M': { name: 'Gói 1 Tháng', duration: '01 tháng (30 ngày)', price: '400.000 đ', priceText: 'Bốn trăm nghìn đồng' },
-        'PLAN_3M': { name: 'Gói 3 Tháng', duration: '03 tháng (90 ngày)', price: '1.125.000 đ', priceText: 'Một triệu một trăm hai mươi lăm nghìn đồng' },
-        'PLAN_6M': { name: 'Gói 6 Tháng', duration: '06 tháng (180 ngày)', price: '2.100.000 đ', priceText: 'Hai triệu một trăm nghìn đồng' },
-        'PLAN_1Y': { name: 'Gói 1 Năm', duration: '01 năm (365 ngày)', price: '3.900.000 đ', priceText: 'Ba triệu chín trăm nghìn đồng' },
-        'ENTERPRISE': { name: 'Gói Doanh Nghiệp Đặc Biệt (Vĩnh Viễn)', duration: 'Vĩnh viễn trọn đời', price: 'Thỏa thuận / Sở hữu trọn đời', priceText: 'Sở hữu trọn đời' }
+        'TRIAL_15D': { name: 'Gói Dùng Thử 15 Ngày', duration: '15 ngày', days: 15, price: '0 VNĐ', priceText: 'Không đồng (Trải nghiệm miễn phí)' },
+        'PLAN_1M': { name: 'Gói 1 Tháng', duration: '01 tháng (30 ngày)', days: 30, price: '400.000 VNĐ', priceText: 'Bốn trăm nghìn đồng' },
+        'PLAN_3M': { name: 'Gói 3 Tháng', duration: '03 tháng (90 ngày)', days: 90, price: '1.125.000 VNĐ', priceText: 'Một triệu một trăm hai mươi lăm nghìn đồng' },
+        'PLAN_6M': { name: 'Gói 6 Tháng', duration: '06 tháng (180 ngày)', days: 180, price: '2.100.000 VNĐ', priceText: 'Hai triệu một trăm nghìn đồng' },
+        'PLAN_1Y': { name: 'Gói 1 Năm', duration: '01 năm (365 ngày)', days: 365, price: '3.900.000 VNĐ', priceText: 'Ba triệu chín trăm nghìn đồng' },
+        'ENTERPRISE': { name: 'Gói Doanh Nghiệp Đặc Biệt (Vĩnh Viễn)', duration: 'Vĩnh viễn trọn đời', days: 99999, price: 'Sở Hữu Trọn Đời', priceText: 'Sở hữu trọn đời' }
     };
 
     const targetPlan = planCatalog[planCode] || planCatalog['PLAN_1Y'];
@@ -14790,16 +14790,16 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
 
     const curExpires = localStorage.getItem('pm_expires_at') || `${curYear + 1}-${curMonth}-${curDay}`;
     const certNumber = `TIMS-LIC/${curYear}/${unitCode.toUpperCase()}`;
-    const contractNumber = `HĐ-TIMS/${curYear}/${unitCode.toUpperCase()}`;
+    const contractNumber = `${now.getMonth() + 1}${now.getDate()}/HĐDV/${curYear}`;
 
-    // Xây dựng tài liệu PDF 2 trang
+    // Xây dựng tài liệu PDF gồm 4 trang chuyên nghiệp theo mẫu hop-dong-dich-vu-meds.docx
     const docDefinition = {
         pageSize: 'A4',
         pageOrientation: 'portrait',
-        pageMargins: [35, 30, 35, 30],
+        pageMargins: [35, 25, 35, 25],
         content: [
             // ==========================================
-            // TRANG 1: GIẤY XÁC NHẬN CẤP BẢN QUYỀN PHẦN MỀM
+            // TRANG 1: GIẤY CHỨNG NHẬN CẤP QUYỀN SỬ DỤNG BẢN QUYỀN
             // ==========================================
             {
                 table: {
@@ -14809,7 +14809,7 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                             fillColor: '#fafafa',
                             borderColor: ['#1d4ed8', '#1d4ed8', '#1d4ed8', '#1d4ed8'],
                             border: [true, true, true, true],
-                            layout: { paddingLeft: 12, paddingRight: 12, paddingTop: 10, paddingBottom: 10 },
+                            layout: { paddingLeft: 14, paddingRight: 14, paddingTop: 10, paddingBottom: 10 },
                             stack: [
                                 {
                                     columns: [
@@ -14818,28 +14818,28 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                                             stack: [
                                                 { text: 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', fontSize: 10, bold: true, alignment: 'center' },
                                                 { text: 'Độc lập - Tự do - Hạnh phúc', fontSize: 10, italic: true, alignment: 'center', margin: [0, 2, 0, 2] },
-                                                { canvas: [{ type: 'line', x1: 170, y1: 0, x2: 290, y2: 0, lineWidth: 0.8, lineColor: '#334155' }] }
+                                                { canvas: [{ type: 'line', x1: 165, y1: 0, x2: 295, y2: 0, lineWidth: 0.8, lineColor: '#334155' }] }
                                             ]
                                         }
                                     ],
-                                    margin: [0, 0, 0, 10]
+                                    margin: [0, 0, 0, 8]
                                 },
                                 { text: 'HỆ THỐNG PHẦN MỀM XẾP LỊCH ĐIỀU TRỊ YHCT - PHCN (T.I.M.E.S SYSTEM)', fontSize: 9.5, bold: true, color: '#1e40af', alignment: 'center', margin: [0, 0, 0, 2] },
-                                { text: 'Nền Tảng Quản Lý & Tối Ưu Hóa Nguồn Lực Y Tế Thông Minh (Bản Quyền SaaS Cloud)', fontSize: 8.5, italic: true, color: '#64748b', alignment: 'center', margin: [0, 0, 0, 8] },
+                                { text: 'Nền Tảng Quản Lý & Tối Ưu Hóa Lịch Khám Chữa Bệnh Thông Minh (Multi-Tenant SaaS Cloud)', fontSize: 8.5, italic: true, color: '#64748b', alignment: 'center', margin: [0, 0, 0, 8] },
 
-                                { text: 'GIẤY XÁC NHẬN CẤP QUYỀN SỬ DỤNG BẢN QUYỀN PHẦN MỀM', fontSize: 13.5, bold: true, color: '#0f172a', alignment: 'center', margin: [0, 5, 0, 2] },
-                                { text: 'CERTIFICATE OF SOFTWARE LICENSE & SAAS SERVICE', fontSize: 9, bold: true, color: '#2563eb', alignment: 'center', margin: [0, 0, 0, 6] },
-                                { text: `Số chứng nhận: ${certNumber}`, fontSize: 9, italic: true, alignment: 'center', color: '#475569', margin: [0, 0, 0, 10] },
+                                { text: 'GIẤY XÁC NHẬN CẤP QUYỀN SỬ DỤNG BẢN QUYỀN PHẦN MỀM', fontSize: 13.5, bold: true, color: '#0f172a', alignment: 'center', margin: [0, 4, 0, 2] },
+                                { text: 'CERTIFICATE OF SOFTWARE LICENSE & SAAS SERVICE', fontSize: 8.5, bold: true, color: '#2563eb', alignment: 'center', margin: [0, 0, 0, 4] },
+                                { text: `Số chứng nhận: ${certNumber}`, fontSize: 9, italic: true, alignment: 'center', color: '#475569', margin: [0, 0, 0, 8] },
 
                                 {
                                     text: [
                                         { text: 'Căn cứ pháp lý: ', bold: true },
-                                        'Căn cứ Bộ luật Dân sự số 91/2015/QH13; Luật Sở hữu trí tuệ số 50/2005/QH11 (sửa đổi, bổ sung năm 2022); Nghị định số 123/2020/NĐ-CP và Thông tư số 219/2013/TT-BTC của Bộ Tài chính hướng dẫn về đối tượng phần mềm và dịch vụ phần mềm không chịu thuế GTGT.'
+                                        'Căn cứ Bộ luật Dân sự số 91/2015/QH13; Luật Thương mại số 36/2005/QH11; Luật Công nghệ thông tin số 67/2006/QH11; Luật Sở hữu trí tuệ số 50/2005/QH11 (sửa đổi, bổ sung năm 2022); Nghị định số 123/2020/NĐ-CP và Thông tư số 219/2013/TT-BTC của Bộ Tài chính quy định dịch vụ phần mềm không chịu thuế GTGT.'
                                     ],
                                     fontSize: 8.5,
                                     color: '#475569',
                                     lineHeight: 1.3,
-                                    margin: [0, 0, 0, 10]
+                                    margin: [0, 0, 0, 8]
                                 },
 
                                 // Bảng thông tin bản quyền
@@ -14865,15 +14865,15 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                                             ],
                                             [
                                                 { text: 'Phạm Vi Cấp Quyền:', bold: true, fontSize: 9.5, fillColor: '#f1f5f9' },
-                                                { text: 'Toàn bộ tính năng (Full 100%), không giới hạn số lượng Kỹ thuật viên / Y bác sĩ / Bệnh nhân. Bao gồm thuật toán tối ưu xếp lịch thông minh AI & CP-SAT Engine, đồng bộ Cloudflare D1 và sao lưu Google Drive.', fontSize: 8.5, color: '#334155' }
+                                                { text: 'Toàn quyền sử dụng Full 100% tính năng trực tuyến qua Web SaaS (không giới hạn số lượng Bệnh nhân, Kỹ thuật viên, Máy móc, Phòng bệnh). Bao gồm thuật toán AI & CP-SAT Solver tối ưu giờ thủ thuật, sao lưu tự động và phân tích thống kê.', fontSize: 8.5, color: '#334155' }
                                             ],
                                             [
                                                 { text: 'Đơn Vị Cấp Bản Quyền:', bold: true, fontSize: 9.5, fillColor: '#f1f5f9' },
-                                                { text: 'Bác sĩ Đặng Phong Thái (Tác giả & Kỹ sư trưởng phát triển hệ thống T.I.M.E.S)', fontSize: 9.5, bold: true }
+                                                { text: 'BS. Đặng Phong Thái (Tác giả & Kỹ sư trưởng phát triển hệ thống phần mềm T.I.M.E.S)', fontSize: 9.5, bold: true }
                                             ],
                                             [
-                                                { text: 'Thông Tin Tài Khoản:', bold: true, fontSize: 9.5, fillColor: '#f1f5f9' },
-                                                { text: 'Ngân hàng TMCP Quân Đội (MB Bank) - STK: 0392283473 - ĐẶNG PHONG THÁI', fontSize: 9, bold: true, color: '#1d4ed8' }
+                                                { text: 'Thông Tin Tài Khoản MB:', bold: true, fontSize: 9.5, fillColor: '#f1f5f9' },
+                                                { text: 'Ngân hàng TMCP Quân Đội (MB Bank) - STK: 0392283473 - Chủ TK: ĐẶNG PHONG THÁI', fontSize: 9, bold: true, color: '#1d4ed8' }
                                             ]
                                         ]
                                     },
@@ -14882,19 +14882,18 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                                         vLineWidth: () => 0.5,
                                         hLineColor: () => '#cbd5e1',
                                         vLineColor: () => '#cbd5e1',
-                                        paddingTop: () => 5,
-                                        paddingBottom: () => 5
+                                        paddingTop: () => 4,
+                                        paddingBottom: () => 4
                                     },
-                                    margin: [0, 0, 0, 10]
+                                    margin: [0, 0, 0, 8]
                                 },
 
-                                // Cam kết
                                 {
-                                    text: 'XÁC NHẬN: Phần mềm T.I.M.E.S cấp quyền sử dụng trực tuyến cho Đơn vị theo cơ chế Multi-Tenant SaaS độc lập, toàn bộ dữ liệu điều trị được mã hóa bảo mật nghiêm ngặt. Văn bản này là chứng từ căn cứ phục vụ đối soát, xác nhận bản quyền và hạch toán chi phí nội bộ hợp lệ của Đơn vị.',
-                                    fontSize: 8.5,
+                                    text: 'XÁC NHẬN: Phần mềm T.I.M.E.S được cấp phép sử dụng trực tuyến độc lập theo từng đơn vị y tế, mã hóa và bảo mật dữ liệu tuyệt đối. Giấy xác nhận này là chứng từ căn cứ phục vụ đối soát, kích hoạt bản quyền và kẹp chứng từ thanh toán ngân hàng hạch toán chi phí nội bộ hợp lệ của Đơn vị.',
+                                    fontSize: 8,
                                     italic: true,
                                     color: '#475569',
-                                    margin: [0, 0, 0, 12]
+                                    margin: [0, 0, 0, 10]
                                 },
 
                                 // Ký tên hai bên
@@ -14905,8 +14904,8 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                                             alignment: 'center',
                                             stack: [
                                                 { text: 'ĐẠI DIỆN ĐƠN VỊ THỤ HƯỞNG', fontSize: 9.5, bold: true, color: '#0f172a' },
-                                                { text: '(Ký, ghi rõ họ tên & đóng dấu)', fontSize: 8.5, italic: true, color: '#64748b' },
-                                                { text: '\n\n\n\n' },
+                                                { text: '(Ký, ghi rõ họ tên & đóng dấu)', fontSize: 8, italic: true, color: '#64748b' },
+                                                { text: '\n\n\n' },
                                                 { text: unitName, fontSize: 9.5, bold: true }
                                             ]
                                         },
@@ -14914,13 +14913,13 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                                             width: '*',
                                             alignment: 'center',
                                             stack: [
-                                                { text: `Ngày ${curDay} tháng ${curMonth} năm ${curYear}`, fontSize: 9, italic: true, color: '#475569', margin: [0, 0, 0, 2] },
+                                                { text: `Ngày ${curDay} tháng ${curMonth} năm ${curYear}`, fontSize: 8.5, italic: true, color: '#475569', margin: [0, 0, 0, 2] },
                                                 { text: 'TÁC GIẢ & ĐẠI DIỆN HỆ THỐNG T.I.M.E.S', fontSize: 9.5, bold: true, color: '#1e40af' },
-                                                { text: '(Đã xác thực chữ ký điện tử)', fontSize: 8.5, italic: true, color: '#16a34a' },
-                                                { text: '★ VALID CERTIFIED LICENSE ★', fontSize: 9, bold: true, color: '#15803d', margin: [0, 6, 0, 6] },
+                                                { text: '(Đã xác thực chữ ký số điện tử)', fontSize: 8, italic: true, color: '#16a34a' },
+                                                { text: '★ VALID CERTIFIED LICENSE ★', fontSize: 8.5, bold: true, color: '#15803d', margin: [0, 4, 0, 4] },
                                                 { text: '\n' },
-                                                { text: 'BS. ĐẶNG PHONG THÁI', fontSize: 10, bold: true, color: '#0f172a' },
-                                                { text: 'SĐT / Zalo: 0392.283.473', fontSize: 8.5, color: '#64748b' }
+                                                { text: 'BS. ĐẶNG PHONG THÁI', fontSize: 9.5, bold: true, color: '#0f172a' },
+                                                { text: 'SĐT / Zalo: 0392.283.473', fontSize: 8, color: '#64748b' }
                                             ]
                                         }
                                     ]
@@ -14932,7 +14931,7 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
             },
 
             // ==========================================
-            // TRANG 2: HỢP ĐỒNG DỊCH VỤ CUNG CẤP PHẦN MỀM
+            // TRANG 2 & 3: HỢP ĐỒNG DỊCH VỤ (THEO MẪU MEDS)
             // ==========================================
             {
                 pageBreak: 'before',
@@ -14950,77 +14949,89 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                         ],
                         margin: [0, 0, 0, 10]
                     },
-                    { text: 'HỢP ĐỒNG DỊCH VỤ CUNG CẤP & CHUYỂN GIAO QUYỀN SỬ DỤNG PHẦN MỀM', fontSize: 12.5, bold: true, color: '#0f172a', alignment: 'center', margin: [0, 4, 0, 2] },
-                    { text: `Số: ${contractNumber}`, fontSize: 9.5, italic: true, alignment: 'center', color: '#475569', margin: [0, 0, 0, 8] },
+                    { text: 'HỢP ĐỒNG DỊCH VỤ PHẦN MỀM', fontSize: 13, bold: true, color: '#0f172a', alignment: 'center', margin: [0, 4, 0, 2] },
+                    { text: `Số: ${contractNumber}`, fontSize: 9.5, italic: true, alignment: 'center', color: '#475569', margin: [0, 0, 0, 6] },
 
                     {
-                        text: `Hôm nay, ngày ${curDay} tháng ${curMonth} năm ${curYear}, tại hệ thống nền tảng xếp lịch T.I.M.E.S, chúng tôi gồm có:`,
-                        fontSize: 9,
-                        margin: [0, 0, 0, 6]
+                        text: [
+                            { text: 'Căn cứ pháp lý:\n', bold: true },
+                            '- Bộ luật Dân sự số 91/2015/QH13 ngày 24/11/2015;\n',
+                            '- Luật Thương mại số 36/2005/QH11 ngày 14/06/2005;\n',
+                            '- Luật Công nghệ thông tin số 67/2006/QH11 ngày 29/06/2006;\n',
+                            '- Luật Sở hữu trí tuệ số 50/2005/QH11 (sửa đổi, bổ sung 2022);\n',
+                            '- Nhu cầu sử dụng dịch vụ của Bên A và năng lực cung cấp của Bên B;'
+                        ],
+                        fontSize: 8.5,
+                        color: '#475569',
+                        lineHeight: 1.25,
+                        margin: [0, 0, 0, 8]
                     },
+                    { text: 'Các bên thống nhất ký kết Hợp đồng với các điều khoản sau:', fontSize: 9, italic: true, margin: [0, 0, 0, 6] },
 
-                    // BÊN A
+                    // Điều 1. Các bên trong hợp đồng
+                    { text: 'Điều 1. Các bên trong hợp đồng', fontSize: 9.5, bold: true, color: '#1e3a8a', margin: [0, 0, 0, 4] },
                     {
                         table: {
-                            widths: ['*'],
-                            body: [[
-                                {
-                                    fillColor: '#f8fafc',
-                                    stack: [
-                                        { text: 'BÊN A: BÊN SỬ DỤNG DỊCH VỤ PHẦN MỀM (KHÁCH HÀNG)', fontSize: 9.5, bold: true, color: '#1e3a8a', margin: [0, 0, 0, 2] },
-                                        { text: `• Tên đơn vị / Cơ sở y tế: ${unitName}`, fontSize: 9, bold: true },
-                                        { text: `• Mã đơn vị (Slug): ${unitCode.toUpperCase()}`, fontSize: 9 },
-                                        { text: '• Đại diện: Ban Giám Đốc / Chủ Quản lý cơ sở y tế', fontSize: 9 }
-                                    ]
-                                }
-                            ]]
-                        },
-                        layout: 'noBorders',
-                        margin: [0, 0, 0, 6]
-                    },
-
-                    // BÊN B
-                    {
-                        table: {
-                            widths: ['*'],
-                            body: [[
-                                {
-                                    fillColor: '#f8fafc',
-                                    stack: [
-                                        { text: 'BÊN B: BÊN CUNG CẤP DỊCH VỤ & BẢN QUYỀN PHẦN MỀM', fontSize: 9.5, bold: true, color: '#15803d', margin: [0, 0, 0, 2] },
-                                        { text: '• Tác giả / Đại diện: BÁC SĨ ĐẶNG PHONG THÁI', fontSize: 9, bold: true },
-                                        { text: '• Chức vụ: Bác sĩ - Kỹ sư phát triển phần mềm y tế T.I.M.E.S', fontSize: 9 },
-                                        { text: '• Số điện thoại / Zalo: 0392.283.473', fontSize: 9 },
-                                        { text: '• Tài khoản ngân hàng: 0392283473 tại Ngân hàng TMCP Quân Đội (MB Bank)', fontSize: 9, bold: true }
-                                    ]
-                                }
-                            ]]
+                            widths: ['50%', '50%'],
+                            body: [
+                                [
+                                    {
+                                        fillColor: '#f8fafc',
+                                        stack: [
+                                            { text: '1. BÊN A (Bên sử dụng dịch vụ):', bold: true, fontSize: 9, color: '#0f172a', margin: [0, 0, 0, 2] },
+                                            { text: `• Tên đơn vị: ${unitName}`, fontSize: 8.5, bold: true },
+                                            { text: `• Mã đơn vị (Slug): ${unitCode.toUpperCase()}`, fontSize: 8.5 },
+                                            { text: '• Đại diện: Ban Giám Đốc / Trưởng đơn vị', fontSize: 8.5 },
+                                            { text: '• Chức vụ: Đại diện theo pháp luật', fontSize: 8.5 },
+                                            { text: '• Địa chỉ: Trụ sở đơn vị y tế', fontSize: 8.5 }
+                                        ]
+                                    },
+                                    {
+                                        fillColor: '#f8fafc',
+                                        stack: [
+                                            { text: '2. BÊN B (Bên cung cấp dịch vụ):', bold: true, fontSize: 9, color: '#15803d', margin: [0, 0, 0, 2] },
+                                            { text: '• Tên đơn vị: HỆ THỐNG XẾP LỊCH T.I.M.E.S', fontSize: 8.5, bold: true },
+                                            { text: '• Đại diện: BS. ĐẶNG PHONG THÁI', fontSize: 8.5, bold: true },
+                                            { text: '• Chức vụ: Tác giả & Kỹ sư phát triển', fontSize: 8.5 },
+                                            { text: '• Điện thoại / Zalo: 0392.283.473', fontSize: 8.5 },
+                                            { text: '• Email: thaiminh83@gmail.com', fontSize: 8.5 },
+                                            { text: '• STK MB Bank: 0392283473 (Ngân hàng TMCP Quân Đội)', fontSize: 8.5, bold: true }
+                                        ]
+                                    }
+                                ]
+                            ]
                         },
                         layout: 'noBorders',
                         margin: [0, 0, 0, 8]
                     },
 
-                    { text: 'Hai bên cùng thống nhất ký kết hợp đồng dịch vụ phần mềm với các điều khoản sau đây:', fontSize: 9, italic: true, margin: [0, 0, 0, 6] },
+                    // Điều 2 & 3
+                    { text: 'Điều 2. Đối tượng hợp đồng', fontSize: 9.5, bold: true, color: '#0f172a' },
+                    { text: 'Bên B cung cấp cho Bên A quyền sử dụng Dịch vụ phần mềm quản lý và xếp lịch điều trị YHCT - PHCN (T.I.M.E.S System v4 SaaS) theo mô hình điện toán đám mây SaaS (Software as a Service) qua Internet tại địa chỉ https://xeplichthuthuat.io.vn. Phạm vi bao gồm: Quyền truy cập theo tài khoản do Bên B cấp; Cập nhật, nâng cấp, vá lỗi trong thời hạn hợp đồng; Hỗ trợ kỹ thuật trực tuyến theo Điều 3.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
 
-                    // Các điều khoản
-                    {
-                        stack: [
-                            { text: 'ĐIỀU 1: ĐỐI TƯỢNG HỢP ĐỒNG & NỘI DUNG DỊCH VỤ', fontSize: 9.5, bold: true, color: '#0f172a' },
-                            { text: `1.1. Bên B cung cấp cho Bên A quyền sử dụng bản quyền phần mềm "Xếp Lịch Điều Trị YHCT - PHCN (T.I.M.E.S System v4 SaaS Cloud)".\n1.2. Gói cước Bên A đăng ký: ${targetPlan.name} (Thời hạn: ${targetPlan.duration}). Hạn dùng đến: ${curExpires}.\n1.3. Tính năng: Full 100% chức năng, không giới hạn máy móc, phòng bệnh, nhân viên KTV và bệnh nhân.`, fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 4] },
+                    { text: 'Điều 3. Phạm vi dịch vụ', fontSize: 9.5, bold: true, color: '#0f172a' },
+                    { text: '- Bên B đảm bảo dịch vụ vận hành đúng chức năng mô tả tại Phụ lục II;\n- Bên B cung cấp tài liệu đào tạo/hướng dẫn sử dụng cho nhân sự được chỉ định của Bên A;\n- Hỗ trợ kỹ thuật trực tiếp qua Điện thoại/Zalo/Ultraview 24/7;\n- Bên A sử dụng dịch vụ cho mục đích chuyên môn nội bộ, không chuyển giao cho bên thứ ba khi chưa có chấp thuận bằng văn bản của Bên B.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
 
-                            { text: 'ĐIỀU 2: GIÁ TRỊ HỢP ĐỒNG & PHƯƠNG THỨC THANH TOÁN', fontSize: 9.5, bold: true, color: '#0f172a' },
-                            { text: `2.1. Giá trị dịch vụ: ${targetPlan.price} (Bằng chữ: ${targetPlan.priceText}).\n2.2. Thuế giá trị gia tăng (GTGT): 0% (Theo Thông tư số 219/2013/TT-BTC, sản phẩm và dịch vụ phần mềm thuộc đối tượng không chịu thuế GTGT).\n2.3. Phương thức thanh toán: Chuyển khoản ngân hàng vào tài khoản Bên B (MB Bank 0392283473 - ĐẶNG PHONG THÁI).`, fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 4] },
+                    { text: 'Điều 4. Thời hạn hợp đồng', fontSize: 9.5, bold: true, color: '#0f172a' },
+                    { text: `- Hợp đồng có hiệu lực kể từ ngày kích hoạt/thanh toán đến hết ngày ${curExpires} (Tổng thời gian: ${targetPlan.duration}).\n- Hợp đồng được tự động gia hạn hoặc ký phụ lục/hợp đồng mới khi hết hạn.`, fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
 
-                            { text: 'ĐIỀU 3: QUYỀN VÀ TRÁCH NHIỆM CỦA BÊN B', fontSize: 9.5, bold: true, color: '#0f172a' },
-                            { text: '3.1. Đảm bảo hệ thống máy chủ Cloudflare hoạt động liên tục 24/7 (uptime 99.9%), dữ liệu được sao lưu định kỳ an toàn.\n3.2. Cung cấp hướng dẫn sử dụng, giải đáp kỹ thuật, hỗ trợ xử lý lỗi phát sinh trực tiếp qua Hotline/Zalo 0392.283.473.\n3.3. Bảo mật tuyệt đối dữ liệu bệnh nhân và danh mục điều trị của Bên A theo đúng quy định của pháp luật.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 4] },
+                    { text: 'Điều 5. Giá trị và phương thức thanh toán', fontSize: 9.5, bold: true, color: '#0f172a' },
+                    { text: `1. Giá trị dịch vụ: ${targetPlan.price} (Bằng chữ: ${targetPlan.priceText}) theo Biểu giá tại Phụ lục I.\n2. Thuế GTGT: Thuế suất 0% (Theo Thông tư số 219/2013/TT-BTC, sản phẩm và dịch vụ phần mềm thuộc đối tượng không chịu thuế GTGT).\n3. Hình thức thanh toán: Chuyển khoản ngân hàng vào tài khoản của Bên B:\n   • Tên tài khoản: ĐẶNG PHONG THÁI | Số tài khoản: 0392283473 | Ngân hàng: MB Bank (Ngân hàng TMCP Quân Đội).\n4. Thời hạn thanh toán: Thanh toán khi đăng ký/kích hoạt hoặc theo thỏa thuận cụ thể.`, fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
 
-                            { text: 'ĐIỀU 4: QUYỀN VÀ TRÁCH NHIỆM CỦA BÊN A', fontSize: 9.5, bold: true, color: '#0f172a' },
-                            { text: '4.1. Sử dụng phần mềm đúng mục đích chuyên môn nghiệp vụ y tế tại đơn vị.\n4.2. Thanh toán phí dịch vụ đầy đủ và đúng thời hạn theo quy định tại Điều 2.\n4.3. Quản lý và bảo mật tài khoản quản trị được bàn giao, không chia sẻ trái phép cho bên thứ ba ngoài đơn vị.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 4] },
+                    { text: 'Điều 6. Quyền và nghĩa vụ của Bên A', fontSize: 9.5, bold: true, color: '#0f172a' },
+                    { text: '- Thanh toán đầy đủ và đúng hạn theo Điều 5;\n- Cung cấp danh mục thủ thuật, nhân sự, máy móc cần thiết để triển khai dịch vụ;\n- Quản lý và bảo mật tài khoản quản trị được bàn giao;\n- Không sao chép, chỉnh sửa mã nguồn hoặc bán lại dịch vụ khi chưa có sự chấp thuận của Bên B.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
 
-                            { text: 'ĐIỀU 5: HIỆU LỰC HỢP ĐỒNG & ĐIỀU KHOẢN CHUNG', fontSize: 9.5, bold: true, color: '#0f172a' },
-                            { text: '5.1. Hợp đồng có hiệu lực kể từ ngày thanh toán/kích hoạt và kéo dài đến hết thời hạn bản quyền đã thỏa thuận.\n5.2. Mọi tranh chấp nếu có sẽ được giải quyết trên tinh thần thiện chí hợp tác. Hợp đồng được lập thành bản điện tử có giá trị pháp lý tương đương bản giấy.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 8] }
-                        ]
-                    },
+                    { text: 'Điều 7. Quyền và nghĩa vụ của Bên B', fontSize: 9.5, bold: true, color: '#0f172a' },
+                    { text: '- Cung cấp dịch vụ đúng thỏa thuận, hỗ trợ kỹ thuật liên tục trong thời hạn hợp đồng;\n- Bảo mật tuyệt đối dữ liệu của Bên A, không tiết lộ cho bên thứ ba trừ khi có yêu cầu bằng văn bản của cơ quan pháp luật có thẩm quyền;\n- Cung cấp giấy xác nhận bản quyền và chứng từ thanh toán hợp lệ;\n- Thông báo trước cho Bên A khi có nâng cấp lớn hoặc bảo trì hệ thống.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
+
+                    { text: 'Điều 8. Bảo mật thông tin và dữ liệu', fontSize: 9.5, bold: true, color: '#0f172a' },
+                    { text: '- Các Bên cam kết bảo mật thông tin hợp đồng và dữ liệu bệnh án/điều trị phát sinh;\n- Dữ liệu thuộc quyền sở hữu riêng của Bên A. Khi chấm dứt hợp đồng, Bên B sẽ xuất bản sao dữ liệu (JSON/Excel) giao lại cho Bên A nếu có yêu cầu.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
+
+                    { text: 'Điều 9. Chấm dứt hợp đồng & Điều 10. Giải quyết tranh chấp', fontSize: 9.5, bold: true, color: '#0f172a' },
+                    { text: '- Hợp đồng chấm dứt khi hết thời hạn mà không gia hạn, hoặc hai bên cùng thỏa thuận chấm dứt trước hạn.\n- Mọi tranh chấp phát sinh được ưu tiên giải quyết qua thương lượng, hòa giải trên tinh thần hợp tác thiện chí y tế. Nếu không đạt thỏa thuận, tranh chấp sẽ được giải quyết tại Tòa án nhân dân có thẩm quyền theo pháp luật Việt Nam.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
+
+                    { text: 'Điều 11. Điều khoản chung', fontSize: 9.5, bold: true, color: '#0f172a' },
+                    { text: '- Hợp đồng có hiệu lực kể từ ngày ký/kích hoạt thanh toán.\n- Hợp đồng gồm đầy đủ các trang và các Phụ lục I, Phụ lục II là phần không thể tách rời của Hợp đồng này. Bản điện tử có giá trị pháp lý tương đương bản gốc.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 10] },
 
                     // Ký tên hợp đồng
                     {
@@ -15029,8 +15040,8 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                                 width: '*',
                                 alignment: 'center',
                                 stack: [
-                                    { text: 'ĐẠI DIỆN BÊN A (KHÁCH HÀNG)', fontSize: 9.5, bold: true },
-                                    { text: '(Ký, đóng dấu & ghi rõ họ tên)', fontSize: 8.5, italic: true, color: '#64748b' },
+                                    { text: 'ĐẠI DIỆN BÊN A', fontSize: 9.5, bold: true },
+                                    { text: '(Ký, đóng dấu và ghi rõ họ tên)', fontSize: 8, italic: true, color: '#64748b' },
                                     { text: '\n\n\n' },
                                     { text: unitName, fontSize: 9.5, bold: true }
                                 ]
@@ -15039,10 +15050,146 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                                 width: '*',
                                 alignment: 'center',
                                 stack: [
-                                    { text: 'ĐẠI DIỆN BÊN B (NHÀ PHÁT TRIỂN)', fontSize: 9.5, bold: true, color: '#1e40af' },
-                                    { text: '(Ký, ghi rõ họ tên)', fontSize: 8.5, italic: true, color: '#64748b' },
+                                    { text: 'ĐẠI DIỆN BÊN B', fontSize: 9.5, bold: true, color: '#1e40af' },
+                                    { text: '(Ký, ghi rõ họ tên)', fontSize: 8, italic: true, color: '#64748b' },
                                     { text: '\n\n\n' },
                                     { text: 'BS. ĐẶNG PHONG THÁI', fontSize: 10, bold: true }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+
+            // ==========================================
+            // TRANG 4: PHỤ LỤC I (BẢNG GIÁ) & PHỤ LỤC II (MÔ TẢ TÍNH NĂNG)
+            // ==========================================
+            {
+                pageBreak: 'before',
+                stack: [
+                    { text: 'PHỤ LỤC I: BẢNG GIÁ DỊCH VỤ PHẦN MỀM T.I.M.E.S NĂM 2026', fontSize: 11, bold: true, color: '#1e3a8a', alignment: 'center', margin: [0, 0, 0, 4] },
+                    { text: `(Kèm theo Hợp đồng dịch vụ số ${contractNumber} giữa ${unitName} và Hệ thống T.I.M.E.S)`, fontSize: 8.5, italic: true, alignment: 'center', color: '#64748b', margin: [0, 0, 0, 8] },
+
+                    // Bảng biểu phí chuẩn
+                    {
+                        table: {
+                            widths: [30, 160, 100, 70, '*'],
+                            body: [
+                                [
+                                    { text: 'STT', bold: true, fontSize: 8.5, alignment: 'center', fillColor: '#f1f5f9' },
+                                    { text: 'Tên Gói Dịch Vụ', bold: true, fontSize: 8.5, fillColor: '#f1f5f9' },
+                                    { text: 'Thời Hạn', bold: true, fontSize: 8.5, alignment: 'center', fillColor: '#f1f5f9' },
+                                    { text: 'Đơn Giá (VNĐ)', bold: true, fontSize: 8.5, alignment: 'right', fillColor: '#f1f5f9' },
+                                    { text: 'Chọn Đăng Ký', bold: true, fontSize: 8.5, alignment: 'center', fillColor: '#f1f5f9' }
+                                ],
+                                [
+                                    { text: '1', fontSize: 8.5, alignment: 'center' },
+                                    { text: 'Gói Dùng Thử 15 Ngày', fontSize: 8.5 },
+                                    { text: '15 ngày trải nghiệm', fontSize: 8.5, alignment: 'center' },
+                                    { text: '0 VNĐ', fontSize: 8.5, alignment: 'right', bold: true },
+                                    { text: planCode === 'TRIAL_15D' ? '☑ ĐÃ CHỌN' : '☐', fontSize: 8.5, alignment: 'center', bold: planCode === 'TRIAL_15D', color: planCode === 'TRIAL_15D' ? '#15803d' : '#94a3b8' }
+                                ],
+                                [
+                                    { text: '2', fontSize: 8.5, alignment: 'center' },
+                                    { text: 'Gói 1 Tháng', fontSize: 8.5 },
+                                    { text: '01 tháng (30 ngày)', fontSize: 8.5, alignment: 'center' },
+                                    { text: '400.000 VNĐ', fontSize: 8.5, alignment: 'right', bold: true },
+                                    { text: planCode === 'PLAN_1M' ? '☑ ĐÃ CHỌN' : '☐', fontSize: 8.5, alignment: 'center', bold: planCode === 'PLAN_1M', color: planCode === 'PLAN_1M' ? '#15803d' : '#94a3b8' }
+                                ],
+                                [
+                                    { text: '3', fontSize: 8.5, alignment: 'center' },
+                                    { text: 'Gói 3 Tháng (~375k/tháng)', fontSize: 8.5 },
+                                    { text: '03 tháng (90 ngày)', fontSize: 8.5, alignment: 'center' },
+                                    { text: '1.125.000 VNĐ', fontSize: 8.5, alignment: 'right', bold: true },
+                                    { text: planCode === 'PLAN_3M' ? '☑ ĐÃ CHỌN' : '☐', fontSize: 8.5, alignment: 'center', bold: planCode === 'PLAN_3M', color: planCode === 'PLAN_3M' ? '#15803d' : '#94a3b8' }
+                                ],
+                                [
+                                    { text: '4', fontSize: 8.5, alignment: 'center' },
+                                    { text: 'Gói 6 Tháng (~350k/tháng)', fontSize: 8.5 },
+                                    { text: '06 tháng (180 ngày)', fontSize: 8.5, alignment: 'center' },
+                                    { text: '2.100.000 VNĐ', fontSize: 8.5, alignment: 'right', bold: true },
+                                    { text: planCode === 'PLAN_6M' ? '☑ ĐÃ CHỌN' : '☐', fontSize: 8.5, alignment: 'center', bold: planCode === 'PLAN_6M', color: planCode === 'PLAN_6M' ? '#15803d' : '#94a3b8' }
+                                ],
+                                [
+                                    { text: '5', fontSize: 8.5, alignment: 'center' },
+                                    { text: 'Gói 1 Năm (~325k/tháng - Tiết kiệm)', fontSize: 8.5, bold: true },
+                                    { text: '01 năm (365 ngày)', fontSize: 8.5, alignment: 'center' },
+                                    { text: '3.900.000 VNĐ', fontSize: 8.5, alignment: 'right', bold: true },
+                                    { text: planCode === 'PLAN_1Y' ? '☑ ĐÃ CHỌN' : '☐', fontSize: 8.5, alignment: 'center', bold: planCode === 'PLAN_1Y', color: planCode === 'PLAN_1Y' ? '#15803d' : '#94a3b8' }
+                                ],
+                                [
+                                    { text: '6', fontSize: 8.5, alignment: 'center' },
+                                    { text: 'Gói Doanh Nghiệp (Vĩnh Viễn)', fontSize: 8.5 },
+                                    { text: 'Trọn đời', fontSize: 8.5, alignment: 'center' },
+                                    { text: 'Sở hữu trọn đời', fontSize: 8.5, alignment: 'right', bold: true },
+                                    { text: (planCode === 'ENTERPRISE' || unitCode === 'bvtks-cs2') ? '☑ ĐÃ CHỌN' : '☐', fontSize: 8.5, alignment: 'center', bold: true, color: '#15803d' }
+                                ]
+                            ]
+                        },
+                        layout: {
+                            hLineWidth: () => 0.5,
+                            vLineWidth: () => 0.5,
+                            hLineColor: () => '#cbd5e1',
+                            vLineColor: () => '#cbd5e1',
+                            paddingTop: () => 3.5,
+                            paddingBottom: () => 3.5
+                        },
+                        margin: [0, 0, 0, 6]
+                    },
+                    { text: 'Lưu ý: Bảng giá trên là dịch vụ phần mềm không chịu thuế GTGT (VAT 0%) theo Thông tư 219/2013/TT-BTC. Tất cả các gói đều hỗ trợ Full 100% chức năng không giới hạn.', fontSize: 7.5, italic: true, color: '#64748b', margin: [0, 0, 0, 10] },
+
+                    // PHỤ LỤC II
+                    { text: 'PHỤ LỤC II: MÔ TẢ CHỨC NĂNG DỊCH VỤ PHẦN MỀM T.I.M.E.S', fontSize: 11, bold: true, color: '#1e3a8a', alignment: 'center', margin: [0, 0, 0, 4] },
+                    { text: 'Các chức năng nghiệp vụ chính của Hệ thống T.I.M.E.S bao gồm:', fontSize: 8.5, bold: true, color: '#0f172a', margin: [0, 0, 0, 4] },
+
+                    {
+                        columns: [
+                            {
+                                width: '50%',
+                                stack: [
+                                    { text: '1. Quản lý danh mục kỹ thuật: Thiết lập thời lượng, máy móc gắn kèm, khoảng cách nghỉ, nhóm thủ thuật YHCT - PHCN chuẩn Bộ Y Tế.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
+                                    { text: '2. Quản lý KTV & Bác sĩ: Phân công ca sáng/chiều, phòng chỉ định, chuyên môn kỹ thuật thực hiện.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
+                                    { text: '3. Quản lý máy móc: Định danh mã máy, phòng đặt máy, chống trùng lặp thiết bị tuyệt đối.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
+                                    { text: '4. Quản lý bệnh nhân: Nhập hồ sơ, buồng giường, chỉ định y lệnh đa dịch vụ nội trú & ngoại trú.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
+                                    { text: '5. Động cơ AI & CP-SAT Solver: Tự động chia giờ thủ thuật thông minh, không trùng nhân viên, máy móc, bệnh nhân.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
+                                    { text: '6. Xếp lịch cuối tuần / trực: Tự động chia ca trực Thứ 7, Chủ Nhật và ngày nghỉ lễ chuyên biệt.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] }
+                                ]
+                            },
+                            {
+                                width: '50%',
+                                stack: [
+                                    { text: '7. Quản lý y lệnh: Tổng hợp chỉ định, phân luồng theo khoa phòng, đồng bộ trạng thái bệnh án.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
+                                    { text: '8. Xuất bảng KETQUA: Bảng kết quả xếp lịch trực quan đầy đủ ngày, giờ, bệnh nhân, KTV, máy móc.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
+                                    { text: '9. Xuất báo cáo đa dạng: Xuất PDF lịch theo từng buồng phòng bệnh viện, xuất Excel phân công KTV.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
+                                    { text: '10. Đám mây & Bảo mật: Nền tảng Cloudflare Worker + D1 Database, mã hóa JWT, sao lưu Google Drive tự động.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
+                                    { text: '11. Địa chỉ truy cập trực tuyến: https://xeplichthuthuat.io.vn (Sử dụng trực tiếp trên Web/Mobile/Tablet).', fontSize: 8, color: '#1d4ed8', bold: true, margin: [0, 0, 0, 3] }
+                                ]
+                            }
+                        ],
+                        margin: [0, 0, 0, 10]
+                    },
+
+                    // Ký xác nhận phụ lục
+                    {
+                        columns: [
+                            {
+                                width: '*',
+                                alignment: 'center',
+                                stack: [
+                                    { text: 'XÁC NHẬN BÊN A', fontSize: 9, bold: true },
+                                    { text: '(Ký, đóng dấu)', fontSize: 7.5, italic: true, color: '#64748b' },
+                                    { text: '\n\n' },
+                                    { text: unitName, fontSize: 9, bold: true }
+                                ]
+                            },
+                            {
+                                width: '*',
+                                alignment: 'center',
+                                stack: [
+                                    { text: 'XÁC NHẬN BÊN B', fontSize: 9, bold: true, color: '#1e40af' },
+                                    { text: '(Ký, ghi rõ họ tên)', fontSize: 7.5, italic: true, color: '#64748b' },
+                                    { text: '\n\n' },
+                                    { text: 'BS. ĐẶNG PHONG THÁI', fontSize: 9, bold: true }
                                 ]
                             }
                         ]
