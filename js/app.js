@@ -13971,7 +13971,7 @@ window.loadTenantsList = function () {
                         <td style="padding:12px 14px; text-align:center;">
                             <div style="display:flex; justify-content:center; gap:6px;">
                                 <button class="btn btn-sm btn-secondary" onclick="openEditTenantModal('${t.unit_code}', '${encodeURIComponent(t.unit_name)}', '${t.plan_tier}', '${t.expires_at}', ${t.max_staff}, ${t.max_patients}, '${t.phone || ''}')" title="Chỉnh sửa / Gia hạn">✏️ Sửa</button>
-                                <button class="btn btn-sm" style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; font-weight:700;" onclick="window.downloadLicenseContractPDF('${t.unit_code}', '${t.plan_tier}', '${encodeURIComponent(t.unit_name)}')" title="Tải Hợp Đồng & Giấy Chứng Nhận Bản Quyền (PDF) cho đơn vị này">📜 HĐ</button>
+                                <button class="btn btn-sm" style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; font-weight:700;" onclick="window.downloadLicenseContractPDF('${t.unit_code}', '${t.plan_tier}', '${encodeURIComponent(t.unit_name)}', '${t.expires_at || ''}')" title="Tải Hợp Đồng & Giấy Chứng Nhận Bản Quyền (PDF) cho đơn vị này">📜 HĐ</button>
                                 <button class="btn btn-sm btn-info" onclick="exportTenantDataPrompt('${t.unit_code}', '${encodeURIComponent(t.unit_name)}')" title="Xuất dữ liệu sao lưu (JSON) riêng cho đơn vị này">📥 Xuất</button>
                                 <button class="btn btn-sm btn-warning" onclick="resetTenantPasswordPrompt('${t.unit_code}')" title="Đặt lại mật khẩu Admin">🔑 Pass</button>
                                 <button class="btn btn-sm ${isActive ? 'btn-danger' : 'btn-success'}" onclick="toggleTenantStatus('${t.unit_code}', ${isActive ? 0 : 1})" title="${isActive ? 'Khóa đơn vị' : 'Mở khóa đơn vị'}">${isActive ? '🔒 Khóa' : '🔓 Mở'}</button>
@@ -14761,7 +14761,7 @@ window.copyPaymentText = function (text, label) {
 // ============================================================
 // 📄 XUẤT HỢP ĐỒNG & GIẤY CHỨNG NHẬN BẢN QUYỀN PDF (CHUẨN MẪU MEDS DOCX)
 // ============================================================
-window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitName) {
+window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitName, optExpiresAt) {
     if (typeof pdfMake === 'undefined') {
         return alert("Thư viện pdfmake đang được khởi tạo, vui lòng bấm lại sau 1-2 giây!");
     }
@@ -14787,8 +14787,69 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
     const curDay = String(now.getDate()).padStart(2, '0');
     const curMonth = String(now.getMonth() + 1).padStart(2, '0');
     const curYear = now.getFullYear();
+    const startDateVN = `${curDay}/${curMonth}/${curYear}`;
 
-    const curExpires = localStorage.getItem('pm_expires_at') || `${curYear + 1}-${curMonth}-${curDay}`;
+    // Tính toán thời hạn hợp đồng và chứng nhận chính xác cho gói cước được cấp
+    let endDateVN = '';
+    let certDurationDisplay = '';
+    let contractDurationDisplay = '';
+
+    if (unitCode === 'bvtks-cs2' || planCode === 'ENTERPRISE') {
+        endDateVN = '31/12/2099';
+        certDurationDisplay = '💎 Vĩnh Viễn Trọn Đời (Đến 31/12/2099)';
+        contractDurationDisplay = `Hiệu lực vĩnh viễn trọn đời kể từ ngày ký/kích hoạt (ngày ${startDateVN}).`;
+    } else {
+        const storedPlan = localStorage.getItem('pm_plan_tier') || sess.plan_tier || '';
+        const storedExp = localStorage.getItem('pm_expires_at') || sess.expires_at || '';
+
+        let targetEndObj = new Date(now.getTime());
+
+        // Ưu tiên ngày chỉ định trực tiếp từ Super Admin nếu có
+        if (optExpiresAt) {
+            const optExpParsed = new Date(optExpiresAt);
+            if (!isNaN(optExpParsed.getTime())) {
+                targetEndObj = optExpParsed;
+            }
+        } else if (storedPlan === planCode && storedExp) {
+            // Đơn vị đã thanh toán và đang ở đúng gói cước này
+            const expParsed = new Date(storedExp);
+            if (!isNaN(expParsed.getTime()) && expParsed > now) {
+                targetEndObj = expParsed;
+            } else {
+                if (planCode === 'TRIAL_15D') targetEndObj.setDate(targetEndObj.getDate() + 15);
+                else if (planCode === 'PLAN_1M') targetEndObj.setMonth(targetEndObj.getMonth() + 1);
+                else if (planCode === 'PLAN_3M') targetEndObj.setMonth(targetEndObj.getMonth() + 3);
+                else if (planCode === 'PLAN_6M') targetEndObj.setMonth(targetEndObj.getMonth() + 6);
+                else if (planCode === 'PLAN_1Y') targetEndObj.setFullYear(targetEndObj.getFullYear() + 1);
+                else targetEndObj.setDate(targetEndObj.getDate() + (targetPlan.days || 30));
+            }
+        } else {
+            // Đang lập hợp đồng đăng ký mới hoặc nâng cấp từ Dùng thử sang gói trả phí:
+            // Tính chuẩn xác thời hạn bắt đầu từ hôm nay (hoặc nối tiếp gói trả phí cũ nếu còn hạn)
+            let baseDate = new Date(now.getTime());
+            if (storedPlan && storedPlan !== 'TRIAL_15D' && storedExp) {
+                const prevExp = new Date(storedExp);
+                if (!isNaN(prevExp.getTime()) && prevExp > now) {
+                    baseDate = prevExp;
+                }
+            }
+            targetEndObj = new Date(baseDate.getTime());
+            if (planCode === 'TRIAL_15D') targetEndObj.setDate(targetEndObj.getDate() + 15);
+            else if (planCode === 'PLAN_1M') targetEndObj.setMonth(targetEndObj.getMonth() + 1);
+            else if (planCode === 'PLAN_3M') targetEndObj.setMonth(targetEndObj.getMonth() + 3);
+            else if (planCode === 'PLAN_6M') targetEndObj.setMonth(targetEndObj.getMonth() + 6);
+            else if (planCode === 'PLAN_1Y') targetEndObj.setFullYear(targetEndObj.getFullYear() + 1);
+            else targetEndObj.setDate(targetEndObj.getDate() + (targetPlan.days || 30));
+        }
+
+        const eD = String(targetEndObj.getDate()).padStart(2, '0');
+        const eM = String(targetEndObj.getMonth() + 1).padStart(2, '0');
+        const eY = targetEndObj.getFullYear();
+        endDateVN = `${eD}/${eM}/${eY}`;
+        certDurationDisplay = `Đến ngày: ${endDateVN}`;
+        contractDurationDisplay = `Hợp đồng có hiệu lực kể từ ngày kích hoạt/thanh toán (ngày ${startDateVN}) đến hết ngày ${endDateVN} (Tổng thời gian: ${targetPlan.duration}).`;
+    }
+
     const certNumber = `TIMS-LIC/${curYear}/${unitCode.toUpperCase()}`;
     const contractNumber = `${now.getMonth() + 1}${now.getDate()}/HĐDV/${curYear}`;
 
@@ -14861,7 +14922,7 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                                             ],
                                             [
                                                 { text: 'Thời Hạn Sử Dụng:', bold: true, fontSize: 9.5, fillColor: '#f1f5f9' },
-                                                { text: unitCode === 'bvtks-cs2' ? '💎 Vĩnh Viễn Trọn Đời' : `Đến ngày: ${curExpires}`, fontSize: 9.5, bold: true }
+                                                { text: certDurationDisplay, fontSize: 9.5, bold: true, color: '#0f172a' }
                                             ],
                                             [
                                                 { text: 'Phạm Vi Cấp Quyền:', bold: true, fontSize: 9.5, fillColor: '#f1f5f9' },
@@ -15013,7 +15074,7 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                     { text: '- Bên B đảm bảo dịch vụ vận hành đúng chức năng mô tả tại Phụ lục II;\n- Bên B cung cấp tài liệu đào tạo/hướng dẫn sử dụng cho nhân sự được chỉ định của Bên A;\n- Hỗ trợ kỹ thuật trực tiếp qua Điện thoại/Zalo/Ultraview 24/7;\n- Bên A sử dụng dịch vụ cho mục đích chuyên môn nội bộ, không chuyển giao cho bên thứ ba khi chưa có chấp thuận bằng văn bản của Bên B.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
 
                     { text: 'Điều 4. Thời hạn hợp đồng', fontSize: 9.5, bold: true, color: '#0f172a' },
-                    { text: `- Hợp đồng có hiệu lực kể từ ngày kích hoạt/thanh toán đến hết ngày ${curExpires} (Tổng thời gian: ${targetPlan.duration}).\n- Hợp đồng được tự động gia hạn hoặc ký phụ lục/hợp đồng mới khi hết hạn.`, fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
+                    { text: `- ${contractDurationDisplay}\n- Hợp đồng được tự động gia hạn hoặc ký phụ lục/hợp đồng mới khi hết hạn.`, fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
 
                     { text: 'Điều 5. Giá trị và phương thức thanh toán', fontSize: 9.5, bold: true, color: '#0f172a' },
                     { text: `1. Giá trị dịch vụ: ${targetPlan.price} (Bằng chữ: ${targetPlan.priceText}) theo Biểu giá tại Phụ lục I.\n2. Thuế GTGT: Thuế suất 0% (Theo Thông tư số 219/2013/TT-BTC, sản phẩm và dịch vụ phần mềm thuộc đối tượng không chịu thuế GTGT).\n3. Hình thức thanh toán: Chuyển khoản ngân hàng vào tài khoản của Bên B:\n   • Tên tài khoản: ĐẶNG PHONG THÁI | Số tài khoản: 0392283473 | Ngân hàng: MB Bank (Ngân hàng TMCP Quân Đội).\n4. Thời hạn thanh toán: Thanh toán khi đăng ký/kích hoạt hoặc theo thỏa thuận cụ thể.`, fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },

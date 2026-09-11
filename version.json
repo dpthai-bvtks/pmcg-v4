@@ -1,6 +1,6 @@
 {
-  "version": "4.0.6-rev3",
+  "version": "4.0.6-rev4",
   "releaseDate": "11/09/2026",
-  "releaseTime": "10:05 11/09/2026",
-  "notes": "Chuẩn hóa toàn diện bộ hồ sơ Hợp đồng dịch vụ phần mềm (PDF 4 trang) theo cấu trúc mẫu MEDS: Giấy chứng nhận bản quyền, Hợp đồng kinh tế 11 điều khoản, Phụ lục I (Bảng giá 5 gói cước) và Phụ lục II (11 chức năng hệ thống T.I.M.E.S)."
+  "releaseTime": "10:15 11/09/2026",
+  "notes": "Khắc phục triệt để logic tính toán thời hạn hợp đồng và giấy chứng nhận bản quyền PDF: tính toán chính xác tròn 1 tháng (30 ngày), 3 tháng, 6 tháng, 1 năm cho gói cước được cấp/đăng ký thay vì lấy nhầm ngày hết hạn 15 ngày của gói dùng thử cũ."
 }

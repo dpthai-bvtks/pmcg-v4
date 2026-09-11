@@ -2998,9 +2998,38 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `version.json`
   + `PM-xeplich-v4.md`
 
-
-
-
-
-
-
+### 🛠️ Khắc Phục Logic Tính Toán Thời Hạn Gói Cước Trên Hợp Đồng & Giấy Chứng Nhận Bản Quyền PDF (11/09/2026 - v4.0.6-rev4)
+- **Câu hỏi của người dùng**:
+  + *"gói 1 tháng sao lại chỉ đến 26/9/2026"* (kèm ảnh chụp Giấy xác nhận cấp quyền ghi Gói 1 Tháng mà hạn dùng lại chỉ đến `2026-09-26`).
+- **Nguyên nhân cốt lõi**:
+  + Khi tài khoản `test` đăng ký dùng thử ngày 11/09/2026, hệ thống cấp hạn dùng thử 15 ngày đến `2026-09-26` (`11 + 15 = 26`) và lưu vào `localStorage.getItem('pm_expires_at')`.
+  + Khi người dùng mở Modal Nâng cấp / Gia hạn và chọn **"Gói 1 Tháng"**, rồi bấm tải **"📥 Hợp Đồng & Chứng Nhận (PDF)"** để trình ký kế toán / duyệt chi trước khi chuyển khoản:
+  + Hàm `downloadLicenseContractPDF` trước đó lại đọc trực tiếp `localStorage.getItem('pm_expires_at')` (vốn là hạn dùng 15 ngày của gói dùng thử cũ) thay vì tính toán thời hạn thực tế của gói cước đang được lập hợp đồng (`PLAN_1M` - 30 ngày / 1 tháng).
+  + Do đó văn bản hiển thị sai lệch: Gói 1 Tháng nhưng hạn dùng lại hiển thị chỉ có 15 ngày (`2026-09-26`).
+- **Giải pháp triển khai**:
+  1. **Tính toán thời hạn dịch vụ thông minh (`calculateContractDates`)**:
+     - Nếu là đơn vị `bvtks-cs2` hoặc gói `ENTERPRISE`: Hiển thị `💎 Vĩnh Viễn Trọn Đời (Đến 31/12/2099)`.
+     - Nếu đơn vị đã thanh toán và đang ở đúng gói đó: Sử dụng ngày hết hạn chính thức được ghi nhận trong cơ sở dữ liệu.
+     - Nếu đơn vị đang lập hợp đồng / chọn gói cước mới (ví dụ từ Dùng thử sang Gói 1 Tháng, 3 Tháng, 6 Tháng, 1 Năm):
+       + Ngày bắt đầu có hiệu lực: Hôm nay (`11/09/2026`).
+       + Ngày kết thúc của **Gói 1 Tháng (`PLAN_1M`)**: Tròn 1 tháng theo lịch (`11/10/2026`).
+       + Ngày kết thúc của **Gói 3 Tháng (`PLAN_3M`)**: Tròn 3 tháng theo lịch (`11/12/2026`).
+       + Ngày kết thúc của **Gói 6 Tháng (`PLAN_6M`)**: Tròn 6 tháng theo lịch (`11/03/2027`).
+       + Ngày kết thúc của **Gói 1 Năm (`PLAN_1Y`)**: Tròn 1 năm theo lịch (`11/09/2027`).
+       + Nếu trước đó đơn vị có gói trả phí cũ còn hạn thì cộng dồn nối tiếp tương ứng.
+  2. **Định dạng hiển thị chuẩn mực tiếng Việt**:
+     - Thay đổi từ định dạng khô khan `2026-09-26` sang chuẩn văn bản Việt Nam: `11/10/2026`.
+     - Tại Trang 1 (Certificate): `Thời Hạn Sử Dụng: Đến ngày: 11/10/2026`.
+     - Tại Trang 2 (Điều 4 Hợp đồng): `Hợp đồng có hiệu lực kể từ ngày kích hoạt/thanh toán (ngày 11/09/2026) đến hết ngày 11/10/2026 (Tổng thời gian: 01 tháng (30 ngày)).`
+  3. **Super Admin**:
+     - Cập nhật nút `📜 HĐ` trong bảng quản trị truyền thêm tham số `t.expires_at` để xuất hợp đồng chính xác theo đúng ngày hết hạn trong CSDL D1.
+  4. **Tuân thủ RULES.md**:
+     - Kiểm tra cú pháp toàn bộ file JS (`node -c`).
+     - Tăng revision lên `v4.0.6-rev4`, cập nhật `version.json`, `index.html` (cache buster `?v=4.0.6-rev4`, footer timestamp `10:15 11/09/2026`, `APP_VERSION = '4.0.6-rev4'`), `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.6-rev4'`).
+     - Deploy lên Cloudflare Pages và commit/push GitHub.
+- **File sửa đổi**:
+  + `index.html`
+  + `js/app.js`
+  + `sw.js`
+  + `version.json`
+  + `PM-xeplich-v4.md`
