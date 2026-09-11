@@ -1396,6 +1396,10 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         const PUBLIC_API_ACTIONS = new Set([
+            'ping',
+            'getPublicUnits',
+            'getPublicTenantInfo',
+            'verifyLogin',
             'checkLogin',
             'login',
             'getDataVersion',
@@ -1795,7 +1799,8 @@ window.renderSttOrderControl = function (type, i, total) {
             const handleError = err => {
                 resetBtn();
                 if (errDiv) {
-                    errDiv.innerText = err && err.message ? err.message : "Lỗi kết nối máy chủ!";
+                    const msg = (err && err.message) ? err.message : (typeof err === 'string' && err ? err : "Lỗi kết nối máy chủ!");
+                    errDiv.innerText = msg;
                     errDiv.style.display = "block";
                 }
             };

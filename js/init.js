@@ -427,7 +427,8 @@ window.doLogin = function () {
         }, err => {
             if (btn) { btn.innerText = 'Đăng Nhập ➔'; btn.disabled = false; }
             if (errDiv) {
-                errDiv.innerText = err && err.message ? err.message : 'Lỗi kết nối máy chủ!';
+                const msg = (err && err.message) ? err.message : (typeof err === 'string' && err ? err : 'Lỗi kết nối máy chủ!');
+                errDiv.innerText = msg;
                 errDiv.style.display = 'block';
             }
         });

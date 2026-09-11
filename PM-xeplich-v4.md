@@ -3280,7 +3280,33 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `version.json`
   + `PM-xeplich-v4.md`
 
-
-
-
-
+### 🔐 Khắc Phục Triệt Để Lỗi "Lỗi kết nối máy chủ!" Khi Đăng Nhập (11/09/2026 - v4.0.6-rev13)
+- **Yêu cầu của người dùng**:
+  + *"lỗi không đăng nhập được"* (kèm ảnh chụp màn hình hộp thoại đăng nhập báo đỏ: "Lỗi kết nối máy chủ!").
+- **Phân tích nguyên nhân gốc rễ**:
+  1. Trong `js/app.js`, hàm `callApi` có cơ chế bảo vệ phiên (Auth Guard) kiểm tra xem hành động gọi API có thuộc `PUBLIC_API_ACTIONS` hay không khi người dùng chưa có phiên đăng nhập hợp lệ trong `localStorage`.
+  2. Tại thời điểm người dùng mới vào trang và nhập tài khoản `admin` / `bvtks-cs2`, `callApi('verifyLogin', ...)` được gọi.
+  3. Tuy nhiên, danh sách trắng `PUBLIC_API_ACTIONS` trong `js/app.js` chỉ có:
+     `['checkLogin', 'login', 'getDataVersion', 'getSubscriptionPlans', 'registerTrialTenant', 'createPaymentOrder', 'checkPaymentStatus', 'paymentWebhook']`
+     $\rightarrow$ Hoàn toàn **THIẾU** `'verifyLogin'`, `'ping'`, `'getPublicUnits'`, `'getPublicTenantInfo'`.
+  4. Do đó, `callApi` tự động chặn yêu cầu ở phía client mà không hề gửi bất kỳ request mạng nào đến Cloudflare API, đồng thời gọi callback lỗi `onError('Chưa đăng nhập')`.
+  5. Trong `triggerLogin` (`js/app.js` và `js/init.js`), đoạn mã lấy thông báo lỗi là:
+     `err && err.message ? err.message : "Lỗi kết nối máy chủ!"`
+     Vì `err` là chuỗi nguyên thủy `'Chưa đăng nhập'`, nên `err.message` bị `undefined`, dẫn đến giao diện hiển thị thông báo mặc định sai lệch: **"Lỗi kết nối máy chủ!"**.
+- **Giải pháp triển khai (v4.0.6-rev13)**:
+  1. **Đồng bộ hóa danh sách trắng `PUBLIC_API_ACTIONS`**:
+     - Bổ sung `'verifyLogin'`, `'ping'`, `'getPublicUnits'`, `'getPublicTenantInfo'` vào `PUBLIC_API_ACTIONS` trong `js/app.js`, khớp 100% với danh sách công khai trên Cloudflare Worker backend (`backend/src/index.js`).
+  2. **Chuẩn hóa hiển thị thông báo lỗi**:
+     - Cập nhật cả `js/app.js` và `js/init.js` để hiển thị chuỗi lỗi rõ ràng:
+       `(err && err.message) ? err.message : (typeof err === 'string' && err ? err : "Lỗi kết nối máy chủ!")`.
+  3. **Kiểm thử xác thực thực tế**:
+     - Đã gửi request `verifyLogin` với tài khoản `admin` / mã đơn vị `bvtks-cs2` đến Worker Cloudflare backend và nhận về `HTTP 200 OK`, `status: "success"`, cấp JWT Token doanh nghiệp trọn đời (hạn 2099) thành công 100%.
+  4. **Quy chuẩn phiên bản**:
+     - Tăng phiên bản lên `v4.0.6-rev13` trên `version.json`, `sw.js`, `index.html`.
+- **File sửa đổi**:
+  + `js/app.js`
+  + `js/init.js`
+  + `index.html`
+  + `sw.js`
+  + `version.json`
+  + `PM-xeplich-v4.md`

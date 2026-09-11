@@ -1,6 +1,6 @@
 {
-  "version": "4.0.6-rev12",
+  "version": "4.0.6-rev13",
   "releaseDate": "11/09/2026",
-  "releaseTime": "13:45 11/09/2026",
-  "notes": "Tối ưu hóa triệt để tốc độ xếp lịch: Cắt tỉa nhánh Seed 101 có điều kiện (<250ms, rớt >3 ca), mượt mà hóa UI frame (await 16ms), tốc độ trung bình đạt ~0.3s - 0.5s cho 183 thủ thuật, 0 xung đột."
+  "releaseTime": "14:25 11/09/2026",
+  "notes": "Sửa lỗi không đăng nhập được: Bổ sung verifyLogin vào danh sách PUBLIC_API_ACTIONS ở frontend, đồng bộ hóa trọn vẹn xác thực tài khoản đa cơ sở."
 }
