@@ -3428,6 +3428,40 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `version.json`
   + `PM-xeplich-v4.md`
 
+---
+
+### [v4.0.6-rev17] - 16:05 11/09/2026: Đồng bộ toàn bộ nhân sự từ tab-staff sang danh sách chọn nhân sự đi làm Thứ 7 (không phụ thuộc trạng thái Thứ 6)
+- **Yêu cầu của người dùng**:
+  + *"nhân sự đi làm là tất cả nhân sự có trong tab-staff chứ không phải nhân sự đi làm hôm thứ 6"*
+- **Phân tích nguyên nhân gốc rễ**:
+  1. Tại Backend `backend/src/index.js` trong action `getSatData`:
+     - Câu lệnh SQL ban đầu:
+       `SELECT * FROM nhan_su WHERE unit_code = ? AND (trang_thai != 'Nghỉ cả ngày' OR trang_thai IS NULL) ORDER BY priority ASC, id ASC`
+     - Mệnh đề `AND (trang_thai != 'Nghỉ cả ngày' OR trang_thai IS NULL)` đã vô tình loại bỏ tất cả các nhân sự đang có trạng thái "Nghỉ cả ngày" (của ngày Thứ 6), khiến họ biến mất khỏi bảng chọn nhân sự đi làm Thứ 7.
+  2. Tại Frontend `js/app.js` trong hàm `taiDsSat()`:
+     - Trước đây chỉ render theo mảng `data.staff` trả về từ server mà không chủ động gộp toàn bộ danh sách nhân sự từ `window.dataCache.staff` (từ `tab-staff`).
+- **Giải pháp xử lý (v4.0.6-rev17)**:
+  1. **Backend (`backend/src/index.js`)**:
+     - Sửa câu lệnh SQL trong `getSatData` thành:
+       `SELECT * FROM nhan_su WHERE unit_code = ? AND name NOT GLOB '[0-9]*' ORDER BY priority ASC, id ASC`
+       (và fallback `SELECT * FROM nhan_su WHERE unit_code = ? ORDER BY id ASC`).
+     - Lấy đầy đủ 100% nhân sự thuộc đơn vị từ CSDL SQLite Turso, không lọc bỏ theo trạng thái điểm danh ngày Thứ 6.
+  2. **Frontend (`js/app.js`)**:
+     - Trong hàm `taiDsSat()`, khởi tạo `allStaff` từ `data.staff`, sau đó gộp toàn diện với `window.dataCache.staff` để đảm bảo bất kỳ nhân sự nào có mặt trong `tab-staff` đều hiện diện trên danh sách chọn nhân sự Thứ 7 `#sat-staff-list`.
+     - Duyệt `allStaff.forEach` để render checkbox, nhãn vai trò (Bác sĩ, ĐD, KTV), và các khung chỉnh giờ làm việc sáng/chiều.
+  3. **Đồng bộ phiên bản & triển khai (RULES.md)**:
+     - Nâng phiên bản lên `v4.0.6-rev17`.
+     - Đồng bộ Cache buster trong `index.html` và `sw.js` (`pmcg-v4-cache-4.0.6-rev17`).
+     - Giữ nguyên chân trang `Phiên bản: 4.0.6` và cập nhật `Cập nhật lần cuối: 16:05 11/09/2026`.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `js/app.js`
+  + `index.html`
+  + `sw.js`
+  + `version.json`
+  + `PM-xeplich-v4.md`
+
+
 
 
 

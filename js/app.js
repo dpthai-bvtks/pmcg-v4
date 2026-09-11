@@ -8994,26 +8994,44 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-                if (data && Array.isArray(data.staff) && data.staff.length > 0) {
-                    if (!window.dataCache) window.dataCache = {};
-                    if (!dataCache.staff || dataCache.staff.length === 0) {
-                        dataCache.staff = data.staff;
-                    } else {
-                        data.staff.forEach(s => {
-                            const existing = dataCache.staff.find(st => (st.ten || st.name) === s.ten);
-                            if (!existing) {
-                                dataCache.staff.push(s);
-                            } else {
-                                if (!existing.kyNang && s.kyNang) existing.kyNang = s.kyNang;
-                                if (!existing.vaiTro && s.vaiTro) existing.vaiTro = s.vaiTro;
-                                if (!existing.quyen && s.quyen) existing.quyen = s.quyen;
-                            }
-                        });
-                    }
+                // 🛡️ Lấy toàn bộ nhân sự từ backend getSatData kết hợp với dataCache.staff (từ tab-staff)
+                let allStaff = (data && Array.isArray(data.staff) && data.staff.length > 0) ? [...data.staff] : [];
+                if (window.dataCache && Array.isArray(window.dataCache.staff) && window.dataCache.staff.length > 0) {
+                    window.dataCache.staff.forEach(s => {
+                        const sTen = s.ten || s.name;
+                        if (sTen && !allStaff.some(st => (st.ten || st.name) === sTen)) {
+                            allStaff.push({
+                                ...s,
+                                ten: sTen,
+                                name: sTen,
+                                vaiTro: s.vaiTro || s.role || 'KTV',
+                                role: s.vaiTro || s.role || 'KTV',
+                                quyen: s.quyen || s.system || 'Cả hai',
+                                system: s.quyen || s.system || 'Cả hai',
+                                kyNang: s.kyNang || s.skills || '',
+                                skills: s.kyNang || s.skills || ''
+                            });
+                        }
+                    });
+                }
+                if (!window.dataCache) window.dataCache = {};
+                if (!window.dataCache.staff || window.dataCache.staff.length === 0) {
+                    window.dataCache.staff = [...allStaff];
+                } else {
+                    allStaff.forEach(s => {
+                        const existing = window.dataCache.staff.find(st => (st.ten || st.name) === (s.ten || s.name));
+                        if (!existing) {
+                            window.dataCache.staff.push(s);
+                        } else {
+                            if (!existing.kyNang && s.kyNang) existing.kyNang = s.kyNang;
+                            if (!existing.vaiTro && s.vaiTro) existing.vaiTro = s.vaiTro;
+                            if (!existing.quyen && s.quyen) existing.quyen = s.quyen;
+                        }
+                    });
                 }
 
-                data.staff.forEach((s, idx) => {
-                    const ten = s.ten;
+                allStaff.forEach((s, idx) => {
+                    const ten = s.ten || s.name;
                     const isDoc = /bác sĩ|bac si|^bs\b/i.test(s.vaiTro || s.role || '') || /^bs\b/i.test(ten);
                     t8_ns_vars[ten] = false; satStaffIndices[ten] = idx;
 

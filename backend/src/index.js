@@ -3843,7 +3843,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     }
 
     case "getSatData": {
-      const staffRes = await db.prepare("SELECT * FROM nhan_su WHERE unit_code = ? AND (trang_thai != 'Nghỉ cả ngày' OR trang_thai IS NULL) ORDER BY priority ASC, id ASC").bind(unitCode).all().catch(() => db.prepare("SELECT * FROM nhan_su WHERE unit_code = ?").bind(unitCode).all());
+      const staffRes = await db.prepare("SELECT * FROM nhan_su WHERE unit_code = ? AND name NOT GLOB '[0-9]*' ORDER BY priority ASC, id ASC").bind(unitCode).all().catch(() => db.prepare("SELECT * FROM nhan_su WHERE unit_code = ? ORDER BY id ASC").bind(unitCode).all());
       const patRes = await db.prepare("SELECT id, name, age, arrive_time, room, thu_thuat, leave_time FROM benh_nhan WHERE unit_code = ? AND is_saturday = 0 AND (leave_time IS NULL OR TRIM(leave_time) = '' OR LOWER(leave_time) = 'none')").bind(unitCode).all();
       
       const nhan_su = (staffRes.results || []).map((r, idx) => ({
