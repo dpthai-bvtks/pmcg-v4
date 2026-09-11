@@ -1,6 +1,6 @@
 {
-  "version": "4.0.6-rev4",
+  "version": "4.0.6-rev5",
   "releaseDate": "11/09/2026",
-  "releaseTime": "10:15 11/09/2026",
-  "notes": "Khắc phục triệt để logic tính toán thời hạn hợp đồng và giấy chứng nhận bản quyền PDF: tính toán chính xác tròn 1 tháng (30 ngày), 3 tháng, 6 tháng, 1 năm cho gói cước được cấp/đăng ký thay vì lấy nhầm ngày hết hạn 15 ngày của gói dùng thử cũ."
+  "releaseTime": "10:20 11/09/2026",
+  "notes": "Bỏ dòng Gói Doanh Nghiệp (Vĩnh Viễn) khỏi Phụ Lục I (Bảng giá dịch vụ phần mềm) theo yêu cầu: Bảng giá dịch vụ thương mại chuẩn hóa 5 gói cước (Dùng thử 15 ngày, 1 tháng, 3 tháng, 6 tháng, 1 năm); bản quyền Vĩnh viễn trọn đời là đặc quyền riêng của đơn vị Bệnh viện Than - Khoáng sản Cơ sở 2 (bvtks-cs2)."
 }

@@ -3033,3 +3033,26 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `sw.js`
   + `version.json`
   + `PM-xeplich-v4.md`
+
+### 📑 Bỏ Dòng Bản Quyền Vĩnh Viễn Khỏi Bảng Giá Phụ Lục I (11/09/2026 - v4.0.6-rev5)
+- **Yêu cầu của người dùng**:
+  + *"bỏ dòng Bản quyền vĩnh viễn đi vì chỉ có bvtks-cs2 mới có bản quyền vĩnh viễn"* (kèm ảnh chụp Phụ Lục I có hàng số 6 "Gói Doanh Nghiệp (Vĩnh Viễn)").
+- **Phân tích & Giải pháp triển khai**:
+  1. **Bảng giá thương mại chuẩn hóa 5 gói**:
+     - Trong thực tế thương mại SaaS, hệ thống chỉ cung cấp 5 gói cước dịch vụ có thời hạn (15 ngày dùng thử 0đ, 1 tháng 400k, 3 tháng 1.125k, 6 tháng 2.100k, 1 năm 3.900k).
+     - Gói bản quyền Vĩnh viễn trọn đời không phải là sản phẩm bán đại trà, mà là chính sách bản quyền riêng biệt độc quyền dành riêng cho cơ sở gốc của Bác sĩ Thái là `bvtks-cs2` (Bệnh viện Than - Khoáng sản Cơ sở 2).
+     - Việc để dòng "Gói Doanh Nghiệp (Vĩnh Viễn)" trong bảng giá hợp đồng thương mại gửi cho các đơn vị bên ngoài (như `test`) là không phù hợp chính sách bán hàng.
+  2. **Thao tác mã nguồn**:
+     - Xóa bỏ hàng số 6 (`Gói Doanh Nghiệp (Vĩnh Viễn)`) trong bảng `table` của Phụ Lục I trong hàm `downloadLicenseContractPDF` ([js/app.js](file:///g:/Other%20computers/Laptop%20Thái/PM-DPT/PM-xeplich/khung_pm/ban_web/v4-thuongmai/js/app.js)).
+     - Bảng giá Phụ Lục I hiện tại chuẩn hóa gọn gàng gồm đúng 5 gói dịch vụ từ STT 1 đến 5.
+  3. **Tuân thủ RULES.md**:
+     - Kiểm tra cú pháp (`node -c`).
+     - Tăng revision lên `v4.0.6-rev5`, cập nhật `version.json`, `index.html` (cache buster `?v=4.0.6-rev5`, footer timestamp `10:20 11/09/2026`, `APP_VERSION = '4.0.6-rev5'`), `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.6-rev5'`).
+     - Deploy lên Cloudflare Pages và commit/push GitHub.
+- **File sửa đổi**:
+  + `index.html`
+  + `js/app.js`
+  + `sw.js`
+  + `version.json`
+  + `PM-xeplich-v4.md`
+

@@ -15177,13 +15177,6 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                                     { text: '01 năm (365 ngày)', fontSize: 8.5, alignment: 'center' },
                                     { text: '3.900.000 VNĐ', fontSize: 8.5, alignment: 'right', bold: true },
                                     { text: planCode === 'PLAN_1Y' ? '☑ ĐÃ CHỌN' : '☐', fontSize: 8.5, alignment: 'center', bold: planCode === 'PLAN_1Y', color: planCode === 'PLAN_1Y' ? '#15803d' : '#94a3b8' }
-                                ],
-                                [
-                                    { text: '6', fontSize: 8.5, alignment: 'center' },
-                                    { text: 'Gói Doanh Nghiệp (Vĩnh Viễn)', fontSize: 8.5 },
-                                    { text: 'Trọn đời', fontSize: 8.5, alignment: 'center' },
-                                    { text: 'Sở hữu trọn đời', fontSize: 8.5, alignment: 'right', bold: true },
-                                    { text: (planCode === 'ENTERPRISE' || unitCode === 'bvtks-cs2') ? '☑ ĐÃ CHỌN' : '☐', fontSize: 8.5, alignment: 'center', bold: true, color: '#15803d' }
                                 ]
                             ]
                         },
