@@ -1,6 +1,6 @@
 {
-  "version": "4.0.6-rev15",
+  "version": "4.0.6-rev16",
   "releaseDate": "11/09/2026",
-  "releaseTime": "15:20 11/09/2026",
-  "notes": "Đồng bộ hoàn hảo chế độ tối (Dark Mode): Bảng Phác đồ điều trị, Tab Thứ 7 và Bảng ký hiệu chấm công & quy ước tính công (tương phản cao, chữ phát sáng sắc nét, không còn hiện tượng chói lóa hay mờ chữ)."
+  "releaseTime": "15:40 11/09/2026",
+  "notes": "Khắc phục triệt để lỗi chốt sổ / chuyển ngày mới (no such column: dob): Ánh xạ đúng cột năm sinh 'age' từ bảng benh_nhan sang 'dob' của bảng gio_ban_chung_cu."
 }

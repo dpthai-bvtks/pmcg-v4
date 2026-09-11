@@ -3401,6 +3401,34 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `version.json`
   + `PM-xeplich-v4.md`
 
+### 🛠️ Khắc Phục Triệt Để Lỗi Chốt Sổ / Chuyển Ngày Mới: "no such column: dob" (11/09/2026 - v4.0.6-rev16)
+- **Yêu cầu của người dùng**:
+  + *Lỗi chốt sổ: `[Server Action Error - chuyenNgayMoi]: Turso SQL error: {"message":"SQLite input error: no such column: dob (at offset 124)","code":"SQL_INPUT_ERROR"}`*
+- **Phân tích nguyên nhân gốc rễ**:
+  1. Trong hàm xử lý `chuyenNgayMoi` / `chotSo` và `checkAutoChotSo` tại Backend (`backend/src/index.js`):
+     - Lệnh SQL sao lưu giờ bận thực tế và giờ ra viện của bệnh nhân trước khi reset:
+       `INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'benh_nhan', name, dob, gio_ban FROM benh_nhan ...`
+       `INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'ra_vien', name, dob, leave_time FROM benh_nhan ...`
+  2. Bảng `benh_nhan` trong CSDL SQLite Turso được định nghĩa với cột năm sinh là `age INTEGER` (chứ không phải `dob`).
+  3. Khi SQLite thực thi câu lệnh trên, nó tìm kiếm cột `dob` trong bảng `benh_nhan` và ngay lập tức ném ra lỗi `SQL_INPUT_ERROR: no such column: dob`.
+- **Giải pháp triển khai (v4.0.6-rev16)**:
+  1. **Sửa câu lệnh SQL trong `backend/src/index.js`**:
+     - Đổi `name, dob, gio_ban FROM benh_nhan` thành `name, age, gio_ban FROM benh_nhan`.
+     - Đổi `name, dob, leave_time FROM benh_nhan` thành `name, age, leave_time FROM benh_nhan`.
+     - Cột `age` từ `benh_nhan` sẽ được ánh xạ chính xác vào cột `dob` của bảng đích `gio_ban_chung_cu`.
+     - Áp dụng tương tự cho cả `checkAutoChotSo` ở cuối file.
+  2. **Quy chuẩn phiên bản & Triển khai**:
+     - Nâng phiên bản lên `v4.0.6-rev16`.
+     - Tuân thủ quy tắc `RULES.md`: Chân trang hiển thị `Phiên bản: 4.0.6` và `Cập nhật lần cuối: 15:40 11/09/2026`.
+     - Triển khai Worker Backend API (`npm run deploy:worker`) và Frontend Pages (`npm run deploy:web`).
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `index.html`
+  + `sw.js`
+  + `version.json`
+  + `PM-xeplich-v4.md`
+
+
 
 
 
