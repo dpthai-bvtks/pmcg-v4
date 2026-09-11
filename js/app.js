@@ -3985,9 +3985,9 @@ window.renderSttOrderControl = function (type, i, total) {
                 const heUpper = String(he || '').trim().toUpperCase();
                 const isYhct = heUpper === 'YHCT' || heUpper.includes('CỔ TRUYỀN') || heUpper.includes('ĐÔNG Y');
                 
-                const cbHtml = `<label class="checkbox-item proto-proc-item" data-name="${escapedTen.toLowerCase()}" style="font-size:11.5px; padding:3px 6px; margin-bottom:3px; display:flex; align-items:center; gap:6px; cursor:pointer; background:#fff; border-radius:4px; border:1px solid #cbd5e1;">
+                const cbHtml = `<label class="checkbox-item proto-proc-item" data-name="${escapedTen.toLowerCase()}" style="font-size:11.5px; padding:3px 6px; margin-bottom:3px; display:flex; align-items:center; gap:6px; cursor:pointer; border-radius:4px; border:1px solid #cbd5e1;">
                     <input type="checkbox" class="proto-proc-cb" data-he="${isYhct ? 'YHCT' : 'PHCN'}" value="${escapedTen}" onchange="updateProtoSelectedCount()" style="width:15px; height:15px; margin:0; cursor:pointer; flex-shrink:0;">
-                    <span style="font-size:11.5px; line-height:1.2; user-select:none; color:#1e293b;">${escapedTen}</span>
+                    <span class="proto-proc-name" style="font-size:11.5px; line-height:1.2; user-select:none;">${escapedTen}</span>
                 </label>`;
 
                 if (isYhct) yhctHtml += cbHtml;
@@ -9156,11 +9156,13 @@ window.renderSttOrderControl = function (type, i, total) {
                         satCache[bn_id].items.push({ name: tt, checked: false });
 
                         const cb = document.createElement('label');
+                        cb.className = 'sat-proc-checkbox-label';
                         cb.style.cssText = 'font-size:12px; cursor:pointer; display:flex; align-items:center; gap:4px;'; cb.title = tt;
 
                         const input = document.createElement('input');
                         input.type = 'checkbox'; input.id = `cb-sat-${bn_id}-${tIdx}`;
-                        input.style.cssText = 'width:13px; height:13px; margin:0;';
+                        input.className = 'sat-proc-cb';
+                        input.style.cssText = 'width:13px; height:13px; margin:0; cursor:pointer;';
                         input.onchange = function () {
                             satCache[bn_id].items[tIdx].checked = this.checked;
                             updateSummarySat();

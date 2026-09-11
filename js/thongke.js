@@ -953,9 +953,9 @@ window.switchAdminSection = function(sectionId, btn) {
                 const valText = (sym.value !== undefined && sym.value !== null) ? `${sym.value} công` : '';
                 const borderCol = sym.border || sym.color || '#cbd5e1';
                 html += `
-                    <div class="cc-symbol-chip" style="background: ${sym.bg}; border: 1px solid ${borderCol}; color: ${sym.color};" title="${sym.label || sym.code} (${valText})">
+                    <div class="cc-symbol-chip" data-code="${sym.code}" style="background: ${sym.bg}; border: 1px solid ${borderCol}; color: ${sym.color};" title="${sym.label || sym.code} (${valText})">
                         <span class="cc-symbol-code">${sym.code}</span>
-                        <span>: ${sym.label || sym.code} (${valText})</span>
+                        <span class="cc-symbol-desc">: ${sym.label || sym.code} (${valText})</span>
                     </div>
                 `;
             });
@@ -1016,7 +1016,7 @@ window.switchAdminSection = function(sectionId, btn) {
                 html += `
                     <tr style="border-bottom: 1px solid #f1f5f9;">
                         <td style="padding: 6px 10px; text-align: center;">
-                            <span style="display: inline-block; min-width: 28px; padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 11px; background: ${sym.bg}; border: 1px solid ${borderCol}; color: ${sym.color};">
+                            <span class="cc-symbol-chip cc-symbol-badge" data-code="${sym.code}" style="display: inline-block; min-width: 28px; padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 11px; background: ${sym.bg}; border: 1px solid ${borderCol}; color: ${sym.color};">
                                 ${sym.code}
                             </span>
                         </td>

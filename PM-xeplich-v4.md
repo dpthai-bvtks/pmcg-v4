@@ -3349,5 +3349,58 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `version.json`
   + `PM-xeplich-v4.md`
 
+### 🌙✨ Đồng Bộ Hoàn Hảo Chế Độ Tối (Dark Mode) Cho Phác Đồ, Tab Thứ 7 & Ký Hiệu Chấm Công (11/09/2026 - v4.0.6-rev15)
+- **Yêu cầu của người dùng**:
+  + *"chế độ tối chưa đồng bộ với bảng phác đồ, tab thứ 7, bảng ký hiệu chấm công, rất khó nhìn rõ nội dung"*
+- **Phân tích nguyên nhân gốc rễ**:
+  1. **Bảng Phác đồ điều trị (`#section-protocols`)**:
+     - Tiêu đề `.tab-header-title` có background `#ecf0f1` từ CSS cũ, trong chế độ tối bị biến thành một thanh màu sáng chói lóa cắt ngang giao diện.
+     - Các thẻ checkbox thủ thuật bên form trái (`.proto-proc-item`) mang inline style `background:#fff` và text `#1e293b`, tạo thành các ô chữ nhật trắng sáng chói với chữ đen thô ráp trên nền tối.
+     - Tiêu đề bảng phác đồ, badge thủ thuật trong bảng bên phải và các nút thao tác chưa có bộ quy tắc riêng cho dark mode.
+  2. **Tab Thứ 7 (`#tab-sat`)**:
+     - Thanh công cụ đầu trang (`.tab-header-title`) bị lỗi nền sáng `#ecf0f1`, ô nhập ngày và ô tìm kiếm bệnh nhân có viền xám sáng không ăn khớp.
+     - Tên thủ thuật (`.sat-proc-name`) trong các thẻ bệnh nhân có kích thước nhỏ và màu xám mờ trên nền navy, các checkbox mặc định của trình duyệt khó nhìn.
+  3. **Bảng Ký hiệu chấm công & Quy ước tính công (`#chamcong-legend-container`)**:
+     - Các chip ký hiệu (`.cc-symbol-chip`) được gán màu nền pastel sáng từ CSDL (`#d1fae5`, `#fee2e2`, `#fef3c7`, `#ccfbf1`), nhưng trong dark mode bộ chọn chung đã ép màu chữ thành trắng (`#f1f5f9 !important`), sinh ra hiện tượng **chữ trắng trên nền pastel sáng** (tương phản cực thấp, gần như tàng hình, không thể đọc được).
+     - Hai nút bấm chức năng `[⚙️ Quản Lý Ký Hiệu]` và `[➕ Thêm Ký Hiệu]` mang màu nền trắng/xanh nhạt inline.
+- **Giải pháp triển khai (v4.0.6-rev15)**:
+  1. **Chuẩn hóa thanh tiêu đề `.tab-header-title` toàn hệ thống trong Dark Mode**:
+     - Nền tối chuẩn Slate `#1e293b`, viền `#334155`, chữ cyan phát sáng `#38bdf8`, đổ bóng dịu mắt.
+  2. **Đồng bộ Bảng Quản lý Phác đồ điều trị**:
+     - Form bên trái `#sidebar-form-proto`: Nền `#1e293b`, viền `#334155`.
+     - Checkbox thủ thuật `.proto-proc-item`: Nền tối `#1e293b`, viền `#334155`, chữ sáng `#e2e8f0`, khi hover chuyển sang `#334155` viền `#60a5fa`, checkbox màu xanh `#2563eb`.
+     - Bảng phác đồ `#protocols-table`: Header `#0f172a`, tên phác đồ `#38bdf8`, các badge thủ thuật capsule xanh tối `#1e3a8a66` viền `#3b82f666` chữ sáng `#93c5fd`.
+     - Modal Thêm/Sửa phác đồ `#modal-protocol-editor`: Đồng bộ dark mode 100%.
+  3. **Đồng bộ Tab Thứ 7 (`#tab-sat`)**:
+     - Header và badge số lượng bệnh nhân `#sat-patient-count-badge`: Đổi sang tông cyan rực rỡ trên nền tối.
+     - Ô ngày `#sat-schedule-date` và tìm kiếm `#sat-search-bn`: Tông `#0f172a`, viền `#334155`, `color-scheme: dark`.
+     - Thẻ bệnh nhân `.sat-bn-card`: Tên bệnh nhân `#38bdf8`, phòng khám `#fbbf24` viền cam.
+     - Nhãn thủ thuật `.sat-proc-checkbox-label`: Biến thành các capsule nhỏ gọn có viền mờ `rgba(255,255,255,0.1)`, chữ trắng đậm `#f8fafc` cỡ 12px sắc nét, khi chọn (checked) tự động phát sáng chữ `#38bdf8` và đổi nền viền.
+  4. **Thiết kế bảng màu Dark Mode cao cấp cho Bảng Ký hiệu Chấm Công (`.cc-symbol-chip`)**:
+     - Bổ sung thuộc tính `data-code` cho từng ký hiệu trong `js/thongke.js`.
+     - Thay thế nền pastel chói bằng nền tối sâu (`rgba` đậm) kết hợp viền màu và chữ màu phát sáng (High Contrast Palette):
+       + `X` (Cả ngày): Nền `#1e293b`, viền `#475569`, chữ trắng `#f8fafc`.
+       + `X/2`, `1/2` (Nửa ngày): Nền tối teal `#042f2e`, viền `#115e59`, chữ ngọc `#5eead4`.
+       + `S / C`, `S`, `C` (Sáng/Chiều): Nền tối lục `#022c22`, viền `#065f46`, chữ xanh `#6ee7b7`.
+       + `Lễ`, `Tết`: Nền tối đỏ/hồng `#450a0a`, viền `#7f1d1d`, chữ đỏ hồng `#fca5a5`.
+       + `Nội`: Nền tối lam `#172554`, viền `#1e40af`, chữ xanh dương `#93c5fd`.
+       + `Ô`: Nền tối cam `#431407`, viền `#9a3412`, chữ cam `#fdba74`.
+       + `H`, `F`, `B`: Nền tối vàng `#451a03`, viền `#78350f`, chữ vàng `#fde68a`.
+       + `TS`, `ĐK / DK`: Nền tối tím `#3b0764`, viền `#581c87`, chữ tím `#d8b4fe`.
+       + `K / V`: Nền tối xám `#1e293b`, viền `#475569`, chữ xám `#94a3b8`.
+     - Đồng bộ Modal Quản lý ký hiệu chấm công `#modal-chamcong-symbol`.
+  5. **Quy chuẩn phiên bản & Triển khai**:
+     - Nâng phiên bản lên `v4.0.6-rev15`.
+     - Tuân thủ quy tắc `RULES.md`: Chân trang hiển thị gọn gàng `Phiên bản: 4.0.6` và `Cập nhật lần cuối: 15:20 11/09/2026`.
+- **File sửa đổi**:
+  + `css/style.css`
+  + `js/app.js`
+  + `js/thongke.js`
+  + `index.html`
+  + `sw.js`
+  + `version.json`
+  + `PM-xeplich-v4.md`
+
+
 
 
