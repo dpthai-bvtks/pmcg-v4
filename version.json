@@ -1,6 +1,6 @@
 {
-  "version": "4.0.6-rev9",
+  "version": "4.0.6-rev10",
   "releaseDate": "11/09/2026",
-  "releaseTime": "11:10 11/09/2026",
-  "notes": "Tối ưu hóa siêu tốc độ động cơ lập lịch (Phase 1 Metaheuristics + Phase 2 CP-SAT) từ 28.19s xuống còn 0.31s (nhanh gấp ~90 lần) bằng Ultra Fast Early Exit, loại bỏ countFeasibleSlots ngốn 66 triệu phép tính, nhấc roomsWithWaiting và chuẩn hóa mốc thời gian 5 phút."
+  "releaseTime": "11:15 11/09/2026",
+  "notes": "Gỡ bỏ nút '⚡ Xuất HIS Auto' trên thanh công cụ Tab Xếp Lịch theo yêu cầu người dùng."
 }

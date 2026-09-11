@@ -3202,5 +3202,23 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `index.html`
   + `PM-xeplich-v4.md`
 
+### 🗑️ Gỡ Bỏ Nút "⚡ Xuất HIS Auto" (11/09/2026 - v4.0.6-rev10)
+- **Yêu cầu của người dùng**:
+  + *"bỏ nút Xuất HIS Auto đi, không dùng nữa rồi"*
+- **Giải pháp triển khai**:
+  1. Xóa phần tử button `#btn-export-his-auto` khỏi thanh công cụ xem lịch trong `index.html` (kế bên nút Bảng và Timeline).
+  2. Giữ nguyên hàm logic nền `exportDataForHisAuto` trong `js/app.js` để đảm bảo tương thích an toàn.
+  3. Tuân thủ `RULES.md`:
+     - Tăng version lên `v4.0.6-rev10`.
+     - Cập nhật cache buster `?v=4.0.6-rev10` và modal cập nhật trong `index.html`.
+     - Cập nhật `sw.js` với `CACHE_NAME = 'pmcg-v4-cache-4.0.6-rev10'`.
+     - Cập nhật `version.json` với releaseTime `11:15 11/09/2026`.
+     - Deploy lên Cloudflare Pages và commit/push lên Git.
+- **File sửa đổi**:
+  + `index.html`
+  + `version.json`
+  + `sw.js`
+  + `PM-xeplich-v4.md`
+
 
 
