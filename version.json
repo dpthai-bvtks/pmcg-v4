@@ -1,6 +1,6 @@
 {
   "version": "4.0.6-rev13",
   "releaseDate": "11/09/2026",
-  "releaseTime": "14:25 11/09/2026",
-  "notes": "Sửa lỗi không đăng nhập được: Bổ sung verifyLogin vào danh sách PUBLIC_API_ACTIONS ở frontend, đồng bộ hóa trọn vẹn xác thực tài khoản đa cơ sở."
+  "releaseTime": "14:32 11/09/2026",
+  "notes": "Sửa lỗi không đăng nhập được (bổ sung verifyLogin vào PUBLIC_API_ACTIONS) và tự động đồng bộ hóa thông tin 'Cập nhật lần cuối' trên toàn bộ chân trang hệ thống."
 }

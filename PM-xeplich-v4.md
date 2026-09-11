@@ -3301,8 +3301,10 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
        `(err && err.message) ? err.message : (typeof err === 'string' && err ? err : "Lỗi kết nối máy chủ!")`.
   3. **Kiểm thử xác thực thực tế**:
      - Đã gửi request `verifyLogin` với tài khoản `admin` / mã đơn vị `bvtks-cs2` đến Worker Cloudflare backend và nhận về `HTTP 200 OK`, `status: "success"`, cấp JWT Token doanh nghiệp trọn đời (hạn 2099) thành công 100%.
-  4. **Quy chuẩn phiên bản**:
+  4. **Quy chuẩn phiên bản & Đồng bộ ngày giờ chân trang**:
      - Tăng phiên bản lên `v4.0.6-rev13` trên `version.json`, `sw.js`, `index.html`.
+     - Cập nhật thông tin chân trang hệ thống: `Phiên bản: 4.0.6-rev13` và `Cập nhật lần cuối: 14:32 11/09/2026`.
+     - Thêm cơ chế tự động đồng bộ thời gian cập nhật từ `version.json` vào mọi vị trí chân trang qua `checkVersionDirectly()`.
 - **File sửa đổi**:
   + `js/app.js`
   + `js/init.js`
@@ -3310,3 +3312,4 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `sw.js`
   + `version.json`
   + `PM-xeplich-v4.md`
+

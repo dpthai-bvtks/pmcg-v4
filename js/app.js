@@ -2788,6 +2788,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     document.querySelectorAll('.tab-content, .page').forEach(tab => tab.insertAdjacentHTML('beforeend', noiDungFooter));
 
+                    if (typeof APP_VERSION !== 'undefined') {
+                        document.querySelectorAll('#app-footer-version, [id="app-footer-version"]').forEach(el => {
+                            el.textContent = `Phiên bản: ${APP_VERSION}`;
+                        });
+                    }
                 }
 
             } catch (err) { console.warn("Lỗi khi bơm Footer:", err); }
