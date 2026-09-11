@@ -171,9 +171,9 @@
     }
     </script>
     <meta name="theme-color" content="#1e3d2b">
-    <link rel="icon" type="image/png" sizes="128x128" href="favicon-128.png?v=4.0.6-rev5">
+    <link rel="icon" type="image/png" sizes="128x128" href="favicon-128.png?v=4.0.6-rev6">
     <!-- Thêm icon cho iOS -->
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=4.0.6-rev5">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=4.0.6-rev6">
 
 
 
@@ -184,15 +184,15 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=4.0.6-rev5">
+    <link rel="stylesheet" href="css/style.css?v=4.0.6-rev6">
     <!-- PWA & Mobile Web App Meta Tags -->
-    <link rel="manifest" href="manifest.json?v=4.0.6-rev5">
+    <link rel="manifest" href="manifest.json?v=4.0.6-rev6">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.0.6-rev5">
+    <link rel="stylesheet" href="css/mobile.css?v=4.0.6-rev6">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
     <script src="js/dexie.min.js?v=3.2.6"></script>
@@ -203,7 +203,7 @@
     <script src="js/chart.min.js?v=3.2.6"></script>
     <script src="js/zod.min.js?v=3.2.6"></script>
     <!-- JS Thư viện kéo thả nội bộ -->
-    <script src="js/sortable.min.js?v=4.0.6-rev5"></script>
+    <script src="js/sortable.min.js?v=4.0.6-rev6"></script>
     <!-- Thư viện Dòng thời gian Timeline Frappe Gantt -->
     <link rel="stylesheet" href="css/frappe-gantt.css?v=3.2.6">
     <script src="js/frappe-gantt.min.js?v=3.2.6"></script>
@@ -3495,7 +3495,7 @@
                                     📞 Hotline / Zalo kích hoạt 24/7: <b>0392.283.473</b> (Bác sĩ Thái)
                                 </div>
                                 <div style="display:flex; align-items:center; gap:8px;">
-                                    <button type="button" onclick="window.downloadLicenseContractPDF()" class="btn" style="padding:6px 12px; font-size:12px; font-weight:700; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:5px;" title="Tải văn bản Hợp đồng & Giấy chứng nhận bản quyền định dạng PDF để phục vụ hạch toán kế toán">
+                                    <button type="button" onclick="window.openContractPartyAModal()" class="btn" style="padding:6px 12px; font-size:12px; font-weight:700; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:5px;" title="Điền thông tin Bên A và tải văn bản Hợp đồng & Giấy chứng nhận bản quyền định dạng PDF">
                                         <span>📥</span> Hợp Đồng & Chứng Nhận (PDF)
                                     </button>
                                     <button type="button" onclick="closeRenewModal()" class="btn btn-secondary" style="padding:7px 18px; font-weight:600;">Đóng</button>
@@ -3518,13 +3518,84 @@
                                 <div>• <b>Số ngày còn lại:</b> <span id="renew-succ-days" style="color:#1d4ed8; font-weight:700;">365 ngày</span></div>
                             </div>
                             <div style="display:flex; justify-content:center; align-items:center; gap:10px; flex-wrap:wrap;">
-                                <button type="button" onclick="window.downloadLicenseContractPDF()" class="btn" style="padding:11px 20px; font-size:13px; font-weight:700; background:#eff6ff; color:#1d4ed8; border:1.5px solid #bfdbfe; border-radius:10px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                                <button type="button" onclick="window.openContractPartyAModal()" class="btn" style="padding:11px 20px; font-size:13px; font-weight:700; background:#eff6ff; color:#1d4ed8; border:1.5px solid #bfdbfe; border-radius:10px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
                                     <span>📥</span> Tải Hợp Đồng & Chứng Nhận (PDF)
                                 </button>
                                 <button type="button" onclick="closeRenewModal();" class="btn btn-success" style="padding:11px 28px; font-size:13.5px; font-weight:800; background:linear-gradient(135deg, #15803d, #22c55e); border:none; border-radius:10px; box-shadow:0 8px 20px rgba(34,197,94,0.35); cursor:pointer;">
                                     🚀 Bắt Đầu Sử Dụng Ngay ➔
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Điền & Tùy Chỉnh Thông Tin Ký Kết Hợp Đồng Bên A -->
+                <div id="modal-contract-party-a" onclick="if(event.target===this) window.closeContractPartyAModal()" style="display:none; position:fixed; inset:0; width:100vw; height:100vh; background:rgba(15,23,42,0.72); backdrop-filter:blur(6px); z-index:1000000; justify-content:center; align-items:center; padding:15px; box-sizing:border-box;">
+                    <div style="background:#ffffff; width:100%; max-width:560px; max-height:94vh; border-radius:20px; padding:24px 26px; box-shadow:0 25px 60px -15px rgba(0,0,0,0.4); display:flex; flex-direction:column; overflow-y:auto; border:1px solid #cbd5e1; position:relative; animation:modalPop 0.22s ease-out;">
+                        
+                        <!-- Header -->
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid #e2e8f0; padding-bottom:12px;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="font-size:22px;">📜</span>
+                                <div>
+                                    <h3 style="margin:0; font-size:16px; font-weight:800; color:#0f172a;">Thông Tin Ký Kết Hợp Đồng (Bên A)</h3>
+                                    <div style="font-size:11.5px; color:#64748b; margin-top:2px;">Nhập thông tin pháp lý đơn vị của Bác sĩ để in trực tiếp vào Hợp đồng & Giấy chứng nhận bản quyền</div>
+                                </div>
+                            </div>
+                            <button type="button" onclick="window.closeContractPartyAModal()" style="background:#f1f5f9; border:none; width:32px; height:32px; border-radius:50%; font-size:16px; cursor:pointer; color:#64748b; display:flex; align-items:center; justify-content:center;">✕</button>
+                        </div>
+
+                        <!-- Form fields -->
+                        <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:18px;">
+                            <div>
+                                <label style="display:block; font-size:12px; font-weight:700; color:#1e293b; margin-bottom:4px;">🏥 Tên Đơn Vị / Bệnh Viện / Phòng Khám (Bên A):</label>
+                                <input type="text" id="c-pa-unit-name" class="form-control" style="width:100%; padding:9px 12px; border-radius:8px; border:1.5px solid #cbd5e1; font-size:13px; font-weight:600; color:#1e3a8a; box-sizing:border-box;" placeholder="Ví dụ: Bệnh viện Đa khoa Quốc tế...">
+                            </div>
+
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                                <div>
+                                    <label style="display:block; font-size:12px; font-weight:700; color:#1e293b; margin-bottom:4px;">👤 Người Đại Diện Ký:</label>
+                                    <input type="text" id="c-pa-rep" class="form-control" style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; box-sizing:border-box;" placeholder="Ví dụ: TS. BS. Nguyễn Văn A">
+                                </div>
+                                <div>
+                                    <label style="display:block; font-size:12px; font-weight:700; color:#1e293b; margin-bottom:4px;">🏷️ Chức Vụ:</label>
+                                    <input type="text" id="c-pa-pos" class="form-control" style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; box-sizing:border-box;" placeholder="Ví dụ: Giám đốc / Đại diện PL">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style="display:block; font-size:12px; font-weight:700; color:#1e293b; margin-bottom:4px;">📍 Địa Chỉ Trụ Sở Đơn Vị:</label>
+                                <input type="text" id="c-pa-addr" class="form-control" style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; box-sizing:border-box;" placeholder="Số nhà, Đường, Phường/Xã, Quận/Huyện, Tỉnh/TP...">
+                            </div>
+
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                                <div>
+                                    <label style="display:block; font-size:12px; font-weight:700; color:#1e293b; margin-bottom:4px;">🏢 Mã Số Thuế (nếu có):</label>
+                                    <input type="text" id="c-pa-tax" class="form-control" style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; box-sizing:border-box;" placeholder="Ví dụ: 0101234567">
+                                </div>
+                                <div>
+                                    <label style="display:block; font-size:12px; font-weight:700; color:#1e293b; margin-bottom:4px;">📞 Điện Thoại Liên Hệ:</label>
+                                    <input type="text" id="c-pa-phone" class="form-control" style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; box-sizing:border-box;" placeholder="Ví dụ: 0912.345.678">
+                                </div>
+                            </div>
+
+                            <!-- Ghi chú về Bên B -->
+                            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px; font-size:11.5px; color:#475569; line-height:1.5;">
+                                <div style="font-weight:700; color:#15803d; margin-bottom:2px;">✨ Đơn vị cung cấp dịch vụ (Bên B):</div>
+                                <div>• Đại diện: <b>BS. ĐẶNG PHONG THÁI</b> (Tác giả hệ thống T.I.M.E.S)</div>
+                                <div>• Email: <b style="color:#1d4ed8;">dpthai.ttytmk@gmail.com</b> | Hotline/Zalo: <b>0392.283.473</b></div>
+                                <div>• Tài khoản MB Bank: <b>0392283473</b> - ĐẶNG PHONG THÁI</div>
+                            </div>
+                        </div>
+
+                        <!-- Action buttons -->
+                        <div style="display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap;">
+                            <button type="button" onclick="window.closeContractPartyAModal()" class="btn" style="padding:10px 18px; font-size:12.5px; background:#f1f5f9; color:#475569; border:none; border-radius:8px; cursor:pointer;">
+                                ✕ Hủy
+                            </button>
+                            <button type="button" onclick="window.submitAndDownloadContractPDF()" class="btn btn-primary" style="padding:10px 22px; font-size:13px; font-weight:700; background:linear-gradient(135deg, #1d4ed8, #2563eb); color:#fff; border:none; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 12px rgba(37,99,235,0.3);">
+                                <span>📥</span> Lưu Thông Tin & Tải File PDF Ngay
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -3827,7 +3898,7 @@
 
                     <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 4.0.6</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 10:20 11/09/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 10:25 11/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -4345,18 +4416,18 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.0.6-rev5"></script>
-    <script src="js/ai-scheduler.js?v=4.0.6-rev5"></script>
-    <script src="js/cp-solver.js?v=4.0.6-rev5"></script>
-    <script src="js/scheduler-engine.js?v=4.0.6-rev5"></script>
-    <script src="js/app.js?v=4.0.6-rev5"></script>
-    <script src="js/init.js?v=4.0.6-rev5"></script>
-    <script src="js/sync.js?v=4.0.6-rev5"></script>
-    <script src="js/thongke.js?v=4.0.6-rev5"></script>
+    <script src="js/offline-sync-engine.js?v=4.0.6-rev6"></script>
+    <script src="js/ai-scheduler.js?v=4.0.6-rev6"></script>
+    <script src="js/cp-solver.js?v=4.0.6-rev6"></script>
+    <script src="js/scheduler-engine.js?v=4.0.6-rev6"></script>
+    <script src="js/app.js?v=4.0.6-rev6"></script>
+    <script src="js/init.js?v=4.0.6-rev6"></script>
+    <script src="js/sync.js?v=4.0.6-rev6"></script>
+    <script src="js/thongke.js?v=4.0.6-rev6"></script>
 
     <!-- PWA Service Worker Registration + Instant Auto-Update Detection & Blocking Modal -->
     <script>
-    const APP_VERSION = '4.0.6-rev5';
+    const APP_VERSION = '4.0.6-rev6';
 
     (function registerAndAutoUpdate() {
         // 1. Kênh BroadcastChannel đồng bộ tức thì mọi tab đang mở trên cùng một máy
@@ -4778,12 +4849,12 @@
             <div style="background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 12px; padding: 12px 16px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-around; font-size: 13px;">
                 <div style="text-align: center;">
                     <div style="font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">Phiên bản cũ</div>
-                    <div id="force-update-old-ver" style="font-weight: 700; color: #64748b; font-family: monospace; font-size: 13.5px;">4.0.6-rev4</div>
+                    <div id="force-update-old-ver" style="font-weight: 700; color: #64748b; font-family: monospace; font-size: 13.5px;">4.0.6-rev5</div>
                 </div>
                 <div style="color: #3b82f6; font-size: 18px; font-weight: bold;">➜</div>
                 <div style="text-align: center;">
                     <div style="font-size: 11px; font-weight: 700; color: #16a34a; text-transform: uppercase; margin-bottom: 2px;">Phiên bản mới</div>
-                    <div id="force-update-new-ver" style="font-weight: 800; color: #15803d; font-family: monospace; font-size: 14.5px; background: #dcfce7; padding: 2px 10px; border-radius: 6px;">4.0.6-rev5</div>
+                    <div id="force-update-new-ver" style="font-weight: 800; color: #15803d; font-family: monospace; font-size: 14.5px; background: #dcfce7; padding: 2px 10px; border-radius: 6px;">4.0.6-rev6</div>
                 </div>
             </div>
 

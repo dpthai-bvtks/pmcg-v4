@@ -13971,7 +13971,7 @@ window.loadTenantsList = function () {
                         <td style="padding:12px 14px; text-align:center;">
                             <div style="display:flex; justify-content:center; gap:6px;">
                                 <button class="btn btn-sm btn-secondary" onclick="openEditTenantModal('${t.unit_code}', '${encodeURIComponent(t.unit_name)}', '${t.plan_tier}', '${t.expires_at}', ${t.max_staff}, ${t.max_patients}, '${t.phone || ''}')" title="Chỉnh sửa / Gia hạn">✏️ Sửa</button>
-                                <button class="btn btn-sm" style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; font-weight:700;" onclick="window.downloadLicenseContractPDF('${t.unit_code}', '${t.plan_tier}', '${encodeURIComponent(t.unit_name)}', '${t.expires_at || ''}')" title="Tải Hợp Đồng & Giấy Chứng Nhận Bản Quyền (PDF) cho đơn vị này">📜 HĐ</button>
+                                <button class="btn btn-sm" style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; font-weight:700;" onclick="window.openContractPartyAModal('${t.plan_tier}', '${t.unit_code}', '${encodeURIComponent(t.unit_name)}', '${t.expires_at || ''}')" title="Điền thông tin & Tải Hợp Đồng (PDF) cho đơn vị này">📜 HĐ</button>
                                 <button class="btn btn-sm btn-info" onclick="exportTenantDataPrompt('${t.unit_code}', '${encodeURIComponent(t.unit_name)}')" title="Xuất dữ liệu sao lưu (JSON) riêng cho đơn vị này">📥 Xuất</button>
                                 <button class="btn btn-sm btn-warning" onclick="resetTenantPasswordPrompt('${t.unit_code}')" title="Đặt lại mật khẩu Admin">🔑 Pass</button>
                                 <button class="btn btn-sm ${isActive ? 'btn-danger' : 'btn-success'}" onclick="toggleTenantStatus('${t.unit_code}', ${isActive ? 0 : 1})" title="${isActive ? 'Khóa đơn vị' : 'Mở khóa đơn vị'}">${isActive ? '🔒 Khóa' : '🔓 Mở'}</button>
@@ -14759,9 +14759,92 @@ window.copyPaymentText = function (text, label) {
 };
 
 // ============================================================
+// 📄 MODAL ĐIỀN THÔNG TIN BÊN A CHO HỢP ĐỒNG & GIẤY CHỨNG NHẬN
+// ============================================================
+window.openContractPartyAModal = function (optPlanCode, optUnitCode, optUnitName, optExpiresAt) {
+    const unitCode = String(optUnitCode || localStorage.getItem('pm_unit_code') || 'bvtks-cs2').trim().toLowerCase();
+    let sess = {};
+    try { sess = JSON.parse(localStorage.getItem('meds_session') || '{}'); } catch (e) {}
+
+    const unitName = optUnitName ? decodeURIComponent(optUnitName) : (sess.unit_name || localStorage.getItem('pm_unit_name') || `Bệnh viện / Phòng khám ${unitCode.toUpperCase()}`);
+    const planCode = String(optPlanCode || window._currentSelectedPlan || localStorage.getItem('pm_plan_tier') || sess.plan_tier || 'PLAN_1Y').toUpperCase();
+
+    window._contractTargetPlan = planCode;
+    window._contractTargetUnit = unitCode;
+    window._contractTargetUnitName = unitName;
+    window._contractTargetExpires = optExpiresAt || '';
+
+    // Đọc thông tin Bên A đã lưu trước đó nếu có
+    let saved = null;
+    try {
+        const raw = localStorage.getItem('pm_contract_party_a_' + unitCode);
+        if (raw) saved = JSON.parse(raw);
+    } catch (e) {}
+
+    const nameInp = document.getElementById('c-pa-unit-name');
+    const repInp = document.getElementById('c-pa-rep');
+    const posInp = document.getElementById('c-pa-pos');
+    const addrInp = document.getElementById('c-pa-addr');
+    const taxInp = document.getElementById('c-pa-tax');
+    const phoneInp = document.getElementById('c-pa-phone');
+
+    if (nameInp) nameInp.value = (saved && saved.unitName) ? saved.unitName : unitName;
+    if (repInp) repInp.value = (saved && saved.representative) ? saved.representative : '';
+    if (posInp) posInp.value = (saved && saved.position) ? saved.position : '';
+    if (addrInp) addrInp.value = (saved && saved.address) ? saved.address : '';
+    if (taxInp) taxInp.value = (saved && saved.taxCode) ? saved.taxCode : '';
+    if (phoneInp) phoneInp.value = (saved && saved.phone) ? saved.phone : (localStorage.getItem('pm_phone') || '');
+
+    const modal = document.getElementById('modal-contract-party-a');
+    if (modal) modal.style.display = 'flex';
+};
+
+window.closeContractPartyAModal = function () {
+    const modal = document.getElementById('modal-contract-party-a');
+    if (modal) modal.style.display = 'none';
+};
+
+window.submitAndDownloadContractPDF = function () {
+    const unitCode = window._contractTargetUnit || (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
+    const fallbackName = window._contractTargetUnitName || `Bệnh viện / Phòng khám ${unitCode.toUpperCase()}`;
+    const unitName = (document.getElementById('c-pa-unit-name')?.value || '').trim() || fallbackName;
+    const representative = (document.getElementById('c-pa-rep')?.value || '').trim();
+    const position = (document.getElementById('c-pa-pos')?.value || '').trim();
+    const address = (document.getElementById('c-pa-addr')?.value || '').trim();
+    const taxCode = (document.getElementById('c-pa-tax')?.value || '').trim();
+    const phone = (document.getElementById('c-pa-phone')?.value || '').trim();
+
+    const partyAInfo = {
+        unitName,
+        representative: representative || 'Ban Giám Đốc / Trưởng đơn vị',
+        position: position || 'Đại diện theo pháp luật',
+        address: address || 'Trụ sở đơn vị y tế',
+        taxCode,
+        phone
+    };
+
+    // Lưu vào localStorage
+    try {
+        localStorage.setItem('pm_contract_party_a_' + unitCode, JSON.stringify(partyAInfo));
+        localStorage.setItem('pm_unit_name', unitName);
+    } catch (e) {}
+
+    window.closeContractPartyAModal();
+
+    // Tải file PDF
+    window.downloadLicenseContractPDF(
+        unitCode,
+        window._contractTargetPlan,
+        encodeURIComponent(unitName),
+        window._contractTargetExpires,
+        partyAInfo
+    );
+};
+
+// ============================================================
 // 📄 XUẤT HỢP ĐỒNG & GIẤY CHỨNG NHẬN BẢN QUYỀN PDF (CHUẨN MẪU MEDS DOCX)
 // ============================================================
-window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitName, optExpiresAt) {
+window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitName, optExpiresAt, optPartyAInfo) {
     if (typeof pdfMake === 'undefined') {
         return alert("Thư viện pdfmake đang được khởi tạo, vui lòng bấm lại sau 1-2 giây!");
     }
@@ -14770,8 +14853,28 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
     let sess = {};
     try { sess = JSON.parse(localStorage.getItem('meds_session') || '{}'); } catch (e) {}
 
-    const unitName = optUnitName ? decodeURIComponent(optUnitName) : (sess.unit_name || localStorage.getItem('pm_unit_name') || `Bệnh viện / Phòng khám ${unitCode.toUpperCase()}`);
+    const rawUnitName = optUnitName ? decodeURIComponent(optUnitName) : (sess.unit_name || localStorage.getItem('pm_unit_name') || `Bệnh viện / Phòng khám ${unitCode.toUpperCase()}`);
     const planCode = String(optPlanCode || window._currentSelectedPlan || localStorage.getItem('pm_plan_tier') || sess.plan_tier || 'PLAN_1Y').toUpperCase();
+
+    // Lấy thông tin Bên A đã nhập hoặc lấy từ cache
+    let partyA = optPartyAInfo;
+    if (!partyA) {
+        try {
+            const raw = localStorage.getItem('pm_contract_party_a_' + unitCode);
+            if (raw) partyA = JSON.parse(raw);
+        } catch (e) {}
+    }
+    if (!partyA) {
+        partyA = {
+            unitName: rawUnitName,
+            representative: 'Ban Giám Đốc / Trưởng đơn vị',
+            position: 'Đại diện theo pháp luật',
+            address: 'Trụ sở đơn vị y tế',
+            taxCode: '',
+            phone: localStorage.getItem('pm_phone') || ''
+        };
+    }
+    const unitName = partyA.unitName || rawUnitName;
 
     const planCatalog = {
         'TRIAL_15D': { name: 'Gói Dùng Thử 15 Ngày', duration: '15 ngày', days: 15, price: '0 VNĐ', priceText: 'Không đồng (Trải nghiệm miễn phí)' },
@@ -14967,7 +15070,7 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                                                 { text: 'ĐẠI DIỆN ĐƠN VỊ THỤ HƯỞNG', fontSize: 9.5, bold: true, color: '#0f172a' },
                                                 { text: '(Ký, ghi rõ họ tên & đóng dấu)', fontSize: 8, italic: true, color: '#64748b' },
                                                 { text: '\n\n\n' },
-                                                { text: unitName, fontSize: 9.5, bold: true }
+                                                { text: partyA.representative || unitName, fontSize: 9.5, bold: true }
                                             ]
                                         },
                                         {
@@ -15042,9 +15145,11 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                                             { text: '1. BÊN A (Bên sử dụng dịch vụ):', bold: true, fontSize: 9, color: '#0f172a', margin: [0, 0, 0, 2] },
                                             { text: `• Tên đơn vị: ${unitName}`, fontSize: 8.5, bold: true },
                                             { text: `• Mã đơn vị (Slug): ${unitCode.toUpperCase()}`, fontSize: 8.5 },
-                                            { text: '• Đại diện: Ban Giám Đốc / Trưởng đơn vị', fontSize: 8.5 },
-                                            { text: '• Chức vụ: Đại diện theo pháp luật', fontSize: 8.5 },
-                                            { text: '• Địa chỉ: Trụ sở đơn vị y tế', fontSize: 8.5 }
+                                            { text: `• Đại diện: ${partyA.representative || 'Ban Giám Đốc / Trưởng đơn vị'}`, fontSize: 8.5 },
+                                            { text: `• Chức vụ: ${partyA.position || 'Đại diện theo pháp luật'}`, fontSize: 8.5 },
+                                            { text: `• Địa chỉ: ${partyA.address || 'Trụ sở đơn vị y tế'}`, fontSize: 8.5 },
+                                            ...(partyA.taxCode ? [{ text: `• Mã số thuế: ${partyA.taxCode}`, fontSize: 8.5 }] : []),
+                                            ...(partyA.phone ? [{ text: `• Điện thoại: ${partyA.phone}`, fontSize: 8.5 }] : [])
                                         ]
                                     },
                                     {
@@ -15055,7 +15160,7 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                                             { text: '• Đại diện: BS. ĐẶNG PHONG THÁI', fontSize: 8.5, bold: true },
                                             { text: '• Chức vụ: Tác giả & Kỹ sư phát triển', fontSize: 8.5 },
                                             { text: '• Điện thoại / Zalo: 0392.283.473', fontSize: 8.5 },
-                                            { text: '• Email: thaiminh83@gmail.com', fontSize: 8.5 },
+                                            { text: '• Email: dpthai.ttytmk@gmail.com', fontSize: 8.5 },
                                             { text: '• STK MB Bank: 0392283473 (Ngân hàng TMCP Quân Đội)', fontSize: 8.5, bold: true }
                                         ]
                                     }
@@ -15104,7 +15209,7 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                                     { text: 'ĐẠI DIỆN BÊN A', fontSize: 9.5, bold: true },
                                     { text: '(Ký, đóng dấu và ghi rõ họ tên)', fontSize: 8, italic: true, color: '#64748b' },
                                     { text: '\n\n\n' },
-                                    { text: unitName, fontSize: 9.5, bold: true }
+                                    { text: (partyA.representative && partyA.representative !== 'Ban Giám Đốc / Trưởng đơn vị') ? `${partyA.representative}\n(${unitName})` : unitName, fontSize: 9.5, bold: true }
                                 ]
                             },
                             {
@@ -15233,7 +15338,7 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                                     { text: 'XÁC NHẬN BÊN A', fontSize: 9, bold: true },
                                     { text: '(Ký, đóng dấu)', fontSize: 7.5, italic: true, color: '#64748b' },
                                     { text: '\n\n' },
-                                    { text: unitName, fontSize: 9, bold: true }
+                                    { text: (partyA.representative && partyA.representative !== 'Ban Giám Đốc / Trưởng đơn vị') ? `${partyA.representative}\n(${unitName})` : unitName, fontSize: 9, bold: true }
                                 ]
                             },
                             {

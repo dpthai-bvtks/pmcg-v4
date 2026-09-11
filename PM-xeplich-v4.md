@@ -3056,3 +3056,38 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `version.json`
   + `PM-xeplich-v4.md`
 
+### 📜 Modal Tùy Chỉnh Thông Tin Bên A & Cập Nhật Email Bên B Cho Hợp Đồng PDF (11/09/2026 - v4.0.6-rev6)
+- **Yêu cầu của người dùng**:
+  + *"Bên A có thể chỉnh sửa không (ví dụ khi chọn gói cước thì thêm modal popup để điền thông tin), Bên B thì email: dpthai.ttytmk@gmail.com"* kèm hình ảnh trích đoạn Điều 1 của hợp đồng.
+- **Phân tích & Giải pháp triển khai**:
+  1. **Modal Popup Tùy Chỉnh Thông Tin Pháp Lý Bên A (`#modal-contract-party-a`)**:
+     - Bổ sung giao diện Modal trực quan, chuyên nghiệp cho phép khách hàng/bệnh viện chỉnh sửa chi tiết các thông tin pháp lý của Bên A trước khi xuất PDF:
+       + Tên Đơn Vị / Bệnh Viện / Phòng Khám (Bên A) (`#c-pa-unit-name`).
+       + Người Đại Diện Ký (`#c-pa-rep` - ví dụ: TS. BS. Nguyễn Văn A).
+       + Chức Vụ (`#c-pa-pos` - ví dụ: Giám đốc / Đại diện pháp luật).
+       + Địa Chỉ Trụ Sở Đơn Vị (`#c-pa-addr`).
+       + Mã Số Thuế (`#c-pa-tax` - nếu có).
+       + Điện Thoại Liên Hệ (`#c-pa-phone`).
+     - Tự động lưu thông tin Bên A vào `localStorage` (`pm_contract_party_a_${unitCode}`) để người dùng chỉ cần nhập một lần duy nhất, các lần tải hợp đồng hay gia hạn sau này tự động điền sẵn.
+  2. **Cập Nhật Thông Tin Bên B (Đơn Vị Cung Cấp Dịch Vụ)**:
+     - Đổi địa chỉ email của Bên B từ `thaiminh83@gmail.com` thành email chính thức: **`dpthai.ttytmk@gmail.com`**.
+     - Xuất hiện đồng bộ trên Modal nhập liệu Bên A và tại Điều 1 (Bên B) trong Hợp Đồng Dịch Vụ PDF.
+  3. **Đồng Bộ Dữ Liệu Vào Văn Bản PDF 4 Trang**:
+     - Trang 1 (Chứng nhận bản quyền): In tên Đơn vị thụ hưởng và Tên người đại diện ký xác nhận Bên A.
+     - Trang 2 (Điều 1 Hợp đồng): Liệt kê chi tiết và đầy đủ 7 trường thông tin pháp lý của Bên A (Tên, Mã định danh, Đại diện, Chức vụ, Địa chỉ, MST, SĐT) song song cùng Bên B.
+     - Trang 2 (Điều 11 Ký hợp đồng) & Trang 4 (Xác nhận Phụ lục I & II): In rõ Tên người đại diện kèm Tên đơn vị Bên A (`TS. BS. Nguyễn Văn A \n (Bệnh viện ...)`).
+  4. **Tích Hợp Vào Toàn Bộ Luồng Trải Nghiệm**:
+     - Nút "📥 Hợp Đồng & Chứng Nhận (PDF)" trong Modal Gia Hạn VietQR (`#modal-renew-info`).
+     - Nút "📥 Tải Hợp Đồng & Chứng Nhận (PDF)" tại Màn hình Thanh toán thành công (`#renew-success-view`).
+     - Nút "📜 HĐ" trong Bảng Quản trị đơn vị của Super Admin (`loadTenantsList`).
+  5. **Tuân thủ RULES.md**:
+     - Kiểm tra cú pháp JavaScript (`node -c`).
+     - Tăng revision lên `v4.0.6-rev6`, cập nhật `version.json`, `index.html` (cache buster `?v=4.0.6-rev6`, footer timestamp `10:25 11/09/2026`, `APP_VERSION = '4.0.6-rev6'`), `sw.js` (`CACHE_NAME = 'pmcg-v4-cache-4.0.6-rev6'`).
+     - Deploy lên Cloudflare Pages và commit/push GitHub.
+- **File sửa đổi**:
+  + `index.html`
+  + `js/app.js`
+  + `sw.js`
+  + `version.json`
+  + `PM-xeplich-v4.md`
+

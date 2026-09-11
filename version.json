@@ -1,6 +1,6 @@
 {
-  "version": "4.0.6-rev5",
+  "version": "4.0.6-rev6",
   "releaseDate": "11/09/2026",
-  "releaseTime": "10:20 11/09/2026",
-  "notes": "Bỏ dòng Gói Doanh Nghiệp (Vĩnh Viễn) khỏi Phụ Lục I (Bảng giá dịch vụ phần mềm) theo yêu cầu: Bảng giá dịch vụ thương mại chuẩn hóa 5 gói cước (Dùng thử 15 ngày, 1 tháng, 3 tháng, 6 tháng, 1 năm); bản quyền Vĩnh viễn trọn đời là đặc quyền riêng của đơn vị Bệnh viện Than - Khoáng sản Cơ sở 2 (bvtks-cs2)."
+  "releaseTime": "10:25 11/09/2026",
+  "notes": "Tùy chỉnh thông tin Bên A ký kết hợp đồng qua Modal Popup trực quan; cập nhật email Bên B thành dpthai.ttytmk@gmail.com; chuẩn hóa chữ ký đại diện kèm tên đơn vị trên Hợp đồng và Phụ lục PDF."
 }
