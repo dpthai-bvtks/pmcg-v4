@@ -190,7 +190,7 @@ window.pingServerConnection = function () {
         if (btn) { btn.disabled = false; btn.innerHTML = '<span>🔄</span> Kiểm Tra Tốc Độ Phản Hồi (Ping API)'; }
         if (resultArea) {
             resultArea.style.cssText = 'display:block; padding:10px 14px; border-radius:8px; font-size:12px; font-weight:600; line-height:1.8; background:#f0fdf4; border:1px solid #bbf7d0; color:#166534;';
-            resultArea.innerHTML = `⚡ <strong>Phản hồi: ${pingTime} ms</strong><br>🟢 Trạng thái: Hoạt động hoàn hảo<br>🗄️ CSDL: Turso libSQL Cloud<br>🏥 Mã đơn vị: ${unitCode}`;
+            resultArea.innerHTML = `⚡ <strong>Phản hồi: ${pingTime} ms</strong><br>🟢 Trạng thái: Hoạt động hoàn hảo<br>🗄️ CSDL: Mini PC+Turso<br>🏥 Mã đơn vị: ${unitCode}`;
         }
     }, err => {
         if (btn) { btn.disabled = false; btn.innerHTML = '<span>🔄</span> Kiểm Tra Tốc Độ Phản Hồi (Ping API)'; }

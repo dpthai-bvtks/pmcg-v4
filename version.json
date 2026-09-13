@@ -1,6 +1,6 @@
 {
-  "version": "4.0.6-rev17",
-  "releaseDate": "11/09/2026",
-  "releaseTime": "16:05 11/09/2026",
-  "notes": "Đồng bộ toàn bộ nhân sự từ tab-staff sang danh sách chọn nhân sự đi làm Thứ 7, không loại trừ nhân sự nghỉ ngày Thứ 6."
+  "version": "4.0.7-rev1",
+  "releaseDate": "13/09/2026",
+  "releaseTime": "09:00 13/09/2026",
+  "notes": "Cập nhật hiển thị CSDL: Mini PC+Turso và hoàn tất chuyển đổi cơ sở dữ liệu On-Premise."
 }
