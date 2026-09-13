@@ -38,7 +38,26 @@ function createTursoAdapter(env) {
     }
   }
 
+  function isWriteOperation(reqs) {
+    return reqs.some(r => {
+      if (r.type !== 'execute') return false;
+      const sql = (r.stmt?.sql || '').trim().toUpperCase();
+      return (
+        sql.startsWith('INSERT') ||
+        sql.startsWith('UPDATE') ||
+        sql.startsWith('DELETE') ||
+        sql.startsWith('REPLACE') ||
+        sql.startsWith('CREATE') ||
+        sql.startsWith('DROP') ||
+        sql.startsWith('ALTER')
+      );
+    });
+  }
+
   async function runPipeline(requests) {
+    const isWrite = isWriteOperation(requests);
+    const writeCopy = isWrite ? JSON.parse(JSON.stringify(requests)) : null;
+
     requests.push({ type: 'close' });
     let res;
     let usedFallback = false;
@@ -69,6 +88,22 @@ function createTursoAdapter(env) {
     // Kiểm tra lỗi trong từng result
     const errResult = json.results?.find(r => r.type === 'error');
     if (errResult) throw new Error(`Turso SQL error: ${JSON.stringify(errResult.error)}`);
+
+    // Dual-Write: Nếu ghi thành công trên Mini PC, nhân bản ngầm ngay lập tức sang Turso Cloud
+    if (!usedFallback && FALLBACK_URL && isWrite && writeCopy) {
+      writeCopy.push({ type: 'close' });
+      fetchWithTimeout(FALLBACK_URL, FALLBACK_TOKEN, writeCopy, 8000)
+        .then(async fbRes => {
+          if (!fbRes.ok) {
+            const fbErr = await fbRes.text().catch(() => '');
+            console.warn(`[DUAL-WRITE WARNING] Turso Cloud HTTP ${fbRes.status}: ${fbErr.substring(0, 150)}`);
+          }
+        })
+        .catch(fbErr => {
+          console.warn(`[DUAL-WRITE ERROR] Could not replicate to Turso Cloud: ${fbErr.message}`);
+        });
+    }
+
     return json.results || [];
   }
 
