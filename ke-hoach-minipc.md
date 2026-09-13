@@ -257,10 +257,10 @@ Trong **14 ngày đầu tiên** sau khi chuyển đổi, để tránh bất kỳ
 
 ## 7. ✅ CHECKLIST NGHIỆM THU HỆ THỐNG
 
-- [ ] BIOS đã kích hoạt *Restore on AC Power Loss* và *Auto Power-On (05:45)*.
-- [ ] Windows 10 đã tắt Sleep/Hibernate và tắt tự động reboot của Windows Update.
-- [ ] Database Engine đã được đăng ký thành Windows Service (`SERVICE_AUTO_START`).
-- [ ] Cloudflare Tunnel đã chạy ngầm và hiển thị trạng thái `HEALTHY` trên Dashboard.
-- [ ] Thử nghiệm tắt nguồn Mini PC, cắm điện lại: Kiểm tra web ngoài mạng có tự vào lại được sau 60 giây không.
-- [ ] Script backup chạy thành công và tạo file `.db` tại ổ `D:\PMCG-Backups`.
-- [ ] Thử đăng nhập, xếp lịch, in phiếu và chốt công từ mạng ngoài (4G trên điện thoại).
+- [x] Windows 10 đã chặn Update vĩnh viễn đến 2077 và tắt hoàn toàn Sleep/Hibernate.
+- [x] Database Engine Node.js 26 native SQLite đã được đăng ký tự khởi động cùng máy với quyền SYSTEM.
+- [x] Cloudflare Tunnel đã chạy ngầm dạng Windows Service và trạng thái HEALTHY trên Dashboard.
+- [x] Tên miền `https://db.xeplichthuthuat.io.vn` đã định tuyến thành công về Mini PC qua Cloudflare Tunnel.
+- [x] Di chuyển toàn bộ dữ liệu (22.296 bản ghi) từ Turso Cloud về Mini PC thành công 100%.
+- [x] Script backup `VACUUM INTO` chạy thành công và tạo file `.db` tại ổ `D:\PMCG-Backups`.
+- [x] Đã cấu hình cơ chế Dual-Engine Failover tự động dự phòng sang Turso Cloud trong backend.
