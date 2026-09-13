@@ -7,26 +7,63 @@ import { Hono } from './hono.js';
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function createTursoAdapter(env) {
-  const TURSO_URL   = env.TURSO_URL;
-  const TURSO_TOKEN = env.TURSO_TOKEN;
-  if (!TURSO_URL || !TURSO_TOKEN) throw new Error("Thiếu TURSO_URL hoặc TURSO_TOKEN trong env");
+  const PRIMARY_URL    = env.TURSO_URL;
+  const PRIMARY_TOKEN  = env.TURSO_TOKEN;
+  const FALLBACK_URL   = env.TURSO_FALLBACK_URL;
+  const FALLBACK_TOKEN = env.TURSO_FALLBACK_TOKEN || env.TURSO_TOKEN;
 
-  const httpUrl    = TURSO_URL.replace('libsql://', 'https://');
-  const pipelineUrl = `${httpUrl}/v2/pipeline`;
+  if (!PRIMARY_URL || !PRIMARY_TOKEN) throw new Error("Thiếu TURSO_URL hoặc TURSO_TOKEN trong env");
+
+  async function fetchWithTimeout(url, token, requests, timeoutMs = 3500) {
+    const httpUrl     = url.replace('libsql://', 'https://');
+    const pipelineUrl = `${httpUrl}/v2/pipeline`;
+    const controller  = new AbortController();
+    const timer       = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const res = await fetch(pipelineUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ requests }),
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      return res;
+    } catch (err) {
+      clearTimeout(timer);
+      throw err;
+    }
+  }
 
   async function runPipeline(requests) {
     requests.push({ type: 'close' });
-    const res = await fetch(pipelineUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${TURSO_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ requests })
-    });
+    let res;
+    let usedFallback = false;
+
+    try {
+      res = await fetchWithTimeout(PRIMARY_URL, PRIMARY_TOKEN, requests, 3500);
+      // Nếu Mini PC trả về lỗi 502/503/504 (Cloudflare Tunnel Bad Gateway do tắt máy) và có cấu hình Fallback
+      if (!res.ok && res.status >= 502 && FALLBACK_URL) {
+        console.warn(`[TURSO-FAILOVER] Primary returned HTTP ${res.status}. Falling back to Turso Cloud...`);
+        usedFallback = true;
+        res = await fetchWithTimeout(FALLBACK_URL, FALLBACK_TOKEN, requests, 8000);
+      }
+    } catch (err) {
+      if (FALLBACK_URL) {
+        console.warn(`[TURSO-FAILOVER] Primary failed (${err.message}). Falling back to Turso Cloud...`);
+        usedFallback = true;
+        res = await fetchWithTimeout(FALLBACK_URL, FALLBACK_TOKEN, requests, 8000);
+      } else {
+        throw err;
+      }
+    }
+
     if (!res.ok) {
       const txt = await res.text();
-      throw new Error(`Turso HTTP ${res.status}: ${txt.substring(0, 300)}`);
+      throw new Error(`Turso HTTP ${res.status}${usedFallback ? ' (FALLBACK)' : ''}: ${txt.substring(0, 300)}`);
     }
     const json = await res.json();
     // Kiểm tra lỗi trong từng result
