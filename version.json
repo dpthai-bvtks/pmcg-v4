@@ -1,6 +1,6 @@
 {
-  "version": "4.0.7-rev1",
+  "version": "4.0.7-rev2",
   "releaseDate": "13/09/2026",
-  "releaseTime": "09:00 13/09/2026",
-  "notes": "Cập nhật hiển thị CSDL: Mini PC+Turso và hoàn tất chuyển đổi cơ sở dữ liệu On-Premise."
+  "releaseTime": "09:05 13/09/2026",
+  "notes": "Sửa triệt để lỗi hiển thị lặp 2 lần modal cập nhật khi tải lại trang."
 }
