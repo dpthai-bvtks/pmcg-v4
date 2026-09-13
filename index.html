@@ -4437,7 +4437,10 @@
                 versionChannel = new BroadcastChannel('pmcg_app_version_channel');
                 versionChannel.onmessage = function(event) {
                     if (event.data && event.data.type === 'FORCE_UPDATE_REQUIRED') {
-                        showForceUpdateModal(event.data.newVersion);
+                        const targetVer = String(event.data.newVersion || '').trim();
+                        if (targetVer && targetVer !== APP_VERSION.trim()) {
+                            showForceUpdateModal(targetVer);
+                        }
                     }
                 };
             }
@@ -4448,6 +4451,8 @@
         // 2. Hàm hiển thị Modal Popup Khóa Toàn Bộ Màn Hình (Chặn sử dụng)
         window.showForceUpdateModal = function(newVersion) {
             if (isUpdateModalShown) return;
+            // Bảo vệ kép: Nếu số phiên bản truyền vào trùng với phiên bản hiện hành thì không bao giờ hiển thị
+            if (newVersion && String(newVersion).trim() === APP_VERSION.trim()) return;
             isUpdateModalShown = true;
 
             const modal = document.getElementById('modal-force-update');

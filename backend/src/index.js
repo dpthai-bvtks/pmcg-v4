@@ -6,7 +6,7 @@ import { Hono } from './hono.js';
 // Không cần sửa bất kỳ câu SQL nào bên dưới!
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function createTursoAdapter(env) {
+function createTursoAdapter(env, ctx) {
   const PRIMARY_URL    = env.TURSO_URL;
   const PRIMARY_TOKEN  = env.TURSO_TOKEN;
   const FALLBACK_URL   = env.TURSO_FALLBACK_URL;
@@ -41,7 +41,8 @@ function createTursoAdapter(env) {
   function isWriteOperation(reqs) {
     return reqs.some(r => {
       if (r.type !== 'execute') return false;
-      const sql = (r.stmt?.sql || '').trim().toUpperCase();
+      const rawSql = (r.stmt?.sql || '').trim();
+      const sql = rawSql.replace(/\/\*[\s\S]*?\*\//g, '').trim().toUpperCase();
       return (
         sql.startsWith('INSERT') ||
         sql.startsWith('UPDATE') ||
@@ -64,8 +65,8 @@ function createTursoAdapter(env) {
 
     try {
       res = await fetchWithTimeout(PRIMARY_URL, PRIMARY_TOKEN, requests, 3500);
-      // Nếu Mini PC trả về lỗi 502/503/504 (Cloudflare Tunnel Bad Gateway do tắt máy) và có cấu hình Fallback
-      if (!res.ok && res.status >= 502 && FALLBACK_URL) {
+      // Nếu Mini PC trả về lỗi 5xx (500, 502, 503, 504, 521, 522... do tắt máy hoặc lỗi origin) và có Fallback
+      if (!res.ok && res.status >= 500 && FALLBACK_URL) {
         console.warn(`[TURSO-FAILOVER] Primary returned HTTP ${res.status}. Falling back to Turso Cloud...`);
         usedFallback = true;
         res = await fetchWithTimeout(FALLBACK_URL, FALLBACK_TOKEN, requests, 8000);
@@ -89,10 +90,10 @@ function createTursoAdapter(env) {
     const errResult = json.results?.find(r => r.type === 'error');
     if (errResult) throw new Error(`Turso SQL error: ${JSON.stringify(errResult.error)}`);
 
-    // Dual-Write: Nếu ghi thành công trên Mini PC, nhân bản ngầm ngay lập tức sang Turso Cloud
+    // Dual-Write: Nếu ghi thành công trên Mini PC, nhân bản ngầm an toàn sang Turso Cloud
     if (!usedFallback && FALLBACK_URL && isWrite && writeCopy) {
       writeCopy.push({ type: 'close' });
-      fetchWithTimeout(FALLBACK_URL, FALLBACK_TOKEN, writeCopy, 8000)
+      const replicatePromise = fetchWithTimeout(FALLBACK_URL, FALLBACK_TOKEN, writeCopy, 8000)
         .then(async fbRes => {
           if (!fbRes.ok) {
             const fbErr = await fbRes.text().catch(() => '');
@@ -102,6 +103,10 @@ function createTursoAdapter(env) {
         .catch(fbErr => {
           console.warn(`[DUAL-WRITE ERROR] Could not replicate to Turso Cloud: ${fbErr.message}`);
         });
+
+      if (ctx && typeof ctx.waitUntil === 'function') {
+        ctx.waitUntil(replicatePromise);
+      }
     }
 
     return json.results || [];
@@ -205,10 +210,10 @@ function createTursoAdapter(env) {
     }
   };
 }
-function getDatabase(env) {
+function getDatabase(env, ctx) {
   if (!env) return null;
   if (env.TURSO_URL && env.TURSO_TOKEN) {
-    return createTursoAdapter(env);
+    return createTursoAdapter(env, ctx);
   }
   return env.DB || null;
 }
@@ -453,7 +458,7 @@ async function processApiRequest(c) {
 
   const env = c.env;
   const ctx = c.executionCtx;
-  const db = getDatabase(env);
+  const db = getDatabase(env, ctx);
   if (!db) {
     return error("Database chưa được cấu hình (cần TURSO_URL hoặc D1 binding DB)!", 500, origin);
   }
@@ -1432,7 +1437,7 @@ export default {
   async scheduled(event, env, ctx) {
     console.log("[Worker CRON]: Scheduled event triggered on Cloudflare Edge...");
     try {
-      const db = getDatabase(env);
+      const db = getDatabase(env, ctx);
       if (!db) return;
       await ensureSchema(db);
 
@@ -1568,7 +1573,7 @@ function dispatchBackgroundSync(action, args, env, ctx) {
 
 async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtks-cs2", tokenPayload = null, requestOrigin = "") {
   if (unitCode === "bvtks_cs2") unitCode = "bvtks-cs2";
-  const db = getDatabase(env);
+  const db = getDatabase(env, ctx);
   if (!db) {
     return error("Database chưa được cấu hình (cần TURSO_URL hoặc D1 binding DB).", 500);
   }
