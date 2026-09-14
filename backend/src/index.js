@@ -1422,10 +1422,18 @@ async function setCaiDat(db, unitCode, key, value) {
   }
 }
 
+function makeBumpDataVersionStmt(db, unitCode = "bvtks-cs2") {
+  const v = String(Date.now());
+  return db.prepare(`
+    INSERT INTO cai_dat (unit_code, key, value, updated_at) 
+    VALUES (?, 'data_version', ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(unit_code, key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+  `).bind(unitCode, v);
+}
+
 async function bumpDataVersion(db, unitCode = "bvtks-cs2") {
   try {
-    const v = String(Date.now());
-    await setCaiDat(db, unitCode, 'data_version', v);
+    await makeBumpDataVersionStmt(db, unitCode).run();
   } catch(e) {}
 }
 
@@ -2895,8 +2903,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       } else {
         stmts.push(db.prepare("INSERT INTO may_moc (unit_code, ten_loai, ma_may, trang_thai, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, ma_may) DO UPDATE SET ten_loai = excluded.ten_loai, trang_thai = excluded.trang_thai, updated_at = CURRENT_TIMESTAMP").bind(unitCode, tenLoai, maMayPrefix, trangThai));
       }
+      stmts.push(makeBumpDataVersionStmt(db, unitCode));
       await db.batch(stmts);
-      await bumpDataVersion(db, unitCode);
       return success({ message: "Thêm thiết bị thành công" });
     }
 
@@ -2913,8 +2921,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const tenLoai = String(payload.tenLoai || payload.ten_loai || "");
       const maMay = String(payload.maMay || payload.ma_may || "");
       const trangThai = String(payload.trangThai || payload.trang_thai || "Sẵn sàng");
-      await db.prepare("INSERT INTO may_moc (unit_code, ten_loai, ma_may, trang_thai, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, ma_may) DO UPDATE SET ten_loai = excluded.ten_loai, trang_thai = excluded.trang_thai, updated_at = CURRENT_TIMESTAMP").bind(unitCode, tenLoai, maMay, trangThai).run();
-      await bumpDataVersion(db, unitCode);
+      const stmt = db.prepare("INSERT INTO may_moc (unit_code, ten_loai, ma_may, trang_thai, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, ma_may) DO UPDATE SET ten_loai = excluded.ten_loai, trang_thai = excluded.trang_thai, updated_at = CURRENT_TIMESTAMP").bind(unitCode, tenLoai, maMay, trangThai);
+      await db.batch([stmt, makeBumpDataVersionStmt(db, unitCode)]);
       return success({ message: "Cập nhật thiết bị thành công" });
     }
 
@@ -2923,8 +2931,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       if (typeof args[0] === "object" && args[0] !== null) payload = args[0];
       let offset = (typeof args[0] === "number" || (typeof args[0] === "string" && /^\d+$/.test(args[0]))) ? 1 : 0;
       const maMay = String(payload.maMay || payload.ma_may || args[offset] || args[0] || "").trim();
-      await db.prepare("DELETE FROM may_moc WHERE unit_code = ? AND (ma_may = ? OR id = ?)").bind(unitCode, maMay, maMay).run();
-      await bumpDataVersion(db, unitCode);
+      const stmt = db.prepare("DELETE FROM may_moc WHERE unit_code = ? AND (ma_may = ? OR id = ?)").bind(unitCode, maMay, maMay);
+      await db.batch([stmt, makeBumpDataVersionStmt(db, unitCode)]);
       return success({ message: "Xóa máy thành công" });
     }
 
@@ -2994,11 +3002,11 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const dsPhu = String(payload.dsNguoiPhu || payload.ds_nguoi_phu || "");
       const isLt = (payload.lienTuc === 'Có' || payload.lienTuc === 1 || payload.lienTuc === '1' || payload.lienTuc === true || payload.lien_tuc === 1 || payload.lien_tuc === '1' || payload.lien_tuc === 'Có' || payload.lien_tuc === true) ? 1 : ((tgThMin === tgTtMin && tgThMax === tgTtMax && tgThMin >= 10) ? 1 : 0);
 
-      await db.prepare(`INSERT INTO thu_thuat (unit_code, ten_thu_thuat, viet_tat, he, phan_loai, may, tg_thuc_hien, tg_thuc_hien_max, tg_thu_thuat, tg_thu_thuat_max, khoang_cach, can_rut_may, can_nguoi_phu, ds_nguoi_phu, lien_tuc, updated_at)
+      const stmt = db.prepare(`INSERT INTO thu_thuat (unit_code, ten_thu_thuat, viet_tat, he, phan_loai, may, tg_thuc_hien, tg_thuc_hien_max, tg_thu_thuat, tg_thu_thuat_max, khoang_cach, can_rut_may, can_nguoi_phu, ds_nguoi_phu, lien_tuc, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         ON CONFLICT(unit_code, ten_thu_thuat) DO UPDATE SET viet_tat = excluded.viet_tat, he = excluded.he, phan_loai = excluded.phan_loai, may = excluded.may, tg_thuc_hien = excluded.tg_thuc_hien, tg_thuc_hien_max = excluded.tg_thuc_hien_max, tg_thu_thuat = excluded.tg_thu_thuat, tg_thu_thuat_max = excluded.tg_thu_thuat_max, khoang_cach = excluded.khoang_cach, can_rut_may = excluded.can_rut_may, can_nguoi_phu = excluded.can_nguoi_phu, ds_nguoi_phu = excluded.ds_nguoi_phu, lien_tuc = excluded.lien_tuc, updated_at = CURRENT_TIMESTAMP`)
-        .bind(unitCode, ten, vietTat, he, phanLoai, may, tgThMin, tgThMax, tgTtMin, tgTtMax, kc, rut, phu, dsPhu, isLt).run();
-      await bumpDataVersion(db, unitCode);
+        .bind(unitCode, ten, vietTat, he, phanLoai, may, tgThMin, tgThMax, tgTtMin, tgTtMax, kc, rut, phu, dsPhu, isLt);
+      await db.batch([stmt, makeBumpDataVersionStmt(db, unitCode)]);
       return success({ message: "Lưu thủ thuật thành công" });
     }
 
@@ -3007,8 +3015,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       if (typeof args[0] === "object" && args[0] !== null) payload = args[0];
       let offset = (typeof args[0] === "number" || (typeof args[0] === "string" && /^\d+$/.test(args[0]))) ? 1 : 0;
       const ten = String(payload.ten || payload.name || args[offset] || args[0] || "").trim();
-      await db.prepare("DELETE FROM thu_thuat WHERE unit_code = ? AND (ten_thu_thuat = ? OR id = ?)").bind(unitCode, ten, ten).run();
-      await bumpDataVersion(db, unitCode);
+      const stmt = db.prepare("DELETE FROM thu_thuat WHERE unit_code = ? AND (ten_thu_thuat = ? OR id = ?)").bind(unitCode, ten, ten);
+      await db.batch([stmt, makeBumpDataVersionStmt(db, unitCode)]);
       return success({ message: "Xóa thủ thuật thành công" });
     }
 
@@ -3053,11 +3061,11 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const soGiuong = parseInt(payload.soGiuong || payload.so_giuong) || 0;
       const danhSachGiuong = String(payload.danhSachGiuong || payload.danh_sach_giuong || "");
 
-      await db.prepare(`INSERT INTO phong (unit_code, ten_phong, bac_si, ktv, danh_sach_may, so_giuong, danh_sach_giuong, updated_at)
+      const stmt = db.prepare(`INSERT INTO phong (unit_code, ten_phong, bac_si, ktv, danh_sach_may, so_giuong, danh_sach_giuong, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         ON CONFLICT(unit_code, ten_phong) DO UPDATE SET bac_si = excluded.bac_si, ktv = excluded.ktv, danh_sach_may = excluded.danh_sach_may, so_giuong = excluded.so_giuong, danh_sach_giuong = excluded.danh_sach_giuong, updated_at = CURRENT_TIMESTAMP`)
-        .bind(unitCode, tenPhong, bacSi, ktv, danhSachMay, soGiuong, danhSachGiuong).run();
-      await bumpDataVersion(db, unitCode);
+        .bind(unitCode, tenPhong, bacSi, ktv, danhSachMay, soGiuong, danhSachGiuong);
+      await db.batch([stmt, makeBumpDataVersionStmt(db, unitCode)]);
       return success({ message: "Lưu phòng thành công" });
     }
 
@@ -3066,8 +3074,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       if (typeof args[0] === "object" && args[0] !== null) payload = args[0];
       let offset = (typeof args[0] === "number" || (typeof args[0] === "string" && /^\d+$/.test(args[0]))) ? 1 : 0;
       const ten = String(payload.tenPhong || payload.ten || args[offset] || args[0] || "").trim();
-      await db.prepare("DELETE FROM phong WHERE unit_code = ? AND (ten_phong = ? OR id = ?)").bind(unitCode, ten, ten).run();
-      await bumpDataVersion(db, unitCode);
+      const stmt = db.prepare("DELETE FROM phong WHERE unit_code = ? AND (ten_phong = ? OR id = ?)").bind(unitCode, ten, ten);
+      await db.batch([stmt, makeBumpDataVersionStmt(db, unitCode)]);
       return success({ message: "Xóa phòng thành công" });
     }
 
@@ -3129,10 +3137,10 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const sSkills = JSON.stringify(skillsArr);
       const sTempBusy = JSON.stringify(tempBusyArr);
 
-      await db.prepare(
+      const stmtAdd = db.prepare(
         "INSERT INTO nhan_su (unit_code, name, role, system, skills, temp_busy, his_name, trang_thai, thoi_gian_lam, nguoi_thay_the, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, name) DO UPDATE SET role = excluded.role, system = excluded.system, skills = excluded.skills, temp_busy = excluded.temp_busy, his_name = excluded.his_name, trang_thai = excluded.trang_thai, thoi_gian_lam = excluded.thoi_gian_lam, nguoi_thay_the = excluded.nguoi_thay_the, updated_at = CURRENT_TIMESTAMP"
-      ).bind(unitCode, sName, sRole, sSystem, sSkills, sTempBusy, String(s.tenHis || ""), sTrangThai, sThoiGianLam, sNguoiThayThe).run();
-      await bumpDataVersion(db, unitCode);
+      ).bind(unitCode, sName, sRole, sSystem, sSkills, sTempBusy, String(s.tenHis || ""), sTrangThai, sThoiGianLam, sNguoiThayThe);
+      await db.batch([stmtAdd, makeBumpDataVersionStmt(db, unitCode)]);
       return success(true);
     }
 
@@ -3178,25 +3186,25 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const sSkills = JSON.stringify(skillsArr);
       const sTempBusy = JSON.stringify(tempBusyArr);
 
-      await db.prepare(
+      const stmtEdit = db.prepare(
         "INSERT INTO nhan_su (unit_code, name, role, system, skills, temp_busy, his_name, trang_thai, thoi_gian_lam, nguoi_thay_the, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, name) DO UPDATE SET role = excluded.role, system = excluded.system, skills = excluded.skills, temp_busy = excluded.temp_busy, his_name = excluded.his_name, trang_thai = excluded.trang_thai, thoi_gian_lam = excluded.thoi_gian_lam, nguoi_thay_the = excluded.nguoi_thay_the, updated_at = CURRENT_TIMESTAMP"
-      ).bind(unitCode, sName, sRole, sSystem, sSkills, sTempBusy, String(s.tenHis || ""), sTrangThai, sThoiGianLam, sNguoiThayThe).run();
-      await bumpDataVersion(db, unitCode);
+      ).bind(unitCode, sName, sRole, sSystem, sSkills, sTempBusy, String(s.tenHis || ""), sTrangThai, sThoiGianLam, sNguoiThayThe);
+      await db.batch([stmtEdit, makeBumpDataVersionStmt(db, unitCode)]);
       return success(true);
     }
 
     case "deleteNhanSu": {
       const name = typeof args[1] === "string" ? args[1] : (typeof args[0] === "string" ? args[0] : null);
       if (name && !/^\d+$/.test(name)) {
-        await db.prepare("DELETE FROM nhan_su WHERE unit_code = ? AND name = ?").bind(unitCode, name).run();
-        await bumpDataVersion(db, unitCode);
+        const stmtDel = db.prepare("DELETE FROM nhan_su WHERE unit_code = ? AND name = ?").bind(unitCode, name);
+        await db.batch([stmtDel, makeBumpDataVersionStmt(db, unitCode)]);
       } else {
         const idx = typeof args[0] === "number" ? args[0] : parseInt(args[0]);
         if (!isNaN(idx)) {
           const allStaff = await db.prepare("SELECT id FROM nhan_su WHERE unit_code = ? AND name NOT GLOB '[0-9]*' ORDER BY priority ASC, id ASC").bind(unitCode).all();
           if (allStaff.results && allStaff.results[idx]) {
-            await db.prepare("DELETE FROM nhan_su WHERE unit_code = ? AND id = ?").bind(unitCode, allStaff.results[idx].id).run();
-            await bumpDataVersion(db, unitCode);
+            const stmtDel = db.prepare("DELETE FROM nhan_su WHERE unit_code = ? AND id = ?").bind(unitCode, allStaff.results[idx].id);
+            await db.batch([stmtDel, makeBumpDataVersionStmt(db, unitCode)]);
           }
         }
       }
@@ -3255,7 +3263,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
     const procs = typeof p.thuThuat === "string" ? p.thuThuat.split(",").map(x => ({ name: x.trim(), status: "Chưa xếp" })) : (p.thu_thuat || []);
     
-    const res = await db.prepare(
+    const stmtAdd = db.prepare(
       "INSERT INTO benh_nhan (unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     ).bind(
       unitCode,
@@ -3272,9 +3280,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       String(p.gioBan || ""),
       String(p.loai_bn || "NoiTru"),
       String(p.buoi_dieu_tri || "TuDong")
-    ).run();
-    await bumpDataVersion(db, unitCode);
-    return success({ id: res?.meta?.last_row_id || 0 });
+    );
+    const res = await db.batch([stmtAdd, makeBumpDataVersionStmt(db, unitCode)]);
+    return success({ id: res[0]?.meta?.changes || 1 });
   }
 
   case "editBenhNhan": {
@@ -3371,15 +3379,15 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       if (typeof args[0] === "object" && args[0] !== null) payload = args[0];
       const ten = String(payload.ten || payload.name || args[1] || (typeof args[0] === "string" && !/^\d+$/.test(args[0]) ? args[0] : "")).trim();
       if (ten) {
-        await db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND (name = ? OR id = ?)").bind(unitCode, ten, ten).run();
-        await bumpDataVersion(db, unitCode);
+        const stmtDel = db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND (name = ? OR id = ?)").bind(unitCode, ten, ten);
+        await db.batch([stmtDel, makeBumpDataVersionStmt(db, unitCode)]);
       } else {
         const idx = typeof args[0] === "number" ? args[0] : parseInt(args[0]);
         if (!isNaN(idx)) {
           const allPats = await db.prepare("SELECT id FROM benh_nhan WHERE unit_code = ? AND is_saturday = 0 ORDER BY ngay_vao ASC, name ASC").bind(unitCode).all();
           if (allPats.results && allPats.results[idx]) {
-            await db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND id = ?").bind(unitCode, allPats.results[idx].id).run();
-            await bumpDataVersion(db, unitCode);
+            const stmtDel = db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND id = ?").bind(unitCode, allPats.results[idx].id);
+            await db.batch([stmtDel, makeBumpDataVersionStmt(db, unitCode)]);
           }
         }
       }
@@ -3438,8 +3446,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         }
 
         if (stmts.length > 0) {
+          stmts.push(makeBumpDataVersionStmt(db, unitCode));
           await db.batch(stmts);
-          await bumpDataVersion(db, unitCode);
         }
       } catch (e) {
         console.warn("[saveReorderedData error]:", e);
@@ -4092,9 +4100,16 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         );
       });
 
+      stmts.push(
+        db.prepare(`
+          INSERT INTO cai_dat (unit_code, key, value, updated_at) 
+          VALUES (?, 'clinical_protocols', ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(unit_code, key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        `).bind(unitCode, jsonStr),
+        makeBumpDataVersionStmt(db, unitCode)
+      );
+
       await db.batch(stmts);
-      await setCaiDat(db, unitCode, 'clinical_protocols', jsonStr);
-      await bumpDataVersion(db, unitCode);
       return success(true);
     }
 
@@ -4743,30 +4758,15 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
       const jsonStr = typeof data === "string" ? data : JSON.stringify(data);
 
-      try {
-        await db.prepare(`
-          INSERT INTO cham_cong (unit_code, month_year, data_json, updated_at)
-          VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-          ON CONFLICT(unit_code, month_year) DO UPDATE SET
-            data_json = excluded.data_json,
-            updated_at = CURRENT_TIMESTAMP
-        `).bind(unitCode, myStandard, jsonStr).run();
-      } catch(e) {
-        console.warn("saveChamCong D1 error, fallback to 2-step:", e);
-        try {
-          const exist = await db.prepare("SELECT id FROM cham_cong WHERE unit_code = ? AND month_year = ?").bind(unitCode, myStandard).first();
-          if (exist && exist.id) {
-            await db.prepare("UPDATE cham_cong SET data_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(jsonStr, exist.id).run();
-          } else {
-            await db.prepare("INSERT INTO cham_cong (unit_code, month_year, data_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)").bind(unitCode, myStandard, jsonStr).run();
-          }
-        } catch(e2) {
-          console.error("saveChamCong fatal error:", e2);
-        }
-      }
+      const stmtChamCong = db.prepare(`
+        INSERT INTO cham_cong (unit_code, month_year, data_json, updated_at)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(unit_code, month_year) DO UPDATE SET
+          data_json = excluded.data_json,
+          updated_at = CURRENT_TIMESTAMP
+      `).bind(unitCode, myStandard, jsonStr);
 
-      await setCaiDat(db, unitCode, "chamcong_" + myStandard, jsonStr);
-      await bumpDataVersion(db, unitCode);
+      await db.batch([stmtChamCong, makeBumpDataVersionStmt(db, unitCode)]);
       return success({ message: "Đã lưu bảng chấm công thành công!" });
     }
 

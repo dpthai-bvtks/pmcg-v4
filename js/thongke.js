@@ -754,30 +754,27 @@ function saveAdminEmployee() {
 }
 
 function saveAdminChamCongData(showAlert = true) {
-    if (showAlert) window.showGlobalLoading("Đang lưu danh sách nhân sự lên máy chủ...");
-
     // 1. Lưu ngay tức thì vào LocalStorage để tránh bị reset khi nạp lại
     try {
         localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees));
         localStorage.setItem(getChamCongStorageKey('med_chamcong_staff_config'), JSON.stringify(adminChamCongStaffConfig));
     } catch(e){}
 
-    // 2. Gửi API lưu lên Cloudflare Worker CSDL D1
+    // 2. Gửi API lưu lên CSDL
     callApi('saveEmployees', [adminChamCongEmployees]).then(() => {
         return callApi('saveErrorConfig', [{ staff: adminChamCongStaffConfig }]);
     }).then(() => {
         if (showAlert) {
-            window.hideGlobalLoading();
-            alert("Đã lưu danh sách nhân sự chấm công lên máy chủ!");
+            if (typeof window.showToast === 'function') window.showToast("Đã lưu danh sách nhân sự chấm công lên máy chủ!", "success");
             try { renderAdminChamCongTable(); } catch(e) { console.error(e); }
         }
         // Luôn cập nhật Bảng Chấm Công (31 ngày) để đồng bộ theo thứ tự mới sắp xếp
         try { renderChamCongTable(); } catch(e) { console.error(e); }
     }).catch(err => {
         if (showAlert) {
-            window.hideGlobalLoading();
             console.error(err);
-            alert('Lỗi khi lưu nhân sự: ' + (err.message || err));
+            if (typeof window.showToast === 'function') window.showToast('Lỗi khi lưu nhân sự: ' + (err.message || err), 'error');
+            else alert('Lỗi khi lưu nhân sự: ' + (err.message || err));
         } else {
             console.error('[ChamCong] saveAdminChamCongData error:', err);
         }
@@ -2299,19 +2296,14 @@ window.switchAdminSection = function(sectionId, btn) {
         function saveThuThuatToServer() {
             const my = getChamCongMonthYear();
             setCachedThongKe(my, thongKeData);
-            window.showGlobalLoading("Đang lưu dữ liệu thủ thuật...");
             const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
-            if (!apiFn) {
-                window.hideGlobalLoading();
-                return;
-            }
+            if (!apiFn) return;
             apiFn('saveThongKeThuThuat', [my, thongKeData]).then(() => {
-                window.hideGlobalLoading();
-                alert("Đã lưu dữ liệu thủ thuật lên máy chủ!");
+                if (typeof window.showToast === 'function') window.showToast("Đã lưu dữ liệu thủ thuật lên máy chủ!", "success");
             }).catch(err => {
-                window.hideGlobalLoading();
                 console.error(err);
-                alert("Lỗi khi lưu dữ liệu thủ thuật!");
+                if (typeof window.showToast === 'function') window.showToast("Lỗi khi lưu dữ liệu thủ thuật: " + (err.message || err), "error");
+                else alert("Lỗi khi lưu dữ liệu thủ thuật!");
             });
         }
 

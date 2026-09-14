@@ -1,6 +1,6 @@
 {
-  "version": "4.0.7-rev2",
-  "releaseDate": "13/09/2026",
-  "releaseTime": "09:05 13/09/2026",
-  "notes": "Sửa triệt để lỗi hiển thị lặp 2 lần modal cập nhật khi tải lại trang."
+  "version": "4.0.8-rev1",
+  "releaseDate": "14/09/2026",
+  "releaseTime": "09:25 14/09/2026",
+  "notes": "Tối ưu hóa tốc độ lưu dữ liệu và phản hồi trên các bảng (Bệnh nhân, Nhân sự, Máy móc, Thủ thuật, Phòng, Phác đồ, Chấm công, Thống kê)."
 }

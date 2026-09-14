@@ -3458,6 +3458,46 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `js/app.js`
   + `index.html`
   + `sw.js`
+### [v4.0.8-rev1] - 09:25 14/09/2026: Tối ưu hóa tốc độ phản hồi và lưu dữ liệu trên bảng ở mọi tab (Bệnh nhân, Nhân sự, Máy móc, Thủ thuật, Phòng, Phác đồ, Chấm công, Thống kê)
+- **Yêu cầu của người dùng**:
+  + *"đọc RULES.md: tốc độ lưu dữ liệu trên bảng ở các tab vẫn chậm"*
+  + *"hiện tại D1 Cloudflare ngủ đông không sử dụng, tất cả cơ sở dữ liệu lưu trên minipc này và sao lưu đồng bộ 2 chiều trên Turso mà, xem lại đi"*
+- **Phân tích nguyên nhân gốc rễ**:
+  1. **Hiển thị Global Loading Overlay chặn đứng thao tác (UI Freeze)**:
+     - `callApi` trong `js/app.js` có biến `isSilentMutation` nhưng danh sách này thiếu phần lớn các hành động CRUD: `addBenhNhan`, `deleteBenhNhan`, `addNhanSu`, `deleteNhanSu`, `addMayMoc`, `deleteMayMoc`, `addThuThuat`, `deleteThuThuat`, `addPhong`, `deletePhong`, `saveProtocolsData`, `saveChamCongSymbols`, `saveEmployees`, `saveThongKeThuThuat`.
+     - Mỗi khi người dùng bấm thêm/xóa/lưu trên bảng, `mutationCount++` kích hoạt `window.showGlobalLoading("Đang xử lý dữ liệu...")` phủ mờ toàn bộ màn hình với `z-index: 999999`, chặn thao tác từ 0.5s đến 1.5s.
+  2. **Khóa nút lưu & Loading cục bộ lặp lại**:
+     - Các hàm `saveStaff`, `deleteStaff`, `deleteMachine`, `deleteProcedure`, `deleteRoom`, `deletePatient`, `saveGioBanNhanSu`, `deleteSingleStaffBusy`, `clearStaffBusy`, `saveThongKeThuThuat` tự gọi thêm `window.showGlobalLoading(...)` và disable các nút bấm ("Đang lưu...", "Đang xóa..."), gây cảm giác giật lag nặng nề.
+  3. **Tải lại mạng dư thừa (Redundant Network Refetching)**:
+     - Dù đã cập nhật mảng bộ nhớ đệm `dataCache` và render lại bảng ngay lập tức (Optimistic UI), nhiều hàm sau khi server trả lời thành công vẫn gọi `loadMachines()`, `loadRooms()`, hoặc `loadEntity('getNhanSu')`, gây ra một đợt request GET toàn bộ và giật màn hình lần thứ hai.
+  4. **Thao tác kéo thả sắp xếp bảng thiếu Debounce**:
+     - Hàm `saveReorderedData` gửi API `saveReorderedData` ngay tức thì mỗi lần click nút ▲/▼ hoặc kéo thả một nấc, khiến nhiều request dồn vào hàng đợi API.
+  5. **Cloudflare Worker API tới MiniPC chạy tuần tự 2 roundtrip**:
+     - Mỗi thao tác CRUD trên server thực hiện câu lệnh SQL chính, sau đó chạy thêm `await bumpDataVersion(...)` tạo 2 lượt HTTP roundtrip qua Cloudflare Tunnel tới MiniPC.
+- **Giải pháp triển khai (v4.0.8-rev1)**:
+  1. **Backend (`backend/src/index.js`)**:
+     - Xây dựng hàm `makeBumpDataVersionStmt(db, unitCode)` trả về câu lệnh chuẩn bị cho `bumpDataVersion`.
+     - Gộp lệnh SQL thao tác dữ liệu cùng `makeBumpDataVersionStmt` vào một lần gọi `db.batch([...])` duy nhất cho: `addMayMoc`, `editMayMoc`, `deleteMayMoc`, `addThuThuat`, `deleteThuThuat`, `addPhong`, `deletePhong`, `addNhanSu`, `editNhanSu`, `deleteNhanSu`, `addBenhNhan`, `deleteBenhNhan`, `saveReorderedData`, `saveProtocolsData`, `saveChamCong`.
+     - Giảm 50% độ trễ mạng đường truyền Cloudflare Tunnel giữa Worker và MiniPC / Turso.
+     - Loại bỏ việc ghi kép JSON không cần thiết vào `cai_dat` trong `saveChamCong`.
+  2. **Frontend (`js/app.js` & `js/thongke.js`)**:
+     - **Mở rộng `SILENT_MUTATION_ACTIONS`**: Đưa toàn bộ các hành động thêm/sửa/xóa của bảng vào danh sách ngầm (không hiển thị overlay loading toàn màn hình), giữ UI phản hồi tức thì 100%.
+     - **Nâng giới hạn API đồng thời & Giảm độ trễ dispatch**: Tăng `MAX_CONCURRENT_API_REQUESTS` từ 3 lên 6; giảm khoảng chờ giữa các request trong hàng đợi từ 20ms xuống 5ms.
+     - **Debounce 300ms cho `saveReorderedData`**: Gom các thao tác kéo thả/di chuyển liên tục thành 1 lần gửi API duy nhất.
+     - **Gỡ bỏ `showGlobalLoading` và button freezing**: Loại bỏ triệt để việc phủ màn hình và khóa nút trong `saveStaff`, `deleteStaff`, `deleteMachine`, `deleteProcedure`, `deleteRoom`, `deletePatient`, `saveGioBanNhanSu`, `deleteSingleStaffBusy`, `clearStaffBusy`, `saveAdminChamCongData`, `saveThuThuatToServer`. Thay bằng thông báo Toast góc màn hình không chặn thao tác.
+     - **Triệt tiêu Redundant Network Reload**: Loại bỏ các lệnh gọi lại mạng khi thành công ở `deleteMachine`, `deleteRoom`, `saveGioBanNhanSu`, `deleteSingleStaffBusy`, `clearStaffBusy`. Chỉ kích hoạt tải lại khi có lỗi mạng (rollback).
+  3. **Đồng bộ phiên bản & Quy tắc RULES.md**:
+     - Ngày mới 14/09/2026: Phiên bản nâng từ `4.0.7-rev2` lên `4.0.8-rev1`.
+     - Cache name Service Worker: `pmcg-v4-cache-4.0.8-rev1`.
+     - Chân trang (`#app-footer-version`): `Phiên bản: 4.0.8` (không chứa `-rev1`).
+     - Thời gian cập nhật (`#sys-last-update`): `Cập nhật lần cuối: 09:25 14/09/2026`.
+     - Đã kiểm tra cú pháp thành công với Node.js.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `js/app.js`
+  + `js/thongke.js`
+  + `index.html`
+  + `sw.js`
   + `version.json`
   + `PM-xeplich-v4.md`
 

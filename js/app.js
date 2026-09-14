@@ -578,15 +578,22 @@ window.renderSttOrderControl = function (type, i, total) {
 let _isDraggingRow = false;
 window._isDraggingRow = false;
 
+const reorderDebounceTimers = {};
 function saveReorderedData(type, list) {
     try {
         localStorage.setItem('times_' + type + '_order', JSON.stringify(list.map(x => x.ten || x.name || x.maMay || x.tenPhong)));
     } catch (e) { }
-    callApi('saveReorderedData', [type, list], res => {
-        console.log(`[Reorder]: Đã đồng bộ thứ tự ${type} lên Cloudflare D1!`);
-    }, err => {
-        console.warn('[Reorder] Lỗi đồng bộ:', err);
-    });
+    if (reorderDebounceTimers[type]) {
+        clearTimeout(reorderDebounceTimers[type]);
+    }
+    reorderDebounceTimers[type] = setTimeout(() => {
+        delete reorderDebounceTimers[type];
+        callApi('saveReorderedData', [type, list], res => {
+            console.log(`[Reorder]: Đã đồng bộ thứ tự ${type} lên CSDL!`);
+        }, err => {
+            console.warn('[Reorder] Lỗi đồng bộ:', err);
+        });
+    }, 300);
 }
 
 function initTableDragAndDrop(tbodyId, arrayRef, onReorderFinish) {
@@ -1194,7 +1201,7 @@ window.renderSttOrderControl = function (type, i, total) {
         // ============================================================
         // GITHUB PAGES API CONFIGURATION (SELF-HEALING)
         // ============================================================
-        const MAX_CONCURRENT_API_REQUESTS = 3;
+        const MAX_CONCURRENT_API_REQUESTS = 6;
         let activeApiRequests = 0;
         let apiQueue = [];
         let mutationCount = 0;
@@ -1219,7 +1226,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     mutationCount = Math.max(0, mutationCount - 1);
                     checkMutationLoading();
                 }
-                setTimeout(scheduleNextApiRequest, 20);
+                setTimeout(scheduleNextApiRequest, 5);
             };
 
             try {
@@ -1427,9 +1434,18 @@ window.renderSttOrderControl = function (type, i, total) {
                     return resolve(null);
                 }
 
-                const isSilentMutation = functionName === 'saveChamCong' || functionName === 'saveReorderedData' || functionName === 'saveReorder'
-                    || functionName === 'saveSchedule' || functionName === 'saveLichTrinh'
-                    || functionName === 'editBenhNhan' || functionName === 'editNhanSu' || functionName === 'editMayMoc' || functionName === 'editThuThuat' || functionName === 'editPhong';
+                const SILENT_MUTATION_ACTIONS = new Set([
+                    'saveChamCong', 'saveChamCongSymbols', 'saveEmployees', 'saveErrorConfig',
+                    'saveReorderedData', 'saveReorder', 'saveSchedule', 'saveLichTrinh',
+                    'editBenhNhan', 'addBenhNhan', 'deleteBenhNhan',
+                    'editNhanSu', 'addNhanSu', 'deleteNhanSu',
+                    'editMayMoc', 'addMayMoc', 'deleteMayMoc',
+                    'editThuThuat', 'addThuThuat', 'deleteThuThuat',
+                    'editPhong', 'addPhong', 'deletePhong',
+                    'saveProtocolsData', 'saveClinicalProtocols', 'savePhacDo', 'addPhacDo', 'deletePhacDo',
+                    'saveThongKeThuThuat', 'saveGioBan', 'saveAccount', 'deleteAccount'
+                ]);
+                const isSilentMutation = SILENT_MUTATION_ACTIONS.has(functionName);
                 const isMutation = functionName.startsWith('add') || functionName.startsWith('edit') || functionName.startsWith('delete') || functionName.startsWith('bulkUpdate') || functionName.startsWith('save') || functionName.startsWith('chotSo') || functionName.startsWith('runScheduling') || functionName.startsWith('chuyenNgayMoi');
                 
                 // In-flight deduplication for non-mutation queries (getSchedule, getSystemSettings, getDataVersion...)
@@ -3804,42 +3820,19 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         function deleteMachine(i) {
-            
-
             showCustomConfirm("Xác nhận xóa máy", "Bác sĩ có chắc chắn muốn xóa máy này?", function () {
-
-                if (window.showGlobalLoading) window.showGlobalLoading("Đang xóa máy móc...");
-
-                const btnSave = document.getElementById('btn-save-machine');
-
-                if (btnSave) { btnSave.disabled = true; btnSave.innerText = "Đang xóa..."; }
-
-                dataCache.machine.splice(i, 1); renderMachinesTable();
+                dataCache.machine.splice(i, 1);
+                renderMachinesTable();
 
                 google.script.run
-
                     .withSuccessHandler(() => {
-
-                        if (window.hideGlobalLoading) window.hideGlobalLoading();
-
-                        if (btnSave) { btnSave.disabled = false; btnSave.innerText = "Thêm"; }
-
-                        if (typeof loadMachines === 'function') loadMachines();
-
+                        if (typeof window.showToast === 'function') window.showToast('Đã xóa máy móc thành công!', 'success');
                     })
-
                     .withFailureHandler(e => {
-
-                        if (window.hideGlobalLoading) window.hideGlobalLoading();
-
-                        if (btnSave) { btnSave.disabled = false; btnSave.innerText = "Thêm"; }
-
-                        alert('Lỗi: ' + e);
-
+                        alert('Lỗi khi xóa máy: ' + e);
+                        if (typeof loadMachines === 'function') loadMachines();
                     }).deleteMayMoc(i);
-
             });
-
         }
 
         function renderDynamicMachineInputs() {
@@ -4627,24 +4620,18 @@ window.renderSttOrderControl = function (type, i, total) {
             const ten = String(item.ten || item.name || item[1] || '').trim();
 
             showCustomConfirm("Xác nhận xóa thủ thuật", `Bác sĩ có chắc chắn muốn xóa thủ thuật "${ten}" không?`, function () {
-                if (window.showGlobalLoading) window.showGlobalLoading("Đang xóa thủ thuật...");
-                const btnSave = document.getElementById('btn-save-proc');
-                if (btnSave) { btnSave.disabled = true; btnSave.innerText = "Đang xóa..."; }
-
                 dataCache.proc.splice(i, 1);
                 renderProceduresTable();
                 renderProcedureCheckboxes();
 
                 google.script.run
                     .withSuccessHandler(() => {
-                        if (window.hideGlobalLoading) window.hideGlobalLoading();
-                        if (btnSave) { btnSave.disabled = false; btnSave.innerText = "Thêm"; }
                         if (typeof showToastSuccess === 'function') showToastSuccess(`Đã xóa thủ thuật "${ten}" thành công!`);
+                        else if (typeof window.showToast === 'function') window.showToast(`Đã xóa thủ thuật "${ten}" thành công!`, 'success');
                     })
                     .withFailureHandler(e => {
-                        if (window.hideGlobalLoading) window.hideGlobalLoading();
-                        if (btnSave) { btnSave.disabled = false; btnSave.innerText = "Thêm"; }
                         alert('Lỗi xóa thủ thuật: ' + e);
+                        if (typeof loadProcedures === 'function') loadProcedures();
                     }).deleteThuThuat(i, ten);
             });
         }
@@ -4771,7 +4758,6 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const obj = { ten, vaiTro, trangThai, thoiGianLam: tgLam, kyNang, gioBan, nguoiThayThe: thayThe, quyen, tenHis };
 
-            if (window.showGlobalLoading) window.showGlobalLoading("Đang lưu nhân sự...");
             if (editIndex.staff > -1) {
                 const oldItem = dataCache.staff[editIndex.staff];
                 const sheetIdx = oldItem.sheetIndex !== undefined ? oldItem.sheetIndex : editIndex.staff;
@@ -4781,11 +4767,11 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (window.dataCacheTime) window.dataCacheTime['staff'] = Date.now();
                 google.script.run
                     .withSuccessHandler(() => {
-                        if (window.hideGlobalLoading) window.hideGlobalLoading();
+                        if (typeof window.showToast === 'function') window.showToast('Đã lưu nhân sự thành công!', 'success');
                     })
                     .withFailureHandler((err) => {
-                        if (window.hideGlobalLoading) window.hideGlobalLoading();
                         alert("Lỗi lưu nhân sự: " + (err.message || err));
+                        if (typeof loadDashboard === 'function') loadDashboard();
                     })
                     .editNhanSu(sheetIdx, ten, vaiTro, trangThai, tgLam, kyNang, gioBan, thayThe, quyen, tenHis);
             } else {
@@ -4793,11 +4779,11 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (window.dataCacheTime) window.dataCacheTime['staff'] = Date.now();
                 google.script.run
                     .withSuccessHandler(() => {
-                        if (window.hideGlobalLoading) window.hideGlobalLoading();
+                        if (typeof window.showToast === 'function') window.showToast('Đã thêm nhân sự thành công!', 'success');
                     })
                     .withFailureHandler((err) => {
-                        if (window.hideGlobalLoading) window.hideGlobalLoading();
                         alert("Lỗi thêm nhân sự: " + (err.message || err));
+                        if (typeof loadDashboard === 'function') loadDashboard();
                     })
                     .addNhanSu(ten, vaiTro, trangThai, tgLam, kyNang, gioBan, thayThe, quyen, tenHis);
             }
@@ -4850,10 +4836,6 @@ window.renderSttOrderControl = function (type, i, total) {
             if (!s) return;
 
             showCustomConfirm("Xác nhận xóa nhân sự", `Bác sĩ có chắc chắn muốn xóa nhân sự [ ${s.ten} ] không?`, function () {
-                if (window.showGlobalLoading) window.showGlobalLoading("Đang xóa nhân sự...");
-                const btnSave = document.getElementById('btn-save-staff');
-                if (btnSave) { btnSave.disabled = true; btnSave.innerText = "Đang xóa..."; }
-
                 const deletedSheetIndex = s.sheetIndex !== undefined ? s.sheetIndex : i;
                 const staffName = s.ten;
                 dataCache.staff.splice(i, 1);
@@ -4866,14 +4848,11 @@ window.renderSttOrderControl = function (type, i, total) {
                 renderStaffTable();
 
                 google.script.run.withSuccessHandler(() => {
-                    if (window.hideGlobalLoading) window.hideGlobalLoading();
-                    if (btnSave) { btnSave.disabled = false; btnSave.innerText = "Thêm"; }
-                    if (typeof loadDashboard === 'function') loadDashboard();
+                    if (typeof window.showToast === 'function') window.showToast(`Đã xóa nhân sự [ ${staffName} ]!`, 'success');
                 })
                     .withFailureHandler(e => {
-                        if (window.hideGlobalLoading) window.hideGlobalLoading();
-                        if (btnSave) { btnSave.disabled = false; btnSave.innerText = "Thêm"; }
                         alert('Lỗi khi xóa: ' + e);
+                        if (typeof loadDashboard === 'function') loadDashboard();
                     }).deleteNhanSu(deletedSheetIndex, staffName);
             });
         }
@@ -5086,42 +5065,19 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         function deleteRoom(i) {
-            
-
             showCustomConfirm("Xác nhận xóa phòng", "Bác sĩ có chắc chắn muốn xóa phòng này không?", function () {
-
-                if (window.showGlobalLoading) window.showGlobalLoading("Đang xóa phòng...");
-
-                const btnSave = document.getElementById('btn-save-room');
-
-                if (btnSave) { btnSave.disabled = true; btnSave.innerText = "Đang xóa..."; }
-
-                dataCache.room.splice(i, 1); renderRoomsTable();
+                dataCache.room.splice(i, 1);
+                renderRoomsTable();
 
                 google.script.run
-
                     .withSuccessHandler(() => {
-
-                        if (window.hideGlobalLoading) window.hideGlobalLoading();
-
-                        if (btnSave) { btnSave.disabled = false; btnSave.innerText = "Thêm"; }
-
-                        if (typeof loadRooms === 'function') loadRooms();
-
+                        if (typeof window.showToast === 'function') window.showToast('Đã xóa phòng thành công!', 'success');
                     })
-
                     .withFailureHandler(e => {
-
-                        if (window.hideGlobalLoading) window.hideGlobalLoading();
-
-                        if (btnSave) { btnSave.disabled = false; btnSave.innerText = "Thêm"; }
-
-                        alert('Lỗi: ' + e);
-
+                        alert('Lỗi khi xóa phòng: ' + e);
+                        if (typeof loadRooms === 'function') loadRooms();
                     }).deletePhong(i);
-
             });
-
         }
 
 
@@ -5573,9 +5529,6 @@ window.renderSttOrderControl = function (type, i, total) {
             const p = dataCache.pat[i];
 
             showCustomConfirm("Xác nhận xóa", `Bác sĩ có chắc chắn muốn xóa bệnh nhân [ ${p.ten} ]?`, function () {
-
-                if (window.showGlobalLoading) window.showGlobalLoading("Đang xóa bệnh nhân...");
-
                 // Nếu đang mở sửa chính bệnh nhân này, reset form
                 if (editIndex.pat === i) {
                     cancelEdit('pat');
@@ -5585,6 +5538,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 // Xóa tạm trên giao diện
                 const deletedSheetIndex = p.sheetIndex !== undefined ? p.sheetIndex : i;
+                const patName = p.ten;
                 dataCache.pat.splice(i, 1);
                 dataCache.pat.forEach((item, idx) => {
                     item.index = idx;
@@ -5594,26 +5548,19 @@ window.renderSttOrderControl = function (type, i, total) {
                 });
                 renderPatientsTable();
 
-                // Khóa nút lưu để chống thao tác đè trong lúc chờ mạng
-                const btnSave = document.getElementById('btn-save-pat');
-                if (btnSave) { btnSave.disabled = true; btnSave.innerText = "Đang đồng bộ..."; }
-
                 // Gọi máy chủ xóa ngay lập tức
                 google.script.run
                     .withSuccessHandler(() => {
-                        if (window.hideGlobalLoading) window.hideGlobalLoading();
-                        if (btnSave) { btnSave.disabled = false; btnSave.innerText = "Thêm"; }
+                        if (typeof showToastSuccess === 'function') showToastSuccess(`Đã xóa bệnh nhân [ ${patName} ] thành công!`);
+                        else if (typeof window.showToast === 'function') window.showToast(`Đã xóa bệnh nhân [ ${patName} ] thành công!`, 'success');
                         if (typeof loadDashboard === 'function') loadDashboard();
                     })
                     .withFailureHandler(e => {
-                        if (window.hideGlobalLoading) window.hideGlobalLoading();
-                        if (btnSave) { btnSave.disabled = false; btnSave.innerText = "Thêm"; }
-                        alert('Lỗi khi xóa vĩnh viễn: ' + e);
+                        alert('Lỗi khi xóa: ' + e);
+                        if (typeof loadPatients === 'function') loadPatients();
                     })
                     .deleteBenhNhan(deletedSheetIndex, p.ten, p.namSinh);
-
             });
-
         }
 
 
@@ -6189,17 +6136,11 @@ window.renderSttOrderControl = function (type, i, total) {
             const kyNangStr = typeof s.kyNang === 'string' ? s.kyNang : (Array.isArray(s.kyNang) ? s.kyNang.join(', ') : '');
             const gioBanStr = typeof s.gioBan === 'string' ? s.gioBan : (Array.isArray(s.gioBan) ? s.gioBan.join(', ') : '');
 
-            if (window.showGlobalLoading) window.showGlobalLoading("Đang lưu giờ bận nhân sự...");
             google.script.run
                 .withSuccessHandler(() => {
-                    if (window.hideGlobalLoading) window.hideGlobalLoading();
-                    if (window.dataCacheTime) window.dataCacheTime['staff'] = 0;
-                    loadEntity('getNhanSu', 'staff', renderStaffTable, [
-                        () => { if (typeof renderBusyStaff === 'function') renderBusyStaff(); }
-                    ], true);
+                    if (typeof window.showToast === 'function') window.showToast('Đã cập nhật giờ bận nhân sự!', 'success');
                 })
                 .withFailureHandler(err => {
-                    if (window.hideGlobalLoading) window.hideGlobalLoading();
                     alert("Lỗi lưu giờ bận: " + (err.message || err));
                     if (window.dataCacheTime) window.dataCacheTime['staff'] = 0;
                     loadEntity('getNhanSu', 'staff', renderStaffTable, [
@@ -6236,17 +6177,11 @@ window.renderSttOrderControl = function (type, i, total) {
                 const kyNangStr = typeof s.kyNang === 'string' ? s.kyNang : (Array.isArray(s.kyNang) ? s.kyNang.join(', ') : '');
                 const gioBanStr = typeof s.gioBan === 'string' ? s.gioBan : (Array.isArray(s.gioBan) ? s.gioBan.join(', ') : '');
 
-                if (window.showGlobalLoading) window.showGlobalLoading("Đang xóa giờ bận nhân sự...");
                 google.script.run
                     .withSuccessHandler(() => {
-                        if (window.hideGlobalLoading) window.hideGlobalLoading();
-                        if (window.dataCacheTime) window.dataCacheTime['staff'] = 0;
-                        loadEntity('getNhanSu', 'staff', renderStaffTable, [
-                            () => { if (typeof renderBusyStaff === 'function') renderBusyStaff(); }
-                        ], true);
+                        if (typeof window.showToast === 'function') window.showToast('Đã xóa giờ bận!', 'success');
                     })
                     .withFailureHandler(err => {
-                        if (window.hideGlobalLoading) window.hideGlobalLoading();
                         alert("Lỗi xóa giờ bận: " + (err.message || err));
                         if (window.dataCacheTime) window.dataCacheTime['staff'] = 0;
                         loadEntity('getNhanSu', 'staff', renderStaffTable, [
@@ -6275,17 +6210,11 @@ window.renderSttOrderControl = function (type, i, total) {
             const sheetIdx = s.sheetIndex !== undefined ? s.sheetIndex : parseInt(idx);
             const kyNangStr = typeof s.kyNang === 'string' ? s.kyNang : (Array.isArray(s.kyNang) ? s.kyNang.join(', ') : '');
 
-            if (window.showGlobalLoading) window.showGlobalLoading("Đang xóa toàn bộ giờ bận...");
             google.script.run
                 .withSuccessHandler(() => {
-                    if (window.hideGlobalLoading) window.hideGlobalLoading();
-                    if (window.dataCacheTime) window.dataCacheTime['staff'] = 0;
-                    loadEntity('getNhanSu', 'staff', renderStaffTable, [
-                        () => { if (typeof renderBusyStaff === 'function') renderBusyStaff(); }
-                    ], true);
+                    if (typeof window.showToast === 'function') window.showToast('Đã xóa toàn bộ giờ bận!', 'success');
                 })
                 .withFailureHandler(err => {
-                    if (window.hideGlobalLoading) window.hideGlobalLoading();
                     alert("Lỗi xóa giờ bận: " + (err.message || err));
                     if (window.dataCacheTime) window.dataCacheTime['staff'] = 0;
                     loadEntity('getNhanSu', 'staff', renderStaffTable, [
