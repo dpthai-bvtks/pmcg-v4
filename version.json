@@ -1,6 +1,6 @@
 {
-  "version": "4.0.9-rev2",
+  "version": "4.0.9-rev3",
   "releaseDate": "15/09/2026",
-  "releaseTime": "09:00 15/09/2026",
-  "notes": "Khắc phục triệt để lỗi thông báo Đã đồng bộ dữ liệu mới làm mất checkbox/dữ liệu đang nhập và loại bỏ hoàn toàn hiện tượng lặp bản ghi bệnh nhân."
+  "releaseTime": "11:15 15/09/2026",
+  "notes": "Khắc phục triệt để lỗi timeout AbortError trong executeApiTask, loại bỏ lỗi Uncaught (in promise) kép, tối ưu API getGioBanChungCu và lazy-load dropdown ngày bận."
 }

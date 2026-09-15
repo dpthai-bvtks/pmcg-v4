@@ -738,7 +738,12 @@ window.showGlobalLoading = function (text) {
 
         window.addEventListener('unhandledrejection', function (event) {
             const reasonStr = String(event.reason && (event.reason.stack || event.reason.message || event.reason) || '');
-            if (reasonStr.includes('startTime') || reasonStr.includes('reportAllChanges')) {
+            if (
+                reasonStr.includes('startTime') || 
+                reasonStr.includes('reportAllChanges') || 
+                reasonStr.includes('Receiving end does not exist') || 
+                reasonStr.includes('Could not establish connection')
+            ) {
                 event.preventDefault();
                 return;
             }
@@ -1231,7 +1236,13 @@ window.renderSttOrderControl = function (type, i, total) {
 
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 15000);
+                const timeoutId = setTimeout(() => {
+                    try {
+                        controller.abort(new DOMException('Request timeout after 30s', 'TimeoutError'));
+                    } catch(e) {
+                        controller.abort();
+                    }
+                }, 30000);
                 const currentUnit = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
                 const token = localStorage.getItem('pm_jwt_token') || '';
 
@@ -1307,7 +1318,23 @@ window.renderSttOrderControl = function (type, i, total) {
             } catch (err) {
                 console.warn(`[Cloudflare API Error] ${functionName}:`, err);
                 finish();
-                if (onError) onError(err.message || 'Lỗi kết nối máy chủ Cloudflare');
+
+                // Tự động thử lại 1 lần cho các query đọc dữ liệu nếu bị timeout hoặc lỗi mạng
+                if (!isMutation && retries < 1) {
+                    console.log(`[API Retry] Thử lại ${functionName} sau 1 giây...`);
+                    setTimeout(() => {
+                        apiQueue.push({ ...task, retries: retries + 1 });
+                        scheduleNextApiRequest();
+                    }, 1000);
+                    return;
+                }
+
+                const isTimeout = err.name === 'TimeoutError' || err.name === 'AbortError' || (err.message && err.message.includes('abort'));
+                const errMsg = isTimeout 
+                    ? `Quá thời gian kết nối máy chủ (${functionName} - Timeout 30s).`
+                    : (err.message || 'Lỗi kết nối máy chủ Cloudflare');
+
+                if (onError) onError(errMsg);
                 else console.error(err);
             }
         }
@@ -1471,6 +1498,8 @@ window.renderSttOrderControl = function (type, i, total) {
                         resolveInFlight = res;
                         rejectInFlight = rej;
                     });
+                    // Bẫy lỗi mặc định để tránh Uncaught (in promise) nếu không có subscriber thứ hai
+                    inFlightPromise.catch(() => {});
                     inFlightRequests.set(reqKey, inFlightPromise);
 
                     const origOnSuccess = onSuccess;
@@ -1486,8 +1515,13 @@ window.renderSttOrderControl = function (type, i, total) {
                     onError = (err) => {
                         inFlightRequests.delete(reqKey);
                         rejectInFlight(err);
-                        if (origOnError) origOnError(err);
-                        reject(err);
+                        if (origOnError) {
+                            try { origOnError(err); } catch(e) { console.error(e); }
+                            // Đã xử lý qua callback onError -> resolve(null) để không gây unhandled promise rejection cho caller
+                            resolve(null);
+                        } else {
+                            reject(err);
+                        }
                     };
                 } else {
                     const origOnSuccess = onSuccess;
@@ -1499,8 +1533,12 @@ window.renderSttOrderControl = function (type, i, total) {
                     };
 
                     onError = (err) => {
-                        if (origOnError) origOnError(err);
-                        reject(err);
+                        if (origOnError) {
+                            try { origOnError(err); } catch(e) { console.error(e); }
+                            resolve(null);
+                        } else {
+                            reject(err);
+                        }
                     };
                 }
 
@@ -2954,7 +2992,10 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (el && !el.value) el.value = todayYMD;
             });
 
-            if (typeof window.loadBusyHistoryDates === 'function') {
+            // Chỉ nạp trước lịch sử bận nếu đang đứng tại tab Quản lý bận (tab-busy)
+            const activeTabEl = document.querySelector('.main-nav .nav-tab.active, .nav-tab.active');
+            const currentTab = activeTabEl ? activeTabEl.getAttribute('data-tab') : '';
+            if (currentTab === 'tab-busy' && typeof window.loadBusyHistoryDates === 'function') {
                 window.loadBusyHistoryDates();
             }
 

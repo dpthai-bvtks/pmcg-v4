@@ -3880,10 +3880,14 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       
       // Lấy danh sách các ngày duy nhất để tiện chọn lọc trong dropdown
       let dates = [];
-      try {
-        const dRes = await db.prepare("SELECT DISTINCT date FROM gio_ban_chung_cu WHERE unit_code = ? ORDER BY date DESC").bind(unitCode).all();
-        dates = (dRes.results || []).map(r => r.date).filter(Boolean);
-      } catch (err) {}
+      if ((!filterDate || filterDate === 'all') && (!filterType || filterType === 'all') && !keyword && records.length < 1000) {
+        dates = Array.from(new Set(records.map(r => r.date).filter(Boolean)));
+      } else {
+        try {
+          const dRes = await db.prepare("SELECT DISTINCT date FROM gio_ban_chung_cu WHERE unit_code = ? ORDER BY date DESC").bind(unitCode).all();
+          dates = (dRes.results || []).map(r => r.date).filter(Boolean);
+        } catch (err) {}
+      }
       
       return success({
         records: records,
