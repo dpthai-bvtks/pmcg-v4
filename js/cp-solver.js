@@ -175,7 +175,7 @@ window.MedicalCPSolver = (function () {
   /**
    * Bộ giải Branch-and-Bound cứu các ca rớt siêu tốc bằng cơ chế Pre-indexed Intervals O(1) & Branch Pruning
    */
-  function solveBranchAndBound(db, dateVal, warmStartSched, warmStartUnsch, timeBudgetMs = 1200) {
+  function solveBranchAndBound(db, dateVal, warmStartSched, warmStartUnsch, timeBudgetMs = 1200, existingSched = []) {
     const startTime = performance.now();
     if (!warmStartUnsch || warmStartUnsch.length === 0) {
       return {
@@ -196,6 +196,72 @@ window.MedicalCPSolver = (function () {
     const staffIntervals = new Map();
     const machineIntervals = new Map();
     const bedIntervals = new Map();
+
+    const cleanStaffStr = s => String(s || '').normalize('NFC').replace(/^(bs|bac si|ktv|dd|đd)\s*\.?\s*/i, '').trim().toLowerCase();
+
+    // 🔒 KHÓA CỨNG TOÀN BỘ LỊCH TRÌNH ĐÃ XẾP TRƯỚC ĐÓ (existingSched) TRÁNH XẾP BỔ SUNG TRÙNG GIỜ
+    const preSchedList = Array.isArray(existingSched) ? existingSched : [];
+    for (let i = 0; i < preSchedList.length; i++) {
+      const item = preSchedList[i];
+      if (!item) continue;
+      const s = t2m(item.gioDienRa || item.GIODIENRA || item[5]);
+      const e = t2m(item.gioKetThuc || item.GIOKETTHUC || item[6]);
+      if (isNaN(s) || isNaN(e) || e <= s) continue;
+
+      const pName = String(item.tenBN || item.HOTEN || item[1] || '').toUpperCase().trim();
+      const pNs = String(item.namSinh || item.NAMSINH || item[2] || '').trim();
+      const pKey = pName + '_' + pNs;
+      addInterval(patIntervals, pKey, s, e + 5);
+
+      const nv1 = item.nvChinh || item["NV CHÍNH"] || item[7];
+      const nv2 = item.nvPhu || item["NV PHỤ"] || item[8];
+      if (nv1) {
+        addInterval(staffIntervals, nv1, s, e);
+        // Đồng bộ thêm tên nhân sự đã làm sạch trong db.rawStaff
+        const cleanNv1 = cleanStaffStr(nv1);
+        (db.rawStaff || []).forEach(st => {
+          if (cleanStaffStr(st[0]) === cleanNv1) addInterval(staffIntervals, st[0], s, e);
+        });
+      }
+      if (nv2) {
+        addInterval(staffIntervals, nv2, s, e);
+        const cleanNv2 = cleanStaffStr(nv2);
+        (db.rawStaff || []).forEach(st => {
+          if (cleanStaffStr(st[0]) === cleanNv2) addInterval(staffIntervals, st[0], s, e);
+        });
+      }
+
+      const may = item.may || item.MAY || item[9];
+      if (may && may !== 'Thủ công') {
+        addInterval(machineIntervals, may, s, e);
+        const cleanMay = String(may).toLowerCase().replace(/\s+/g, '');
+        for (const mType in (db.machineTypes || {})) {
+          (db.machineTypes[mType] || []).forEach(mCode => {
+            if (mCode.toLowerCase().replace(/\s+/g, '') === cleanMay) {
+              addInterval(machineIntervals, mCode, s, e);
+            }
+          });
+        }
+      }
+
+      const phong = item.phong || item.PHONG || item[3];
+      const giuong = item.giuong || item.GIUONG || item[10];
+      if (phong && giuong) {
+        addInterval(bedIntervals, `${phong}_${giuong}`, s, e);
+        // Đồng bộ fuzzy room/bed
+        const pClean = String(phong).toLowerCase().replace(/\s+/g, '');
+        const gClean = String(giuong).toLowerCase().replace(/\s+/g, '');
+        for (const r in (db.roomBeds || {})) {
+          if (r.toLowerCase().replace(/\s+/g, '') === pClean) {
+            (db.roomBeds[r] || []).forEach(b => {
+              if (b.toLowerCase().replace(/\s+/g, '') === gClean || b.toLowerCase().replace(/\s+/g, '').replace(/^giuong|^g/i, '') === gClean.replace(/^giuong|^g/i, '')) {
+                addInterval(bedIntervals, `${r}_${b}`, s, e);
+              }
+            });
+          }
+        }
+      }
+    }
 
     for (let i = 0; i < bestSched.length; i++) {
       const item = bestSched[i];

@@ -1,6 +1,6 @@
 {
-  "version": "4.0.9-rev4",
+  "version": "4.0.9-rev5",
   "releaseDate": "15/09/2026",
-  "releaseTime": "14:38 15/09/2026",
-  "notes": "Tự động phục hồi họ tên bệnh nhân (Self-healing UTF-8 NFC) khi xếp lịch bổ sung, triệt tiêu lỗi ký tự lạ và nuốt chữ."
+  "releaseTime": "20:10 15/09/2026",
+  "notes": "Sửa triệt để lỗi xếp lịch bổ sung bị trùng giờ (khóa cứng toàn bộ tài nguyên, chuẩn hóa so khớp nhân sự/máy/giường/thủ thuật, tích hợp CP-SAT solver và collision safeguard); Cho phép xem lại lịch ngày hôm nay từ lịch sử sau khi chốt sổ."
 }

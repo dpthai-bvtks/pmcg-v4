@@ -2828,7 +2828,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       }).filter(p => p.ten && p.ten.trim() !== "");
 
       // Schedule rows
-      const scheduleRows = (scheduleRes.results || []).map(s => ([
+      let scheduleRows = (scheduleRes.results || []).map(s => ([
         s.date,
         s.patient_name,
         s.dob || "",
@@ -2841,6 +2841,32 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         s.machine_name || "",
         s.bed || ""
       ]));
+
+      let isFinalizedToday = false;
+      // 🛡️ Tự động nạp lịch từ lich_su nếu ngày hôm nay đã chốt sổ (giúp người dùng xem lại được lịch ngay sau khi chốt)
+      if (scheduleRows.length === 0) {
+        try {
+          const histTodayRes = await db.prepare("SELECT * FROM lich_su WHERE unit_code = ? AND (date = ? OR date = ?) ORDER BY start_time ASC").bind(unitCode, todayVN, todayVNSlash).all();
+          if (histTodayRes.results && histTodayRes.results.length > 0) {
+            scheduleRows = histTodayRes.results.map(s => ([
+              s.date,
+              s.patient_name,
+              s.dob || "",
+              s.room || "",
+              s.procedure_name,
+              s.start_time,
+              s.end_time,
+              s.staff_name || "",
+              s.sub_staff_name || "",
+              s.machine_name || "",
+              s.bed || ""
+            ]));
+            isFinalizedToday = true;
+          }
+        } catch(e) {
+          console.warn("Lỗi kiểm tra lich_su hôm nay:", e);
+        }
+      }
 
       const tenantInfo = tenantRes?.results?.[0] || { unit_code: unitCode, unit_name: unitCode, plan_tier: "PRO" };
       return success({
@@ -2863,6 +2889,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         schedule: scheduleRows,
         schedules: scheduleRows,
         lich_trinh: scheduleRows,
+        is_finalized_today: isFinalizedToday,
         accounts: accountsRes.results || [],
         tai_khoan: accountsRes.results || [],
         version: "v3.0.0-cloudflare"

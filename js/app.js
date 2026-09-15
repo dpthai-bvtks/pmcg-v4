@@ -3407,9 +3407,24 @@ window.renderSttOrderControl = function (type, i, total) {
                         if (b && Array.isArray(b.schedule)) {
                             dataCache.schedule = b.schedule;
                             window.currentScheduleData = (b.schedule.length > 0 && typeof markDischargedInSchedule === 'function') ? markDischargedInSchedule(b.schedule) : (b.schedule || []);
+                            if (b.is_finalized_today) {
+                                window._todayIsFinalized = true;
+                                const displayEl = document.getElementById('display-date');
+                                if (displayEl) {
+                                    displayEl.innerHTML = `<span style="color:#b45309; background:#fef3c7; padding:2px 8px; border-radius:6px; font-weight:700;">📋 Hôm nay (Đã chốt sổ)</span>`;
+                                }
+                                const statusEl = document.getElementById('utils-lich-status');
+                                if (statusEl) {
+                                    statusEl.innerText = '📋 Hôm nay (Đã chốt sổ)';
+                                    statusEl.style.color = '#b45309';
+                                }
+                            } else {
+                                window._todayIsFinalized = false;
+                            }
                         } else {
                             dataCache.schedule = [];
                             window.currentScheduleData = [];
+                            window._todayIsFinalized = false;
                         }
                         if (typeof loadScheduleList === 'function') loadScheduleList();
 
@@ -14523,32 +14538,33 @@ window.onAppDateChange = function(dateStr, sourceTab) {
 
     // 2. Xác định chế độ: Hôm nay (Live) hay Lịch sử (History)
     const isToday = (targetDate === todayYMD) || (window._systemActiveYMD && targetDate === window._systemActiveYMD);
+    const forceHistoryRequest = (sourceTab === 'history_input' || sourceTab === 'history' || sourceTab === 'history_date');
 
     // Cập nhật huy hiệu trạng thái trên Tab Giờ Bận (tab-busy)
     const busyBadge = document.getElementById('busy-date-badge');
     const busyNotice = document.getElementById('busy-history-notice');
     if (busyBadge) {
-        if (isToday) {
+        if (isToday && !forceHistoryRequest) {
             busyBadge.innerHTML = '🟢 Đang xem: Hôm nay (Thời gian thực)';
             busyBadge.style.background = '#dcfce7';
             busyBadge.style.color = '#15803d';
             busyBadge.style.borderColor = '#bbf7d0';
         } else {
-            busyBadge.innerHTML = `📜 Đang xem lịch sử: ${dmy}`;
+            busyBadge.innerHTML = `📜 Đang xem lịch sử: ${dmy}` + (isToday ? ' (Đã chốt sổ)' : '');
             busyBadge.style.background = '#fef3c7';
             busyBadge.style.color = '#b45309';
             busyBadge.style.borderColor = '#fde68a';
         }
     }
     if (busyNotice) {
-        busyNotice.style.display = isToday ? 'none' : 'inline-flex';
+        busyNotice.style.display = (isToday && !forceHistoryRequest) ? 'none' : 'inline-flex';
     }
 
     // Toggle khối nhập liệu (Live) vs tiêu đề thông tin (History) trên cả 3 cột của tab-busy
     const liveFormIds = ['busy-staff-live-form', 'busy-pat-live-form', 'busy-leave-live-form'];
     const histHeaderIds = ['busy-staff-hist-header', 'busy-pat-hist-header', 'busy-leave-hist-header'];
 
-    if (isToday) {
+    if (isToday && !forceHistoryRequest) {
         liveFormIds.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = (id === 'busy-staff-live-form' ? 'flex' : 'block');
@@ -14571,10 +14587,10 @@ window.onAppDateChange = function(dateStr, sourceTab) {
     // Đồng bộ giá trị dropdown chọn nhanh ngày có lịch sử bận
     const quickSelect = document.getElementById('busy-quick-date-select');
     if (quickSelect) {
-        quickSelect.value = isToday ? '' : targetDate;
+        quickSelect.value = (isToday && !forceHistoryRequest) ? '' : targetDate;
     }
 
-    if (isToday) {
+    if (isToday && !forceHistoryRequest) {
         // --- CHẾ ĐỘ HÔM NAY (LIVE) ---
         window._forceHistoryMode = false;
         window.viewingImportedScheduleFile = false;
@@ -14594,8 +14610,8 @@ window.onAppDateChange = function(dateStr, sourceTab) {
 
         const statusEl = document.getElementById('utils-lich-status');
         if (statusEl) {
-            statusEl.innerText = '🟢 Hôm nay (Live)';
-            statusEl.style.color = '#15803d';
+            statusEl.innerText = window._todayIsFinalized ? '📋 Hôm nay (Đã chốt sổ)' : '🟢 Hôm nay (Live)';
+            statusEl.style.color = window._todayIsFinalized ? '#b45309' : '#15803d';
         }
         if (window.showToast) window.showToast(`Đã chuyển về ngày hôm nay (${dmy})`, 'success', 1800);
         return;
@@ -14643,12 +14659,16 @@ window.onAppDateChange = function(dateStr, sourceTab) {
         const statusEl = document.getElementById('utils-lich-status');
         if (statusEl) {
             const count = (fullData.schedule || []).length;
-            statusEl.innerText = `✅ Ngày ${dmy}: ${count} ca`;
-            statusEl.style.color = '#27ae60';
+            statusEl.innerText = isToday ? `📋 Lịch Hôm Nay (Đã chốt): ${count} ca` : `✅ Ngày ${dmy}: ${count} ca`;
+            statusEl.style.color = isToday ? '#b45309' : '#27ae60';
+        }
+
+        if (displayEl) {
+            displayEl.innerHTML = isToday ? `<span style="color:#b45309; background:#fef3c7; padding:2px 8px; border-radius:6px; font-weight:700;">📋 Lịch Hôm Nay (Đã chốt sổ)</span>` : dmy;
         }
 
         if (window.showToast) {
-            window.showToast(`Đã tải dữ liệu lịch sử ngày ${dmy}!`, 'info', 2500);
+            window.showToast(isToday ? `Đã tải lịch sử đã chốt sổ của ngày hôm nay (${dmy})!` : `Đã tải dữ liệu lịch sử ngày ${dmy}!`, 'info', 2500);
         }
     };
 

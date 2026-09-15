@@ -3617,3 +3617,51 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `sw.js`
   + `version.json`
   + `PM-xeplich-v4.md`
+
+### [v4.0.9-rev5] - 20:10 15/09/2026: Khắc phục triệt để lỗi xếp lịch bổ sung trùng giờ & Cho phép xem lại lịch ngày hôm nay sau khi chốt sổ
+- **Hiện tượng lỗi**:
+  1. Khi chạy **⚡ Xếp bổ sung**, một số ca mới bị xếp trùng giờ với bệnh nhân khác, trùng giờ kỹ thuật viên hoặc xếp đè vào khung giờ bệnh nhân đang thực hiện thủ thuật khác đã xếp trước đó.
+  2. Sau khi bấm **Chốt sổ ngày**, người dùng muốn xem lại bảng lịch của ngày hôm nay thì bảng lịch trống trơn và không có cách nào xem lại được.
+- **Nguyên nhân gốc rễ**:
+  1. **Lỗi lọc thủ thuật đã xếp trong `buildDbFromCache` (`js/scheduler-engine.js`)**:
+     - Điều kiện lọc `scheduledProcsForPat` so sánh `r.phong === p.phong`. Do `r.phong` trong lịch là tên phòng điều trị (VD: *Phòng YHCT*), còn `p.phong` của bệnh nhân là số buồng nội trú (VD: *P.102*), so sánh này luôn trả về `false`. Hậu quả: Toàn bộ thủ thuật đã xếp của các bệnh nhân cũ bị coi là chưa xếp và được lên lịch lại.
+     - `database.thuThuatInfo` chỉ lưu tên đầy đủ không lưu tên viết tắt; khi ca cũ lưu tên viết tắt (VD: *ĐC*), hệ thống không tìm thấy và gán mặc định thời gian chiếm dụng KTV là 5 phút thay vì thời lượng đầy đủ, dẫn đến KTV bị coi là rảnh sau 5 phút đầu và bị xếp trùng.
+  2. **Thuật toán quy hoạch ràng buộc `MedicalCPSolver` (`js/cp-solver.js`) bỏ quên lịch cũ**:
+     - Hàm giải cứu ca rớt `solveBranchAndBound` không nhận tham số `existingSched`, chỉ kiểm tra xung đột giữa các ca mới mà hoàn toàn không biết khung giờ các nhân viên, máy móc, giường bệnh và bệnh nhân đang bận từ lịch cũ.
+  3. **Lõi thuật toán `_turbo_core_logic` thiếu nhận diện tài nguyên đã xếp**:
+     - Chưa chuẩn hóa định danh KTV (`resolveStaffKey`), máy móc (`resolveMachineKey`), giường bệnh (`resolveBedKey`) giữa ca cũ và ca mới; thủ thuật thủ công liên tục chưa khóa toàn bộ thời gian của KTV.
+  4. **Chặn xem lịch ngày hôm nay sau khi chốt sổ (`js/app.js` & `backend/src/index.js`)**:
+     - Trong `onAppDateChange`: Có lệnh `if (isToday) return;` ngay sau khi reset về Live mode. Sau khi chốt sổ, bảng `lich_trinh` đã được chuyển sang `lich_su` và xóa sạch khỏi `lich_trinh`. Khi chọn ngày hôm nay ở ô `📅 Ngày xem lịch`, hệ thống bị chặn bởi `if (isToday) return;` nên không tải dữ liệu từ `lich_su`.
+     - Backend `getBootstrapData` chỉ nạp từ bảng `lich_trinh`, khi `lich_trinh` rỗng không có fallback truy vấn `lich_su` của ngày hôm nay.
+- **Giải pháp triển khai (v4.0.9-rev5)**:
+  1. **Khóa cứng toàn diện tài nguyên trong Xếp lịch bổ sung**:
+     - `js/scheduler-engine.js`:
+       + Trong `buildDbFromCache`: Bổ sung bí danh tên viết tắt `vietTat` vào `database.thuThuatInfo`. Sửa lọc `scheduledProcsForPat` loại bỏ điều kiện sai `pRoom === rRoom`, so khớp tên thủ thuật thông minh qua `matchProcName`. Khóa các mốc giờ đã xếp của bệnh nhân vào `busySlots`.
+       + Trong `_turbo_core_logic`: Thêm `resolveStaffKey`, `resolveMachineKey`, `resolveBedKey`. Khóa toàn bộ thời lượng KTV cho thủ thuật thủ công/liên tục. Khớp bệnh nhân theo họ tên + năm sinh.
+       + Bổ sung bộ hậu kiểm chống xung đột `validateNoOverlapWithExisting` (Collision Post-Validator) kiểm tra 100% ca mới trước khi xuất kết quả.
+     - `js/cp-solver.js`:
+       + Mở rộng `MedicalCPSolver.solve` và `solveBranchAndBound` nhận `existingSched`. Pre-index toàn bộ khoảng thời gian bận của bệnh nhân, KTV, máy móc, giường bệnh từ `existingSched` vào `patIntervals`, `staffIntervals`, `machineIntervals`, `bedIntervals` trước khi chạy thuật toán nhánh cận toán học.
+  2. **Cho phép xem lại lịch ngày hôm nay sau khi chốt sổ**:
+     - `backend/src/index.js`:
+       + Trong action `getBootstrapData`: Khi `scheduleRows` trong `lich_trinh` rỗng, tự động truy vấn bảng `lich_su` cho ngày hôm nay; nếu có dữ liệu thì nạp vào bảng lịch và gửi kèm cờ `is_finalized_today: true`.
+     - `js/app.js`:
+       + Nhận diện cờ `is_finalized_today` để hiển thị nhãn `📋 Hôm nay (Đã chốt sổ)`.
+       + Thêm cờ `forceHistoryRequest` khi người dùng chủ động chọn ô `📅 Ngày xem lịch` (`sourceTab === 'history_input'`) để bỏ qua lệnh chặn `isToday`, gọi `getHistoryFullData(targetDate)` nạp đầy đủ lịch sử ngày hôm nay.
+     - `index.html`:
+       + Gắn `onAppDateChange(this.value, 'history_input')` vào input `#history-date`.
+  3. **Đồng bộ phiên bản theo RULES.md**:
+     - Phiên bản nâng lên `4.0.9-rev5`.
+     - Cache name Service Worker: `pmcg-v4-cache-4.0.9-rev5`.
+     - Chân trang (`#app-footer-version`): Giữ đúng `Phiên bản: 4.0.9` (không chứa `-rev5`).
+     - Thời gian cập nhật (`#sys-last-update`): `Cập nhật lần cuối: 20:10 15/09/2026`.
+     - Kiểm tra cú pháp thành công với Node.js (`node -c`).
+- **File sửa đổi**:
+  + `js/cp-solver.js`
+  + `js/scheduler-engine.js`
+  + `backend/src/index.js`
+  + `js/app.js`
+  + `index.html`
+  + `sw.js`
+  + `version.json`
+  + `PM-xeplich-v4.md`
+
