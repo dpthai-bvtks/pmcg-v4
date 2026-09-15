@@ -3533,9 +3533,40 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `version.json`
   + `PM-xeplich-v4.md`
 
-
-
-
-
-
-
+### [v4.0.9-rev2] - 09:00 15/09/2026: Khắc phục triệt để lỗi "Đã đồng bộ dữ liệu mới" làm mất dữ liệu đang nhập & Loại bỏ hiện tượng lặp bản ghi bệnh nhân
+- **Hiện tượng lỗi**:
+  + Người dùng đang gõ thông tin bệnh nhân mới hoặc đang tích chọn các ô checkbox thủ thuật (YHCT/PHCN), bỗng nhiên xuất hiện thông báo toast `"🔄 Đã đồng bộ dữ liệu mới"`.
+  + Ngay sau đó, toàn bộ các checkbox thủ thuật người dùng vừa tích chọn bị xóa sạch về trạng thái trắng (uncheck), hoặc nội dung đang nhập bị giật và mất.
+  + Thỉnh thoảng danh sách bệnh nhân bị nhân đôi / lặp dữ liệu (cùng 1 bệnh nhân xuất hiện 2 dòng).
+- **Nguyên nhân gốc rễ**:
+  1. **Vòng lặp tự báo động (Self-polling False Alarm)**: Khi người dùng ở tab hiện tại thực hiện lưu (thêm/sửa bệnh nhân, nhân sự...), backend Turso tăng `data_version`. Module `js/sync.js` không được báo trước sự kiện này. 15 giây sau (hoặc khi đổi tab), `doPoll()` kiểm tra thấy `v !== lastKnownVersion`, lầm tưởng có dữ liệu mới từ máy khác nên hiển thị toast `"🔄 Đã đồng bộ dữ liệu mới"` và gọi `syncRefreshData()`.
+  2. **Ghi đè DOM checkbox thủ thuật trong `renderProcedureCheckboxes`**: `syncRefreshData()` xóa sạch cache time và gọi `loadProcedures()` -> gọi `renderProcedureCheckboxes()` -> ghi đè toàn bộ `innerHTML` của `#pat-skills-yhct` và `#pat-skills-phcn`. Vì người dùng đang thêm bệnh nhân mới (`editIndex.pat === -1`), các checkbox được dựng lại trắng trơn, làm mất 100% các thủ thuật người dùng vừa tích chọn.
+  3. **Gọi lồng chéo 3 lần gây xung đột tải bệnh nhân & Lặp bản ghi**: `syncRefreshData()` gọi cùng lúc `loadPatients()`, `loadProcedures()` (gọi lồng `loadStaff` -> `loadPatients`), và `loadStaff()` (gọi lồng `loadPatients`), dẫn đến 3 request `getBenhNhan` chạy đua đè lên `dataCache.pat`.
+  4. **Bệnh nhân mới thiếu `id` thực tế & Fallback INSERT mù quáng**: Hàm `addBenhNhan` trên server trả về `{ id: changes || 1 }` (luôn là 1 thay vì ID thực tế). Đối tượng `newPat` trong bộ nhớ frontend không có `id`. Khi người dùng bấm sửa bệnh nhân này, `editBenhNhan` không tìm được ID và rơi vào nhánh INSERT thêm bản ghi mới, dẫn đến lặp dữ liệu.
+  5. **`getDataVersion` thiếu lọc `unit_code`**: Truy vấn `SELECT value FROM cai_dat WHERE key = 'data_version'` chưa có `WHERE unit_code = ?`, vi phạm nguyên tắc cách ly đa đơn vị.
+- **Giải pháp triển khai (v4.0.9-rev2)**:
+  1. **Backend (`backend/src/index.js`)**:
+     - **Cung cấp `last_row_id` chuẩn**: Nâng cấp `createTursoAdapter` trả về `last_row_id: result?.last_insert_rowid ?? null` trong `meta` của cả `run()` và `batch()`.
+     - **Chống lặp bản ghi trong `addBenhNhan`**: Kiểm tra trước nếu bệnh nhân cùng đơn vị (`unit_code`), cùng họ tên, năm sinh và ngày vào viện đã tồn tại: thực hiện cập nhật thông tin và trả về `id` của bản ghi có sẵn thay vì chèn dòng thứ 2. Trả về đúng `last_row_id` khi thêm mới.
+     - **An toàn trong `editBenhNhan`**: Loại bỏ nhánh INSERT mù quáng khi không tìm thấy bản ghi cần sửa; chỉ ghi log cảnh báo để triệt tiêu hoàn toàn nguy cơ nhân bản bệnh nhân.
+     - **Cách ly `unit_code` cho `getDataVersion`**: Thêm `WHERE unit_code = ? AND key = 'data_version'`.
+  2. **Frontend Sync & Form Protection (`js/sync.js` & `js/app.js`)**:
+     - **Bảo toàn checkbox trong `renderProcedureCheckboxes`**: Trước khi thay thế `innerHTML`, lưu lại danh sách checkbox đang tích trong DOM (`.pat-proc-cb:checked` và `.skill-checkbox:checked`). Ngay sau khi render xong, khôi phục lại 100% trạng thái checked cho các thủ thuật này.
+     - **Khử báo động giả từ các thao tác cục bộ**: Đặt `window._lastLocalMutationTime = Date.now()` khi bất kỳ thao tác lưu nào thành công. Trong `doPoll()`, nếu phiên bản thay đổi do chính tab này tạo ra trong vòng 30 giây, âm thầm cập nhật `lastKnownVersion` mà không hiện toast và không reload giao diện.
+     - **Khóa bảo vệ khi người dùng đang nhập liệu**: Xuất bản hàm `window.isPatientFormActive()` và `window.isAnyFormActive()`. Trong `syncRefreshData()`, nếu người dùng đang nhập liệu hoặc đang mở form sửa (`editIndex.pat > -1`), hệ thống hoãn nạp lại bệnh nhân để bảo toàn dữ liệu trên màn hình.
+     - **Triệt tiêu gọi lồng chéo**: `syncRefreshData()` gọi trực tiếp `loadEntity` độc lập cho từng danh mục, không kích hoạt chuỗi callback lặp lại `loadPatients`.
+     - **Gán ID thực tế cho bệnh nhân mới**: Trong `onDone` của `savePatient`, cập nhật `newPat.id = res.id`. Giữ nút "Lưu" disabled đúng cách để chống click đúp.
+  3. **Đồng bộ phiên bản theo RULES.md**:
+     - Phiên bản nâng lên `4.0.9-rev2`.
+     - Cache name Service Worker: `pmcg-v4-cache-4.0.9-rev2`.
+     - Chân trang (`#app-footer-version`): Giữ đúng `Phiên bản: 4.0.9` (không chứa `-rev2`).
+     - Thời gian cập nhật (`#sys-last-update`): `Cập nhật lần cuối: 09:00 15/09/2026`.
+     - Đã kiểm tra cú pháp thành công với Node.js.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `js/sync.js`
+  + `js/app.js`
+  + `index.html`
+  + `sw.js`
+  + `version.json`
+  + `PM-xeplich-v4.md`

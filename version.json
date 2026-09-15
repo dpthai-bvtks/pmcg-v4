@@ -1,6 +1,6 @@
 {
-  "version": "4.0.9-rev1",
+  "version": "4.0.9-rev2",
   "releaseDate": "15/09/2026",
-  "releaseTime": "07:55 15/09/2026",
-  "notes": "Khắc phục triệt để lỗi UNIQUE constraint failed bệnh nhân và mất dữ liệu khi sửa; nâng cấp lưu trữ theo ID và auto-migration schema Turso."
+  "releaseTime": "09:00 15/09/2026",
+  "notes": "Khắc phục triệt để lỗi thông báo Đã đồng bộ dữ liệu mới làm mất checkbox/dữ liệu đang nhập và loại bỏ hoàn toàn hiện tượng lặp bản ghi bệnh nhân."
 }

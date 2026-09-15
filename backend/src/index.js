@@ -151,7 +151,14 @@ function createTursoAdapter(env, ctx) {
       // .run() → { success: true, meta: {} }
       async run() {
         const results = await runPipeline([{ type: 'execute', stmt: pipelineStmt }]);
-        return { success: true, meta: { changes: results[0]?.response?.result?.affected_row_count ?? 0 } };
+        const resObj = results[0]?.response?.result;
+        return {
+          success: true,
+          meta: {
+            changes: resObj?.affected_row_count ?? 0,
+            last_row_id: resObj?.last_insert_rowid ?? null
+          }
+        };
       },
 
       // .first() → object hoặc null
@@ -196,7 +203,10 @@ function createTursoAdapter(env, ctx) {
         return {
           success: true,
           results: rows,
-          meta: { changes: result?.affected_row_count ?? 0 }
+          meta: {
+            changes: result?.affected_row_count ?? 0,
+            last_row_id: result?.last_insert_rowid ?? null
+          }
         };
       });
     },
@@ -2860,7 +2870,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     }
 
     case "getDataVersion": {
-      const rec = await db.prepare("SELECT value FROM cai_dat WHERE key = 'data_version'").first();
+      const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'data_version'").bind(unitCode).first();
       const v = rec ? String(rec.value) : "1";
       return success({ version: v });
     }
@@ -3310,14 +3320,58 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       buoi_dieu_tri: args[9]
     };
 
+    const patName = String(p.ten || p.name || "").trim();
+    const patAge = parseInt(p.namSinh || p.age) || 0;
+    const ngayVao = String(p.ngayVao || "").trim();
     const procs = typeof p.thuThuat === "string" ? p.thuThuat.split(",").map(x => ({ name: x.trim(), status: "Chưa xếp" })) : (p.thu_thuat || []);
     
+    // 🛡️ CHỐNG LẶP BỆNH NHÂN: Kiểm tra nếu bệnh nhân cùng tên, năm sinh, ngày vào đã tồn tại trong đơn vị
+    if (patName && ngayVao) {
+      const existing = await db.prepare(
+        "SELECT id FROM benh_nhan WHERE unit_code = ? AND name = ? AND age = ? AND ngay_vao = ? LIMIT 1"
+      ).bind(unitCode, patName, patAge, ngayVao).first().catch(() => null);
+
+      if (existing && existing.id) {
+        // Đã tồn tại -> Cập nhật thông tin thay vì chèn lặp bản ghi thứ hai!
+        const stmtUpdate = db.prepare(`
+          UPDATE benh_nhan SET 
+            gender = ?, 
+            room = ?, 
+            bed = ?, 
+            arrive_time = ?, 
+            leave_time = ?, 
+            thu_thuat = ?, 
+            status = ?, 
+            gio_ban = ?, 
+            loai_bn = ?, 
+            buoi_dieu_tri = ?, 
+            updated_at = CURRENT_TIMESTAMP 
+          WHERE unit_code = ? AND id = ?
+        `).bind(
+          String(p.gender || "Nam"),
+          String(p.phong || p.room || ""),
+          String(p.bed || ""),
+          String(p.gioVao || p.arriveTime || "07:30"),
+          String(p.gioRa || p.leaveTime || ""),
+          JSON.stringify(procs),
+          String(p.status || "Chưa xếp"),
+          String(p.gioBan || ""),
+          String(p.loai_bn || "NoiTru"),
+          String(p.buoi_dieu_tri || "TuDong"),
+          unitCode,
+          existing.id
+        );
+        await db.batch([stmtUpdate, makeBumpDataVersionStmt(db, unitCode)]);
+        return success({ id: existing.id, isUpdated: true });
+      }
+    }
+
     const stmtAdd = db.prepare(
       "INSERT INTO benh_nhan (unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     ).bind(
       unitCode,
-      String(p.ten || p.name || ""),
-      parseInt(p.namSinh || p.age) || 0,
+      patName,
+      patAge,
       String(p.gender || "Nam"),
       String(p.phong || p.room || ""),
       String(p.bed || ""),
@@ -3325,13 +3379,14 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       String(p.gioRa || p.leaveTime || ""),
       JSON.stringify(procs),
       String(p.status || "Chưa xếp"),
-      String(p.ngayVao || ""),
+      ngayVao,
       String(p.gioBan || ""),
       String(p.loai_bn || "NoiTru"),
       String(p.buoi_dieu_tri || "TuDong")
     );
     const res = await db.batch([stmtAdd, makeBumpDataVersionStmt(db, unitCode)]);
-    return success({ id: res[0]?.meta?.changes || 1 });
+    const insertedId = res[0]?.meta?.last_row_id || res[0]?.meta?.changes || 1;
+    return success({ id: insertedId });
   }
 
   case "editBenhNhan": {
@@ -3439,10 +3494,11 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     }
 
     if (updateRes && updateRes.meta && updateRes.meta.changes === 0) {
-      const existing = await db.prepare("SELECT id FROM benh_nhan WHERE unit_code = ? AND (name = ? OR (? > 0 AND id = ?)) LIMIT 1").bind(unitCode, patName, patId, patId).first();
+      const existing = await db.prepare("SELECT id FROM benh_nhan WHERE unit_code = ? AND (name = ? OR (? > 0 AND id = ?) OR name = ?) LIMIT 1").bind(unitCode, targetName, patId, patId, patName).first();
       if (existing && existing.id) {
         await db.prepare(`
           UPDATE benh_nhan SET 
+            name = ?,
             age = ?, 
             gender = ?, 
             room = ?, 
@@ -3458,6 +3514,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
             updated_at = CURRENT_TIMESTAMP 
           WHERE id = ?
         `).bind(
+          patName,
           patAge,
           String(p.gender || "Nam"),
           String(p.phong || p.room || ""),
@@ -3473,24 +3530,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           existing.id
         ).run();
       } else {
-        await db.prepare(
-          "INSERT INTO benh_nhan (unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-        ).bind(
-          unitCode,
-          patName,
-          patAge,
-          String(p.gender || "Nam"),
-          String(p.phong || p.room || ""),
-          String(p.bed || ""),
-          String(p.gioVao || p.arriveTime || "07:30"),
-          String(p.gioRa || p.leaveTime || ""),
-          JSON.stringify(procs),
-          String(p.status || "Chưa xếp"),
-          String(p.ngayVao || ""),
-          String(p.gioBan || ""),
-          loaiBnVal || "NoiTru",
-          buoiVal || "TuDong"
-        ).run();
+        console.warn("[editBenhNhan]: Không tìm thấy bệnh nhân để sửa:", { patId, targetName, patName });
       }
     }
     await bumpDataVersion(db, unitCode);

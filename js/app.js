@@ -1358,7 +1358,8 @@ window.renderSttOrderControl = function (type, i, total) {
                 cleanup();
 
                 if (result && result.status === 'success') {
-                    if (task && task.isMutation) {
+                    if (task && (task.isMutation || (functionName && (functionName.startsWith('add') || functionName.startsWith('edit') || functionName.startsWith('delete') || functionName.startsWith('save') || functionName.startsWith('chotSo'))))) {
+                        window._lastLocalMutationTime = Date.now();
                         try {
                             if (window.OfflineSyncEngine && typeof window.OfflineSyncEngine.broadcastLiveEvent === 'function') {
                                 window.OfflineSyncEngine.broadcastLiveEvent('CACHE_UPDATED', { functionName, timestamp: Date.now() });
@@ -4378,6 +4379,17 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         function renderProcedureCheckboxes() {
+            // 🛡️ BẢO VỆ CHỐNG MẤT THỦ THUẬT KHI ĐỒNG BỘ:
+            // Thu thập toàn bộ checkbox đang được tích trong DOM hiện tại trước khi vẽ lại
+            const domCheckedPatProcs = new Set();
+            document.querySelectorAll('.pat-proc-cb:checked').forEach(cb => {
+                if (cb.value) domCheckedPatProcs.add(cb.value.trim().toLowerCase());
+            });
+            const domCheckedStaffSkills = new Set();
+            document.querySelectorAll('.skill-checkbox:checked').forEach(cb => {
+                if (cb.value) domCheckedStaffSkills.add(cb.value.trim().toLowerCase());
+            });
+
             let sYhct = `<h4 class="yhct">💊 YHCT <input type="checkbox" onchange="toggleAllSkills(this, 'YHCT')" style="margin-left:8px; cursor:pointer; transform:scale(1.2);" title="Chọn tất cả YHCT"></h4>`, 
                 sPhcn = `<h4 class="phcn">⚙️ PHCN <input type="checkbox" onchange="toggleAllSkills(this, 'PHCN')" style="margin-left:8px; cursor:pointer; transform:scale(1.2);" title="Chọn tất cả PHCN"></h4>`;
 
@@ -4399,8 +4411,24 @@ window.renderSttOrderControl = function (type, i, total) {
             [['staff-skills-yhct', sYhct], ['staff-skills-phcn', sPhcn], ['pat-skills-yhct', pYhct], ['pat-skills-phcn', pPhcn]]
                 .forEach(([id, html]) => { const el = document.getElementById(id); if (el) el.innerHTML = html; });
 
-            // 🛡️ BẢO VỆ CHỐNG MẤT THỦ THUẬT: Nếu đang mở form sửa bệnh nhân, khôi phục lại các thủ thuật đã chọn
-            if (typeof editIndex !== 'undefined' && editIndex.pat > -1 && window.dataCache && window.dataCache.pat && window.dataCache.pat[editIndex.pat]) {
+            // 🛡️ Khôi phục ngay lập tức các checkbox người dùng đang tích chọn
+            if (domCheckedPatProcs.size > 0) {
+                document.querySelectorAll('.pat-proc-cb').forEach(cb => {
+                    if (domCheckedPatProcs.has(cb.value.trim().toLowerCase())) {
+                        cb.checked = true;
+                    }
+                });
+            }
+            if (domCheckedStaffSkills.size > 0) {
+                document.querySelectorAll('.skill-checkbox').forEach(cb => {
+                    if (domCheckedStaffSkills.has(cb.value.trim().toLowerCase())) {
+                        cb.checked = true;
+                    }
+                });
+            }
+
+            // 🛡️ BẢO VỆ CHỐNG MẤT THỦ THUẬT: Nếu đang mở form sửa bệnh nhân VÀ chưa có checkbox nào trong DOM được tích
+            if (domCheckedPatProcs.size === 0 && typeof editIndex !== 'undefined' && editIndex.pat > -1 && window.dataCache && window.dataCache.pat && window.dataCache.pat[editIndex.pat]) {
                 const curPat = window.dataCache.pat[editIndex.pat];
                 const ttArr = typeof extractPatientProcedures === 'function' ? extractPatientProcedures(curPat) : (curPat.thuThuat ? curPat.thuThuat.split(',').map(t => t.trim()).filter(Boolean) : []);
                 const matchedProcs = new Set();
@@ -5331,7 +5359,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             // Chụp index TRƯỚC khi cancelEdit reset về -1
 
-            // ⚡ Cập nhật tức thời lên giao diện (Optimistic UI Update) - 0ms delay!
+            let createdPat = null;
             if (currentEditIdx > -1 && currentItem) {
                 currentItem.ten = ten;
                 currentItem.namSinh = nam;
@@ -5359,24 +5387,30 @@ window.renderSttOrderControl = function (type, i, total) {
                     loai_bn: loai_bn,
                     buoi_dieu_tri: buoi_dieu_tri
                 };
+                createdPat = newPat;
                 if (!dataCache.pat) dataCache.pat = [];
                 dataCache.pat.push(newPat);
                 renderPatientsTable();
             }
 
-            // Giải phóng nút và form ngay lập tức cho người dùng thao tác tiếp
+            // Giải phóng form ngay lập tức cho người dùng thao tác tiếp
             cancelEdit('pat');
-            if (btnSave) { btnSave.disabled = false; btnSave.innerText = 'Lưu'; }
             document.getElementById('pat-name').focus();
 
-            const onDone = () => {
+            const onDone = (res) => {
                 window._savePatientLock = false;
+                window._lastLocalMutationTime = Date.now();
+                if (createdPat && res && res.id) {
+                    createdPat.id = res.id;
+                }
                 if (window.dataCacheTime) window.dataCacheTime['pat'] = Date.now();
                 if (typeof loadDashboard === 'function') loadDashboard();
+                if (btnSave) { btnSave.disabled = false; btnSave.innerText = 'Lưu'; }
             };
 
             const onError = (e) => {
                 window._savePatientLock = false;
+                if (btnSave) { btnSave.disabled = false; btnSave.innerText = 'Lưu'; }
                 alert('Lỗi khi lưu bệnh nhân: ' + e);
                 // Khôi phục lại dữ liệu gốc từ máy chủ nếu xảy ra lỗi
                 if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
@@ -10687,6 +10721,9 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         function isPatientFormActive() {
+            if (typeof editIndex !== 'undefined' && editIndex.pat > -1) return true;
+            if (window._savePatientLock) return true;
+
             const activeEl = document.activeElement;
             const tabPat = document.getElementById('tab-patients');
             if (!tabPat) return false;
@@ -10722,6 +10759,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             return false;
         }
+        window.isPatientFormActive = isPatientFormActive;
 
         function isBusyFormActive() {
             const activeEl = document.activeElement;
@@ -10752,6 +10790,25 @@ window.renderSttOrderControl = function (type, i, total) {
 
             return false;
         }
+        window.isBusyFormActive = isBusyFormActive;
+
+        function isAnyFormActive() {
+            if (isPatientFormActive()) return true;
+            if (typeof isBusyFormActive === 'function' && isBusyFormActive()) return true;
+            if (typeof editIndex !== 'undefined') {
+                for (let k in editIndex) {
+                    if (editIndex[k] > -1) return true;
+                }
+            }
+            const activeEl = document.activeElement;
+            if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT')) {
+                if (activeEl.id !== 'schedule-search-input' && activeEl.id !== 'pat-search-input') {
+                    return true;
+                }
+            }
+            return false;
+        }
+        window.isAnyFormActive = isAnyFormActive;
 
         function startAutoSync() {
             setInterval(() => {

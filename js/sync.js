@@ -140,6 +140,10 @@
         }
     };
 
+    window.setLastKnownDataVersion = function(v) {
+        if (v) lastKnownVersion = String(v);
+    };
+
     // Toast thông báo đồng bộ
     function showSyncToast(msg) {
         let toast = document.getElementById('__sync-toast');
@@ -163,34 +167,71 @@
         toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 3000);
     }
 
-    // Reload dữ liệu bị thay đổi (không reload lịch — chỉ reload danh mục)
+    // Reload dữ liệu bị thay đổi có bảo vệ form đang nhập dở
     function syncRefreshData() {
         if (typeof loadEntity !== 'function') return;
         try {
-            // Xóa cache time để force refresh
+            // 🛡️ Kiểm tra người dùng có đang nhập dữ liệu form bệnh nhân không
+            const patFormActive = typeof window.isPatientFormActive === 'function' ? window.isPatientFormActive() : false;
+            const isEditingPat = typeof editIndex !== 'undefined' && editIndex.pat > -1;
+            const shouldSkipPat = patFormActive || isEditingPat || window._savePatientLock;
+
+            // Xóa cache time cho các danh mục cần làm mới
             if (window.dataCacheTime) {
-                ['pat', 'proc', 'machine', 'staff', 'room'].forEach(k => {
-                    window.dataCacheTime[k] = 0;
-                });
+                ['machine', 'room', 'staff'].forEach(k => { window.dataCacheTime[k] = 0; });
+                if (!shouldSkipPat) {
+                    window.dataCacheTime['proc'] = 0;
+                    window.dataCacheTime['pat'] = 0;
+                }
             }
-            // Reload từng danh mục đang hiển thị
-            if (typeof loadPatients === 'function') loadPatients();
-            if (typeof loadProcedures === 'function') loadProcedures();
-            else if (typeof loadProcs === 'function') loadProcs();
+
+            // Tải lại độc lập (không gọi lồng chéo nhau để chống trùng lặp request)
             if (typeof loadMachines === 'function') loadMachines();
-            if (typeof loadStaff === 'function') loadStaff();
             if (typeof loadRooms === 'function') loadRooms();
-            if (typeof renderPatientsTable === 'function') renderPatientsTable();
+
+            // Danh mục thủ thuật: chỉ reload khi không mở form bệnh nhân để tránh ghi đè làm mất checkbox
+            if (!shouldSkipPat) {
+                if (typeof loadEntity === 'function') {
+                    loadEntity('getThuThuat', 'proc', () => {
+                        if (typeof renderProceduresTable === 'function') renderProceduresTable();
+                        if (typeof renderProcedureCheckboxes === 'function') renderProcedureCheckboxes();
+                    }, [], true);
+                }
+            }
+
+            // Nhân sự: tải độc lập (không gọi kèm loadPatients)
+            if (typeof loadEntity === 'function') {
+                loadEntity('getNhanSu', 'staff', () => {
+                    if (typeof renderStaffTable === 'function') renderStaffTable();
+                }, [], true);
+            }
+
+            // Bệnh nhân: chỉ tải lại khi form bệnh nhân KHÔNG đang nhập dở
+            if (!shouldSkipPat) {
+                if (typeof loadEntity === 'function') {
+                    loadEntity('getBenhNhan', 'pat', () => {
+                        if (typeof renderPatientsTable === 'function') renderPatientsTable();
+                    }, [], true);
+                }
+            } else {
+                console.log('[RealtimeSync]: Người dùng đang thao tác trên form bệnh nhân, bảo toàn dữ liệu đang nhập.');
+            }
+
             if (typeof filterSchedule === 'function') filterSchedule();
-        } catch(e) {}
+        } catch(e) {
+            console.warn('[RealtimeSync error]:', e);
+        }
     }
 
     // ⚡ Lắng nghe BroadcastChannel từ OfflineSyncEngine để đồng bộ tức thì giữa các tab (0ms)
     if (typeof OfflineSyncEngine !== 'undefined' && OfflineSyncEngine.registerLiveListener) {
         OfflineSyncEngine.registerLiveListener(function(type, payload, timestamp) {
             if (type === 'PATIENTS_UPDATED' || type === 'CACHE_UPDATED' || type === 'SCHEDULE_GENERATED') {
-                syncRefreshData();
-                showSyncToast('⚡ Đã đồng bộ tức thì từ cửa sổ làm việc khác!');
+                const patFormActive = typeof window.isPatientFormActive === 'function' ? window.isPatientFormActive() : false;
+                if (!patFormActive) {
+                    syncRefreshData();
+                    showSyncToast('⚡ Đã đồng bộ tức thì từ cửa sổ làm việc khác!');
+                }
             } else if (type === 'NETWORK_ONLINE') {
                 showSyncToast('🟢 Đã kết nối mạng trở lại!');
             } else if (type === 'NETWORK_OFFLINE') {
@@ -213,6 +254,13 @@
                     return;
                 }
                 if (v !== lastKnownVersion) {
+                    // 🛡️ Khử báo động giả: nếu chính tab này vừa thực hiện lưu trong vòng 30s qua
+                    if (window._lastLocalMutationTime && (Date.now() - window._lastLocalMutationTime < 30000)) {
+                        lastKnownVersion = v;
+                        window._lastLocalMutationTime = 0;
+                        return;
+                    }
+
                     lastKnownVersion = v;
                     syncRefreshData();
                     showSyncToast('🔄 Đã đồng bộ dữ liệu mới');
