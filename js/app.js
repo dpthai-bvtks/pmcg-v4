@@ -5377,7 +5377,11 @@ window.renderSttOrderControl = function (type, i, total) {
             if (!ten) { window._savePatientLock = false; return alert("Nhập tên bệnh nhân"); }
             if (!phong) { window._savePatientLock = false; return alert("Vui lòng chọn Phòng"); }
 
-            ten = ten.trim().toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
+            ten = (ten || '').normalize('NFC').trim();
+            if (ten.includes('\ufffd') && origTen && !origTen.includes('\ufffd')) {
+                ten = origTen;
+            }
+            ten = ten.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
 
             // 🛡️ Kiểm soát tính toàn vẹn dữ liệu bằng Zod Schema Engine
             if (window.MedicalSchemas && typeof window.MedicalSchemas.validatePatient === 'function') {
@@ -6312,22 +6316,26 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // Helper: đánh dấu bệnh nhân đã ra viện vào dữ liệu lịch
+        // Helper: đánh dấu bệnh nhân đã ra viện vào dữ liệu lịch & tự phục hồi tên bị lỗi ký tự lạ
         function markDischargedInSchedule(schedData) {
             if (!Array.isArray(schedData)) return schedData;
             const patList = (typeof dataCache !== 'undefined' && dataCache.pat) ? dataCache.pat : [];
+            const cleanHealFn = (window.SchedulerEngine && typeof window.SchedulerEngine.cleanAndHealPatientName === 'function')
+                ? window.SchedulerEngine.cleanAndHealPatientName
+                : (n) => String(n || '').normalize('NFC').replace(/[\ufffd\u0000]/g, '').trim();
+
             schedData.forEach(row => {
                 if (!row) return;
-                const tenBN = String(row.tenBN || '').trim().toLowerCase();
+                let rawTen = String(row.tenBN || '').normalize('NFC').trim();
                 const namSinh = String(row.namSinh || '').trim();
                 const phong = String(row.phong || '').trim().toLowerCase();
-                if (!tenBN) { row.__isDischarged = false; return; }
+                if (!rawTen) { row.__isDischarged = false; return; }
 
                 let matched = null;
                 // Ưu tiên khớp chính xác cả Tên, Năm sinh và Phòng
                 if (namSinh && phong) {
                     matched = patList.find(p => 
-                        String(p.ten || '').trim().toLowerCase() === tenBN && 
+                        String(p.ten || '').normalize('NFC').trim().toLowerCase() === rawTen.toLowerCase() && 
                         String(p.namSinh || '').trim() === namSinh && 
                         String(p.phong || '').trim().toLowerCase() === phong
                     );
@@ -6335,13 +6343,31 @@ window.renderSttOrderControl = function (type, i, total) {
                 // Khớp chính xác Tên và Năm sinh
                 if (!matched && namSinh) {
                     matched = patList.find(p => 
-                        String(p.ten || '').trim().toLowerCase() === tenBN && 
+                        String(p.ten || '').normalize('NFC').trim().toLowerCase() === rawTen.toLowerCase() && 
                         String(p.namSinh || '').trim() === namSinh
                     );
                 }
+                // Tự phục hồi: nếu tên có ký tự lạ \uFFFD hoặc chuỗi nuốt chữ (như LNH)
+                if (!matched && (rawTen.includes('\ufffd') || /\bL\s*NH\b/i.test(rawTen))) {
+                    matched = patList.find(p => {
+                        const pNs = String(p.namSinh || '').trim();
+                        const pRoom = String(p.phong || '').trim().toLowerCase();
+                        if (namSinh && pNs && namSinh !== pNs) return false;
+                        if (phong && pRoom && phong !== pRoom) return false;
+                        const cand = String(p.ten || '').normalize('NFC').trim();
+                        return cleanHealFn(rawTen, [cand]) === cand.toUpperCase();
+                    });
+                }
                 // Fallback chỉ khớp Tên nếu không có năm sinh
                 if (!matched) {
-                    matched = patList.find(p => String(p.ten || '').trim().toLowerCase() === tenBN);
+                    matched = patList.find(p => String(p.ten || '').normalize('NFC').trim().toLowerCase() === rawTen.toLowerCase());
+                }
+
+                if (matched) {
+                    const cleanName = String(matched.ten || '').normalize('NFC').trim();
+                    if (cleanName && !cleanName.includes('\ufffd') && row.tenBN !== cleanName) {
+                        row.tenBN = cleanName.toUpperCase();
+                    }
                 }
                 row.__isDischarged = !!(matched && matched.gioRa && String(matched.gioRa).trim() !== '');
             });
@@ -6917,6 +6943,48 @@ window.renderSttOrderControl = function (type, i, total) {
                 const addedCount = newSched.length;
 
                 if (addedCount > 0) {
+                    // 🛡️ Tự động đối chiếu và phục hồi họ tên bệnh nhân sạch từ currentSched và dataCache.pat
+                    const cleanHealFn = (window.SchedulerEngine && typeof window.SchedulerEngine.cleanAndHealPatientName === 'function')
+                        ? window.SchedulerEngine.cleanAndHealPatientName
+                        : (n) => String(n || '').normalize('NFC').replace(/[\ufffd\u0000]/g, '').trim();
+
+                    const candNames = [];
+                    currentSched.forEach(r => {
+                        const n = String(r?.tenBN || r?.HOTEN || '').normalize('NFC').trim();
+                        if (n && !n.includes('\ufffd') && !candNames.includes(n)) candNames.push(n);
+                    });
+                    const patList = (typeof dataCache !== 'undefined' && dataCache.pat) ? dataCache.pat : [];
+                    patList.forEach(p => {
+                        const n = String(p?.ten || p?.name || '').normalize('NFC').trim();
+                        if (n && !n.includes('\ufffd') && !candNames.includes(n)) candNames.push(n);
+                    });
+
+                    newSched.forEach(row => {
+                        if (!row) return;
+                        const rNs = String(row.namSinh || '').trim();
+                        const rRoom = String(row.phong || '').trim().toLowerCase();
+                        let targetCand = candNames;
+
+                        const matchedPat = patList.find(p => {
+                            const pNs = String(p?.namSinh || '').trim();
+                            const pRoom = String(p?.phong || '').trim().toLowerCase();
+                            return (!rNs || !pNs || rNs === pNs) && (!rRoom || !pRoom || rRoom === pRoom);
+                        }) || currentSched.find(r => {
+                            const pNs = String(r?.namSinh || '').trim();
+                            const pRoom = String(r?.phong || '').trim().toLowerCase();
+                            return (!rNs || !pNs || rNs === pNs) && (!rRoom || !pRoom || rRoom === pRoom);
+                        });
+
+                        if (matchedPat) {
+                            const mName = String(matchedPat.ten || matchedPat.tenBN || matchedPat.name || '').normalize('NFC').trim();
+                            if (mName && !mName.includes('\ufffd')) {
+                                targetCand = [mName, ...candNames];
+                            }
+                        }
+
+                        row.tenBN = cleanHealFn(row.tenBN, targetCand);
+                    });
+
                     const mergedSched = [...currentSched, ...newSched];
                     window.currentScheduleData = markDischargedInSchedule(mergedSched);
                     if (typeof dataCache !== 'undefined') dataCache.schedule = mergedSched;

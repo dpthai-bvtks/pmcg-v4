@@ -1134,6 +1134,52 @@ function getSafeCache() {
     return cache || { staff: [], pat: [], proc: [], room: [], machine: [] };
   }
 
+  /**
+   * 🛡️ TỰ PHỤC HỒI HỌ TÊN BỆNH NHÂN (SELF-HEALING PATIENT NAMES)
+   * Tự động phát hiện và sửa chữa các lỗi ký tự lạ (\uFFFD, chuỗi nuốt chữ như LNH thay vì LÃNH)
+   * dựa trên đối chiếu danh sách ứng viên tên từ lịch cũ và CSDL gốc.
+   */
+  function cleanAndHealPatientName(rawName, candidates = []) {
+    if (!rawName) return '';
+    let name = String(rawName).normalize('NFC').trim();
+
+    const hasReplacement = name.includes('\ufffd') || name.includes('\u0000');
+    const hasSuspiciousPattern = /\bL\s*NH\b/i.test(name);
+
+    if (!hasReplacement && !hasSuspiciousPattern) {
+      return name;
+    }
+
+    const candList = Array.isArray(candidates) ? candidates : [];
+    for (const cand of candList) {
+      if (!cand) continue;
+      const cleanCand = String(cand).normalize('NFC').trim();
+      if (cleanCand.includes('\ufffd')) continue;
+
+      // 1. Khớp regex dạng wildcard
+      const patternStr = '^' + name.replace(/[\ufffd\u0000]+/g, '.*').replace(/\bL\s*NH\b/gi, 'L.*NH').replace(/\s+/g, '\\s+') + '$';
+      try {
+        if (new RegExp(patternStr, 'i').test(cleanCand)) {
+          return cleanCand.toUpperCase();
+        }
+      } catch (e) {}
+
+      // 2. Khớp theo họ tên không dấu (NFD)
+      const noToneName = name.replace(/[\ufffd\u0000]/g, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '');
+      const noToneCand = cleanCand.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '');
+      if (noToneName && noToneCand && (noToneCand === noToneName || (noToneName.length >= 4 && (noToneCand.includes(noToneName) || noToneName.includes(noToneCand))))) {
+        return cleanCand.toUpperCase();
+      }
+    }
+
+    // 3. Fallback chuyên biệt cho trường hợp LNH / LNH VĂN... -> LÃNH
+    if (/\bL[\ufffd\s]*NH\b/i.test(name)) {
+      return name.replace(/\bL[\ufffd\s]*NH\b/gi, 'LÃNH').toUpperCase();
+    }
+
+    return name.replace(/[\ufffd\u0000]/g, '').trim().toUpperCase();
+  }
+
   function buildDbFromCache(cacheInput, skipProcsStr, existingSched = []) {
     const cache = cacheInput || getSafeCache();
 
@@ -1278,11 +1324,41 @@ function getSafeCache() {
     const seen = new Set();
     const forcedDrops = [];
 
+    // Thu thập danh sách họ tên bệnh nhân sạch từ existingSched và cache.pat để đối chiếu phục hồi
+    const validPatientCandidates = [];
+    (existingSched || []).forEach(r => {
+      const n = String(r?.tenBN || r?.HOTEN || (Array.isArray(r) ? r[1] : '') || '').normalize('NFC').trim();
+      if (n && !n.includes('\ufffd') && !validPatientCandidates.includes(n)) validPatientCandidates.push(n);
+    });
+    patList.forEach(p => {
+      const n = String(p?.ten || p?.name || (Array.isArray(p) ? p[1] : '') || '').normalize('NFC').trim();
+      if (n && !n.includes('\ufffd') && !validPatientCandidates.includes(n)) validPatientCandidates.push(n);
+    });
+
     patList.forEach((p, idx) => {
-      const pName = String(p.ten || p.name || p[1] || "").trim().toUpperCase();
-      if (!pName) return;
+      let rawPName = String(p.ten || p.name || p[1] || "").normalize('NFC').trim().toUpperCase();
+      if (!rawPName) return;
       const pNs = String(p.namSinh || p.age || p[2] || "").trim();
       const pRoom = String(p.phong || p[7] || "").trim();
+
+      // Phục hồi họ tên nếu phát hiện ký tự lạ
+      const matchedCandidates = validPatientCandidates.filter(c => {
+        const cUp = c.toUpperCase();
+        return (cUp === rawPName) || (existingSched || []).some(r => {
+          const rName = String(r?.tenBN || r?.HOTEN || (Array.isArray(r) ? r[1] : '') || '').toUpperCase().trim();
+          const rNs = String(r?.namSinh || r?.NAMSINH || (Array.isArray(r) ? r[2] : '') || '').trim();
+          const rRoom = String(r?.phong || r?.PHONG || (Array.isArray(r) ? r[3] : '') || '').trim();
+          return rName === cUp && (!pNs || !rNs || pNs === rNs) && (!pRoom || !rRoom || pRoom === rRoom);
+        });
+      });
+
+      const pName = cleanAndHealPatientName(rawPName, matchedCandidates.length > 0 ? matchedCandidates : validPatientCandidates);
+      if (pName !== rawPName) {
+        if (p.ten) p.ten = pName;
+        if (p.name) p.name = pName;
+        if (Array.isArray(p) && p[1]) p[1] = pName;
+      }
+
       const pId = p.id || (pName + "_" + pNs + "_" + pRoom + "_" + idx);
       const key = pId;
       if (seen.has(key)) return;
@@ -1297,11 +1373,13 @@ function getSafeCache() {
         const scheduledProcsForPat = existingSched
           .filter(r => {
             if (!r) return false;
-            const rName = String(r.tenBN || r.HOTEN || r[1] || '').toUpperCase().trim();
+            let rName = String(r.tenBN || r.HOTEN || r[1] || '').normalize('NFC').toUpperCase().trim();
+            rName = cleanAndHealPatientName(rName, [pName, ...validPatientCandidates]);
             const rNs = String(r.namSinh || r.NAMSINH || r[2] || '').trim();
             const rRoom = String(r.phong || r.PHONG || r[3] || '').trim();
             const rGio = String(r.gioDienRa || r.GIODIENRA || r[5] || '');
-            return rName === pName && (!pNs || !rNs || pNs === rNs) && (!pRoom || !rRoom || pRoom === rRoom) && rGio !== '❌ Rớt' && rGio !== '--';
+            const isNameMatch = (rName === pName) || (cleanAndHealPatientName(rName, [pName]) === pName);
+            return isNameMatch && (!pNs || !rNs || pNs === rNs) && (!pRoom || !rRoom || pRoom === rRoom) && rGio !== '❌ Rớt' && rGio !== '--';
           })
           .map(r => String(r.thuThuat || r.DICHVU || r[4] || '').trim().toLowerCase());
 
@@ -1397,7 +1475,7 @@ function getSafeCache() {
     const finalDropList = (best ? best.rot : []).concat(forcedDrops).map(r => ({ ...r, ngay: r.ngay || dateVal }));
     const formattedSched = (best ? best.sched : []).map(x => ({
       ngay: x.NGAY,
-      tenBN: x.HOTEN,
+      tenBN: cleanAndHealPatientName(x.HOTEN, (db.rawPatients || []).map(p => p.name)),
       namSinh: x.NAMSINH,
       phong: x.PHONG,
       thuThuat: x.DICHVU,
@@ -1506,7 +1584,7 @@ function getSafeCache() {
       const finalDropList = (best ? best.rot : []).concat(forcedDrops).map(r => ({ ...r, ngay: r.ngay || dateVal }));
       const formattedSched = (best ? best.sched : []).map(x => ({
         ngay: x.NGAY,
-        tenBN: x.HOTEN,
+        tenBN: cleanAndHealPatientName(x.HOTEN, (db.rawPatients || []).map(p => p.name)),
         namSinh: x.NAMSINH,
         phong: x.PHONG,
         thuThuat: x.DICHVU,
@@ -1761,6 +1839,7 @@ function getSafeCache() {
   return {
     t2m,
     m2t,
+    cleanAndHealPatientName,
     buildDbFromCache,
     runScheduling: runClientScheduling,
     runSchedulingAsync: runSchedulingAsync,

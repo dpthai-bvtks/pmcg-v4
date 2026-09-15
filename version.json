@@ -1,6 +1,6 @@
 {
-  "version": "4.0.9-rev3",
+  "version": "4.0.9-rev4",
   "releaseDate": "15/09/2026",
-  "releaseTime": "11:15 15/09/2026",
-  "notes": "Khắc phục triệt để lỗi timeout AbortError trong executeApiTask, loại bỏ lỗi Uncaught (in promise) kép, tối ưu API getGioBanChungCu và lazy-load dropdown ngày bận."
+  "releaseTime": "14:38 15/09/2026",
+  "notes": "Tự động phục hồi họ tên bệnh nhân (Self-healing UTF-8 NFC) khi xếp lịch bổ sung, triệt tiêu lỗi ký tự lạ và nuốt chữ."
 }

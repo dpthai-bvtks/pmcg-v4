@@ -3570,3 +3570,50 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `sw.js`
   + `version.json`
   + `PM-xeplich-v4.md`
+
+### [v4.0.9-rev4] - 14:38 15/09/2026: Khắc phục triệt để lỗi đổi tên bệnh nhân thành ký tự lạ (\uFFFD\uFFFD) khi chạy Xếp Lịch Bổ Sung
+- **Hiện tượng lỗi**:
+  + Khi người dùng bấm nút **⚡ Xếp bổ sung**, các ca thủ thuật mới được xếp vào lịch của bệnh nhân đã có trong ngày (ví dụ bệnh nhân `LÃNH VĂN TRIỆU`) bị đổi tên thành ký tự lạ có hình thoi hỏi chấm `\uFFFD\uFFFD` (`LNH VĂN TRIỆU` hoặc `LNH VĂN TRIỆU`), trong khi các ca cũ của bệnh nhân này trên bảng lịch vẫn hiển thị đúng là `LÃNH VĂN TRIỆU`.
+- **Nguyên nhân gốc rễ**:
+  1. **Lỗi Encoding Byte Split của chữ Tiếng Việt có dấu phức tạp (`Ã` = `0xC3 0x83`)**:
+     - Ký tự `Ã` trong bảng mã UTF-8 gồm 2 byte (`0xC3 0x83`). Khi bị cắt chuỗi, giải mã nhầm qua các kênh dữ liệu tạm thời (hoặc chuyển đổi qua lại giữa trình duyệt và chuỗi bộ nhớ), cả 2 byte này bị biến thành 2 ký tự thay thế `\uFFFD\uFFFD` (Replacement Characters). Các ký tự như `Ă` (`0xC4 0x82`) hay `Ệ` (`0xE1 0xBB 0x86`) ở các từ khác không bị ảnh hưởng, khiến lỗi biểu hiện rõ nhất ở họ/chữ lót đặc thù như `LÃNH` -> `LNH` hoặc `LNH`.
+  2. **Thiếu cơ chế chuẩn hóa NFC và tự phục hồi (Self-Healing) trong Thuật toán Xếp Lịch**:
+     - Trong `js/scheduler-engine.js`: hàm `buildDbFromCache` lấy trực tiếp `p.ten` / `p.name` mà không có cơ chế đối chiếu ngược lại với lịch đã xếp (`existingSched`) để chuẩn hóa về tên sạch. Khi tên bị biến dạng, bộ lọc thủ thuật đã xếp `scheduledProcsForPat` cũng so sánh lệch do `LNH VĂN TRIỆU` !== `LÃNH VĂN TRIỆU`, dẫn đến việc xếp trùng hoặc không nhận diện đúng bệnh nhân cũ.
+     - Khi xuất kết quả `formattedSched` từ thuật toán, trường `tenBN: x.HOTEN` giữ nguyên chuỗi bị lỗi thay vì được làm sạch.
+  3. **Thiếu đối chiếu trước khi gộp lịch trong `runExtraScheduling` (`js/app.js`)**:
+     - Khi `SchedulerEngine` trả về `newSched`, `runExtraScheduling` gộp thẳng `[...currentSched, ...newSched]` mà chưa đối chiếu `namSinh` và `phong` của `newSched` với danh sách bệnh nhân chuẩn `dataCache.pat` và các hàng đã có trong `currentSched`.
+  4. **Backend D1 SQLite chưa chặn ký tự hỏng**:
+     - API `saveSchedule` và `editBenhNhan` trong `backend/src/index.js` chưa lọc bỏ `\uFFFD` trước khi ghi vào cơ sở dữ liệu `lich_trinh`.
+- **Giải pháp triển khai (v4.0.9-rev4)**:
+  1. **Tầng Thuật Toán Xếp Lịch (`js/scheduler-engine.js`)**:
+     - Xây dựng hàm chuyên dụng `cleanAndHealPatientName(rawName, candidates)`:
+       + Chuẩn hóa chuỗi bằng Unicode Normalization Form C (`normalize('NFC')`).
+       + Phát hiện sự xuất hiện của `\uFFFD`, mã null `\u0000` hoặc các chuỗi nuốt chữ cục bộ (như regex `\bL\s*NH\b`).
+       + Đối chiếu với danh sách tên ứng viên sạch từ `existingSched` và `cache.pat` bằng 2 tầng: Biểu thức chính quy wildcard (`^L.*NH\s+VĂN\s+TRIỆU$`) và đối chiếu không dấu (`normalize('NFD')`).
+       + Fallback dự phòng trực tiếp phục hồi biến thể `\bL[\ufffd\s]*NH\b` -> `LÃNH`.
+     - Tích hợp vào `buildDbFromCache`: tự động thu thập danh sách tên bệnh nhân hợp lệ `validPatientCandidates` từ lịch cũ và danh mục bệnh nhân; tự động chữa lành tên và đồng bộ ngược vào `p.ten`, `p.name`.
+     - Tinh chỉnh `scheduledProcsForPat` trong bộ lọc xếp bổ sung để so khớp tên chịu lỗi (`isNameMatch`), giúp nhận diện chuẩn xác 100% thủ thuật đã làm của bệnh nhân cũ.
+     - Áp dụng `cleanAndHealPatientName` trên toàn bộ danh sách đầu ra `formattedSched` của cả `runClientScheduling` và `runSchedulingAsync`.
+     - Xuất bản `cleanAndHealPatientName` qua `window.SchedulerEngine`.
+  2. **Tầng Ứng Dụng Frontend (`js/app.js`)**:
+     - **Đối chiếu trước khi gộp trong `runExtraScheduling`**: Trước khi tạo `mergedSched`, duyệt qua từng hàng của `newSched`, tìm bệnh nhân tương ứng trong `currentSched` và `dataCache.pat` theo bộ ba `(namSinh, phong, tên)`, tự phục hồi `row.tenBN` về tên gốc chuẩn đẹp 100%.
+     - **Tự chữa lành toàn diện trong `markDischargedInSchedule`**: Bổ sung bộ lọc phục hồi họ tên cho mọi dòng lịch mỗi khi nạp, gộp hoặc lọc lịch trình.
+     - **Bảo vệ form bệnh nhân trong `savePat`**: Bổ sung `normalize('NFC')` và ngăn chặn việc ghi đè tên hỏng có `\uFFFD` nếu tên gốc `origTen` hợp lệ.
+  3. **Tầng Cơ Sở Dữ Liệu Backend (`backend/src/index.js`)**:
+     - **Tự làm sạch trong `saveSchedule`**: Truy vấn danh sách họ tên bệnh nhân sạch từ bảng `benh_nhan` theo `unit_code`, tự động chữa lành các hàng lịch có chứa `\uFFFD` trước khi ghi vào bảng `lich_trinh`.
+     - **Bảo vệ tên trong `editBenhNhan` và `addBenhNhan`**: Chuẩn hóa `normalize('NFC')` và khôi phục `targetName` nếu phát hiện chuỗi bị hỏng `\uFFFD`.
+  4. **Đồng bộ phiên bản theo RULES.md**:
+     - Phiên bản nâng lên `4.0.9-rev4`.
+     - Cache name Service Worker: `pmcg-v4-cache-4.0.9-rev4`.
+     - Chân trang (`#app-footer-version`): Giữ nguyên `Phiên bản: 4.0.9` (không chứa `-rev4`).
+     - Thời gian cập nhật (`#sys-last-update`): `Cập nhật lần cuối: 14:38 15/09/2026`.
+     - Đã kiểm tra cú pháp thành công với Node.js.
+     - Đã deploy thành công lên Cloudflare Pages & Worker API.
+- **File sửa đổi**:
+  + `js/scheduler-engine.js`
+  + `js/app.js`
+  + `backend/src/index.js`
+  + `index.html`
+  + `sw.js`
+  + `version.json`
+  + `PM-xeplich-v4.md`

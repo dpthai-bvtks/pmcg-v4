@@ -3320,7 +3320,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       buoi_dieu_tri: args[9]
     };
 
-    const patName = String(p.ten || p.name || "").trim();
+    const patName = String(p.ten || p.name || "").normalize("NFC").trim();
     const patAge = parseInt(p.namSinh || p.age) || 0;
     const ngayVao = String(p.ngayVao || "").trim();
     const procs = typeof p.thuThuat === "string" ? p.thuThuat.split(",").map(x => ({ name: x.trim(), status: "Chưa xếp" })) : (p.thu_thuat || []);
@@ -3408,9 +3408,12 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     };
 
     const patId = parseInt(p.id) || 0;
-    const patName = String(p.ten || p.name || "").trim();
+    let patName = String(p.ten || p.name || "").normalize("NFC").trim();
     const patAge = parseInt(p.namSinh || p.age) || 0;
-    const targetName = String(p.oldTen || patName).trim();
+    let targetName = String(p.oldTen || patName).normalize("NFC").trim();
+    if (patName.includes("\ufffd") && targetName && !targetName.includes("\ufffd")) {
+      patName = targetName;
+    }
     const targetAge = parseInt(p.oldNamSinh || p.namSinh || p.age) || 0;
     const procs = typeof p.thuThuat === "string" ? p.thuThuat.split(",").map(x => ({ name: x.trim(), status: "Chưa xếp" })).filter(x => x.name) : (p.thu_thuat || []);
     const loaiBnVal = p.loai_bn ? String(p.loai_bn).trim() : "";
@@ -3721,17 +3724,44 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const date = args[0] || new Date().toISOString().slice(0, 10);
       const rows = args[1] || [];
 
+      // 🛡️ Tự động đối chiếu và phục hồi tên bệnh nhân sạch từ bảng benh_nhan
+      let candidateNames = [];
+      try {
+        const bnRes = await db.prepare("SELECT name FROM benh_nhan WHERE unit_code = ?").bind(unitCode).all();
+        if (bnRes && bnRes.results) {
+          candidateNames = bnRes.results.map(b => String(b.name || "").normalize("NFC").trim()).filter(Boolean);
+        }
+      } catch (eBn) {
+        console.warn("[saveSchedule]: Lỗi lấy danh sách benh_nhan:", eBn);
+      }
+
+      function healBackendName(raw, cands) {
+        if (!raw) return "";
+        let n = String(raw).normalize("NFC").trim();
+        if (!n.includes("\ufffd") && !/\bL\s*NH\b/i.test(n)) return n;
+        for (const c of cands) {
+          if (!c || c.includes("\ufffd")) continue;
+          try {
+            const pat = "^" + n.replace(/[\ufffd\u0000]+/g, ".*").replace(/\bL\s*NH\b/gi, "L.*NH").replace(/\s+/g, "\\s+") + "$";
+            if (new RegExp(pat, "i").test(c)) return c.toUpperCase();
+          } catch (e) {}
+        }
+        if (/\bL[\ufffd\s]*NH\b/i.test(n)) return n.replace(/\bL[\ufffd\s]*NH\b/gi, "LÃNH").toUpperCase();
+        return n.replace(/[\ufffd\u0000]/g, "").trim().toUpperCase();
+      }
+
       const statements = [
         db.prepare("DELETE FROM lich_trinh WHERE unit_code = ? AND date = ?").bind(unitCode, date)
       ];
 
       rows.forEach((r, idx) => {
+        const cleanPatientName = healBackendName(r[1] || "", candidateNames);
         statements.push(
           db.prepare("INSERT INTO lich_trinh (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed, order_idx) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
           .bind(
             unitCode,
             r[0] || date,
-            r[1] || "",
+            cleanPatientName,
             r[2] || "",
             r[3] || "",
             r[4] || "",
