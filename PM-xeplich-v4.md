@@ -3501,6 +3501,39 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `version.json`
   + `PM-xeplich-v4.md`
 
+### [v4.0.9-rev1] - 07:55 15/09/2026: Khắc phục triệt để lỗi "UNIQUE constraint failed: benh_nhan.name, benh_nhan.age" & Mất dữ liệu khi sửa bệnh nhân
+- **Hiện tượng lỗi**:
+  + Khi người dùng lưu hoặc sửa bệnh nhân, hệ thống gặp lỗi:
+    `Failed to load resource: the server responded with a status of 500 ()`
+    `[Unhandled Rejection]: [Server Action Error - editBenhNhan]: Turso SQL error: {"message":"UNIQUE constraint failed: benh_nhan.name, benh_nhan.age","code":"ERR_SQLITE_ERROR"}`
+  + Frontend hiển thị cảnh báo lỗi và tự động rollback dữ liệu gốc từ máy chủ, làm mất các thông tin người dùng vừa nhập.
+- **Nguyên nhân gốc rễ**:
+  1. **Ràng buộc UNIQUE cũ trong bảng `benh_nhan` CSDL Turso**: Bảng `benh_nhan` trước đây có ràng buộc composite `UNIQUE(name, age)`. Khi chạy đa đơn vị SaaS, ràng buộc này không có `unit_code` khiến các bệnh nhân trùng tên/năm sinh bị xung đột chéo. Trong môi trường y tế, 2 bệnh nhân trùng họ tên hoặc cùng không có năm sinh (`age = 0`) là thực tế hợp lệ.
+  2. **Cơ chế Fallback INSERT mù quáng trong backend `editBenhNhan`**: Khi câu lệnh `UPDATE` trả về `changes === 0` (do lệch tên cũ hoặc SQLite báo 0 dòng thay đổi), backend tự động nhảy sang `INSERT INTO benh_nhan`. Câu lệnh `INSERT` cố chèn bệnh nhân đã có sẵn trong bảng dẫn đến vi phạm ràng buộc `UNIQUE(name, age)` và gây lỗi 500.
+  3. **Lỗi ghi đè biến Optimistic trong `savePat` (`js/app.js`)**: `currentItem.ten` và `currentItem.namSinh` bị gán đè giá trị mới trước khi gọi API, khiến `oldTen` và `oldNamSinh` truyền lên server chính là giá trị mới. Khi đổi tên BN từ A sang B, server tìm BN tên B để sửa không thấy -> rơi vào nhánh INSERT lỗi -> frontend rollback toàn bộ.
+- **Giải pháp triển khai (v4.0.9-rev1)**:
+  1. **Backend (`backend/src/index.js`)**:
+     - **Tự động migration schema `benh_nhan` trong `ensureSchema`**: Nhận diện bảng `benh_nhan` nếu còn chứa `UNIQUE` composite; tự động tạo bảng `benh_nhan_v4` với khóa chính `id INTEGER PRIMARY KEY AUTOINCREMENT` (không có UNIQUE name/age), sao chép toàn bộ dữ liệu, drop bảng cũ và đổi tên bảng mới. Xóa sạch các index unique độc lập.
+     - **Nâng cấp `editBenhNhan`**: Nhận tham số `id`, ưu tiên cập nhật chính xác theo `id` (`WHERE unit_code = ? AND id = ?`). Nếu không có `id`, fallback cập nhật theo `name` và `age`. Nếu vẫn `changes === 0`, kiểm tra sự tồn tại của bệnh nhân theo tên để UPDATE thay vì INSERT mù quáng.
+     - **Cập nhật `bulkUpdateBenhNhan`**: Loại bỏ `ON CONFLICT(name, age)` khỏi câu lệnh SQL để tương thích 100% với schema không còn ràng buộc UNIQUE.
+     - **Cập nhật `deleteBenhNhan`**: Ưu tiên xóa chính xác theo `id` nếu có để tránh xóa nhầm các bệnh nhân cùng tên.
+  2. **Frontend (`js/app.js`)**:
+     - **Sửa `savePat`**: Sao lưu biến `origTen`, `origNam`, `origId` trước khi cập nhật Optimistic UI. Truyền `origTen`, `origNam`, `origId` vào API `editBenhNhan`.
+     - **Truyền `p.id`**: Bổ sung `p.id` vào tất cả các lời gọi `editBenhNhan` (`savePatBusy`, `deleteSinglePatBusy`, `clearPatBusy`, `savePatLeave`, `clearPatLeave`) và `deletePatient` (`deleteBenhNhan`).
+  3. **Đồng bộ phiên bản theo RULES.md**:
+     - Ngày mới 15/09/2026: Phiên bản nâng từ `4.0.8-rev1` lên `4.0.9-rev1`.
+     - Cache name Service Worker: `pmcg-v4-cache-4.0.9-rev1`.
+     - Chân trang (`#app-footer-version`): `Phiên bản: 4.0.9` (không chứa `-rev1`).
+     - Thời gian cập nhật (`#sys-last-update`): `Cập nhật lần cuối: 07:55 15/09/2026`.
+- **File sửa đổi**:
+  + `backend/src/index.js`
+  + `js/app.js`
+  + `index.html`
+  + `sw.js`
+  + `version.json`
+  + `PM-xeplich-v4.md`
+
+
 
 
 

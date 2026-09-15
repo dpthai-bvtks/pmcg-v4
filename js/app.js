@@ -5274,6 +5274,11 @@ window.renderSttOrderControl = function (type, i, total) {
             const currentEditIdx = editIndex.pat;
             const currentItem = currentEditIdx > -1 ? dataCache.pat[currentEditIdx] : null;
 
+            // 🛡️ Lưu thông tin nhận diện gốc trước khi Optimistic UI cập nhật (tránh gửi nhầm tên mới thay cho tên cũ)
+            const origTen = currentItem ? currentItem.ten : '';
+            const origNam = currentItem ? currentItem.namSinh : '';
+            const origId = currentItem ? currentItem.id : null;
+
             let ten = document.getElementById('pat-name').value;
             const nam = document.getElementById('pat-year').value;
             // const ngay = document.getElementById('pat-date').value;
@@ -5383,7 +5388,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 google.script.run
                     .withSuccessHandler(onDone)
                     .withFailureHandler(onError)
-                    .editBenhNhan(sheetIdx, ten, nam, ngay, gio, ban, ra, phong, tt, currentItem.ten, currentItem.namSinh, loai_bn, buoi_dieu_tri);
+                    .editBenhNhan(sheetIdx, ten, nam, ngay, gio, ban, ra, phong, tt, origTen, origNam, loai_bn, buoi_dieu_tri, origId);
             } else {
                 google.script.run
                     .withSuccessHandler(onDone)
@@ -5559,7 +5564,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         alert('Lỗi khi xóa: ' + e);
                         if (typeof loadPatients === 'function') loadPatients();
                     })
-                    .deleteBenhNhan(deletedSheetIndex, p.ten, p.namSinh);
+                    .deleteBenhNhan(deletedSheetIndex, p.ten, p.namSinh, p.id);
             });
         }
 
@@ -5744,7 +5749,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         () => { if (typeof renderBusyPat === 'function') renderBusyPat(); }
                     ], true);
                 })
-                .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, p.gioRa, p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri);
+                .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, p.gioRa, p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri, p.id);
         });
 
         function deleteSinglePatBusy() {
@@ -5781,7 +5786,7 @@ window.renderSttOrderControl = function (type, i, total) {
                             () => { if (typeof renderBusyPat === 'function') renderBusyPat(); }
                         ], true);
                     })
-                    .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, p.gioRa, p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri);
+                    .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, p.gioRa, p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri, p.id);
             });
         }
 
@@ -5811,7 +5816,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         () => { if (typeof renderBusyPat === 'function') renderBusyPat(); }
                     ], true);
                 })
-                .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, '', p.gioRa, p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri);
+                .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, '', p.gioRa, p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri, p.id);
         }
 
 
@@ -5930,7 +5935,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         () => { if (typeof renderLeavePat === 'function') renderLeavePat(); }
                     ], true);
                 })
-                .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, leaveTime, p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri);
+                .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, leaveTime, p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri, p.id);
         });
 
         function clearPatLeave() {
@@ -5976,7 +5981,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         () => { if (typeof renderLeavePat === 'function') renderLeavePat(); }
                     ], true);
                 })
-                .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, '', p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri);
+                .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, '', p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri, p.id);
         }
 
 

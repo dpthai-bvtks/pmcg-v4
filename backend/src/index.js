@@ -1387,6 +1387,55 @@ async function ensureSchema(db) {
       console.warn("[Migrate thong_ke error]:", e);
     }
 
+    try {
+      // 10. benh_nhan: Loại bỏ ràng buộc UNIQUE(name, age) legacy để cho phép nhiều BN trùng tên/năm sinh và tránh xung đột đa đơn vị
+      const bnSql = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='benh_nhan'").first();
+      if (bnSql && bnSql.sql && bnSql.sql.toUpperCase().includes("UNIQUE")) {
+        console.log("[Migrate benh_nhan]: Phát hiện ràng buộc UNIQUE trong bảng benh_nhan, đang nâng cấp lên benh_nhan_v4...");
+        await db.prepare(`
+          CREATE TABLE IF NOT EXISTS benh_nhan_v4 (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
+            name TEXT NOT NULL,
+            age INTEGER DEFAULT 0,
+            gender TEXT DEFAULT 'Nam',
+            room TEXT DEFAULT '',
+            bed TEXT DEFAULT '',
+            arrive_time TEXT DEFAULT '07:30',
+            leave_time TEXT DEFAULT '',
+            thu_thuat TEXT NOT NULL DEFAULT '[]',
+            status TEXT DEFAULT 'Chưa xếp',
+            ngay_vao TEXT DEFAULT '',
+            gio_ban TEXT DEFAULT '',
+            is_saturday INTEGER DEFAULT 0,
+            order_idx INTEGER DEFAULT 0,
+            loai_bn TEXT DEFAULT 'NoiTru',
+            buoi_dieu_tri TEXT DEFAULT 'Sang',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `).run();
+        await db.prepare(`
+          INSERT INTO benh_nhan_v4 (id, unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, is_saturday, order_idx, loai_bn, buoi_dieu_tri, created_at, updated_at)
+          SELECT id, COALESCE(unit_code, 'bvtks-cs2'), name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, COALESCE(is_saturday, 0), COALESCE(order_idx, 0), COALESCE(loai_bn, 'NoiTru'), COALESCE(buoi_dieu_tri, 'Sang'), created_at, updated_at FROM benh_nhan
+        `).run();
+        await db.prepare("DROP TABLE benh_nhan").run();
+        await db.prepare("ALTER TABLE benh_nhan_v4 RENAME TO benh_nhan").run();
+        await db.prepare("CREATE INDEX IF NOT EXISTS idx_benh_nhan_unit ON benh_nhan(unit_code, is_saturday, order_idx)").run();
+        console.log("[Migrate benh_nhan]: Nâng cấp bảng benh_nhan thành công (không còn UNIQUE name/age)!");
+      }
+
+      // Xóa các index UNIQUE độc lập trên benh_nhan nếu có
+      const uIndexes = await db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='benh_nhan' AND sql LIKE '%UNIQUE%'").all().catch(() => ({ results: [] }));
+      for (const idx of (uIndexes.results || [])) {
+        if (idx.name && !idx.name.startsWith("sqlite_autoindex")) {
+          await db.prepare(`DROP INDEX IF EXISTS ${idx.name}`).run().catch(() => {});
+        }
+      }
+    } catch(e) {
+      console.warn("[Migrate benh_nhan error]:", e);
+    }
+
     schemaEnsured = true;
   } catch(err) {
     console.warn("[ensureSchema error]:", err);
@@ -3299,64 +3348,41 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       oldTen: args[offset + 8] || args[offset],
       oldNamSinh: args[offset + 9] || args[offset + 1],
       loai_bn: args[offset + 10],
-      buoi_dieu_tri: args[offset + 11]
+      buoi_dieu_tri: args[offset + 11],
+      id: args[offset + 12] || 0
     };
 
-    const procs = typeof p.thuThuat === "string" ? p.thuThuat.split(",").map(x => ({ name: x.trim(), status: "Chưa xếp" })).filter(x => x.name) : (p.thu_thuat || []);
+    const patId = parseInt(p.id) || 0;
     const patName = String(p.ten || p.name || "").trim();
+    const patAge = parseInt(p.namSinh || p.age) || 0;
     const targetName = String(p.oldTen || patName).trim();
     const targetAge = parseInt(p.oldNamSinh || p.namSinh || p.age) || 0;
-    const patId = parseInt(p.id) || 0;
+    const procs = typeof p.thuThuat === "string" ? p.thuThuat.split(",").map(x => ({ name: x.trim(), status: "Chưa xếp" })).filter(x => x.name) : (p.thu_thuat || []);
     const loaiBnVal = p.loai_bn ? String(p.loai_bn).trim() : "";
     const buoiVal = p.buoi_dieu_tri ? String(p.buoi_dieu_tri).trim() : "";
 
-    const updateRes = await db.prepare(`
-      UPDATE benh_nhan SET 
-        name = ?, 
-        age = ?, 
-        gender = ?, 
-        room = ?, 
-        bed = ?, 
-        arrive_time = ?, 
-        leave_time = ?, 
-        thu_thuat = ?, 
-        status = ?, 
-        ngay_vao = ?, 
-        gio_ban = ?, 
-        loai_bn = CASE WHEN ? != '' THEN ? ELSE loai_bn END, 
-        buoi_dieu_tri = CASE WHEN ? != '' THEN ? ELSE buoi_dieu_tri END, 
-        updated_at = CURRENT_TIMESTAMP 
-      WHERE unit_code = ? AND ((? > 0 AND id = ?) OR (name = ? AND age = ?))
-    `).bind(
-      patName,
-      parseInt(p.namSinh || p.age) || 0,
-      String(p.gender || "Nam"),
-      String(p.phong || p.room || ""),
-      String(p.bed || ""),
-      String(p.gioVao || p.arriveTime || "07:30"),
-      String(p.gioRa || p.leaveTime || ""),
-      JSON.stringify(procs),
-      String(p.status || "Chưa xếp"),
-      String(p.ngayVao || ""),
-      String(p.gioBan || ""),
-      loaiBnVal,
-      loaiBnVal,
-      buoiVal,
-      buoiVal,
-      unitCode,
-      patId,
-      patId,
-      targetName,
-      targetAge
-    ).run();
-
-    if (updateRes.meta && updateRes.meta.changes === 0) {
-      await db.prepare(
-        "INSERT INTO benh_nhan (unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-      ).bind(
-        unitCode,
+    let updateRes = null;
+    if (patId > 0) {
+      updateRes = await db.prepare(`
+        UPDATE benh_nhan SET 
+          name = ?, 
+          age = ?, 
+          gender = ?, 
+          room = ?, 
+          bed = ?, 
+          arrive_time = ?, 
+          leave_time = ?, 
+          thu_thuat = ?, 
+          status = ?, 
+          ngay_vao = ?, 
+          gio_ban = ?, 
+          loai_bn = CASE WHEN ? != '' THEN ? ELSE loai_bn END, 
+          buoi_dieu_tri = CASE WHEN ? != '' THEN ? ELSE buoi_dieu_tri END, 
+          updated_at = CURRENT_TIMESTAMP 
+        WHERE unit_code = ? AND id = ?
+      `).bind(
         patName,
-        parseInt(p.namSinh || p.age) || 0,
+        patAge,
         String(p.gender || "Nam"),
         String(p.phong || p.room || ""),
         String(p.bed || ""),
@@ -3366,9 +3392,106 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         String(p.status || "Chưa xếp"),
         String(p.ngayVao || ""),
         String(p.gioBan || ""),
-        loaiBnVal || "NoiTru",
-        buoiVal || "TuDong"
+        loaiBnVal, loaiBnVal,
+        buoiVal, buoiVal,
+        unitCode,
+        patId
       ).run();
+    }
+
+    if (!updateRes || (updateRes.meta && updateRes.meta.changes === 0)) {
+      updateRes = await db.prepare(`
+        UPDATE benh_nhan SET 
+          name = ?, 
+          age = ?, 
+          gender = ?, 
+          room = ?, 
+          bed = ?, 
+          arrive_time = ?, 
+          leave_time = ?, 
+          thu_thuat = ?, 
+          status = ?, 
+          ngay_vao = ?, 
+          gio_ban = ?, 
+          loai_bn = CASE WHEN ? != '' THEN ? ELSE loai_bn END, 
+          buoi_dieu_tri = CASE WHEN ? != '' THEN ? ELSE buoi_dieu_tri END, 
+          updated_at = CURRENT_TIMESTAMP 
+        WHERE unit_code = ? AND name = ? AND (age = ? OR ? = 0 OR age = 0)
+      `).bind(
+        patName,
+        patAge,
+        String(p.gender || "Nam"),
+        String(p.phong || p.room || ""),
+        String(p.bed || ""),
+        String(p.gioVao || p.arriveTime || "07:30"),
+        String(p.gioRa || p.leaveTime || ""),
+        JSON.stringify(procs),
+        String(p.status || "Chưa xếp"),
+        String(p.ngayVao || ""),
+        String(p.gioBan || ""),
+        loaiBnVal, loaiBnVal,
+        buoiVal, buoiVal,
+        unitCode,
+        targetName,
+        targetAge,
+        targetAge
+      ).run();
+    }
+
+    if (updateRes && updateRes.meta && updateRes.meta.changes === 0) {
+      const existing = await db.prepare("SELECT id FROM benh_nhan WHERE unit_code = ? AND (name = ? OR (? > 0 AND id = ?)) LIMIT 1").bind(unitCode, patName, patId, patId).first();
+      if (existing && existing.id) {
+        await db.prepare(`
+          UPDATE benh_nhan SET 
+            age = ?, 
+            gender = ?, 
+            room = ?, 
+            bed = ?, 
+            arrive_time = ?, 
+            leave_time = ?, 
+            thu_thuat = ?, 
+            status = ?, 
+            ngay_vao = ?, 
+            gio_ban = ?, 
+            loai_bn = CASE WHEN ? != '' THEN ? ELSE loai_bn END, 
+            buoi_dieu_tri = CASE WHEN ? != '' THEN ? ELSE buoi_dieu_tri END, 
+            updated_at = CURRENT_TIMESTAMP 
+          WHERE id = ?
+        `).bind(
+          patAge,
+          String(p.gender || "Nam"),
+          String(p.phong || p.room || ""),
+          String(p.bed || ""),
+          String(p.gioVao || p.arriveTime || "07:30"),
+          String(p.gioRa || p.leaveTime || ""),
+          JSON.stringify(procs),
+          String(p.status || "Chưa xếp"),
+          String(p.ngayVao || ""),
+          String(p.gioBan || ""),
+          loaiBnVal, loaiBnVal,
+          buoiVal, buoiVal,
+          existing.id
+        ).run();
+      } else {
+        await db.prepare(
+          "INSERT INTO benh_nhan (unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        ).bind(
+          unitCode,
+          patName,
+          patAge,
+          String(p.gender || "Nam"),
+          String(p.phong || p.room || ""),
+          String(p.bed || ""),
+          String(p.gioVao || p.arriveTime || "07:30"),
+          String(p.gioRa || p.leaveTime || ""),
+          JSON.stringify(procs),
+          String(p.status || "Chưa xếp"),
+          String(p.ngayVao || ""),
+          String(p.gioBan || ""),
+          loaiBnVal || "NoiTru",
+          buoiVal || "TuDong"
+        ).run();
+      }
     }
     await bumpDataVersion(db, unitCode);
     return success(true);
@@ -3377,9 +3500,15 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     case "deleteBenhNhan": {
       let payload = {};
       if (typeof args[0] === "object" && args[0] !== null) payload = args[0];
+      const patId = parseInt(payload.id || args[3] || (typeof args[0] === "number" && args[0] > 1000 ? args[0] : 0)) || 0;
       const ten = String(payload.ten || payload.name || args[1] || (typeof args[0] === "string" && !/^\d+$/.test(args[0]) ? args[0] : "")).trim();
-      if (ten) {
-        const stmtDel = db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND (name = ? OR id = ?)").bind(unitCode, ten, ten);
+      const namSinh = parseInt(payload.namSinh || payload.age || args[2]) || 0;
+
+      if (patId > 0) {
+        const stmtDel = db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND id = ?").bind(unitCode, patId);
+        await db.batch([stmtDel, makeBumpDataVersionStmt(db, unitCode)]);
+      } else if (ten) {
+        const stmtDel = db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND name = ? AND (? = 0 OR age = ? OR age = 0)").bind(unitCode, ten, namSinh, namSinh);
         await db.batch([stmtDel, makeBumpDataVersionStmt(db, unitCode)]);
       } else {
         const idx = typeof args[0] === "number" ? args[0] : parseInt(args[0]);
@@ -3495,9 +3624,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         }
         const procsJson = JSON.stringify(procs);
 
-        const sql = replaceAll
-          ? "INSERT INTO benh_nhan (unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri, order_idx) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-          : "INSERT INTO benh_nhan (unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri, order_idx) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(name, age) DO UPDATE SET age = excluded.age, gender = excluded.gender, room = excluded.room, bed = excluded.bed, arrive_time = excluded.arrive_time, leave_time = excluded.leave_time, thu_thuat = excluded.thu_thuat, status = excluded.status, ngay_vao = excluded.ngay_vao, gio_ban = excluded.gio_ban, loai_bn = excluded.loai_bn, buoi_dieu_tri = excluded.buoi_dieu_tri, order_idx = excluded.order_idx, updated_at = CURRENT_TIMESTAMP";
+        const sql = "INSERT INTO benh_nhan (unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri, order_idx) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         insertStatements.push(
           db.prepare(sql).bind(

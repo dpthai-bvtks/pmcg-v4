@@ -1,6 +1,6 @@
 {
-  "version": "4.0.8-rev1",
-  "releaseDate": "14/09/2026",
-  "releaseTime": "09:25 14/09/2026",
-  "notes": "Tối ưu hóa tốc độ lưu dữ liệu và phản hồi trên các bảng (Bệnh nhân, Nhân sự, Máy móc, Thủ thuật, Phòng, Phác đồ, Chấm công, Thống kê)."
+  "version": "4.0.9-rev1",
+  "releaseDate": "15/09/2026",
+  "releaseTime": "07:55 15/09/2026",
+  "notes": "Khắc phục triệt để lỗi UNIQUE constraint failed bệnh nhân và mất dữ liệu khi sửa; nâng cấp lưu trữ theo ID và auto-migration schema Turso."
 }
