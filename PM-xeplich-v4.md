@@ -3873,3 +3873,53 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `version.json`
   - `PM-xeplich-v4.md`
 
+### [16/09/2026 - 20:25] Phiên bản v4.0.9-rev14: Sửa lỗi Turso SQLite ON CONFLICT khi xóa bệnh nhân & bảo vệ an toàn các tác vụ xóa
+- **Bối cảnh & Yêu cầu của người dùng**:
+  - Khi người dùng thực hiện xóa bệnh nhân trên giao diện web, hệ thống báo lỗi:
+    `Lỗi khi xóa: [Server Action Error - deleteBenhNhan]: Turso SQL error: {"message":"SQLite error: ON CONFLICT clause does not match any PRIMARY KEY or UNIQUE constraint","code":"SQLITE_UNKNOWN"}`
+- **Phân tích nguyên nhân cốt lõi (Root Cause)**:
+  1. Trong `backend/src/index.js`, hàm `deleteBenhNhan` (cũng như `deleteMayMoc`, `deleteThuThuat`, `deletePhong`, `deleteNhanSu`) được bọc trong một transaction `db.batch([stmtDel, makeBumpDataVersionStmt(db, unitCode)])`.
+  2. Câu lệnh `makeBumpDataVersionStmt` chứa:
+     ```sql
+     INSERT INTO cai_dat (unit_code, key, value, updated_at) 
+     VALUES (?, 'data_version', ?, CURRENT_TIMESTAMP)
+     ON CONFLICT(unit_code, key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+     ```
+  3. Bảng `cai_dat` trên cơ sở dữ liệu Turso ban đầu được tạo trước thời điểm nâng cấp Multi-Tenant, chưa có ràng buộc `UNIQUE(unit_code, key)`. Trong `ensureSchema` trước đây chỉ tạo index thường (`CREATE INDEX idx_cai_dat_unit ON cai_dat(unit_code, key)`), không phải UNIQUE index.
+  4. SQLite yêu cầu vế xung đột của cú pháp `ON CONFLICT(target)` bắt buộc phải khớp với một `PRIMARY KEY` hoặc `UNIQUE INDEX/CONSTRAINT`. Khi không khớp, SQLite ném lỗi `ON CONFLICT clause does not match any PRIMARY KEY or UNIQUE constraint`.
+  5. Vì câu lệnh này nằm chung trong `db.batch` với lệnh `DELETE`, lỗi này làm rollback toàn bộ giao dịch, khiến bệnh nhân không thể bị xóa khỏi hệ thống.
+- **Giải pháp xử lý triệt để**:
+  1. **Tách biệt và làm an toàn lệnh cập nhật data_version (`backend/src/index.js`)**:
+     - Đổi `makeBumpDataVersionStmt` thành câu lệnh `UPDATE` thuần túy:
+       ```javascript
+       function makeBumpDataVersionStmt(db, unitCode = "bvtks-cs2") {
+         const v = String(Date.now());
+         return db.prepare("UPDATE cai_dat SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ? AND key = 'data_version'").bind(v, unitCode);
+       }
+       ```
+       Câu lệnh `UPDATE` trong SQLite không bao giờ sinh lỗi `ON CONFLICT` trong bất kỳ tình huống nào.
+     - Nâng cấp `bumpDataVersion` tự kiểm tra số bản ghi bị ảnh hưởng; nếu chưa có dòng `data_version` cho đơn vị thì gọi `setCaiDat` an toàn để chèn thêm.
+     - Cải tiến `setCaiDat` dùng cơ chế kiểm tra `id` trước rồi `UPDATE / INSERT`, loại bỏ hoàn toàn việc phụ thuộc vào cú pháp `ON CONFLICT`.
+  2. **Độc lập hóa các tác vụ Xóa (`deleteBenhNhan`, `deleteMayMoc`, `deleteThuThuat`, `deletePhong`, `deleteNhanSu`)**:
+     - Tách riêng việc thực thi câu lệnh `DELETE ...` bằng `.run()` trực tiếp, sau đó mới gọi `await bumpDataVersion(db, unitCode)`.
+     - Đảm bảo việc xóa dữ liệu bệnh nhân/thiết bị/nhân sự/phòng luôn thành công ngay lập tức, không bao giờ bị nghẽn hay rollback bởi logic cache phụ trợ.
+  3. **Bổ sung di trú Schema (`ensureSchema`)**:
+     - Tự động khử trùng lặp dữ liệu `cai_dat` và tạo `CREATE UNIQUE INDEX IF NOT EXISTS idx_cai_dat_unit_key ON cai_dat(unit_code, key)`.
+     - Tự động nạp sẵn bản ghi `data_version` khởi tạo cho các đơn vị thuê (`bvtks-cs2`, `bvtks_cs2`).
+  4. **Triển khai & Kiểm tra theo RULES.md**:
+     - Kiểm tra cú pháp: `node -c js/init.js; node -c js/app.js; node -c js/scheduler-engine.js; node -c backend/src/index.js` -> 0 lỗi.
+     - Giữ nguyên phiên bản chính `4.0.9`, nâng revision lên `4.0.9-rev14`.
+     - Footer timestamp: `20:25 16/09/2026`.
+     - Thẻ `#app-footer-version` giữ đúng `Phiên bản: 4.0.9` (không có hậu tố `revN`).
+     - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.0.9-rev14'`.
+     - `index.html`: Cập nhật toàn bộ cache busters `?v=4.0.9-rev14`, `APP_VERSION = '4.0.9-rev14'`.
+     - `version.json`: `version: "4.0.9-rev14"`, `releaseTime: "20:25 16/09/2026"`.
+     - Deploy thành công lên Cloudflare Worker `pmcg-api` và Cloudflare Pages `pmcg-v3`.
+- **File sửa đổi**:
+  - `backend/src/index.js`
+  - `index.html`
+  - `sw.js`
+  - `version.json`
+  - `PM-xeplich-v4.md`
+
+

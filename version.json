@@ -1,6 +1,6 @@
 {
-  "version": "4.0.9-rev13",
+  "version": "4.0.9-rev14",
   "releaseDate": "16/09/2026",
-  "releaseTime": "20:15 16/09/2026",
-  "notes": "Bỏ qua đọc cột D (Buồng) khi nạp file HIS (như file 17.xls), mặc định đưa vào phòng trống; tự động phân bổ san tải đều các phòng cho bệnh nhân chưa có phòng khi chạy xếp lịch."
+  "releaseTime": "20:25 16/09/2026",
+  "notes": "Sửa triệt để lỗi SQLite ON CONFLICT khi xóa bệnh nhân/thiết bị/phòng/thủ thuật/nhân sự trên Turso, tách biệt hoàn toàn lệnh xóa và cập nhật data_version an toàn."
 }

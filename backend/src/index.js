@@ -1122,6 +1122,7 @@ async function ensureSchema(db) {
       "ALTER TABLE tai_lieu ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
       "ALTER TABLE phac_do ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
       "ALTER TABLE audit_logs ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_cai_dat_unit_key ON cai_dat(unit_code, key)",
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_tenants_code ON tenants(unit_code)",
       "CREATE INDEX IF NOT EXISTS idx_benh_nhan_unit ON benh_nhan(unit_code, is_saturday, order_idx)",
       "CREATE INDEX IF NOT EXISTS idx_nhan_su_unit ON nhan_su(unit_code, is_active, priority)",
@@ -1221,6 +1222,11 @@ async function ensureSchema(db) {
 
     try {
       // 2. cai_dat
+      await db.prepare("DELETE FROM cai_dat WHERE id NOT IN (SELECT MAX(id) FROM cai_dat GROUP BY unit_code, key)").run().catch(() => {});
+      await db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_cai_dat_unit_key ON cai_dat(unit_code, key)").run().catch(() => {});
+      await db.prepare("INSERT OR IGNORE INTO cai_dat (unit_code, key, value) VALUES ('bvtks-cs2', 'data_version', '1')").run().catch(() => {});
+      await db.prepare("INSERT OR IGNORE INTO cai_dat (unit_code, key, value) VALUES ('bvtks_cs2', 'data_version', '1')").run().catch(() => {});
+
       const cdSql = await db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='cai_dat'").first();
       if (cdSql && cdSql.sql && (cdSql.sql.includes("key TEXT UNIQUE") || (cdSql.sql.includes("UNIQUE (key)") || cdSql.sql.includes("UNIQUE(key)")))) {
         await db.prepare(`
@@ -1239,7 +1245,7 @@ async function ensureSchema(db) {
         `).run();
         await db.prepare("DROP TABLE cai_dat").run();
         await db.prepare("ALTER TABLE cai_dat_v4 RENAME TO cai_dat").run();
-        await db.prepare("CREATE INDEX IF NOT EXISTS idx_cai_dat_unit ON cai_dat(unit_code, key)").run();
+        await db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_cai_dat_unit_key ON cai_dat(unit_code, key)").run();
       }
     } catch(e) {
       console.warn("[Migrate cai_dat error]:", e);
@@ -1668,19 +1674,15 @@ async function verifyPassword(password, storedHash) {
 async function setCaiDat(db, unitCode, key, value) {
   const vStr = typeof value === "string" ? value : JSON.stringify(value);
   try {
-    return await db.prepare(`
-      INSERT INTO cai_dat (unit_code, key, value, updated_at) 
-      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-      ON CONFLICT(unit_code, key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
-    `).bind(unitCode, key, vStr).run();
+    const exist = await db.prepare("SELECT id FROM cai_dat WHERE unit_code = ? AND key = ?").bind(unitCode, key).first();
+    if (exist && exist.id) {
+      return await db.prepare("UPDATE cai_dat SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(vStr, exist.id).run();
+    } else {
+      return await db.prepare("INSERT INTO cai_dat (unit_code, key, value, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)").bind(unitCode, key, vStr).run();
+    }
   } catch(e) {
     try {
-      const exist = await db.prepare("SELECT key FROM cai_dat WHERE unit_code = ? AND key = ?").bind(unitCode, key).first();
-      if (exist) {
-        return await db.prepare("UPDATE cai_dat SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ? AND key = ?").bind(vStr, unitCode, key).run();
-      } else {
-        return await db.prepare("INSERT INTO cai_dat (unit_code, key, value, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)").bind(unitCode, key, vStr).run();
-      }
+      return await db.prepare("UPDATE cai_dat SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ? AND key = ?").bind(vStr, unitCode, key).run();
     } catch(e2) {
       console.warn("[setCaiDat error]:", e2);
     }
@@ -1689,17 +1691,23 @@ async function setCaiDat(db, unitCode, key, value) {
 
 function makeBumpDataVersionStmt(db, unitCode = "bvtks-cs2") {
   const v = String(Date.now());
-  return db.prepare(`
-    INSERT INTO cai_dat (unit_code, key, value, updated_at) 
-    VALUES (?, 'data_version', ?, CURRENT_TIMESTAMP)
-    ON CONFLICT(unit_code, key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
-  `).bind(unitCode, v);
+  return db.prepare("UPDATE cai_dat SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ? AND key = 'data_version'").bind(v, unitCode);
 }
 
 async function bumpDataVersion(db, unitCode = "bvtks-cs2") {
+  const v = String(Date.now());
   try {
-    await makeBumpDataVersionStmt(db, unitCode).run();
-  } catch(e) {}
+    const res = await makeBumpDataVersionStmt(db, unitCode).run();
+    if (!res || (res.meta && res.meta.changes === 0) || (res.rowsAffected === 0)) {
+      await setCaiDat(db, unitCode, "data_version", v);
+    }
+  } catch(e) {
+    try {
+      await setCaiDat(db, unitCode, "data_version", v);
+    } catch(err) {
+      console.warn("[bumpDataVersion warning]:", err);
+    }
+  }
 }
 
 export default {
@@ -3225,8 +3233,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       if (typeof args[0] === "object" && args[0] !== null) payload = args[0];
       let offset = (typeof args[0] === "number" || (typeof args[0] === "string" && /^\d+$/.test(args[0]))) ? 1 : 0;
       const maMay = String(payload.maMay || payload.ma_may || args[offset] || args[0] || "").trim();
-      const stmt = db.prepare("DELETE FROM may_moc WHERE unit_code = ? AND (ma_may = ? OR id = ?)").bind(unitCode, maMay, maMay);
-      await db.batch([stmt, makeBumpDataVersionStmt(db, unitCode)]);
+      await db.prepare("DELETE FROM may_moc WHERE unit_code = ? AND (ma_may = ? OR id = ?)").bind(unitCode, maMay, maMay).run();
+      await bumpDataVersion(db, unitCode);
       return success({ message: "Xóa máy thành công" });
     }
 
@@ -3309,8 +3317,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       if (typeof args[0] === "object" && args[0] !== null) payload = args[0];
       let offset = (typeof args[0] === "number" || (typeof args[0] === "string" && /^\d+$/.test(args[0]))) ? 1 : 0;
       const ten = String(payload.ten || payload.name || args[offset] || args[0] || "").trim();
-      const stmt = db.prepare("DELETE FROM thu_thuat WHERE unit_code = ? AND (ten_thu_thuat = ? OR id = ?)").bind(unitCode, ten, ten);
-      await db.batch([stmt, makeBumpDataVersionStmt(db, unitCode)]);
+      await db.prepare("DELETE FROM thu_thuat WHERE unit_code = ? AND (ten_thu_thuat = ? OR id = ?)").bind(unitCode, ten, ten).run();
+      await bumpDataVersion(db, unitCode);
       return success({ message: "Xóa thủ thuật thành công" });
     }
 
@@ -3368,8 +3376,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       if (typeof args[0] === "object" && args[0] !== null) payload = args[0];
       let offset = (typeof args[0] === "number" || (typeof args[0] === "string" && /^\d+$/.test(args[0]))) ? 1 : 0;
       const ten = String(payload.tenPhong || payload.ten || args[offset] || args[0] || "").trim();
-      const stmt = db.prepare("DELETE FROM phong WHERE unit_code = ? AND (ten_phong = ? OR id = ?)").bind(unitCode, ten, ten);
-      await db.batch([stmt, makeBumpDataVersionStmt(db, unitCode)]);
+      await db.prepare("DELETE FROM phong WHERE unit_code = ? AND (ten_phong = ? OR id = ?)").bind(unitCode, ten, ten).run();
+      await bumpDataVersion(db, unitCode);
       return success({ message: "Xóa phòng thành công" });
     }
 
@@ -3490,18 +3498,17 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     case "deleteNhanSu": {
       const name = typeof args[1] === "string" ? args[1] : (typeof args[0] === "string" ? args[0] : null);
       if (name && !/^\d+$/.test(name)) {
-        const stmtDel = db.prepare("DELETE FROM nhan_su WHERE unit_code = ? AND name = ?").bind(unitCode, name);
-        await db.batch([stmtDel, makeBumpDataVersionStmt(db, unitCode)]);
+        await db.prepare("DELETE FROM nhan_su WHERE unit_code = ? AND name = ?").bind(unitCode, name).run();
       } else {
         const idx = typeof args[0] === "number" ? args[0] : parseInt(args[0]);
         if (!isNaN(idx)) {
           const allStaff = await db.prepare("SELECT id FROM nhan_su WHERE unit_code = ? AND name NOT GLOB '[0-9]*' ORDER BY priority ASC, id ASC").bind(unitCode).all();
           if (allStaff.results && allStaff.results[idx]) {
-            const stmtDel = db.prepare("DELETE FROM nhan_su WHERE unit_code = ? AND id = ?").bind(unitCode, allStaff.results[idx].id);
-            await db.batch([stmtDel, makeBumpDataVersionStmt(db, unitCode)]);
+            await db.prepare("DELETE FROM nhan_su WHERE unit_code = ? AND id = ?").bind(unitCode, allStaff.results[idx].id).run();
           }
         }
       }
+      await bumpDataVersion(db, unitCode);
       return success(true);
     }
 
@@ -3784,21 +3791,19 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const namSinh = parseInt(payload.namSinh || payload.age || args[2]) || 0;
 
       if (patId > 0) {
-        const stmtDel = db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND id = ?").bind(unitCode, patId);
-        await db.batch([stmtDel, makeBumpDataVersionStmt(db, unitCode)]);
+        await db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND id = ?").bind(unitCode, patId).run();
       } else if (ten) {
-        const stmtDel = db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND name = ? AND (? = 0 OR age = ? OR age = 0)").bind(unitCode, ten, namSinh, namSinh);
-        await db.batch([stmtDel, makeBumpDataVersionStmt(db, unitCode)]);
+        await db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND name = ? AND (? = 0 OR age = ? OR age = 0)").bind(unitCode, ten, namSinh, namSinh).run();
       } else {
         const idx = typeof args[0] === "number" ? args[0] : parseInt(args[0]);
         if (!isNaN(idx)) {
           const allPats = await db.prepare("SELECT id FROM benh_nhan WHERE unit_code = ? AND is_saturday = 0 ORDER BY ngay_vao ASC, name ASC").bind(unitCode).all();
           if (allPats.results && allPats.results[idx]) {
-            const stmtDel = db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND id = ?").bind(unitCode, allPats.results[idx].id);
-            await db.batch([stmtDel, makeBumpDataVersionStmt(db, unitCode)]);
+            await db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND id = ?").bind(unitCode, allPats.results[idx].id).run();
           }
         }
       }
+      await bumpDataVersion(db, unitCode);
       return success({ message: "Xóa bệnh nhân thành công" });
     }
 
@@ -4522,16 +4527,11 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         );
       });
 
-      stmts.push(
-        db.prepare(`
-          INSERT INTO cai_dat (unit_code, key, value, updated_at) 
-          VALUES (?, 'clinical_protocols', ?, CURRENT_TIMESTAMP)
-          ON CONFLICT(unit_code, key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
-        `).bind(unitCode, jsonStr),
-        makeBumpDataVersionStmt(db, unitCode)
-      );
-
-      await db.batch(stmts);
+      if (stmts.length > 0) {
+        await db.batch(stmts);
+      }
+      await setCaiDat(db, unitCode, 'clinical_protocols', jsonStr);
+      await bumpDataVersion(db, unitCode);
       return success(true);
     }
 
