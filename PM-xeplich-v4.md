@@ -3842,3 +3842,34 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `index.html`
   - `version.json`
   - `PM-xeplich-v4.md`
+
+### [16/09/2026 - 20:15] Phiên bản v4.0.9-rev13: Bỏ qua đọc cột D (Buồng) khi nạp file HIS (như file 17.xls) & Mặc định để phòng trống
+- **Bối cảnh & Yêu cầu của người dùng**:
+  - Khi đưa file HIS vào như file `17.xls` thì không đọc cột D (Buồng) đâu nhé, mặc định đưa vào là trống.
+- **Phân tích nguyên nhân**:
+  - Trong các file báo cáo y lệnh hàng ngày xuất từ hệ thống HIS bệnh viện (như `17.xls`), Cột D (index 3) mang tiêu đề "Buồng" (hoặc `BUONG`, ví dụ `Phòng 02_MK`, `Phòng 04_MK`) thực chất là buồng bệnh lưu trú nội trú của bệnh nhân ở khoa, không phải phòng thủ thuật phục hồi chức năng của phần mềm.
+  - Trước đây, regex quét tiêu đề cột vô tình bắt trúng từ khóa `'buong'` ở cột D và gán vào `colPhong = 3`, khiến tất cả bệnh nhân mới bị gắn phòng buồng bệnh nội trú hoặc khi không có phòng thì popup ép gán cứng vào một phòng mặc định `chosenDefaultRoom`.
+- **Giải pháp xử lý triệt để**:
+  1. **Frontend (`js/app.js` - `importFromHIS`)**:
+     - Loại trừ tuyệt đối cột D (`idx !== 3`) và các tiêu đề chứa `'buong'` / `'khoa'` khỏi việc nhận diện phòng thủ thuật.
+     - Khi nạp bệnh nhân từ file HIS, trường `phong` của bệnh nhân mới mặc định để trống `""`.
+     - Với bệnh nhân đã tồn tại trong hệ thống, giữ nguyên phòng `p.phong || ''` đã phân bổ trước đó, không bị ghi đè.
+     - Trong danh sách tổng hợp (`cleanMergedList`), không tự ý fallback sang phòng mặc định (`phong: String(p.phong || p.room || '').trim()`).
+     - Loại bỏ khung bắt buộc chọn phòng mặc định trong modal xem trước của HIS.
+  2. **Động cơ Xếp lịch (`js/scheduler-engine.js` - `buildDbFromCache`)**:
+     - Với bệnh nhân chưa được chỉ định phòng (phòng trống `""`), thuật toán tự động san tải đều sang các phòng khả dụng (`pRoom = availRooms[idx % availRooms.length]`) để phân bổ tải KTV đồng đều, xếp đạt 100% không rớt ca, đồng thời không ghi đè vào thuộc tính `p.phong` trong cơ sở dữ liệu bệnh nhân.
+  3. **Đồng bộ phiên bản theo RULES.md**:
+     - Phiên bản chính giữ nguyên `4.0.9`, revision nâng lên `4.0.9-rev13`.
+     - Footer timestamp: `20:15 16/09/2026`.
+     - Thẻ `#app-footer-version` giữ đúng `Phiên bản: 4.0.9`.
+     - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.0.9-rev13'`.
+     - `index.html`: Cập nhật toàn bộ cache busters `?v=4.0.9-rev13`, `APP_VERSION = '4.0.9-rev13'`, modal force update.
+     - `version.json`: `version: "4.0.9-rev13"`, `releaseTime: "20:15 16/09/2026"`.
+- **File sửa đổi**:
+  - `js/app.js`
+  - `js/scheduler-engine.js`
+  - `sw.js`
+  - `index.html`
+  - `version.json`
+  - `PM-xeplich-v4.md`
+

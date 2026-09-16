@@ -10632,8 +10632,9 @@ window.renderSttOrderControl = function (type, i, total) {
                                         cn === 'dichvu' || cn === 'dich_vu' || cn.includes('service') || cn.includes('procedure')) colDichVu = idx;
                                     else if (cn.includes('doi tuong') || cn.includes('loai dt') || cn.includes('loai dieu tri') ||
                                         cn.includes('hinh thuc') || cn.includes('noi/ngoai') || cn === 'loai_bn') colLoaiDieuTri = idx;
-                                    else if (cn.includes('phong') || cn.includes('buong') || cn.includes('khoa') ||
-                                        cn.includes('room') || cn === 'phong_ban' || cn === 'ten_phong' || cn.includes('khoa/phong')) colPhong = idx;
+                                    // Bỏ qua tuyệt đối cột D (idx 3) và các cột Buồng bệnh nội trú HIS
+                                    else if (idx !== 3 && !cn.includes('buong') && !cn.includes('khoa') &&
+                                        (cn === 'phong' || cn === 'ten_phong' || cn === 'phong_ban' || cn.includes('phong dieu tri') || cn.includes('phong thu thuat'))) colPhong = idx;
                                 });
                                 break;
                             }
@@ -10674,7 +10675,8 @@ window.renderSttOrderControl = function (type, i, total) {
                             const ten = healFn(rawTen, candNames, false);
                             const namSinh = decodeFn(row[colNamSinh]);
                             const dichVu = decodeFn(row[colDichVu]);
-                            const rawPhong = (colPhong >= 0 && row[colPhong] !== undefined) ? decodeFn(row[colPhong]).trim() : '';
+                            // Bỏ qua cột D (idx 3 - Buồng bệnh nội trú HIS), mặc định để phòng trống
+                            const rawPhong = (colPhong >= 0 && colPhong !== 3 && row[colPhong] !== undefined) ? decodeFn(row[colPhong]).trim() : '';
 
                             let loaiBn = 'NoiTru';
                             let buoiDieuTri = 'TuDong';
@@ -10710,7 +10712,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                         // --- Bước 3: Merge với danh sách bệnh nhân hiện tại ---
                         // Bệnh nhân đã có → chỉ cập nhật thuThuat, giữ nguyên ngayVao/phong/giờ
-                        // Bệnh nhân mới  → thêm mới với ngày hôm nay
+                        // Bệnh nhân mới  → thêm mới với ngày hôm nay, mặc định phòng trống
                         const existingMap = {};
                         existingPats.forEach(p => {
                             const k = buildMatchKey(p.ten, p.namSinh);
@@ -10720,7 +10722,6 @@ window.renderSttOrderControl = function (type, i, total) {
                         // Danh sách phòng thực tế từ cấu hình
                         const activeRooms = (dataCache && Array.isArray(dataCache.room)) ? dataCache.room : [];
                         const validRoomNames = activeRooms.map(r => String(r.tenPhong || r.ten || (Array.isArray(r) ? r[1] : '') || '').trim()).filter(Boolean);
-                        const defaultFallbackRoom = validRoomNames.length > 0 ? validRoomNames[0] : 'Phòng 1';
 
                         let updatedCount = 0, newCount = 0;
                         const mergedList = existingPats.map(p => {
@@ -10730,7 +10731,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                 return { 
                                     ...p, 
                                     thuThuat: [...hisMap[k].procs].join(', '),
-                                    phong: p.phong || hisMap[k].phong || '',
+                                    phong: p.phong || '',
                                     loai_bn: p.loai_bn || p.loaiBN || hisMap[k].loaiBn || 'NoiTru',
                                     buoi_dieu_tri: p.buoi_dieu_tri || p.buoiDieuTri || hisMap[k].buoiDieuTri || 'TuDong'
                                 };
@@ -10764,21 +10765,9 @@ window.renderSttOrderControl = function (type, i, total) {
                         const totalHIS = Object.keys(hisMap).length;
                         let previewHTML = `<div style="font-size:13px;line-height:1.7;color:#2c3e50">`;
                         previewHTML += `<div style="background:#eaf6ff;border-radius:8px;padding:10px 14px;margin-bottom:10px;border-left:4px solid #3498db">`;
-                        previewHTML += `<b>📌 Thông tin đọc file:</b><br>Hàng: <b>${startRow + 1}</b> | Cột Tên: <b>${String.fromCharCode(65 + colTen)}</b> | Cột Năm: <b>${String.fromCharCode(65 + colNamSinh)}</b> | Cột DV: <b>${String.fromCharCode(65 + colDichVu)}</b>${colPhong >= 0 ? ` | Cột Phòng: <b>${String.fromCharCode(65 + colPhong)}</b>` : ''}</div>`;
+                        previewHTML += `<b>📌 Thông tin đọc file:</b><br>Hàng: <b>${startRow + 1}</b> | Cột Tên: <b>${String.fromCharCode(65 + colTen)}</b> | Cột Năm: <b>${String.fromCharCode(65 + colNamSinh)}</b> | Cột DV: <b>${String.fromCharCode(65 + colDichVu)}</b> | Cột Phòng: <b>Trống (mặc định)</b></div>`;
                         previewHTML += `<div style="background:#eafaf1;border-radius:8px;padding:10px 14px;margin-bottom:10px;border-left:4px solid #27ae60">`;
                         previewHTML += `📋 HIS: <b>${totalHIS}</b> BN &nbsp;|&nbsp; 🔄 Cập nhật TT: <b>${updatedCount}</b> BN &nbsp;|&nbsp; ➕ Thêm mới: <b>${newCount}</b> BN</div>`;
-
-                        const newPatsWithoutRoom = Object.values(hisMap).filter(h => !existingMap[buildMatchKey(h.ten, h.namSinh)] && !h.phong).length;
-                        if (newPatsWithoutRoom > 0 && validRoomNames.length > 0) {
-                            previewHTML += `<div style="background:#fff3cd;border:1.5px solid #ffeeba;border-radius:8px;padding:10px 14px;margin-bottom:10px;color:#856404;">`;
-                            previewHTML += `<b>🏨 Gán phòng cho ${newPatsWithoutRoom} bệnh nhân mới:</b><br>`;
-                            previewHTML += `<span style="font-size:12px;color:#666;">(File HIS không có cột phòng, phần mềm sẽ tự động gán phòng này để khi xếp lịch không bị rớt ca)</span><br>`;
-                            previewHTML += `<select id="his-default-room-select" style="margin-top:6px;padding:6px 12px;border-radius:6px;border:1px solid #ced4da;font-weight:700;color:#2c3e50;font-size:13px;background:#fff;width:100%;max-width:260px;">`;
-                            validRoomNames.forEach(r => {
-                                previewHTML += `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`;
-                            });
-                            previewHTML += `</select></div>`;
-                        }
 
                         if (updatedCount > 0) {
                             previewHTML += `<b>🔄 BN đã có (giữ ngày/phòng, cập nhật thủ thuật):</b><ul style="margin:4px 0 8px 16px;padding:0">`;
@@ -10792,7 +10781,7 @@ window.renderSttOrderControl = function (type, i, total) {
                             previewHTML += `</ul>`;
                         }
                         if (newCount > 0) {
-                            previewHTML += `<b>➕ BN mới thêm vào:</b><ul style="margin:4px 0 8px 16px;padding:0">`;
+                            previewHTML += `<b>➕ BN mới thêm vào (Phòng để trống):</b><ul style="margin:4px 0 8px 16px;padding:0">`;
                             mergedList.slice(-newCount).slice(0, 4).forEach(p => {
                                 previewHTML += `<li><b>${escapeHtml(p.ten)}</b> (${escapeHtml(p.namSinh)}): <span style="color:#27ae60">${escapeHtml(p.thuThuat)}</span></li>`;
                             });
@@ -10814,9 +10803,6 @@ window.renderSttOrderControl = function (type, i, total) {
                             const btn = document.getElementById('btn-import-his');
                             btn.innerText = '⏳ Đang xử lý...'; btn.disabled = true;
 
-                            const roomSel = document.getElementById('his-default-room-select');
-                            const chosenDefaultRoom = roomSel ? roomSel.value : defaultFallbackRoom;
-
                             const cleanMergedList = mergedList.map(p => ({
                                 ten: String(p.ten || p.name || '').trim(),
                                 namSinh: String(p.namSinh || p.age || '').trim(),
@@ -10824,7 +10810,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                 gioVao: String(p.gioVao || p.arrive_time || '').trim(),
                                 gioBan: String(p.gioBan || p.gio_ban || '').trim(),
                                 gioRa: String(p.gioRa || p.leave_time || '').trim(),
-                                phong: String(p.phong || p.room || chosenDefaultRoom || '').trim(),
+                                phong: String(p.phong || p.room || '').trim(),
                                 thuThuat: String(p.thuThuat || '').trim(),
                                 loai_bn: String(p.loai_bn || p.loaiBN || 'NoiTru').trim(),
                                 buoi_dieu_tri: String(p.buoi_dieu_tri || p.buoiDieuTri || 'TuDong').trim(),

@@ -1,6 +1,6 @@
 {
-  "version": "4.0.9-rev12",
+  "version": "4.0.9-rev13",
   "releaseDate": "16/09/2026",
-  "releaseTime": "20:05 16/09/2026",
-  "notes": "Sửa triệt để lỗi giải mã bảng mã TCVN3 gây đổi sai họ tên bệnh nhân (Bùi -> Bới, Hùng -> Hớng, Ý -> Ộ...) khi nạp file Excel từ HIS: bổ sung cơ chế nhận diện bảo vệ tuyệt đối chuỗi Unicode tiếng Việt chuẩn và loại bỏ xung đột mã ký tự Latin-1 hoa."
+  "releaseTime": "20:15 16/09/2026",
+  "notes": "Bỏ qua đọc cột D (Buồng) khi nạp file HIS (như file 17.xls), mặc định đưa vào phòng trống; tự động phân bổ san tải đều các phòng cho bệnh nhân chưa có phòng khi chạy xếp lịch."
 }

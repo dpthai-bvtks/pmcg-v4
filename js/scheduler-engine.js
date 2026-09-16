@@ -1916,8 +1916,8 @@ function getSafeCache() {
       if (!pRoom || !database.roomBeds[pRoom]) {
         const availRooms = Object.keys(database.roomBeds);
         if (availRooms.length > 0) {
-          pRoom = availRooms[0];
-          if (p && typeof p === 'object' && !Array.isArray(p)) p.phong = pRoom;
+          // Tự động phân bổ đều các phòng nếu bệnh nhân chưa được chỉ định phòng, không ghi đè vào p.phong
+          pRoom = availRooms[idx % availRooms.length];
         }
       }
 
