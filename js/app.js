@@ -2065,27 +2065,53 @@ window.renderSttOrderControl = function (type, i, total) {
 
         function normalizeScheduleRow(row) {
             if (!row) return {};
+            if (window.SchedulerEngine && typeof window.SchedulerEngine.normalizeScheduleItem === 'function') {
+                return window.SchedulerEngine.normalizeScheduleItem(row) || {};
+            }
             if (Array.isArray(row)) {
+                const gioDienRa = String(row[5] || '').trim();
+                const isDrop = gioDienRa === '❌ Rớt' || gioDienRa === '--' || gioDienRa.includes('Rớt');
                 return {
                     ngay: row[0] || '', tenBN: row[1] || '', namSinh: row[2] || '', phong: row[3] || '', thuThuat: row[4] || '',
-                    gioDienRa: row[5] || '', gioKetThuc: row[6] || '', nvChinh: row[7] || '', nvPhu: row[8] || '', may: row[9] || '', giuong: row[10] || ''
+                    gioDienRa: gioDienRa, gioKetThuc: row[6] || '', nvChinh: row[7] || '', nvPhu: row[8] || '', may: row[9] || '', giuong: row[10] || '',
+                    __isDischarged: false,
+                    __dropped: isDrop
                 };
             }
+            const rawGio = String(row.gioDienRa || row.GIODIENRA || row.start_time || row.start || '').trim();
+            const isDrop = !!row.__dropped || rawGio === '❌ Rớt' || rawGio === '--' || rawGio.includes('Rớt');
             return {
-                ngay: row.ngay || row.NGAY || '',
-                tenBN: row.tenBN || row.HOTEN || '',
-                namSinh: row.namSinh || row.NAMSINH || '',
-                phong: row.phong || row.PHONG || '',
-                thuThuat: row.thuThuat || row.DICHVU || '',
-                gioDienRa: row.gioDienRa || row.GIODIENRA || '',
-                gioKetThuc: row.gioKetThuc || row.GIOKETTHUC || '',
-                nvChinh: row.nvChinh || row['NV CHÍNH'] || '',
-                nvPhu: row.nvPhu || row['NV PHỤ'] || '',
-                may: row.may || row.MAY || '',
-                giuong: row.giuong || row.GIUONG || '',
+                ngay: row.ngay || row.NGAY || row.date || '',
+                tenBN: row.tenBN || row.HOTEN || row.patient_name || row.ten || row.name || '',
+                namSinh: row.namSinh || row.NAMSINH || row.dob || row.ns || row.age || '',
+                phong: row.phong || row.PHONG || row.room || '',
+                thuThuat: row.thuThuat || row.DICHVU || row.procedure_name || row.tt || '',
+                gioDienRa: rawGio,
+                gioKetThuc: row.gioKetThuc || row.GIOKETTHUC || row.end_time || row.end || '',
+                nvChinh: row.nvChinh || row['NV CHÍNH'] || row.staff_name || row.staff || row.nv1 || '',
+                nvPhu: row.nvPhu || row['NV PHỤ'] || row.sub_staff_name || row.sub_staff || row.nv2 || '',
+                may: row.may || row.MAY || row.machine_name || row.machine || '',
+                giuong: row.giuong || row.GIUONG || row.bed || '',
                 __isDischarged: !!row.__isDischarged,
-                __dropped: !!row.__dropped
+                __dropped: isDrop
             };
+        }
+
+        function scheduleRowToBackendArray(row, fallbackDate = '') {
+            const r = normalizeScheduleRow(row);
+            return [
+                r.ngay || fallbackDate || '',
+                r.tenBN || '',
+                r.namSinh || '',
+                r.phong || '',
+                r.thuThuat || '',
+                r.gioDienRa || '',
+                r.gioKetThuc || '',
+                r.nvChinh || '',
+                r.nvPhu || '',
+                r.may || '',
+                r.giuong || ''
+            ];
         }
 
 
@@ -6469,8 +6495,12 @@ window.renderSttOrderControl = function (type, i, total) {
                 ? window.SchedulerEngine.cleanAndHealPatientName
                 : (n) => String(n || '').normalize('NFC').replace(/[\ufffd\u0000]/g, '').trim();
 
-            schedData.forEach(row => {
+            schedData.forEach((row, idx) => {
                 if (!row) return;
+                if (Array.isArray(row)) {
+                    row = normalizeScheduleRow(row);
+                    schedData[idx] = row;
+                }
                 let rawTen = String(row.tenBN || '').normalize('NFC').trim();
                 const namSinh = String(row.namSinh || '').trim();
                 const phong = String(row.phong || '').trim().toLowerCase();
@@ -6607,7 +6637,7 @@ window.renderSttOrderControl = function (type, i, total) {
             const qLower = q.toLowerCase();
             const qNoTone = removeVietnameseTones(q);
 
-            const safeData = window.currentScheduleData || [];
+            const safeData = (window.currentScheduleData || []).map(normalizeScheduleRow);
             const cleanedUnscheduled = reconcileUnscheduledData(window.lastUnscheduledData || []);
             const droppedData = cleanedUnscheduled.map(item => {
                 const dropped = normalizeDroppedItem(item);
@@ -7050,7 +7080,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 // Đồng bộ lưu lịch trình vào D1 SQLite trong nền (15ms, không làm đơ giao diện)
                 if (sched.length > 0) {
-                    const backendSched = sched.map(x => [ x.ngay || dateVal, x.tenBN || '', x.namSinh || '', x.phong || '', x.thuThuat || '', x.gioDienRa || '', x.gioKetThuc || '', x.nvChinh || '', x.nvPhu || '', x.may || '', x.giuong || '' ]);
+                    const backendSched = sched.map(x => scheduleRowToBackendArray(x, dateVal));
                     callApi('saveSchedule', [dateVal, backendSched], null, null);
                 }
             } catch(err) {
@@ -7070,7 +7100,10 @@ window.renderSttOrderControl = function (type, i, total) {
             if (window.showGlobalLoading) window.showGlobalLoading("Đang xếp lịch bổ sung bệnh nhân mới (Đa Luồng)...");
 
             try {
-                const currentSched = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];
+                const rawCurrent = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];
+                const currentSched = (Array.isArray(rawCurrent) ? rawCurrent : [])
+                    .map(normalizeScheduleRow)
+                    .filter(r => r && !isDroppedScheduleRow(r) && r.gioDienRa && r.gioDienRa !== '--' && !String(r.gioDienRa).includes('Rớt'));
                 let out = null;
                 if (window.SchedulerEngine && typeof window.SchedulerEngine.runSchedulingAsync === 'function') {
                     out = await window.SchedulerEngine.runSchedulingAsync(dateVal, 'opt_rare', '', -1, currentSched);
@@ -7130,7 +7163,19 @@ window.renderSttOrderControl = function (type, i, total) {
                         row.tenBN = cleanHealFn(row.tenBN, targetCand);
                     });
 
-                    const mergedSched = [...currentSched, ...newSched];
+                    const mergedSched = [...currentSched];
+                    newSched.forEach(item => {
+                        const normItem = normalizeScheduleRow(item);
+                        const isDup = mergedSched.some(ex => 
+                            (ex.tenBN || '').trim().toLowerCase() === (normItem.tenBN || '').trim().toLowerCase() &&
+                            (ex.thuThuat || '').trim().toLowerCase() === (normItem.thuThuat || '').trim().toLowerCase() &&
+                            (ex.gioDienRa || '').trim() === (normItem.gioDienRa || '').trim()
+                        );
+                        if (!isDup) {
+                            mergedSched.push(normItem);
+                        }
+                    });
+
                     window.currentScheduleData = markDischargedInSchedule(mergedSched);
                     if (typeof dataCache !== 'undefined') dataCache.schedule = mergedSched;
                     if (window.dataCache) window.dataCache.schedule = mergedSched;
@@ -7147,7 +7192,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         window.OfflineSyncEngine.broadcastLiveEvent('SCHEDULE_GENERATED', { date: dateVal, addedCount });
                     }
 
-                    const backendSched = mergedSched.map(x => [ x.ngay || dateVal, x.tenBN || '', x.namSinh || '', x.phong || '', x.thuThuat || '', x.gioDienRa || '', x.gioKetThuc || '', x.nvChinh || '', x.nvPhu || '', x.may || '', x.giuong || '' ]);
+                    const backendSched = mergedSched.map(x => scheduleRowToBackendArray(x, dateVal));
                     callApi('saveSchedule', [dateVal, backendSched], null, null);
                 }
 
@@ -7456,7 +7501,7 @@ window.renderSttOrderControl = function (type, i, total) {
             if (typeof renderPatientsTable === 'function') renderPatientsTable();
             if (typeof loadDashboard === 'function') loadDashboard();
 
-            const backendSched = window.currentScheduleData.map(x => [ x.ngay || targetDate, x.tenBN || '', x.namSinh || '', x.phong || '', x.thuThuat || '', x.gioDienRa || '', x.gioKetThuc || '', x.nvChinh || '', x.nvPhu || '', x.may || '', x.giuong || '' ]);
+            const backendSched = window.currentScheduleData.map(x => scheduleRowToBackendArray(x, targetDate));
             callApi('saveSchedule', [targetDate, backendSched], null, null);
 
             if (typeof showToast === 'function') {
@@ -10174,7 +10219,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     // Đồng bộ lưu lịch trình thứ 7 vào D1 SQLite trong nền
                     if (sched.length > 0) {
-                        const backendSched = sched.map(x => [ x.ngay || dateVal, x.tenBN || '', x.namSinh || '', x.phong || '', x.thuThuat || '', x.gioDienRa || '', x.gioKetThuc || '', x.nvChinh || '', x.nvPhu || '', x.may || '', x.giuong || '' ]);
+                        const backendSched = sched.map(x => scheduleRowToBackendArray(x, dateVal));
                         callApi('saveSchedule', [dateVal, backendSched], null, null);
                     }
                 } catch(err) {

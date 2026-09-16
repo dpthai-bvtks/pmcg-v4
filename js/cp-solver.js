@@ -200,38 +200,74 @@ window.MedicalCPSolver = (function () {
     const cleanStaffStr = s => String(s || '').normalize('NFC').replace(/^(bs|bac si|ktv|dd|đd)\s*\.?\s*/i, '').trim().toLowerCase();
 
     // 🔒 KHÓA CỨNG TOÀN BỘ LỊCH TRÌNH ĐÃ XẾP TRƯỚC ĐÓ (existingSched) TRÁNH XẾP BỔ SUNG TRÙNG GIỜ
-    const preSchedList = Array.isArray(existingSched) ? existingSched : [];
+    const normalizeFn = (typeof window !== 'undefined' && window.SchedulerEngine && typeof window.SchedulerEngine.normalizeScheduleItem === 'function')
+      ? window.SchedulerEngine.normalizeScheduleItem
+      : (r) => {
+        if (!r) return null;
+        if (Array.isArray(r)) return { tenBN: r[1], namSinh: r[2], phong: r[3], thuThuat: r[4], gioDienRa: r[5], gioKetThuc: r[6], nvChinh: r[7], nvPhu: r[8], may: r[9], giuong: r[10] };
+        return {
+          tenBN: r.tenBN || r.HOTEN || r.patient_name || '',
+          namSinh: r.namSinh || r.NAMSINH || r.dob || '',
+          phong: r.phong || r.PHONG || r.room || '',
+          thuThuat: r.thuThuat || r.DICHVU || r.procedure_name || '',
+          gioDienRa: r.gioDienRa || r.GIODIENRA || r.start_time || '',
+          gioKetThuc: r.gioKetThuc || r.GIOKETTHUC || r.end_time || '',
+          nvChinh: r.nvChinh || r['NV CHÍNH'] || r.staff_name || '',
+          nvPhu: r.nvPhu || r['NV PHỤ'] || r.sub_staff_name || '',
+          may: r.may || r.MAY || r.machine_name || '',
+          giuong: r.giuong || r.GIUONG || r.bed || ''
+        };
+      };
+
+    const isContFn = (typeof window !== 'undefined' && window.SchedulerEngine && typeof window.SchedulerEngine.isContinuousProcedure === 'function')
+      ? window.SchedulerEngine.isContinuousProcedure
+      : (info, dur) => (!info || info[0] === 'Thủ công' || info[13] === 1 || (dur && info[2] >= dur));
+
+    const preSchedList = (Array.isArray(existingSched) ? existingSched : [])
+      .map(normalizeFn)
+      .filter(r => r && r.gioDienRa && r.gioDienRa !== '--' && r.gioDienRa !== '❌ Rớt' && !r.__dropped);
+
     for (let i = 0; i < preSchedList.length; i++) {
       const item = preSchedList[i];
       if (!item) continue;
-      const s = t2m(item.gioDienRa || item.GIODIENRA || item[5]);
-      const e = t2m(item.gioKetThuc || item.GIOKETTHUC || item[6]);
+      const s = t2m(item.gioDienRa);
+      const e = t2m(item.gioKetThuc);
       if (isNaN(s) || isNaN(e) || e <= s) continue;
 
-      const pName = String(item.tenBN || item.HOTEN || item[1] || '').toUpperCase().trim();
-      const pNs = String(item.namSinh || item.NAMSINH || item[2] || '').trim();
-      const pKey = pName + '_' + pNs;
-      addInterval(patIntervals, pKey, s, e + 5);
-
-      const nv1 = item.nvChinh || item["NV CHÍNH"] || item[7];
-      const nv2 = item.nvPhu || item["NV PHỤ"] || item[8];
-      if (nv1) {
-        addInterval(staffIntervals, nv1, s, e);
-        // Đồng bộ thêm tên nhân sự đã làm sạch trong db.rawStaff
-        const cleanNv1 = cleanStaffStr(nv1);
-        (db.rawStaff || []).forEach(st => {
-          if (cleanStaffStr(st[0]) === cleanNv1) addInterval(staffIntervals, st[0], s, e);
-        });
-      }
-      if (nv2) {
-        addInterval(staffIntervals, nv2, s, e);
-        const cleanNv2 = cleanStaffStr(nv2);
-        (db.rawStaff || []).forEach(st => {
-          if (cleanStaffStr(st[0]) === cleanNv2) addInterval(staffIntervals, st[0], s, e);
-        });
+      const pName = String(item.tenBN || '').toUpperCase().trim();
+      const pNs = String(item.namSinh || '').trim();
+      if (pName) {
+        addInterval(patIntervals, pName + '_' + pNs, s, e + 5);
+        if (pNs.length >= 2) {
+          addInterval(patIntervals, pName + '_' + pNs.slice(-2), s, e + 5);
+        }
+        addInterval(patIntervals, pName, s, e + 5);
       }
 
-      const may = item.may || item.MAY || item[9];
+      const tenTT = String(item.thuThuat || '').trim().toLowerCase();
+      const ttInfo = db.thuThuatInfo ? db.thuThuatInfo[tenTT] : null;
+      const isContinuous = isContFn(ttInfo, e - s);
+      const tgNv = isContinuous ? (e - s) : (ttInfo ? (parseInt(ttInfo[2]) || 5) : 5);
+      const staffEnd = isContinuous ? e : Math.min(s + tgNv, e);
+      const hasTeardown = !isContinuous && ((e - s) > tgNv);
+
+      const addStaffIntervals = (nv) => {
+        if (!nv) return;
+        addInterval(staffIntervals, nv, s, staffEnd);
+        if (hasTeardown) addInterval(staffIntervals, nv, e, e + 1);
+        const cleanNv = cleanStaffStr(nv);
+        (db.rawStaff || []).forEach(st => {
+          if (cleanStaffStr(st[0]) === cleanNv) {
+            addInterval(staffIntervals, st[0], s, staffEnd);
+            if (hasTeardown) addInterval(staffIntervals, st[0], e, e + 1);
+          }
+        });
+      };
+
+      addStaffIntervals(item.nvChinh);
+      addStaffIntervals(item.nvPhu);
+
+      const may = item.may;
       if (may && may !== 'Thủ công') {
         addInterval(machineIntervals, may, s, e);
         const cleanMay = String(may).toLowerCase().replace(/\s+/g, '');
@@ -244,8 +280,8 @@ window.MedicalCPSolver = (function () {
         }
       }
 
-      const phong = item.phong || item.PHONG || item[3];
-      const giuong = item.giuong || item.GIUONG || item[10];
+      const phong = item.phong;
+      const giuong = item.giuong;
       if (phong && giuong) {
         addInterval(bedIntervals, `${phong}_${giuong}`, s, e);
         // Đồng bộ fuzzy room/bed

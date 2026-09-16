@@ -38,6 +38,59 @@ function m2t(totalMinutes) {
 
 function is_overlap(start1, end1, start2, end2) { return Math.max(start1, start2) < Math.min(end1, end2); }
 
+function normalizeScheduleItem(row) {
+  if (!row) return null;
+  if (Array.isArray(row)) {
+    const gioDienRa = String(row[5] || '').trim();
+    const isDrop = gioDienRa === '❌ Rớt' || gioDienRa === '--' || gioDienRa.includes('Rớt');
+    return {
+      ngay: String(row[0] || '').trim(),
+      tenBN: String(row[1] || '').trim(),
+      namSinh: String(row[2] || '').trim(),
+      phong: String(row[3] || '').trim(),
+      thuThuat: String(row[4] || '').trim(),
+      gioDienRa: gioDienRa,
+      gioKetThuc: String(row[6] || '').trim(),
+      nvChinh: String(row[7] || '').trim(),
+      nvPhu: String(row[8] || '').trim(),
+      may: String(row[9] || '').trim(),
+      giuong: String(row[10] || '').trim(),
+      __isDischarged: false,
+      __dropped: isDrop
+    };
+  }
+  const rawGio = String(row.gioDienRa || row.GIODIENRA || row.start_time || row.start || '').trim();
+  const isDrop = !!row.__dropped || rawGio === '❌ Rớt' || rawGio === '--' || rawGio.includes('Rớt');
+  return {
+    ngay: String(row.ngay || row.NGAY || row.date || '').trim(),
+    tenBN: String(row.tenBN || row.HOTEN || row.patient_name || row.ten || row.name || '').trim(),
+    namSinh: String(row.namSinh || row.NAMSINH || row.dob || row.ns || row.age || '').trim(),
+    phong: String(row.phong || row.PHONG || row.room || '').trim(),
+    thuThuat: String(row.thuThuat || row.DICHVU || row.procedure_name || row.tt || '').trim(),
+    gioDienRa: rawGio,
+    gioKetThuc: String(row.gioKetThuc || row.GIOKETTHUC || row.end_time || row.end || '').trim(),
+    nvChinh: String(row.nvChinh || row['NV CHÍNH'] || row.staff_name || row.staff || row.nv1 || '').trim(),
+    nvPhu: String(row.nvPhu || row['NV PHỤ'] || row.sub_staff_name || row.sub_staff || row.nv2 || '').trim(),
+    may: String(row.may || row.MAY || row.machine_name || row.machine || '').trim(),
+    giuong: String(row.giuong || row.GIUONG || row.bed || '').trim(),
+    __isDischarged: !!row.__isDischarged,
+    __dropped: isDrop
+  };
+}
+
+function isContinuousProcedure(info, duration) {
+  if (!info) return false;
+  const loaiMay = String(info[0] || 'Thủ công').trim();
+  const baseTgMay = parseInt(info[1]) || 15;
+  const tgNvMin = parseInt(info[2]) || 5;
+  const isExplicit = info[13] === 1 || info[13] === '1' || info[13] === 'Có' || info[13] === true;
+  if (isExplicit) return true;
+  if (loaiMay === 'Thủ công') return true;
+  if (duration !== undefined && !isNaN(duration) && tgNvMin >= duration) return true;
+  if (baseTgMay === tgNvMin && tgNvMin >= 10) return true;
+  return false;
+}
+
 function createSeededRandom(seed) {
   let s = seed;
   return () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
@@ -372,22 +425,23 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
     return null;
   };
 
-  existingSched.forEach(row => {
-    const gioDienRaStr = String(row[5] || row.GIODIENRA || row.gioDienRa || '');
-    if (gioDienRaStr === '❌ Rớt' || gioDienRaStr === '--') return;
+  const cleanExisting = (Array.isArray(existingSched) ? existingSched : [])
+    .map(normalizeScheduleItem)
+    .filter(r => r && r.gioDienRa && r.gioDienRa !== '--' && r.gioDienRa !== '❌ Rớt' && !r.__dropped);
 
-    const gioStart = t2m(row[5] || row.GIODIENRA || row.gioDienRa), gioEnd = t2m(row[6] || row.GIOKETTHUC || row.gioKetThuc);
+  cleanExisting.forEach(row => {
+    const gioStart = t2m(row.gioDienRa), gioEnd = t2m(row.gioKetThuc);
     if (isNaN(gioStart) || isNaN(gioEnd) || gioEnd <= gioStart) return;
 
-    const nvChinh = row[7] || row["NV CHÍNH"] || row.nvChinh, nvPhu = row[8] || row["NV PHỤ"] || row.nvPhu;
-    const may = row[9] || row.MAY || row.may, phong = row[3] || row.PHONG || row.phong, giuong = row[10] || row.GIUONG || row.giuong;
-    const patName = String(row[1] || row.HOTEN || row.tenBN || '').toUpperCase().trim();
-    const patNs = String(row[2] || row.NAMSINH || row.namSinh || '').trim();
+    const nvChinh = row.nvChinh, nvPhu = row.nvPhu;
+    const may = row.may, phong = row.phong, giuong = row.giuong;
+    const patName = String(row.tenBN || '').toUpperCase().trim();
+    const patNs = String(row.namSinh || '').trim();
     
-    const tenThuThuat = String(row[4] || row.DICHVU || row.thuThuat || "").trim().toLowerCase();
+    const tenThuThuat = String(row.thuThuat || "").trim().toLowerCase();
     const info = thuThuatInfo[tenThuThuat] || ["Thủ công", 15, 5, "PHCN", 1, 0, [], 5];
-    const isManualProc = (info[0] === "Thủ công") || (info[13] === 1) || (info[2] >= (gioEnd - gioStart));
-    const tgNhanVien = isManualProc ? (gioEnd - gioStart) : info[2];
+    const isManualProc = isContinuousProcedure(info, gioEnd - gioStart);
+    const tgNhanVien = isManualProc ? (gioEnd - gioStart) : (parseInt(info[2]) || 5);
     const staffEnd = isManualProc ? gioEnd : Math.min(gioStart + tgNhanVien, gioEnd);
     const hasTeardown = !isManualProc && ((gioEnd - gioStart) > tgNhanVien);
     const tearStart = hasTeardown ? gioEnd : null;
@@ -421,7 +475,9 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       const patObj = patients.find(p => {
         const pName = String(p.name || '').toUpperCase().trim();
         const pNs = String(p.ns || p.namSinh || '').trim();
-        return pName === patName && (!patNs || !pNs || patNs === pNs);
+        const isNameMatch = (pName === patName) || (cleanAndHealPatientName(patName, [pName], true) === pName);
+        const isNsMatch = !patNs || !pNs || patNs === pNs || (patNs.length >= 2 && pNs.length >= 2 && patNs.slice(-2) === pNs.slice(-2));
+        return isNameMatch && isNsMatch;
       });
       if (patObj) {
         patObj.busy.push([gioStart, gioEnd + 1]);
@@ -539,11 +595,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
     const isDienCham = tenThuThuat.toLowerCase().includes('điện châm') || tenThuThuat.toLowerCase() === 'đc' || (info[8] && String(info[8]).toLowerCase().includes('điện châm'));
     
     // Kiểm tra tính chất làm việc liên tục 1:1 (KTV/Bác sĩ làm trực tiếp toàn bộ thời gian thủ thuật, ví dụ: TTG, TTK, XBBH, XBV, HH, SA, CC...)
-    const isExplicitContinuous = info[13] === 1 || info[13] === '1' || info[13] === 'Có' || info[13] === true;
-    const isContinuous = isExplicitContinuous 
-                      || (baseTgMay === tgNvMin && tgMayMax === tgNvMax) 
-                      || (loaiMay === 'Thủ công' && baseTgMay === tgNvMin)
-                      || (baseTgMay === tgNvMin && tgNvMin >= 10);
+    const isContinuous = isContinuousProcedure(info);
     
     // Phương án 2: Ưu tiên các mốc chẵn chia hết cho 5 phút trước (chuẩn nghiệp vụ YHCT-PHCN),
     // sau đó mới đến các mốc phút lẻ làm dự phòng để cứu ca không bị rớt.
@@ -1175,7 +1227,7 @@ function getPatientSignature(pat) {
    * 🛡️ BỘ LỌC HẬU KIỂM TRA VA CHẠM (COLLISION POST-VALIDATOR)
    * Đảm bảo 100% không bao giờ có ca bổ sung nào bị trùng giờ Bệnh nhân / Nhân viên / Máy móc / Giường với lịch cũ.
    */
-  function validateNoOverlapWithExisting(schedCandidate, existingSched) {
+  function validateNoOverlapWithExisting(schedCandidate, existingSched, dbRef = null) {
     if (!existingSched || existingSched.length === 0 || !schedCandidate || schedCandidate.length === 0) {
       return { cleanSched: schedCandidate || [], collisionDrops: [] };
     }
@@ -1184,43 +1236,86 @@ function getPatientSignature(pat) {
     const cleanSched = [];
     const collisionDrops = [];
 
-    const existingList = existingSched.map(row => {
-      const s = t2m(row.gioDienRa || row.GIODIENRA || row[5]);
-      const e = t2m(row.gioKetThuc || row.GIOKETTHUC || row[6]);
+    const cleanExisting = (Array.isArray(existingSched) ? existingSched : [])
+      .map(normalizeScheduleItem)
+      .filter(r => r && r.gioDienRa && r.gioDienRa !== '--' && r.gioDienRa !== '❌ Rớt' && !r.__dropped);
+
+    const existingList = cleanExisting.map(row => {
+      const s = t2m(row.gioDienRa);
+      const e = t2m(row.gioKetThuc);
+      const tt = String(row.thuThuat || '').trim().toLowerCase();
+      const ttInfo = dbRef?.thuThuatInfo ? dbRef.thuThuatInfo[tt] : null;
+      const isContinuous = isContinuousProcedure(ttInfo, e - s);
+      const tgNv = isContinuous ? (e - s) : (ttInfo ? (parseInt(ttInfo[2]) || 5) : 5);
+      const staffEnd = isContinuous ? e : Math.min(s + tgNv, e);
+      const hasTeardown = !isContinuous && ((e - s) > tgNv);
+
       return {
-        name: String(row.tenBN || row.HOTEN || row[1] || '').toUpperCase().trim(),
-        ns: String(row.namSinh || row.NAMSINH || row[2] || '').trim(),
+        name: String(row.tenBN || '').toUpperCase().trim(),
+        ns: String(row.namSinh || '').trim(),
         s, e,
-        nv1: cleanStaffStr(row.nvChinh || row["NV CHÍNH"] || row[7]),
-        nv2: cleanStaffStr(row.nvPhu || row["NV PHỤ"] || row[8]),
-        may: String(row.may || row.MAY || row[9] || '').toLowerCase().replace(/\s+/g, ''),
-        phong: String(row.phong || row.PHONG || row[3] || '').toLowerCase().replace(/\s+/g, ''),
-        giuong: String(row.giuong || row.GIUONG || row[10] || '').toLowerCase().replace(/\s+/g, '').replace(/^giuong|^g/i, '')
+        staffEnd,
+        hasTeardown,
+        nv1: cleanStaffStr(row.nvChinh),
+        nv2: cleanStaffStr(row.nvPhu),
+        may: String(row.may || '').toLowerCase().replace(/\s+/g, ''),
+        phong: String(row.phong || '').toLowerCase().replace(/\s+/g, ''),
+        giuong: String(row.giuong || '').toLowerCase().replace(/\s+/g, '').replace(/^giuong|^g/i, '')
       };
     }).filter(r => !isNaN(r.s) && !isNaN(r.e) && r.e > r.s);
 
-    for (const cand of schedCandidate) {
-      const cS = t2m(cand.gioDienRa || cand.GIODIENRA);
-      const cE = t2m(cand.gioKetThuc || cand.GIOKETTHUC);
-      const cName = String(cand.tenBN || cand.HOTEN || '').toUpperCase().trim();
-      const cNs = String(cand.namSinh || cand.NAMSINH || '').trim();
-      const cNv1 = cleanStaffStr(cand.nvChinh || cand["NV CHÍNH"]);
-      const cNv2 = cleanStaffStr(cand.nvPhu || cand["NV PHỤ"]);
-      const cMay = String(cand.may || cand.MAY || '').toLowerCase().replace(/\s+/g, '');
-      const cPhong = String(cand.phong || cand.PHONG || '').toLowerCase().replace(/\s+/g, '');
-      const cGiuong = String(cand.giuong || cand.GIUONG || '').toLowerCase().replace(/\s+/g, '').replace(/^giuong|^g/i, '');
+    const isOverlap = (s1, e1, s2, e2) => Math.max(s1, s2) < Math.min(e1, e2);
+
+    for (const rawCand of schedCandidate) {
+      const cand = normalizeScheduleItem(rawCand);
+      if (!cand) continue;
+      const cS = t2m(cand.gioDienRa);
+      const cE = t2m(cand.gioKetThuc);
+      const cName = String(cand.tenBN || '').toUpperCase().trim();
+      const cNs = String(cand.namSinh || '').trim();
+      const cNv1 = cleanStaffStr(cand.nvChinh);
+      const cNv2 = cleanStaffStr(cand.nvPhu);
+      const cMay = String(cand.may || '').toLowerCase().replace(/\s+/g, '');
+      const cPhong = String(cand.phong || '').toLowerCase().replace(/\s+/g, '');
+      const cGiuong = String(cand.giuong || '').toLowerCase().replace(/\s+/g, '').replace(/^giuong|^g/i, '');
+
+      const cTenTT = String(cand.thuThuat || '').trim().toLowerCase();
+      const cInfo = dbRef?.thuThuatInfo ? dbRef.thuThuatInfo[cTenTT] : null;
+      const cIsContinuous = isContinuousProcedure(cInfo, cE - cS);
+      const cTgNv = cIsContinuous ? (cE - cS) : (cInfo ? (parseInt(cInfo[2]) || 5) : 5);
+      const cStaffEnd = cIsContinuous ? cE : Math.min(cS + cTgNv, cE);
+      const cHasTeardown = !cIsContinuous && ((cE - cS) > cTgNv);
 
       let collisionReason = null;
       for (const ex of existingList) {
-        if (Math.max(cS, ex.s) < Math.min(cE, ex.e)) {
-          if (cName && ex.name && cName === ex.name && (!cNs || !ex.ns || cNs === ex.ns)) {
+        // 1. Kiểm tra va chạm Bệnh nhân (không thể làm 2 thủ thuật cùng lúc)
+        if (isOverlap(cS, cE, ex.s, ex.e)) {
+          const isNameMatch = (cName && ex.name && (cName === ex.name || cleanAndHealPatientName(ex.name, [cName], true) === cName));
+          const isNsMatch = (!cNs || !ex.ns || cNs === ex.ns || (cNs.length >= 2 && ex.ns.length >= 2 && cNs.slice(-2) === ex.ns.slice(-2)));
+          if (isNameMatch && isNsMatch) {
             collisionReason = `Trùng giờ với thủ thuật đã xếp trước đó của bệnh nhân (${m2t(ex.s)}-${m2t(ex.e)})`;
             break;
           }
-          if ((cNv1 && (cNv1 === ex.nv1 || cNv1 === ex.nv2)) || (cNv2 && (cNv2 === ex.nv1 || cNv2 === ex.nv2))) {
-            collisionReason = `Nhân sự đã có lịch với ca khác (${m2t(ex.s)}-${m2t(ex.e)})`;
-            break;
-          }
+        }
+
+        // 2. Kiểm tra va chạm Nhân sự (chỉ tính khoảng thời gian KTV trực tiếp làm việc: setup + teardown)
+        const checkStaffOverlap = (candStaff) => {
+          if (!candStaff) return false;
+          if (candStaff !== ex.nv1 && candStaff !== ex.nv2) return false;
+          if (isOverlap(cS, cStaffEnd, ex.s, ex.staffEnd)) return true;
+          if (cHasTeardown && isOverlap(cE, cE + 1, ex.s, ex.staffEnd)) return true;
+          if (ex.hasTeardown && isOverlap(cS, cStaffEnd, ex.e, ex.e + 1)) return true;
+          if (cHasTeardown && ex.hasTeardown && isOverlap(cE, cE + 1, ex.e, ex.e + 1)) return true;
+          return false;
+        };
+
+        if (checkStaffOverlap(cNv1) || checkStaffOverlap(cNv2)) {
+          collisionReason = `Nhân sự đã có lịch với ca khác (${m2t(ex.s)}-${m2t(ex.e)})`;
+          break;
+        }
+
+        // 3. Kiểm tra va chạm Máy móc (máy bận toàn bộ từ đầu đến cuối)
+        if (isOverlap(cS, cE, ex.s, ex.e)) {
           if (cMay && cMay !== 'thucong' && ex.may && ex.may !== 'thucong' && cMay === ex.may) {
             collisionReason = `Máy móc ${cand.may} đã bận (${m2t(ex.s)}-${m2t(ex.e)})`;
             break;
@@ -1246,7 +1341,7 @@ function getPatientSignature(pat) {
           advices: ["Chọn khung giờ khác hoặc điều phối nhân sự/máy móc thay thế"]
         });
       } else {
-        cleanSched.push(cand);
+        cleanSched.push(rawCand);
       }
     }
 
@@ -1535,8 +1630,12 @@ function getSafeCache() {
 
     // Thu thập danh sách họ tên bệnh nhân sạch từ existingSched và cache.pat để đối chiếu phục hồi
     const validPatientCandidates = [];
-    (existingSched || []).forEach(r => {
-      const n = String(r?.tenBN || r?.HOTEN || (Array.isArray(r) ? r[1] : '') || '').normalize('NFC').trim();
+    const cleanExisting = (Array.isArray(existingSched) ? existingSched : [])
+      .map(normalizeScheduleItem)
+      .filter(r => r && r.gioDienRa && r.gioDienRa !== '--' && r.gioDienRa !== '❌ Rớt' && !r.__dropped);
+
+    cleanExisting.forEach(r => {
+      const n = String(r.tenBN || '').normalize('NFC').trim();
       if (n && !n.includes('\ufffd') && !validPatientCandidates.includes(n)) validPatientCandidates.push(n);
     });
     patList.forEach(p => {
@@ -1553,10 +1652,10 @@ function getSafeCache() {
       // Phục hồi họ tên nếu phát hiện ký tự lạ
       const matchedCandidates = validPatientCandidates.filter(c => {
         const cUp = c.toUpperCase();
-        return (cUp === rawPName) || (existingSched || []).some(r => {
-          const rName = String(r?.tenBN || r?.HOTEN || (Array.isArray(r) ? r[1] : '') || '').toUpperCase().trim();
-          const rNs = String(r?.namSinh || r?.NAMSINH || (Array.isArray(r) ? r[2] : '') || '').trim();
-          const rRoom = String(r?.phong || r?.PHONG || (Array.isArray(r) ? r[3] : '') || '').trim();
+        return (cUp === rawPName) || cleanExisting.some(r => {
+          const rName = String(r.tenBN || '').toUpperCase().trim();
+          const rNs = String(r.namSinh || '').trim();
+          const rRoom = String(r.phong || '').trim();
           return rName === cUp && (!pNs || !rNs || pNs === rNs) && (!pRoom || !rRoom || pRoom === rRoom);
         });
       });
@@ -1572,26 +1671,29 @@ function getSafeCache() {
       if (seen.has(key)) return;
       seen.add(key);
 
-      const ttStr = p.thuThuat || p.procedures || p[8] || "";
+      const ttStr = p.thuThuat || p.procedures || p.dsThuThuat || p.dsDichVu || p[8] || "";
       let procs = Array.isArray(ttStr) ? ttStr : String(ttStr).split(",").map(x => x.trim()).filter(Boolean);
       if (!procs.length) return;
 
       // Nếu đang xếp bổ sung (có existingSched), loại bỏ các thủ thuật CỦA BỆNH NHÂN NÀY đã được xếp lịch trước đó (khớp theo số lượng)
       const existingPatRows = [];
-      if (existingSched && existingSched.length > 0) {
-        const scheduledProcsForPat = existingSched
+      if (cleanExisting && cleanExisting.length > 0) {
+        const scheduledProcsForPat = cleanExisting
           .filter(r => {
             if (!r) return false;
-            let rName = String(r.tenBN || r.HOTEN || r[1] || '').normalize('NFC').toUpperCase().trim();
-            rName = cleanAndHealPatientName(rName, [pName, ...validPatientCandidates]);
-            const rNs = String(r.namSinh || r.NAMSINH || r[2] || '').trim();
-            const rGio = String(r.gioDienRa || r.GIODIENRA || r[5] || '');
-            const isNameMatch = (rName === pName) || (cleanAndHealPatientName(rName, [pName]) === pName);
-            const isMatched = isNameMatch && (!pNs || !rNs || pNs === rNs) && rGio !== '❌ Rớt' && rGio !== '--';
+            let rawRName = String(r.tenBN || '').normalize('NFC').trim();
+            let rNameUpper = cleanAndHealPatientName(rawRName, [pName, ...validPatientCandidates], true);
+            const rNs = String(r.namSinh || '').trim();
+            const rGio = String(r.gioDienRa || '');
+
+            const isNameMatch = (rNameUpper === pName) || (rawRName.toUpperCase() === pName);
+            const isNsMatch = !pNs || !rNs || pNs === rNs || (pNs.length >= 2 && rNs.length >= 2 && pNs.slice(-2) === rNs.slice(-2));
+
+            const isMatched = isNameMatch && isNsMatch && rGio !== '❌ Rớt' && rGio !== '--';
             if (isMatched) existingPatRows.push(r);
             return isMatched;
           })
-          .map(r => String(r.thuThuat || r.DICHVU || r[4] || '').trim().toLowerCase());
+          .map(r => String(r.thuThuat || '').trim().toLowerCase());
 
         const remainingProcs = [];
         const copyScheduled = [...scheduledProcsForPat];
@@ -1633,8 +1735,8 @@ function getSafeCache() {
       // 🔒 KHÓA CỨNG MỐC GIỜ ĐÃ XẾP CỦA BỆNH NHÂN NÀY TRONG LỊCH CŨ (tránh xếp ca mới trùng giờ với ca cũ)
       if (existingPatRows.length > 0) {
         existingPatRows.forEach(er => {
-          const s = t2m(er.gioDienRa || er.GIODIENRA || er[5]);
-          const e = t2m(er.gioKetThuc || er.GIOKETTHUC || er[6]);
+          const s = t2m(er.gioDienRa);
+          const e = t2m(er.gioKetThuc);
           if (!isNaN(s) && !isNaN(e) && e > s) {
             busySlots.push([s, e + 1]);
           }
@@ -1680,7 +1782,11 @@ function getSafeCache() {
 
   function runClientScheduling(dateVal, strategyKey = 'opt_rare', skipProcsStr = '', crowdedOverride = -1, existingSched = []) {
     const startTime = performance.now();
-    const { database: db, forcedDrops } = buildDbFromCache(null, skipProcsStr, existingSched);
+    const cleanExistingSched = (Array.isArray(existingSched) ? existingSched : [])
+      .map(normalizeScheduleItem)
+      .filter(r => r && r.gioDienRa && r.gioDienRa !== '--' && r.gioDienRa !== '❌ Rớt' && !r.__dropped);
+
+    const { database: db, forcedDrops } = buildDbFromCache(null, skipProcsStr, cleanExistingSched);
 
     if (!db.rawPatients.length) {
       return {
@@ -1695,12 +1801,12 @@ function getSafeCache() {
     const scenarioMap = { opt_rare: 1, opt_math: 1 };
     const scenario = scenarioMap[strategyKey] || 1;
 
-    let best = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, { drop: 10000, overtime: 2, imbalance: 0.1 }, 42, 1);
+    let best = runBestIteration(db, dateVal, cleanExistingSched, scenario, crowdedOverride, { drop: 10000, overtime: 2, imbalance: 0.1 }, 42, 1);
     let engineName = (strategyKey === 'opt_math') ? '🧠 AI + CP-SAT Optimizer' : '🚀 Tối Ưu Nhanh (Metaheuristics)';
 
     // 🧠 Universal Rescuer: Kích hoạt CP-SAT cho cả Kịch bản 1 và Kịch bản 2 nếu có ca rớt (đồng bộ existingSched chống trùng giờ)
     if (typeof window !== 'undefined' && window.MedicalCPSolver && best && best.rot && best.rot.length > 0) {
-      const cpRes = window.MedicalCPSolver.solve(db, dateVal, best.sched, best.rot, 800, existingSched);
+      const cpRes = window.MedicalCPSolver.solve(db, dateVal, best.sched, best.rot, 800, cleanExistingSched);
       if (cpRes && cpRes.sched) {
         best = { ...best, sched: cpRes.sched, rot: cpRes.rot, score: cpRes.score };
         if (cpRes.rescuedCount > 0) {
@@ -1725,7 +1831,7 @@ function getSafeCache() {
     }));
 
     const rawCompactedSched = compactTimelineGaps(formattedSched, db);
-    const { cleanSched: compactedSched, collisionDrops } = validateNoOverlapWithExisting(rawCompactedSched, existingSched);
+    const { cleanSched: compactedSched, collisionDrops } = validateNoOverlapWithExisting(rawCompactedSched, cleanExistingSched, db);
     const allDrops = finalDropList.concat(collisionDrops);
     const elapsed = Math.round(performance.now() - startTime);
 
@@ -1761,7 +1867,11 @@ function getSafeCache() {
 
   async function runSchedulingAsync(dateVal, strategyKey = 'opt_rare', skipProcsStr = '', crowdedOverride = -1, existingSched = [], options = {}) {
     const startTime = performance.now();
-    const { database: db, forcedDrops } = buildDbFromCache(null, skipProcsStr, existingSched);
+    const cleanExistingSched = (Array.isArray(existingSched) ? existingSched : [])
+      .map(normalizeScheduleItem)
+      .filter(r => r && r.gioDienRa && r.gioDienRa !== '--' && r.gioDienRa !== '❌ Rớt' && !r.__dropped);
+
+    const { database: db, forcedDrops } = buildDbFromCache(null, skipProcsStr, cleanExistingSched);
 
     if (!db.rawPatients.length) {
       return {
@@ -1786,12 +1896,12 @@ function getSafeCache() {
     }
 
     // ⚡ 2. INSTANT AI PASS (Chạy lượt 1 siêu tốc trực tiếp trên luồng đã tối ưu)
-    let best = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, weights, 42, 1);
+    let best = runBestIteration(db, dateVal, cleanExistingSched, scenario, crowdedOverride, weights, 42, 1);
     let engineName = (strategyKey === 'opt_math') ? '🧠 AI + CP-SAT Optimizer' : '🚀 Tối Ưu Nhanh (Metaheuristics)';
 
     // ⚡ 3. UNIVERSAL CP-SAT RESCUER: Tự động giải cứu ca rớt cho CẢ 2 kịch bản (~20ms, đồng bộ existingSched)
     if (typeof window !== 'undefined' && window.MedicalCPSolver && best && best.rot && best.rot.length > 0) {
-      const cpRes = window.MedicalCPSolver.solve(db, dateVal, best.sched, best.rot, 800, existingSched);
+      const cpRes = window.MedicalCPSolver.solve(db, dateVal, best.sched, best.rot, 800, cleanExistingSched);
       if (cpRes && cpRes.sched) {
         best = { ...best, sched: cpRes.sched, rot: cpRes.rot, score: cpRes.score };
         if (cpRes.rescuedCount > 0) {
@@ -1804,11 +1914,11 @@ function getSafeCache() {
     const elapsedSoFar = performance.now() - startTime;
     if (best && best.rot && best.rot.length > 3 && elapsedSoFar < 250) {
       const altSeed = 101;
-      const altRes = runBestIteration(db, dateVal, existingSched, scenario, crowdedOverride, weights, altSeed, 1);
+      const altRes = runBestIteration(db, dateVal, cleanExistingSched, scenario, crowdedOverride, weights, altSeed, 1);
       if (altRes && altRes.sched) {
         let altWithCp = altRes;
         if (typeof window !== 'undefined' && window.MedicalCPSolver && altRes.rot && altRes.rot.length > 0) {
-          const cpRes2 = window.MedicalCPSolver.solve(db, dateVal, altRes.sched, altRes.rot, 300, existingSched);
+          const cpRes2 = window.MedicalCPSolver.solve(db, dateVal, altRes.sched, altRes.rot, 300, cleanExistingSched);
           if (cpRes2 && cpRes2.sched) {
             altWithCp = { ...altRes, sched: cpRes2.sched, rot: cpRes2.rot, score: cpRes2.score };
           }
@@ -1836,7 +1946,7 @@ function getSafeCache() {
       }));
 
       const rawCompactedSched = compactTimelineGaps(formattedSched, db);
-      const { cleanSched: compactedSched, collisionDrops } = validateNoOverlapWithExisting(rawCompactedSched, existingSched);
+      const { cleanSched: compactedSched, collisionDrops } = validateNoOverlapWithExisting(rawCompactedSched, cleanExistingSched, db);
       const allDrops = finalDropList.concat(collisionDrops);
       const elapsed = Math.round(performance.now() - startTime);
 
@@ -2080,8 +2190,11 @@ function getSafeCache() {
   return {
     t2m,
     m2t,
+    normalizeScheduleItem,
+    isContinuousProcedure,
     cleanAndHealPatientName,
     buildDbFromCache,
+    validateNoOverlapWithExisting,
     runScheduling: runClientScheduling,
     runSchedulingAsync: runSchedulingAsync,
     runExtraScheduling: runExtraScheduling,
@@ -2092,6 +2205,8 @@ function getSafeCache() {
 if (typeof window !== 'undefined') {
   window.cleanAndHealPatientName = SchedulerEngine.cleanAndHealPatientName;
   window.healPatientName = SchedulerEngine.cleanAndHealPatientName;
+  window.normalizeScheduleItem = SchedulerEngine.normalizeScheduleItem;
+  window.isContinuousProcedure = SchedulerEngine.isContinuousProcedure;
 }
 
 // ============================================================

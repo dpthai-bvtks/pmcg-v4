@@ -3704,4 +3704,48 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - `index.html`: Cập nhật `?v=4.0.9-rev6`, `APP_VERSION = '4.0.9-rev6'`.
      - `version.json`: Cập nhật ngày `16/09/2026 08:35`.
 
-
+### [16/09/2026 - 10:06] Phiên bản v4.0.9-rev7: Khắc phục triệt để lỗi không khóa các giá trị đã xếp trước đó khi chạy xếp bổ sung
+- **Bối cảnh & Yêu cầu của người dùng**:
+  - "kiểm tra thêm sao mỗi lần sửa code là chức năng xếp bổ sung lại lỗi không khóa các giá trị đã xếp trước đó".
+  - Khi chạy xếp bổ sung ("Xếp bổ sung BN mới"), các ca đã xếp trước đó bị xếp đè, trùng giường/máy/nhân viên, hoặc thậm chí bị xóa trắng/biến mất dữ liệu khỏi CSDL SQLite D1.
+- **Phân tích nguyên nhân cốt lõi (Root Causes)**:
+  1. **Lỗi xóa trắng dữ liệu CSDL D1 khi lưu xếp bổ sung (`js/app.js` dòng 7176)**:
+     - Khi tải lịch từ Cloudflare D1 / cache, các hàng lịch có định dạng Mảng (`[ngay, tenBN, namSinh, ...]`).
+     - Khi `runExtraScheduling` lưu lịch kết hợp (`mergedSched`), hàm map cũ dùng cú pháp truy cập object: `x.tenBN || ''`, `x.thuThuat || ''`. Với các phần tử Mảng, `x.tenBN` trả về `undefined`, dẫn đến toàn bộ lịch cũ bị chuyển thành `[ngay, "", "", "", "", "", "", "", "", "", ""]`!
+     - Khi tải lại trang hoặc chạy lại code, toàn bộ lịch cũ bị trắng tên và mất sạch dữ liệu, khiến động cơ xếp lịch hiểu là chưa có ca nào được xếp.
+  2. **Lỗi so khớp tên bệnh nhân trong `buildDbFromCache` (`js/scheduler-engine.js` dòng 1685)**:
+     - Biến `pName` của bệnh nhân trong danh mục được chuyển UPPERCASE ("TRẦN VĂN HỒNG").
+     - Khi đọc các hàng lịch cũ `cleanExisting`, hàm `cleanAndHealPatientName` được gọi với cờ `forceUpperCase` mặc định là `false`, trả về Title Case ("Trần Văn Hồng").
+     - Phép so sánh `rNameUpper === pName` trả về `false`, khiến `existingPatRows` bị rỗng. Thuật toán không trừ thủ thuật đã xếp, dẫn đến bệnh nhân cũ bị xếp lại từ đầu (bị xếp đè/trùng lặp).
+  3. **Lỗi báo va chạm giả (False Positive) cho thủ thuật máy trong `validateNoOverlapWithExisting` (`js/scheduler-engine.js` dòng 1220)**:
+     - Thuật toán kiểm tra va chạm nhân viên kiểm tra giao nhau trên toàn bộ thời lượng thủ thuật (ví dụ Điện châm 30 phút).
+     - Trong khi thực tế, KTV chỉ phục vụ cắm máy 5 phút đầu (`tgNv = 5`), sau 5 phút KTV được tự do nhận bệnh nhân khác.
+     - `_turbo_core_logic` xếp đúng cho KTV lúc 07:35, nhưng bộ lọc `validateNoOverlapWithExisting` lại đánh rơi ca mới vì tưởng KTV bị bận suốt 30 phút.
+- **Giải pháp xử lý triệt để**:
+  1. **Hàm chuyển đổi chuẩn hóa toàn năng `scheduleRowToBackendArray` (`js/app.js`)**:
+     - Tự động chuẩn hóa bất kỳ định dạng nào (Mảng, camelCase, snake_case, UPPERCASE) qua `normalizeScheduleRow` trước khi chuyển thành mảng 11 phần tử gửi lên backend D1 SQLite.
+     - Áp dụng tại toàn bộ 4 vị trí lưu lịch: `runSchedule` nền (dòng 7080), `runExtraScheduling` (dòng 7177), `executeRescueAdvice` (dòng 7486) và `runSaturdaySchedule` (dòng 10222).
+  2. **Chuẩn hóa dữ liệu đầu vào trong `runExtraScheduling` (`js/app.js`)**:
+     - Sanitize `currentSched` bằng `normalizeScheduleRow` và loại bỏ các ca rớt trước khi truyền vào engine.
+     - Deduplicate thông minh khi gộp `mergedSched = [...currentSched]`.
+     - Chuẩn hóa các hàng mảng trong `markDischargedInSchedule` và `filterSchedule`.
+  3. **Sửa so khớp bệnh nhân và trừ thủ thuật trong `buildDbFromCache` (`js/scheduler-engine.js`)**:
+     - Ép cờ `forceUpperCase: true` và bổ sung so sánh 2 số cuối năm sinh (`slice(-2)`), đảm bảo nhận diện chính xác 100% bệnh nhân đã xếp.
+     - Khóa cứng mốc giờ đã xếp `[s, e + 1]` vào `busySlots` của bệnh nhân, phòng, giường, máy và nhân viên.
+     - Hỗ trợ thêm các alias `p.dsThuThuat`, `p.dsDichVu`.
+  4. **Nâng cấp `validateNoOverlapWithExisting` và `cp-solver.js`**:
+     - Với thủ thuật máy (`thoiGianKtv < thoiGian`), khung giờ bận của KTV được tính chính xác là `[s, s + tgNv]` và `[e, e + 1]` (tháo máy), giúp KTV nhận được ca kế tiếp mà không bị va chạm giả.
+     - Giữ nguyên cơ chế khóa cứng 100% tuyệt đối không trùng giờ cho bệnh nhân, giường và máy.
+  5. **Đồng bộ Phiên bản & Cache Busters**:
+     - Nâng phiên bản lên `4.0.9-rev7`.
+     - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.0.9-rev7'`, bổ sung `cp-solver.js` và `ai-scheduler.js` vào `STATIC_ASSETS`.
+     - `index.html`: Cập nhật `?v=4.0.9-rev7`, `APP_VERSION = '4.0.9-rev7'`, timestamp `10:06 16/09/2026`.
+     - `version.json`: Cập nhật ngày `16/09/2026 10:06`.
+- **File sửa đổi**:
+  - `js/scheduler-engine.js`
+  - `js/cp-solver.js`
+  - `js/app.js`
+  - `index.html`
+  - `sw.js`
+  - `version.json`
+  - `PM-xeplich-v4.md`
