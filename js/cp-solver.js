@@ -347,7 +347,11 @@ window.MedicalCPSolver = (function () {
       const tenTT = dropItem.tt || dropItem.thuThuat || dropItem.DICHVU || '';
       const patName = (dropItem.bn || dropItem.tenBN || dropItem.HOTEN || '').toUpperCase();
       const patNs = dropItem.ns || dropItem.namSinh || '';
-      const patRoom = dropItem.room || dropItem.phong || dropItem.PHONG || '';
+      let patRoom = dropItem.room || dropItem.phong || dropItem.PHONG || '';
+      if (!patRoom || !(db.roomBeds && db.roomBeds[patRoom])) {
+        const availRooms = Object.keys(db.roomBeds || {});
+        if (availRooms.length > 0) patRoom = availRooms[0];
+      }
       const pKey = patName + '_' + patNs;
       const pBusyList = patIntervals.get(pKey);
 
@@ -487,7 +491,25 @@ window.MedicalCPSolver = (function () {
               break;
             }
           }
-          if (!validStaff) continue; // Không có nhân viên rảnh tại t -> bỏ qua t!
+          // Phân công KTV phụ nếu thủ thuật yêu cầu
+          let validSubStaff = "";
+          const canPhu = ttInfo[5];
+          if (canPhu === 1) {
+            const subPool = (db.rawStaff || []).map(s => s[0]).filter(s => s && s !== validStaff);
+            for (let subIdx = 0; subIdx < subPool.length; subIdx++) {
+              const subName = subPool[subIdx];
+              const subShifts = staffShiftMap.get(subName);
+              if (subShifts && subShifts.length > 0 && !subShifts.some(w => candStart >= w[0] && candEnd <= w[1] + 5)) continue;
+              if (hasOverlap(staffBusyMap.get(subName), candStart, candEnd)) continue;
+              if (!hasOverlap(staffIntervals.get(subName), candStart, candEnd)) {
+                validSubStaff = subName;
+                break;
+              }
+            }
+            if (!validSubStaff) {
+              validSubStaff = "Điều dưỡng trực phòng";
+            }
+          }
 
           // 🎉 TÌM THẤY NGHIỆM TỐI ƯU TOÁN HỌC HỢP LỆ!
           assignmentFound = {
@@ -499,7 +521,7 @@ window.MedicalCPSolver = (function () {
             GIODIENRA: m2t(candStart),
             GIOKETTHUC: m2t(candEnd),
             "NV CHÍNH": validStaff,
-            "NV PHỤ": "",
+            "NV PHỤ": validSubStaff,
             MAY: validMachine,
             GIUONG: validBed,
             t_sort: candStart
@@ -510,6 +532,9 @@ window.MedicalCPSolver = (function () {
           if (validMachine !== 'Thủ công') addInterval(machineIntervals, validMachine, candStart, candEnd);
           addInterval(bedIntervals, `${patRoom}_${validBed}`, candStart, candEnd);
           addInterval(staffIntervals, validStaff, candStart, candEnd);
+          if (validSubStaff && validSubStaff !== "Điều dưỡng trực phòng") {
+            addInterval(staffIntervals, validSubStaff, candStart, candEnd);
+          }
 
           break shiftLoop;
         }

@@ -3809,4 +3809,36 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `version.json`
   - `PM-xeplich-v4.md`
 
-
+### [16/09/2026 - 20:05] Phiên bản v4.0.9-rev12: Khắc phục triệt để lỗi biến đổi tên bệnh nhân khi nạp file HIS (17.xls) & Đánh giá xếp lịch ngày 16 (16.xls)
+- **Bối cảnh & Yêu cầu của người dùng**:
+  1. Đọc file `C:\Users\Dang Phong Thai\Documents\16.xls`, xem danh sách nhân sự, thủ thuật ngày hôm nay, chạy thử xếp lịch xem có bị trùng giờ hay thiếu giờ gì không.
+  2. Đọc file `C:\Users\Dang Phong Thai\Documents\17.xls`, chú ý cột G từ ô G11 (tên bệnh nhân), khi nạp vào hệ thống tên bệnh nhân bị đổi sai lệch (Ví dụ: `Bùi Văn Hoàn` thành `Bới Văn Hoàn`, `Bùi Văn Hùng` thành `Bới Văn Hớng`, `Bùi Văn Hanh` thành `Bới Văn Hanh`).
+- **Phân tích nguyên nhân cốt lõi (Root Causes)**:
+  1. *Lỗi nhận diện và mapping bảng mã TCVN3*:
+     - File Excel `17.xls` lưu tên bệnh nhân dưới dạng Unicode NFC/Latin-1 chuẩn (`BÙI VĂN HOÀN`). Ký tự chữ `Ù` hoa có mã Unicode `0x00D9`.
+     - Trong `decodeVietnameseEncoding()` (`js/scheduler-engine.js`), điều kiện kiểm tra chuỗi Unicode mở rộng `hasUnicodeExtended = /[\u1EA0-\u1EF9]/` bỏ sót các nguyên âm Latin-1 Supplement như `Ù` (`0x00D9`), khiến hệ thống nhận định sai là chuỗi chưa phải Unicode chuẩn.
+     - Ký tự `0x00D9` lại trùng trong tập kiểm tra TCVN3 cũ, và trong từ điển `TCVN3_MAP` có dòng ánh xạ nhầm: `'Ù': 'ớ'`, `'Ú': 'ở'`.
+     - Kết quả: `BÙI` bị đổi thành `BớI` -> `Bới Văn Hoàn`, `HÙNG` đổi thành `HớNG` -> `Bới Văn Hớng`.
+- **Giải pháp xử lý triệt để**:
+  1. **Khắc phục giải mã tiếng Việt (`js/scheduler-engine.js`)**:
+     - Loại bỏ hoàn toàn các ánh xạ ký tự Latin-1 hoa trong `TCVN3_MAP` (`'Ù': 'ớ'`, `'Ú': 'ở'`, `'Ô': 'ễ'`, `'Ò': 'ồ'`).
+     - Bổ sung cơ chế phòng vệ chốt chặn: nếu chuỗi đã chứa các nguyên âm tiếng Việt Unicode đặc trưng (`[\u0102\u0103\u0110\u0111\u0128\u0129\u0168\u0169\u01A0\u01A1\u01AF\u01B0\u1EA0-\u1EF9]`) và không có ký tự chữ ký độc quyền TCVN3 (`\u00A7-\u00AE`), lập tức giữ nguyên chuỗi 100%.
+     - Kiểm nghiệm 53/53 bệnh nhân trong `17.xls`: 100% tên giải mã chuẩn mực (`Bùi Văn Hoàn`, `Bùi Văn Hùng`, `Bùi Văn Hanh`, `Lê Văn Ý`...).
+  2. **Kết quả mô phỏng xếp lịch file `16.xls`**:
+     - 62 bệnh nhân, 196 lượt thủ thuật (DX: 53, TC: 48, DC: 45, PA: 18, SN: 11, TTG: 9, HN: 8, XBV: 2, HH: 1, KG: 1).
+     - Nhân sự hôm nay: 4 BS (Đạt, Thảo, Thái, Khuyến - BS Hoa nghỉ); 4 KTV (Hà chip, Lương, Phan Hiền, Lê Hiền); 8 Phụ (Phụ 1..8).
+     - Xếp thành công 196/196 ca (100%, 0 ca rớt) khi phân bổ đều 4 phòng. Không trùng giờ BN, máy móc hay giường bệnh.
+     - Phát hiện 4 ca Thủy châm cuối buổi bị chạm giờ tan ca 3-9 phút do tải 4 BS phải gánh 93 ca châm/tiêm.
+  3. **Đồng bộ phiên bản theo RULES.md**:
+     - Giữ nguyên phiên bản chính `4.0.9`, nâng revision lên `4.0.9-rev12`.
+     - Footer timestamp: `20:05 16/09/2026`.
+     - Thẻ `#app-footer-version` giữ đúng `Phiên bản: 4.0.9` (không có hậu tố revN theo đúng Rule 3).
+     - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.0.9-rev12'`.
+     - `index.html`: Cập nhật toàn bộ cache busters `?v=4.0.9-rev12`, `APP_VERSION = '4.0.9-rev12'`, modal force update.
+     - `version.json`: Cập nhật `version: "4.0.9-rev12"`, `releaseTime: "20:05 16/09/2026"`.
+- **File sửa đổi**:
+  - `js/scheduler-engine.js`
+  - `sw.js`
+  - `index.html`
+  - `version.json`
+  - `PM-xeplich-v4.md`

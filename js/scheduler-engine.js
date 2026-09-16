@@ -25,8 +25,7 @@ var SchedulerEngine = (typeof window !== 'undefined' ? window : (typeof global !
     '\u00F9': 'ù', '\u00FA': 'ú', '\u00E7': 'ủ', '\u00EA': 'ũ', '\u00EB': 'ụ',
     '\u00AD': 'ư', '\u00EE': 'ừ', '\u00F8': 'ứ', '\u00EF': 'ử', '\u00F1': 'ữ', '\u00F4': 'ự',
     '\u00FF': 'ỳ', '\u00FD': 'ý', '\u00F5': 'ỷ', '\u00F6': 'ỹ', '\u00F7': 'ỵ',
-    '\u00AE': 'đ', '\u00A7': 'Đ',
-    'Ô': 'ễ', 'Ò': 'ồ', 'Ó': 'ố', 'Õ': 'ỗ', 'Ö': 'ộ', 'Ø': 'ờ', 'Ù': 'ớ', 'Ú': 'ở', 'Û': 'ỡ', 'Ü': 'ợ', 'Þ': 'ừ', 'ß': 'ứ', 'å': 'ồ'
+    '\u00AE': 'đ', '\u00A7': 'Đ'
   };
 
   const VNI_PAIRS = [
@@ -65,10 +64,19 @@ var SchedulerEngine = (typeof window !== 'undefined' ? window : (typeof global !
     // 2. Chuyển Unicode NFD sang NFC
     try { str = str.normalize('NFC'); } catch (e) {}
 
+    // 🛡️ BẢO VỆ TUYỆT ĐỐI CHUỖI UNICODE TIẾNG VIỆT CHUẨN:
+    // Nếu chuỗi chứa bất kỳ ký tự tiếng Việt Unicode đặc trưng (Ă, ă, Đ, đ, Ĩ, ĩ, Ũ, ũ, Ơ, ơ, Ư, ư hoặc \u1EA0-\u1EF9)
+    // và KHÔNG chứa các ký tự chữ ký TCVN3 đặc trưng (\u00A7 - \u00AE), thì chuỗi này 100% đã là Unicode chuẩn!
+    const hasStrongTcvn3Char = /[\u00A7\u00A8\u00A9\u00AA\u00AB\u00AC\u00AD\u00AE]/.test(str);
+    const hasPureUnicodeVN = /[\u0102\u0103\u0110\u0111\u0128\u0129\u0168\u0169\u01A0\u01A1\u01AF\u01B0\u1EA0-\u1EF9]/.test(str);
+
+    if (hasPureUnicodeVN && !hasStrongTcvn3Char) {
+      return str.replace(/\s+/g, ' ').trim();
+    }
+
     // 3. Ưu tiên kiểm tra và giải mã VNI nếu có các cặp ký tự VNI đặc trưng (và không có ký tự TCVN3 đặc thù)
-    const hasTcvn3Strong = /[\u00A7\u00A8\u00A9\u00AA\u00AB\u00AC\u00AD\u00AE]/.test(str);
     const vniPairRegex = /(?:[aAeEoOuUöÖôÔ][ùøûõïéèúüëáàåãäóò])|(?:[aAeEoO][âêô])|(?:uù|uø|öù|öø)/;
-    if (!hasTcvn3Strong && (vniPairRegex.test(str) || (/[ñÑ]/.test(str) && !/[\u1EA0-\u1EF9]/.test(str)))) {
+    if (!hasStrongTcvn3Char && (vniPairRegex.test(str) || (/[ñÑ]/.test(str) && !hasPureUnicodeVN))) {
       let vniDecoded = str;
       for (let k = 0; k < VNI_PAIRS.length; k++) {
         const vni = VNI_PAIRS[k][0];
@@ -81,22 +89,19 @@ var SchedulerEngine = (typeof window !== 'undefined' ? window : (typeof global !
     }
 
     // 4. Kiểm tra và giải mã TCVN3 (.VnTime, .VnArial)
-    // Chỉ kích hoạt nếu có ký tự đặc trưng của TCVN3 VÀ không chứa nguyên âm tiếng Việt Unicode mở rộng (\u1EA0-\u1EF9)
-    const hasUnicodeExtended = /[\u1EA0-\u1EF9]/.test(str);
-    if (!hasUnicodeExtended) {
-      const hasTcvn3Special = /[\u00A7\u00A8\u00A9\u00AA\u00AB\u00AC\u00AD\u00AE\u00B5\u00B6\u00B7\u00B8\u00B9\u00BB\u00BC\u00BD\u00BE\u00C6\u00C7\u00C8\u00C9\u00CA\u00CB\u00CD\u00D0\u00D1\u00D2\u00D3\u00D5\u00D6\u00D7\u00D8\u00D9\u00DA\u00DB\u00DC\u00DD\u00DE\u00DF\u00E5\u00EE\u00EF\u00F1\u00F8]/.test(str);
-      if (hasTcvn3Special) {
-        str = str.replace(/\bNguyÔn\b/g, 'Nguyễn').replace(/\bnguyÔn\b/g, 'nguyễn')
-                 .replace(/Thñy/gi, 'Thủy').replace(/thñy/gi, 'thủy')
-                 .replace(/bãp\s*b[Êê]m/gi, 'bóp bấm')
-                 .replace(/huyÖt/gi, 'huyệt');
-        let tcvnDecoded = '';
-        for (let i = 0; i < str.length; i++) {
-          const ch = str[i];
-          tcvnDecoded += (TCVN3_MAP[ch] !== undefined) ? TCVN3_MAP[ch] : ch;
-        }
-        str = tcvnDecoded;
+    // Chỉ kích hoạt nếu có chữ ký TCVN3 mạnh HOẶC các mẫu từ lỗi đặc thù của TCVN3
+    const hasTcvn3Word = /\b(NguyÔn|Thñy|bãp|huyÖt)\b/i.test(str);
+    if ((hasStrongTcvn3Char || hasTcvn3Word) && !hasPureUnicodeVN) {
+      str = str.replace(/\bNguyÔn\b/g, 'Nguyễn').replace(/\bnguyÔn\b/g, 'nguyễn')
+               .replace(/Thñy/gi, 'Thủy').replace(/thñy/gi, 'thủy')
+               .replace(/bãp\s*b[Êê]m/gi, 'bóp bấm')
+               .replace(/huyÖt/gi, 'huyệt');
+      let tcvnDecoded = '';
+      for (let i = 0; i < str.length; i++) {
+        const ch = str[i];
+        tcvnDecoded += (TCVN3_MAP[ch] !== undefined) ? TCVN3_MAP[ch] : ch;
       }
+      str = tcvnDecoded;
     }
 
     // 5. Chuẩn hóa NFC lần cuối và làm sạch khoảng trắng thừa
@@ -861,7 +866,16 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
           if (!bedTimeline.some(slot => is_overlap(tNow, gioKetThuc, slot[0], slot[1]))) { selectedBed = bedId; break; }
         }
       }
-      if (!selectedBed && bedTracker[targetRoom] && Object.keys(bedTracker[targetRoom]).length > 0) continue;
+      if (!selectedBed && bedTracker[targetRoom] && Object.keys(bedTracker[targetRoom]).length > 0) {
+        const isKeoGian = loaiMay.toLowerCase().includes("kéo giãn");
+        const tuKhoaKhongGiuong = ["tập vận", "siêu âm", "cứu", "thủy châm", "điện châm", "hồng ngoại", "xbbh", "xoa bóp", "khí dung"];
+        const isFlexibleBed = isKeoGian || tuKhoaKhongGiuong.some(k => tenThuThuat.toLowerCase().includes(k));
+        if (isFlexibleBed || isSupplemental || isBackfill) {
+          selectedBed = isKeoGian ? "Giường máy Kéo giãn" : "Ghế điều trị / Giường phụ";
+        } else {
+          continue;
+        }
+      }
 
       for (const nvChinh of candidatesMain) {
         const isInMyRoom = (staffMyRooms[nvChinh] || []).includes(targetRoom);
@@ -1631,7 +1645,7 @@ function getSafeCache() {
 
     // Nếu tên hoàn toàn bình thường, trả về theo định dạng yêu cầu
     if (!hasCorruptChar && !hasSwallowedVowel) {
-      return shouldUpper ? name.toUpperCase() : name;
+      return shouldUpper ? name.toUpperCase() : toVietnameseProperCase(name);
     }
 
     // Helper: Bỏ dấu tiếng Việt phục vụ so sánh mờ
@@ -1647,31 +1661,34 @@ function getSafeCache() {
       const cleanCand = String(cand).normalize('NFC').trim();
       if (/[\ufffd\u0000]/.test(cleanCand) || /\b(Trn|Cưng|Lnh)\b/i.test(cleanCand)) continue;
 
-      // So khớp wildcard
-      const wildcardPattern = '^' + name
-        .replace(/[\ufffd\u0000\?]+/g, '.*')
-        .replace(/\bTrn\b/gi, 'Tr.*n')
-        .replace(/\bCưng\b/gi, 'C.*ng')
-        .replace(/\bLnh\b/gi, 'L.*nh')
+      // So khớp wildcard trên chuỗi không dấu
+      const noToneName = stripTones(name.replace(/[\ufffd\u0000\?]+/g, ' '));
+      const noToneCand = stripTones(cleanCand);
+      const wildcardPattern = '^' + noToneName
+        .replace(/\btrn\b/gi, 'tr.*n')
+        .replace(/\bcung\b/gi, 'c.*ng')
+        .replace(/\blnh\b/gi, 'l.*nh')
+        .replace(/\bnguyn\b/gi, 'nguy.*n')
+        .replace(/\bphm\b/gi, 'ph.*m')
+        .replace(/\bth\b/gi, 'th.*')
+        .replace(/\bvan\b/gi, 'v.*n')
         .replace(/\s+/g, '\\s+') + '$';
       try {
-        if (new RegExp(wildcardPattern, 'i').test(cleanCand)) {
-          return shouldUpper ? cleanCand.toUpperCase() : cleanCand;
+        if (new RegExp(wildcardPattern, 'i').test(noToneCand)) {
+          return shouldUpper ? cleanCand.toUpperCase() : toVietnameseProperCase(cleanCand);
         }
       } catch (e) {}
 
       // So khớp theo âm tiết không dấu
-      const noToneName = stripTones(name.replace(/[\ufffd\u0000\?]/g, ''));
-      const noToneCand = stripTones(cleanCand);
       if (noToneName && noToneCand) {
         if (noToneName === noToneCand) {
-          return shouldUpper ? cleanCand.toUpperCase() : cleanCand;
+          return shouldUpper ? cleanCand.toUpperCase() : toVietnameseProperCase(cleanCand);
         }
         const nameTokens = noToneName.split(/\s+/).filter(t => t.length >= 2);
         const candTokens = noToneCand.split(/\s+/).filter(t => t.length >= 2);
         const matchedTokens = nameTokens.filter(t => candTokens.includes(t));
         if (nameTokens.length >= 2 && matchedTokens.length >= nameTokens.length - 1) {
-          return shouldUpper ? cleanCand.toUpperCase() : cleanCand;
+          return shouldUpper ? cleanCand.toUpperCase() : toVietnameseProperCase(cleanCand);
         }
       }
     }
@@ -1691,13 +1708,26 @@ function getSafeCache() {
     healed = healed.replace(/\bC[\ufffd\s\?]*ng\b/gi, 'Cường');
     healed = healed.replace(/\bCưng\b/gi, 'Cường');
 
-    // Họ Nguyễn: Nguyn / Nguyn -> Nguyễn
+    // Họ Nguyễn: Nguyn / Nguyn / Nguy?n -> Nguyễn
     healed = healed.replace(/\bNguy[\ufffd\s\?]*n\b/gi, 'Nguyễn');
     healed = healed.replace(/\bNguyn\b/gi, 'Nguyễn');
 
-    // Họ Phạm: Phm / Phm -> Phạm
+    // Họ Phạm: Phm / Phm / Ph?m -> Phạm
     healed = healed.replace(/\bPh[\ufffd\s\?]*m\b/gi, 'Phạm');
     healed = healed.replace(/\bPhm\b/gi, 'Phạm');
+
+    // Đệm Thị: Th? / Th -> Thị
+    healed = healed.replace(/\bTh[\ufffd\?]+(?=\s+|$)/gi, 'Thị');
+
+    // Đệm Văn: V?n / Vn / Vn -> Văn
+    healed = healed.replace(/\bV[\ufffd\?]+n\b/gi, 'Văn');
+    healed = healed.replace(/\bVn\b/gi, 'Văn');
+
+    // Đệm Đình: D?nh / Dnh -> Đình
+    healed = healed.replace(/\bD[\ufffd\?]*nh\b/gi, 'Đình');
+
+    // Đệm Đức: D?c / Dc -> Đức
+    healed = healed.replace(/\bD[\ufffd\?]*c\b/gi, 'Đức');
 
     // Họ/Tên Hoàng: Hong -> Hoàng
     healed = healed.replace(/\bHo[\ufffd\s\?]*ng\b/gi, 'Hoàng');
@@ -1882,7 +1912,14 @@ function getSafeCache() {
       let rawPName = String(p.ten || p.name || p[1] || "").normalize('NFC').trim().toUpperCase();
       if (!rawPName) return;
       const pNs = String(p.namSinh || p.age || p[2] || "").trim();
-      const pRoom = String(p.phong || p[7] || "").trim();
+      let pRoom = String(p.phong || p[7] || "").trim();
+      if (!pRoom || !database.roomBeds[pRoom]) {
+        const availRooms = Object.keys(database.roomBeds);
+        if (availRooms.length > 0) {
+          pRoom = availRooms[0];
+          if (p && typeof p === 'object' && !Array.isArray(p)) p.phong = pRoom;
+        }
+      }
 
       // Phục hồi họ tên nếu phát hiện ký tự lạ
       const matchedCandidates = validPatientCandidates.filter(c => {

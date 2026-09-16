@@ -10058,6 +10058,12 @@ window.renderSttOrderControl = function (type, i, total) {
                         ? window.toVietnameseProperCase
                         : (s => String(s || '').toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase()));
                     const norm = s => decodeFn(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\u0111\u0110]/g, 'd').replace(/đ/g, 'd').trim();
+                    const healFn = (typeof window !== 'undefined' && typeof window.cleanAndHealPatientName === 'function')
+                        ? window.cleanAndHealPatientName
+                        : (typeof SchedulerEngine !== 'undefined' && typeof SchedulerEngine.cleanAndHealPatientName === 'function')
+                            ? SchedulerEngine.cleanAndHealPatientName
+                            : properFn;
+                    const candNames = Object.values(satCache || {}).map(s => String(s?.info?.ten || '').trim()).filter(Boolean);
                     let isHIS = false;
                     let colTen = 6, colNamSinh = 7, colDichVu = 13, startRow = 1, colLoaiDieuTri = -1;
 
@@ -10091,7 +10097,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         const dataRows = roa.slice(startRow);
                         dataRows.forEach(row => {
                             const rawTen = row[colTen];
-                            const ten = properFn(rawTen);
+                            const ten = healFn(rawTen, candNames, false);
                             const dichVu = decodeFn(row[colDichVu]);
 
                             let loaiBn = 'NoiTru';
@@ -10467,7 +10473,28 @@ window.renderSttOrderControl = function (type, i, total) {
                         ? window.toVietnameseProperCase
                         : (s => String(s || '').toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase()));
 
+                    const candNames = [];
                     const existingPats = (dataCache && dataCache.pat) ? dataCache.pat : [];
+                    existingPats.forEach(p => {
+                        const n = String(p?.ten || p?.name || '').normalize('NFC').trim();
+                        if (n && !n.includes('\ufffd') && !candNames.includes(n)) candNames.push(n);
+                    });
+                    const rawCurrent = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];
+                    (Array.isArray(rawCurrent) ? rawCurrent : []).forEach(r => {
+                        const n = String(r?.tenBN || r?.HOTEN || '').normalize('NFC').trim();
+                        if (n && !n.includes('\ufffd') && !candNames.includes(n)) candNames.push(n);
+                    });
+
+                    const healFn = (typeof window !== 'undefined' && typeof window.cleanAndHealPatientName === 'function')
+                        ? window.cleanAndHealPatientName
+                        : (typeof SchedulerEngine !== 'undefined' && typeof SchedulerEngine.cleanAndHealPatientName === 'function')
+                            ? SchedulerEngine.cleanAndHealPatientName
+                            : properFn;
+
+                    const activeRooms = (dataCache && Array.isArray(dataCache.room)) ? dataCache.room : [];
+                    const validRoomNames = activeRooms.map(r => String(r.tenPhong || r.ten || (Array.isArray(r) ? r[1] : '') || '').trim()).filter(Boolean);
+                    const defaultFallbackRoom = validRoomNames.length > 0 ? validRoomNames[0] : 'Phòng 1';
+
                     const existingMap = {};
                     existingPats.forEach(p => {
                         const k = buildMatchKeyLocal(p.ten, p.namSinh);
@@ -10475,10 +10502,11 @@ window.renderSttOrderControl = function (type, i, total) {
                     });
 
                     const patientList = rows.slice(1).filter(r => r[1]).map(r => {
-                        const ten = properFn(r[1]);
+                        const ten = healFn(r[1], candNames, false);
                         const namSinh = decodeFn(r[2]);
                         const key = buildMatchKeyLocal(ten, namSinh);
                         const existing = existingMap[key];
+                        const phongVal = decodeFn(r[7]).trim();
                         return {
                             ten: ten,
                             namSinh: namSinh,
@@ -10486,7 +10514,7 @@ window.renderSttOrderControl = function (type, i, total) {
                             gioVao: decodeFn(r[4]),
                             gioBan: decodeFn(r[5]),
                             gioRa: decodeFn(r[6]),
-                            phong: decodeFn(r[7]),
+                            phong: phongVal || (existing ? (existing.phong || existing.room || '') : defaultFallbackRoom),
                             thuThuat: decodeFn(r[8]),
                             loai_bn: r[9] ? decodeFn(r[9]) : (existing ? (existing.loai_bn || existing.loaiBN || 'NoiTru') : 'NoiTru'),
                             buoi_dieu_tri: r[10] ? decodeFn(r[10]) : (existing ? (existing.buoi_dieu_tri || existing.buoiDieuTri || 'TuDong') : 'TuDong'),
@@ -10557,7 +10585,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         if (!rows.length) return showCustomAlert('File trống', 'File Excel không có dữ liệu!', '❌', '#e74c3c');
 
                         // --- Bước 1: Tự động dò hàng tiêu đề và cột ---
-                        let colTen = 6, colNamSinh = 7, colDichVu = 13, startRow = 10, colLoaiDieuTri = -1;
+                        let colTen = 6, colNamSinh = 7, colDichVu = 13, startRow = 10, colLoaiDieuTri = -1, colPhong = -1;
                         const decodeFn = (typeof window !== 'undefined' && typeof window.decodeVietnameseEncoding === 'function')
                             ? window.decodeVietnameseEncoding
                             : (s => String(s || '').normalize('NFC').trim());
@@ -10566,7 +10594,26 @@ window.renderSttOrderControl = function (type, i, total) {
                             : (s => String(s || '').toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase()));
                         const norm = s => decodeFn(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\u0111\u0110]/g, 'd').replace(/đ/g, 'd').trim();
 
-                        // Quét 15 hàng đầu - khớp tiếng Việt lẫn mã HIS (TEN_BN, NAM_SINH...)
+                        // 🛡️ Thu thập danh sách họ tên bệnh nhân sạch hiện có để làm ứng viên đối chiếu chữa lành
+                        const candNames = [];
+                        const existingPats = (dataCache && dataCache.pat) ? dataCache.pat : [];
+                        existingPats.forEach(p => {
+                            const n = String(p?.ten || p?.name || '').normalize('NFC').trim();
+                            if (n && !n.includes('\ufffd') && !candNames.includes(n)) candNames.push(n);
+                        });
+                        const rawCurrent = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];
+                        (Array.isArray(rawCurrent) ? rawCurrent : []).forEach(r => {
+                            const n = String(r?.tenBN || r?.HOTEN || '').normalize('NFC').trim();
+                            if (n && !n.includes('\ufffd') && !candNames.includes(n)) candNames.push(n);
+                        });
+
+                        const healFn = (typeof window !== 'undefined' && typeof window.cleanAndHealPatientName === 'function')
+                            ? window.cleanAndHealPatientName
+                            : (typeof SchedulerEngine !== 'undefined' && typeof SchedulerEngine.cleanAndHealPatientName === 'function')
+                                ? SchedulerEngine.cleanAndHealPatientName
+                                : properFn;
+
+                        // Quét 15 hàng đầu - khớp tiếng Việt lẫn mã HIS (TEN_BN, NAM_SINH, PHONG...)
                         for (let i = 0; i < Math.min(15, rows.length); i++) {
                             const rowStr = rows[i].map(c => norm(c)).join('|');
                             const isHeader = rowStr.includes('ho ten') || rowStr.includes('ten benh') ||
@@ -10585,6 +10632,8 @@ window.renderSttOrderControl = function (type, i, total) {
                                         cn === 'dichvu' || cn === 'dich_vu' || cn.includes('service') || cn.includes('procedure')) colDichVu = idx;
                                     else if (cn.includes('doi tuong') || cn.includes('loai dt') || cn.includes('loai dieu tri') ||
                                         cn.includes('hinh thuc') || cn.includes('noi/ngoai') || cn === 'loai_bn') colLoaiDieuTri = idx;
+                                    else if (cn.includes('phong') || cn.includes('buong') || cn.includes('khoa') ||
+                                        cn.includes('room') || cn === 'phong_ban' || cn === 'ten_phong' || cn.includes('khoa/phong')) colPhong = idx;
                                 });
                                 break;
                             }
@@ -10621,9 +10670,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
                         dataRows.forEach(row => {
                             const rawTen = row[colTen];
-                            const ten = properFn(rawTen);
+                            // 🩹 Chữa lành họ tên ngay tại lúc đọc file Excel
+                            const ten = healFn(rawTen, candNames, false);
                             const namSinh = decodeFn(row[colNamSinh]);
                             const dichVu = decodeFn(row[colDichVu]);
+                            const rawPhong = (colPhong >= 0 && row[colPhong] !== undefined) ? decodeFn(row[colPhong]).trim() : '';
 
                             let loaiBn = 'NoiTru';
                             let buoiDieuTri = 'TuDong';
@@ -10642,7 +10693,8 @@ window.renderSttOrderControl = function (type, i, total) {
 
                             const key = buildMatchKey(ten, namSinh);
                             const properTen = ten;
-                            if (!hisMap[key]) hisMap[key] = { ten: properTen, namSinh, loaiBn, buoiDieuTri, procs: new Set() };
+                            if (!hisMap[key]) hisMap[key] = { ten: properTen, namSinh, loaiBn, buoiDieuTri, phong: rawPhong, procs: new Set() };
+                            else if (rawPhong && !hisMap[key].phong) hisMap[key].phong = rawPhong;
 
                             // Tách nhiều thủ thuật trong 1 ô y lệnh HIS (hỗ trợ \n, ;, 1. 2., +, -, phẩy)
                             const items = extractProceduresFromHISCell(dichVu);
@@ -10659,12 +10711,16 @@ window.renderSttOrderControl = function (type, i, total) {
                         // --- Bước 3: Merge với danh sách bệnh nhân hiện tại ---
                         // Bệnh nhân đã có → chỉ cập nhật thuThuat, giữ nguyên ngayVao/phong/giờ
                         // Bệnh nhân mới  → thêm mới với ngày hôm nay
-                        const existingPats = (dataCache && dataCache.pat) ? dataCache.pat : [];
                         const existingMap = {};
                         existingPats.forEach(p => {
                             const k = buildMatchKey(p.ten, p.namSinh);
                             existingMap[k] = p;
                         });
+
+                        // Danh sách phòng thực tế từ cấu hình
+                        const activeRooms = (dataCache && Array.isArray(dataCache.room)) ? dataCache.room : [];
+                        const validRoomNames = activeRooms.map(r => String(r.tenPhong || r.ten || (Array.isArray(r) ? r[1] : '') || '').trim()).filter(Boolean);
+                        const defaultFallbackRoom = validRoomNames.length > 0 ? validRoomNames[0] : 'Phòng 1';
 
                         let updatedCount = 0, newCount = 0;
                         const mergedList = existingPats.map(p => {
@@ -10674,6 +10730,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                 return { 
                                     ...p, 
                                     thuThuat: [...hisMap[k].procs].join(', '),
+                                    phong: p.phong || hisMap[k].phong || '',
                                     loai_bn: p.loai_bn || p.loaiBN || hisMap[k].loaiBn || 'NoiTru',
                                     buoi_dieu_tri: p.buoi_dieu_tri || p.buoiDieuTri || hisMap[k].buoiDieuTri || 'TuDong'
                                 };
@@ -10695,7 +10752,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                     gioVao: '',
                                     gioBan: '',
                                     gioRa: '',
-                                    phong: '',
+                                    phong: hisPat.phong || '',
                                     thuThuat: [...hisPat.procs].join(', '),
                                     loai_bn: hisPat.loaiBn || 'NoiTru',
                                     buoi_dieu_tri: hisPat.buoiDieuTri || 'TuDong'
@@ -10707,9 +10764,22 @@ window.renderSttOrderControl = function (type, i, total) {
                         const totalHIS = Object.keys(hisMap).length;
                         let previewHTML = `<div style="font-size:13px;line-height:1.7;color:#2c3e50">`;
                         previewHTML += `<div style="background:#eaf6ff;border-radius:8px;padding:10px 14px;margin-bottom:10px;border-left:4px solid #3498db">`;
-                        previewHTML += `<b>📌 Thông tin đọc file:</b><br>Hàng: <b>${startRow + 1}</b> | Cột Tên: <b>${String.fromCharCode(65 + colTen)}</b> | Cột Năm: <b>${String.fromCharCode(65 + colNamSinh)}</b> | Cột DV: <b>${String.fromCharCode(65 + colDichVu)}</b></div>`;
+                        previewHTML += `<b>📌 Thông tin đọc file:</b><br>Hàng: <b>${startRow + 1}</b> | Cột Tên: <b>${String.fromCharCode(65 + colTen)}</b> | Cột Năm: <b>${String.fromCharCode(65 + colNamSinh)}</b> | Cột DV: <b>${String.fromCharCode(65 + colDichVu)}</b>${colPhong >= 0 ? ` | Cột Phòng: <b>${String.fromCharCode(65 + colPhong)}</b>` : ''}</div>`;
                         previewHTML += `<div style="background:#eafaf1;border-radius:8px;padding:10px 14px;margin-bottom:10px;border-left:4px solid #27ae60">`;
                         previewHTML += `📋 HIS: <b>${totalHIS}</b> BN &nbsp;|&nbsp; 🔄 Cập nhật TT: <b>${updatedCount}</b> BN &nbsp;|&nbsp; ➕ Thêm mới: <b>${newCount}</b> BN</div>`;
+
+                        const newPatsWithoutRoom = Object.values(hisMap).filter(h => !existingMap[buildMatchKey(h.ten, h.namSinh)] && !h.phong).length;
+                        if (newPatsWithoutRoom > 0 && validRoomNames.length > 0) {
+                            previewHTML += `<div style="background:#fff3cd;border:1.5px solid #ffeeba;border-radius:8px;padding:10px 14px;margin-bottom:10px;color:#856404;">`;
+                            previewHTML += `<b>🏨 Gán phòng cho ${newPatsWithoutRoom} bệnh nhân mới:</b><br>`;
+                            previewHTML += `<span style="font-size:12px;color:#666;">(File HIS không có cột phòng, phần mềm sẽ tự động gán phòng này để khi xếp lịch không bị rớt ca)</span><br>`;
+                            previewHTML += `<select id="his-default-room-select" style="margin-top:6px;padding:6px 12px;border-radius:6px;border:1px solid #ced4da;font-weight:700;color:#2c3e50;font-size:13px;background:#fff;width:100%;max-width:260px;">`;
+                            validRoomNames.forEach(r => {
+                                previewHTML += `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`;
+                            });
+                            previewHTML += `</select></div>`;
+                        }
+
                         if (updatedCount > 0) {
                             previewHTML += `<b>🔄 BN đã có (giữ ngày/phòng, cập nhật thủ thuật):</b><ul style="margin:4px 0 8px 16px;padding:0">`;
                             mergedList.filter(p => {
@@ -10744,6 +10814,9 @@ window.renderSttOrderControl = function (type, i, total) {
                             const btn = document.getElementById('btn-import-his');
                             btn.innerText = '⏳ Đang xử lý...'; btn.disabled = true;
 
+                            const roomSel = document.getElementById('his-default-room-select');
+                            const chosenDefaultRoom = roomSel ? roomSel.value : defaultFallbackRoom;
+
                             const cleanMergedList = mergedList.map(p => ({
                                 ten: String(p.ten || p.name || '').trim(),
                                 namSinh: String(p.namSinh || p.age || '').trim(),
@@ -10751,7 +10824,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                 gioVao: String(p.gioVao || p.arrive_time || '').trim(),
                                 gioBan: String(p.gioBan || p.gio_ban || '').trim(),
                                 gioRa: String(p.gioRa || p.leave_time || '').trim(),
-                                phong: String(p.phong || p.room || '').trim(),
+                                phong: String(p.phong || p.room || chosenDefaultRoom || '').trim(),
                                 thuThuat: String(p.thuThuat || '').trim(),
                                 loai_bn: String(p.loai_bn || p.loaiBN || 'NoiTru').trim(),
                                 buoi_dieu_tri: String(p.buoi_dieu_tri || p.buoiDieuTri || 'TuDong').trim(),
