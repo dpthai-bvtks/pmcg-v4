@@ -9863,9 +9863,12 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // Chuẩn hóa chuỗi (bỏ dấu, viết thường, KHÔNG trim)
         function normalizeStrNoTrim(str) {
-            return String(str || '').toLowerCase()
+            const decodeFn = (typeof window !== 'undefined' && typeof window.decodeVietnameseEncoding === 'function')
+                ? window.decodeVietnameseEncoding
+                : (s => String(s || '').normalize('NFC').trim());
+            return decodeFn(str).toLowerCase()
                 .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-                .replace(/đ/g, 'd');
+                .replace(/đ/g, 'd').replace(/Đ/g, 'd');
         }
 
         // Chuẩn hóa chuỗi (bỏ dấu, viết thường, có trim)
@@ -9876,7 +9879,10 @@ window.renderSttOrderControl = function (type, i, total) {
         // Làm sạch chuỗi dịch vụ thô từ dòng HIS
         function cleanHISLine(line) {
             if (!line) return '';
-            return String(line)
+            const decodeFn = (typeof window !== 'undefined' && typeof window.decodeVietnameseEncoding === 'function')
+                ? window.decodeVietnameseEncoding
+                : (s => String(s || '').normalize('NFC').trim());
+            return decodeFn(line)
                 .replace(/^\s*(?:\d+[\.\/\-:\)]\s*|[+\-•*]\s*)+/, '') // Bỏ STT đầu dòng
                 .replace(/\s*-\s*\d+\s*(?:lần|lan)?(?:\s*\/\s*(?:ngày|ngay))?/gi, '') // Bỏ - 1 lần/ngày
                 .replace(/\s*\(\s*\d+\s*(?:lần|lan)?\s*\)/gi, '') // Bỏ (1 lần)
@@ -10045,7 +10051,13 @@ window.renderSttOrderControl = function (type, i, total) {
                     const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
                     const roa = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
 
-                    const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\u0111/g, 'd').trim();
+                    const decodeFn = (typeof window !== 'undefined' && typeof window.decodeVietnameseEncoding === 'function')
+                        ? window.decodeVietnameseEncoding
+                        : (s => String(s || '').normalize('NFC').trim());
+                    const properFn = (typeof window !== 'undefined' && typeof window.toVietnameseProperCase === 'function')
+                        ? window.toVietnameseProperCase
+                        : (s => String(s || '').toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase()));
+                    const norm = s => decodeFn(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\u0111\u0110]/g, 'd').replace(/đ/g, 'd').trim();
                     let isHIS = false;
                     let colTen = 6, colNamSinh = 7, colDichVu = 13, startRow = 1, colLoaiDieuTri = -1;
 
@@ -10056,12 +10068,12 @@ window.renderSttOrderControl = function (type, i, total) {
                             isHIS = false;
                             startRow = i + 1;
                             break;
-                        } else if (rowStr.includes('ho ten') || rowStr.includes('ten benh') || rowStr.includes('ten bn') || rowStr.includes('benh nhan') || rowStr.includes('fullname')) {
+                        } else if (rowStr.includes('ho ten') || rowStr.includes('ten benh') || rowStr.includes('ten bn') || rowStr.includes('benh nhan') || rowStr.includes('fullname') || rowStr.includes('ho va ten')) {
                             isHIS = true;
                             startRow = i + 1;
                             roa[i].forEach((cell, idx) => {
                                 const cn = norm(cell);
-                                if (cn.includes('ho ten') || cn.includes('ten bn') || cn.includes('ten benh') || cn === 'ten_bn' || cn === 'hoten' || cn.includes('fullname')) colTen = idx;
+                                if (cn.includes('ho ten') || cn.includes('ten bn') || cn.includes('ten benh') || cn === 'ten_bn' || cn === 'hoten' || cn.includes('fullname') || cn.includes('ho va ten')) colTen = idx;
                                 else if (cn.includes('nam sinh') || cn.includes('sinh nam') || cn === 'ns' || cn === 'nam_sinh' || cn.includes('birth')) colNamSinh = idx;
                                 else if (cn.includes('dich vu') || cn.includes('thu thuat') || cn.includes('ten dvkt') || cn === 'dichvu' || cn === 'dich_vu' || cn.includes('service') || cn.includes('procedure')) colDichVu = idx;
                                 else if (cn.includes('doi tuong') || cn.includes('loai dt') || cn.includes('loai dieu tri') || cn.includes('hinh thuc') || cn.includes('noi/ngoai') || cn === 'loai_bn') colLoaiDieuTri = idx;
@@ -10078,8 +10090,9 @@ window.renderSttOrderControl = function (type, i, total) {
                         const hisLoaiMap = {};
                         const dataRows = roa.slice(startRow);
                         dataRows.forEach(row => {
-                            const ten = String(row[colTen] || '').trim();
-                            const dichVu = String(row[colDichVu] || '').trim();
+                            const rawTen = row[colTen];
+                            const ten = properFn(rawTen);
+                            const dichVu = decodeFn(row[colDichVu]);
 
                             let loaiBn = 'NoiTru';
                             let buoiDieuTri = 'TuDong';
@@ -10093,7 +10106,7 @@ window.renderSttOrderControl = function (type, i, total) {
                             if (!ten || tenNorm === 'ten_bn' || tenNorm === 'ho ten' || tenNorm === 'ten benh nhan' || tenNorm === 'hoten') return;
                             if (!dichVu) return;
 
-                            const properTen = ten.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
+                            const properTen = ten;
                             if (!hisMap[properTen]) hisMap[properTen] = new Set();
                             if (loaiBn) hisLoaiMap[properTen] = loaiBn;
 
@@ -10447,6 +10460,13 @@ window.renderSttOrderControl = function (type, i, total) {
                         return cleanTen + '|' + cleanNS;
                     }
 
+                    const decodeFn = (typeof window !== 'undefined' && typeof window.decodeVietnameseEncoding === 'function')
+                        ? window.decodeVietnameseEncoding
+                        : (s => String(s || '').normalize('NFC').trim());
+                    const properFn = (typeof window !== 'undefined' && typeof window.toVietnameseProperCase === 'function')
+                        ? window.toVietnameseProperCase
+                        : (s => String(s || '').toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase()));
+
                     const existingPats = (dataCache && dataCache.pat) ? dataCache.pat : [];
                     const existingMap = {};
                     existingPats.forEach(p => {
@@ -10455,21 +10475,21 @@ window.renderSttOrderControl = function (type, i, total) {
                     });
 
                     const patientList = rows.slice(1).filter(r => r[1]).map(r => {
-                        const ten = String(r[1] || '').trim();
-                        const namSinh = String(r[2] || '').trim();
+                        const ten = properFn(r[1]);
+                        const namSinh = decodeFn(r[2]);
                         const key = buildMatchKeyLocal(ten, namSinh);
                         const existing = existingMap[key];
                         return {
                             ten: ten,
                             namSinh: namSinh,
-                            ngayVao: String(r[3] || '').trim(),
-                            gioVao: String(r[4] || '').trim(),
-                            gioBan: String(r[5] || '').trim(),
-                            gioRa: String(r[6] || '').trim(),
-                            phong: String(r[7] || '').trim(),
-                            thuThuat: String(r[8] || '').trim(),
-                            loai_bn: r[9] ? String(r[9]).trim() : (existing ? (existing.loai_bn || existing.loaiBN || 'NoiTru') : 'NoiTru'),
-                            buoi_dieu_tri: r[10] ? String(r[10]).trim() : (existing ? (existing.buoi_dieu_tri || existing.buoiDieuTri || 'TuDong') : 'TuDong'),
+                            ngayVao: decodeFn(r[3]),
+                            gioVao: decodeFn(r[4]),
+                            gioBan: decodeFn(r[5]),
+                            gioRa: decodeFn(r[6]),
+                            phong: decodeFn(r[7]),
+                            thuThuat: decodeFn(r[8]),
+                            loai_bn: r[9] ? decodeFn(r[9]) : (existing ? (existing.loai_bn || existing.loaiBN || 'NoiTru') : 'NoiTru'),
+                            buoi_dieu_tri: r[10] ? decodeFn(r[10]) : (existing ? (existing.buoi_dieu_tri || existing.buoiDieuTri || 'TuDong') : 'TuDong'),
                             status: existing ? (existing.status || existing.trangThai || 'Chưa xếp') : 'Chưa xếp',
                             gender: existing ? (existing.gender || existing.gioiTinh || 'Nam') : 'Nam',
                             bed: existing ? (existing.bed || existing.giuong || '') : '',
@@ -10538,7 +10558,13 @@ window.renderSttOrderControl = function (type, i, total) {
 
                         // --- Bước 1: Tự động dò hàng tiêu đề và cột ---
                         let colTen = 6, colNamSinh = 7, colDichVu = 13, startRow = 10, colLoaiDieuTri = -1;
-                        const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\u0111/g, 'd').trim();
+                        const decodeFn = (typeof window !== 'undefined' && typeof window.decodeVietnameseEncoding === 'function')
+                            ? window.decodeVietnameseEncoding
+                            : (s => String(s || '').normalize('NFC').trim());
+                        const properFn = (typeof window !== 'undefined' && typeof window.toVietnameseProperCase === 'function')
+                            ? window.toVietnameseProperCase
+                            : (s => String(s || '').toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase()));
+                        const norm = s => decodeFn(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\u0111\u0110]/g, 'd').replace(/đ/g, 'd').trim();
 
                         // Quét 15 hàng đầu - khớp tiếng Việt lẫn mã HIS (TEN_BN, NAM_SINH...)
                         for (let i = 0; i < Math.min(15, rows.length); i++) {
@@ -10546,13 +10572,13 @@ window.renderSttOrderControl = function (type, i, total) {
                             const isHeader = rowStr.includes('ho ten') || rowStr.includes('ten benh') ||
                                 rowStr.includes('ten bn') || rowStr.includes('benh nhan') ||
                                 rowStr.includes('ten_bn') || rowStr.includes('hoten') ||
-                                rowStr.includes('fullname') || rowStr.includes('patient');
+                                rowStr.includes('fullname') || rowStr.includes('patient') || rowStr.includes('ho va ten');
                             if (isHeader) {
                                 startRow = i + 1;
                                 rows[i].forEach((cell, idx) => {
                                     const cn = norm(cell);
                                     if (cn.includes('ho ten') || cn.includes('ten bn') || cn.includes('ten benh') ||
-                                        cn === 'ten_bn' || cn === 'hoten' || cn.includes('fullname')) colTen = idx;
+                                        cn === 'ten_bn' || cn === 'hoten' || cn.includes('fullname') || cn.includes('ho va ten')) colTen = idx;
                                     else if (cn.includes('nam sinh') || cn.includes('sinh nam') || cn === 'ns' ||
                                         cn === 'nam_sinh' || cn === 'namsanh' || cn.includes('birth')) colNamSinh = idx;
                                     else if (cn.includes('dich vu') || cn.includes('thu thuat') || cn.includes('ten dvkt') ||
@@ -10594,9 +10620,10 @@ window.renderSttOrderControl = function (type, i, total) {
                         let totalRead = 0;
 
                         dataRows.forEach(row => {
-                            const ten = String(row[colTen] || '').trim();
-                            const namSinh = String(row[colNamSinh] || '').trim();
-                            const dichVu = String(row[colDichVu] || '').trim();
+                            const rawTen = row[colTen];
+                            const ten = properFn(rawTen);
+                            const namSinh = decodeFn(row[colNamSinh]);
+                            const dichVu = decodeFn(row[colDichVu]);
 
                             let loaiBn = 'NoiTru';
                             let buoiDieuTri = 'TuDong';
@@ -10614,7 +10641,7 @@ window.renderSttOrderControl = function (type, i, total) {
                             totalRead++;
 
                             const key = buildMatchKey(ten, namSinh);
-                            const properTen = ten.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
+                            const properTen = ten;
                             if (!hisMap[key]) hisMap[key] = { ten: properTen, namSinh, loaiBn, buoiDieuTri, procs: new Set() };
 
                             // Tách nhiều thủ thuật trong 1 ô y lệnh HIS (hỗ trợ \n, ;, 1. 2., +, -, phẩy)

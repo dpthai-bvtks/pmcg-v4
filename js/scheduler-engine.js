@@ -4,8 +4,112 @@
  * Tự động chạy trên Client Browser trong 0.1s - 0.2s hoặc làm Fallback hoàn hảo
  */
 
-window.SchedulerEngine = (function () {
+var SchedulerEngine = (typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this)).SchedulerEngine = (function () {
   'use strict';
+
+  // ============================================================
+  // 🇻🇳 BỘ GIẢI MÃ BẢNG MÃ TIẾNG VIỆT (TCVN3 / VNI / UNICODE NFD)
+  // Tự động nhận diện và khôi phục 100% tiếng Việt từ file HIS Bệnh viện
+  // ============================================================
+  const TCVN3_MAP = {
+    '\u00B5': 'à', '\u00B8': 'á', '\u00B6': 'ả', '\u00B7': 'ã', '\u00B9': 'ạ',
+    '\u00A8': 'ă', '\u00BB': 'ằ', '\u00BE': 'ắ', '\u00BC': 'ẳ', '\u00BD': 'ẵ', '\u00C6': 'ặ',
+    '\u00A9': 'â', '\u00C7': 'ầ', '\u00CA': 'ấ', '\u00C8': 'ẩ', '\u00C9': 'ẫ', '\u00CB': 'ậ',
+    '\u00E8': 'è', '\u00E9': 'é', '\u00CC': 'ẻ', '\u00CE': 'ẽ', '\u00CF': 'ẹ',
+    '\u00AA': 'ê', '\u00CD': 'ề', '\u00D0': 'ế', '\u00D1': 'ể', '\u00D2': 'ễ', '\u00D3': 'ệ',
+    '\u00EC': 'ì', '\u00ED': 'í', '\u00D4': 'ỉ', '\u00D5': 'ĩ', '\u00D6': 'ị',
+    '\u00F2': 'ò', '\u00F3': 'ó', '\u00D7': 'ỏ', '\u00D8': 'õ', '\u00E4': 'ọ',
+    '\u00AB': 'ô', '\u00D9': 'ồ', '\u00DA': 'ố', '\u00DB': 'ổ', '\u00DC': 'ỗ', '\u00DD': 'ộ',
+    '\u00E5': 'ồ', '\u00E6': 'ộ',
+    '\u00AC': 'ơ', '\u00DE': 'ờ', '\u00DF': 'ớ', '\u00E3': 'ở', '\u00E1': 'ữ', '\u00E2': 'ự',
+    '\u00F9': 'ù', '\u00FA': 'ú', '\u00E7': 'ủ', '\u00EA': 'ũ', '\u00EB': 'ụ',
+    '\u00AD': 'ư', '\u00EE': 'ừ', '\u00F8': 'ứ', '\u00EF': 'ử', '\u00F1': 'ữ', '\u00F4': 'ự',
+    '\u00FF': 'ỳ', '\u00FD': 'ý', '\u00F5': 'ỷ', '\u00F6': 'ỹ', '\u00F7': 'ỵ',
+    '\u00AE': 'đ', '\u00A7': 'Đ',
+    'Ô': 'ễ', 'Ò': 'ồ', 'Ó': 'ố', 'Õ': 'ỗ', 'Ö': 'ộ', 'Ø': 'ờ', 'Ù': 'ớ', 'Ú': 'ở', 'Û': 'ỡ', 'Ü': 'ợ', 'Þ': 'ừ', 'ß': 'ứ', 'å': 'ồ'
+  };
+
+  const VNI_PAIRS = [
+    ['aù', 'á'], ['aø', 'à'], ['aû', 'ả'], ['aõ', 'ã'], ['aï', 'ạ'],
+    ['aé', 'ắ'], ['aè', 'ằ'], ['aú', 'ẳ'], ['aü', 'ẵ'], ['aë', 'ặ'], ['aê', 'ă'],
+    ['aá', 'ấ'], ['aà', 'ầ'], ['aå', 'ẩ'], ['aã', 'ẫ'], ['aä', 'ậ'], ['aâ', 'â'],
+    ['eù', 'é'], ['eø', 'è'], ['eû', 'ẻ'], ['eõ', 'ẽ'], ['eï', 'ẹ'],
+    ['eá', 'ế'], ['eà', 'ề'], ['eå', 'ể'], ['eã', 'ễ'], ['eä', 'ệ'], ['eâ', 'ê'],
+    ['où', 'ó'], ['oø', 'ò'], ['oû', 'ỏ'], ['oõ', 'õ'], ['oï', 'ọ'],
+    ['oá', 'ố'], ['oà', 'ồ'], ['oå', 'ổ'], ['oã', 'ỗ'], ['oä', 'ộ'], ['oâ', 'ô'],
+    ['ôù', 'ớ'], ['ôø', 'ờ'], ['ôû', 'ở'], ['ôõ', 'ỡ'], ['ôï', 'ợ'],
+    ['uù', 'ú'], ['uø', 'ù'], ['uû', 'ủ'], ['uõ', 'ũ'], ['uï', 'ụ'],
+    ['öù', 'ứ'], ['öø', 'ừ'], ['öû', 'ử'], ['öõ', 'ữ'], ['öï', 'ự'],
+    ['yù', 'ý'], ['yø', 'ỳ'], ['yû', 'ỷ'], ['yõ', 'ỹ'],
+    ['ô', 'ơ'], ['ö', 'ư'], ['ñ', 'đ'], ['Ñ', 'Đ'], ['î', 'ỵ'],
+    ['AÙ', 'Á'], ['AØ', 'À'], ['AÛ', 'Ả'], ['AÕ', 'Ã'], ['AÏ', 'Ạ'],
+    ['AÉ', 'Ắ'], ['AÈ', 'Ằ'], ['AÚ', 'Ẳ'], ['AÜ', 'Ẵ'], ['AË', 'Ặ'], ['AÊ', 'Ă'],
+    ['AÁ', 'Ấ'], ['AÀ', 'Ầ'], ['AÅ', 'Ẩ'], ['AÃ', 'Ẫ'], ['AÄ', 'Ậ'], ['AÂ', 'Â'],
+    ['EÙ', 'É'], ['EØ', 'È'], ['EÛ', 'Ẻ'], ['EÕ', 'Ẽ'], ['EÏ', 'Ẹ'],
+    ['EÁ', 'Ế'], ['EÀ', 'Ề'], ['EÅ', 'Ể'], ['EÃ', 'Ễ'], ['EÄ', 'Ệ'], ['EÂ', 'Ê'],
+    ['OÙ', 'Ó'], ['OØ', 'Ò'], ['OÛ', 'Ỏ'], ['OÕ', 'Õ'], ['OÏ', 'Ọ'],
+    ['OÁ', 'Ố'], ['OÀ', 'Ồ'], ['OÅ', 'Ổ'], ['OÃ', 'Ỗ'], ['OÄ', 'Ộ'], ['OÂ', 'Ô'],
+    ['ÔÙ', 'Ớ'], ['ÔØ', 'Ờ'], ['ÔÛ', 'Ở'], ['ÔÕ', 'Ỡ'], ['ÔÏ', 'Ợ'],
+    ['UÙ', 'Ú'], ['UØ', 'Ù'], ['UÛ', 'Ủ'], ['UÕ', 'Ũ'], ['UÏ', 'Ụ'],
+    ['ÖÙ', 'Ứ'], ['ÖØ', 'Ừ'], ['ÖÛ', 'Ử'], ['ÖÕ', 'Ữ'], ['ÖÏ', 'Ự'],
+    ['Ô', 'Ơ'], ['Ö', 'Ư']
+  ];
+
+  function decodeVietnameseEncoding(raw) {
+    if (!raw && raw !== 0) return '';
+    let str = String(raw);
+
+    // 1. Dọn sạch ký tự vô hình, BOM, zero-width space, non-breaking space
+    str = str.replace(/[\ufeff\u200b\u200c\u200d\u200e\u200f]/g, '').replace(/\u00a0/g, ' ');
+
+    // 2. Chuyển Unicode NFD sang NFC
+    try { str = str.normalize('NFC'); } catch (e) {}
+
+    // 3. Ưu tiên kiểm tra và giải mã VNI nếu có các cặp ký tự VNI đặc trưng (và không có ký tự TCVN3 đặc thù)
+    const hasTcvn3Strong = /[\u00A7\u00A8\u00A9\u00AA\u00AB\u00AC\u00AD\u00AE]/.test(str);
+    const vniPairRegex = /(?:[aAeEoOuUöÖôÔ][ùøûõïéèúüëáàåãäóò])|(?:[aAeEoO][âêô])|(?:uù|uø|öù|öø)/;
+    if (!hasTcvn3Strong && (vniPairRegex.test(str) || (/[ñÑ]/.test(str) && !/[\u1EA0-\u1EF9]/.test(str)))) {
+      let vniDecoded = str;
+      for (let k = 0; k < VNI_PAIRS.length; k++) {
+        const vni = VNI_PAIRS[k][0];
+        const uni = VNI_PAIRS[k][1];
+        if (vniDecoded.includes(vni)) {
+          vniDecoded = vniDecoded.split(vni).join(uni);
+        }
+      }
+      str = vniDecoded;
+    }
+
+    // 4. Kiểm tra và giải mã TCVN3 (.VnTime, .VnArial)
+    // Chỉ kích hoạt nếu có ký tự đặc trưng của TCVN3 VÀ không chứa nguyên âm tiếng Việt Unicode mở rộng (\u1EA0-\u1EF9)
+    const hasUnicodeExtended = /[\u1EA0-\u1EF9]/.test(str);
+    if (!hasUnicodeExtended) {
+      const hasTcvn3Special = /[\u00A7\u00A8\u00A9\u00AA\u00AB\u00AC\u00AD\u00AE\u00B5\u00B6\u00B7\u00B8\u00B9\u00BB\u00BC\u00BD\u00BE\u00C6\u00C7\u00C8\u00C9\u00CA\u00CB\u00CD\u00D0\u00D1\u00D2\u00D3\u00D5\u00D6\u00D7\u00D8\u00D9\u00DA\u00DB\u00DC\u00DD\u00DE\u00DF\u00E5\u00EE\u00EF\u00F1\u00F8]/.test(str);
+      if (hasTcvn3Special) {
+        str = str.replace(/\bNguyÔn\b/g, 'Nguyễn').replace(/\bnguyÔn\b/g, 'nguyễn')
+                 .replace(/Thñy/gi, 'Thủy').replace(/thñy/gi, 'thủy')
+                 .replace(/bãp\s*b[Êê]m/gi, 'bóp bấm')
+                 .replace(/huyÖt/gi, 'huyệt');
+        let tcvnDecoded = '';
+        for (let i = 0; i < str.length; i++) {
+          const ch = str[i];
+          tcvnDecoded += (TCVN3_MAP[ch] !== undefined) ? TCVN3_MAP[ch] : ch;
+        }
+        str = tcvnDecoded;
+      }
+    }
+
+    // 5. Chuẩn hóa NFC lần cuối và làm sạch khoảng trắng thừa
+    try { str = str.normalize('NFC'); } catch (e) {}
+    return str.replace(/\s+/g, ' ').trim();
+  }
+
+  function toVietnameseProperCase(raw) {
+    if (!raw && raw !== 0) return '';
+    const decoded = decodeVietnameseEncoding(raw);
+    if (!decoded) return '';
+    return decoded.toLowerCase().replace(/(?:^|[\s\-\_\/])\S/g, a => a.toUpperCase());
+  }
 
 // ============================================================
 // 🧠 SCHEDULING CORE OPTIMIZATION ENGINE (SIMULATED ANNEALING)
@@ -710,7 +814,30 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         const roleA = (info[3] === "PHCN" && isKtvA) || (info[3] === "YHCT" && isDocA) ? 0 : 1;
         const roleB = (info[3] === "PHCN" && isKtvB) || (info[3] === "YHCT" && isDocB) ? 0 : 1;
         if (roleA !== roleB) return roleA - roleB;
-        return (staffLoad[a]?.used_mins || 0) - (staffLoad[b]?.used_mins || 0);
+
+        // ✨ TỐI ƯU HÓA LIỀN MẠCH NHÂN SỰ (Workload Continuity):
+        // Ưu tiên nhân viên vừa xong ca trước (rảnh 0 - 15 phút) để gom cụm ca liên tục, tránh xé lẻ mốc rảnh
+        const getIdleGap = (name) => {
+          const tl = staffTimeline[name];
+          if (!tl || tl.length === 0) return 999;
+          let maxEndBefore = -1;
+          for (let i = 0; i < tl.length; i++) {
+            if (tl[i][1] <= tNow && tl[i][1] > maxEndBefore) maxEndBefore = tl[i][1];
+          }
+          return maxEndBefore >= 0 ? (tNow - maxEndBefore) : 999;
+        };
+        const gapA = getIdleGap(a);
+        const gapB = getIdleGap(b);
+        const isFreshA = (gapA >= 0 && gapA <= 15) ? 0 : 1;
+        const isFreshB = (gapB >= 0 && gapB <= 15) ? 0 : 1;
+        if (isFreshA !== isFreshB) return isFreshA - isFreshB;
+
+        // Khi cả 2 cùng trạng thái, chỉ cân bằng tải khi chênh lệch >= 40 phút; ngược lại ưu tiên người có khoảng chờ ngắn hơn để khép kín lịch
+        const loadA = staffLoad[a]?.used_mins || 0;
+        const loadB = staffLoad[b]?.used_mins || 0;
+        if (Math.abs(loadA - loadB) >= 40) return loadA - loadB;
+        if (gapA !== gapB) return gapA - gapB;
+        return loadA - loadB;
       });
 
       let possibleMachines = [];
@@ -1108,7 +1235,18 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
   const loadValues = Object.values(staffLoad).map(v => v.used_mins);
   const avg = loadValues.reduce((a,b)=>a+b,0) / (loadValues.length || 1);
   const imbalance = loadValues.reduce((s,v) => s + Math.abs(v - avg), 0);
-  const scoreVal = finalDropList.length * weights.drop + overtimeMins * weights.overtime + imbalance * weights.imbalance;
+
+  // Phạt các mốc rảnh lắt nhắt phân mảnh (5 - 30 phút) giữa các ca làm việc của nhân sự
+  let fragmentedGapsCount = 0;
+  Object.keys(staffTimeline).forEach(nv => {
+    const slots = (staffTimeline[nv] || []).filter(s => s[0] >= startOfDay && s[1] <= endOfDay).sort((a, b) => a[0] - b[0]);
+    for (let i = 0; i < slots.length - 1; i++) {
+      const gap = slots[i + 1][0] - slots[i][1];
+      if (gap >= 5 && gap <= 30) fragmentedGapsCount++;
+    }
+  });
+  const gapWeight = weights.gapPenalty !== undefined ? Number(weights.gapPenalty) : 5;
+  const scoreVal = finalDropList.length * weights.drop + overtimeMins * weights.overtime + imbalance * weights.imbalance + fragmentedGapsCount * gapWeight;
 
   results.sort((a, b) => a["NV CHÍNH"] !== b["NV CHÍNH"] ? a["NV CHÍNH"].localeCompare(b["NV CHÍNH"]) : a.t_sort - b.t_sort);
   return { sched: results, rot: finalDropList, score: scoreVal, staff: staffLoad, proc: localProcCount, tl: staffTimeline, ca: staffShifts };
@@ -1209,18 +1347,115 @@ function getPatientSignature(pat) {
     };
   }
 
+  /**
+   * ⚡ THUẬT TOÁN DỒN LỊCH KHÉP KÍN KHOẢNG TRỐNG (LEFT-SHIFT COMPACTION)
+   * Tự động phát hiện và co cụm các ca làm việc rải rác, lùi sớm thời gian để xóa bỏ các mốc rảnh lắt nhắt
+   * Tuân thủ 100% không vi phạm ràng buộc: Bệnh nhân, NV Chính, NV Phụ, Máy, Giường, Giờ vào, Giờ trưa
+   */
   function compactTimelineGaps(scheduleList, db) {
     if (!scheduleList || scheduleList.length <= 1) return scheduleList || [];
-    
-    const patGroups = {};
-    scheduleList.forEach(item => {
-      const key = (item.tenBN || item.HOTEN || '') + '_' + (item.namSinh || item.NAMSINH || '');
-      if (!patGroups[key]) patGroups[key] = [];
-      patGroups[key].push(item);
-    });
 
-    const result = [...scheduleList];
-    return result;
+    const sched = scheduleList.map(item => ({
+      ...item,
+      _s: t2m(item.gioDienRa),
+      _e: t2m(item.gioKetThuc),
+      _dur: t2m(item.gioKetThuc) - t2m(item.gioDienRa)
+    }));
+
+    sched.sort((a, b) => a._s - b._s);
+
+    const patInfoMap = new Map();
+    if (db && Array.isArray(db.rawPatients)) {
+      db.rawPatients.forEach(p => {
+        const key = (p.name || '').trim().toUpperCase() + '_' + String(p.ns || '').trim();
+        patInfoMap.set(key, p);
+      });
+    }
+
+    const LUNCH_START = 690; // 11:30
+    const LUNCH_END = 780;   // 13:00
+
+    for (let i = 0; i < sched.length; i++) {
+      const cur = sched[i];
+      if (cur._dur <= 0) continue;
+
+      const patKey = (cur.tenBN || cur.HOTEN || '').trim().toUpperCase() + '_' + String(cur.namSinh || cur.NAMSINH || '').trim();
+      const patDb = patInfoMap.get(patKey);
+      const patArrive = patDb ? (patDb.arrive || 420) : 420;
+
+      let minAllowedStart = Math.max(420, patArrive);
+      if (cur._s >= LUNCH_END) {
+        minAllowedStart = Math.max(minAllowedStart, LUNCH_END);
+      }
+
+      let bestStart = cur._s;
+
+      for (let testStart = cur._s - 5; testStart >= minAllowedStart; testStart -= 5) {
+        const testEnd = testStart + cur._dur;
+
+        if (cur._s < LUNCH_START && testEnd > LUNCH_START) continue;
+        if (testStart < LUNCH_END && testEnd > LUNCH_START && cur._s >= LUNCH_END) continue;
+
+        let conflict = false;
+        for (let j = 0; j < sched.length; j++) {
+          if (i === j) continue;
+          const other = sched[j];
+
+          // 1. Kiểm tra Bệnh nhân
+          const otherPatKey = (other.tenBN || other.HOTEN || '').trim().toUpperCase() + '_' + String(other.namSinh || other.NAMSINH || '').trim();
+          if (patKey === otherPatKey && is_overlap(testStart, testEnd, other._s, other._e)) {
+            conflict = true; break;
+          }
+
+          // 2. Kiểm tra NV Chính & NV Phụ
+          if (cur.nvChinh && (cur.nvChinh === other.nvChinh || cur.nvChinh === other.nvPhu)) {
+            if (is_overlap(testStart, testEnd, other._s, other._e)) { conflict = true; break; }
+          }
+          if (cur.nvPhu && (cur.nvPhu === other.nvChinh || cur.nvPhu === other.nvPhu)) {
+            if (is_overlap(testStart, testEnd, other._s, other._e)) { conflict = true; break; }
+          }
+
+          // 3. Kiểm tra Máy móc
+          if (cur.may && other.may && cur.may !== 'Thủ công' && other.may !== 'Thủ công' && cur.may === other.may) {
+            if (is_overlap(testStart, testEnd, other._s, other._e)) { conflict = true; break; }
+          }
+
+          // 4. Kiểm tra Giường
+          if (cur.phong && other.phong && cur.phong === other.phong && cur.giuong && other.giuong && cur.giuong === other.giuong) {
+            if (is_overlap(testStart, testEnd, other._s, other._e)) { conflict = true; break; }
+          }
+        }
+
+        // 5. Kiểm tra mốc bận của bệnh nhân
+        if (!conflict && patDb && patDb.busy && Array.isArray(patDb.busy)) {
+          for (let bIdx = 0; bIdx < patDb.busy.length; bIdx++) {
+            const b = patDb.busy[bIdx];
+            if (is_overlap(testStart, testEnd, b[0], b[1])) { conflict = true; break; }
+          }
+        }
+
+        if (conflict) {
+          break;
+        } else {
+          bestStart = testStart;
+        }
+      }
+
+      if (bestStart < cur._s) {
+        cur._s = bestStart;
+        cur._e = bestStart + cur._dur;
+        cur.gioDienRa = m2t(cur._s);
+        cur.gioKetThuc = m2t(cur._e);
+      }
+    }
+
+    return sched.map(item => {
+      const res = { ...item };
+      delete res._s;
+      delete res._e;
+      delete res._dur;
+      return res;
+    });
   }
 
   /**
@@ -1380,7 +1615,7 @@ function getSafeCache() {
    */
   function cleanAndHealPatientName(rawName, candidates = [], forceUpperCase = false) {
     if (!rawName) return '';
-    let name = String(rawName).normalize('NFC').trim();
+    let name = decodeVietnameseEncoding(rawName);
     if (!name) return '';
 
     const isAllUpper = (name === name.toUpperCase() && /[A-ZÀ-Ỹ]/.test(name));
@@ -1477,7 +1712,7 @@ function getSafeCache() {
     if (shouldUpper) {
       return healed.toUpperCase();
     }
-    return healed.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
+    return toVietnameseProperCase(healed);
   }
 
   function buildDbFromCache(cacheInput, skipProcsStr, existingSched = []) {
@@ -2177,10 +2412,10 @@ function getSafeCache() {
     const elapsed = Math.round(performance.now() - startTime);
 
     return {
-      scheduleCount: formattedSched.length,
+      scheduleCount: compactedSched.length,
       unscheduledCount: diagnosedRot.length,
-      sched: formattedSched,
-      schedule: formattedSched,
+      sched: compactedSched,
+      schedule: compactedSched,
       rot: diagnosedRot,
       unscheduled: diagnosedRot,
       elapsedMs: elapsed
@@ -2192,6 +2427,9 @@ function getSafeCache() {
     m2t,
     normalizeScheduleItem,
     isContinuousProcedure,
+    decodeVietnameseEncoding,
+    toVietnameseProperCase,
+    compactTimelineGaps,
     cleanAndHealPatientName,
     buildDbFromCache,
     validateNoOverlapWithExisting,
@@ -2202,11 +2440,15 @@ function getSafeCache() {
   };
 })();
 
-if (typeof window !== 'undefined') {
-  window.cleanAndHealPatientName = SchedulerEngine.cleanAndHealPatientName;
-  window.healPatientName = SchedulerEngine.cleanAndHealPatientName;
-  window.normalizeScheduleItem = SchedulerEngine.normalizeScheduleItem;
-  window.isContinuousProcedure = SchedulerEngine.isContinuousProcedure;
+const globalScope = typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this);
+if (globalScope) {
+  globalScope.decodeVietnameseEncoding = SchedulerEngine.decodeVietnameseEncoding;
+  globalScope.toVietnameseProperCase = SchedulerEngine.toVietnameseProperCase;
+  globalScope.compactTimelineGaps = SchedulerEngine.compactTimelineGaps;
+  globalScope.cleanAndHealPatientName = SchedulerEngine.cleanAndHealPatientName;
+  globalScope.healPatientName = SchedulerEngine.cleanAndHealPatientName;
+  globalScope.normalizeScheduleItem = SchedulerEngine.normalizeScheduleItem;
+  globalScope.isContinuousProcedure = SchedulerEngine.isContinuousProcedure;
 }
 
 // ============================================================

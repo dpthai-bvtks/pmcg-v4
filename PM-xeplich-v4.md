@@ -3782,7 +3782,25 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - Nâng phiên bản lên `4.0.9-rev9`.
      - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.0.9-rev9'`.
      - `index.html`: Cập nhật toàn bộ cache busters `?v=4.0.9-rev9`, `APP_VERSION = '4.0.9-rev9'`.
-     - `version.json`: Ghi nhận bản vá cứu ca rớt `16/09/2026 14:30`.
+### [16/09/2026 - 15:20] Phiên bản v4.0.9-rev10: Tối ưu hóa mốc rảnh nhân sự liền mạch & Tự động giải mã bảng mã tiếng Việt HIS (TCVN3 / VNI / Unicode)
+- **Bối cảnh & Vấn đề người dùng phản ánh**:
+  1. *"xem thêm thuật toán xem các mốc rảnh của nhân sự khá nhiều và dàn trải"*: Thuật toán xếp lịch theo phong cách pure load-balancing chia đều round-robin từng ca làm cho tất cả KTV, khiến mỗi nhân viên làm 1 ca 15-20 phút rồi phải ngồi chờ 30-45 phút, tạo ra rất nhiều mốc rảnh lắt nhắt, rời rạc và dàn trải cả ngày.
+  2. *"Ngoài ra khi đưa file HIS vào thì tên bệnh nhân hoặc bị mất ký tự, hoặc bị lỗi font chữ"*: Khi import file Excel xuất từ phần mềm bệnh viện cũ (dùng font TCVN3 .VnTime, .VnArial hoặc VNI-Windows), tên bệnh nhân và thủ thuật bị lỗi font, mất ký tự tiếng Việt hoặc không khớp được y lệnh thủ thuật.
+- **Giải pháp xử lý triệt để**:
+  1. **Giải mã 100% bảng mã tiếng Việt TCVN3 / VNI / NFD**:
+     - Xây dựng bộ giải mã chuẩn xác `decodeVietnameseEncoding` và định dạng tên người `toVietnameseProperCase` trong `js/scheduler-engine.js`, export trực tiếp lên `window`.
+     - Tự động nhận diện không xung đột: VNI (cặp ký tự ghép dấu đặc trưng), TCVN3 (các ký tự 1-byte đặc thù §, ¨, ©, ª, «, ¬, ­, ®, µ, ¶, ·, ¸, ¹, ằ, ắ, ầ, ế, ồ...) và Unicode NFD $\rightarrow$ NFC.
+     - Dọn sạch ký tự tàng hình: BOM `\ufeff`, zero-width space `\u200b`, non-breaking space `\u00a0`.
+     - Tích hợp vào `importFromHIS`, Saturday HIS Import, `importPatients`, `cleanHISLine`, `normalizeStrNoTrim` và `cleanAndHealPatientName`.
+  2. **Tối ưu hóa mốc rảnh nhân sự liền mạch (Workload Continuity & Block Scheduling)**:
+     - Trong `candidatesMain.sort` (`_turbo_core_logic`): Thêm cơ chế tính `getIdleGap(tenNV, tNow)`. Nếu nhân viên vừa hoàn thành ca trước (khoảng rảnh $0 \le gap \le 15$ phút), ưu tiên gán ngay ca tiếp theo để gom cụm thành các khối làm việc liền mạch (Continuous Work Block). Chỉ khi chênh lệch tải giữa các KTV $\ge 40$ phút mới bắt đầu chuyển ca san tải.
+     - Hiện thực hóa thuật toán dồn lịch khép kín khoảng trống `compactTimelineGaps(scheduleList, db)` (Left-shift compaction): tự động lùi sớm các ca tiếp theo để khép kín khoảng trống lãng phí, tuân thủ 100% không trùng giờ Bệnh nhân, NV Chính, NV Phụ, Máy, Giường, Giờ vào của BN và giờ nghỉ trưa.
+     - Bổ sung điểm phạt khoảng trống phân mảnh (`fragmentedGapsCount * gapPenalty`) vào hàm tính điểm `scoreVal` của Simulated Annealing.
+  3. **Đồng bộ Phiên bản**:
+     - Nâng phiên bản lên `4.0.9-rev10`.
+     - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.0.9-rev10'`.
+     - `index.html`: Cập nhật toàn bộ cache busters `?v=4.0.9-rev10`, `APP_VERSION = '4.0.9-rev10'`, modal force update.
+     - `version.json`: Ghi nhận bản vá `16/09/2026 15:20`.
 - **File sửa đổi**:
   - `js/scheduler-engine.js`
   - `js/app.js`
@@ -3790,4 +3808,5 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `index.html`
   - `version.json`
   - `PM-xeplich-v4.md`
+
 
