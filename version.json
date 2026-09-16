@@ -2,5 +2,5 @@
   "version": "4.0.9-rev7",
   "releaseDate": "16/09/2026",
   "releaseTime": "10:06 16/09/2026",
-  "notes": "Sửa triệt để lỗi không khóa các giá trị đã xếp trước đó khi xếp bổ sung: khắc phục triệt để lỗi ghi đè rỗng dữ liệu D1 SQLite qua scheduleRowToBackendArray, chuẩn hóa đồng bộ normalizeScheduleItem trên mọi động cơ, sửa thuật toán trừ thủ thuật và khóa khung giờ phục vụ KTV cho thủ thuật máy."
+  "notes": "Sửa triệt để lỗi không khóa các giá trị đã xếp trước đó khi xếp bổ sung: khắc phục triệt để lỗi ghi đè rỗng dữ liệu CSDL MiniPC & Turso Cloud qua scheduleRowToBackendArray, chuẩn hóa đồng bộ normalizeScheduleItem trên mọi động cơ, sửa thuật toán trừ thủ thuật và khóa khung giờ phục vụ KTV cho thủ thuật máy."
 }

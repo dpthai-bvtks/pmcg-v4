@@ -3707,10 +3707,10 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
 ### [16/09/2026 - 10:06] Phiên bản v4.0.9-rev7: Khắc phục triệt để lỗi không khóa các giá trị đã xếp trước đó khi chạy xếp bổ sung
 - **Bối cảnh & Yêu cầu của người dùng**:
   - "kiểm tra thêm sao mỗi lần sửa code là chức năng xếp bổ sung lại lỗi không khóa các giá trị đã xếp trước đó".
-  - Khi chạy xếp bổ sung ("Xếp bổ sung BN mới"), các ca đã xếp trước đó bị xếp đè, trùng giường/máy/nhân viên, hoặc thậm chí bị xóa trắng/biến mất dữ liệu khỏi CSDL SQLite D1.
+  - Khi chạy xếp bổ sung ("Xếp bổ sung BN mới"), các ca đã xếp trước đó bị xếp đè, trùng giường/máy/nhân viên, hoặc thậm chí bị xóa trắng/biến mất dữ liệu khỏi CSDL MiniPC & Turso Cloud.
 - **Phân tích nguyên nhân cốt lõi (Root Causes)**:
-  1. **Lỗi xóa trắng dữ liệu CSDL D1 khi lưu xếp bổ sung (`js/app.js` dòng 7176)**:
-     - Khi tải lịch từ Cloudflare D1 / cache, các hàng lịch có định dạng Mảng (`[ngay, tenBN, namSinh, ...]`).
+  1. **Lỗi xóa trắng dữ liệu CSDL MiniPC & Turso khi lưu xếp bổ sung (`js/app.js` dòng 7176)**:
+     - Khi tải lịch từ CSDL MiniPC/Turso hoặc cache, các hàng lịch có định dạng Mảng (`[ngay, tenBN, namSinh, ...]`).
      - Khi `runExtraScheduling` lưu lịch kết hợp (`mergedSched`), hàm map cũ dùng cú pháp truy cập object: `x.tenBN || ''`, `x.thuThuat || ''`. Với các phần tử Mảng, `x.tenBN` trả về `undefined`, dẫn đến toàn bộ lịch cũ bị chuyển thành `[ngay, "", "", "", "", "", "", "", "", "", ""]`!
      - Khi tải lại trang hoặc chạy lại code, toàn bộ lịch cũ bị trắng tên và mất sạch dữ liệu, khiến động cơ xếp lịch hiểu là chưa có ca nào được xếp.
   2. **Lỗi so khớp tên bệnh nhân trong `buildDbFromCache` (`js/scheduler-engine.js` dòng 1685)**:
@@ -3723,7 +3723,7 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - `_turbo_core_logic` xếp đúng cho KTV lúc 07:35, nhưng bộ lọc `validateNoOverlapWithExisting` lại đánh rơi ca mới vì tưởng KTV bị bận suốt 30 phút.
 - **Giải pháp xử lý triệt để**:
   1. **Hàm chuyển đổi chuẩn hóa toàn năng `scheduleRowToBackendArray` (`js/app.js`)**:
-     - Tự động chuẩn hóa bất kỳ định dạng nào (Mảng, camelCase, snake_case, UPPERCASE) qua `normalizeScheduleRow` trước khi chuyển thành mảng 11 phần tử gửi lên backend D1 SQLite.
+     - Tự động chuẩn hóa bất kỳ định dạng nào (Mảng, camelCase, snake_case, UPPERCASE) qua `normalizeScheduleRow` trước khi chuyển thành mảng 11 phần tử gửi lên backend API (lưu vào MiniPC và tự động đồng bộ 2 chiều ngầm sang Turso Cloud; Cloudflare D1 đóng băng).
      - Áp dụng tại toàn bộ 4 vị trí lưu lịch: `runSchedule` nền (dòng 7080), `runExtraScheduling` (dòng 7177), `executeRescueAdvice` (dòng 7486) và `runSaturdaySchedule` (dòng 10222).
   2. **Chuẩn hóa dữ liệu đầu vào trong `runExtraScheduling` (`js/app.js`)**:
      - Sanitize `currentSched` bằng `normalizeScheduleRow` và loại bỏ các ca rớt trước khi truyền vào engine.

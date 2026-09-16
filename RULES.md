@@ -47,11 +47,13 @@
 ---
 
 ## 4. 🚀 Tự động Deploy lên Cloudflare Toàn diện & Báo cáo kết quả
-Hệ thống chạy 100% trên nền tảng Cloudflare (Pages + Worker API + D1 Database). Sau mỗi lần sửa đổi, AI **bắt buộc tự động chạy lệnh deploy** từ thư mục `backend`:
-- **Chỉ sửa Frontend (HTML/JS/CSS/Assets):**
-  Chạy lệnh trong `backend/`: `npm run deploy:web` (đẩy trực tiếp lên Cloudflare Pages `pmcg-v4`).
-- **Sửa cả Backend Worker / Database API:**
-  Chạy lệnh trong `backend/`: `npm run deploy:all` (deploy cả Worker `pmcg-api` và Pages `pmcg-v4`).
+Hệ thống Frontend & API chạy trên nền tảng Cloudflare (Pages + Worker API `pmcg-api`).
+- **Cơ sở dữ liệu hoạt động:** Lưu trữ chính trên **MiniPC** và sao lưu đồng bộ 2 chiều ngầm (**Dual-Write**) trên **Turso Cloud (libSQL Tokyo)**; **Cloudflare D1 hiện đang đóng băng/ngủ đông không sử dụng**. Mọi câu lệnh SQL qua Worker đều được `createTursoAdapter` chuyển tiếp tới MiniPC và Turso.
+- Sau mỗi lần sửa đổi, AI **bắt buộc tự động chạy lệnh deploy** từ thư mục `backend`:
+  + **Chỉ sửa Frontend (HTML/JS/CSS/Assets):**
+    Chạy lệnh trong `backend/`: `npm run deploy:web` (đẩy trực tiếp lên Cloudflare Pages `pmcg-v4`).
+  + **Sửa cả Backend Worker / Database API:**
+    Chạy lệnh trong `backend/`: `npm run deploy:all` (deploy cả Worker `pmcg-api` và Pages `pmcg-v4`).
 - **Kiểm tra trạng thái:** Đảm bảo kết quả trả về `Deployment complete!` và trang web `https://pmcg-v4.pages.dev` / `https://www.xeplichthuthuat.io.vn` hoạt động bình thường.
 
 ---
