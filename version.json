@@ -1,6 +1,6 @@
 {
-  "version": "4.0.9-rev5",
-  "releaseDate": "15/09/2026",
-  "releaseTime": "20:10 15/09/2026",
-  "notes": "Sửa triệt để lỗi xếp lịch bổ sung bị trùng giờ (khóa cứng toàn bộ tài nguyên, chuẩn hóa so khớp nhân sự/máy/giường/thủ thuật, tích hợp CP-SAT solver và collision safeguard); Cho phép xem lại lịch ngày hôm nay từ lịch sử sau khi chốt sổ."
+  "version": "4.0.9-rev6",
+  "releaseDate": "16/09/2026",
+  "releaseTime": "08:35 16/09/2026",
+  "notes": "Sửa triệt để lỗi hiển thị tên bệnh nhân (Trần Văn Hồng, Nguyễn Thế Cường) bị ký tự lạ \\uFFFD hoặc nuốt nguyên âm; Tự động phục hồi họ tên bệnh nhân sạch trên mọi giao diện, bảng dữ liệu, datalist gợi ý và CSDL; Nâng cấp thuật toán chữa lành âm tiết tiếng Việt y tế."
 }

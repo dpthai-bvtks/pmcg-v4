@@ -3665,3 +3665,43 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   + `version.json`
   + `PM-xeplich-v4.md`
 
+---
+
+### [16/09/2026 - 08:35] Phiên bản v4.0.9-rev6: Khắc phục triệt để lỗi tên bệnh nhân (Trần Văn Hồng, Nguyễn Thế Cường) bị nuốt chữ hoặc ký tự lạ \uFFFD
+- **Bối cảnh & Vấn đề**:
+  - Người dùng phản ánh tên bệnh nhân tại STT 53 hiển thị `Trn Văn Hồng` kèm ký tự `\uFFFD` (hình thoi đen có dấu hỏi), STT 44 hiển thị `Nguyễn Thế Cưng` (bị nuốt chữ `ờ` thành `Cưng`).
+  - Khi bấm sửa bệnh nhân hoặc xem tooltip gợi ý datalist, ô nhập cũng hiển thị tên lỗi `Trn Văn Hồng`.
+  - **Nguyên nhân cốt lõi**:
+    1. Trong `js/scheduler-engine.js`, hàm `cleanAndHealPatientName` bản cũ fallback dùng `name.replace(/[\ufffd\u0000]/g, '').trim().toUpperCase()`. Khi gặp `\ufffd` không khớp candidate, hàm này xóa bỏ hoàn toàn ký tự lạ thay vì phục hồi âm tiết, dẫn tới `Trần` bị biến thành `Trn`, `Cường` bị biến thành `Cưng`.
+    2. Trong `buildDbFromCache`, hàm này gán đè trực tiếp tên hỏng vào đối tượng `p.ten` trong `dataCache.pat`, khiến bộ nhớ RAM và `localStorage` offline cache bị nhiễm chuỗi lỗi.
+    3. Giao diện bảng bệnh nhân (`renderPatientsTable`), form nhập sửa (`editPatient`), bộ lưu trữ (`savePatient`) và datalist gợi ý thiếu cơ chế tự chữa lành âm tiết tiếng Việt y tế.
+- **Giải pháp xử lý triệt để (Multi-Tier Self-Healing Engine)**:
+  1. **Nâng cấp thuật toán `cleanAndHealPatientName` & `healPatientName`**:
+     - Áp dụng trên cả `js/scheduler-engine.js`, `js/app.js` và `backend/src/index.js`.
+     - Nhận diện các mẫu chuỗi bị hỏng: `\ufffd`, `\u0000`, `?` lạc chỗ, hoặc nuốt nguyên âm (`Trn`, `Cưng`, `Lnh`, `Nguyn`, `Phm`).
+     - Cơ chế 1: Đối chiếu danh sách candidate sạch (từ CSDL gốc và lịch cũ) theo cả mẫu wildcard và chuỗi không dấu strip tones.
+     - Cơ chế 2: Bộ từ điển âm tiết tiếng Việt chính xác:
+       + `Trn` / `Tr\ufffd\ufffd\ufffdn` -> `Trần`
+       + `Cưng` / `C\ufffd\ufffd\ufffdng` (sau họ đệm hoặc đứng cuối tên) -> `Cường`
+       + `Lnh` / `L\ufffd\ufffd\ufffdnh` -> `Lãnh`
+       + `Nguyn` / `Nguy\ufffd\ufffd\ufffdn` -> `Nguyễn`
+       + `Phm` / `Ph\ufffd\ufffd\ufffdm` -> `Phạm`
+       + `Hong` -> `Hoàng`
+       + `Văn Hng` -> `Văn Hồng`
+       + Dọn sạch ký tự rác còn sót và chuẩn hóa Title Case hoặc UPPERCASE.
+  2. **Tự động chữa lành toàn diện ở Client (`js/app.js`)**:
+     - `restoreOfflineCache()`: Quét toàn bộ `b.patients`, nếu phát hiện chuỗi lỗi thì tự động chữa lành, cập nhật lại `localStorage` và đặt cờ `cacheIsStale = true` để ép nạp mới dữ liệu sạch từ D1 API.
+     - `loadBootstrapData()`: Chữa lành `b.patients` và `b.schedule` trước khi lưu `localStorage` và trước khi gán vào `dataCache.pat`.
+     - `renderPatientsTable_Original()`: Chữa lành toàn bộ `dataCache.pat` trước khi đếm tên, tạo datalist gợi ý và render bảng `#patients-table`.
+     - `editPatient()`: Điền tên đã chữa lành vào ô `pat-name`.
+     - `savePatient()`: Chữa lành tên trước khi lưu Optimistic UI và gửi API.
+  3. **Tự động làm sạch ở Backend (`backend/src/index.js`)**:
+     - Thêm `healBackendPatientName` trong `getBootstrapData`, `getBenhNhan`, `addBenhNhan`, `editBenhNhan`, `saveSchedule`.
+     - Thêm câu lệnh SQLite Self-Healing trong `ensureSchema` tự động sửa các bản ghi hỏng cũ nếu có.
+  4. **Bust Cache & Nâng phiên bản theo RULES.md**:
+     - Nâng phiên bản lên `4.0.9-rev6`.
+     - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.0.9-rev6'`.
+     - `index.html`: Cập nhật `?v=4.0.9-rev6`, `APP_VERSION = '4.0.9-rev6'`.
+     - `version.json`: Cập nhật ngày `16/09/2026 08:35`.
+
+

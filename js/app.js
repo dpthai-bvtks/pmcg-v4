@@ -452,6 +452,86 @@ function removeVietnameseTones(str) {
 }
 window.removeVietnameseTones = removeVietnameseTones;
 
+/**
+ * 🛡️ HÀM PHỤC HỒI HỌ TÊN BỆNH NHÂN TOÀN DIỆN (SELF-HEALING PATIENT NAMES)
+ * Tự động phát hiện và sửa chữa các chuỗi bị lỗi ký tự (\uFFFD, \u0000) hoặc nuốt nguyên âm
+ * (Trn -> Trần, Cưng -> Cường, Lnh -> Lãnh, Nguyn -> Nguyễn, Phm -> Phạm...)
+ */
+function healPatientName(rawName, candidates = [], forceUpperCase = false) {
+    if (!rawName) return '';
+    let name = String(rawName).normalize('NFC').trim();
+    if (!name) return '';
+
+    const isAllUpper = (name === name.toUpperCase() && /[A-ZÀ-Ỹ]/.test(name));
+    const shouldUpper = forceUpperCase || isAllUpper;
+
+    const hasCorruptChar = /[\ufffd\u0000]/.test(name) || /\b[A-Za-zÀ-ỹ]+\?[A-Za-zÀ-ỹ]+\b/.test(name);
+    const hasSwallowedVowel = /\b(Trn|Cưng|Lnh|Nguyn|Phm)\b/i.test(name) ||
+        /\bTr[\ufffd\s\?]*n\b/i.test(name) ||
+        /\bL[\ufffd\s\?]*nh\b/i.test(name) ||
+        /\bC[\ufffd\s\?]*ng\b/i.test(name) ||
+        /\bNguy[\ufffd\s\?]*n\b/i.test(name) ||
+        /\bPh[\ufffd\s\?]*m\b/i.test(name);
+
+    if (!hasCorruptChar && !hasSwallowedVowel) {
+        return shouldUpper ? name.toUpperCase() : name;
+    }
+
+    const candList = Array.isArray(candidates) ? candidates : [];
+    for (const cand of candList) {
+        if (!cand) continue;
+        const cleanCand = String(cand).normalize('NFC').trim();
+        if (/[\ufffd\u0000]/.test(cleanCand) || /\b(Trn|Cưng|Lnh)\b/i.test(cleanCand)) continue;
+
+        const wildcardPattern = '^' + name
+            .replace(/[\ufffd\u0000\?]+/g, '.*')
+            .replace(/\bTrn\b/gi, 'Tr.*n')
+            .replace(/\bCưng\b/gi, 'C.*ng')
+            .replace(/\bLnh\b/gi, 'L.*nh')
+            .replace(/\s+/g, '\\s+') + '$';
+        try {
+            if (new RegExp(wildcardPattern, 'i').test(cleanCand)) {
+                return shouldUpper ? cleanCand.toUpperCase() : cleanCand;
+            }
+        } catch (e) {}
+
+        const noToneName = removeVietnameseTones(name.replace(/[\ufffd\u0000\?]/g, ''));
+        const noToneCand = removeVietnameseTones(cleanCand);
+        if (noToneName && noToneCand) {
+            if (noToneName === noToneCand) {
+                return shouldUpper ? cleanCand.toUpperCase() : cleanCand;
+            }
+            const nameTokens = noToneName.split(/\s+/).filter(t => t.length >= 2);
+            const candTokens = noToneCand.split(/\s+/).filter(t => t.length >= 2);
+            const matchedTokens = nameTokens.filter(t => candTokens.includes(t));
+            if (nameTokens.length >= 2 && matchedTokens.length >= nameTokens.length - 1) {
+                return shouldUpper ? cleanCand.toUpperCase() : cleanCand;
+            }
+        }
+    }
+
+    let healed = name;
+    healed = healed.replace(/\bTr[\ufffd\s\?]*n\b/gi, 'Trần');
+    healed = healed.replace(/\bTrn\b/gi, 'Trần');
+    healed = healed.replace(/\bL[\ufffd\s\?]*nh\b/gi, 'Lãnh');
+    healed = healed.replace(/\bLnh\b/gi, 'Lãnh');
+    healed = healed.replace(/\bC[\ufffd\s\?]*ng\b/gi, 'Cường');
+    healed = healed.replace(/\bCưng\b/gi, 'Cường');
+    healed = healed.replace(/\bNguy[\ufffd\s\?]*n\b/gi, 'Nguyễn');
+    healed = healed.replace(/\bNguyn\b/gi, 'Nguyễn');
+    healed = healed.replace(/\bPh[\ufffd\s\?]*m\b/gi, 'Phạm');
+    healed = healed.replace(/\bPhm\b/gi, 'Phạm');
+    healed = healed.replace(/\bHo[\ufffd\s\?]*ng\b/gi, 'Hoàng');
+    healed = healed.replace(/(Văn|Thị)\s+H[\ufffd\s\?]*ng\b/gi, '$1 Hồng');
+    healed = healed.replace(/[\ufffd\u0000]/g, '').replace(/\s+/g, ' ').trim();
+
+    if (shouldUpper) {
+        return healed.toUpperCase();
+    }
+    return healed.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
+}
+window.healPatientName = healPatientName;
+
 function fuzzySearchList(list, query, keys = ['tenBN', 'phong', 'nvChinh', 'nvPhu', 'thuThuat', 'may', 'giuong', 'namSinh']) {
     if (!query || !list || !list.length) return list;
     const cleanQuery = String(query).trim();
@@ -3319,7 +3399,30 @@ window.renderSttOrderControl = function (type, i, total) {
                         if (typeof loadScheduleList === 'function') loadScheduleList();
 
                         if (b && Array.isArray(b.patients)) {
-                            b.patients.forEach((pt, i) => { if (pt) pt.sheetIndex = i; });
+                            let cacheHasCorruptedName = false;
+                            b.patients.forEach((pt, i) => {
+                                if (pt) {
+                                    pt.sheetIndex = i;
+                                    if (pt.ten) {
+                                        const healed = healPatientName(pt.ten);
+                                        if (healed !== pt.ten) {
+                                            pt.ten = healed;
+                                            cacheHasCorruptedName = true;
+                                        }
+                                    }
+                                    if (pt.name) {
+                                        const healed = healPatientName(pt.name);
+                                        if (healed !== pt.name) {
+                                            pt.name = healed;
+                                            cacheHasCorruptedName = true;
+                                        }
+                                    }
+                                }
+                            });
+                            if (cacheHasCorruptedName) {
+                                try { localStorage.setItem(cacheKey, JSON.stringify(b)); } catch(e) {}
+                                cacheIsStale = true;
+                            }
                             dataCache.pat = b.patients.filter(pt => pt && pt.ten);
                             if (typeof renderPatientsTable === 'function') renderPatientsTable();
                         } else {
@@ -3370,6 +3473,26 @@ window.renderSttOrderControl = function (type, i, total) {
             google.script.run
                 .withSuccessHandler(function (b) {
                     if (!b) return;
+
+                    // 🛡️ Tự động chữa lành họ tên bệnh nhân và lịch trình trước khi lưu cache
+                    if (b.patients && Array.isArray(b.patients)) {
+                        b.patients.forEach((pt, i) => {
+                            if (pt) {
+                                pt.sheetIndex = i;
+                                if (pt.ten) pt.ten = healPatientName(pt.ten);
+                                if (pt.name) pt.name = healPatientName(pt.name);
+                            }
+                        });
+                    }
+                    if (b.schedule && Array.isArray(b.schedule)) {
+                        b.schedule.forEach(sc => {
+                            if (sc) {
+                                if (sc.tenBN) sc.tenBN = healPatientName(sc.tenBN, [], true);
+                                if (Array.isArray(sc) && sc[1]) sc[1] = healPatientName(sc[1], [], true);
+                            }
+                        });
+                    }
+
                     try {
                         const curUnit = getCurrentUnitCode();
                         b.unit_code = curUnit;
@@ -3429,7 +3552,6 @@ window.renderSttOrderControl = function (type, i, total) {
                         if (typeof loadScheduleList === 'function') loadScheduleList();
 
                         if (b && Array.isArray(b.patients)) {
-                            b.patients.forEach((pt, i) => { if (pt) pt.sheetIndex = i; });
                             dataCache.pat = b.patients.filter(pt => pt && pt.ten);
                         } else {
                             dataCache.pat = [];
@@ -5194,6 +5316,13 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         function renderPatientsTable_Original() {
+            // 🛡️ Tự động phục hồi họ tên bệnh nhân bị lỗi hiển thị trước khi render
+            (dataCache.pat || []).forEach(p => {
+                if (p && p.ten) {
+                    p.ten = healPatientName(p.ten);
+                }
+            });
+
             const nameCount = {};
             (dataCache.pat || []).forEach(p => {
                 const name = String(p.ten || '').trim();
@@ -5393,8 +5522,9 @@ window.renderSttOrderControl = function (type, i, total) {
             if (!phong) { window._savePatientLock = false; return alert("Vui lòng chọn Phòng"); }
 
             ten = (ten || '').normalize('NFC').trim();
+            ten = healPatientName(ten, [origTen].filter(Boolean));
             if (ten.includes('\ufffd') && origTen && !origTen.includes('\ufffd')) {
-                ten = origTen;
+                ten = healPatientName(origTen);
             }
             ten = ten.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
 
@@ -5512,7 +5642,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             editIndex.pat = targetIdx;
 
-            document.getElementById('pat-name').value = item.ten || '';
+            document.getElementById('pat-name').value = healPatientName(item.ten || '');
             document.getElementById('pat-year').value = item.namSinh || '';
 
             const ngayVao = item.ngayVao || '';

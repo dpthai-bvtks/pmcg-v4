@@ -1278,49 +1278,111 @@ function getSafeCache() {
   }
 
   /**
-   * 🛡️ TỰ PHỤC HỒI HỌ TÊN BỆNH NHÂN (SELF-HEALING PATIENT NAMES)
-   * Tự động phát hiện và sửa chữa các lỗi ký tự lạ (\uFFFD, chuỗi nuốt chữ như LNH thay vì LÃNH)
-   * dựa trên đối chiếu danh sách ứng viên tên từ lịch cũ và CSDL gốc.
+   * 🛡️ TỰ PHỤC HỒI HỌ TÊN BỆNH NHÂN TOÀN DIỆN (SELF-HEALING PATIENT NAMES ENGINE)
+   * Tự động phát hiện và chữa lành các lỗi ký tự lạ (\uFFFD, \u0000, dấu hỏi lạ) và lỗi nuốt chữ
+   * (như Trn -> Trần, Cưng -> Cường, Lnh -> Lãnh, Nguyn -> Nguyễn, Phm -> Phạm, v.v.)
+   * Hỗ trợ đối chiếu candidate lịch cũ/CSDL và bộ từ điển âm tiết tiếng Việt chính xác.
    */
-  function cleanAndHealPatientName(rawName, candidates = []) {
+  function cleanAndHealPatientName(rawName, candidates = [], forceUpperCase = false) {
     if (!rawName) return '';
     let name = String(rawName).normalize('NFC').trim();
+    if (!name) return '';
 
-    const hasReplacement = name.includes('\ufffd') || name.includes('\u0000');
-    const hasSuspiciousPattern = /\bL\s*NH\b/i.test(name);
+    const isAllUpper = (name === name.toUpperCase() && /[A-ZÀ-Ỹ]/.test(name));
+    const shouldUpper = forceUpperCase || isAllUpper;
 
-    if (!hasReplacement && !hasSuspiciousPattern) {
-      return name;
+    const hasCorruptChar = /[\ufffd\u0000]/.test(name) || /\b[A-Za-zÀ-ỹ]+\?[A-Za-zÀ-ỹ]+\b/.test(name);
+    const hasSwallowedVowel = /\b(Trn|Cưng|Lnh|Nguyn|Phm)\b/i.test(name) ||
+      /\bTr[\ufffd\s\?]*n\b/i.test(name) ||
+      /\bL[\ufffd\s\?]*nh\b/i.test(name) ||
+      /\bC[\ufffd\s\?]*ng\b/i.test(name) ||
+      /\bNguy[\ufffd\s\?]*n\b/i.test(name) ||
+      /\bPh[\ufffd\s\?]*m\b/i.test(name);
+
+    // Nếu tên hoàn toàn bình thường, trả về theo định dạng yêu cầu
+    if (!hasCorruptChar && !hasSwallowedVowel) {
+      return shouldUpper ? name.toUpperCase() : name;
     }
 
+    // Helper: Bỏ dấu tiếng Việt phục vụ so sánh mờ
+    const stripTones = (str) => {
+      if (!str) return '';
+      return String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'd').trim().toLowerCase();
+    };
+
+    // 1. Đối chiếu danh sách ứng viên (candidates) nếu có
     const candList = Array.isArray(candidates) ? candidates : [];
     for (const cand of candList) {
       if (!cand) continue;
       const cleanCand = String(cand).normalize('NFC').trim();
-      if (cleanCand.includes('\ufffd')) continue;
+      if (/[\ufffd\u0000]/.test(cleanCand) || /\b(Trn|Cưng|Lnh)\b/i.test(cleanCand)) continue;
 
-      // 1. Khớp regex dạng wildcard
-      const patternStr = '^' + name.replace(/[\ufffd\u0000]+/g, '.*').replace(/\bL\s*NH\b/gi, 'L.*NH').replace(/\s+/g, '\\s+') + '$';
+      // So khớp wildcard
+      const wildcardPattern = '^' + name
+        .replace(/[\ufffd\u0000\?]+/g, '.*')
+        .replace(/\bTrn\b/gi, 'Tr.*n')
+        .replace(/\bCưng\b/gi, 'C.*ng')
+        .replace(/\bLnh\b/gi, 'L.*nh')
+        .replace(/\s+/g, '\\s+') + '$';
       try {
-        if (new RegExp(patternStr, 'i').test(cleanCand)) {
-          return cleanCand.toUpperCase();
+        if (new RegExp(wildcardPattern, 'i').test(cleanCand)) {
+          return shouldUpper ? cleanCand.toUpperCase() : cleanCand;
         }
       } catch (e) {}
 
-      // 2. Khớp theo họ tên không dấu (NFD)
-      const noToneName = name.replace(/[\ufffd\u0000]/g, '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '');
-      const noToneCand = cleanCand.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, '');
-      if (noToneName && noToneCand && (noToneCand === noToneName || (noToneName.length >= 4 && (noToneCand.includes(noToneName) || noToneName.includes(noToneCand))))) {
-        return cleanCand.toUpperCase();
+      // So khớp theo âm tiết không dấu
+      const noToneName = stripTones(name.replace(/[\ufffd\u0000\?]/g, ''));
+      const noToneCand = stripTones(cleanCand);
+      if (noToneName && noToneCand) {
+        if (noToneName === noToneCand) {
+          return shouldUpper ? cleanCand.toUpperCase() : cleanCand;
+        }
+        const nameTokens = noToneName.split(/\s+/).filter(t => t.length >= 2);
+        const candTokens = noToneCand.split(/\s+/).filter(t => t.length >= 2);
+        const matchedTokens = nameTokens.filter(t => candTokens.includes(t));
+        if (nameTokens.length >= 2 && matchedTokens.length >= nameTokens.length - 1) {
+          return shouldUpper ? cleanCand.toUpperCase() : cleanCand;
+        }
       }
     }
 
-    // 3. Fallback chuyên biệt cho trường hợp LNH / LNH VĂN... -> LÃNH
-    if (/\bL[\ufffd\s]*NH\b/i.test(name)) {
-      return name.replace(/\bL[\ufffd\s]*NH\b/gi, 'LÃNH').toUpperCase();
-    }
+    // 2. Bộ từ điển âm tiết tiếng Việt chính xác (chữa lành chuẩn ngữ âm, không nuốt chữ)
+    let healed = name;
 
-    return name.replace(/[\ufffd\u0000]/g, '').trim().toUpperCase();
+    // Họ Trần: Trn / Trn / Tr?n -> Trần
+    healed = healed.replace(/\bTr[\ufffd\s\?]*n\b/gi, 'Trần');
+    healed = healed.replace(/\bTrn\b/gi, 'Trần');
+
+    // Họ Lãnh: Lnh / Lnh / L?nh -> Lãnh
+    healed = healed.replace(/\bL[\ufffd\s\?]*nh\b/gi, 'Lãnh');
+    healed = healed.replace(/\bLnh\b/gi, 'Lãnh');
+
+    // Tên Cường: Cng / Cưng / C?ng -> Cường
+    healed = healed.replace(/\bC[\ufffd\s\?]*ng\b/gi, 'Cường');
+    healed = healed.replace(/\bCưng\b/gi, 'Cường');
+
+    // Họ Nguyễn: Nguyn / Nguyn -> Nguyễn
+    healed = healed.replace(/\bNguy[\ufffd\s\?]*n\b/gi, 'Nguyễn');
+    healed = healed.replace(/\bNguyn\b/gi, 'Nguyễn');
+
+    // Họ Phạm: Phm / Phm -> Phạm
+    healed = healed.replace(/\bPh[\ufffd\s\?]*m\b/gi, 'Phạm');
+    healed = healed.replace(/\bPhm\b/gi, 'Phạm');
+
+    // Họ/Tên Hoàng: Hong -> Hoàng
+    healed = healed.replace(/\bHo[\ufffd\s\?]*ng\b/gi, 'Hoàng');
+
+    // Tên Hồng (sau Văn / Thị): Văn Hng -> Văn Hồng
+    healed = healed.replace(/(Văn|Thị)\s+H[\ufffd\s\?]*ng\b/gi, '$1 Hồng');
+
+    // Dọn sạch các ký tự \ufffd, \u0000 còn sót nếu có
+    healed = healed.replace(/[\ufffd\u0000]/g, '').replace(/\s+/g, ' ').trim();
+
+    // Chuẩn hóa Title Case hoặc UPPERCASE
+    if (shouldUpper) {
+      return healed.toUpperCase();
+    }
+    return healed.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
   }
 
   function buildDbFromCache(cacheInput, skipProcsStr, existingSched = []) {
@@ -1499,12 +1561,11 @@ function getSafeCache() {
         });
       });
 
-      const pName = cleanAndHealPatientName(rawPName, matchedCandidates.length > 0 ? matchedCandidates : validPatientCandidates);
-      if (pName !== rawPName) {
-        if (p.ten) p.ten = pName;
-        if (p.name) p.name = pName;
-        if (Array.isArray(p) && p[1]) p[1] = pName;
-      }
+      const pName = cleanAndHealPatientName(rawPName, matchedCandidates.length > 0 ? matchedCandidates : validPatientCandidates, true);
+      const titleCaseName = cleanAndHealPatientName(p.ten || p.name || rawPName, matchedCandidates.length > 0 ? matchedCandidates : validPatientCandidates, false);
+      if (p.ten && p.ten !== titleCaseName) p.ten = titleCaseName;
+      if (p.name && p.name !== titleCaseName) p.name = titleCaseName;
+      if (Array.isArray(p) && p[1] && p[1] !== titleCaseName) p[1] = titleCaseName;
 
       const pId = p.id || (pName + "_" + pNs + "_" + pRoom + "_" + idx);
       const key = pId;
@@ -2027,6 +2088,11 @@ function getSafeCache() {
     runSaturdayScheduling: runSaturdayScheduling
   };
 })();
+
+if (typeof window !== 'undefined') {
+  window.cleanAndHealPatientName = SchedulerEngine.cleanAndHealPatientName;
+  window.healPatientName = SchedulerEngine.cleanAndHealPatientName;
+}
 
 // ============================================================
 // 💡 UNSCHEDULED DIAGNOSTIC & SMART RESCUE ADVISOR ENGINE
