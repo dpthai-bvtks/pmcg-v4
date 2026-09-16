@@ -1647,6 +1647,7 @@ window.renderSttOrderControl = function (type, i, total) {
             };
             return String(string).replace(/[&<>"'`]/g, s => map[s]);
         }
+        window.escapeHtml = escapeHtml;
 
 
 
@@ -3939,8 +3940,8 @@ window.renderSttOrderControl = function (type, i, total) {
             const searchMachineSelect = document.getElementById('search-machine-type');
             if (procMachineSelect && searchMachineSelect) {
                 const types = [...new Set(dataCache.machine.map(m => String(m.tenLoai || m[1] || '').trim()))].filter(Boolean);
-                procMachineSelect.innerHTML = '<option>Thủ công</option>' + types.map(t => `<option value="${t}">${t}</option>`).join('');
-                searchMachineSelect.innerHTML = '<option>Chọn loại máy</option>' + types.map(t => `<option value="${t}">${t}</option>`).join('');
+                procMachineSelect.innerHTML = '<option>Thủ công</option>' + types.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+                searchMachineSelect.innerHTML = '<option>Chọn loại máy</option>' + types.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
             }
 
             if (!dataCache.machine.length) { tbody.innerHTML = renderEmptyRow(5, 'Chưa có thiết bị'); return; }
@@ -4892,7 +4893,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 const uniqueDocs = [...new Set(docs)].sort();
                 filterSelect.innerHTML = '<option value="">🔍 Lọc tên bác sĩ...</option>';
                 uniqueDocs.forEach(docName => {
-                    filterSelect.innerHTML += `<option value="${docName}">${docName}</option>`;
+                    filterSelect.innerHTML += `<option value="${escapeHtml(docName)}">${escapeHtml(docName)}</option>`;
                 });
                 
                 if (currentVal && uniqueDocs.includes(currentVal)) {
@@ -7379,13 +7380,13 @@ window.renderSttOrderControl = function (type, i, total) {
                         id: 1,
                         title: `⚡ Cho phép KTV làm lố 10 phút cuối ca sáng (11:30 - 11:40)`,
                         description: `Nới lỏng khung giờ làm việc ca sáng để hoàn tất ca [${procName}] cho BN ${bnName}.`,
-                        patch: { gioDienRa: "11:30", gioKetThuc: "12:00", nvChinh: "KTV Phụ Trách", may: "Thủ công", giuong: "Giường 1", phong: roomName }
+                        patch: { gioDienRa: "11:30", gioKetThuc: "12:00", nvChinh: "KTV Phụ Trách", nvPhu: "", may: "Thủ công", giuong: "", phong: roomName }
                     },
                     {
                         id: 2,
                         title: `⚡ Chuyển ca sang buổi Chiều (13:30 - 14:00)`,
                         description: `Xếp ca [${procName}] vào đầu giờ chiều khi có máy và nhân sự rảnh rỗi.`,
-                        patch: { gioDienRa: "13:30", gioKetThuc: "14:00", nvChinh: "KTV Phụ Trách", may: "Thủ công", giuong: "Giường 1", phong: roomName }
+                        patch: { gioDienRa: "13:30", gioKetThuc: "14:00", nvChinh: "KTV Phụ Trách", nvPhu: "", may: "Thủ công", giuong: "", phong: roomName }
                     }
                 ];
 
@@ -7433,24 +7434,126 @@ window.renderSttOrderControl = function (type, i, total) {
             const rotItem = unscheduled[rotIndex];
             const advices = (rotItem.advices && rotItem.advices.length > 0) ? rotItem.advices : [];
             const advice = advices[adviceIndex] || {
-                patch: { gioDienRa: "11:30", gioKetThuc: "12:00", nvChinh: "KTV Phụ Trách", may: "Thủ công", giuong: "Giường 1", phong: rotItem.room || rotItem.phong || "" }
+                patch: { gioDienRa: "11:30", gioKetThuc: "12:00", nvChinh: "KTV Phụ Trách", nvPhu: "", may: "Thủ công", giuong: "", phong: rotItem.room || rotItem.phong || "" }
             };
             const patch = advice.patch || {};
 
             const targetDate = rotItem.ngay || (document.getElementById('schedule-date')?.value) || new Date().toISOString().slice(0, 10);
+            const patName = rotItem.bn || rotItem.tenBN || "";
+            const patNs = rotItem.ns || rotItem.namSinh || "";
+            const targetRoom = patch.phong || rotItem.room || rotItem.phong || "";
+            const procName = rotItem.tt || rotItem.thuThuat || "";
+            const procNameLower = String(procName).trim().toLowerCase();
+
+            if (!window.currentScheduleData) window.currentScheduleData = [];
+
+            // 🛏️ GIƯỜNG CỨU CA: Khôi phục giường chuẩn xác
+            let resolvedBed = patch.giuong || "";
+            const bnClean = String(patName).trim().toUpperCase();
+            const rmClean = String(targetRoom).trim().toLowerCase();
+
+            // Ưu tiên 1: Tra cứu xem BN này đã có giường trong cùng phòng trong ngày chưa (ví dụ G33)
+            let existingBnBed = "";
+            for (const item of window.currentScheduleData) {
+                const iBn = String(item.tenBN || item.HOTEN || '').trim().toUpperCase();
+                const iRoom = String(item.phong || item.PHONG || '').trim().toLowerCase();
+                const iBed = String(item.giuong || item.GIUONG || '').trim();
+                if (iBn === bnClean && iRoom === rmClean && iBed && iBed !== "Giường 1") {
+                    existingBnBed = iBed;
+                    break;
+                }
+            }
+            if (existingBnBed) {
+                resolvedBed = existingBnBed;
+            } else if (!resolvedBed || resolvedBed === "Giường 1") {
+                // Nếu không có giường của BN và patch bị rơi vào fallback "Giường 1" hoặc rỗng
+                let roomBeds = [];
+                if (typeof dataCache !== 'undefined' && dataCache.room) {
+                    const rObj = dataCache.room.find(r => String(r.tenPhong || r.name || r[1] || '').trim().toLowerCase() === rmClean);
+                    if (rObj) {
+                        const bedStr = String(rObj.danhSachGiuong || rObj[6] || '').trim();
+                        if (bedStr && bedStr !== 'None') {
+                            roomBeds = bedStr.split(',').map(x => x.trim()).filter(Boolean);
+                        }
+                    }
+                }
+                if (roomBeds.length > 0) {
+                    const gStart = patch.gioDienRa || "11:30";
+                    const gEnd = patch.gioKetThuc || "12:00";
+                    const tStart = (typeof t2m === 'function') ? t2m(gStart) : 690;
+                    const tEnd = (typeof t2m === 'function') ? t2m(gEnd) : 720;
+                    const freeBed = roomBeds.find(bName => {
+                        return !window.currentScheduleData.some(item => {
+                            const iRoom = String(item.phong || item.PHONG || '').trim().toLowerCase();
+                            const iBed = String(item.giuong || item.GIUONG || '').trim();
+                            if (iRoom !== rmClean || iBed !== bName) return false;
+                            const is1 = (typeof t2m === 'function') ? t2m(item.gioDienRa || item.GIODIENRA) : 0;
+                            const ie1 = (typeof t2m === 'function') ? t2m(item.gioKetThuc || item.GIOKETTHUC) : 0;
+                            return Math.max(tStart, is1) < Math.min(tEnd, ie1);
+                        });
+                    });
+                    resolvedBed = freeBed || roomBeds[0];
+                } else {
+                    resolvedBed = (resolvedBed === "Giường 1" && !rmClean.includes("phục hồi")) ? "G1" : (resolvedBed || "G1");
+                }
+            }
+
+            // 👥 NV PHỤ: Tra cứu và điền NV Phụ nếu thủ thuật yêu cầu người phụ
+            let resolvedNvPhu = patch.nvPhu || "";
+            let needSub = false;
+            let procDsPhu = [];
+            if (typeof dataCache !== 'undefined' && dataCache.proc) {
+                const pObj = dataCache.proc.find(p => {
+                    const t = String(p.ten || p.name || p[1] || '').trim().toLowerCase();
+                    const vt = String(p.vietTat || p[2] || '').trim().toLowerCase();
+                    return t === procNameLower || (vt && vt === procNameLower);
+                });
+                if (pObj) {
+                    needSub = (pObj.canNguoiPhu === 'Có' || pObj.canNguoiPhu === 1 || pObj.canNguoiPhu === '1' || pObj.canNguoiPhu === true || pObj[10] === 'Có' || pObj[10] === 1 || pObj[10] === '1');
+                    const dsStr = pObj.dsNguoiPhu || pObj[11] || "";
+                    procDsPhu = Array.isArray(dsStr) ? dsStr : String(dsStr).split(',').map(x => x.trim()).filter(Boolean);
+                }
+            }
+
+            if (needSub && !resolvedNvPhu) {
+                // Ưu tiên 1: Lấy người phụ mà BN đã có ở ca khác trong ngày (ví dụ Phụ 5)
+                let existingSub = "";
+                for (const item of window.currentScheduleData) {
+                    const iBn = String(item.tenBN || item.HOTEN || '').trim().toUpperCase();
+                    const iSub = String(item.nvPhu || item["NV PHỤ"] || '').trim();
+                    if (iBn === bnClean && iSub) {
+                        existingSub = iSub;
+                        break;
+                    }
+                }
+                if (existingSub) {
+                    resolvedNvPhu = existingSub;
+                } else if (procDsPhu.length > 0) {
+                    resolvedNvPhu = procDsPhu[0];
+                } else if (typeof dataCache !== 'undefined' && dataCache.staff) {
+                    const subStaff = dataCache.staff.find(s => {
+                        const sName = String(s.ten || s.name || s[1] || '').trim();
+                        const sRole = String(s.vaiTro || s.role || s[2] || '').trim();
+                        return /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(sRole) || /phụ/i.test(sName);
+                    });
+                    if (subStaff) {
+                        resolvedNvPhu = String(subStaff.ten || subStaff.name || subStaff[1] || '').trim();
+                    }
+                }
+            }
 
             const rescuedRow = {
                 ngay: targetDate,
-                tenBN: rotItem.bn || rotItem.tenBN || "",
-                namSinh: rotItem.ns || rotItem.namSinh || "",
-                phong: patch.phong || rotItem.room || rotItem.phong || "",
-                thuThuat: rotItem.tt || rotItem.thuThuat || "",
+                tenBN: patName,
+                namSinh: patNs,
+                phong: targetRoom,
+                thuThuat: procName,
                 gioDienRa: patch.gioDienRa || "11:30",
                 gioKetThuc: patch.gioKetThuc || "12:00",
                 nvChinh: patch.nvChinh || "KTV Phụ Trách",
-                nvPhu: patch.nvPhu || "",
+                nvPhu: resolvedNvPhu,
                 may: patch.may || "Thủ công",
-                giuong: patch.giuong || "Giường 1"
+                giuong: resolvedBed
             };
 
             if (!window.currentScheduleData) window.currentScheduleData = [];
@@ -9136,7 +9239,7 @@ window.renderSttOrderControl = function (type, i, total) {
             const filterSelect = document.getElementById('filter-doc-name');
             if (filterSelect) {
                 const uniqueDocs = [...new Set(docs.map(d => d.ten))].sort();
-                filterSelect.innerHTML = '<option value="">🔍 Lọc tên bác sĩ...</option>' + uniqueDocs.map(d => `<option value="${d}">${d}</option>`).join('');
+                filterSelect.innerHTML = '<option value="">🔍 Lọc tên bác sĩ...</option>' + uniqueDocs.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
                 if (previousSelection && uniqueDocs.includes(previousSelection)) {
                     filterSelect.value = previousSelection;
                 }
@@ -9428,7 +9531,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     const tDiv = document.createElement('div');
                     tDiv.className = 'sat-bn-header';
                     tDiv.style.cssText = 'display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed #ecf0f1; padding-bottom:3px;';
-                    tDiv.innerHTML = `<b class="sat-bn-name" style="font-size:12px;">${pIdx + 1}. ${r.ten.toUpperCase()} (${r.namSinh})</b> <span class="sat-bn-room" style="font-size:11px; padding:1px 6px; border-radius:3px; white-space:nowrap;">P. ${r.phong}</span>`;
+                    tDiv.innerHTML = `<b class="sat-bn-name" style="font-size:12px;">${pIdx + 1}. ${escapeHtml(String(r.ten || '').toUpperCase())} (${escapeHtml(r.namSinh || '')})</b> <span class="sat-bn-room" style="font-size:11px; padding:1px 6px; border-radius:3px; white-space:nowrap;">P. ${escapeHtml(r.phong || '')}</span>`;
                     fBn.appendChild(tDiv);
 
                     const flexContainer = document.createElement('div');
@@ -12931,13 +13034,13 @@ window.renderSttOrderControl = function (type, i, total) {
 
         function addOtherRow(tbody, stt, tech, patientAndProc, time, reason) {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${stt}</td><td><strong>${tech}</strong></td><td>${patientAndProc}</td><td>${time}</td><td><span style="color:#d35400; font-weight:bold;">${reason}</span></td>`;
+            tr.innerHTML = `<td>${escapeHtml(stt)}</td><td><strong>${escapeHtml(tech)}</strong></td><td>${escapeHtml(patientAndProc)}</td><td>${escapeHtml(time)}</td><td><span style="color:#d35400; font-weight:bold;">${escapeHtml(reason)}</span></td>`;
             tbody.appendChild(tr);
         }
 
         function addTimeRow(tbody, stt, tech, ca1Str, ca2Str, reason) {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${stt}</td><td><strong>${tech}</strong></td><td>${ca1Str}</td><td>${ca2Str}</td><td><span style="color:#c0392b; font-weight:bold;">${reason}</span></td>`;
+            tr.innerHTML = `<td>${escapeHtml(stt)}</td><td><strong>${escapeHtml(tech)}</strong></td><td>${escapeHtml(ca1Str)}</td><td>${escapeHtml(ca2Str)}</td><td><span style="color:#c0392b; font-weight:bold;">${escapeHtml(reason)}</span></td>`;
             tbody.appendChild(tr);
         }
 
@@ -14557,7 +14660,8 @@ window.exportTenantDataPrompt = function (code, encName) {
     const name = decodeURIComponent(encName || code);
     const loadingToast = document.createElement('div');
     loadingToast.style.cssText = 'position:fixed; bottom:20px; right:20px; background:#1e293b; color:#fff; padding:12px 20px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:99999; font-size:13px; font-weight:600;';
-    loadingToast.innerHTML = `⏳ Đang đóng gói dữ liệu đơn vị <b>${name}</b>...`;
+    const safeName = (window.escapeHtml || escapeHtml)(name);
+    loadingToast.innerHTML = `⏳ Đang đóng gói dữ liệu đơn vị <b>${safeName}</b>...`;
     document.body.appendChild(loadingToast);
 
     callApi('exportTenantData', [code], res => {

@@ -345,6 +345,18 @@ async function verifyJwt(token, secret) {
 }
 
 /**
+ * Lấy JWT_SECRET an toàn từ biến môi trường Cloudflare Worker.
+ * Tuyệt đối không dùng fallback hardcode trong mã nguồn.
+ */
+function getJwtSecret(env) {
+  const secret = env?.JWT_SECRET;
+  if (!secret || typeof secret !== "string" || secret.trim().length < 32) {
+    throw new Error("SECURITY_CONFIG_ERROR: Biến môi trường JWT_SECRET chưa được cấu hình hoặc quá ngắn (< 32 ký tự). Hãy cấu hình qua Cloudflare Worker Secrets ('wrangler secret put JWT_SECRET').");
+  }
+  return secret.trim();
+}
+
+/**
  * CLOUDFLARE WORKER HONO BACKEND CHO PM-XEPLICH V4 THƯƠNG MẠI
  * Bảo mật cao cấp: JWT Authentication, Strict CORS, RBAC & Multi-Tenant Clamping
  */
@@ -434,6 +446,53 @@ app.get('/api/ping', (c) => {
   }, origin);
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🛡️ CHỐNG BRUTE-FORCE & PASSWORD SPRAYING (IN-MEMORY RATE LIMITING)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const loginRateLimiter = new Map();
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // Khóa 15 phút nếu sai liên tiếp
+const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;   // Khung thời gian theo dõi 15 phút
+
+function checkLoginRateLimit(clientKey) {
+  const now = Date.now();
+  const record = loginRateLimiter.get(clientKey);
+  if (!record) return { allowed: true };
+  if (record.lockedUntil && record.lockedUntil > now) {
+    const remainingMins = Math.ceil((record.lockedUntil - now) / 60000);
+    return { allowed: false, remainingMins };
+  }
+  if (now - record.lastAttempt > ATTEMPT_WINDOW_MS) {
+    loginRateLimiter.delete(clientKey);
+    return { allowed: true };
+  }
+  return { allowed: true };
+}
+
+function recordLoginFailure(clientKey) {
+  const now = Date.now();
+  const record = loginRateLimiter.get(clientKey) || { count: 0, lockedUntil: 0, lastAttempt: now };
+  record.count = (now - record.lastAttempt > ATTEMPT_WINDOW_MS) ? 1 : record.count + 1;
+  record.lastAttempt = now;
+  if (record.count >= MAX_LOGIN_ATTEMPTS) {
+    record.lockedUntil = now + LOCKOUT_DURATION_MS;
+  }
+  loginRateLimiter.set(clientKey, record);
+  // Dọn dẹp cache nếu vượt quá 1000 bản ghi
+  if (loginRateLimiter.size > 1000) {
+    for (const [k, v] of loginRateLimiter.entries()) {
+      if (now - v.lastAttempt > ATTEMPT_WINDOW_MS && (!v.lockedUntil || v.lockedUntil < now)) {
+        loginRateLimiter.delete(k);
+      }
+    }
+  }
+}
+
+function recordLoginSuccess(clientKey) {
+  loginRateLimiter.delete(clientKey);
+}
+
 // Universal API Action Bridge (POST / and POST /api/action)
 async function processApiRequest(c) {
   const origin = c.req.header("Origin") || "";
@@ -476,9 +535,6 @@ async function processApiRequest(c) {
   await ensureSchema(db);
 
   // 🛡️ JWT Authentication & RBAC Tenant Guard
-  const jwtSecret = env.JWT_SECRET || "PMCG_V4_SECURE_JWT_SECRET_2026_TIMES_DEFAULT_KEY";
-  let tokenPayload = null;
-
   const PUBLIC_ACTIONS = new Set([
     "ping",
     "getPublicUnits",
@@ -492,6 +548,17 @@ async function processApiRequest(c) {
     "checkPaymentStatus",
     "paymentWebhook"
   ]);
+
+  let jwtSecret = "";
+  try {
+    jwtSecret = getJwtSecret(env);
+  } catch (errSec) {
+    if (!PUBLIC_ACTIONS.has(action) || action === "verifyLogin" || action === "checkLogin" || action === "registerTrialTenant") {
+      console.error("[SECURITY FATAL]", errSec.message);
+      return error("Lỗi bảo mật hệ thống: Chưa cấu hình biến môi trường JWT_SECRET trên Cloudflare Worker (yêu cầu tối thiểu 32 ký tự). Hãy cấu hình qua 'wrangler secret put JWT_SECRET'!", 500, origin);
+    }
+  }
+  let tokenPayload = null;
 
   if (!PUBLIC_ACTIONS.has(action)) {
     const authHeader = c.req.header("authorization") || c.req.raw?.headers?.get("authorization") || "";
@@ -1508,11 +1575,94 @@ function healBackendPatientName(rawName, forceUpperCase = false) {
   return healed.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
 }
 
-async function hashPassword(password, pepper = "TIMES_BVTKS_2026_SECURE_SALT_PEPPER") {
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🛡️ BẢO MẬT MẬT KHẨU TIÊU CHUẨN OWASP (PBKDF2-HMAC-SHA256, 100K ITERATIONS)
+// Hỗ trợ Salt ngẫu nhiên theo từng tài khoản & Transparent Auto-Migration
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function bytesToHex(bytes) {
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function hexToBytes(hex) {
+  const cleanHex = String(hex || "").trim();
+  const bytes = new Uint8Array(cleanHex.length / 2);
+  for (let i = 0; i < cleanHex.length; i += 2) {
+    bytes[i / 2] = parseInt(cleanHex.substring(i, i + 2), 16);
+  }
+  return bytes;
+}
+
+function timingSafeEqualStr(a, b) {
+  if (typeof a !== "string" || typeof b !== "string") return false;
+  if (a.length !== b.length) return false;
+  let res = 0;
+  for (let i = 0; i < a.length; i++) {
+    res |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return res === 0;
+}
+
+async function hashPasswordLegacy(password, pepper = "TIMES_BVTKS_2026_SECURE_SALT_PEPPER") {
   const msgUint8 = new TextEncoder().encode(password + pepper);
   const hashBuffer = await crypto.subtle.digest("SHA-256", msgUint8);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function hashPasswordPBKDF2(password, saltHex = null, iterations = 100000) {
+  const enc = new TextEncoder();
+  const saltBytes = saltHex ? hexToBytes(saltHex) : crypto.getRandomValues(new Uint8Array(16));
+  const finalSaltHex = saltHex || bytesToHex(saltBytes);
+
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(String(password)),
+    { name: "PBKDF2" },
+    false,
+    ["deriveBits"]
+  );
+
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: saltBytes,
+      iterations: iterations,
+      hash: "SHA-256"
+    },
+    keyMaterial,
+    256 // 32 bytes
+  );
+
+  const hashHex = bytesToHex(new Uint8Array(derivedBits));
+  return `pbkdf2:sha256:${iterations}:${finalSaltHex}:${hashHex}`;
+}
+
+async function hashPassword(password) {
+  return await hashPasswordPBKDF2(password);
+}
+
+function isLegacyHash(storedHash) {
+  return Boolean(storedHash && typeof storedHash === "string" && !storedHash.startsWith("pbkdf2:sha256:"));
+}
+
+async function verifyPassword(password, storedHash) {
+  if (!password || !storedHash) return false;
+  const sHash = String(storedHash).trim();
+  if (sHash.startsWith("pbkdf2:sha256:")) {
+    const parts = sHash.split(":");
+    if (parts.length !== 5) return false;
+    const iterations = parseInt(parts[2], 10);
+    const saltHex = parts[3];
+    const expectedDerivedHex = parts[4];
+    const computed = await hashPasswordPBKDF2(password, saltHex, iterations);
+    const computedParts = computed.split(":");
+    return timingSafeEqualStr(computedParts[4], expectedDerivedHex);
+  } else {
+    // Legacy SHA-256 with static pepper
+    const legacy = await hashPasswordLegacy(password);
+    return timingSafeEqualStr(legacy, sHash);
+  }
 }
 
 async function setCaiDat(db, unitCode, key, value) {
@@ -1890,7 +2040,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       }
 
       // Cấp JWT Token để client tự động đăng nhập tức thì
-      const jwtSecret = env.JWT_SECRET || "PMCG_V4_SECURE_JWT_SECRET_2026_TIMES_DEFAULT_KEY";
+      const jwtSecret = getJwtSecret(env);
       const tokenPayload = {
         sub: "trial-admin-" + uCode,
         username: "admin",
@@ -2653,7 +2803,6 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
       // 1. Đổi mật khẩu Super Admin
       if (uName.toLowerCase() === "superadmin" || uName.toLowerCase() === "master") {
-        const passHash = await hashPassword(oldPass);
         let rec = null;
         try {
           rec = await db.prepare("SELECT id, value FROM cai_dat WHERE unit_code = 'MASTER' AND key = 'superadmin_password_hash'").first();
@@ -2666,9 +2815,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
         let isOldValid = false;
         if (rec && rec.value) {
-          isOldValid = (rec.value === passHash);
-        } else {
-          isOldValid = (oldPass === "Master@2026!" || oldPass === "admin@123" || oldPass === "admin123");
+          isOldValid = await verifyPassword(oldPass, rec.value);
+        } else if (env.INITIAL_SUPERADMIN_PASSWORD) {
+          isOldValid = (oldPass === env.INITIAL_SUPERADMIN_PASSWORD);
         }
 
         if (!isOldValid) {
@@ -2698,8 +2847,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         return error("Không tìm thấy tài khoản trong đơn vị này!", 404);
       }
 
-      const oldHash = await hashPassword(oldPass);
-      if (userRec.password_hash !== oldHash) {
+      const isOldValid = await verifyPassword(oldPass, userRec.password_hash);
+      if (!isOldValid) {
         return error("Mật khẩu cũ không chính xác!", 400);
       }
 
@@ -2710,8 +2859,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
     case "resetTenantAdminPassword": {
       const uCode = String(args[0] || "").trim().toLowerCase();
-      const newPass = String(args[1] || "admin123").trim();
+      const newPass = String(args[1] || "").trim();
       if (!uCode || !newPass) return error("Thiếu mã đơn vị hoặc mật khẩu mới!", 400);
+      if (newPass.length < 6) return error("Mật khẩu mới phải có tối thiểu 6 ký tự!", 400);
 
       const passHash = await hashPassword(newPass);
       await db.prepare("INSERT OR REPLACE INTO tai_khoan (unit_code, username, password_hash, role, permissions) VALUES (?, 'admin', ?, 'Admin', 'ALL')").bind(uCode, passHash).run();
@@ -4759,11 +4909,20 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       if (!password) return error("Vui lòng nhập mật khẩu!", 400);
       if (!reqUnit) reqUnit = "bvtks-cs2";
 
-      const jwtSecret = env.JWT_SECRET || "PMCG_V4_SECURE_JWT_SECRET_2026_TIMES_DEFAULT_KEY";
+      // 🛡️ Chống Brute-force: Kiểm tra giới hạn số lần thử theo IP và tài khoản
+      const clientIp = (request && request.headers && typeof request.headers.get === "function") 
+        ? (request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown-ip")
+        : "unknown-ip";
+      const rateLimitKey = `${clientIp}:${username.toLowerCase()}`;
+      const rlCheck = checkLoginRateLimit(rateLimitKey);
+      if (!rlCheck.allowed) {
+        return error(`Tài khoản hoặc địa chỉ IP này đã nhập sai mật khẩu quá 5 lần liên tiếp. Vui lòng thử lại sau ${rlCheck.remainingMins} phút!`, 429);
+      }
+
+      const jwtSecret = getJwtSecret(env);
 
       // 👑 1. Xác thực tài khoản Super Admin (Master System Owner)
       if (username.toLowerCase() === "superadmin" || username.toLowerCase() === "master") {
-        const passHash = await hashPassword(password);
         let rec = null;
         try {
           rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = 'MASTER' AND key = 'superadmin_password_hash'").first();
@@ -4775,12 +4934,28 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         }
         let expectedHash = rec?.value;
         if (!expectedHash) {
-          // Tự động khởi tạo hash mật khẩu Super Admin chuẩn vào CSDL
-          expectedHash = await hashPassword("Master@2026!");
-          await setCaiDat(db, "MASTER", "superadmin_password_hash", expectedHash);
+          // Bắt buộc cấu hình mật khẩu ban đầu qua biến môi trường INITIAL_SUPERADMIN_PASSWORD
+          if (env.INITIAL_SUPERADMIN_PASSWORD) {
+            expectedHash = await hashPassword(env.INITIAL_SUPERADMIN_PASSWORD);
+            await setCaiDat(db, "MASTER", "superadmin_password_hash", expectedHash);
+          } else {
+            return error("Tài khoản Super Admin chưa được thiết lập mật khẩu khởi tạo trong hệ thống. Vui lòng cấu hình biến môi trường INITIAL_SUPERADMIN_PASSWORD trên Cloudflare Worker!", 403);
+          }
         }
 
-        if (passHash === expectedHash) {
+        const isSuperAdminValid = await verifyPassword(password, expectedHash);
+        if (isSuperAdminValid) {
+          recordLoginSuccess(rateLimitKey);
+          // Tự động nâng cấp transparently sang PBKDF2 nếu vẫn là hash legacy SHA-256
+          if (isLegacyHash(expectedHash)) {
+            try {
+              const upgradedHash = await hashPassword(password);
+              await setCaiDat(db, "MASTER", "superadmin_password_hash", upgradedHash);
+            } catch (errUp) {
+              console.warn("Failed to transparently upgrade superadmin hash:", errUp);
+            }
+          }
+
           const tokenPayload = {
             sub: "superadmin",
             username: username,
@@ -4805,6 +4980,10 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
             permissions: "SUPER_ADMIN"
           });
         }
+
+        // Đăng nhập sai: phạt delay 1000ms + ghi nhận lỗi vào rate limiter
+        recordLoginFailure(rateLimitKey);
+        await new Promise(r => setTimeout(r, 1000));
         return error("Mật khẩu tài khoản Super Admin không chính xác!", 401);
       }
 
@@ -4836,7 +5015,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         }
       }
 
-      // 🔑 3. Kiểm tra tài khoản trong bảng tai_khoan theo unit_code (Không dùng Backdoor)
+      // 🔑 3. Kiểm tra tài khoản trong bảng tai_khoan theo unit_code
       try {
         let user = await db.prepare("SELECT id, username, password_hash, role, permissions FROM tai_khoan WHERE unit_code = ? AND username = ?").bind(reqUnit, username).first();
         
@@ -4848,8 +5027,19 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         }
 
         if (user) {
-          const passHash = await hashPassword(password);
-          if (user.password_hash === passHash) {
+          const isUserValid = await verifyPassword(password, user.password_hash);
+          if (isUserValid) {
+            recordLoginSuccess(rateLimitKey);
+            // Tự động nâng cấp transparently sang PBKDF2 nếu vẫn là hash legacy SHA-256
+            if (isLegacyHash(user.password_hash)) {
+              try {
+                const upgradedHash = await hashPassword(password);
+                await db.prepare("UPDATE tai_khoan SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(upgradedHash, user.id).run();
+              } catch (errUp) {
+                console.warn("Failed to transparently upgrade user hash:", errUp);
+              }
+            }
+
             const tokenPayload = {
               sub: String(user.id),
               username: user.username,
@@ -4885,6 +5075,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         console.error("Login verification DB error:", e);
       }
 
+      // Đăng nhập thất bại: phạt delay 1000ms + ghi nhận lỗi vào rate limiter
+      recordLoginFailure(rateLimitKey);
+      await new Promise(r => setTimeout(r, 1000));
       return error("Tên đăng nhập hoặc mật khẩu không chính xác!", 401);
     }
 

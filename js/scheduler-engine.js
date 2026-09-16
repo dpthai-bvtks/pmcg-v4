@@ -2255,6 +2255,8 @@ const UnscheduledDiagnosticEngine = (function () {
     const info = (db && db.thuThuatInfo && (db.thuThuatInfo[ttLower] || db.thuThuatInfo[tt])) || ["Thủ công", 15, 5, "PHCN", 1, 0, [], 5];
     const loaiMay = info[0] || "Thủ công";
     const tgMay = Math.max(info[1] || 15, info[2] || 5);
+    const canPhu = (info && (info[5] === 1 || info[5] === '1' || info[5] === 'Có' || info[5] === true)) ? 1 : 0;
+    const dsPhu = (info && Array.isArray(info[6])) ? info[6] : (info && info[6] ? String(info[6]).split(',').map(s => s.trim()).filter(Boolean) : []);
 
     let patientObj = null;
     if (db && db.rawPatients) {
@@ -2308,7 +2310,10 @@ const UnscheduledDiagnosticEngine = (function () {
 
     const staffOccupancy = {};
     const machineOccupancy = {};
+    const bedOccupancy = {};
     const patientOccupancy = [];
+    let patientExistingBed = "";
+    let patientExistingSub = "";
 
     (currentSched || []).forEach(slot => {
       const gStart = t2m(slot.gioDienRa || slot.GIODIENRA);
@@ -2316,23 +2321,111 @@ const UnscheduledDiagnosticEngine = (function () {
       if (!gStart || !gEnd || gEnd <= gStart) return;
 
       const pName = String(slot.tenBN || slot.HOTEN || '').toUpperCase().trim();
-      if (pName === bnName) patientOccupancy.push([gStart, gEnd]);
+      const sRoom = String(slot.phong || slot.PHONG || '').trim();
+      const sBed = String(slot.giuong || slot.GIUONG || '').trim();
       const nv1 = slot.nvChinh || slot["NV CHÍNH"];
+      const nv2 = slot.nvPhu || slot["NV PHỤ"];
+      const maySlot = slot.may || slot.MAY;
+
+      if (pName === bnName) {
+        patientOccupancy.push([gStart, gEnd]);
+        if (sRoom.toLowerCase() === room.toLowerCase() && sBed && sBed !== "Giường 1") {
+          patientExistingBed = sBed;
+        }
+        if (nv2 && !patientExistingSub) {
+          patientExistingSub = nv2;
+        }
+      }
+      if (sBed) {
+        if (!bedOccupancy[sBed]) bedOccupancy[sBed] = [];
+        bedOccupancy[sBed].push([gStart, gEnd]);
+      }
       if (nv1) {
         if (!staffOccupancy[nv1]) staffOccupancy[nv1] = [];
         staffOccupancy[nv1].push([gStart, gEnd]);
       }
-      const nv2 = slot.nvPhu || slot["NV PHỤ"];
       if (nv2) {
         if (!staffOccupancy[nv2]) staffOccupancy[nv2] = [];
         staffOccupancy[nv2].push([gStart, gEnd]);
       }
-      const maySlot = slot.may || slot.MAY;
       if (maySlot && maySlot !== "Thủ công") {
         if (!machineOccupancy[maySlot]) machineOccupancy[maySlot] = [];
         machineOccupancy[maySlot].push([gStart, gEnd]);
       }
     });
+
+    if (!patientExistingBed && patientObj && (patientObj.giuong || patientObj.bed)) {
+      patientExistingBed = String(patientObj.giuong || patientObj.bed).trim();
+    }
+
+    // 🛏️ Hàm chọn giường chuẩn xác: ưu tiên giường BN đang nằm, hoặc giường trống trong phòng
+    function chooseBedForSlot(slotStart, slotEnd) {
+      if (patientExistingBed) return patientExistingBed;
+      let roomBeds = (db && db.roomBeds && db.roomBeds[room]) || [];
+      if (!roomBeds || roomBeds.length === 0) {
+        if (db && db.cache && db.cache.room) {
+          const rObj = db.cache.room.find(r => (r.tenPhong || r.name || r[1] || '').trim().toLowerCase() === room.toLowerCase());
+          if (rObj) {
+            const bedStr = String(rObj.danhSachGiuong || rObj[6] || '').trim();
+            if (bedStr && bedStr !== 'None') {
+              roomBeds = bedStr.split(',').map(x => x.trim()).filter(Boolean);
+            }
+          }
+        }
+      }
+      if (roomBeds && roomBeds.length > 0) {
+        const freeBed = roomBeds.find(bName => {
+          const occ = bedOccupancy[bName] || [];
+          return !occ.some(b => is_overlap(slotStart, slotEnd, b[0], b[1]));
+        });
+        if (freeBed) return freeBed;
+        return roomBeds[0];
+      }
+      return "G1";
+    }
+
+    // 👥 Xây dựng danh sách ứng viên làm người phụ (candidateSubs)
+    const candidateSubs = [];
+    const addedSubs = new Set();
+    function addCandidateSub(name) {
+      const s = String(name || '').trim();
+      if (!s || addedSubs.has(s)) return;
+      addedSubs.add(s);
+      candidateSubs.push(s);
+    }
+
+    if (patientExistingSub) {
+      addCandidateSub(patientExistingSub);
+    }
+    if (dsPhu && dsPhu.length > 0) {
+      dsPhu.forEach(n => addCandidateSub(n));
+    }
+    const roomStaffList = (db && db.roomStaff && db.roomStaff[room]) || [];
+    if (db && db.rawStaff) {
+      // 1. Điều dưỡng trong phòng
+      db.rawStaff.forEach(r => {
+        const name = r[0];
+        const roleRaw = r[1] || '';
+        const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(roleRaw) || /phụ/i.test(name);
+        if (isNurse && roomStaffList.includes(name)) addCandidateSub(name);
+      });
+      // 2. Tất cả Điều dưỡng / Trợ lý
+      db.rawStaff.forEach(r => {
+        const name = r[0];
+        const roleRaw = r[1] || '';
+        const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(roleRaw) || /phụ/i.test(name);
+        if (isNurse) addCandidateSub(name);
+      });
+      // 3. Nhân sự khác trong phòng
+      roomStaffList.forEach(name => addCandidateSub(name));
+      // 4. Các KTV khác
+      db.rawStaff.forEach(r => {
+        const name = r[0];
+        const roleRaw = r[1] || '';
+        const isDoc = /bác sĩ|bac si|^bs\b/i.test(roleRaw) || /^bs\b/i.test(name);
+        if (!isDoc) addCandidateSub(name);
+      });
+    }
 
     let causeCode = 'STAFF_UNAVAILABLE';
     let causeTitle = '🟡 Nhân sự quá tải / Thiếu KTV chuyên môn';
@@ -2478,14 +2571,27 @@ const UnscheduledDiagnosticEngine = (function () {
         }
         if (!availStaff) continue;
 
+        let availSub = "";
+        if (canPhu === 1) {
+          availSub = candidateSubs.find(s => s !== availStaff && isStaffFree(s, t, slotEnd, win.overtime));
+          // Nếu thủ thuật yêu cầu người phụ mà có ứng viên nhưng không ai rảnh lúc này thì slot không hợp lệ
+          if (!availSub && candidateSubs.length > 0) {
+            continue;
+          }
+        }
+
         const availMachine = candidateMachines.find(m => isMachineFree(m, t, slotEnd));
         if (!availMachine) continue;
+
+        const chosenBed = chooseBedForSlot(t, slotEnd);
 
         foundSlots.push({
           time: t,
           end: slotEnd,
           staff: availStaff,
+          subStaff: availSub || "",
           machine: availMachine,
+          bed: chosenBed,
           windowLabel: win.label,
           isOvertime: win.overtime
         });
@@ -2498,18 +2604,20 @@ const UnscheduledDiagnosticEngine = (function () {
     if (foundSlots.length > 0) {
       foundSlots.forEach((slot, idx) => {
         const actionType = slot.isOvertime ? 'OVERTIME' : (slot.time >= 780 && buoiDieuTri === 'Sang' ? 'SWITCH_SESSION' : 'EXACT_SLOT');
+        const subInfo = slot.subStaff ? `, Phụ: ${slot.subStaff}` : '';
+        const bedInfo = slot.bed ? `, Giường: ${slot.bed}` : '';
         advices.push({
           id: idx + 1,
-          title: `⚡ [Đã xác minh] ${m2t(slot.time)} – ${m2t(slot.end)} (${slot.staff}${slot.machine !== 'Thủ công' ? ', ' + slot.machine : ''})`,
-          description: `Khung giờ ${slot.windowLabel} khả dụng: ${slot.staff} rảnh, ${slot.machine !== 'Thủ công' ? 'máy ' + slot.machine + ' rảnh, ' : ''}BN rảnh không trùng thủ thuật khác.`,
+          title: `⚡ [Đã xác minh] ${m2t(slot.time)} – ${m2t(slot.end)} (${slot.staff}${subInfo}${slot.machine !== 'Thủ công' ? ', ' + slot.machine : ''}${bedInfo})`,
+          description: `Khung giờ ${slot.windowLabel} khả dụng: ${slot.staff} rảnh${slot.subStaff ? ', người phụ ' + slot.subStaff + ' rảnh' : ''}, ${slot.machine !== 'Thủ công' ? 'máy ' + slot.machine + ' rảnh, ' : ''}BN rảnh (Giường: ${slot.bed}).`,
           actionType: actionType,
           patch: {
             gioDienRa: m2t(slot.time),
             gioKetThuc: m2t(slot.end),
             nvChinh: slot.staff,
-            nvPhu: "",
+            nvPhu: slot.subStaff || "",
             may: slot.machine,
-            giuong: "Giường 1",
+            giuong: slot.bed,
             phong: room
           }
         });
@@ -2520,36 +2628,46 @@ const UnscheduledDiagnosticEngine = (function () {
     if (advices.length === 0) {
       const overTimeStart = 675; // 11:15
       const overTimeEnd = overTimeStart + tgMay;
+      const fallbackSub = (canPhu === 1 && candidateSubs.length > 0) ? (candidateSubs.find(s => s !== targetStaff) || candidateSubs[0] || "") : "";
+      const fallbackBed = chooseBedForSlot(overTimeStart, overTimeEnd);
+      const subInfo = fallbackSub ? `, Phụ: ${fallbackSub}` : '';
+      const bedInfo = fallbackBed ? `, Giường: ${fallbackBed}` : '';
+
       advices.push({
         id: 1,
-        title: `⚡ [Cần xác nhận] Làm lố cuối ca sáng (${m2t(overTimeStart)} – ${m2t(overTimeEnd)}) với ${targetStaff}`,
+        title: `⚡ [Cần xác nhận] Làm lố cuối ca sáng (${m2t(overTimeStart)} – ${m2t(overTimeEnd)}) với ${targetStaff}${subInfo}${bedInfo}`,
         description: `Không tìm được slot rảnh hoàn toàn. Phương án này nới lỏng thêm giờ cuối ca sáng cho ${targetStaff}. Cần đối soát trước khi ấn cứu.`,
         actionType: 'OVERTIME',
         patch: {
           gioDienRa: m2t(overTimeStart),
           gioKetThuc: m2t(overTimeEnd),
           nvChinh: targetStaff,
-          nvPhu: "",
+          nvPhu: fallbackSub,
           may: (machinesOfCategory[0] || "Thủ công"),
-          giuong: "Giường 1",
+          giuong: fallbackBed,
           phong: room
         }
       });
 
       const aftStart = 810; // 13:30
       const aftEnd = aftStart + tgMay;
+      const aftSub = (canPhu === 1 && candidateSubs.length > 0) ? (candidateSubs.find(s => s !== targetStaff) || candidateSubs[0] || "") : "";
+      const aftBed = chooseBedForSlot(aftStart, aftEnd);
+      const aftSubInfo = aftSub ? `, Phụ: ${aftSub}` : '';
+      const aftBedInfo = aftBed ? `, Giường: ${aftBed}` : '';
+
       advices.push({
         id: 2,
-        title: `⚡ [Cần xác nhận] Chuyển ca sang buổi Chiều (${m2t(aftStart)} – ${m2t(aftEnd)})`,
+        title: `⚡ [Cần xác nhận] Chuyển ca sang buổi Chiều (${m2t(aftStart)} – ${m2t(aftEnd)})${aftSubInfo}${aftBedInfo}`,
         description: `Đề xuất xếp [${tt}] vào đầu ca chiều. Vui lòng kiểm tra lịch rảnh của BN và nhân sự trước khi áp dụng.`,
         actionType: 'SWITCH_SESSION',
         patch: {
           gioDienRa: m2t(aftStart),
           gioKetThuc: m2t(aftEnd),
           nvChinh: targetStaff,
-          nvPhu: "",
+          nvPhu: aftSub,
           may: (machinesOfCategory[0] || "Thủ công"),
-          giuong: "Giường 1",
+          giuong: aftBed,
           phong: room
         }
       });

@@ -1,6 +1,6 @@
 {
-  "version": "4.0.9-rev7",
+  "version": "4.0.9-rev9",
   "releaseDate": "16/09/2026",
-  "releaseTime": "10:06 16/09/2026",
-  "notes": "Sửa triệt để lỗi không khóa các giá trị đã xếp trước đó khi xếp bổ sung: khắc phục triệt để lỗi ghi đè rỗng dữ liệu CSDL MiniPC & Turso Cloud qua scheduleRowToBackendArray, chuẩn hóa đồng bộ normalizeScheduleItem trên mọi động cơ, sửa thuật toán trừ thủ thuật và khóa khung giờ phục vụ KTV cho thủ thuật máy."
+  "releaseTime": "14:30 16/09/2026",
+  "notes": "Sửa lỗi chức năng Cứu ca rớt (Smart Rescue Advisor): Khắc phục lỗi hardcode 'Giường 1' (tự động kế thừa giường thực tế bệnh nhân đang nằm trong phòng như G33 hoặc tìm giường trống G1...G60) và khắc phục lỗi bỏ trống NV Phụ (tự động phân công người phụ khả dụng/quen thuộc cho thủ thuật yêu cầu người phụ như Thủy châm, Điện châm)."
 }

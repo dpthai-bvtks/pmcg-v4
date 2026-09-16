@@ -57,10 +57,10 @@ Hàm cập nhật: `window.updateAppHeader(unitCode, role)` — gọi ở `init.
 ## 5. 🔑 Quản Lý Mật Khẩu
 
 - **Nút Đổi Mật Khẩu**: Trong menu dropdown người dùng (`👤 superadmin ▾` → `🔑 Đổi Mật Khẩu`)
-- **Super Admin**: Mã băm SHA-256 lưu trong D1 (`cai_dat WHERE unit_code='MASTER' AND key='superadmin_password_hash'`)
-- **Tài khoản đơn vị**: Mã băm SHA-256 lưu trong `tai_khoan.password_hash`
-- **API backend**: `case "changePassword"`
-- **Mật khẩu Super Admin mặc định**: `Master@2026!` (đổi ngay sau lần đầu đăng nhập)
+- **Super Admin**: Mã băm an toàn PBKDF2-HMAC-SHA256 (100.000 rounds, per-user salt) lưu trong CSDL (`cai_dat WHERE unit_code='MASTER' AND key='superadmin_password_hash'`)
+- **Tài khoản đơn vị**: Mã băm an toàn PBKDF2-HMAC-SHA256 lưu trong `tai_khoan.password_hash`
+- **API backend**: `case "changePassword"`, `case "verifyLogin"`, `case "checkLogin"`
+- **Khởi tạo Super Admin**: Cấu hình biến môi trường bí mật `INITIAL_SUPERADMIN_PASSWORD` trên Cloudflare Worker nếu chưa có mật khẩu trong CSDL; tuyệt đối không dùng mật khẩu mặc định hardcode trong mã nguồn.
 
 ---
 
@@ -3749,3 +3749,45 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `sw.js`
   - `version.json`
   - `PM-xeplich-v4.md`
+
+### [16/09/2026 - 13:40] Phiên bản v4.0.9-rev8: Vá toàn diện 5 lỗ hổng bảo mật trọng yếu (Security Hardening)
+- **Bối cảnh & Yêu cầu**: Rà soát và vá triệt để 5 lỗ hổng bảo mật nghiêm trọng:
+  1. Loại bỏ fallback hardcode JWT secret (`PMCG_V4_SECURE_JWT_SECRET_2026_TIMES_DEFAULT_KEY`). Ném lỗi 500 yêu cầu cấu hình `wrangler secret put JWT_SECRET`.
+  2. Loại bỏ mật khẩu Super Admin mặc định hardcode (`Master@2026!`). Chỉ khởi tạo qua biến môi trường bí mật `INITIAL_SUPERADMIN_PASSWORD`.
+  3. Nâng cấp băm mật khẩu từ SHA-256 thuần không salt sang PBKDF2-HMAC-SHA256 (100.000 rounds, 16-byte random salt per user) kèm cơ chế Transparent Auto-Migration khi đăng nhập thành công.
+  4. Triệt tiêu nguy cơ Brute-Force Login: Bổ sung hình phạt delay 1000ms mỗi lần thất bại và khóa IP/username tạm thời 15 phút sau 5 lần thử sai liên tiếp (HTTP 429 Too Many Requests).
+  5. Vá triệt để Stored XSS trong Frontend (`renderStats`, tooltip dòng thời gian, `dataCache.staff`).
+
+### [16/09/2026 - 14:30] Phiên bản v4.0.9-rev9: Khắc phục triệt để lỗi Cứu ca rớt không xếp NV Phụ và gán cứng "Giường 1"
+- **Bối cảnh & Vấn đề người dùng phản ánh**:
+  - Bệnh nhân Lê Đức Tâm khi chạy xếp bổ sung bị rớt thủ thuật "Thủy châm".
+  - Sử dụng chức năng "Cứu ca rớt" (Smart Rescue Advisor) thì ca Thủy châm được xếp lại nhưng:
+    1. Cột NV PHỤ bị bỏ trống (`""`) dù thủ thuật có yêu cầu người phụ.
+    2. Cột GIƯỜNG bị gán cứng chuỗi `"Giường 1"` trong khi phòng "Hiền Phan" chỉ có các giường từ `G1...G60`, và BN Lê Đức Tâm đang nằm tại giường `G33` ở 2 ca khác trong ngày.
+- **Nguyên nhân gốc rễ (Root Causes)**:
+  1. `js/scheduler-engine.js` (`UnscheduledDiagnosticEngine.diagnose`):
+     - Vòng lặp quét slot khả dụng chỉ tìm `availStaff` (NV chính) và `availMachine` (Máy), hoàn toàn không kiểm tra `canPhu` (`info[5]`) và không tìm `availSub` (NV Phụ).
+     - Cả 3 điểm tạo patch (`foundSlots`, fallback `OVERTIME`, fallback `SWITCH_SESSION`) đều gán cứng `nvPhu: ""` và `giuong: "Giường 1"`.
+  2. `js/app.js` (`renderUnscheduledAdvisor` & `executeRescueAdvice`):
+     - Dòng 7383, 7389 và 7437, 7454 gán cứng fallback `giuong: patch.giuong || "Giường 1"`, `nvPhu: patch.nvPhu || ""`.
+     - Không có cơ chế đối soát giường bệnh nhân đã nằm trong phòng (`G33`), cũng như không có cơ chế tìm kiếm NV Phụ bổ sung nếu thủ thuật yêu cầu người phụ.
+- **Giải pháp xử lý triệt để (2 lớp bảo vệ)**:
+  1. **Lớp 1 - Thuật toán Động cơ (`js/scheduler-engine.js`)**:
+     - *Giường thông minh*: Quét `currentSched` xem BN đã có ca nào trong cùng phòng chưa (`patientExistingBed = "G33"`). Nếu có, ưu tiên giữ nguyên giường cho BN. Nếu chưa, quét tìm giường trống trong danh mục giường phòng (`db.roomBeds[room]`), tuyệt đối không gán cứng `"Giường 1"`.
+     - *NV Phụ chuẩn xác*: Đọc `canPhu = info[5] === 1`. Ưu tiên người phụ đã hỗ trợ BN trong ngày (`patientExistingSub`, ví dụ `Phụ 5`), danh sách phụ chỉ định `dsPhu`, điều dưỡng trong phòng, trợ lý ảo `Phụ 1..8`. Bắt buộc tìm được `availSub` rảnh mới coi slot là khả dụng.
+  2. **Lớp 2 - Cơ chế An toàn Giao diện (`js/app.js`)**:
+     - Trong `executeRescueAdvice`: Nếu `giuong` rỗng hoặc bằng `"Giường 1"`, tự động tra cứu giường BN đang nằm trong ngày tại phòng đó (`G33`) hoặc tìm giường trống trong `dataCache.room`.
+     - Nếu thủ thuật cần phụ (`needSub`) mà `nvPhu` còn trống, tự động lấy người phụ quen thuộc ở ca khác của BN (`Phụ 5`) hoặc phân công Điều dưỡng rảnh.
+  3. **Đồng bộ Phiên bản**:
+     - Nâng phiên bản lên `4.0.9-rev9`.
+     - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.0.9-rev9'`.
+     - `index.html`: Cập nhật toàn bộ cache busters `?v=4.0.9-rev9`, `APP_VERSION = '4.0.9-rev9'`.
+     - `version.json`: Ghi nhận bản vá cứu ca rớt `16/09/2026 14:30`.
+- **File sửa đổi**:
+  - `js/scheduler-engine.js`
+  - `js/app.js`
+  - `sw.js`
+  - `index.html`
+  - `version.json`
+  - `PM-xeplich-v4.md`
+

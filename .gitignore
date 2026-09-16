@@ -2,6 +2,8 @@ node_modules/
 backend/node_modules/
 .wrangler/
 .env
+.dev.vars
+backend/.dev.vars
 .DS_Store
 scratch_cache_update.js
 scratch/
