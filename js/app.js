@@ -7248,7 +7248,25 @@ window.renderSttOrderControl = function (type, i, total) {
                     callApi('saveSchedule', [dateVal, backendSched], null, null);
                 }
 
-                setUnscheduledData(newUnsch, dateVal);
+                // 🛡️ Lọc ra các ca THỰC SỰ không xếp được:
+                // Loại bỏ các ca đã có trong lịch hiện tại khỏi danh sách rớt
+                // (Tránh hiển thị sai "Rớt" cho các ca đã được xếp từ lượt trước do engine re-process do name matching thất bại)
+                const effectiveSchedule = (Array.isArray(window.currentScheduleData) ? window.currentScheduleData : currentSched);
+                const trulyUnsch = newUnsch.filter(rot => {
+                    const rotName = String(rot.bn || rot.tenBN || '').normalize('NFC').trim().toUpperCase();
+                    const rotProc = String(rot.tt || rot.thuThuat || '').trim().toLowerCase();
+                    const rotNs = String(rot.ns || rot.namSinh || '').trim();
+                    return !effectiveSchedule.some(row => {
+                        if (!row) return false;
+                        const rowName = String(row.tenBN || '').normalize('NFC').trim().toUpperCase();
+                        const rowProc = String(row.thuThuat || '').trim().toLowerCase();
+                        const rowNs = String(row.namSinh || '').trim();
+                        return rowName === rotName && rowProc === rotProc &&
+                               (!rotNs || !rowNs || rotNs === rowNs ||
+                                (rotNs.length >= 2 && rowNs.length >= 2 && rotNs.slice(-2) === rowNs.slice(-2)));
+                    });
+                });
+                setUnscheduledData(trulyUnsch, dateVal);
                 filterSchedule();
                 if (typeof renderStats === 'function') renderStats(window.lastUnscheduledData);
                 if (typeof renderPatientsTable === 'function') renderPatientsTable();
@@ -7258,7 +7276,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 const contentEl = document.getElementById('custom-popup-content');
                 if (contentEl) contentEl.innerHTML = `
                 <div>✅ Xếp bổ sung thành công: <b style="color:#27ae60; font-size:18px;">${addedCount}</b> ca</div>
-                <div>❌ Không xếp được lần này: <b style="color:#c0392b; font-size:18px;">${newUnsch.length}</b> ca</div>
+                <div>❌ Không xếp được lần này: <b style="color:#c0392b; font-size:18px;">${trulyUnsch.length}</b> ca</div>
                 <hr style="border:0; border-top:1px dashed #ccc; margin:10px 0;">
                 <div style="font-size:14px; color:#7f8c8d;">Tổng số ca rớt hiện tại: <b>${totalFail}</b> ca</div>
                 ${totalFail > 0 ? `

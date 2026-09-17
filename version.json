@@ -1,6 +1,6 @@
 {
-  "version": "4.1.0-rev3",
+  "version": "4.1.0-rev4",
   "releaseDate": "17/09/2026",
-  "releaseTime": "11:25 17/09/2026",
-  "notes": "Tuân thủ tuyệt đối cài đặt thời gian lố giờ buổi trưa và chiều (yhctLunch, yhctEnd). Sửa triệt để lỗi ép kiểu 0||10 thành 10 trong app.js, nạp đúng cấu hình settings vào weights của scheduler-engine và cp-solver, chặn dứt điểm các ca YHCT kết thúc sau 11:30 khi đặt 0 phút."
+  "releaseTime": "11:40 17/09/2026",
+  "notes": "Khắc phục lỗi Xếp bổ sung làm tăng số ca rớt: lọc danh sách rớt đối chiếu với lịch hiện tại, loại bỏ các ca đã xếp thành công bị engine nhận nhầm là chưa xếp do name-matching thất bại."
 }
