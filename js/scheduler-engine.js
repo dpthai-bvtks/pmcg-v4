@@ -666,19 +666,28 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
   function tryScheduleOne(patient, tenThuThuat, tNow) {
     const loaiBN = patient.loaiBN || 'NoiTru';
     const buoiDieuTri = patient.buoiDieuTri || 'Sang';
+    const info = thuThuatInfo[tenThuThuat.toLowerCase()] || ["Thủ công", 15, 5, "PHCN", 1, 0, [], 5];
+    const isYHCT = String(info[3] || "").trim().toUpperCase() === "YHCT";
+    const yhctEndLimit = (weights && weights.yhctEnd !== undefined) 
+      ? Number(weights.yhctEnd) 
+      : ((db && db.settings && db.settings.yhctEnd !== undefined && db.settings.yhctEnd !== '') ? Math.max(0, parseInt(db.settings.yhctEnd) || 0) : 0);
+    const yhctLunchLimit = (weights && weights.yhctLunch !== undefined) 
+      ? Number(weights.yhctLunch) 
+      : ((db && db.settings && db.settings.yhctLunch !== undefined && db.settings.yhctLunch !== '') ? Math.max(0, parseInt(db.settings.yhctLunch) || 0) : 0);
+    const allowedOvertimeAtEnd = isYHCT ? yhctEndLimit : OVERTIME_ALLOWANCE;
+    const allowedOvertimeAtLunch = isYHCT ? yhctLunchLimit : 0;
 
     if (loaiBN === 'NgoaiTru') {
-      const info = thuThuatInfo[tenThuThuat.toLowerCase()] || ["Thủ công", 15, 5, "PHCN", 1, 0, [], 5];
       const tgMay = Math.max(info[1], info[2]);
       const gioKetThuc = tNow + tgMay;
 
       // TuDong: hệ thống tự chọn buổi - không giới hạn, chỉ cần trong giờ làm
       if (buoiDieuTri === 'Sang') {
-        if (tNow < 450 || gioKetThuc > 695) {
+        if (tNow < 450 || gioKetThuc > (690 + allowedOvertimeAtLunch)) {
           return false;
         }
       } else if (buoiDieuTri === 'Chieu') {
-        if (tNow < 780 || gioKetThuc > 1019) {
+        if (tNow < 780 || gioKetThuc > (endOfDay + allowedOvertimeAtEnd)) {
           return false;
         }
       }
@@ -692,7 +701,6 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       }
     }
 
-    const info = thuThuatInfo[tenThuThuat.toLowerCase()] || ["Thủ công", 15, 5, "PHCN", 1, 0, [], 5];
     const tenGoc = info[8] || tenThuThuat, targetRoom = patient.room, loaiMay = info[0];
     const baseTgMay = Math.max(info[1], info[2]), canPhu = info[5];
     const tgMayMax = info[10] ? Math.max(info[10], baseTgMay) : baseTgMay;
@@ -747,9 +755,6 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       candidatePairs.push({ tgMay: baseTgMay, tgNv: tgNvMin });
     }
 
-    const isYHCT = String(info[3] || "").trim().toUpperCase() === "YHCT";
-    const yhctEndLimit = weights.yhctEnd !== undefined ? weights.yhctEnd : 10;
-    const allowedOvertimeAtEnd = isYHCT ? yhctEndLimit : OVERTIME_ALLOWANCE;
     const roomsWithWaiting = (typeof _currentRoomsWithWaiting !== 'undefined') ? _currentRoomsWithWaiting : new Set();
 
     for (const pair of candidatePairs) {
@@ -761,6 +766,9 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       const tearStart = hasTeardown ? (tNow + tgMay) : null;
       const tearEnd = hasTeardown ? (tNow + tgMay + 1) : null;
 
+      // 🔒 RÀNG BUỘC CHẶN GIỜ NGHỈ TRƯA VÀ HẾT CA: Tuân thủ tuyệt đối cài đặt yhctLunch và yhctEnd
+      if (tNow < 690 && gioKetThuc > (690 + allowedOvertimeAtLunch)) continue;
+      if (tNow >= 690 && tNow < 780) continue;
       if (gioKetThuc > (endOfDay + allowedOvertimeAtEnd)) continue;
       if (patient.leave !== 9999 && gioKetThuc > patient.leave) continue;
       if (patient.busy.some(b => is_overlap(tNow, gioKetThuc, b[0], b[1]))) continue;
@@ -775,7 +783,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
             const isEndOfDay = slot[1] === 1440;
             const isLunch = slot[1] - slot[0] >= 60 && !isEndOfDay;
             if (isLunch || isEndOfDay) {
-              const yhctLimit = isEndOfDay ? yhctEndLimit : (weights.yhctLunch !== undefined ? weights.yhctLunch : 10);
+              const yhctLimit = isEndOfDay ? yhctEndLimit : yhctLunchLimit;
               const allowedOvertime = isYHCT ? yhctLimit : (isEndOfDay ? OVERTIME_ALLOWANCE : 0);
               const allowedEnd = slot[0] + allowedOvertime;
               if ((slotEnd - 1) <= allowedEnd && slotStart <= slot[0]) return false;
@@ -1122,7 +1130,9 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
           if (!patient.pending.includes(tenThuThuat)) continue;
           const info = thuThuatInfo[tenThuThuat.toLowerCase()] || ["Thủ công", 15, 5, "PHCN", 1, 0, [], 5];
           const isYHCT = String(info[3] || "").trim().toUpperCase() === "YHCT";
-          const yhctEndLimit = weights.yhctEnd !== undefined ? Number(weights.yhctEnd) : 10;
+          const yhctEndLimit = (weights && weights.yhctEnd !== undefined) 
+            ? Number(weights.yhctEnd) 
+            : ((db && db.settings && db.settings.yhctEnd !== undefined && db.settings.yhctEnd !== '') ? Math.max(0, parseInt(db.settings.yhctEnd) || 0) : 0);
           const allowedMaxEnd = endOfDay + (isYHCT ? yhctEndLimit : OVERTIME_ALLOWANCE);
           const tgMay = Math.max(info[1], info[2]);
           const gapStarts = new Set();
@@ -1172,7 +1182,9 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
     const pat = patients.find(p => (rotItem.pId && p.pId === rotItem.pId) || (p.name === tenBN && p.ns === rotItem.ns && p.room === phong));
     const infoRot = thuThuatInfo[tenTT.toLowerCase()] || ["Thủ công", 15, 5, "PHCN", 1, 0, [], 5];
     const isYHCT = String(infoRot[3] || "").trim().toUpperCase() === "YHCT";
-    const yhctEndLimit = weights.yhctEnd !== undefined ? Number(weights.yhctEnd) : 10;
+    const yhctEndLimit = (weights && weights.yhctEnd !== undefined) 
+      ? Number(weights.yhctEnd) 
+      : ((db && db.settings && db.settings.yhctEnd !== undefined && db.settings.yhctEnd !== '') ? Math.max(0, parseInt(db.settings.yhctEnd) || 0) : 0);
     const tgCanThiet = Math.max(infoRot[1], infoRot[2]);
     const allowedMaxEnd = endOfDay + (isYHCT ? yhctEndLimit : OVERTIME_ALLOWANCE);
 
@@ -1386,7 +1398,8 @@ function getPatientSignature(pat) {
       });
     }
 
-    const LUNCH_START = 690; // 11:30
+    const yhctLunchMins = Math.max(0, parseInt(db?.settings?.yhctLunch ?? 0) || 0);
+    const LUNCH_START = 690 + yhctLunchMins; // 11:30 + yhctLunch
     const LUNCH_END = 780;   // 13:00
 
     for (let i = 0; i < sched.length; i++) {
@@ -1757,7 +1770,8 @@ function getSafeCache() {
       roomStaff: {},
       roomBeds: {},
       rawStaff: [],
-      rawPatients: []
+      rawPatients: [],
+      settings: cache.settings || cache.cai_dat || (typeof dataCache !== 'undefined' && dataCache.settings) || {}
     };
 
     const fixBusyString = str => !str ? "" : String(str).split(",").map(b => {
@@ -2052,7 +2066,7 @@ function getSafeCache() {
     return { database, forcedDrops };
   }
 
-  function runClientScheduling(dateVal, strategyKey = 'opt_rare', skipProcsStr = '', crowdedOverride = -1, existingSched = []) {
+  function runClientScheduling(dateVal, strategyKey = 'opt_rare', skipProcsStr = '', crowdedOverride = -1, existingSched = [], options = {}) {
     const startTime = performance.now();
     const cleanExistingSched = (Array.isArray(existingSched) ? existingSched : [])
       .map(normalizeScheduleItem)
@@ -2073,7 +2087,28 @@ function getSafeCache() {
     const scenarioMap = { opt_rare: 1, opt_math: 1 };
     const scenario = scenarioMap[strategyKey] || 1;
 
-    let best = runBestIteration(db, dateVal, cleanExistingSched, scenario, crowdedOverride, { drop: 10000, overtime: 2, imbalance: 0.1 }, 42, 1);
+    const getSettingNum = (key, defaultVal = 0) => {
+      if (options.weights && options.weights[key] !== undefined) {
+        const p = parseInt(options.weights[key]);
+        return isNaN(p) ? defaultVal : Math.max(0, p);
+      }
+      if (db.settings && db.settings[key] !== undefined && db.settings[key] !== '') {
+        const p = parseInt(db.settings[key]);
+        return isNaN(p) ? defaultVal : Math.max(0, p);
+      }
+      return defaultVal;
+    };
+    const yhctLunchMins = getSettingNum('yhctLunch', 0);
+    const yhctEndMins = getSettingNum('yhctEnd', 0);
+    const weights = {
+      drop: options.weights?.drop ?? (parseInt(db.settings?.dropWeight) || 10000),
+      overtime: options.weights?.overtime ?? (parseFloat(db.settings?.overtimeWeight) || 2),
+      imbalance: options.weights?.imbalance ?? (parseFloat(db.settings?.imbalanceWeight) || 0.1),
+      yhctLunch: yhctLunchMins,
+      yhctEnd: yhctEndMins
+    };
+
+    let best = runBestIteration(db, dateVal, cleanExistingSched, scenario, crowdedOverride, weights, 42, 1);
     let engineName = (strategyKey === 'opt_math') ? '🧠 AI + CP-SAT Optimizer' : '🚀 Tối Ưu Nhanh (Metaheuristics)';
 
     // 🧠 Universal Rescuer: Kích hoạt CP-SAT cho cả Kịch bản 1 và Kịch bản 2 nếu có ca rớt (đồng bộ existingSched chống trùng giờ)
@@ -2160,7 +2195,27 @@ function getSafeCache() {
     try {
       const scenarioMap = { opt_rare: 1, opt_math: 1 };
       const scenario = scenarioMap[strategyKey] || 1;
-      const weights = options.weights || { drop: 10000, overtime: 2, imbalance: 0.1 };
+
+      const getSettingNum = (key, defaultVal = 0) => {
+        if (options.weights && options.weights[key] !== undefined) {
+          const p = parseInt(options.weights[key]);
+          return isNaN(p) ? defaultVal : Math.max(0, p);
+        }
+        if (db.settings && db.settings[key] !== undefined && db.settings[key] !== '') {
+          const p = parseInt(db.settings[key]);
+          return isNaN(p) ? defaultVal : Math.max(0, p);
+        }
+        return defaultVal;
+      };
+      const yhctLunchMins = getSettingNum('yhctLunch', 0);
+      const yhctEndMins = getSettingNum('yhctEnd', 0);
+      const weights = {
+        drop: options.weights?.drop ?? (parseInt(db.settings?.dropWeight) || 10000),
+        overtime: options.weights?.overtime ?? (parseFloat(db.settings?.overtimeWeight) || 2),
+        imbalance: options.weights?.imbalance ?? (parseFloat(db.settings?.imbalanceWeight) || 0.1),
+        yhctLunch: yhctLunchMins,
+        yhctEnd: yhctEndMins
+      };
 
     // ⚡ 1. AI Smart Patient Ranking trực tiếp (1ms)
     if (typeof window !== 'undefined' && window.AIScheduler && typeof window.AIScheduler.rankPatients === 'function') {

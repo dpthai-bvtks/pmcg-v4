@@ -336,7 +336,15 @@ window.MedicalCPSolver = (function () {
     });
 
     // ⚡ Khung giờ ca trực chuẩn hóa theo ca làm việc của khoa (bắt đầu từ 07:30)
-    const availableShifts = [[450, 700], [780, 1020]]; // 07:30-11:40, 13:00-17:00
+    const isProcYhctGlobal = (tt) => {
+      const info = db.thuThuatInfo ? (db.thuThuatInfo[String(tt).toLowerCase()] || []) : [];
+      return String(info[3] || '').trim().toUpperCase() === 'YHCT';
+    };
+    const yhctLunchMins = Math.max(0, parseInt(db.settings?.yhctLunch ?? 0) || 0);
+    const yhctEndMins = Math.max(0, parseInt(db.settings?.yhctEnd ?? 0) || 0);
+    const morningShiftEnd = 690 + yhctLunchMins;
+    const afternoonShiftEnd = 990 + yhctEndMins;
+    const availableShifts = [[450, morningShiftEnd], [780, afternoonShiftEnd]];
     const timeStep = 5; // Quét từng bước 5 phút chính xác
 
     // Lặp qua từng ca rớt để tìm vị trí cứu ca
@@ -432,8 +440,12 @@ window.MedicalCPSolver = (function () {
 
           // Ràng buộc 0: Giờ vào viện & giờ ra viện của bệnh nhân
           if (candStart < arriveTime || candEnd > leaveTime) continue;
+          const isYHCT = isProcYhctGlobal(tenTT);
+          if (candStart < 690 && candEnd > (690 + (isYHCT ? yhctLunchMins : 0))) continue;
+          if (candStart >= 690 && candStart < 780) continue;
+          if (candEnd > (990 + (isYHCT ? yhctEndMins : 0))) continue;
           if (loaiBN === 'NgoaiTru') {
-            if (buoiDieuTri === 'Sang' && candEnd > 700) continue;
+            if (buoiDieuTri === 'Sang' && candEnd > morningShiftEnd) continue;
             if (buoiDieuTri === 'Chieu' && candStart < 780) continue;
           }
 
@@ -482,7 +494,7 @@ window.MedicalCPSolver = (function () {
             const sName = staffCandidates[stIdx];
             // Phải nằm trọn trong ca trực
             const sShifts = staffShiftMap.get(sName);
-            if (sShifts && sShifts.length > 0 && !sShifts.some(w => candStart >= w[0] && candEnd <= w[1] + 5)) continue;
+            if (sShifts && sShifts.length > 0 && !sShifts.some(w => candStart >= w[0] && candEnd <= w[1] + (isYHCT ? (w[0] < 780 ? yhctLunchMins : yhctEndMins) : 0))) continue;
             // Không dính giờ bận cá nhân
             if (hasOverlap(staffBusyMap.get(sName), candStart, candEnd)) continue;
             // Không trùng ca đã xếp
@@ -512,7 +524,7 @@ window.MedicalCPSolver = (function () {
             for (let subIdx = 0; subIdx < subPool.length; subIdx++) {
               const subName = subPool[subIdx];
               const subShifts = staffShiftMap.get(subName);
-              if (subShifts && subShifts.length > 0 && !subShifts.some(w => candStart >= w[0] && candEnd <= w[1] + 5)) continue;
+              if (subShifts && subShifts.length > 0 && !subShifts.some(w => candStart >= w[0] && candEnd <= w[1] + (isYHCT ? (w[0] < 780 ? yhctLunchMins : yhctEndMins) : 0))) continue;
               if (hasOverlap(staffBusyMap.get(subName), candStart, candEnd)) continue;
               if (!hasOverlap(staffIntervals.get(subName), candStart, candEnd)) {
                 validSubStaff = subName;

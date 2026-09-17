@@ -3469,6 +3469,8 @@ window.renderSttOrderControl = function (type, i, total) {
                             } catch(e) {}
                         }
                         if (b.settings) {
+                            if (typeof dataCache !== 'undefined') dataCache.settings = b.settings;
+                            if (window.dataCache) window.dataCache.settings = b.settings;
                             applySystemSettings(b.settings);
                         }
                         if (b.marquee) {
@@ -3602,6 +3604,8 @@ window.renderSttOrderControl = function (type, i, total) {
                     }
 
                     if (b.settings) {
+                        if (typeof dataCache !== 'undefined') dataCache.settings = b.settings;
+                        if (window.dataCache) window.dataCache.settings = b.settings;
                         applySystemSettings(b.settings);
                     }
 
@@ -7027,10 +7031,21 @@ window.renderSttOrderControl = function (type, i, total) {
 
             try {
                 let out = null;
+                const yhctLunchNum = (dataCache?.settings?.yhctLunch !== undefined && dataCache.settings.yhctLunch !== '') ? Math.max(0, parseInt(dataCache.settings.yhctLunch) || 0) : 0;
+                const yhctEndNum = (dataCache?.settings?.yhctEnd !== undefined && dataCache.settings.yhctEnd !== '') ? Math.max(0, parseInt(dataCache.settings.yhctEnd) || 0) : 0;
+                const schedulingOptions = {
+                    weights: {
+                        drop: parseInt(dataCache?.settings?.dropWeight) || 10000,
+                        overtime: parseFloat(dataCache?.settings?.overtimeWeight) || 2,
+                        imbalance: parseFloat(dataCache?.settings?.imbalanceWeight) || 0.1,
+                        yhctLunch: yhctLunchNum,
+                        yhctEnd: yhctEndNum
+                    }
+                };
                 if (window.SchedulerEngine && typeof window.SchedulerEngine.runSchedulingAsync === 'function') {
-                    out = await window.SchedulerEngine.runSchedulingAsync(dateVal, strategy, skipVal, crowdedVal);
+                    out = await window.SchedulerEngine.runSchedulingAsync(dateVal, strategy, skipVal, crowdedVal, [], schedulingOptions);
                 } else if (window.SchedulerEngine && typeof window.SchedulerEngine.runScheduling === 'function') {
-                    out = window.SchedulerEngine.runScheduling(dateVal, strategy, skipVal, crowdedVal);
+                    out = window.SchedulerEngine.runScheduling(dateVal, strategy, skipVal, crowdedVal, [], schedulingOptions);
                 }
 
                 if (window.hideGlobalLoading) window.hideGlobalLoading();
@@ -7131,12 +7146,23 @@ window.renderSttOrderControl = function (type, i, total) {
                     .map(normalizeScheduleRow)
                     .filter(r => r && !isDroppedScheduleRow(r) && r.gioDienRa && r.gioDienRa !== '--' && !String(r.gioDienRa).includes('Rớt'));
                 let out = null;
+                const yhctLunchExtraNum = (dataCache?.settings?.yhctLunch !== undefined && dataCache.settings.yhctLunch !== '') ? Math.max(0, parseInt(dataCache.settings.yhctLunch) || 0) : 0;
+                const yhctEndExtraNum = (dataCache?.settings?.yhctEnd !== undefined && dataCache.settings.yhctEnd !== '') ? Math.max(0, parseInt(dataCache.settings.yhctEnd) || 0) : 0;
+                const extraSchedulingOptions = {
+                    weights: {
+                        drop: parseInt(dataCache?.settings?.dropWeight) || 10000,
+                        overtime: parseFloat(dataCache?.settings?.overtimeWeight) || 2,
+                        imbalance: parseFloat(dataCache?.settings?.imbalanceWeight) || 0.1,
+                        yhctLunch: yhctLunchExtraNum,
+                        yhctEnd: yhctEndExtraNum
+                    }
+                };
                 if (window.SchedulerEngine && typeof window.SchedulerEngine.runSchedulingAsync === 'function') {
-                    out = await window.SchedulerEngine.runSchedulingAsync(dateVal, 'opt_rare', '', -1, currentSched);
+                    out = await window.SchedulerEngine.runSchedulingAsync(dateVal, 'opt_rare', '', -1, currentSched, extraSchedulingOptions);
                 } else if (window.SchedulerEngine && typeof window.SchedulerEngine.runExtraScheduling === 'function') {
-                    out = window.SchedulerEngine.runExtraScheduling(dateVal, currentSched);
+                    out = window.SchedulerEngine.runExtraScheduling(dateVal, currentSched, extraSchedulingOptions);
                 } else if (window.SchedulerEngine && typeof window.SchedulerEngine.runScheduling === 'function') {
-                    out = window.SchedulerEngine.runScheduling(dateVal, 'opt_rare', '', -1, currentSched);
+                    out = window.SchedulerEngine.runScheduling(dateVal, 'opt_rare', '', -1, currentSched, extraSchedulingOptions);
                 }
 
                 if (window.hideGlobalLoading) window.hideGlobalLoading();
@@ -9210,8 +9236,10 @@ window.renderSttOrderControl = function (type, i, total) {
                 });
                 if (!shifts.length) shifts = [[420, 690], [780, 1014]];
 
-                const yhctEndVal = parseInt(document.getElementById("admin-yhct-end")?.value) || 10;
-                const yhctLunchVal = parseInt(document.getElementById("admin-yhct-lunch")?.value) || 10;
+                const yhctEndRaw = document.getElementById("admin-yhct-end")?.value;
+                const yhctLunchRaw = document.getElementById("admin-yhct-lunch")?.value;
+                const yhctEndVal = (yhctEndRaw !== undefined && yhctEndRaw !== '') ? (parseInt(yhctEndRaw) || 0) : 0;
+                const yhctLunchVal = (yhctLunchRaw !== undefined && yhctLunchRaw !== '') ? (parseInt(yhctLunchRaw) || 0) : 0;
 
                 shifts.forEach((sh, sIdx) => {
                     const extraMins = (sIdx === 0 && shifts.length > 1) ? yhctLunchVal : ((sIdx === shifts.length - 1) ? yhctEndVal : 0);
@@ -11456,6 +11484,25 @@ window.renderSttOrderControl = function (type, i, total) {
             google.script.run.withSuccessHandler(function (res) {
                 btn.innerText = oldText;
                 btn.disabled = false;
+                if (typeof dataCache !== 'undefined') {
+                    dataCache.settings = Object.assign(dataCache.settings || {}, {
+                        chotSoTime: timeVal,
+                        yhctLunch: yhctLunchVal,
+                        yhctEnd: yhctEndVal,
+                        dropWeight: dropW,
+                        overtimeWeight: overtimeW,
+                        imbalanceWeight: imbalanceW
+                    });
+                }
+                if (window.dataCache) {
+                    window.dataCache.settings = Object.assign(window.dataCache.settings || {}, dataCache?.settings || {});
+                }
+                const cacheKey = window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache";
+                try {
+                    const b = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+                    b.settings = Object.assign(b.settings || {}, dataCache?.settings || {});
+                    localStorage.setItem(cacheKey, JSON.stringify(b));
+                } catch(e) {}
                 showCustomAlert("Cài đặt", res, "✅", "#2ecc71");
             }).withFailureHandler(function (err) {
                 btn.innerText = oldText;

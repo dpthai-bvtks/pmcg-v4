@@ -1,6 +1,6 @@
 {
-  "version": "4.1.0-rev2",
+  "version": "4.1.0-rev3",
   "releaseDate": "17/09/2026",
-  "releaseTime": "10:48 17/09/2026",
-  "notes": "Phương án 1: Chuẩn hóa giờ bắt đầu xếp lịch từ 07:30 (450 phút), loại bỏ hoàn toàn fallback 'Điều dưỡng trực phòng', bắt buộc phân công nhân sự thực tế (Bác sĩ/KTV chính + Điều dưỡng phụ 1..8) cho toàn bộ thủ thuật cần phụ (Thủy châm...); tự động chuẩn hóa và cập nhật lại toàn bộ lịch ngày 17/09/2026."
+  "releaseTime": "11:25 17/09/2026",
+  "notes": "Tuân thủ tuyệt đối cài đặt thời gian lố giờ buổi trưa và chiều (yhctLunch, yhctEnd). Sửa triệt để lỗi ép kiểu 0||10 thành 10 trong app.js, nạp đúng cấu hình settings vào weights của scheduler-engine và cp-solver, chặn dứt điểm các ca YHCT kết thúc sau 11:30 khi đặt 0 phút."
 }

@@ -4003,6 +4003,54 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `index.html`
   - `PM-xeplich-v4.md`
 
+### ⏱️ Khắc Phục Triệt Để Cài Đặt 0 Phút Lố Giờ Nghỉ Trưa & Chiều (17/09/2026 - v4.1.0-rev3)
+- **Yêu cầu của người dùng**:
+  + Người dùng đã cài đặt "Thời gian YHCT lố vào giờ nghỉ TRƯA (phút): 0" và "Thời gian YHCT lố vào giờ nghỉ CHIỀU (phút): 0" trong Cài Đặt Hệ Thống, nhưng sau khi xếp lịch vẫn thấy ca thủ thuật được chia kéo dài đến 11:34 (cụ thể ca Thủy châm 11:09 -> 11:34).
+- **Phân tích 4 nguyên nhân gốc rễ (Root Cause Analysis)**:
+  1. *Lỗi ép kiểu JavaScript kiểu falsy trong giao diện (`js/app.js:9213-9214`)*:
+     - Khi lưu cài đặt hệ thống, mã nguồn đọc:
+       `yhctLunch: parseInt(document.getElementById("admin-yhct-lunch")?.value) || 10`
+     - Trong JavaScript, giá trị `parseInt("0") === 0` là một giá trị *falsy*. Biểu thức `0 || 10` tự động đánh giá thành **`10`**! Do đó, dù người dùng nhập `0` phút và bấm lưu, giá trị thực tế bị lưu vào CSDL luôn là `10` phút.
+  2. *Bị thất thoát đối tượng cấu hình `settings` khi gọi thuật toán xếp lịch (`js/app.js:7031, 7135` & `js/scheduler-engine.js:1751, 2076, 2163`)*:
+     - Hàm `buildDbFromCache(dataCache)` trong `scheduler-engine.js` sao chép bệnh nhân, nhân sự, phòng ốc nhưng bỏ sót `database.settings = cache.settings`.
+     - Khi gọi `runSchedulingAsync()` và `runClientScheduling()`, tham số `weights` (chứa `yhctLunch` và `yhctEnd`) không được truyền từ `dataCache.settings` vào, khiến bộ giải thuật hoàn toàn không nhận được cấu hình thời gian lố giờ.
+  3. *Bộ giải thuật chính Metaheuristics dùng fallback 10 phút & mốc chặn cứng 11:35 (`js/scheduler-engine.js:677, 751, 764, 778`)*:
+     - Trong hàm lõi `_turbo_core_logic`, `weights.yhctLunch` nếu undefined lại fallback về `10`. Với 10 phút, mốc trưa cho phép kéo dài thành `690 + 10 = 700` (11:40), nên ca 11:09 -> 11:34 (714 phút) được chấp nhận.
+     - Ngoài ra, tại dòng 677 có mốc cứng `gioKetThuc > 695` (11:35), và tại dòng 764 khi kiểm tra slot trống của nhân sự chưa có mốc chặn ngắt giờ nghỉ trưa chặt chẽ.
+  4. *Bộ giải phụ toán học CP-SAT gán cứng ca sáng kết thúc 11:40 & bù thêm +5 phút (`js/cp-solver.js:339, 485, 515`)*:
+     - Tại dòng 339, solver khai báo `availableShifts = [[450, 700], [780, 1020]]` với 700 phút = 11:40 cố định.
+     - Tại dòng 485 và 515, solver tự động cộng thêm `+ 5` phút vào mốc kết thúc ca sáng và chiều một cách vô điều kiện (`endShift + 5`), khiến ca có thể kéo dài vượt quá quy định.
+- **Giải pháp triển khai đồng bộ**:
+  1. **Sửa lỗi ép kiểu tại giao diện (`js/app.js`)**:
+     - Sửa cách đọc dữ liệu: `const rawLunch = document.getElementById("admin-yhct-lunch")?.value; const yhctLunch = (rawLunch !== undefined && rawLunch !== '') ? (parseInt(rawLunch) || 0) : 0;` (tương tự cho `yhctEnd`). Đảm bảo nhập `0` thì lưu đúng `0`.
+     - Đồng bộ ngay lập tức vào `dataCache.settings` khi người dùng bấm Lưu cài đặt.
+     - Truyền đầy đủ `schedulingOptions` với `weights: { yhctLunch, yhctEnd, ... }` khi gọi `runSchedulingAsync` và `runScheduling`.
+  2. **Nâng cấp bộ giải thuật Metaheuristics (`js/scheduler-engine.js`)**:
+     - Bổ sung `database.settings = cache.settings || ...` trong `buildDbFromCache`.
+     - Trích xuất `yhctLunch` và `yhctEnd` từ `database.settings` hoặc `weights` với giá trị mặc định chuẩn `0` phút.
+     - Tại các vòng lặp duyệt ca sáng: bổ sung điều kiện kiểm tra nghiêm ngặt: nếu `tNow < 690 && gioKetThuc > (690 + allowedOvertimeAtLunch)` thì lập tức bỏ qua (`continue`), không cho phép ca sáng kết thúc sau 11:30 khi `allowedOvertimeAtLunch = 0`.
+     - Khi kiểm tra slot rảnh của nhân sự, giới hạn slot sáng tối đa là `690 + allowedOvertimeAtLunch`.
+     - Tương tự cho ca chiều: không cho phép kết thúc sau `990 + allowedOvertimeAtEnd` (16:30 khi cài đặt 0 phút).
+  3. **Nâng cấp bộ giải toán học CP-SAT (`js/cp-solver.js`)**:
+     - Khai báo biên động: `morningShiftEnd = 690 + yhctLunchMins`, `afternoonShiftEnd = 990 + yhctEndMins`.
+     - Đặt `availableShifts = [[450, morningShiftEnd], [780, afternoonShiftEnd]]`.
+     - Loại bỏ việc cộng tùy tiện `+ 5` phút; tôn trọng chính xác `yhctLunchMins` và `yhctEndMins`.
+  4. **Đồng bộ phiên bản theo RULES.md**:
+     - Phiên bản: `4.1.0-rev3` (17/09/2026).
+     - `version.json`: `version: "4.1.0-rev3"`, `releaseTime: "11:25 17/09/2026"`.
+     - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.1.0-rev3'`.
+     - `index.html`: Cập nhật cache busters `?v=4.1.0-rev3`, `APP_VERSION = '4.1.0-rev3'`, `#sys-last-update` -> `⏱ Cập nhật lần cuối: 11:25 17/09/2026`.
+     - `#app-footer-version` giữ nguyên `Phiên bản: 4.1.0`.
+- **File sửa đổi**:
+  - `js/app.js`
+  - `js/scheduler-engine.js`
+  - `js/cp-solver.js`
+  - `version.json`
+  - `sw.js`
+  - `index.html`
+  - `PM-xeplich-v4.md`
+
+
 
 
 
