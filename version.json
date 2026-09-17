@@ -1,6 +1,6 @@
 {
-  "version": "4.1.0-rev1",
+  "version": "4.1.0-rev2",
   "releaseDate": "17/09/2026",
-  "releaseTime": "07:35 17/09/2026",
-  "notes": "Khắc phục triệt để lỗi trùng lặp bệnh nhân (gấp đôi bản ghi), dọn sạch 24 bản ghi trùng cũ trên CSDL, nâng cấp bulkUpdatePatients & importPatients chống trùng đa tầng, tự động khử trùng lặp trong ensureSchema."
+  "releaseTime": "10:48 17/09/2026",
+  "notes": "Phương án 1: Chuẩn hóa giờ bắt đầu xếp lịch từ 07:30 (450 phút), loại bỏ hoàn toàn fallback 'Điều dưỡng trực phòng', bắt buộc phân công nhân sự thực tế (Bác sĩ/KTV chính + Điều dưỡng phụ 1..8) cho toàn bộ thủ thuật cần phụ (Thủy châm...); tự động chuẩn hóa và cập nhật lại toàn bộ lịch ngày 17/09/2026."
 }

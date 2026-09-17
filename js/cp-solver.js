@@ -335,8 +335,8 @@ window.MedicalCPSolver = (function () {
       }
     });
 
-    // ⚡ Mở rộng khung giờ ca trực để tận dụng toàn bộ thời gian vàng của khoa
-    const availableShifts = [[420, 700], [780, 1020]]; // 07:00-11:40, 13:00-17:00
+    // ⚡ Khung giờ ca trực chuẩn hóa theo ca làm việc của khoa (bắt đầu từ 07:30)
+    const availableShifts = [[450, 700], [780, 1020]]; // 07:30-11:40, 13:00-17:00
     const timeStep = 5; // Quét từng bước 5 phút chính xác
 
     // Lặp qua từng ca rớt để tìm vị trí cứu ca
@@ -357,7 +357,7 @@ window.MedicalCPSolver = (function () {
 
       // Tra cứu thông tin bệnh nhân (giờ vào, giờ ra, loại ngoại trú/nội trú)
       const patObj = (db.rawPatients || []).find(p => (dropItem.pId && p.pId === dropItem.pId) || (p.name === patName && (!patNs || p.ns === patNs)));
-      const arriveTime = patObj ? (patObj.arrive || 420) : 420;
+      const arriveTime = patObj ? Math.max(450, patObj.arrive || 450) : 450;
       const leaveTime = (patObj && patObj.leave && patObj.leave < 9999) ? patObj.leave : 1020;
       const loaiBN = patObj ? (patObj.loaiBN || 'NoiTru') : 'NoiTru';
       const buoiDieuTri = patObj ? (patObj.buoiDieuTri || 'Sang') : 'Sang';
@@ -491,11 +491,24 @@ window.MedicalCPSolver = (function () {
               break;
             }
           }
-          // Phân công KTV phụ nếu thủ thuật yêu cầu
+          if (!validStaff) continue; // Bắt buộc phải có nhân sự chính hợp lệ rảnh tại thời điểm t!
+
+          // Phân công KTV/Điều dưỡng phụ nếu thủ thuật yêu cầu
           let validSubStaff = "";
           const canPhu = ttInfo[5];
           if (canPhu === 1) {
-            const subPool = (db.rawStaff || []).map(s => s[0]).filter(s => s && s !== validStaff);
+            // Lọc danh sách nhân sự phụ thực tế (ưu tiên Điều dưỡng / Hộ lý / Phụ)
+            const subPool = (db.rawStaff || [])
+              .map(s => ({ name: s[0], role: s[1] || '' }))
+              .filter(s => s.name && s.name !== validStaff)
+              .sort((a, b) => {
+                const aIsNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly|phụ/i.test(a.role) || /^phụ\b/i.test(a.name);
+                const bIsNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly|phụ/i.test(b.role) || /^phụ\b/i.test(b.name);
+                if (aIsNurse !== bIsNurse) return bIsNurse - aIsNurse;
+                return 0;
+              })
+              .map(s => s.name);
+
             for (let subIdx = 0; subIdx < subPool.length; subIdx++) {
               const subName = subPool[subIdx];
               const subShifts = staffShiftMap.get(subName);
@@ -506,9 +519,7 @@ window.MedicalCPSolver = (function () {
                 break;
               }
             }
-            if (!validSubStaff) {
-              validSubStaff = "Điều dưỡng trực phòng";
-            }
+            if (!validSubStaff) continue; // Bắt buộc phải có nhân sự phụ thực tế rảnh (Phương án 1)
           }
 
           // 🎉 TÌM THẤY NGHIỆM TỐI ƯU TOÁN HỌC HỢP LỆ!
@@ -532,7 +543,7 @@ window.MedicalCPSolver = (function () {
           if (validMachine !== 'Thủ công') addInterval(machineIntervals, validMachine, candStart, candEnd);
           addInterval(bedIntervals, `${patRoom}_${validBed}`, candStart, candEnd);
           addInterval(staffIntervals, validStaff, candStart, candEnd);
-          if (validSubStaff && validSubStaff !== "Điều dưỡng trực phòng") {
+          if (validSubStaff) {
             addInterval(staffIntervals, validSubStaff, candStart, candEnd);
           }
 

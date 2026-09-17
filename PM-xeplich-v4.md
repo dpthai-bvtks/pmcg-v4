@@ -3955,5 +3955,54 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `version.json`
   - `PM-xeplich-v4.md`
 
+### 🛡️ Chuẩn Hóa Khung Giờ Xếp Lịch Từ 07:30 & Loại Bỏ Hoàn Toàn Fallback "Điều Dưỡng Trực Phòng" (17/09/2026 - v4.1.0-rev2)
+- **Yêu cầu của người dùng**:
+  + Xem lại file lịch trình `Lich_ThuThuat_17-09-2026.xlsx` sau khi xếp lịch ngày hôm nay (17/09/2026), phát hiện tại cột "NV PHỤ" lại có xuất hiện `"Điều dưỡng trực phòng"`.
+  + Người dùng lựa chọn **Phương án 1**: Giới hạn giờ xếp lịch từ 07:30 (450 phút) trở đi (thời điểm nhân sự chính và phụ bắt đầu ca làm việc), loại bỏ hoàn toàn fallback `"Điều dưỡng trực phòng"`, bắt buộc phân công nhân sự thực tế (Bác sĩ/KTV chính + Điều dưỡng phụ 1..8) cho toàn bộ thủ thuật cần phụ (Thủy châm...); tự động chuẩn hóa và cập nhật lại toàn bộ lịch ngày 17/09/2026.
+- **Phân tích nguyên nhân gốc rễ (Root Cause Analysis)**:
+  1. Trong `js/cp-solver.js` (Bộ giải toán học CP-SAT nhánh cứu ca rớt):
+     - Biến `availableShifts` được thiết lập `[[420, 700], [780, 1020]]` (bắt đầu từ 420 = 07:00).
+     - Toàn bộ nhân sự y tế (Bác sĩ, KTV, Điều dưỡng phụ 1..8) trong danh mục ca trực `db.rawStaff` đều bắt đầu làm việc từ **07:30** (450 phút).
+     - Khi giải thuật quét tới mốc 07:00, không có Bác sĩ/KTV nào đang trong ca trực, vòng lặp tìm `validStaff` trả về `null`.
+     - Tuy nhiên, mã nguồn bị thiếu điều kiện kiểm tra `if (!validStaff) continue;`, khiến thuật toán vẫn tiếp tục xét phân công dù chưa có nhân sự chính.
+     - Tiếp đến khi xét thủ thuật cần phụ (`canPhu === 1` - Thủy châm), do 07:00 chưa có Điều dưỡng nào vào ca trực, `validSubStaff` trả về rỗng. Mã nguồn tại dòng 510 có dòng gán cứng fallback:
+       `if (!validSubStaff) { validSubStaff = "Điều dưỡng trực phòng"; }`
+     - Dẫn đến 5 ca Thủy châm tại phòng Hiền Phan (bệnh nhân PHẠM XUÂN HẢI, PHẠM VĂN TÒNG, PHẠM VĂN ĐẠO, LÊ ĐỨC TÂM, NINH NGỌC VĂN) bị xếp vào lúc 07:00 với `NV1: ""` và `NV2: "Điều dưỡng trực phòng"`; và 1 ca lúc 08:00 (LÃNH VĂN TRIỆU) tương tự do thiếu ràng buộc bắt buộc nhân sự chính.
+  2. Trong `js/scheduler-engine.js`:
+     - Biến `defaultShift` (dòng 313), `startOfDay` (dòng 314), `gioVao` mặc định (dòng 2002), giờ khám ngoại trú sáng (dòng 677), dồn lịch `compactTimelineGaps` (dòng 1400) và hàm gợi ý AI (dòng 2770) đều để mốc khởi điểm là 420 (07:00) thay vì 450 (07:30).
+- **Giải pháp triển khai theo Phương án 1**:
+  1. **Nâng cấp `js/cp-solver.js`**:
+     - Chuẩn hóa `availableShifts = [[450, 700], [780, 1020]]` (07:30-11:40, 13:00-17:00).
+     - Cố định `arriveTime = patObj ? Math.max(450, patObj.arrive || 450) : 450`.
+     - Bổ sung kiểm tra bắt buộc: `if (!validStaff) continue;` (phải có nhân sự chính hợp lệ đang rảnh và trong ca làm việc).
+     - Sắp xếp ưu tiên nhân sự phụ thực tế (Điều dưỡng, Hộ lý, Phụ 1..8) theo chuyên môn và vai trò.
+     - Loại bỏ hoàn toàn chuỗi fallback `"Điều dưỡng trực phòng"`; nếu không tìm được người phụ thực tế rảnh, solver buộc phải chuyển sang slot thời gian khác: `if (!validSubStaff) continue;`.
+     - Cập nhật khoảng bận `addInterval` cho nhân viên phụ thực tế chuẩn xác.
+  2. **Nâng cấp `js/scheduler-engine.js`**:
+     - Cập nhật `defaultShift = [[450, 690], [780, 1014]]` và `startOfDay = 450`.
+     - Cập nhật `gioVao = isEmptyTime(rawGioVao) ? 450 : Math.max(450, t2m(rawGioVao))`.
+     - Cập nhật giờ ngoại trú sáng tối thiểu `tNow < 450`.
+     - Cập nhật dồn khoảng trống `compactTimelineGaps`: `patArrive = Math.max(450, ...)`, `minAllowedStart = Math.max(450, ...)`.
+     - Cập nhật fallback ca trực nhân sự trong gợi ý AI về `450` (07:30).
+  3. **Tái xếp lịch & Cập nhật CSDL Live cho ngày 17/09/2026**:
+     - Đã chạy giải thuật với toàn bộ dữ liệu 55 bệnh nhân thực tế: 100% 185/185 ca được xếp thành công (0 ca rớt).
+     - Toàn bộ 6 bệnh nhân Thủy châm nói trên đã được phân công đầy đủ Bác sĩ (BS Thảo, Bs Thái, Bs Khuyến) và Điều dưỡng phụ thực tế (Phụ 5, Phụ 6, Phụ 8) trong các khung giờ làm việc chuẩn (11:09, 13:00, 13:52, 14:18, 15:28).
+     - Gọi API `saveSchedule` cập nhật trực tiếp vào bảng `lich_trinh` trên CSDL Live.
+     - Kiểm tra đối soát CSDL Live: 185 ca, 0 ca trước 07:30, 0 ca trống NV Chính, 0 ca có "Điều dưỡng trực phòng", 48/48 ca Thủy châm đều có cả NV Chính và NV Phụ thực tế.
+  4. **Đồng bộ phiên bản theo RULES.md**:
+     - Phiên bản: `4.1.0-rev2` (17/09/2026).
+     - `version.json`: `version: "4.1.0-rev2"`, `releaseTime: "10:48 17/09/2026"`.
+     - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.1.0-rev2'`.
+     - `index.html`: Cập nhật cache busters `?v=4.1.0-rev2`, `APP_VERSION = '4.1.0-rev2'`, `#sys-last-update` -> `⏱ Cập nhật lần cuối: 10:48 17/09/2026`.
+     - `#app-footer-version` giữ nguyên `Phiên bản: 4.1.0` (không có hậu tố rev).
+- **File sửa đổi**:
+  - `js/cp-solver.js`
+  - `js/scheduler-engine.js`
+  - `version.json`
+  - `sw.js`
+  - `index.html`
+  - `PM-xeplich-v4.md`
+
+
 
 

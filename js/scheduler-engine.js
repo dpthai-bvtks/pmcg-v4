@@ -310,8 +310,8 @@ function mutate(rawPatients, randFn, droppedNames) {
 function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 1, crowdedOverride = -1, weights = { drop: 10000, overtime: 2, imbalance: 0.1 }) {
   const rand = createSeededRandom(seedVal);
   const OVERTIME_ALLOWANCE = 5;
-  const defaultShift = [[420, 690], [780, 1014]];
-  let startOfDay = 420, endOfDay = 1014;
+  const defaultShift = [[450, 690], [780, 1014]];
+  let startOfDay = 450, endOfDay = 1014;
   let isBackfill = false;
 
   const reservedMachines = new Set();
@@ -674,7 +674,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
       // TuDong: hệ thống tự chọn buổi - không giới hạn, chỉ cần trong giờ làm
       if (buoiDieuTri === 'Sang') {
-        if (tNow < 420 || gioKetThuc > 695) {
+        if (tNow < 450 || gioKetThuc > 695) {
           return false;
         }
       } else if (buoiDieuTri === 'Chieu') {
@@ -1395,9 +1395,9 @@ function getPatientSignature(pat) {
 
       const patKey = (cur.tenBN || cur.HOTEN || '').trim().toUpperCase() + '_' + String(cur.namSinh || cur.NAMSINH || '').trim();
       const patDb = patInfoMap.get(patKey);
-      const patArrive = patDb ? (patDb.arrive || 420) : 420;
+      const patArrive = patDb ? Math.max(450, patDb.arrive || 450) : 450;
 
-      let minAllowedStart = Math.max(420, patArrive);
+      let minAllowedStart = Math.max(450, patArrive);
       if (cur._s >= LUNCH_END) {
         minAllowedStart = Math.max(minAllowedStart, LUNCH_END);
       }
@@ -1999,7 +1999,7 @@ function getSafeCache() {
       if (!procs.length) return; // Bệnh nhân đã được xếp đủ hết thủ thuật rồi, không cần xếp nữa
 
       const rawGioVao = p.gioVao || p[4] || "";
-      const gioVao = isEmptyTime(rawGioVao) ? 420 : t2m(rawGioVao);
+      const gioVao = isEmptyTime(rawGioVao) ? 450 : Math.max(450, t2m(rawGioVao));
       const busyRaw = p.gioBan || p[5] || "";
       const busySlots = busyRaw ? String(busyRaw).split(",").filter(b => b.includes("-")).map(b => [t2m(b.split("-")[0]), t2m(b.split("-")[1]) + 1]) : [];
       busySlots.push([0, gioVao + 1]);
@@ -2767,7 +2767,7 @@ const UnscheduledDiagnosticEngine = (function () {
       const rawShifts = r && r[3] ? String(r[3]).split(",").filter(s => s.includes("-")).map(s => {
         const pts = s.split("-"); return [t2m(pts[0].trim()), t2m(pts[1].trim())];
       }) : [];
-      return rawShifts.length > 0 ? rawShifts : [[420, 690], [780, 990]];
+      return rawShifts.length > 0 ? rawShifts : [[450, 690], [780, 990]];
     }
 
     function getStaffBusy(sName) {
