@@ -1,4 +1,4 @@
-
+﻿
 window.toggleUserDropdown = function(e) {
     if (e) {
         e.preventDefault();
@@ -537,18 +537,22 @@ function fuzzySearchList(list, query, keys = ['tenBN', 'phong', 'nvChinh', 'nvPh
     const cleanQuery = String(query).trim();
     if (!cleanQuery) return list;
 
-    const qNoTone = removeVietnameseTones(cleanQuery);
+    const qNoTone = removeVietnameseTones(cleanQuery).toLowerCase();
     const tokens = qNoTone.split(/\s+/).filter(Boolean);
     if (!tokens.length) return list;
 
     return list.filter(row => {
         if (!row) return false;
-        // Trích xuất toàn bộ trường dữ liệu của dòng thành 1 chuỗi không dấu
-        const rowValues = keys.map(k => String(row[k] || '')).join(' ');
-        const rowNoTone = removeVietnameseTones(rowValues);
+        // Trich xuat tung cot rieng biet (khong dau, chu thuong) - khong ghep chung
+        const colValues = keys.map(k => removeVietnameseTones(String(row[k] || '')).toLowerCase());
 
-        // Mọi từ khóa người dùng gõ vào đều phải xuất hiện trong dòng
-        return tokens.every(tok => rowNoTone.includes(tok));
+        // Cach 1: Toan bo cau query khop lien tuc trong it nhat 1 cot (uu tien cao nhat)
+        if (colValues.some(col => col.includes(qNoTone))) return true;
+
+        // Cach 2: Tat ca token phai xuat hien trong CUNG 1 cot (tranh cross-column matching)
+        // Vi du: "bs hoa" -> ca "bs" va "hoa" phai nam trong cung cot nvChinh = "bs hoa"
+        // Khong chap nhan: "bs" o nvChinh + "hoa" o tenBN (HOANG)
+        return colValues.some(col => tokens.every(tok => col.includes(tok)));
     });
 }
 window.fuzzySearchList = fuzzySearchList;
