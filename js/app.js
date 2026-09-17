@@ -764,7 +764,17 @@ window.showGlobalLoading = function (text) {
             if (type === 'success') icon = '✅';
             else if (type === 'error') icon = '❌';
             else if (type === 'info') icon = 'ℹ️';
-            toast.innerHTML = `<span class="toast-icon">${icon}</span><span class="toast-message">${message}</span>`;
+
+            const iconSpan = document.createElement('span');
+            iconSpan.className = 'toast-icon';
+            iconSpan.textContent = icon;
+
+            const msgSpan = document.createElement('span');
+            msgSpan.className = 'toast-message';
+            msgSpan.textContent = String(message != null ? message : '');
+
+            toast.appendChild(iconSpan);
+            toast.appendChild(msgSpan);
             container.appendChild(toast);
             setTimeout(() => toast.classList.add('show'), 50);
             setTimeout(() => {
@@ -5935,7 +5945,10 @@ window.renderSttOrderControl = function (type, i, total) {
                             </td>
                         </tr>`;
                     } else {
-                        html += `<tr class="editable-row" onclick="editBusyPat('${p.ten}', '${ns}', '${slot}', ${idx})" title="Bấm để sửa/xóa">
+                        const safeTenAttr = String(p.ten || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                        const safeNsAttr = String(ns || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                        const safeSlotAttr = String(slot || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                        html += `<tr class="editable-row" onclick="editBusyPat('${safeTenAttr}', '${safeNsAttr}', '${safeSlotAttr}', ${idx})" title="Bấm để sửa/xóa">
                             <td align="center" style="font-weight: 600; color: #475569; width: 32px;">${stt++}</td>
                             <td style="white-space: nowrap; font-weight: 600; text-align: left;">${escapedTen}</td>
                             <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 65px;">${ns}</td>
@@ -6131,7 +6144,10 @@ window.renderSttOrderControl = function (type, i, total) {
                         </td>
                     </tr>`;
                 } else {
-                    html += `<tr class="editable-row" onclick="editLeavePat('${p.ten}', '${ns}', '${p.gioRa}', ${idx})" title="Bấm để sửa/xóa">
+                    const safeTenAttr = String(p.ten || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                    const safeNsAttr = String(ns || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                    const safeGioRaAttr = String(p.gioRa || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                    html += `<tr class="editable-row" onclick="editLeavePat('${safeTenAttr}', '${safeNsAttr}', '${safeGioRaAttr}', ${idx})" title="Bấm để sửa/xóa">
                         <td align="center" style="font-weight: 600; color: #475569; width: 32px;">${stt++}</td>
                         <td style="white-space: nowrap; font-weight: 600; text-align: left;">${escapedTen}</td>
                         <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 65px;">${ns}</td>
@@ -14737,7 +14753,7 @@ window.loadTenantsList = function () {
                 window.loadPaymentTransactionsList();
             }
         }, err => {
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:#e11d48;">Lỗi khi tải danh sách: ${err && err.message ? err.message : 'Không xác định'}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:#e11d48;">Lỗi khi tải danh sách: ${escapeHtml(err && err.message ? err.message : 'Không xác định')}</td></tr>`;
         });
     }
 };

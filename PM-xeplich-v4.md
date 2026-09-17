@@ -4050,6 +4050,49 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `index.html`
   - `PM-xeplich-v4.md`
 
+---
+
+### 🔒 Củng Cố Bảo Mật Toàn Diện (Payment Webhook, XSS, Rate Limit DB, Pepper) & Tối Ưu Giải Thuật (17/09/2026 - v4.1.0-rev7)
+- **Yêu cầu của người dùng**:
+  + Rà soát và vá triệt để 5 vấn đề bảo mật và giải thuật:
+    1. 🔴 `paymentWebhook` không xác thực chữ ký/secret, không kiểm tra idempotency và không đối soát số tiền `transferAmount >= plan.price`.
+    2. 🔴 Lỗ hổng XSS lưu trữ qua tên bệnh nhân/nhân sự/thủ thuật hiển thị tại `showToast()` và các thuộc tính sự kiện inline onclick `editBusyPat`, `editLeavePat` khi JWT token lưu ở `localStorage`.
+    3. 🟠 Rate limiter đăng nhập brute-force chỉ lưu trong RAM Worker bị reset khi isolate khởi động lại.
+    4. 🟠 Pepper mã hóa mật khẩu SHA-256 cũ hardcode trong mã nguồn.
+    5. 🟡 Nút thắt hiệu năng giải thuật: `actualMaxSteps` cố định 2 bước bất kể số lượng bệnh nhân, và chuỗi băm Tabu search chỉ cắt 15 bệnh nhân đầu tiên (`slice(0, 15)`) gây va chạm băm sai lệch.
+- **Phân tích & Giải pháp triển khai**:
+  1. **Bảo mật Payment Webhook (`backend/src/index.js`)**:
+     - Thêm cơ chế xác thực secret đa nguồn qua header `x-webhook-secret`, `Authorization: Apikey <secret>`, hoặc URL query `?secret=...`, đối soát với `env.PAYMENT_WEBHOOK_SECRET` hoặc cấu hình bảng `cai_dat`. Nếu secret không khớp, lập tức trả về mã HTTP `401 Unauthorized`.
+     - Kiểm tra idempotency qua trường `transaction_ref` / `referenceCode` tránh double-spending/xử lý trùng lặp giao dịch.
+     - Xác thực số tiền thanh toán nghiêm ngặt: `transferAmount >= plan.price`. Nếu số tiền không đủ, từ chối kích hoạt gói và ghi nhận log `FAILED_UNDERPAID`.
+  2. **Triệt tiêu lỗ hổng Stored XSS (`js/app.js` & `backend/src/index.js`)**:
+     - Tái cấu trúc hàm `showToast()`: Chuyển hoàn toàn sang DOM API (`document.createElement`, `textContent`) thay vì `innerHTML`, triệt tiêu 100% nguy cơ inject script độc hại qua thông báo hệ thống.
+     - Chuẩn hóa việc escape ký tự đặc biệt (`\`, `'`) trong các handler sự kiện inline onclick tại `editBusyPat` và `editLeavePat` (`safeTenAttr`, `safeNsAttr`, `safeGioRaAttr`), đồng thời render nội dung bằng `escapeHtml`.
+     - Bổ sung hàm lọc dữ liệu đầu vào `sanitizeInputText()` tại Backend Worker để làm sạch các ký tự nguy hiểm (`<`, `>`, `"`, `'`) ngay khi tạo/sửa bệnh nhân, nhân sự, phòng và thủ thuật.
+  3. **Lưu trữ Rate Limiter đăng nhập vào CSDL bền vững (`backend/src/index.js`)**:
+     - Bổ sung bảng `login_attempts` vào hàm khởi tạo schema `ensureSchema`.
+     - Chuyển `loginRateLimiter` từ in-memory sang truy vấn CSDL: kiểm tra và lưu số lần thử đăng nhập thất bại theo IP/username, khóa tài khoản tạm thời 15 phút nếu nhập sai quá 5 lần liên tiếp. Tự động xóa lịch sử thử khi đăng nhập thành công.
+  4. **Bảo vệ Pepper băm mật khẩu (`backend/src/index.js`)**:
+     - Đọc `env.LEGACY_PEPPER` từ biến môi trường Cloudflare Worker (fallback chuỗi tương thích ngược nếu chưa cấu hình secret), đảm bảo không lộ khóa trong mã nguồn công khai; tiếp tục hỗ trợ tự động nâng cấp hash lên PBKDF2 an toàn khi người dùng đăng nhập.
+  5. **Tối ưu hóa giải thuật xếp lịch (`js/scheduler-engine.js`)**:
+     - Thay thế `actualMaxSteps = patCount > 60 ? 2 : 2` bằng cơ chế tìm kiếm thích ứng (`patCount > 80 ? 12 : (patCount > 40 ? 8 : 6)`) kèm ngân sách thời gian bảo vệ UI thread `timeBudgetMs = 450`.
+     - Cài đặt hàm băm số nguyên 32-bit `hashOrderDJB2` cho toàn bộ danh sách bệnh nhân thay vì cắt chuỗi `slice(0, 15)`, loại bỏ hoàn toàn hiện tượng va chạm băm sai của bộ nhớ Tabu khi danh sách bệnh nhân lớn.
+  6. **Đồng bộ phiên bản theo RULES.md**:
+     - Phiên bản: `4.1.0-rev7` (17/09/2026).
+     - `version.json`: `version: "4.1.0-rev7"`, `releaseTime: "16:17 17/09/2026"`.
+     - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.1.0-rev7'`.
+     - `index.html`: Cập nhật cache busters `?v=4.1.0-rev7`, `APP_VERSION = '4.1.0-rev7'`, `#sys-last-update` -> `⏱ Cập nhật lần cuối: 16:17 17/09/2026`.
+     - `#app-footer-version` giữ nguyên `Phiên bản: 4.1.0` (tuân thủ quy tắc không hiển thị hậu tố rev ở chân trang).
+- **File sửa đổi**:
+  - `backend/src/index.js`
+  - `js/app.js`
+  - `js/scheduler-engine.js`
+  - `index.html`
+  - `sw.js`
+  - `version.json`
+  - `PM-xeplich-v4.md`
+
+
 
 
 

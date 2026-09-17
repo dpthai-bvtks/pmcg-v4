@@ -447,7 +447,8 @@ app.get('/api/ping', (c) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🛡️ CHỐNG BRUTE-FORCE & PASSWORD SPRAYING (IN-MEMORY RATE LIMITING)
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🛡️ CHỐNG BRUTE-FORCE & PASSWORD SPRAYING (PERSISTENT DB + IN-MEMORY FALLBACK)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const loginRateLimiter = new Map();
@@ -455,8 +456,35 @@ const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // Khóa 15 phút nếu sai liên tiếp
 const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;   // Khung thời gian theo dõi 15 phút
 
-function checkLoginRateLimit(clientKey) {
+function sanitizeInputText(str) {
+  if (typeof str !== "string") return str;
+  return str
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "")
+    .replace(/javascript\s*:/gi, "")
+    .replace(/\bon\w+\s*=/gi, "");
+}
+
+async function checkLoginRateLimit(db, clientKey) {
   const now = Date.now();
+  if (db && typeof db.prepare === "function") {
+    try {
+      const record = await db.prepare("SELECT attempt_count, last_attempt, locked_until FROM login_attempts WHERE client_key = ?").bind(clientKey).first();
+      if (record) {
+        if (record.locked_until && record.locked_until > now) {
+          const remainingMins = Math.ceil((record.locked_until - now) / 60000);
+          return { allowed: false, remainingMins };
+        }
+        if (now - record.last_attempt > ATTEMPT_WINDOW_MS) {
+          await db.prepare("DELETE FROM login_attempts WHERE client_key = ?").bind(clientKey).run().catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.warn("[RateLimit DB Check Error]:", err);
+    }
+  }
+
+  // Fallback in-memory
   const record = loginRateLimiter.get(clientKey);
   if (!record) return { allowed: true };
   if (record.lockedUntil && record.lockedUntil > now) {
@@ -470,8 +498,39 @@ function checkLoginRateLimit(clientKey) {
   return { allowed: true };
 }
 
-function recordLoginFailure(clientKey) {
+async function recordLoginFailure(db, clientKey) {
   const now = Date.now();
+  let count = 1;
+  let lockedUntil = 0;
+
+  if (db && typeof db.prepare === "function") {
+    try {
+      const record = await db.prepare("SELECT attempt_count, last_attempt, locked_until FROM login_attempts WHERE client_key = ?").bind(clientKey).first();
+      if (record) {
+        count = (now - record.last_attempt > ATTEMPT_WINDOW_MS) ? 1 : (record.attempt_count + 1);
+      } else {
+        count = 1;
+      }
+      if (count >= MAX_LOGIN_ATTEMPTS) {
+        lockedUntil = now + LOCKOUT_DURATION_MS;
+      }
+      await db.prepare(`
+        INSERT INTO login_attempts (client_key, attempt_count, last_attempt, locked_until)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(client_key) DO UPDATE SET
+          attempt_count = excluded.attempt_count,
+          last_attempt = excluded.last_attempt,
+          locked_until = excluded.locked_until
+      `).bind(clientKey, count, now, lockedUntil).run().catch(async () => {
+        await db.prepare("DELETE FROM login_attempts WHERE client_key = ?").bind(clientKey).run().catch(() => {});
+        await db.prepare("INSERT INTO login_attempts (client_key, attempt_count, last_attempt, locked_until) VALUES (?, ?, ?, ?)").bind(clientKey, count, now, lockedUntil).run().catch(() => {});
+      });
+    } catch (err) {
+      console.warn("[RateLimit DB Failure Record Error]:", err);
+    }
+  }
+
+  // Cập nhật in-memory
   const record = loginRateLimiter.get(clientKey) || { count: 0, lockedUntil: 0, lastAttempt: now };
   record.count = (now - record.lastAttempt > ATTEMPT_WINDOW_MS) ? 1 : record.count + 1;
   record.lastAttempt = now;
@@ -479,7 +538,6 @@ function recordLoginFailure(clientKey) {
     record.lockedUntil = now + LOCKOUT_DURATION_MS;
   }
   loginRateLimiter.set(clientKey, record);
-  // Dọn dẹp cache nếu vượt quá 1000 bản ghi
   if (loginRateLimiter.size > 1000) {
     for (const [k, v] of loginRateLimiter.entries()) {
       if (now - v.lastAttempt > ATTEMPT_WINDOW_MS && (!v.lockedUntil || v.lockedUntil < now)) {
@@ -489,8 +547,13 @@ function recordLoginFailure(clientKey) {
   }
 }
 
-function recordLoginSuccess(clientKey) {
+async function recordLoginSuccess(db, clientKey) {
   loginRateLimiter.delete(clientKey);
+  if (db && typeof db.prepare === "function") {
+    try {
+      await db.prepare("DELETE FROM login_attempts WHERE client_key = ?").bind(clientKey).run().catch(() => {});
+    } catch (e) {}
+  }
 }
 
 // Universal API Action Bridge (POST / and POST /api/action)
@@ -1097,6 +1160,12 @@ async function ensureSchema(db) {
         gateway TEXT DEFAULT 'VIETQR',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         confirmed_at DATETIME
+      )`),
+      db.prepare(`CREATE TABLE IF NOT EXISTS login_attempts (
+        client_key TEXT PRIMARY KEY,
+        attempt_count INTEGER DEFAULT 1,
+        last_attempt INTEGER NOT NULL,
+        locked_until INTEGER DEFAULT 0
       )`)
     ];
     await db.batch(stmts);
@@ -1624,8 +1693,9 @@ function timingSafeEqualStr(a, b) {
   return res === 0;
 }
 
-async function hashPasswordLegacy(password, pepper = "TIMES_BVTKS_2026_SECURE_SALT_PEPPER") {
-  const msgUint8 = new TextEncoder().encode(password + pepper);
+async function hashPasswordLegacy(password, pepper = null) {
+  const finalPepper = pepper || (typeof env !== "undefined" && env?.LEGACY_PEPPER) || "TIMES_BVTKS_2026_SECURE_SALT_PEPPER";
+  const msgUint8 = new TextEncoder().encode(password + finalPepper);
   const hashBuffer = await crypto.subtle.digest("SHA-256", msgUint8);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
@@ -1667,7 +1737,7 @@ function isLegacyHash(storedHash) {
   return Boolean(storedHash && typeof storedHash === "string" && !storedHash.startsWith("pbkdf2:sha256:"));
 }
 
-async function verifyPassword(password, storedHash) {
+async function verifyPassword(password, storedHash, env = null) {
   if (!password || !storedHash) return false;
   const sHash = String(storedHash).trim();
   if (sHash.startsWith("pbkdf2:sha256:")) {
@@ -1680,8 +1750,9 @@ async function verifyPassword(password, storedHash) {
     const computedParts = computed.split(":");
     return timingSafeEqualStr(computedParts[4], expectedDerivedHex);
   } else {
-    // Legacy SHA-256 with static pepper
-    const legacy = await hashPasswordLegacy(password);
+    // Legacy SHA-256 with pepper (hỗ trợ cấu hình qua env.LEGACY_PEPPER)
+    const pepper = (env && env.LEGACY_PEPPER) ? env.LEGACY_PEPPER : "TIMES_BVTKS_2026_SECURE_SALT_PEPPER";
+    const legacy = await hashPasswordLegacy(password, pepper);
     return timingSafeEqualStr(legacy, sHash);
   }
 }
@@ -2341,9 +2412,62 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
     case "paymentWebhook": {
       const payload = args[0] || {};
+
+      // 🛡️ 1. XÁC THỰC WEBHOOK SECRET / CHỮ KÝ CỔNG THANH TOÁN (SEPAY / CASSO / PAYOS / CUSTOM)
+      let incomingSecret = "";
+      if (request && request.headers) {
+        incomingSecret = request.headers.get("x-webhook-secret") ||
+                         request.headers.get("x-api-key") ||
+                         request.headers.get("secure-token") || "";
+        const authHeader = request.headers.get("authorization") || "";
+        if (authHeader.startsWith("Apikey ")) {
+          incomingSecret = authHeader.substring(7).trim();
+        } else if (authHeader.startsWith("Bearer ") && !incomingSecret) {
+          incomingSecret = authHeader.substring(7).trim();
+        }
+      }
+      if (!incomingSecret && payload.secure_token) {
+        incomingSecret = String(payload.secure_token).trim();
+      }
+      if (!incomingSecret && payload.secret) {
+        incomingSecret = String(payload.secret).trim();
+      }
+
+      let configuredSecret = env?.PAYMENT_WEBHOOK_SECRET ? String(env.PAYMENT_WEBHOOK_SECRET).trim() : "";
+      if (!configuredSecret) {
+        const recSec = await db.prepare("SELECT value FROM cai_dat WHERE key = 'payment_webhook_secret' LIMIT 1").first().catch(() => null);
+        configuredSecret = recSec ? String(recSec.value).trim() : "";
+      }
+
+      // Kiểm tra secret bắt buộc để ngăn chặn gọi tự do
+      if (configuredSecret) {
+        if (!incomingSecret || incomingSecret !== configuredSecret) {
+          console.warn("[SECURITY REJECT] Webhook payment rejected: Invalid or missing webhook secret.");
+          return error("Từ chối truy cập: Chữ ký hoặc Webhook Secret không hợp lệ!", 403);
+        }
+      } else {
+        // Chưa cấu hình PAYMENT_WEBHOOK_SECRET: Yêu cầu quyền Super Admin hoặc reject
+        if (!incomingSecret && (!tokenPayload || tokenPayload.role !== "SUPER_ADMIN")) {
+          return error("Từ chối truy cập: Webhook thanh toán yêu cầu cấu hình biến môi trường PAYMENT_WEBHOOK_SECRET hoặc header xác thực!", 403);
+        }
+      }
+
       const rawContent = String(payload.content || payload.description || payload.message || payload.order_code || payload.memo || "").trim();
       const transferAmount = Number(payload.amount || payload.transferAmount || 0);
       const refNo = String(payload.referenceCode || payload.transactionId || payload.id || payload.ref || "").trim();
+
+      // 🛡️ 2. CHỐNG REPLAY ATTACK (KIỂM TRA TRÙNG LẶP MÃ GIAO DỊCH IDEMPOTENCY)
+      if (refNo) {
+        const existTx = await db.prepare("SELECT id, status, unit_code, plan_tier FROM payment_transactions WHERE transaction_ref = ? AND status = 'SUCCESS'").bind(refNo).first().catch(() => null);
+        if (existTx && existTx.id) {
+          return success({
+            message: `Giao dịch ref '${refNo}' đã được xử lý thành công trước đó (Idempotent replay detected).`,
+            unit_code: existTx.unit_code,
+            plan_tier: existTx.plan_tier,
+            already_processed: true
+          });
+        }
+      }
 
       const match = rawContent.match(/PMCG\s+([A-Za-z0-9_-]+)(?:\s+([A-Za-z0-9_]+))?/i);
       if (!match) {
@@ -2366,6 +2490,18 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
       const targetPlan = suffixMap[suffix] || 'PLAN_1M';
       const plan = SUBSCRIPTION_PLANS[targetPlan] || SUBSCRIPTION_PLANS['PLAN_1M'];
+
+      // 🛡️ 3. KIỂM TRA ĐỐI CHIẾU SỐ TIỀN CHUYỂN KHOẢN (TRANSFER AMOUNT CHECK)
+      if (plan.price > 0 && transferAmount < plan.price) {
+        try {
+          await db.prepare(`
+            INSERT INTO payment_transactions (order_code, unit_code, plan_tier, amount, content, status, confirmed_at, transaction_ref, gateway)
+            VALUES (?, ?, ?, ?, ?, 'FAILED_UNDERPAID', CURRENT_TIMESTAMP, ?, 'BANK_WEBHOOK')
+          `).bind(`WH_${Date.now()}_${targetUnit}`, targetUnit, targetPlan, transferAmount, rawContent, refNo).run();
+        } catch (e) {}
+
+        return error(`Số tiền chuyển khoản (${transferAmount.toLocaleString('vi-VN')} đ) không đủ để kích hoạt gói '${plan.name}' (${plan.price.toLocaleString('vi-VN')} đ)!`, 400);
+      }
 
       const tenant = await db.prepare("SELECT unit_code, unit_name, plan_tier, expires_at FROM tenants WHERE unit_code = ?").bind(targetUnit).first();
       if (!tenant) return error(`Đơn vị '${targetUnit}' không tồn tại trên hệ thống!`, 404);
@@ -3303,7 +3439,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           lienTuc: args[offset + 13]
         };
       }
-      const ten = String(payload.ten || payload.name || "").trim();
+      const ten = sanitizeInputText(String(payload.ten || payload.name || "").trim());
       if (!ten) return error("Tên thủ thuật không hợp lệ");
       const vietTat = String(payload.vietTat || payload.viet_tat || "");
       const he = String(payload.he || "YHCT");
@@ -3370,7 +3506,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           danhSachGiuong: args[offset + 5]
         };
       }
-      const tenPhong = String(payload.tenPhong || payload.ten_phong || payload.name || "").trim();
+      const tenPhong = sanitizeInputText(String(payload.tenPhong || payload.ten_phong || payload.name || "").trim());
       if (!tenPhong) return error("Tên phòng không hợp lệ");
       const bacSi = String(payload.bacSi || payload.bac_si || "");
       const ktv = String(payload.ktv || "");
@@ -3442,7 +3578,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         tenHis: args[8]
       };
 
-      const sName = String(s.ten || s.name || "").trim();
+      const sName = sanitizeInputText(String(s.ten || s.name || "").trim());
       if (!sName || /^\d+$/.test(sName)) return error("Tên nhân sự không hợp lệ");
       const sRole = String(s.vaiTro || s.role || "Kỹ thuật viên").trim();
       const sTrangThai = String(s.trangThai || s.trang_thai || "Đi làm").trim();
@@ -3491,7 +3627,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         };
       }
 
-      const sName = String(s.ten || s.name || "").trim();
+      const sName = sanitizeInputText(String(s.ten || s.name || "").trim());
       if (!sName || /^\d+$/.test(sName)) return error("Tên nhân sự không hợp lệ");
       const sRole = String(s.vaiTro || s.role || "Kỹ thuật viên").trim();
       const sTrangThai = String(s.trangThai || s.trang_thai || "Đi làm").trim();
@@ -3577,7 +3713,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       buoi_dieu_tri: args[9]
     };
 
-    const patName = healBackendPatientName(p.ten || p.name || "");
+    const patName = sanitizeInputText(healBackendPatientName(p.ten || p.name || ""));
     const patAge = parseInt(p.namSinh || p.age) || 0;
     const ngayVao = String(p.ngayVao || "").trim();
     const procs = typeof p.thuThuat === "string" ? p.thuThuat.split(",").map(x => ({ name: x.trim(), status: "Chưa xếp" })) : (p.thu_thuat || []);
@@ -3671,7 +3807,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     if (patName.includes("\ufffd") && targetName && !targetName.includes("\ufffd")) {
       patName = targetName;
     }
-    patName = healBackendPatientName(patName);
+    patName = sanitizeInputText(healBackendPatientName(patName));
     const targetAge = parseInt(p.oldNamSinh || p.namSinh || p.age) || 0;
     const procs = typeof p.thuThuat === "string" ? p.thuThuat.split(",").map(x => ({ name: x.trim(), status: "Chưa xếp" })).filter(x => x.name) : (p.thu_thuat || []);
     const loaiBnVal = p.loai_bn ? String(p.loai_bn).trim() : "";
@@ -4959,7 +5095,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         ? (request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown-ip")
         : "unknown-ip";
       const rateLimitKey = `${clientIp}:${username.toLowerCase()}`;
-      const rlCheck = checkLoginRateLimit(rateLimitKey);
+      const rlCheck = await checkLoginRateLimit(db, rateLimitKey);
       if (!rlCheck.allowed) {
         return error(`Tài khoản hoặc địa chỉ IP này đã nhập sai mật khẩu quá 5 lần liên tiếp. Vui lòng thử lại sau ${rlCheck.remainingMins} phút!`, 429);
       }
@@ -4988,9 +5124,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           }
         }
 
-        const isSuperAdminValid = await verifyPassword(password, expectedHash);
+        const isSuperAdminValid = await verifyPassword(password, expectedHash, env);
         if (isSuperAdminValid) {
-          recordLoginSuccess(rateLimitKey);
+          await recordLoginSuccess(db, rateLimitKey);
           // Tự động nâng cấp transparently sang PBKDF2 nếu vẫn là hash legacy SHA-256
           if (isLegacyHash(expectedHash)) {
             try {
@@ -5027,7 +5163,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         }
 
         // Đăng nhập sai: phạt delay 1000ms + ghi nhận lỗi vào rate limiter
-        recordLoginFailure(rateLimitKey);
+        await recordLoginFailure(db, rateLimitKey);
         await new Promise(r => setTimeout(r, 1000));
         return error("Mật khẩu tài khoản Super Admin không chính xác!", 401);
       }
@@ -5072,9 +5208,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         }
 
         if (user) {
-          const isUserValid = await verifyPassword(password, user.password_hash);
+          const isUserValid = await verifyPassword(password, user.password_hash, env);
           if (isUserValid) {
-            recordLoginSuccess(rateLimitKey);
+            await recordLoginSuccess(db, rateLimitKey);
             // Tự động nâng cấp transparently sang PBKDF2 nếu vẫn là hash legacy SHA-256
             if (isLegacyHash(user.password_hash)) {
               try {
@@ -5121,7 +5257,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       }
 
       // Đăng nhập thất bại: phạt delay 1000ms + ghi nhận lỗi vào rate limiter
-      recordLoginFailure(rateLimitKey);
+      await recordLoginFailure(db, rateLimitKey);
       await new Promise(r => setTimeout(r, 1000));
       return error("Tên đăng nhập hoặc mật khẩu không chính xác!", 401);
     }

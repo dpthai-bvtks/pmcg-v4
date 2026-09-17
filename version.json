@@ -1,6 +1,6 @@
 {
-    "version":  "4.1.0-rev6",
+    "version":  "4.1.0-rev7",
     "releaseDate":  "17/09/2026",
-    "releaseTime":  "13:35 17/09/2026",
-    "notes":  "Tu dong chua lanh va phuc hoi ten thu thuat bi loi ky tu la/bang ma (dien ch??m -> Dien cham), dong bo cache lich da luu va tu dong cap nhat localStorage."
+    "releaseTime":  "16:17 17/09/2026",
+    "notes":  "Bao mat paymentWebhook voi HMAC/Secret va doi chieu so tien, triet tieu XSS trong showToast va thuoc tinh onclick, rate limit dang nhap ben vung voi CSDL login_attempts, toi uu thuat toan actualMaxSteps voi time-budget va bam DJB2 Tabu signature."
 }

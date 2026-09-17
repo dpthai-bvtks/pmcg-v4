@@ -1287,15 +1287,32 @@ function getPatientSignature(pat) {
     return (pat.name || pat.pId || '') + '_' + (pat.pending ? pat.pending.join('|') : '');
   }
 
+  function hashOrderDJB2(candidateOrder) {
+    let hash = 5381;
+    for (let i = 0; i < candidateOrder.length; i++) {
+      const p = candidateOrder[i];
+      const str = (p.name || p.pId || '') + '_' + (p.pending ? p.pending.join('|') : '');
+      for (let j = 0; j < str.length; j++) {
+        hash = ((hash << 5) + hash) + str.charCodeAt(j);
+        hash = hash & hash;
+      }
+    }
+    return hash;
+  }
+
   function runBestIteration(db, dateVal, existingSched = [], scenario = 1, crowdedOverride = -1, weights = { drop: 10000, overtime: 2, imbalance: 0.1 }, baseSeed = 42, maxSteps = null) {
     let bestSched = null;
     let bestRot = null;
     let bestScore = Infinity;
 
     const patCount = (db && db.rawPatients) ? db.rawPatients.length : 0;
+    // 🚀 TỐI ƯU HÓA BƯỚC TÌM KIẾM (ADAPTIVE STEPS VỚI TIME BUDGET):
+    // Thay vì cố định 2 bước, thuật toán mở rộng thích ứng theo số lượng ca và bảo vệ bằng ngân sách thời gian 450ms
     const actualMaxSteps = (typeof maxSteps === 'number' && maxSteps > 0)
       ? maxSteps
-      : (patCount > 60 ? 2 : 2);
+      : (patCount > 80 ? 12 : (patCount > 40 ? 8 : 6));
+    const timeBudgetMs = 450;
+    const startTime = Date.now();
 
     // 🤖 AI Smart Patient Ranking: Xếp thứ tự ban đầu theo định lượng AI
     let initialPatients = db.rawPatients;
@@ -1332,12 +1349,18 @@ function getPatientSignature(pat) {
     let lahcIdx = 0;
 
     for (let step = 0; step < actualMaxSteps; step++) {
+      // ⏱️ Kiểm tra ngân sách thời gian: nếu đã chạy > 450ms và đã thử ít nhất 2 bước -> dừng sớm để tránh đơ giao diện
+      if (step >= 2 && (Date.now() - startTime > timeBudgetMs)) {
+        break;
+      }
+
       const stepSeed = (baseSeed * 1000 + step * 37) % 2147483647;
       const randFn = createSeededRandom(stepSeed);
       const droppedNames = bestRot ? bestRot.map(r => String(r.bn || r.tenBN || r.name || '').toUpperCase()) : [];
       const candidateOrder = mutate(currentOrder, randFn, droppedNames);
       
-      const sig = candidateOrder.map(p => getPatientSignature(p)).slice(0, 15).join(';');
+      // 🔑 Băm DJB2 toàn bộ danh sách bệnh nhân để triệt tiêu va chạm Tabu Signature
+      const sig = hashOrderDJB2(candidateOrder);
       const isTabu = tabuList.includes(sig);
 
       db.rawPatients = candidateOrder;
