@@ -1526,6 +1526,21 @@ async function ensureSchema(db) {
         await db.prepare("UPDATE lich_su SET patient_name = 'TRẦN VĂN HỒNG' WHERE (patient_name LIKE '%TRN%HỒNG%' OR patient_name LIKE '%\ufffd%HỒNG%' OR patient_name LIKE 'TRN VĂN HỒNG') AND dob = '1968'").run().catch(() => {});
         await db.prepare("UPDATE lich_su SET patient_name = 'NGUYỄN THẾ CƯỜNG' WHERE (patient_name LIKE '%THẾ CƯNG%' OR patient_name LIKE '%\ufffd%CƯNG%' OR patient_name LIKE '%THẾ C\ufffd%NG%') AND dob = '1980'").run().catch(() => {});
       } catch(eHeal) {}
+
+      // 🛡️ TỰ ĐỘNG KHỬ TRÙNG LẶP BỆNH NHÂN (DEDUPLICATION SELF-HEALING)
+      try {
+        await db.prepare(`
+          DELETE FROM benh_nhan 
+          WHERE is_saturday = 0 
+            AND id NOT IN (
+              SELECT MAX(id) FROM benh_nhan 
+              WHERE is_saturday = 0 
+              GROUP BY unit_code, name, age, ngay_vao
+            )
+        `).run().catch(() => {});
+      } catch(eDedup) {
+        console.warn("[Deduplicate benh_nhan error]:", eDedup);
+      }
     } catch(e) {
       console.warn("[Migrate benh_nhan error]:", e);
     }
@@ -3876,14 +3891,36 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         await db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND (is_saturday = 0 OR is_saturday IS NULL OR is_saturday = '')").bind(unitCode).run();
       }
 
-      const insertStatements = [];
+      // 🛡️ Deduplicate incoming patient list internally first (giữ bản ghi cuối cùng của mỗi bệnh nhân)
+      const uniquePatients = new Map();
       patientList.forEach((p, idx) => {
         if (!p || typeof p !== "object") return;
-        const name = String(p.ten || p.name || "").trim();
+        const name = healBackendPatientName(String(p.ten || p.name || "").trim());
         if (!name) return;
-
         const age = parseInt(String(p.namSinh || p.age || "0").replace(/\D/g, "")) || 0;
-        const ngayVao = String(p.ngayVao || p.ngay_vao || "");
+        const ngayVao = String(p.ngayVao || p.ngay_vao || "").trim();
+        const matchKey = `${name.toUpperCase()}|${age}|${ngayVao}`;
+        uniquePatients.set(matchKey, { p, name, age, ngayVao, idx });
+      });
+
+      // Nếu không phải replaceAll -> Tra cứu bệnh nhân hiện có để UPDATE thay vì chèn trùng lặp
+      const existingMap = new Map();
+      if (!replaceAll) {
+        try {
+          const existingRes = await db.prepare(
+            "SELECT id, name, age, ngay_vao FROM benh_nhan WHERE unit_code = ? AND (is_saturday = 0 OR is_saturday IS NULL OR is_saturday = '')"
+          ).bind(unitCode).all();
+          (existingRes.results || []).forEach(r => {
+            const k = `${String(r.name || '').trim().toUpperCase()}|${r.age || 0}|${String(r.ngay_vao || '').trim()}`;
+            existingMap.set(k, r.id);
+          });
+        } catch(e) {
+          console.warn("[bulkUpdatePatients fetch existing warning]:", e);
+        }
+      }
+
+      const statements = [];
+      uniquePatients.forEach(({ p, name, age, ngayVao, idx }) => {
         const gioVaoRaw = p.gioVao !== undefined ? p.gioVao : (p.arrive_time !== undefined ? p.arrive_time : "");
         const gioVao = String(gioVaoRaw || "07:30");
         const gioBan = String(p.gioBan || p.gio_ban || "");
@@ -3908,39 +3945,47 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         }
         const procsJson = JSON.stringify(procs);
 
-        const sql = "INSERT INTO benh_nhan (unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri, order_idx) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        const matchKey = `${name.toUpperCase()}|${age}|${ngayVao}`;
+        const existingId = existingMap.get(matchKey);
 
-        insertStatements.push(
-          db.prepare(sql).bind(
-            unitCode,   // 1: unit_code (TEXT)
-            name,       // 2: name (TEXT)
-            age,        // 3: age (INTEGER)
-            gender,     // 4: gender (TEXT)
-            room,       // 5: room (TEXT)
-            bed,        // 6: bed (TEXT)
-            gioVao,     // 7: arrive_time (TEXT)
-            gioRa,      // 8: leave_time (TEXT)
-            procsJson,  // 9: thu_thuat (TEXT, JSON)
-            status,     // 10: status (TEXT)
-            ngayVao,    // 11: ngay_vao (TEXT)
-            gioBan,     // 12: gio_ban (TEXT)
-            loaiBn,     // 13: loai_bn (TEXT)
-            buoiDieuTri,// 14: buoi_dieu_tri (TEXT)
-            idx         // 15: order_idx (INTEGER)
-          )
-        );
+        if (existingId) {
+          // 🔄 Đã tồn tại -> Cập nhật thông tin thay vì chèn lặp bản ghi mới
+          statements.push(
+            db.prepare(`
+              UPDATE benh_nhan SET 
+                gender = ?, room = ?, bed = ?, arrive_time = ?, leave_time = ?, 
+                thu_thuat = ?, status = ?, gio_ban = ?, loai_bn = ?, buoi_dieu_tri = ?, 
+                updated_at = CURRENT_TIMESTAMP 
+              WHERE unit_code = ? AND id = ?
+            `).bind(
+              gender, room, bed, gioVao, gioRa,
+              procsJson, status, gioBan, loaiBn, buoiDieuTri,
+              unitCode, existingId
+            )
+          );
+        } else {
+          // ➕ Bệnh nhân mới -> Chèn mới
+          statements.push(
+            db.prepare(
+              "INSERT INTO benh_nhan (unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri, order_idx) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            ).bind(
+              unitCode, name, age, gender, room, bed, gioVao, gioRa,
+              procsJson, status, ngayVao, gioBan, loaiBn, buoiDieuTri, idx
+            )
+          );
+        }
       });
 
-      if (insertStatements.length > 0) {
+      if (statements.length > 0) {
         // Gửi batch lớn (250 câu lệnh/request) tối ưu hóa Turso Pipeline
         const chunkSize = 250;
-        for (let i = 0; i < insertStatements.length; i += chunkSize) {
-          await db.batch(insertStatements.slice(i, i + chunkSize));
+        for (let i = 0; i < statements.length; i += chunkSize) {
+          await db.batch(statements.slice(i, i + chunkSize));
         }
         await bumpDataVersion(db, unitCode);
       }
 
-      return success({ message: `Cập nhật danh sách ${patientList.length} bệnh nhân thành công!` });
+      return success({ message: `Cập nhật danh sách ${uniquePatients.size} bệnh nhân thành công!` });
     }
 
     case "getSchedule":

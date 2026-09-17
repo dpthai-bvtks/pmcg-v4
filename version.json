@@ -1,6 +1,6 @@
 {
-  "version": "4.0.9-rev14",
-  "releaseDate": "16/09/2026",
-  "releaseTime": "20:25 16/09/2026",
-  "notes": "Sửa triệt để lỗi SQLite ON CONFLICT khi xóa bệnh nhân/thiết bị/phòng/thủ thuật/nhân sự trên Turso, tách biệt hoàn toàn lệnh xóa và cập nhật data_version an toàn."
+  "version": "4.1.0-rev1",
+  "releaseDate": "17/09/2026",
+  "releaseTime": "07:35 17/09/2026",
+  "notes": "Khắc phục triệt để lỗi trùng lặp bệnh nhân (gấp đôi bản ghi), dọn sạch 24 bản ghi trùng cũ trên CSDL, nâng cấp bulkUpdatePatients & importPatients chống trùng đa tầng, tự động khử trùng lặp trong ensureSchema."
 }

@@ -3916,10 +3916,44 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - `version.json`: `version: "4.0.9-rev14"`, `releaseTime: "20:25 16/09/2026"`.
      - Deploy thành công lên Cloudflare Worker `pmcg-api` và Cloudflare Pages `pmcg-v3`.
 - **File sửa đổi**:
+### [17/09/2026 - 07:35] Phiên bản v4.1.0-rev1: Khắc phục triệt để lỗi trùng lặp bệnh nhân (gấp đôi bản ghi) sau khi thao tác trên laptop lúc MiniPC tắt máy
+- **Bối cảnh & Vấn đề người dùng phản ánh**:
+  - Người dùng phản ánh: *"hôm qua mình có thao tác trên laptop ở nhà trong khi minipc ở viện đã tắt máy, hôm nay mở lại thì bảng danh sách bệnh nhân bị trùng lặp bệnh nhân, 1 số bệnh nhân lại gấp đôi lên, xem lại xem"*.
+  - Bảng danh sách bệnh nhân xuất hiện 78 người trong khi danh sách thực tế chỉ có 54 người; có đúng 24 bệnh nhân bị hiển thị gấp đôi bản ghi.
+- **Phân tích nguyên nhân cốt lõi (Root Causes)**:
+  1. *Phân tích bản ghi CSDL*:
+     - 24 bệnh nhân được tạo ở đợt sáng lúc 10:25 16/09/2026 (IDs từ `3801` đến `3824`, `3837`).
+     - 54 bệnh nhân được nạp ở đợt tối lúc 20:06 16/09/2026 trên laptop ở nhà (IDs từ `3825` đến `3880`). Trong danh sách 54 người đợt tối đã chứa trọn vẹn 24 bệnh nhân của đợt sáng cùng 30 bệnh nhân mới.
+  2. *Lỗ hổng API `bulkUpdatePatients` (`backend/src/index.js`)*:
+     - Khi người dùng nạp dữ liệu ở chế độ "Bổ sung thêm" (`replaceAll = false`), API `bulkUpdatePatients` chỉ thực hiện `INSERT INTO benh_nhan` cho tất cả các bản ghi mà không kiểm tra hay cập nhật các bản ghi đã có.
+     - Bảng `benh_nhan` trong SQLite chưa có `UNIQUE INDEX` cho `(unit_code, name, age, ngay_vao)`.
+     - Do đó, 24 bệnh nhân cũ bị chèn thêm một lần nữa thành 24 bản ghi mới tinh, làm danh sách tăng vọt từ 54 lên 78 người.
+  3. *Lỗ hổng `importPatients` (`js/app.js`)*:
+     - Khi chọn "Bổ sung thêm" (`replaceAll = false`), hàm gửi nguyên mảng nạp từ Excel lên server mà không đối soát với `existingPats` trong cache để cập nhật tại chỗ.
+- **Giải pháp xử lý triệt để (Multi-Tier Defense)**:
+  1. **Dọn dẹp CSDL Cấp tốc**:
+     - Đã loại bỏ 24 bản ghi trùng lặp cũ (IDs `3801-3824`, `3837`), giữ lại nguyên vẹn 24 bản ghi mới nhất đợt tối cùng 30 bệnh nhân mới.
+     - Tổng số bệnh nhân trên CSDL đưa về chuẩn xác **54 bệnh nhân duy nhất** (100% không mất mát thông tin phòng/thủ thuật).
+  2. **Khóa chặn & Tự chữa lành ở Backend (`backend/src/index.js`)**:
+     - Nâng cấp `bulkUpdatePatients`: Deduplicate nội bộ mảng nạp; khi `replaceAll = false`, tự động tra cứu CSDL để `UPDATE` thông tin cho bệnh nhân đã có và chỉ `INSERT` cho bệnh nhân thực sự mới.
+     - Bổ sung cơ chế tự dọn trùng (Self-Healing Deduplication) trong `ensureSchema`: tự động giữ lại `MAX(id)` cho mỗi nhóm `(unit_code, name, age, ngay_vao)` mỗi khi khởi động.
+  3. **Khóa chặn ở Frontend (`js/app.js`)**:
+     - Tích hợp lớp phòng thủ Deduplication in-memory trong `renderPatientsTable_Original`: tự động gom nhóm và loại trừ bản ghi trùng trước khi hiển thị bảng.
+     - Nâng cấp `importPatients`: Hợp nhất thông minh `finalImportList` khi chọn "Bổ sung thêm".
+  4. **Đồng bộ phiên bản theo RULES.md**:
+     - Ngày mới (17/09/2026): Nâng phiên bản chính lên **`4.1.0-rev1`**.
+     - Footer timestamp: `07:35 17/09/2026`.
+     - Thẻ `#app-footer-version` giữ đúng `Phiên bản: 4.1.0` (không kèm revN theo Rule 3).
+     - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.1.0-rev1'`.
+     - `index.html`: Cập nhật toàn bộ cache busters `?v=4.1.0-rev1`, `APP_VERSION = '4.1.0-rev1'`.
+     - `version.json`: Cập nhật `version: "4.1.0-rev1"`, `releaseTime: "07:35 17/09/2026"`.
+- **File sửa đổi**:
   - `backend/src/index.js`
+  - `js/app.js`
   - `index.html`
   - `sw.js`
   - `version.json`
   - `PM-xeplich-v4.md`
+
 
 

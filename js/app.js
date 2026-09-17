@@ -5350,6 +5350,31 @@ window.renderSttOrderControl = function (type, i, total) {
                 }
             });
 
+            // 🛡️ LỚP PHÒNG THỦ DEDUPLICATION: Loại trừ triệt để bản ghi trùng lặp trên giao diện
+            if (Array.isArray(dataCache.pat) && dataCache.pat.length > 1) {
+                const dedupMap = new Map();
+                dataCache.pat.forEach(p => {
+                    if (!p) return;
+                    const n = String(p.ten || p.name || '').trim().toUpperCase();
+                    const ns = String(p.namSinh || p.age || '').trim();
+                    const nv = String(p.ngayVao || p.ngay_vao || '').trim();
+                    const k = `${n}|${ns}|${nv}`;
+                    if (!dedupMap.has(k)) {
+                        dedupMap.set(k, p);
+                    } else {
+                        const existing = dedupMap.get(k);
+                        const currId = Number(p.id) || 0;
+                        const existId = Number(existing.id) || 0;
+                        if (currId >= existId) {
+                            dedupMap.set(k, p);
+                        }
+                    }
+                });
+                if (dedupMap.size < dataCache.pat.length) {
+                    dataCache.pat = Array.from(dedupMap.values());
+                }
+            }
+
             const nameCount = {};
             (dataCache.pat || []).forEach(p => {
                 const name = String(p.ten || '').trim();
@@ -10527,11 +10552,31 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     const replaceAll = confirm("Bác sĩ có muốn THAY THẾ TOÀN BỘ danh sách hiện tại không?\n\n- OK: Xóa sạch, nạp mới.\n- Cancel: Bổ sung thêm.");
 
+                    // 🛡️ Hợp nhất thông minh: Nếu bổ sung thêm, cập nhật bệnh nhân đã có và thêm bệnh nhân mới
+                    let finalImportList = patientList;
+                    if (!replaceAll && existingPats.length > 0) {
+                        const mergedMap = new Map();
+                        existingPats.forEach(p => {
+                            const k = buildMatchKeyLocal(p.ten, p.namSinh);
+                            mergedMap.set(k, { ...p });
+                        });
+                        patientList.forEach(p => {
+                            const k = buildMatchKeyLocal(p.ten, p.namSinh);
+                            if (mergedMap.has(k)) {
+                                const old = mergedMap.get(k);
+                                mergedMap.set(k, { ...old, ...p, id: old.id });
+                            } else {
+                                mergedMap.set(k, p);
+                            }
+                        });
+                        finalImportList = Array.from(mergedMap.values());
+                    }
+
                     const btn = document.getElementById('btn-import-pat');
                     btn.innerText = "⏳ Đang xử lý..."; btn.disabled = true;
 
                     savePatientsWithFallback(
-                        patientList,
+                        finalImportList,
                         replaceAll,
                         res => {
                             const msg = typeof res === 'object' && res.message ? res.message : (typeof res === 'string' ? res : "Nhập dữ liệu thành công!");
