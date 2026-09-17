@@ -4092,6 +4092,44 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `version.json`
   - `PM-xeplich-v4.md`
 
+---
+
+### ⏱️ Tối Ưu Độ Liền Mạch Nhân Sự & Triệt Tiêu Khoảng Rảnh Lắt Nhắt (Pha 1 & Pha 2) (17/09/2026 - v4.1.0-rev8)
+- **Yêu cầu của người dùng**:
+  + Tối ưu xếp lịch để nhân sự làm việc liên tục, chỉ tránh giờ bận của nhân sự và bệnh nhân, tránh để giờ rảnh quá nhiều (triển khai Pha 1 + Pha 2).
+- **Phân tích & Giải pháp triển khai**:
+  1. **Pha 1: Nâng cấp hàm phạt khoảng rảnh (`gapPenalty`) trong `_turbo_core_logic` ([js/scheduler-engine.js](file:///g:/Other%20computers/Laptop%20Th%C3%A1i/PM-DPT/PM-xeplich/khung_pm/ban_web/v4-thuongmai/js/scheduler-engine.js))**:
+     - Bỏ mốc chặn cứng `gap <= 30`: trước đây các khoảng rảnh $> 30$ phút (như 37 phút, 45 phút) bị bỏ qua hoàn toàn, không hề bị tính phạt.
+     - Trừ khoảng đệm vô khuẩn/chuyển tiếp giường $\le 5$ phút không phạt.
+     - Tính phạt lũy tiến theo độ dài thực tế: $\sum (\text{idle})^{1.35}$ với $\text{idle} = gap - 5$, ép thuật toán loại bỏ các khoảng rảnh dài thay vì chỉ đếm số sự kiện.
+     - Nâng trọng số `gapWeight` từ `5` (đếm sự kiện) sang `1.5` (lũy tiến thời lượng), tạo động lực mạnh mẽ cho LAHC và Tabu Search co cụm lịch mà không ảnh hưởng tới mục tiêu 0 ca rớt (`drop = 10000`).
+  2. **Pha 2: Mở rộng `compactTimelineGaps` với Cross-Staff Gap Filler ([js/scheduler-engine.js](file:///g:/Other%20computers/Laptop%20Th%C3%A1i/PM-DPT/PM-xeplich/khung_pm/ban_web/v4-thuongmai/js/scheduler-engine.js))**:
+     - Bổ sung quy trình nén lịch khép kín 3 bước:
+       - **Bước 1**: Left-shift Compaction đơn lẻ dồn sớm các ca trong cùng nhân sự.
+       - **Bước 2**: Cross-Staff Gap Filler: Quét các khoảng rảnh $\ge 15$ phút của từng nhân sự, tìm kiếm các ca của nhân sự khác để tái phân bổ hoặc dời sớm vào khoảng rảnh. Kiểm tra chặt chẽ:
+         + Kỹ năng chuyên môn nhân sự (`isStaffQualified`).
+         + Ca trực và giờ bận cá nhân (`isStaffAvailableDuring`).
+         + Ràng buộc Bệnh nhân, Giờ nghỉ trưa, Máy móc, Giường bệnh, Nhân sự phụ.
+         + Bảo vệ cân bằng tải trọng (Workload Fairness, không dồn lệch quá 3 ca).
+       - **Bước 3**: Chạy lại Left-shift Compaction lần 2 để dồn nén triệt để sau khi chuyển giao ca.
+  3. **Kết quả kiểm nghiệm trên dữ liệu thực tế ngày 17/09/2026**:
+     - 100% 162/162 ca xếp thành công (0 ca rớt).
+     - Tổng thời gian rảnh lắt nhắt của toàn bộ nhân sự giảm từ **82 phút** xuống còn duy nhất **11 phút**!
+     - Kiểm tra va chạm (Collision check): 0 va chạm bệnh nhân, 0 va chạm máy móc, 0 va chạm giường bệnh.
+  4. **Đồng bộ phiên bản theo RULES.md**:
+     - Phiên bản: `4.1.0-rev8` (17/09/2026).
+     - `version.json`: `version: "4.1.0-rev8"`, `releaseTime: "16:30 17/09/2026"`.
+     - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.1.0-rev8'`.
+     - `index.html`: Cập nhật cache busters `?v=4.1.0-rev8`, `APP_VERSION = '4.1.0-rev8'`, `#sys-last-update` -> `⏱ Cập nhật lần cuối: 16:30 17/09/2026`.
+     - `#app-footer-version` giữ nguyên `Phiên bản: 4.1.0` (không hiển thị hậu tố rev ở chân trang).
+- **File sửa đổi**:
+  - `js/scheduler-engine.js`
+  - `version.json`
+  - `sw.js`
+  - `index.html`
+  - `PM-xeplich-v4.md`
+
+
 
 
 

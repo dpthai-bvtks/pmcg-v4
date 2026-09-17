@@ -1,6 +1,6 @@
 {
-    "version":  "4.1.0-rev7",
+    "version":  "4.1.0-rev8",
     "releaseDate":  "17/09/2026",
-    "releaseTime":  "16:17 17/09/2026",
-    "notes":  "Bao mat paymentWebhook voi HMAC/Secret va doi chieu so tien, triet tieu XSS trong showToast va thuoc tinh onclick, rate limit dang nhap ben vung voi CSDL login_attempts, toi uu thuat toan actualMaxSteps voi time-budget va bam DJB2 Tabu signature."
+    "releaseTime":  "16:30 17/09/2026",
+    "notes":  "Toi uu do lien mach nhan su (Staff Continuity): nang cap gapPenalty luy tien theo do dai khoang ranh trong turbo core logic, mo rong compactTimelineGaps voi Cross-Staff Gap Filler giup giam thieu gio ranh lien nhan su."
 }

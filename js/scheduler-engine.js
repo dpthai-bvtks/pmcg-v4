@@ -1266,17 +1266,22 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
   const avg = loadValues.reduce((a,b)=>a+b,0) / (loadValues.length || 1);
   const imbalance = loadValues.reduce((s,v) => s + Math.abs(v - avg), 0);
 
-  // Phạt các mốc rảnh lắt nhắt phân mảnh (5 - 30 phút) giữa các ca làm việc của nhân sự
-  let fragmentedGapsCount = 0;
+  // ⚡ TỐI ƯU HÓA ĐỘ LIỀN MẠCH (Staff Continuity): Phạt lũy tiến theo độ dài các khoảng rảnh giữa các ca
+  let fragmentedGapsScore = 0;
   Object.keys(staffTimeline).forEach(nv => {
-    const slots = (staffTimeline[nv] || []).filter(s => s[0] >= startOfDay && s[1] <= endOfDay).sort((a, b) => a[0] - b[0]);
+    const rawSlots = (staffTimeline[nv] || []).filter(s => s[0] >= startOfDay && s[1] <= endOfDay);
+    const slots = mergeTimeline(rawSlots);
     for (let i = 0; i < slots.length - 1; i++) {
       const gap = slots[i + 1][0] - slots[i][1];
-      if (gap >= 5 && gap <= 30) fragmentedGapsCount++;
+      // Bỏ qua khoảng đệm chuyển tiếp vô khuẩn nhỏ (<= 5 phút)
+      if (gap > 5) {
+        const idle = gap - 5;
+        fragmentedGapsScore += Math.pow(idle, 1.35);
+      }
     }
   });
-  const gapWeight = weights.gapPenalty !== undefined ? Number(weights.gapPenalty) : 5;
-  const scoreVal = finalDropList.length * weights.drop + overtimeMins * weights.overtime + imbalance * weights.imbalance + fragmentedGapsCount * gapWeight;
+  const gapWeight = weights.gapPenalty !== undefined ? Number(weights.gapPenalty) : 1.5;
+  const scoreVal = finalDropList.length * weights.drop + overtimeMins * weights.overtime + imbalance * weights.imbalance + fragmentedGapsScore * gapWeight;
 
   results.sort((a, b) => a["NV CHÍNH"] !== b["NV CHÍNH"] ? a["NV CHÍNH"].localeCompare(b["NV CHÍNH"]) : a.t_sort - b.t_sort);
   return { sched: results, rot: finalDropList, score: scoreVal, staff: staffLoad, proc: localProcCount, tl: staffTimeline, ca: staffShifts };
@@ -1415,8 +1420,6 @@ function getPatientSignature(pat) {
       _dur: t2m(item.gioKetThuc) - t2m(item.gioDienRa)
     }));
 
-    sched.sort((a, b) => a._s - b._s);
-
     const patInfoMap = new Map();
     if (db && Array.isArray(db.rawPatients)) {
       db.rawPatients.forEach(p => {
@@ -1429,78 +1432,248 @@ function getPatientSignature(pat) {
     const LUNCH_START = 690 + yhctLunchMins; // 11:30 + yhctLunch
     const LUNCH_END = 780;   // 13:00
 
-    for (let i = 0; i < sched.length; i++) {
-      const cur = sched[i];
-      if (cur._dur <= 0) continue;
+    // 1. Helper: Kiểm tra năng lực chuyên môn của nhân sự đối với thủ thuật
+    function isStaffQualified(staffName, procName) {
+      if (!staffName || !procName) return false;
+      const pLower = procName.trim().toLowerCase();
+      if (db && db.staffBySkill) {
+        const list = db.staffBySkill[pLower] || [];
+        if (list.includes(staffName)) return true;
+      }
+      if (db && Array.isArray(db.rawStaff)) {
+        const row = db.rawStaff.find(r => r[0] === staffName);
+        if (row) {
+          const rawSkills = String(row[2] || '').toLowerCase();
+          if (/cả hai|ca hai|toàn bộ|tat ca|all/i.test(rawSkills)) return true;
+          if (rawSkills.includes(pLower)) return true;
+          const role = String(row[1] || '').toLowerCase();
+          const isDoc = /bác sĩ|bac si|^bs\b/i.test(role) || /^bs\b/i.test(staffName);
+          const pInfo = db.thuThuatInfo ? (db.thuThuatInfo[pLower] || db.thuThuatInfo[procName]) : null;
+          if (isDoc && pInfo && pInfo[3] === 'YHCT') return true;
+        }
+      }
+      return false;
+    }
 
-      const patKey = (cur.tenBN || cur.HOTEN || '').trim().toUpperCase() + '_' + String(cur.namSinh || cur.NAMSINH || '').trim();
+    // 2. Helper: Kiểm tra nhân sự có trong ca làm việc và không ở giờ bận riêng
+    function isStaffAvailableDuring(staffName, start, end) {
+      if (!staffName || !db || !Array.isArray(db.rawStaff)) return true;
+      const row = db.rawStaff.find(r => r[0] === staffName);
+      if (!row) return true;
+      const shifts = row[3] ? String(row[3]).split(',').filter(s => s.includes('-')).map(s => {
+        const pts = s.split('-'); return [t2m(pts[0].trim()), t2m(pts[1].trim())];
+      }) : [[450, 690], [780, 1014]];
+
+      const inShift = shifts.some(([sStart, sEnd]) => start >= sStart && end <= sEnd);
+      if (!inShift) return false;
+
+      // Kiểm tra giờ bận riêng
+      if (row[4]) {
+        const busySlots = String(row[4]).split(',').map(s => {
+          if (!s.includes('-')) return null;
+          const tp = s.includes(')') ? s.split(')').pop().trim() : s;
+          const pts = tp.split('-');
+          return [t2m(pts[0].trim()), t2m(pts[1].trim())];
+        }).filter(Boolean);
+        for (const [bStart, bEnd] of busySlots) {
+          if (is_overlap(start, end, bStart, bEnd)) return false;
+        }
+      }
+      return true;
+    }
+
+    // 3. Helper: Kiểm tra xung đột tài nguyên khi đặt một ca tại mốc [testStart, testEnd]
+    function hasConflictAt(testStart, testEnd, curItem, targetStaff, excludeIdx) {
+      if (curItem._s < LUNCH_START && testEnd > LUNCH_START) return true;
+      if (testStart < LUNCH_END && testEnd > LUNCH_START && curItem._s >= LUNCH_END) return true;
+
+      const patKey = (curItem.tenBN || curItem.HOTEN || '').trim().toUpperCase() + '_' + String(curItem.namSinh || curItem.NAMSINH || '').trim();
       const patDb = patInfoMap.get(patKey);
       const patArrive = patDb ? Math.max(450, patDb.arrive || 450) : 450;
+      if (testStart < patArrive) return true;
 
-      let minAllowedStart = Math.max(450, patArrive);
-      if (cur._s >= LUNCH_END) {
-        minAllowedStart = Math.max(minAllowedStart, LUNCH_END);
-      }
-
-      let bestStart = cur._s;
-
-      for (let testStart = cur._s - 5; testStart >= minAllowedStart; testStart -= 5) {
-        const testEnd = testStart + cur._dur;
-
-        if (cur._s < LUNCH_START && testEnd > LUNCH_START) continue;
-        if (testStart < LUNCH_END && testEnd > LUNCH_START && cur._s >= LUNCH_END) continue;
-
-        let conflict = false;
-        for (let j = 0; j < sched.length; j++) {
-          if (i === j) continue;
-          const other = sched[j];
-
-          // 1. Kiểm tra Bệnh nhân
-          const otherPatKey = (other.tenBN || other.HOTEN || '').trim().toUpperCase() + '_' + String(other.namSinh || other.NAMSINH || '').trim();
-          if (patKey === otherPatKey && is_overlap(testStart, testEnd, other._s, other._e)) {
-            conflict = true; break;
-          }
-
-          // 2. Kiểm tra NV Chính & NV Phụ
-          if (cur.nvChinh && (cur.nvChinh === other.nvChinh || cur.nvChinh === other.nvPhu)) {
-            if (is_overlap(testStart, testEnd, other._s, other._e)) { conflict = true; break; }
-          }
-          if (cur.nvPhu && (cur.nvPhu === other.nvChinh || cur.nvPhu === other.nvPhu)) {
-            if (is_overlap(testStart, testEnd, other._s, other._e)) { conflict = true; break; }
-          }
-
-          // 3. Kiểm tra Máy móc
-          if (cur.may && other.may && cur.may !== 'Thủ công' && other.may !== 'Thủ công' && cur.may === other.may) {
-            if (is_overlap(testStart, testEnd, other._s, other._e)) { conflict = true; break; }
-          }
-
-          // 4. Kiểm tra Giường
-          if (cur.phong && other.phong && cur.phong === other.phong && cur.giuong && other.giuong && cur.giuong === other.giuong) {
-            if (is_overlap(testStart, testEnd, other._s, other._e)) { conflict = true; break; }
-          }
-        }
-
-        // 5. Kiểm tra mốc bận của bệnh nhân
-        if (!conflict && patDb && patDb.busy && Array.isArray(patDb.busy)) {
-          for (let bIdx = 0; bIdx < patDb.busy.length; bIdx++) {
-            const b = patDb.busy[bIdx];
-            if (is_overlap(testStart, testEnd, b[0], b[1])) { conflict = true; break; }
-          }
-        }
-
-        if (conflict) {
-          break;
-        } else {
-          bestStart = testStart;
+      // Giờ bận bệnh nhân
+      if (patDb && patDb.busy && Array.isArray(patDb.busy)) {
+        for (let bIdx = 0; bIdx < patDb.busy.length; bIdx++) {
+          const b = patDb.busy[bIdx];
+          if (is_overlap(testStart, testEnd, b[0], b[1])) return true;
         }
       }
 
-      if (bestStart < cur._s) {
-        cur._s = bestStart;
-        cur._e = bestStart + cur._dur;
-        cur.gioDienRa = m2t(cur._s);
-        cur.gioKetThuc = m2t(cur._e);
+      // Giờ trực & giờ bận nhân sự chính
+      if (!isStaffAvailableDuring(targetStaff, testStart, testEnd)) return true;
+
+      // Giờ trực & giờ bận nhân sự phụ (nếu có)
+      const nvPhu = curItem.nvPhu;
+      if (nvPhu && !isStaffAvailableDuring(nvPhu, testStart, testEnd)) return true;
+
+      for (let j = 0; j < sched.length; j++) {
+        if (j === excludeIdx) continue;
+        const other = sched[j];
+
+        // 1. Bệnh nhân
+        const otherPatKey = (other.tenBN || other.HOTEN || '').trim().toUpperCase() + '_' + String(other.namSinh || other.NAMSINH || '').trim();
+        if (patKey === otherPatKey && is_overlap(testStart, testEnd, other._s, other._e)) {
+          return true;
+        }
+
+        // 2. Nhân sự chính
+        if (targetStaff && (targetStaff === other.nvChinh || targetStaff === other.nvPhu)) {
+          if (is_overlap(testStart, testEnd, other._s, other._e)) return true;
+        }
+
+        // 3. Nhân sự phụ
+        if (nvPhu && (nvPhu === other.nvChinh || nvPhu === other.nvPhu)) {
+          if (is_overlap(testStart, testEnd, other._s, other._e)) return true;
+        }
+
+        // 4. Máy móc
+        if (curItem.may && other.may && curItem.may !== 'Thủ công' && other.may !== 'Thủ công' && curItem.may === other.may) {
+          if (is_overlap(testStart, testEnd, other._s, other._e)) return true;
+        }
+
+        // 5. Giường
+        if (curItem.phong && other.phong && curItem.phong === other.phong && curItem.giuong && other.giuong && curItem.giuong === other.giuong) {
+          if (is_overlap(testStart, testEnd, other._s, other._e)) return true;
+        }
       }
+
+      return false;
+    }
+
+    // ⚡ BƯỚC 1: LEFT-SHIFT COMPACTION (Dồn sớm cùng nhân sự)
+    function runLeftShiftPass() {
+      sched.sort((a, b) => a._s - b._s);
+      let movedCount = 0;
+      for (let i = 0; i < sched.length; i++) {
+        const cur = sched[i];
+        if (cur._dur <= 0) continue;
+
+        const patKey = (cur.tenBN || cur.HOTEN || '').trim().toUpperCase() + '_' + String(cur.namSinh || cur.NAMSINH || '').trim();
+        const patDb = patInfoMap.get(patKey);
+        const patArrive = patDb ? Math.max(450, patDb.arrive || 450) : 450;
+
+        let minAllowedStart = Math.max(450, patArrive);
+        if (cur._s >= LUNCH_END) minAllowedStart = Math.max(minAllowedStart, LUNCH_END);
+
+        let bestStart = cur._s;
+        for (let testStart = cur._s - 5; testStart >= minAllowedStart; testStart -= 5) {
+          const testEnd = testStart + cur._dur;
+          if (hasConflictAt(testStart, testEnd, cur, cur.nvChinh, i)) {
+            break;
+          } else {
+            bestStart = testStart;
+          }
+        }
+
+        if (bestStart < cur._s) {
+          cur._s = bestStart;
+          cur._e = bestStart + cur._dur;
+          cur.gioDienRa = m2t(cur._s);
+          cur.gioKetThuc = m2t(cur._e);
+          movedCount++;
+        }
+      }
+      return movedCount;
+    }
+
+    // Chạy Left-shift ban đầu
+    runLeftShiftPass();
+
+    // ⚡ BƯỚC 2: CROSS-STAFF GAP FILLER (Lấp khoảng rảnh liên nhân sự)
+    // Quét tìm các khoảng rảnh >= 15 phút của từng nhân sự, tìm ca của người khác để lấp vào
+    function runCrossStaffGapFillerPass() {
+      sched.sort((a, b) => a._s - b._s);
+      const staffList = [...new Set(sched.map(x => x.nvChinh).filter(Boolean))];
+      let filledCount = 0;
+
+      for (const targetStaff of staffList) {
+        const myItems = sched.map((item, idx) => ({ ...item, _idx: idx }))
+          .filter(x => x.nvChinh === targetStaff)
+          .sort((a, b) => a._s - b._s);
+
+        if (myItems.length === 0) continue;
+
+        // Xây dựng danh sách các khoảng rảnh của targetStaff
+        const gaps = [];
+        if (myItems[0]._s > 450) {
+          gaps.push({ start: 450, end: myItems[0]._s });
+        }
+        for (let m = 0; m < myItems.length - 1; m++) {
+          const gStart = myItems[m]._e;
+          const gEnd = myItems[m + 1]._s;
+          if (gStart < LUNCH_START && gEnd >= LUNCH_END) {
+            if (LUNCH_START - gStart >= 15) gaps.push({ start: gStart, end: LUNCH_START });
+            if (gEnd - LUNCH_END >= 15) gaps.push({ start: LUNCH_END, end: gEnd });
+          } else if (gEnd - gStart >= 15) {
+            gaps.push({ start: gStart, end: gEnd });
+          }
+        }
+
+        for (const gap of gaps) {
+          const gapLen = gap.end - gap.start;
+          if (gapLen < 15) continue;
+
+          let candidateIdx = -1;
+          let candidateTargetStart = -1;
+
+          for (let j = 0; j < sched.length; j++) {
+            const cand = sched[j];
+            const donorStaff = cand.nvChinh;
+            if (!donorStaff || donorStaff === targetStaff) continue;
+            if (cand._dur > gapLen) continue;
+
+            // 1. Kiểm tra kỹ năng chuyên môn
+            if (!isStaffQualified(targetStaff, cand.thuThuat)) continue;
+
+            // 2. Bảo vệ cân bằng tải trọng
+            const targetCount = sched.filter(x => x.nvChinh === targetStaff).length;
+            const donorCount = sched.filter(x => x.nvChinh === donorStaff).length;
+            if (targetCount >= donorCount + 3) continue;
+
+            // 3. Phương án A: Giữ nguyên giờ của cand nếu đang diễn ra lọt gọn trong gap
+            if (cand._s >= gap.start && cand._e <= gap.end) {
+              if (!hasConflictAt(cand._s, cand._e, cand, targetStaff, j)) {
+                candidateIdx = j;
+                candidateTargetStart = cand._s;
+                break;
+              }
+            }
+
+            // 4. Phương án B: Dời cand về tiếp giáp ngay sau ca trước (gap.start)
+            const testStartB = gap.start;
+            const testEndB = testStartB + cand._dur;
+            if (testEndB <= gap.end) {
+              if (!hasConflictAt(testStartB, testEndB, cand, targetStaff, j)) {
+                candidateIdx = j;
+                candidateTargetStart = testStartB;
+                break;
+              }
+            }
+          }
+
+          if (candidateIdx >= 0) {
+            const chosen = sched[candidateIdx];
+            chosen.nvChinh = targetStaff;
+            chosen._s = candidateTargetStart;
+            chosen._e = candidateTargetStart + chosen._dur;
+            chosen.gioDienRa = m2t(chosen._s);
+            chosen.gioKetThuc = m2t(chosen._e);
+            gap.start = chosen._e; // Cập nhật thu hẹp khoảng rảnh
+            filledCount++;
+          }
+        }
+      }
+
+      return filledCount;
+    }
+
+    // Thực hiện lấp khoảng rảnh liên nhân sự
+    const crossStaffMoved = runCrossStaffGapFillerPass();
+
+    // ⚡ BƯỚC 3: Nếu có ca được chuyển giao, chạy lại Left-shift Compaction để dồn tiếp khép kín
+    if (crossStaffMoved > 0) {
+      runLeftShiftPass();
     }
 
     return sched.map(item => {
