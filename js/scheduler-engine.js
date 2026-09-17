@@ -154,10 +154,10 @@ function normalizeScheduleItem(row) {
     const isDrop = gioDienRa === '❌ Rớt' || gioDienRa === '--' || gioDienRa.includes('Rớt');
     return {
       ngay: String(row[0] || '').trim(),
-      tenBN: String(row[1] || '').trim(),
+      tenBN: cleanAndHealPatientName(String(row[1] || '').trim()),
       namSinh: String(row[2] || '').trim(),
       phong: String(row[3] || '').trim(),
-      thuThuat: String(row[4] || '').trim(),
+      thuThuat: cleanAndHealProcedureName(String(row[4] || '').trim()),
       gioDienRa: gioDienRa,
       gioKetThuc: String(row[6] || '').trim(),
       nvChinh: String(row[7] || '').trim(),
@@ -172,10 +172,10 @@ function normalizeScheduleItem(row) {
   const isDrop = !!row.__dropped || rawGio === '❌ Rớt' || rawGio === '--' || rawGio.includes('Rớt');
   return {
     ngay: String(row.ngay || row.NGAY || row.date || '').trim(),
-    tenBN: String(row.tenBN || row.HOTEN || row.patient_name || row.ten || row.name || '').trim(),
+    tenBN: cleanAndHealPatientName(String(row.tenBN || row.HOTEN || row.patient_name || row.ten || row.name || '').trim()),
     namSinh: String(row.namSinh || row.NAMSINH || row.dob || row.ns || row.age || '').trim(),
     phong: String(row.phong || row.PHONG || row.room || '').trim(),
-    thuThuat: String(row.thuThuat || row.DICHVU || row.procedure_name || row.tt || '').trim(),
+    thuThuat: cleanAndHealProcedureName(String(row.thuThuat || row.DICHVU || row.procedure_name || row.tt || '').trim()),
     gioDienRa: rawGio,
     gioKetThuc: String(row.gioKetThuc || row.GIOKETTHUC || row.end_time || row.end || '').trim(),
     nvChinh: String(row.nvChinh || row['NV CHÍNH'] || row.staff_name || row.staff || row.nv1 || '').trim(),
@@ -615,10 +615,13 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
   patients.forEach(p => {
     const valid = [];
     p.pending.forEach(tenThuThuat => {
-      if (!staffBySkill[tenThuThuat.toLowerCase()]) {
-        const tenGoc = thuThuatInfo[tenThuThuat.toLowerCase()]?.[8] || tenThuThuat;
+      const cleanTT = cleanAndHealProcedureName(tenThuThuat);
+      const ttKey = tenThuThuat.toLowerCase();
+      const cleanKey = cleanTT.toLowerCase();
+      if (!staffBySkill[ttKey] && !staffBySkill[cleanKey]) {
+        const tenGoc = thuThuatInfo[ttKey]?.[8] || thuThuatInfo[cleanKey]?.[8] || cleanTT || tenThuThuat;
         tempDropList.push({ pId: p.pId, bn: p.name, ns: p.ns, tt: tenGoc, room: p.room, staff: "Trống", reason: "HỦY SỚM: Không có nhân sự có kỹ năng này" });
-      } else valid.push(tenThuThuat);
+      } else valid.push(cleanTT || tenThuThuat);
     });
 
     const activeProcs = Object.values(staffLastProc);
@@ -666,7 +669,8 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
   function tryScheduleOne(patient, tenThuThuat, tNow) {
     const loaiBN = patient.loaiBN || 'NoiTru';
     const buoiDieuTri = patient.buoiDieuTri || 'Sang';
-    const info = thuThuatInfo[tenThuThuat.toLowerCase()] || ["Thủ công", 15, 5, "PHCN", 1, 0, [], 5];
+    const cleanTT = cleanAndHealProcedureName(tenThuThuat);
+    const info = thuThuatInfo[tenThuThuat.toLowerCase()] || thuThuatInfo[cleanTT.toLowerCase()] || ["Thủ công", 15, 5, "PHCN", 1, 0, [], 5];
     const isYHCT = String(info[3] || "").trim().toUpperCase() === "YHCT";
     const yhctEndLimit = (weights && weights.yhctEnd !== undefined) 
       ? Number(weights.yhctEnd) 
@@ -701,7 +705,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       }
     }
 
-    const tenGoc = info[8] || tenThuThuat, targetRoom = patient.room, loaiMay = info[0];
+    const tenGoc = info[8] || cleanTT || tenThuThuat, targetRoom = patient.room, loaiMay = info[0];
     const baseTgMay = Math.max(info[1], info[2]), canPhu = info[5];
     const tgMayMax = info[10] ? Math.max(info[10], baseTgMay) : baseTgMay;
     const tgNvMin = Math.max(1, info[2] || 5);
@@ -1758,6 +1762,102 @@ function getSafeCache() {
     return toVietnameseProperCase(healed);
   }
 
+  /**
+   * 🩹 TỰ ĐỘNG NHẬN DIỆN VÀ PHỤC HỒI TÊN THỦ THUẬT BỊ LỖI KÝ TỰ / MÃ HÓA
+   * Phục hồi các lỗi chữ lạ (\ufffd, ??) hoặc lỗi bảng mã, nuốt âm:
+   * (Ví dụ: "điện ch??m", "điện ch\ufffd\ufffdm", "điện chm" -> "Điện châm")
+   */
+  function cleanAndHealProcedureName(rawProc, candidates = []) {
+    if (!rawProc && rawProc !== 0) return '';
+    let str = decodeVietnameseEncoding(rawProc);
+    if (!str) return '';
+
+    const hasCorruptChar = /[\ufffd\u0000]/.test(str) || /\b[A-Za-zÀ-ỹ]+\?[A-Za-zÀ-ỹ]+\b/.test(str) || /\?[A-Za-zÀ-ỹ]+/.test(str) || /[A-Za-zÀ-ỹ]+\?+/.test(str);
+    const hasSwallowedChar = /\b(chm|ngi|bop|bam|huyet)\b/i.test(str);
+
+    const stripTones = (s) => {
+      if (!s) return '';
+      return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'd').trim().toLowerCase();
+    };
+
+    let candList = Array.isArray(candidates) ? candidates : [];
+    if (!candList.length && typeof window !== 'undefined' && window.dataCache) {
+      candList = window.dataCache.proc || window.dataCache.procedures || [];
+    }
+
+    if (candList.length > 0) {
+      const cleanNoTone = stripTones(str.replace(/[\ufffd\u0000\?]+/g, ' '));
+      for (const c of candList) {
+        if (!c) continue;
+        const cName = String(c.ten || c.name || c[1] || c || '').normalize('NFC').trim();
+        if (!cName || /[\ufffd\u0000\?]/.test(cName)) continue;
+        if (cName.toLowerCase() === str.toLowerCase()) return cName;
+        if (stripTones(cName) === cleanNoTone && cleanNoTone.length >= 3) return cName;
+      }
+
+      if (hasCorruptChar || hasSwallowedChar || /ch[\ufffd\s\?]*m/i.test(str)) {
+        const regexStr = '^' + stripTones(str)
+          .replace(/[\ufffd\u0000\?]+/g, '.*')
+          .replace(/\bchm\b/gi, 'ch.*m')
+          .replace(/\bngi\b/gi, 'ng.*i')
+          .replace(/\s+/g, '\\s+') + '$';
+        try {
+          const reg = new RegExp(regexStr, 'i');
+          for (const c of candList) {
+            if (!c) continue;
+            const cName = String(c.ten || c.name || c[1] || c || '').normalize('NFC').trim();
+            if (!cName || /[\ufffd\u0000\?]/.test(cName)) continue;
+            if (reg.test(stripTones(cName))) return cName;
+          }
+        } catch (e) {}
+
+        const targetTokens = cleanNoTone.split(/\s+/).filter(t => t.length >= 2);
+        for (const c of candList) {
+          if (!c) continue;
+          const cName = String(c.ten || c.name || c[1] || c || '').normalize('NFC').trim();
+          if (!cName || /[\ufffd\u0000\?]/.test(cName)) continue;
+          const cTokens = stripTones(cName).split(/\s+/).filter(t => t.length >= 2);
+          if (targetTokens.length >= 2 && targetTokens.length === cTokens.length) {
+            let diffCount = 0;
+            for (let i = 0; i < targetTokens.length; i++) {
+              if (targetTokens[i] !== cTokens[i]) {
+                if (cTokens[i].startsWith(targetTokens[i][0]) && cTokens[i].endsWith(targetTokens[i].slice(-1))) {
+                } else {
+                  diffCount++;
+                }
+              }
+            }
+            if (diffCount === 0) return cName;
+          }
+        }
+      }
+    }
+
+    if (!hasCorruptChar && !hasSwallowedChar && !/ch[\ufffd\s\?]*m/i.test(str)) {
+      return str.replace(/\s+/g, ' ').trim();
+    }
+
+    let healed = str;
+    healed = healed.replace(/\b(điện|thủy|cứu|ôn)\s+ch[\ufffd\s\?]*m\b/gi, '$1 châm');
+    healed = healed.replace(/\bch[\ufffd\s\?]+m\b/gi, 'châm');
+    healed = healed.replace(/\bchm\b/gi, 'châm');
+
+    healed = healed.replace(/\b(cứu)\s+ng[\ufffd\s\?]*i\b/gi, '$1 ngải');
+    healed = healed.replace(/\bng[\ufffd\s\?]+i\b/gi, 'ngải');
+
+    healed = healed.replace(/\bb[\ufffd\s\?]+p\b/gi, 'bóp');
+    healed = healed.replace(/\bb[\ufffd\s\?]+m\b/gi, 'bấm');
+    healed = healed.replace(/\bhuy[\ufffd\s\?]+t\b/gi, 'huyệt');
+    healed = healed.replace(/\bgi[\ufffd\s\?]+n\b/gi, 'giãn');
+    healed = healed.replace(/\b(siêu)\s+[\ufffd\s\?]*m\b/gi, '$1 âm');
+
+    healed = healed.replace(/[\ufffd\u0000\?]/g, '').replace(/\s+/g, ' ').trim();
+    if (healed.length > 0) {
+      return healed.charAt(0).toUpperCase() + healed.slice(1);
+    }
+    return healed;
+  }
+
   function buildDbFromCache(cacheInput, skipProcsStr, existingSched = []) {
     const cache = cacheInput || getSafeCache();
 
@@ -1821,7 +1921,7 @@ function getSafeCache() {
     // 3. Procedures
     const procList = cache.proc || cache.procedures || [];
     procList.forEach(p => {
-      const ten = String(p.ten || p.name || p[1] || "").trim().toLowerCase();
+      const ten = String(p.ten || p.name || p[1] || "").normalize('NFC').trim().toLowerCase();
       if (!ten) return;
       const tgNvMin = parseInt(p.thoiGianThucHienMin || p.thoiGianThucHien || p[6]) || 5;
       let tgNvMax = parseInt(p.thoiGianThucHienMax || p[13] || 0) || tgNvMin;
@@ -1856,7 +1956,7 @@ function getSafeCache() {
         (p.canNguoiPhu === "Có" || p[10] === "Có" || p.canNguoiPhu === 1 || p.canNguoiPhu === "1" || p.canNguoiPhu === true) ? 1 : 0,
         dsPhu,
         khoangCachBase,
-        p.ten || p.name || p[1] || "",
+        String(p.ten || p.name || p[1] || "").normalize('NFC').trim(),
         p.vietTat || p[2] || "",
         Math.max(1, Math.max(tgMayMin, tgMayMax)),
         Math.max(1, Math.max(tgNvMin, tgNvMax)),
@@ -1958,7 +2058,10 @@ function getSafeCache() {
       seen.add(key);
 
       const ttStr = p.thuThuat || p.procedures || p.dsThuThuat || p.dsDichVu || p[8] || "";
-      let procs = Array.isArray(ttStr) ? ttStr : String(ttStr).split(",").map(x => x.trim()).filter(Boolean);
+      // Chuẩn hóa NFC và chữa lành tên thủ thuật tránh lỗi mã hóa (như "điện ch??m")
+      let procs = Array.isArray(ttStr)
+        ? ttStr.map(x => cleanAndHealProcedureName(String(x).normalize('NFC').trim(), procList))
+        : String(ttStr).normalize('NFC').split(",").map(x => cleanAndHealProcedureName(x.trim(), procList)).filter(Boolean);
       if (!procs.length) return;
 
       // Nếu đang xếp bổ sung (có existingSched), loại bỏ các thủ thuật CỦA BỆNH NHÂN NÀY đã được xếp lịch trước đó (khớp theo số lượng)
@@ -2128,7 +2231,7 @@ function getSafeCache() {
       tenBN: cleanAndHealPatientName(x.HOTEN, (db.rawPatients || []).map(p => p.name)),
       namSinh: x.NAMSINH,
       phong: x.PHONG,
-      thuThuat: x.DICHVU,
+      thuThuat: cleanAndHealProcedureName(x.DICHVU, (db.rawProcedures || [])),
       gioDienRa: x.GIODIENRA,
       gioKetThuc: x.GIOKETTHUC,
       nvChinh: x["NV CHÍNH"],
@@ -2263,7 +2366,7 @@ function getSafeCache() {
         tenBN: cleanAndHealPatientName(x.HOTEN, (db.rawPatients || []).map(p => p.name)),
         namSinh: x.NAMSINH,
         phong: x.PHONG,
-        thuThuat: x.DICHVU,
+        thuThuat: cleanAndHealProcedureName(x.DICHVU, (db.rawProcedures || [])),
         gioDienRa: x.GIODIENRA,
         gioKetThuc: x.GIOKETTHUC,
         nvChinh: x["NV CHÍNH"],
@@ -2523,6 +2626,8 @@ function getSafeCache() {
     toVietnameseProperCase,
     compactTimelineGaps,
     cleanAndHealPatientName,
+    cleanAndHealProcedureName,
+    healProcedureName: cleanAndHealProcedureName,
     buildDbFromCache,
     validateNoOverlapWithExisting,
     runScheduling: runClientScheduling,
@@ -2539,6 +2644,8 @@ if (globalScope) {
   globalScope.compactTimelineGaps = SchedulerEngine.compactTimelineGaps;
   globalScope.cleanAndHealPatientName = SchedulerEngine.cleanAndHealPatientName;
   globalScope.healPatientName = SchedulerEngine.cleanAndHealPatientName;
+  globalScope.cleanAndHealProcedureName = SchedulerEngine.cleanAndHealProcedureName;
+  globalScope.healProcedureName = SchedulerEngine.cleanAndHealProcedureName;
   globalScope.normalizeScheduleItem = SchedulerEngine.normalizeScheduleItem;
   globalScope.isContinuousProcedure = SchedulerEngine.isContinuousProcedure;
 }

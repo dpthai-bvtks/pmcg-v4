@@ -1,4 +1,4 @@
-﻿
+
 window.toggleUserDropdown = function(e) {
     if (e) {
         e.preventDefault();
@@ -2073,11 +2073,14 @@ window.renderSttOrderControl = function (type, i, total) {
             if (window.SchedulerEngine && typeof window.SchedulerEngine.normalizeScheduleItem === 'function') {
                 return window.SchedulerEngine.normalizeScheduleItem(row) || {};
             }
+            const cleanHealProcFn = (window.SchedulerEngine && typeof window.SchedulerEngine.cleanAndHealProcedureName === 'function')
+                ? window.SchedulerEngine.cleanAndHealProcedureName
+                : (typeof window.cleanAndHealProcedureName === 'function' ? window.cleanAndHealProcedureName : (s => String(s || '').trim()));
             if (Array.isArray(row)) {
                 const gioDienRa = String(row[5] || '').trim();
                 const isDrop = gioDienRa === '❌ Rớt' || gioDienRa === '--' || gioDienRa.includes('Rớt');
                 return {
-                    ngay: row[0] || '', tenBN: row[1] || '', namSinh: row[2] || '', phong: row[3] || '', thuThuat: row[4] || '',
+                    ngay: row[0] || '', tenBN: row[1] || '', namSinh: row[2] || '', phong: row[3] || '', thuThuat: cleanHealProcFn(row[4] || ''),
                     gioDienRa: gioDienRa, gioKetThuc: row[6] || '', nvChinh: row[7] || '', nvPhu: row[8] || '', may: row[9] || '', giuong: row[10] || '',
                     __isDischarged: false,
                     __dropped: isDrop
@@ -2090,7 +2093,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 tenBN: row.tenBN || row.HOTEN || row.patient_name || row.ten || row.name || '',
                 namSinh: row.namSinh || row.NAMSINH || row.dob || row.ns || row.age || '',
                 phong: row.phong || row.PHONG || row.room || '',
-                thuThuat: row.thuThuat || row.DICHVU || row.procedure_name || row.tt || '',
+                thuThuat: cleanHealProcFn(row.thuThuat || row.DICHVU || row.procedure_name || row.tt || ''),
                 gioDienRa: rawGio,
                 gioKetThuc: row.gioKetThuc || row.GIOKETTHUC || row.end_time || row.end || '',
                 nvChinh: row.nvChinh || row['NV CHÍNH'] || row.staff_name || row.staff || row.nv1 || '',
@@ -2122,45 +2125,30 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
         function normalizeDroppedItem(item, fallbackDate = '') {
-
             if (!item) return {};
+            const cleanHealProcFn = (window.SchedulerEngine && typeof window.SchedulerEngine.cleanAndHealProcedureName === 'function')
+                ? window.SchedulerEngine.cleanAndHealProcedureName
+                : (typeof window.cleanAndHealProcedureName === 'function' ? window.cleanAndHealProcedureName : (s => String(s || '').trim()));
 
             if (Array.isArray(item)) {
-
                 return {
-
                     ngay: item[0] || fallbackDate, bn: item[1] || '', ns: item[2] || '',
-
-                    room: item[3] || '', phong: item[3] || '', tt: item[4] || '',
-
+                    room: item[3] || '', phong: item[3] || '', tt: cleanHealProcFn(item[4] || ''),
                     staff: item[7] || '', reason: item[11] || item[8] || 'Thiếu nhân sự/Máy hoặc hết giờ'
-
                 };
-
             }
 
             const room = item.room || item.phong || '';
-
             return {
-
                 ...item,
-
                 ngay: item.ngay || fallbackDate,
-
                 bn: item.bn || item.tenBN || '',
-
                 ns: item.ns || item.namSinh || '',
-
                 room,
-
                 phong: room,
-
-                tt: item.tt || item.thuThuat || '',
-
+                tt: cleanHealProcFn(item.tt || item.thuThuat || ''),
                 reason: item.reason || item.liDo || 'Thiếu nhân sự/Máy hoặc hết giờ'
-
             };
-
         }
 
 
@@ -2383,6 +2371,11 @@ window.renderSttOrderControl = function (type, i, total) {
         
         function matchProc(a, b) {
             if (!a || !b) return false;
+            const healProcFn = (window.SchedulerEngine && typeof window.SchedulerEngine.cleanAndHealProcedureName === 'function')
+                ? window.SchedulerEngine.cleanAndHealProcedureName
+                : (typeof window.cleanAndHealProcedureName === 'function' ? window.cleanAndHealProcedureName : (s => s));
+            a = healProcFn(a);
+            b = healProcFn(b);
             const strA = String(a).trim().toLowerCase();
             const strB = String(b).trim().toLowerCase();
             if (strA === strB) return true;
@@ -6525,16 +6518,32 @@ window.renderSttOrderControl = function (type, i, total) {
         function markDischargedInSchedule(schedData) {
             if (!Array.isArray(schedData)) return schedData;
             const patList = (typeof dataCache !== 'undefined' && dataCache.pat) ? dataCache.pat : [];
+            const procList = (typeof dataCache !== 'undefined' && (dataCache.proc || dataCache.procedures)) ? (dataCache.proc || dataCache.procedures) : [];
             const cleanHealFn = (window.SchedulerEngine && typeof window.SchedulerEngine.cleanAndHealPatientName === 'function')
                 ? window.SchedulerEngine.cleanAndHealPatientName
                 : (n) => String(n || '').normalize('NFC').replace(/[\ufffd\u0000]/g, '').trim();
+            const cleanHealProcFn = (window.SchedulerEngine && typeof window.SchedulerEngine.cleanAndHealProcedureName === 'function')
+                ? window.SchedulerEngine.cleanAndHealProcedureName
+                : (typeof window.cleanAndHealProcedureName === 'function' ? window.cleanAndHealProcedureName : (s => String(s || '').trim()));
 
+            let hasHealedStorage = false;
             schedData.forEach((row, idx) => {
                 if (!row) return;
                 if (Array.isArray(row)) {
                     row = normalizeScheduleRow(row);
                     schedData[idx] = row;
                 }
+
+                // 🩹 Tự phục hồi tên thủ thuật nếu có ký tự lạ (như "điện ch??m" -> "Điện châm")
+                if (row.thuThuat) {
+                    const rawTT = String(row.thuThuat || '');
+                    const healedTT = cleanHealProcFn(rawTT, procList);
+                    if (healedTT && healedTT !== rawTT) {
+                        row.thuThuat = healedTT;
+                        hasHealedStorage = true;
+                    }
+                }
+
                 let rawTen = String(row.tenBN || '').normalize('NFC').trim();
                 const namSinh = String(row.namSinh || '').trim();
                 const phong = String(row.phong || '').trim().toLowerCase();
@@ -6576,10 +6585,29 @@ window.renderSttOrderControl = function (type, i, total) {
                     const cleanName = String(matched.ten || '').normalize('NFC').trim();
                     if (cleanName && !cleanName.includes('\ufffd') && row.tenBN !== cleanName) {
                         row.tenBN = cleanName.toUpperCase();
+                        hasHealedStorage = true;
+                    }
+                } else if (rawTen.includes('\ufffd') || rawTen.includes('?')) {
+                    const selfHealed = cleanHealFn(rawTen, (dataCache.pat || []).map(p => p.ten), true);
+                    if (selfHealed && selfHealed !== row.tenBN) {
+                        row.tenBN = selfHealed;
+                        hasHealedStorage = true;
                     }
                 }
                 row.__isDischarged = !!(matched && matched.gioRa && String(matched.gioRa).trim() !== '');
             });
+
+            // Tự động đồng bộ lại cache localStorage nếu dữ liệu cũ vừa được chữa lành
+            if (hasHealedStorage) {
+                try {
+                    const curKey = typeof getUnitStorageKey === 'function' ? getUnitStorageKey('meds_success') : 'meds_success';
+                    localStorage.setItem(curKey, JSON.stringify(schedData));
+                    localStorage.setItem('meds_success', JSON.stringify(schedData));
+                    if (typeof dataCache !== 'undefined') dataCache.schedule = schedData;
+                    if (window.dataCache) window.dataCache.schedule = schedData;
+                } catch (e) {}
+            }
+
             return schedData;
         }
 

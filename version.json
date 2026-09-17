@@ -1,6 +1,6 @@
-﻿{
-    "version":  "4.1.0-rev5",
+{
+    "version":  "4.1.0-rev6",
     "releaseDate":  "17/09/2026",
-    "releaseTime":  "13:15 17/09/2026",
-    "notes":  "Sua loi tim kiem cross-column: fuzzySearchList gio chi tra ket qua khi tat ca token xuat hien trong cung 1 cot, khong cho phep bs o nvChinh + hoa o tenBN."
+    "releaseTime":  "13:35 17/09/2026",
+    "notes":  "Tu dong chua lanh va phuc hoi ten thu thuat bi loi ky tu la/bang ma (dien ch??m -> Dien cham), dong bo cache lich da luu va tu dong cap nhat localStorage."
 }
