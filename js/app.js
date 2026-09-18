@@ -13541,21 +13541,24 @@ window.renderSttOrderControl = function (type, i, total) {
                     busyIntervals.push({
                         name: `Thao tác liên tục (${Math.round((end.getTime() - start.getTime()) / 60000)}p)`,
                         start: start.getTime(),
-                        end: end.getTime()
+                        end: end.getTime(),
+                        isTear: false
                     });
                 } else {
                     const setupEndMs = Math.min(end.getTime(), start.getTime() + tth_mins * 60000);
                     busyIntervals.push({
                         name: `Thao tác đầu ca (${tth_mins}p)`,
                         start: start.getTime(),
-                        end: setupEndMs
+                        end: setupEndMs,
+                        isTear: false
                     });
                     if (hasTeardown) {
-                        const tearStartMs = Math.max(setupEndMs, end.getTime() - tearDurationMins * 60000);
+                        // Mốc kết thúc ca diễn ra tại đúng thời điểm kết thúc ca (end)
                         busyIntervals.push({
-                            name: `Rút kim/tháo máy (1p cuối)`,
-                            start: tearStartMs,
-                            end: end.getTime()
+                            name: `Kết thúc ca (rút kim/tháo máy)`,
+                            start: end.getTime(),
+                            end: end.getTime(),
+                            isTear: true
                         });
                     }
                 }
@@ -13574,7 +13577,6 @@ window.renderSttOrderControl = function (type, i, total) {
                     hasTeardown: hasTeardown,
                     tth_mins: tth_mins,
                     ttg_mins: ttg_mins,
-                    tearDurationMins: tearDurationMins,
                     busyIntervals: busyIntervals
                 };
 
@@ -13657,8 +13659,16 @@ window.renderSttOrderControl = function (type, i, total) {
                                 const first = intA.start <= intB.start ? intA : intB;
                                 const second = intA.start <= intB.start ? intB : intA;
 
-                                // 1. Trùng / đè giờ trực tiếp
-                                if (second.start < first.end) {
+                                // 1. Cùng kết thúc ca lúc cùng một phút
+                                if (first.start === second.start && intA.isTear && intB.isTear) {
+                                    conflictFound = {
+                                        type: 'OVERLAP',
+                                        reason: `Trùng giờ kết thúc ca (cả 2 ca cùng kết thúc lúc ${formatDate(new Date(first.start))})`
+                                    };
+                                    break;
+                                }
+                                // 2. Trùng / đè giờ trực tiếp
+                                else if (second.start < first.end) {
                                     const ovStart = Math.max(intA.start, intB.start);
                                     const ovEnd = Math.min(intA.end, intB.end);
                                     conflictFound = {
@@ -13667,7 +13677,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                     };
                                     break;
                                 }
-                                // 2. Thiếu khoảng đệm 1 phút chuyển giường giữa 2 bệnh nhân khác nhau (MỤC 1)
+                                // 3. Thiếu khoảng đệm 1 phút chuyển giường giữa 2 bệnh nhân khác nhau (MỤC 1)
                                 else if (A.patientName !== B.patientName && second.start < first.end + GAP_MS) {
                                     conflictFound = {
                                         type: 'GAP',

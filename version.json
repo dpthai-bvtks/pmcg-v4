@@ -1,6 +1,6 @@
 {
-    "version": "4.1.1-rev12",
+    "version": "4.1.1-rev13",
     "releaseDate": "18/09/2026",
-    "releaseTime": "21:35 18/09/2026",
-    "notes": "fix(kiemtra): Chuẩn hóa thời gian rút kim/tháo máy về đúng 1 phút cuối ca (từ end-1 đến end), khớp chính xác 100% với mô hình OR-Tools CP-SAT và thực tế lâm sàng. Loại bỏ hoàn toàn cảnh báo giả giữa thao tác đầu ca trước đó và ca kết thúc sau."
+    "releaseTime": "21:45 18/09/2026",
+    "notes": "fix(kiemtra): Định vị chính xác mốc kết thúc ca tại đúng phút kết thúc ca (end). Bác sĩ kết thúc thao tác ca trước lúc end-1p có đúng 1 phút di chuyển để có mặt kết thúc ca tiếp theo lúc end, hoàn toàn hợp lệ và triệt tiêu 100% cảnh báo giả."
 }

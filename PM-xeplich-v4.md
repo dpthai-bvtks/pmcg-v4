@@ -4525,5 +4525,36 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev12]
   - `PM-xeplich-v4.md` [MODIFY]
 
+---
+
+### [v4.1.1-rev13] - 21:45 18/09/2026: Định vị mốc Kết thúc ca tại đúng thời điểm kết thúc ca (end) - Khử triệt để lỗi đệm khi kết thúc thao tác trước đó
+- **Phản hồi của người dùng:**
+  + Trường hợp KTV Bs Khuyến:
+    - Ca 1 (Nguyễn Văn Tích): Điện châm `08:15 -> 08:40`.
+    - Ca 2 (Tạ Văn Tuấn): Thủy châm `08:29 -> 08:54` (thao tác 10p, từ `08:29` đến `08:39`).
+    - Hệ thống trước đó báo: "Thiếu khoảng đệm 1p chuyển giường giữa Thao tác đầu ca (10p) (kết thúc 08:39) và Rút kim/tháo máy (1p cuối) (bắt đầu 08:39)".
+    - Người dùng làm rõ thực tế lâm sàng: Bác sĩ thực hiện xong ca 2 lúc 08:39, sau đó có mặt đúng lúc 08:40 để kết thúc ca 1 (tắt máy, rút kim) là hoàn toàn hợp lệ, không hề ảnh hưởng hay vi phạm khoảng đệm.
+
+- **Nguyên nhân kỹ thuật & Giải pháp:**
+  1. **Nguyên nhân**:
+     - Khi quy ước rút kim là khoảng thời gian `[end - 1p, end]` (`08:39 -> 08:40`), thuật toán vô tình coi Bác sĩ đã bắt đầu rút kim từ lúc `08:39`, và đòi hỏi thêm 1 phút đệm trước `08:39` (bắt buộc ca 2 phải xong trước `08:38`). Điều này tạo ra độ trễ đệm kép (2 phút) không đúng thực tế.
+  2. **Giải pháp định vị mốc kết thúc ca tại đúng `end`**:
+     - Định vị mốc kết thúc ca (rút kim / tháo máy) tại đúng thời điểm kết thúc ca `[end, end]` (`isTear: true`).
+     - Khi Ca 2 thao tác xong lúc `08:39`, và Ca 1 kết thúc lúc `08:40`:
+       + Khoảng cách từ `08:39` đến `08:40` là tròn **1 phút đệm chuyển giường** (`08:40 - 08:39 = 1p >= GAP_MS`).
+       + Bác sĩ kết thúc Ca 2 lúc 08:39, có đúng 1 phút di chuyển và có mặt tại Ca 1 đúng lúc 08:40 để kết thúc ca. Hệ thống xác định lịch hoàn toàn hợp lệ, 0 lỗi!
+     - Đồng thời vẫn bảo toàn 100% khả năng phát hiện các vi phạm thực sự:
+       + Nếu Ca 2 thao tác đến `08:40` (không có đệm chuyển sang Ca 1 lúc 08:40) -> Báo lỗi thiếu đệm!
+       + Nếu Ca 2 thao tác lấn sang `08:41` -> Báo lỗi đè giờ!
+       + Nếu 2 ca cùng kết thúc lúc `08:40` -> Báo lỗi trùng giờ kết thúc ca!
+
+- **File sửa đổi:**
+  - `js/app.js` [MODIFY: busyIntervals teardown anchored at end]
+  - `index.html` [MODIFY: v4.1.1-rev13]
+  - `version.json` [MODIFY: 4.1.1-rev13]
+  - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev13]
+  - `PM-xeplich-v4.md` [MODIFY]
+
+
 
 
