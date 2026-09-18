@@ -64,12 +64,13 @@
 
   function getStaffIntervalsLocal(start, end, ttInfo) {
     const isCont = isContinuousProcedureLocal(ttInfo, end - start);
-    if (isCont) return [[start, end]];
+    const gapMinutes = (ttInfo && ttInfo[12] !== undefined && ttInfo[12] > 0) ? ttInfo[12] : 1;
+    if (isCont) return [[start, end + gapMinutes]];
     const tgNv = ttInfo ? (parseInt(ttInfo[2]) || 5) : 5;
     const staffEnd = Math.min(start + tgNv, end);
-    const intervals = [[start, staffEnd]];
+    const intervals = [[start, staffEnd + gapMinutes]];
     if (end > staffEnd) {
-      intervals.push([end - 1, end]);
+      intervals.push([end - 1, end + gapMinutes]);
     }
     return intervals;
   }
@@ -287,18 +288,19 @@
       const ttInfo = db.thuThuatInfo ? db.thuThuatInfo[tenTT] : null;
       const isContinuous = isContFn(ttInfo, e - s);
       const tgNv = isContinuous ? (e - s) : (ttInfo ? (parseInt(ttInfo[2]) || 5) : 5);
-      const staffEnd = isContinuous ? e : Math.min(s + tgNv, e);
+      const gapMinutes = (ttInfo && ttInfo[12] !== undefined && ttInfo[12] > 0) ? ttInfo[12] : 1;
+      const staffEnd = isContinuous ? (e + gapMinutes) : (Math.min(s + tgNv, e) + gapMinutes);
       const hasTeardown = !isContinuous && ((e - s) > tgNv);
 
       const addStaffIntervals = (nv) => {
         if (!nv) return;
         addInterval(staffIntervals, nv, s, staffEnd);
-        if (hasTeardown) addInterval(staffIntervals, nv, e - 1, e);
+        if (hasTeardown) addInterval(staffIntervals, nv, e - 1, e + gapMinutes);
         const cleanNv = cleanStaffStr(nv);
         (db.rawStaff || []).forEach(st => {
           if (cleanStaffStr(st[0]) === cleanNv) {
             addInterval(staffIntervals, st[0], s, staffEnd);
-            if (hasTeardown) addInterval(staffIntervals, st[0], e - 1, e);
+            if (hasTeardown) addInterval(staffIntervals, st[0], e - 1, e + gapMinutes);
           }
         });
       };

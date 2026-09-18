@@ -210,15 +210,16 @@ function isContinuousProcedure(info, duration) {
   return false;
 }
 
-// 🕒 Trả về các khoảng thời gian nhân sự thực sự bận trong một ca thủ thuật
+// 🕒 Trả về các khoảng thời gian nhân sự thực sự bận trong một ca thủ thuật (bao gồm phút kết thúc và khoảng đệm gap chuyển giao)
 function getStaffBusyIntervals(s, e, ttInfo) {
   const isContinuous = isContinuousProcedure(ttInfo, e - s);
-  if (isContinuous) return [[s, e]];
+  const gapMinutes = (ttInfo && ttInfo[12] !== undefined && ttInfo[12] > 0) ? ttInfo[12] : 1;
+  if (isContinuous) return [[s, e + gapMinutes]];
   const tgNv = ttInfo ? (parseInt(ttInfo[2]) || 5) : 5;
   const setupEnd = Math.min(s + tgNv, e);
-  const intervals = [[s, setupEnd]];
+  const intervals = [[s, setupEnd + gapMinutes]];
   if (e > setupEnd) {
-    intervals.push([e - 1, e]); // Mốc phút kết thúc (theo dõi / rút kim / tháo dây / tắt máy - phút thứ 25)
+    intervals.push([e - 1, e + gapMinutes]); // Mốc phút thứ 25 + 1 phút chuyển giao
   }
   return intervals;
 }
@@ -587,10 +588,11 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
     const info = thuThuatInfo[tenThuThuat] || ["Thủ công", 15, 5, "PHCN", 1, 0, [], 5];
     const isManualProc = isContinuousProcedure(info, gioEnd - gioStart);
     const tgNhanVien = isManualProc ? (gioEnd - gioStart) : (parseInt(info[2]) || 5);
-    const staffEnd = isManualProc ? gioEnd : Math.min(gioStart + tgNhanVien, gioEnd);
+    const gapMinutes = (info[12] !== undefined && info[12] > 0) ? info[12] : 1;
+    const staffEnd = isManualProc ? (gioEnd + gapMinutes) : Math.min(gioStart + tgNhanVien + gapMinutes, gioEnd);
     const hasTeardown = !isManualProc && ((gioEnd - gioStart) > tgNhanVien);
     const tearStart = hasTeardown ? (gioEnd - 1) : null;
-    const tearEnd = hasTeardown ? gioEnd : null;
+    const tearEnd = hasTeardown ? (gioEnd + gapMinutes) : null;
 
     const pushAndMerge = (timeline, key, slot) => { if (!timeline[key]) return; timeline[key].push(slot); timeline[key] = mergeTimeline(timeline[key]); };
     
@@ -804,7 +806,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       const gioKetThuc = tNow + tgMay;
       const hasTeardown = tgMay > tgNhanVien;
       const tearStart = hasTeardown ? (tNow + tgMay - 1) : null;
-      const tearEnd = hasTeardown ? (tNow + tgMay) : null;
+      const tearEnd = hasTeardown ? (tNow + tgMay + gapMinutes) : null;
 
       // 🔒 RÀNG BUỘC CHẶN GIỜ NGHỈ TRƯA VÀ HẾT CA: Tuân thủ tuyệt đối cài đặt yhctLunch và yhctEnd
       if (tNow < 690 && gioKetThuc > (690 + allowedOvertimeAtLunch)) continue;
@@ -970,11 +972,11 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
         blockStaff(nvChinh, tNow, tNow + tgNhanVien, khoangCach, staffTimeline, staffSetupReady, staffLoad, tenThuThuat, staffLastProc);
         staffCurrentRoom[nvChinh] = targetRoom;
-        if (hasTeardown) { staffTimeline[nvChinh].push([tearStart, tearEnd]); staffTimeline[nvChinh] = mergeTimeline(staffTimeline[nvChinh]); staffLoad[nvChinh].used_mins += (tearEnd - tearStart); }
+        if (hasTeardown) { staffTimeline[nvChinh].push([tearStart, tearEnd]); staffTimeline[nvChinh] = mergeTimeline(staffTimeline[nvChinh]); staffSetupReady[nvChinh] = Math.max(staffSetupReady[nvChinh] || 0, tearEnd); staffLoad[nvChinh].used_mins += (tearEnd - tearStart); }
 
         if (nvPhu) {
           blockStaff(nvPhu, tNow, tNow + tgNhanVien, khoangCach, staffTimeline, staffSetupReady, staffLoad, tenThuThuat, staffLastProc);
-          if (hasTeardown) { staffTimeline[nvPhu].push([tearStart, tearEnd]); staffTimeline[nvPhu] = mergeTimeline(staffTimeline[nvPhu]); staffLoad[nvPhu].used_mins += (tearEnd - tearStart); }
+          if (hasTeardown) { staffTimeline[nvPhu].push([tearStart, tearEnd]); staffTimeline[nvPhu] = mergeTimeline(staffTimeline[nvPhu]); staffSetupReady[nvPhu] = Math.max(staffSetupReady[nvPhu] || 0, tearEnd); staffLoad[nvPhu].used_mins += (tearEnd - tearStart); }
         }
 
         if (selectedMachine !== "Thủ công") { 
@@ -1780,8 +1782,11 @@ function getPatientSignature(pat) {
       const ttInfo = dbRef?.thuThuatInfo ? dbRef.thuThuatInfo[tt] : null;
       const isContinuous = isContinuousProcedure(ttInfo, e - s);
       const tgNv = isContinuous ? (e - s) : (ttInfo ? (parseInt(ttInfo[2]) || 5) : 5);
-      const staffEnd = isContinuous ? e : Math.min(s + tgNv, e);
+      const gap = (ttInfo && ttInfo[12] !== undefined && ttInfo[12] > 0) ? ttInfo[12] : 1;
+      const staffEnd = isContinuous ? (e + gap) : (Math.min(s + tgNv, e) + gap);
       const hasTeardown = !isContinuous && ((e - s) > tgNv);
+      const tearStart = hasTeardown ? (e - 1) : null;
+      const tearEnd = hasTeardown ? (e + gap) : null;
 
       return {
         name: String(row.tenBN || '').toUpperCase().trim(),
@@ -1789,6 +1794,8 @@ function getPatientSignature(pat) {
         s, e,
         staffEnd,
         hasTeardown,
+        tearStart,
+        tearEnd,
         nv1: cleanStaffStr(row.nvChinh),
         nv2: cleanStaffStr(row.nvPhu),
         may: String(row.may || '').toLowerCase().replace(/\s+/g, ''),
@@ -1816,8 +1823,11 @@ function getPatientSignature(pat) {
       const cInfo = dbRef?.thuThuatInfo ? dbRef.thuThuatInfo[cTenTT] : null;
       const cIsContinuous = isContinuousProcedure(cInfo, cE - cS);
       const cTgNv = cIsContinuous ? (cE - cS) : (cInfo ? (parseInt(cInfo[2]) || 5) : 5);
-      const cStaffEnd = cIsContinuous ? cE : Math.min(cS + cTgNv, cE);
+      const cGap = (cInfo && cInfo[12] !== undefined && cInfo[12] > 0) ? cInfo[12] : 1;
+      const cStaffEnd = cIsContinuous ? (cE + cGap) : (Math.min(cS + cTgNv, cE) + cGap);
       const cHasTeardown = !cIsContinuous && ((cE - cS) > cTgNv);
+      const cTearStart = cHasTeardown ? (cE - 1) : null;
+      const cTearEnd = cHasTeardown ? (cE + cGap) : null;
 
       let collisionReason = null;
       for (const ex of existingList) {
@@ -1836,9 +1846,9 @@ function getPatientSignature(pat) {
           if (!candStaff) return false;
           if (candStaff !== ex.nv1 && candStaff !== ex.nv2) return false;
           if (isOverlap(cS, cStaffEnd, ex.s, ex.staffEnd)) return true;
-          if (cHasTeardown && isOverlap(cE - 1, cE, ex.s, ex.staffEnd)) return true;
-          if (ex.hasTeardown && isOverlap(cS, cStaffEnd, ex.e - 1, ex.e)) return true;
-          if (cHasTeardown && ex.hasTeardown && isOverlap(cE - 1, cE, ex.e - 1, ex.e)) return true;
+          if (cHasTeardown && isOverlap(cTearStart, cTearEnd, ex.s, ex.staffEnd)) return true;
+          if (ex.hasTeardown && isOverlap(cS, cStaffEnd, ex.tearStart, ex.tearEnd)) return true;
+          if (cHasTeardown && ex.hasTeardown && isOverlap(cTearStart, cTearEnd, ex.tearStart, ex.tearEnd)) return true;
           return false;
         };
 
