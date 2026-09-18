@@ -218,7 +218,7 @@ function getStaffBusyIntervals(s, e, ttInfo) {
   const setupEnd = Math.min(s + tgNv, e);
   const intervals = [[s, setupEnd]];
   if (e > setupEnd) {
-    intervals.push([e, e + 1]); // Mốc kết thúc (rút kim / tháo dây / tắt máy)
+    intervals.push([e - 1, e]); // Mốc phút kết thúc (theo dõi / rút kim / tháo dây / tắt máy - phút thứ 25)
   }
   return intervals;
 }
@@ -589,8 +589,8 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
     const tgNhanVien = isManualProc ? (gioEnd - gioStart) : (parseInt(info[2]) || 5);
     const staffEnd = isManualProc ? gioEnd : Math.min(gioStart + tgNhanVien, gioEnd);
     const hasTeardown = !isManualProc && ((gioEnd - gioStart) > tgNhanVien);
-    const tearStart = hasTeardown ? gioEnd : null;
-    const tearEnd = hasTeardown ? gioEnd + 1 : null;
+    const tearStart = hasTeardown ? (gioEnd - 1) : null;
+    const tearEnd = hasTeardown ? gioEnd : null;
 
     const pushAndMerge = (timeline, key, slot) => { if (!timeline[key]) return; timeline[key].push(slot); timeline[key] = mergeTimeline(timeline[key]); };
     
@@ -803,8 +803,8 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       const khoangCach = tgNhanVien + gapMinutes;
       const gioKetThuc = tNow + tgMay;
       const hasTeardown = tgMay > tgNhanVien;
-      const tearStart = hasTeardown ? (tNow + tgMay) : null;
-      const tearEnd = hasTeardown ? (tNow + tgMay + 1) : null;
+      const tearStart = hasTeardown ? (tNow + tgMay - 1) : null;
+      const tearEnd = hasTeardown ? (tNow + tgMay) : null;
 
       // 🔒 RÀNG BUỘC CHẶN GIỜ NGHỈ TRƯA VÀ HẾT CA: Tuân thủ tuyệt đối cài đặt yhctLunch và yhctEnd
       if (tNow < 690 && gioKetThuc > (690 + allowedOvertimeAtLunch)) continue;
@@ -1661,7 +1661,8 @@ function getPatientSignature(pat) {
           if (!isCont) {
             const tgNv = curTtInfo ? (parseInt(curTtInfo[2]) || 5) : 5;
             const intraStart = myItems[m]._s + tgNv;
-            const intraEnd = myItems[m]._e;
+            const hasTeardown = (myItems[m]._e - myItems[m]._s) > tgNv;
+            const intraEnd = hasTeardown ? (myItems[m]._e - 1) : myItems[m]._e;
             if (intraEnd - intraStart >= 15) {
               gaps.push({ start: intraStart, end: intraEnd });
             }
@@ -1835,9 +1836,9 @@ function getPatientSignature(pat) {
           if (!candStaff) return false;
           if (candStaff !== ex.nv1 && candStaff !== ex.nv2) return false;
           if (isOverlap(cS, cStaffEnd, ex.s, ex.staffEnd)) return true;
-          if (cHasTeardown && isOverlap(cE, cE + 1, ex.s, ex.staffEnd)) return true;
-          if (ex.hasTeardown && isOverlap(cS, cStaffEnd, ex.e, ex.e + 1)) return true;
-          if (cHasTeardown && ex.hasTeardown && isOverlap(cE, cE + 1, ex.e, ex.e + 1)) return true;
+          if (cHasTeardown && isOverlap(cE - 1, cE, ex.s, ex.staffEnd)) return true;
+          if (ex.hasTeardown && isOverlap(cS, cStaffEnd, ex.e - 1, ex.e)) return true;
+          if (cHasTeardown && ex.hasTeardown && isOverlap(cE - 1, cE, ex.e - 1, ex.e)) return true;
           return false;
         };
 

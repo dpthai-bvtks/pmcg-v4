@@ -1,6 +1,6 @@
 {
-    "version": "4.1.1-rev4",
+    "version": "4.1.1-rev5",
     "releaseDate": "18/09/2026",
-    "releaseTime": "11:25 18/09/2026",
-    "notes": "Sửa lỗi trùng lặp khai báo định danh phạm vi toàn cục (globalScope SyntaxError) giữa cp-solver.js và scheduler-engine.js trên trình duyệt, kích hoạt lại toàn bộ bộ xếp lịch tự động đa pha."
+    "releaseTime": "14:55 18/09/2026",
+    "notes": "Sửa thuật toán khóa mốc kết thúc thủ thuật (phút thứ 25), sửa lỗi lưu/xóa/sửa máy móc & phòng trên MiniPC, cấu hình tự động TRUNCATE WAL checkpoint."
 }

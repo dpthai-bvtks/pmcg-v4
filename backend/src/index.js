@@ -3393,22 +3393,50 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         payload = args[1];
       } else {
         let offset = (typeof args[0] === "number" || (typeof args[0] === "string" && /^\d+$/.test(args[0]) && args.length >= 4)) ? 1 : 0;
-        payload = { tenLoai: args[offset], maMay: args[offset + 1], trangThai: args[offset + 2] };
+        payload = { tenLoai: args[offset], maMay: args[offset + 1], trangThai: args[offset + 2], oldMaMay: args[offset + 3] };
       }
       const tenLoai = String(payload.tenLoai || payload.ten_loai || "");
       const maMay = String(payload.maMay || payload.ma_may || "");
       const trangThai = String(payload.trangThai || payload.trang_thai || "Sẵn sàng");
-      const stmt = db.prepare("INSERT INTO may_moc (unit_code, ten_loai, ma_may, trang_thai, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, ma_may) DO UPDATE SET ten_loai = excluded.ten_loai, trang_thai = excluded.trang_thai, updated_at = CURRENT_TIMESTAMP").bind(unitCode, tenLoai, maMay, trangThai);
-      await db.batch([stmt, makeBumpDataVersionStmt(db, unitCode)]);
+      const oldMaMay = String(payload.oldMaMay || payload.old_ma_may || "");
+      const id = payload.id || null;
+
+      let updated = false;
+      if (id || (oldMaMay && oldMaMay !== maMay)) {
+        const updateRes = await db.prepare(
+          "UPDATE may_moc SET ten_loai = ?, ma_may = ?, trang_thai = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ? AND (id = ? OR ma_may = ?)"
+        ).bind(tenLoai, maMay, trangThai, unitCode, id || -1, oldMaMay || "").run();
+        if (updateRes && (updateRes.changes > 0 || updateRes.affected_row_count > 0)) {
+          updated = true;
+        }
+      }
+      if (!updated) {
+        const stmt = db.prepare("INSERT INTO may_moc (unit_code, ten_loai, ma_may, trang_thai, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, ma_may) DO UPDATE SET ten_loai = excluded.ten_loai, trang_thai = excluded.trang_thai, updated_at = CURRENT_TIMESTAMP").bind(unitCode, tenLoai, maMay, trangThai);
+        await db.batch([stmt, makeBumpDataVersionStmt(db, unitCode)]);
+      } else {
+        await bumpDataVersion(db, unitCode);
+      }
       return success({ message: "Cập nhật thiết bị thành công" });
     }
 
     case "deleteMayMoc": {
       let payload = {};
       if (typeof args[0] === "object" && args[0] !== null) payload = args[0];
-      let offset = (typeof args[0] === "number" || (typeof args[0] === "string" && /^\d+$/.test(args[0]))) ? 1 : 0;
-      const maMay = String(payload.maMay || payload.ma_may || args[offset] || args[0] || "").trim();
-      await db.prepare("DELETE FROM may_moc WHERE unit_code = ? AND (ma_may = ? OR id = ?)").bind(unitCode, maMay, maMay).run();
+      const targetId = payload.id || null;
+      let maMay = String(payload.maMay || payload.ma_may || (typeof args[0] === 'string' && !/^\d+$/.test(args[0]) ? args[0] : (typeof args[1] === 'string' ? args[1] : ''))).trim();
+
+      if (!maMay && !targetId && (typeof args[0] === 'number' || (payload.index !== undefined && payload.index !== null))) {
+        const idx = typeof args[0] === 'number' ? args[0] : Number(payload.index);
+        const allList = await db.prepare("SELECT id, ma_may FROM may_moc WHERE unit_code = ? ORDER BY id ASC").bind(unitCode).all();
+        if (allList && allList.results && allList.results[idx]) {
+          const rowToDelete = allList.results[idx];
+          await db.prepare("DELETE FROM may_moc WHERE unit_code = ? AND id = ?").bind(unitCode, rowToDelete.id).run();
+          await bumpDataVersion(db, unitCode);
+          return success({ message: "Xóa máy thành công" });
+        }
+      }
+
+      await db.prepare("DELETE FROM may_moc WHERE unit_code = ? AND (ma_may = ? OR id = ?)").bind(unitCode, maMay, targetId || maMay).run();
       await bumpDataVersion(db, unitCode);
       return success({ message: "Xóa máy thành công" });
     }
@@ -3527,7 +3555,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           ktv: args[offset + 2],
           danhSachMay: args[offset + 3],
           soGiuong: args[offset + 4],
-          danhSachGiuong: args[offset + 5]
+          danhSachGiuong: args[offset + 5],
+          oldTenPhong: args[offset + 6]
         };
       }
       const tenPhong = sanitizeInputText(String(payload.tenPhong || payload.ten_phong || payload.name || "").trim());
@@ -3537,21 +3566,48 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const danhSachMay = String(payload.danhSachMay || payload.danh_sach_may || "");
       const soGiuong = parseInt(payload.soGiuong || payload.so_giuong) || 0;
       const danhSachGiuong = String(payload.danhSachGiuong || payload.danh_sach_giuong || "");
+      const oldTenPhong = String(payload.oldTenPhong || payload.old_ten_phong || "");
+      const id = payload.id || null;
 
-      const stmt = db.prepare(`INSERT INTO phong (unit_code, ten_phong, bac_si, ktv, danh_sach_may, so_giuong, danh_sach_giuong, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(unit_code, ten_phong) DO UPDATE SET bac_si = excluded.bac_si, ktv = excluded.ktv, danh_sach_may = excluded.danh_sach_may, so_giuong = excluded.so_giuong, danh_sach_giuong = excluded.danh_sach_giuong, updated_at = CURRENT_TIMESTAMP`)
-        .bind(unitCode, tenPhong, bacSi, ktv, danhSachMay, soGiuong, danhSachGiuong);
-      await db.batch([stmt, makeBumpDataVersionStmt(db, unitCode)]);
+      let updated = false;
+      if (id || (oldTenPhong && oldTenPhong !== tenPhong)) {
+        const updateRes = await db.prepare(
+          `UPDATE phong SET ten_phong = ?, bac_si = ?, ktv = ?, danh_sach_may = ?, so_giuong = ?, danh_sach_giuong = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ? AND (id = ? OR ten_phong = ?)`
+        ).bind(tenPhong, bacSi, ktv, danhSachMay, soGiuong, danhSachGiuong, unitCode, id || -1, oldTenPhong || "").run();
+        if (updateRes && (updateRes.changes > 0 || updateRes.affected_row_count > 0)) {
+          updated = true;
+        }
+      }
+      if (!updated) {
+        const stmt = db.prepare(`INSERT INTO phong (unit_code, ten_phong, bac_si, ktv, danh_sach_may, so_giuong, danh_sach_giuong, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(unit_code, ten_phong) DO UPDATE SET bac_si = excluded.bac_si, ktv = excluded.ktv, danh_sach_may = excluded.danh_sach_may, so_giuong = excluded.so_giuong, danh_sach_giuong = excluded.danh_sach_giuong, updated_at = CURRENT_TIMESTAMP`)
+          .bind(unitCode, tenPhong, bacSi, ktv, danhSachMay, soGiuong, danhSachGiuong);
+        await db.batch([stmt, makeBumpDataVersionStmt(db, unitCode)]);
+      } else {
+        await bumpDataVersion(db, unitCode);
+      }
       return success({ message: "Lưu phòng thành công" });
     }
 
     case "deletePhong": {
       let payload = {};
       if (typeof args[0] === "object" && args[0] !== null) payload = args[0];
-      let offset = (typeof args[0] === "number" || (typeof args[0] === "string" && /^\d+$/.test(args[0]))) ? 1 : 0;
-      const ten = String(payload.tenPhong || payload.ten || args[offset] || args[0] || "").trim();
-      await db.prepare("DELETE FROM phong WHERE unit_code = ? AND (ten_phong = ? OR id = ?)").bind(unitCode, ten, ten).run();
+      const targetId = payload.id || null;
+      let ten = String(payload.tenPhong || payload.ten || (typeof args[0] === 'string' && !/^\d+$/.test(args[0]) ? args[0] : (typeof args[1] === 'string' ? args[1] : ''))).trim();
+
+      if (!ten && !targetId && (typeof args[0] === 'number' || (payload.index !== undefined && payload.index !== null))) {
+        const idx = typeof args[0] === 'number' ? args[0] : Number(payload.index);
+        const allList = await db.prepare("SELECT id, ten_phong FROM phong WHERE unit_code = ? ORDER BY order_idx ASC, id ASC").bind(unitCode).all();
+        if (allList && allList.results && allList.results[idx]) {
+          const rowToDelete = allList.results[idx];
+          await db.prepare("DELETE FROM phong WHERE unit_code = ? AND id = ?").bind(unitCode, rowToDelete.id).run();
+          await bumpDataVersion(db, unitCode);
+          return success({ message: "Xóa phòng thành công" });
+        }
+      }
+
+      await db.prepare("DELETE FROM phong WHERE unit_code = ? AND (ten_phong = ? OR id = ?)").bind(unitCode, ten, targetId || ten).run();
       await bumpDataVersion(db, unitCode);
       return success({ message: "Xóa phòng thành công" });
     }

@@ -4018,10 +4018,20 @@ window.renderSttOrderControl = function (type, i, total) {
             if (!t || !c) return alert("Điền tên và mã máy!");
 
             if (editIndex.machine > -1) {
+                const oldItem = dataCache.machine[editIndex.machine];
+                const oldMaMay = oldItem ? String(oldItem.maMay || oldItem.ma_may || (Array.isArray(oldItem) ? oldItem[2] : '') || '').trim() : '';
+                const oldId = oldItem ? oldItem.id : null;
 
-                dataCache.machine[editIndex.machine] = { tenLoai: t, maMay: c, trangThai: s };
+                dataCache.machine[editIndex.machine] = { id: oldId, tenLoai: t, maMay: c, trangThai: s };
 
-                google.script.run.editMayMoc(editIndex.machine, t, c, s);
+                google.script.run.editMayMoc({
+                    index: editIndex.machine,
+                    oldMaMay: oldMaMay,
+                    id: oldId,
+                    tenLoai: t,
+                    maMay: c,
+                    trangThai: s
+                }, editIndex.machine, t, c, s, oldMaMay);
 
             } else {
 
@@ -4063,6 +4073,10 @@ window.renderSttOrderControl = function (type, i, total) {
 
         function deleteMachine(i) {
             showCustomConfirm("Xác nhận xóa máy", "Bác sĩ có chắc chắn muốn xóa máy này?", function () {
+                const targetMachine = dataCache.machine ? dataCache.machine[i] : null;
+                const maMay = targetMachine ? String(targetMachine.maMay || targetMachine.ma_may || (Array.isArray(targetMachine) ? targetMachine[2] : '') || targetMachine.ma || '').trim() : '';
+                const machineId = targetMachine ? (targetMachine.id || null) : null;
+
                 dataCache.machine.splice(i, 1);
                 renderMachinesTable();
 
@@ -4073,7 +4087,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     .withFailureHandler(e => {
                         alert('Lỗi khi xóa máy: ' + e);
                         if (typeof loadMachines === 'function') loadMachines();
-                    }).deleteMayMoc(i);
+                    }).deleteMayMoc({ maMay, id: machineId, index: i }, maMay, machineId);
             });
         }
 
@@ -5245,9 +5259,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
             if (editIndex.room > -1) {
 
-                const oldName = dataCache.room[editIndex.room].tenPhong || dataCache.room[editIndex.room][1];
+                const oldItem = dataCache.room[editIndex.room];
+                const oldName = oldItem ? String(oldItem.tenPhong || oldItem.ten_phong || (Array.isArray(oldItem) ? oldItem[1] : '') || '').trim() : '';
+                const oldId = oldItem ? oldItem.id : null;
 
-                dataCache.room[editIndex.room] = { tenPhong: ten, bacSi: bs, ktv, danhSachMay: dsMay, soGiuong: slGiuong, danhSachGiuong: dsGiuong };
+                dataCache.room[editIndex.room] = { id: oldId, tenPhong: ten, bacSi: bs, ktv, danhSachMay: dsMay, soGiuong: slGiuong, danhSachGiuong: dsGiuong };
 
                 if (oldName !== ten && dataCache.pat) {
 
@@ -5263,7 +5279,17 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 }
 
-                google.script.run.editPhong(editIndex.room, ten, bs, ktv, dsMay, slGiuong, dsGiuong);
+                google.script.run.editPhong({
+                    index: editIndex.room,
+                    oldTenPhong: oldName,
+                    id: oldId,
+                    tenPhong: ten,
+                    bacSi: bs,
+                    ktv: ktv,
+                    danhSachMay: dsMay,
+                    soGiuong: slGiuong,
+                    danhSachGiuong: dsGiuong
+                }, editIndex.room, ten, bs, ktv, dsMay, slGiuong, dsGiuong, oldName);
 
             } else {
 
@@ -5335,6 +5361,10 @@ window.renderSttOrderControl = function (type, i, total) {
 
         function deleteRoom(i) {
             showCustomConfirm("Xác nhận xóa phòng", "Bác sĩ có chắc chắn muốn xóa phòng này không?", function () {
+                const targetRoom = dataCache.room ? dataCache.room[i] : null;
+                const tenPhong = targetRoom ? String(targetRoom.tenPhong || targetRoom.ten_phong || (Array.isArray(targetRoom) ? targetRoom[1] : '') || targetRoom.ten || '').trim() : '';
+                const roomId = targetRoom ? (targetRoom.id || null) : null;
+
                 dataCache.room.splice(i, 1);
                 renderRoomsTable();
 
@@ -5345,7 +5375,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     .withFailureHandler(e => {
                         alert('Lỗi khi xóa phòng: ' + e);
                         if (typeof loadRooms === 'function') loadRooms();
-                    }).deletePhong(i);
+                    }).deletePhong({ tenPhong, id: roomId, index: i }, tenPhong, roomId);
             });
         }
 

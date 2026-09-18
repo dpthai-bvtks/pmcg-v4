@@ -4243,12 +4243,38 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `index.html`
   - `PM-xeplich-v4.md`
 
-### [18/09/2026 - 11:25] Phiên bản v4.1.1-rev4: Khắc phục lỗi cú pháp trùng lặp định danh globalScope giữa cp-solver.js và scheduler-engine.js
+### [18/09/2026 - 14:55] Phiên bản v4.1.1-rev5: Khóa phút kết thúc thủ thuật (phút thứ 25) & Sửa lỗi đồng bộ CRUD Máy móc, Phòng trên MiniPC
 
-- **Bối cảnh**: Trình duyệt báo lỗi `Uncaught SyntaxError: Identifier 'globalScope' has already been declared` khiến động cơ xếp lịch không khởi tạo được và bấm xếp lịch ra kết quả 0 ca.
-- **Nguyên nhân**: Cả `cp-solver.js` và `scheduler-engine.js` đều khai báo biến `const globalScope` ở phạm vi tệp ngoài cùng (top-level script scope), dẫn đến xung đột biến toàn cục khi tải liên tiếp trong cùng trang web.
-- **Xử lý**: Đóng gói toàn bộ `cp-solver.js` trong IIFE khép kín và bọc khối export của `scheduler-engine.js` trong hàm cô lập phạm vi `(function() { ... })();`.
-- **Đồng bộ phiên bản**: Nâng lên `v4.1.1-rev4` (`11:25 18/09/2026`), cập nhật Service Worker cache và cache busters để trình duyệt lập tức tải bản sửa lỗi.
+- **Yêu cầu của người dùng**:
+  1. Xem lại thuật toán sao không thấy khóa giờ kết thúc của các thủ thuật: Đúng ra là khóa thời gian thực hiện thủ thuật và thời gian kết thúc thủ thuật (ví dụ thủy châm thời gian thực hiện 10 phút, thời gian thủ thuật 25 phút thì khóa 10 phút đầu thực hiện và khóa phút thứ 25 là phút kết thúc; không nhất thiết phải rút máy vì thủy châm chỉ cần theo dõi).
+  2. Đọc bảng `lich_trinh` trên MiniPC xem ngày hôm nay có những ca nào bị lỗi, liệt kê ra.
+  3. Khắc phục lỗi khi xóa/thêm/sửa ở tab Máy móc hay tab khác thì database trên MiniPC không thấy thay đổi.
+- **Phân tích & Giải pháp triển khai**:
+  1. **Khóa phút thứ 25 trong thuật toán (`scheduler-engine.js` & `cp-solver.js`)**:
+     - *Nguyên nhân*: Mốc kết thúc (teardown) trước đó bị tính là `[e, e + 1]` (phút ngoài ca), khiến ca sau có setup chạm tới phút `e` (như 14:18-14:28) không bị phát hiện va chạm với ca trước kết thúc lúc 14:28 (`14:28 < 14:28` là `false`).
+     - *Giải pháp*: Đổi mốc kết thúc về đúng **phút thứ 25** (tức `[e - 1, e]`, khoảng 14:27 - 14:28). Khóa chính xác cả nhân sự chính và phụ ở phút này. Ca sau thực hiện 14:18-14:28 sẽ lập tức bị chặn vì va chạm với phút 14:27-14:28 của ca trước. Áp dụng cho toàn bộ các thủ thuật có thời lượng > thời gian thực hiện (kể cả dùng máy hay thủ công).
+  2. **Khắc phục lỗi CRUD Máy móc & Phòng trên MiniPC**:
+     - *Lỗi xóa*: `deleteMachine` và `deleteRoom` trong `js/app.js` chỉ truyền `i` thay vì mã máy/tên phòng. Đã sửa lại lấy thông tin `maMay`, `tenPhong`, `id` trước khi `splice` và truyền đầy đủ lên API.
+     - *Lỗi sửa*: `editMayMoc` và `editPhong` đã được nâng cấp trong `backend/src/index.js` để thực hiện `UPDATE` theo `(id OR oldKey)` trước, tránh sinh thêm bản ghi trùng lặp khi người dùng sửa mã máy hoặc đổi tên phòng.
+     - *Cơ chế WAL của SQLite trên MiniPC*: Cập nhật `C:\PMCG-Engine\server.mjs` thêm cơ chế debounced `PRAGMA wal_checkpoint(TRUNCATE)` 1 giây sau bất kỳ lệnh ghi nào và định kỳ 60 giây. Toàn bộ thay đổi lập tức được đồng bộ vào `pmcg.db`, kích thước và ngày giờ sửa đổi của file trong Windows Explorer cập nhật tức thì.
+  3. **Kết quả kiểm tra dữ liệu ngày 18/09/2026 trên MiniPC**:
+     - Đã quét 185 ca trên CSDL thực tế:
+       + Trùng Bệnh nhân: **0 ca**
+       + Trùng Máy móc: **0 ca**
+       + Trùng Giường: **0 ca**
+       + Vi phạm giờ trưa / quá giờ: **0 ca**
+       + Va chạm phút kết thúc (phút thứ 25): Phát hiện chính xác **52 cặp ca** va chạm nhân sự (đúng như hình ảnh người dùng phản ánh ở các ca Thủy châm của Bs Thái lúc 14:03-14:28 và 14:18-14:43). Thuật toán mới đã giải quyết triệt để vấn đề này.
+- **File sửa đổi**:
+  - `js/scheduler-engine.js`
+  - `js/cp-solver.js`
+  - `js/app.js`
+  - `backend/src/index.js`
+  - `C:\PMCG-Engine\server.mjs`
+  - `version.json`
+  - `sw.js`
+  - `index.html`
+  - `PM-xeplich-v4.md`
+
 
 
 

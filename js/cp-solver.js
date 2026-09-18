@@ -69,7 +69,7 @@
     const staffEnd = Math.min(start + tgNv, end);
     const intervals = [[start, staffEnd]];
     if (end > staffEnd) {
-      intervals.push([end, end + 1]);
+      intervals.push([end - 1, end]);
     }
     return intervals;
   }
@@ -293,12 +293,12 @@
       const addStaffIntervals = (nv) => {
         if (!nv) return;
         addInterval(staffIntervals, nv, s, staffEnd);
-        if (hasTeardown) addInterval(staffIntervals, nv, e, e + 1);
+        if (hasTeardown) addInterval(staffIntervals, nv, e - 1, e);
         const cleanNv = cleanStaffStr(nv);
         (db.rawStaff || []).forEach(st => {
           if (cleanStaffStr(st[0]) === cleanNv) {
             addInterval(staffIntervals, st[0], s, staffEnd);
-            if (hasTeardown) addInterval(staffIntervals, st[0], e, e + 1);
+            if (hasTeardown) addInterval(staffIntervals, st[0], e - 1, e);
           }
         });
       };
