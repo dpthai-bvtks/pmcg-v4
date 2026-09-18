@@ -4321,8 +4321,21 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `.gitignore`
   - `PM-xeplich-v4.md`
 
+### [18/09/2026 - 17:10] Phiên bản v4.1.1-rev7: Sửa lỗi chốt sổ `targetDateYMD is not defined`
 
+  **Lỗi:**
+  - `[Server Action Error - chuyenNgayMoi]: targetDateYMD is not defined`
+  - Hàm `chuyenNgayMoi` / `chotSo` tại `backend/src/index.js` sử dụng biến `targetDateYMD` chưa được khai báo trong câu lệnh `DELETE FROM gio_ban_chung_cu`. Biến đúng tên là `targetDateStr` (đã được khai báo ngay trên).
 
+  **Sửa:**
+  - `backend/src/index.js`, case `chuyenNgayMoi` / `chotSo` (dòng ~4293):
+    + Đổi `DELETE FROM gio_ban_chung_cu WHERE unit_code = ? AND (date = ? OR date = ?)` `.bind(unitCode, targetDateStr, targetDateYMD)`
+    + Thành `DELETE FROM gio_ban_chung_cu WHERE unit_code = ? AND date = ?` `.bind(unitCode, targetDateStr)`
+
+  **Nâng phiên bản:**
+  - `version.json`: `version: "4.1.1-rev7"`, `releaseTime: "17:10 18/09/2026"`.
+  - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.1.1-rev7'`.
+  - `index.html`: Cập nhật cache busters `?v=4.1.1-rev7`, `APP_VERSION = '4.1.1-rev7'`, `#sys-last-update` → `Cập nhật lần cuối: 17:10 18/09/2026`.
 
 
 

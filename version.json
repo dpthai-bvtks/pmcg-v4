@@ -1,6 +1,6 @@
 {
-    "version": "4.1.1-rev6",
+    "version": "4.1.1-rev7",
     "releaseDate": "18/09/2026",
-    "releaseTime": "16:30 18/09/2026",
-    "notes": "Tích hợp Trạm tính toán quy hoạch ràng buộc Google OR-Tools CP-SAT (C++ 4 luồng) trên Mini PC với cơ chế Hybrid Fallback tức thì sang Turbo-Engine (JS)."
+    "releaseTime": "17:10 18/09/2026",
+    "notes": "Sửa lỗi chốt sổ: targetDateYMD is not defined trong case chuyenNgayMoi/chotSo tại backend."
 }
