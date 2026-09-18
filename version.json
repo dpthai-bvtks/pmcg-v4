@@ -1,6 +1,6 @@
 {
-    "version": "4.1.1-rev3",
+    "version": "4.1.1-rev4",
     "releaseDate": "18/09/2026",
-    "releaseTime": "11:15 18/09/2026",
-    "notes": "Tối ưu hóa cơ chế đa pha cho thủ thuật dùng máy & lưu kim: Nhân sự rảnh đi làm việc khác trong thời gian máy chạy/lưu kim (08:06-08:24), chỉ khóa thời gian thao tác lắp máy/cắm kim và mốc kết thúc rút kim/tháo máy; bảo vệ 100% máy và giường không trùng lặp."
+    "releaseTime": "11:25 18/09/2026",
+    "notes": "Sửa lỗi trùng lặp khai báo định danh phạm vi toàn cục (globalScope SyntaxError) giữa cp-solver.js và scheduler-engine.js trên trình duyệt, kích hoạt lại toàn bộ bộ xếp lịch tự động đa pha."
 }

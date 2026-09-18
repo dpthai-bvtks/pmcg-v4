@@ -4243,6 +4243,14 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `index.html`
   - `PM-xeplich-v4.md`
 
+### [18/09/2026 - 11:25] Phiên bản v4.1.1-rev4: Khắc phục lỗi cú pháp trùng lặp định danh globalScope giữa cp-solver.js và scheduler-engine.js
+
+- **Bối cảnh**: Trình duyệt báo lỗi `Uncaught SyntaxError: Identifier 'globalScope' has already been declared` khiến động cơ xếp lịch không khởi tạo được và bấm xếp lịch ra kết quả 0 ca.
+- **Nguyên nhân**: Cả `cp-solver.js` và `scheduler-engine.js` đều khai báo biến `const globalScope` ở phạm vi tệp ngoài cùng (top-level script scope), dẫn đến xung đột biến toàn cục khi tải liên tiếp trong cùng trang web.
+- **Xử lý**: Đóng gói toàn bộ `cp-solver.js` trong IIFE khép kín và bọc khối export của `scheduler-engine.js` trong hàm cô lập phạm vi `(function() { ... })();`.
+- **Đồng bộ phiên bản**: Nâng lên `v4.1.1-rev4` (`11:25 18/09/2026`), cập nhật Service Worker cache và cache busters để trình duyệt lập tức tải bản sửa lỗi.
+
+
 
 
 

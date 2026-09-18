@@ -5,10 +5,11 @@
  * Phiên bản v4.0.6-rev8: Tối ưu hoá Pre-indexed Intervals O(1) & Branch Pruning siêu tốc (< 50ms)
  */
 
-const globalScope = typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this);
-
-globalScope.MedicalCPSolver = (function () {
+(function () {
   'use strict';
+  const globalScope = typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this);
+
+  globalScope.MedicalCPSolver = (function () {
 
   function t2m(t) {
     if (!t && t !== 0) return 0;
@@ -673,6 +674,7 @@ globalScope.MedicalCPSolver = (function () {
   };
 })();
 
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = globalScope.MedicalCPSolver;
-}
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = globalScope.MedicalCPSolver;
+  }
+})();

@@ -2905,20 +2905,22 @@ function getSafeCache() {
   };
 })();
 
-const globalScope = typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this);
-if (globalScope) {
-  globalScope.decodeVietnameseEncoding = SchedulerEngine.decodeVietnameseEncoding;
-  globalScope.toVietnameseProperCase = SchedulerEngine.toVietnameseProperCase;
-  globalScope.compactTimelineGaps = SchedulerEngine.compactTimelineGaps;
-  globalScope.getStaffBusyIntervals = SchedulerEngine.getStaffBusyIntervals;
-  globalScope.hasStaffIntervalOverlap = SchedulerEngine.hasStaffIntervalOverlap;
-  globalScope.cleanAndHealPatientName = SchedulerEngine.cleanAndHealPatientName;
-  globalScope.healPatientName = SchedulerEngine.cleanAndHealPatientName;
-  globalScope.cleanAndHealProcedureName = SchedulerEngine.cleanAndHealProcedureName;
-  globalScope.healProcedureName = SchedulerEngine.cleanAndHealProcedureName;
-  globalScope.normalizeScheduleItem = SchedulerEngine.normalizeScheduleItem;
-  globalScope.isContinuousProcedure = SchedulerEngine.isContinuousProcedure;
-}
+(function () {
+  const gScope = typeof window !== 'undefined' ? window : (typeof global !== 'undefined' ? global : this);
+  if (gScope) {
+    gScope.decodeVietnameseEncoding = SchedulerEngine.decodeVietnameseEncoding;
+    gScope.toVietnameseProperCase = SchedulerEngine.toVietnameseProperCase;
+    gScope.compactTimelineGaps = SchedulerEngine.compactTimelineGaps;
+    gScope.getStaffBusyIntervals = SchedulerEngine.getStaffBusyIntervals;
+    gScope.hasStaffIntervalOverlap = SchedulerEngine.hasStaffIntervalOverlap;
+    gScope.cleanAndHealPatientName = SchedulerEngine.cleanAndHealPatientName;
+    gScope.healPatientName = SchedulerEngine.cleanAndHealPatientName;
+    gScope.cleanAndHealProcedureName = SchedulerEngine.cleanAndHealProcedureName;
+    gScope.healProcedureName = SchedulerEngine.cleanAndHealProcedureName;
+    gScope.normalizeScheduleItem = SchedulerEngine.normalizeScheduleItem;
+    gScope.isContinuousProcedure = SchedulerEngine.isContinuousProcedure;
+  }
+})();
 
 // ============================================================
 // 💡 UNSCHEDULED DIAGNOSTIC & SMART RESCUE ADVISOR ENGINE
