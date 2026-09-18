@@ -4203,7 +4203,7 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `index.html`
   - `PM-xeplich-v4.md`
 
-### [18/09/2026 - 11:00] Phiên bản v4.1.2-rev1: Tối ưu hóa cơ chế đa pha (Multi-phase Interleaving) cho thủ thuật dùng máy & lưu kim
+### [18/09/2026 - 11:15] Phiên bản v4.1.1-rev3: Tối ưu hóa cơ chế đa pha (Multi-phase Interleaving) cho thủ thuật dùng máy & lưu kim
 
 - **Bối cảnh & Yêu cầu của người dùng**:
   - "cơ chế cắm máy, tháo máy như sau: ktv/bs thao tác lắp máy/cắm kim, điều dưỡng hỗ trợ cắm dây, máy chạy tự động, kết thúc ca thì điều dưỡng rút kim trong sự giám sát của bác sĩ/ktv, như vậy khóa thời gian thực hiện của bs/ktv và khóa giờ kết thúc của cả bs/ktv/điều dưỡng. Ví dụ: điện châm từ 08:00-08:25 thì khóa giờ của bs từ 08:00-08:05 (thời gian thực hiện) và 08:25 (thời điểm kết thúc ca), khoảng từ 08:06-08:24 rảnh đi làm việc khác."
@@ -4230,10 +4230,10 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - Tạo bộ kiểm thử đơn vị `scratch/test_interleaving.js`: 100% PASS kiểm tra phân loại thủ thuật, tính khoảng bận, chèn xen kẽ ca giữa giờ rảnh, chặn va chạm pha Setup và chặn va chạm tại mốc Teardown 08:25, bảo vệ máy và giường 100%.
      - Kiểm thử toàn diện trên CSDL thực tế ngày 17/09/2026: Xếp thành công 185/185 ca (0 ca rớt), 0 va chạm giường, 0 va chạm máy móc, 0 va chạm bệnh nhân, 0 va chạm nhân sự.
   4. **Đồng bộ phiên bản theo RULES.md**:
-     - Nâng số hiệu phiên bản lên `4.1.2-rev1` (18/09/2026).
-     - `version.json`: `version: "4.1.2-rev1"`, `releaseTime: "11:00 18/09/2026"`.
-     - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.1.2-rev1'`.
-     - `index.html`: Cập nhật cache busters `?v=4.1.2-rev1`, `APP_VERSION = '4.1.2-rev1'`, `#sys-last-update` -> `⏱ Cập nhật lần cuối: 11:00 18/09/2026`, chân trang giữ chuẩn `Phiên bản: 4.1.2`.
+     - Nâng số hiệu phiên bản lên `4.1.1-rev3` (18/09/2026).
+     - `version.json`: `version: "4.1.1-rev3"`, `releaseTime: "11:15 18/09/2026"`.
+     - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.1.1-rev3'`.
+     - `index.html`: Cập nhật cache busters `?v=4.1.1-rev3`, `APP_VERSION = '4.1.1-rev3'`, `#sys-last-update` -> `⏱ Cập nhật lần cuối: 11:15 18/09/2026`, chân trang giữ chuẩn `Phiên bản: 4.1.1`.
      - Triển khai thành công đồng thời Cloudflare Worker `pmcg-api` và Cloudflare Pages `pmcg-v3`.
 - **File sửa đổi**:
   - `js/scheduler-engine.js`
