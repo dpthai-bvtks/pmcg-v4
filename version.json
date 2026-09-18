@@ -1,6 +1,6 @@
 {
-    "version": "4.1.1-rev10",
+    "version": "4.1.1-rev11",
     "releaseDate": "18/09/2026",
-    "releaseTime": "19:15 18/09/2026",
-    "notes": "feat: Quy hoạch kiến trúc thống nhất C:\\PMCG-System (PMCG-Engine, PMCG-Data, PMCG-Solver). Chuyển Trạm giải toán Google OR-Tools CP-SAT cổng 5055 chạy ngầm ở mức dịch vụ hệ thống (SYSTEM BootTrigger), hoàn toàn độc lập với Google Drive, khởi động tức thì khi bật nguồn."
+    "releaseTime": "21:20 18/09/2026",
+    "notes": "feat: Nâng cấp toàn diện bộ kiểm tra lỗi xếp lịch (Tab Kiểm Tra Lỗi): Mục 1 (Kiểm tra va chạm Rút kim / Tháo máy của Điện châm, Thủy châm, VLTL + khoảng đệm 1 phút Gap time), Mục 2 (Trùng bệnh nhân làm 2 thủ thuật cùng lúc), Mục 3 (Kiểm tra va chạm Điều dưỡng phụ: trùng 2 ca phụ hoặc vừa làm chính vừa làm phụ). Thêm nút 'Kiểm Tra Lịch Đang Mở' để rà soát tức thì bảng lịch hiện hành."
 }

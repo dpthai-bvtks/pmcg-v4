@@ -4453,3 +4453,48 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `ke-hoach-minipc.md` [MODIFY]
   - `PM-xeplich-v4.md` [MODIFY]
 
+---
+
+### [v4.1.1-rev11] - 21:20 18/09/2026: Nâng cấp toàn diện bộ kiểm tra lỗi xếp lịch (Tab Kiểm Tra Lỗi) - Mục 1, Mục 2, Mục 3
+- **Bối cảnh & Yêu cầu:**
+  + Người dùng yêu cầu nâng cấp công cụ kiểm tra lỗi (`Tab Kiểm Tra Lỗi`) để phát hiện triệt để các tình huống vi phạm lâm sàng thực tế phát sinh:
+    1. **Mục 1**: Kiểm tra va chạm lúc Rút kim / Tháo máy của Điện châm, Thủy châm, VLTL máy + khoảng đệm 1 phút Gap time chuyển giường/phòng giữa các bệnh nhân khác nhau.
+    2. **Mục 2**: Kiểm tra lỗi Trùng bệnh nhân (1 bệnh nhân bị xếp làm 2 thủ thuật cùng lúc hoặc gối giờ nhau).
+    3. **Mục 3**: Kiểm tra va chạm giờ của Điều dưỡng phụ (trùng 2 ca phụ cùng lúc, hoặc cùng lúc vừa làm KTV chính ở ca này vừa làm Điều dưỡng phụ ở ca kia).
+    4. Bổ sung nút **"Kiểm Tra Lịch Đang Mở"** trực tiếp trên giao diện để rà soát tức thì kết quả xếp lịch hiện tại (`window.currentScheduleData`) mà không cần xuất và tải lại file Excel/HIS.
+
+- **Chi tiết triển khai:**
+  1. **Giao diện người dùng (`index.html`)**:
+     - Thêm nút `#btn-check-current-schedule` ("Kiểm Tra Lịch Đang Mở", màu xanh lá `#27ae60`, icon calendar-check) cạnh nút "Chọn File Kiểm Tra (Excel/HIS)".
+     - Cho phép người dùng bấm kiểm tra ngay sau khi xếp lịch xong hoặc nạp lịch từ CSDL.
+  2. **Logic tính toán khoảng bận (Busy Intervals) đa pha (`js/app.js`)**:
+     - Thủ thuật liên tục (`isCont` = true): Khoảng bận trải dài toàn bộ ca `[start, end]`.
+     - Thủ thuật đa pha (Điện châm, Thủy châm, VLTL máy):
+       + Pha 1 (Setup): Bận thao tác đầu ca `[start, start + tth_mins]` (mặc định 5 phút).
+       + Pha 2: Lưu kim / nằm máy (KTV rảnh tay phục vụ ca khác).
+       + Pha 3 (Teardown): Bận rút kim / tháo máy cuối ca `[end - tear_dur, end]` (Điện châm, Thủy châm: 2 phút cuối; máy khác: 1 phút cuối).
+  3. **Thuật toán quét va chạm Nhân sự (`groupedStaff`) - Mục 1 & Mục 3**:
+     - So sánh mọi cặp ca `A` và `B` của cùng nhân viên (cả KTV chính và Điều dưỡng phụ).
+     - Đối chiếu từng khoảng bận `intA` và `intB`:
+       + **Trùng/đè giờ trực tiếp**: Nếu `second.start < first.end`, báo lỗi chi tiết chính xác pha nào đè lên pha nào và khoảng thời gian đè.
+       + **Thiếu đệm 1 phút chuyển giường**: Nếu 2 ca phục vụ 2 bệnh nhân khác nhau (`A.patientName !== B.patientName`) và `second.start < first.end + 60000ms`, báo lỗi thiếu khoảng đệm 1 phút.
+       + **Nhãn vai trò rõ ràng**: Tự động phân loại `[ĐD Phụ]` nếu trùng giữa 2 ca phụ, hoặc `[Vừa làm Chính vừa làm Phụ]` nếu nhân viên bị gán cùng lúc cả 2 vai trò.
+  4. **Thuật toán quét va chạm Trùng Bệnh nhân (`groupedPatients`) - Mục 2**:
+     - Gom nhóm theo bệnh nhân đã làm sạch tên.
+     - So sánh thời gian diễn ra của mọi cặp thủ thuật `P1` và `P2` của cùng bệnh nhân: Nếu `P2.start < P1.end`, lập tức báo lỗi `Bệnh nhân bị xếp 2 thủ thuật cùng lúc` kèm giờ chi tiết và tên KTV thực hiện.
+  5. **Tối ưu hiển thị bảng lỗi**:
+     - Bỏ qua mã hóa HTML dư thừa trong `addTimeRow` và `addOtherRow` để thẻ in đậm `<b>`, huy hiệu `👤`, ghi chú giờ `⏱` và nhãn vai trò hiển thị sắc nét, chuẩn UI.
+
+- **Kết quả kiểm thử:**
+  - Viết kịch bản kiểm thử độc lập `scratch/test_error_checker.mjs` kiểm tra đủ 5 trường hợp: Teardown overlap, Missing 1p gap, Patient double-booking, Nurse sub collision, Nurse main+sub collision. Kết quả 100% test case pass chuẩn xác.
+  - Cú pháp `node -c js/app.js` đạt exit code 0 sạch sẽ.
+  - Đã cập nhật `version.json` (4.1.1-rev11) và `sw.js` (pmcg-v4-cache-4.1.1-rev11).
+
+- **File sửa đổi:**
+  - `index.html` [MODIFY]
+  - `js/app.js` [MODIFY]
+  - `version.json` [MODIFY: 4.1.1-rev11]
+  - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev11]
+  - `PM-xeplich-v4.md` [MODIFY]
+
+
