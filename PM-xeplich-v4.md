@@ -4376,3 +4376,32 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `version.json`: `version: "4.1.1-rev8"`, `releaseTime: "17:59 18/09/2026"`.
   - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.1.1-rev8'`.
   - `index.html`: Cập nhật cache busters `?v=4.1.1-rev8`, `APP_VERSION = '4.1.1-rev8'`, `#sys-last-update` → `Cập nhật lần cuối: 17:59 18/09/2026`.
+
+
+### [18/09/2026 - 18:41] Phiên bản v4.1.1-rev9: Sửa triệt để lỗi thuật toán xếp lịch thứ 7 đối chiếu bản v3
+
+  **Yêu cầu của người dùng:**
+  - Đối chiếu với thuật toán xếp lịch ngày thứ 7 của bản v3 (v3-Cloudflare), tìm lỗi gốc rễ gây rớt ca và sửa triệt để.
+
+  **Phân tích đối chiếu chuyên sâu v3 vs v4 & Nguyên nhân gốc rễ:**
+  - Trong bản v3, cùng tập dữ liệu 101 ca thủ thuật thứ 7 được xếp thành công 100% (101/101 ca, 0 ca rớt). Nhưng bản v4 lại rớt tới 15 ca (đặc biệt là 100% ca điện châm của BS Thảo).
+  - Đối chiếu mã nguồn từng dòng thuật toán phát hiện 3 nguyên nhân cốt lõi:
+    1. **Lỗi nghiêm trọng: `staffSetupReady` bị gán nhầm vào `tearEnd`**:
+       Tại điểm thu dọn ca (teardown), code v4 đã gán `staffSetupReady[nvChinh] = Math.max(staffSetupReady[nvChinh] || 0, tearEnd)`.
+       Biến `staffSetupReady` dùng để chặn bắt đầu ca mới khi KTV đang châm cứu (5 phút đầu). Khi bị gán vào `tearEnd` (phút thứ 25-28), bác sĩ/KTV bị **đóng băng hoàn toàn suốt 25 phút** thay vì chỉ bận 5 phút ban đầu. Bác sĩ không thể làm gối đầu / luân phiên (interleaving) cho các bệnh nhân khác, làm tê liệt khả năng làm việc đa giường của bác sĩ thứ 7.
+    2. **Thời gian thu dọn (teardown) thứ 7**:
+       Bản v3 chỉ chiếm dụng đúng 1 phút (`tNow + tgMay` đến `tNow + tgMay + 1`) để rút kim/tắt máy. Bản v4 mở rộng teardown thành 4 phút (`tNow + tgMay - 1` đến `tNow + tgMay + gapMinutes`), dẫn đến xung đột khung giờ rút kim dày đặc khi 1 bác sĩ phụ trách 40+ ca điện châm. Đã đưa cơ chế: nếu là ngày thứ 7 (`db.isSaturday`), teardown chuẩn hóa về 1 phút như v3.
+    3. **Phòng nhân sự thả nổi (`roomStaff`) & Giờ điều trị linh hoạt**:
+       Chuẩn hóa `baseDb.roomStaff["PHONG_CHUNG_T7"] = []` như v3 để toàn bộ nhân viên thứ 7 ở trạng thái Floating (không bị ràng buộc giữ phòng), đồng thời thiết lập `buoiDieuTri: "TuDong"` để thuật toán tận dụng tối đa cả ca sáng lẫn ca chiều khi ca sáng kín chỗ.
+    4. **Khôi phục khối Service Worker & Auto-update trong `index.html`**:
+       Sửa lỗi cắt cụt vô tình từ lần chỉnh sửa trước, phục hồi toàn vẹn bộ lắng nghe cập nhật và PWA Service Worker.
+
+  **Kết quả nghiệm thu:**
+  - Chạy kiểm thử trên tập dữ liệu thực tế 101 thủ thuật: **101/101 ca được xếp thành công, 0 ca rớt (100% Sched, 0 Drops)**.
+  - Chạy kiểm thử ngày thường (`verify_real_schedule.js`): **101 ca, 0 va chạm nhân sự, 0 va chạm bệnh nhân, 0 va chạm máy móc, 0 va chạm giường**.
+
+  **File sửa đổi:**
+  - `js/scheduler-engine.js`: Gỡ bỏ khóa `staffSetupReady` ở teardown; hỗ trợ teardown 1 phút trên T7; đặt `baseDb.isSaturday = true`, `roomStaff = []`, `buoiDieuTri = 'TuDong'`; bọc an toàn tránh crash khi mapping `rawRot`.
+  - `index.html`: Khôi phục khối Service Worker & Auto-update; đồng bộ phiên bản `4.1.1-rev9` và footer timestamp `18:41 18/09/2026`.
+  - `sw.js`: Nâng cache buster `pmcg-v4-cache-4.1.1-rev9`.
+  - `version.json`: Nâng phiên bản `4.1.1-rev9`.

@@ -1,6 +1,6 @@
 {
-    "version": "4.1.1-rev8",
+    "version": "4.1.1-rev9",
     "releaseDate": "18/09/2026",
-    "releaseTime": "17:59 18/09/2026",
-    "notes": "fix: Sửa lỗi xếp lịch thứ 7 rớt ca nhiều - xóa _precomputed cache để rebuild staffBySkill/staffMyRooms đúng cho NV thứ 7; thêm loaiBN, buoiDieuTri vào rawPatients; fix arrive mặc định 07:30"
+    "releaseTime": "18:41 18/09/2026",
+    "notes": "fix: Sửa triệt để lỗi rớt ca thứ 7 theo chuẩn bản v3 - gỡ bỏ staffSetupReady bị khóa nhầm vào tearEnd khiến KTV/BS bị đóng băng sau ca đầu, chuẩn hóa thời gian thu dọn (teardown) thứ 7 về 1 phút như v3, roomStaff thả nổi không khóa phòng, cho phép xếp cả sáng lẫn chiều linh hoạt."
 }

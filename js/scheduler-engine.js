@@ -591,8 +591,8 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
     const gapMinutes = (info[12] !== undefined && info[12] > 0) ? info[12] : 1;
     const staffEnd = isManualProc ? (gioEnd + gapMinutes) : Math.min(gioStart + tgNhanVien + gapMinutes, gioEnd);
     const hasTeardown = !isManualProc && ((gioEnd - gioStart) > tgNhanVien);
-    const tearStart = hasTeardown ? (gioEnd - 1) : null;
-    const tearEnd = hasTeardown ? (gioEnd + gapMinutes) : null;
+    const tearStart = hasTeardown ? (db.isSaturday ? gioEnd : (gioEnd - 1)) : null;
+    const tearEnd = hasTeardown ? (db.isSaturday ? (gioEnd + 1) : (gioEnd + gapMinutes)) : null;
 
     const pushAndMerge = (timeline, key, slot) => { if (!timeline[key]) return; timeline[key].push(slot); timeline[key] = mergeTimeline(timeline[key]); };
     
@@ -805,8 +805,8 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       const khoangCach = tgNhanVien + gapMinutes;
       const gioKetThuc = tNow + tgMay;
       const hasTeardown = tgMay > tgNhanVien;
-      const tearStart = hasTeardown ? (tNow + tgMay - 1) : null;
-      const tearEnd = hasTeardown ? (tNow + tgMay + gapMinutes) : null;
+      const tearStart = hasTeardown ? (db.isSaturday ? (tNow + tgMay) : (tNow + tgMay - 1)) : null;
+      const tearEnd = hasTeardown ? (db.isSaturday ? (tNow + tgMay + 1) : (tNow + tgMay + gapMinutes)) : null;
 
       // 🔒 RÀNG BUỘC CHẶN GIỜ NGHỈ TRƯA VÀ HẾT CA: Tuân thủ tuyệt đối cài đặt yhctLunch và yhctEnd
       if (tNow < 690 && gioKetThuc > (690 + allowedOvertimeAtLunch)) continue;
@@ -972,11 +972,11 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
         blockStaff(nvChinh, tNow, tNow + tgNhanVien, khoangCach, staffTimeline, staffSetupReady, staffLoad, tenThuThuat, staffLastProc);
         staffCurrentRoom[nvChinh] = targetRoom;
-        if (hasTeardown) { staffTimeline[nvChinh].push([tearStart, tearEnd]); staffTimeline[nvChinh] = mergeTimeline(staffTimeline[nvChinh]); staffSetupReady[nvChinh] = Math.max(staffSetupReady[nvChinh] || 0, tearEnd); staffLoad[nvChinh].used_mins += (tearEnd - tearStart); }
+        if (hasTeardown) { staffTimeline[nvChinh].push([tearStart, tearEnd]); staffTimeline[nvChinh] = mergeTimeline(staffTimeline[nvChinh]); staffLoad[nvChinh].used_mins += (tearEnd - tearStart); }
 
         if (nvPhu) {
           blockStaff(nvPhu, tNow, tNow + tgNhanVien, khoangCach, staffTimeline, staffSetupReady, staffLoad, tenThuThuat, staffLastProc);
-          if (hasTeardown) { staffTimeline[nvPhu].push([tearStart, tearEnd]); staffTimeline[nvPhu] = mergeTimeline(staffTimeline[nvPhu]); staffSetupReady[nvPhu] = Math.max(staffSetupReady[nvPhu] || 0, tearEnd); staffLoad[nvPhu].used_mins += (tearEnd - tearStart); }
+          if (hasTeardown) { staffTimeline[nvPhu].push([tearStart, tearEnd]); staffTimeline[nvPhu] = mergeTimeline(staffTimeline[nvPhu]); staffLoad[nvPhu].used_mins += (tearEnd - tearStart); }
         }
 
         if (selectedMachine !== "Thủ công") { 
@@ -2861,7 +2861,8 @@ function getSafeCache() {
       beds.forEach(b => allBeds.push(`${roomName}|${b}`));
     });
     baseDb.roomBeds["PHONG_CHUNG_T7"] = allBeds;
-    baseDb.roomStaff["PHONG_CHUNG_T7"] = [...(payload.allowed_staff || [])];
+    baseDb.roomStaff["PHONG_CHUNG_T7"] = [];
+    baseDb.isSaturday = true;
     if (!baseDb.roomMachines) baseDb.roomMachines = {};
     baseDb.roomMachines["PHONG_CHUNG_T7"] = baseDb.machineTypes || {};
 
@@ -2967,7 +2968,7 @@ function getSafeCache() {
       const pRoom = bn.phong || "";
       const pId = bn.id || (pName + "_" + pNs + "_" + pRoom + "_" + idx);
       // FIX: Thêm loaiBN và buoiDieuTri để tryScheduleOne xử lý đúng loại bệnh nhân
-      const loaiBN = bn.loai || "NoiTru";
+      const loaiBN = bn.loai || bn.loaiBn || "NoiTru";
       baseDb.rawPatients.push({
         pId: pId,
         name: pName,
@@ -2980,7 +2981,7 @@ function getSafeCache() {
         pending: bn.tt ? String(bn.tt).split(",").map(x => x.trim()).filter(Boolean) : [],
         free_at: readyTime,
         loaiBN: loaiBN,
-        buoiDieuTri: "Sang",
+        buoiDieuTri: "TuDong",
         _isNew: false
       });
     });
@@ -2999,9 +3000,10 @@ function getSafeCache() {
     }
 
     const rawRot = (best.rot || []).map(u => {
+      const uName = String(u.bn || u.tenBN || u.name || '').toUpperCase().trim();
       if (u.phong === "PHONG_CHUNG_T7" || u.room === "PHONG_CHUNG_T7") {
-        const orig = (payload.final_pats || []).find(p => p.ten.toUpperCase() === u.bn.toUpperCase());
-        if (orig) { u.phong = orig.phong; u.room = orig.phong; }
+        const orig = (payload.final_pats || []).find(p => String(p.ten || p.name || '').toUpperCase().trim() === uName);
+        if (orig) { u.phong = orig.phong || orig.room || u.phong; u.room = orig.phong || orig.room || u.room; }
       }
       return { ...u, ngay: u.ngay || targetDate };
     });
