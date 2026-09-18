@@ -2865,6 +2865,11 @@ function getSafeCache() {
     if (!baseDb.roomMachines) baseDb.roomMachines = {};
     baseDb.roomMachines["PHONG_CHUNG_T7"] = baseDb.machineTypes || {};
 
+    // ⚡ FIX CRITICAL: Xóa precomputed cache để force rebuild staffBySkill + staffMyRooms
+    // theo đúng danh sách NV thứ 7. Nếu không xóa, staffBySkill sẽ chứa NV ngày thường
+    // khiến thuật toán không tìm được ai có kỹ năng phù hợp → rớt hàng loạt.
+    delete baseDb._precomputed;
+
     const allStaff = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff)) ? dataCache.staff : [];
     const procList = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.proc)) ? dataCache.proc : [];
     baseDb.rawStaff = [];
@@ -2954,11 +2959,15 @@ function getSafeCache() {
 
     baseDb.rawPatients = [];
     (payload.final_pats || []).forEach((bn, idx) => {
-      const readyTime = (bn.gioVao ? t2m(bn.gioVao) : 0) + 1;
+      // FIX: Mặc định 07:30 (450 phút) nếu không có giờ vào, tránh arrive = 1 (00:01)
+      const rawReadyTime = bn.gioVao ? t2m(bn.gioVao) : 450;
+      const readyTime = rawReadyTime + 1;
       const pName = String(bn.ten).toUpperCase();
       const pNs = bn.ns || "";
       const pRoom = bn.phong || "";
       const pId = bn.id || (pName + "_" + pNs + "_" + pRoom + "_" + idx);
+      // FIX: Thêm loaiBN và buoiDieuTri để tryScheduleOne xử lý đúng loại bệnh nhân
+      const loaiBN = bn.loai || "NoiTru";
       baseDb.rawPatients.push({
         pId: pId,
         name: pName,
@@ -2969,7 +2978,10 @@ function getSafeCache() {
         leave: 9999,
         busy: [[0, readyTime]],
         pending: bn.tt ? String(bn.tt).split(",").map(x => x.trim()).filter(Boolean) : [],
-        free_at: readyTime
+        free_at: readyTime,
+        loaiBN: loaiBN,
+        buoiDieuTri: "Sang",
+        _isNew: false
       });
     });
 

@@ -1,6 +1,6 @@
 {
-    "version": "4.1.1-rev7",
+    "version": "4.1.1-rev8",
     "releaseDate": "18/09/2026",
-    "releaseTime": "17:10 18/09/2026",
-    "notes": "Sửa lỗi chốt sổ: targetDateYMD is not defined trong case chuyenNgayMoi/chotSo tại backend."
+    "releaseTime": "17:59 18/09/2026",
+    "notes": "fix: Sửa lỗi xếp lịch thứ 7 rớt ca nhiều - xóa _precomputed cache để rebuild staffBySkill/staffMyRooms đúng cho NV thứ 7; thêm loaiBN, buoiDieuTri vào rawPatients; fix arrive mặc định 07:30"
 }

@@ -4346,3 +4346,33 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
 
 
 
+
+### [18/09/2026 - 17:59] Phiên bản v4.1.1-rev8: Sửa lỗi xếp lịch thứ 7 rớt ca nhiều
+
+  **Yêu cầu của người dùng:**
+  - Thuật toán xếp lịch ngày thứ 7 (`runSaturdayScheduling`) đang rớt ca rất nhiều, không xếp được phần lớn bệnh nhân.
+
+  **Phân tích nguyên nhân & Giải pháp:**
+
+  **Bug 1 (Quan trọng nhất) — `_precomputed` cache không bị xóa:**
+  - `buildDbFromCache()` trả về `database` object có thể còn `_precomputed` từ lần xếp lịch ngày thường trước đó.
+  - `_precomputed.staffBySkill` (map kỹ năng → NV) chứa NV ngày thường, trong khi `rawStaff` đã bị ghi đè bằng NV thứ 7.
+  - `_turbo_core_logic` kiểm tra `if (!db._precomputed)` → bỏ qua rebuild → tìm NV theo kỹ năng không ra ai → **rớt hàng loạt**.
+  - Cũng gây bug `staffMyRooms` chặn KTV ngày thường khỏi `PHONG_CHUNG_T7`.
+  - **Fix:** Thêm `delete baseDb._precomputed;` sau khi set `roomMachines`.
+
+  **Bug 2 — `arrive` mặc định 00:01 thay vì 07:30:**
+  - `const readyTime = (bn.gioVao ? t2m(bn.gioVao) : 0) + 1` → nếu `gioVao` rỗng thì `arrive = 1`.
+  - **Fix:** Đổi default từ `0` thành `450` (07:30).
+
+  **Bug 3 — `rawPatients` thiếu `loaiBN`, `buoiDieuTri`, `_isNew`:**
+  - `tryScheduleOne` đọc `patient.loaiBN` để áp ràng buộc NgoaiTru; `sortPatientPriority` đọc `_isNew`.
+  - **Fix:** Thêm `loaiBN: bn.loai || "NoiTru"`, `buoiDieuTri: "Sang"`, `_isNew: false` vào mỗi rawPatient.
+
+  **File sửa đổi:**
+  - `js/scheduler-engine.js` — hàm `runSaturdayScheduling` (3 chỗ, ~dòng 2865–2984).
+
+  **Nâng phiên bản:**
+  - `version.json`: `version: "4.1.1-rev8"`, `releaseTime: "17:59 18/09/2026"`.
+  - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.1.1-rev8'`.
+  - `index.html`: Cập nhật cache busters `?v=4.1.1-rev8`, `APP_VERSION = '4.1.1-rev8'`, `#sys-last-update` → `Cập nhật lần cuối: 17:59 18/09/2026`.
