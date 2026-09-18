@@ -7,7 +7,7 @@ echo  GO CAI DAT TRAM GIAI TOAN GOOGLE OR-TOOLS CP-SAT
 echo ============================================================
 echo.
 
-set TASK_NAME=PMCG-OR-Tools-Solver-5055
+set TASK_NAME=PMCG_ORTools_Solver
 
 :: ---- Kiểm tra quyền Administrator ----
 net session >nul 2>&1
@@ -21,6 +21,7 @@ if %errorlevel% neq 0 (
 :: ---- Dừng task đang chạy ----
 echo [INFO] Dang dung Tram giai toan...
 schtasks /end /tn "%TASK_NAME%" >nul 2>&1
+schtasks /end /tn "PMCG-OR-Tools-Solver-5055" >nul 2>&1
 
 :: ---- Tìm và kill tiến trình Python đang lắng nghe cổng 5055 ----
 echo [INFO] Dang tat tien trinh tren cong 5055...
@@ -32,6 +33,7 @@ for /f "tokens=5" %%i in ('netstat -aon 2^>nul ^| findstr ":5055 " ^| findstr "L
 :: ---- Xóa Scheduled Task ----
 echo [INFO] Dang xoa Scheduled Task...
 schtasks /delete /tn "%TASK_NAME%" /f >nul 2>&1
+schtasks /delete /tn "PMCG-OR-Tools-Solver-5055" /f >nul 2>&1
 
 if %errorlevel% == 0 (
     echo [OK] Da xoa Task: %TASK_NAME%

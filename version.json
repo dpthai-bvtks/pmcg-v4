@@ -1,6 +1,6 @@
 {
-    "version": "4.1.1-rev9",
+    "version": "4.1.1-rev10",
     "releaseDate": "18/09/2026",
-    "releaseTime": "18:41 18/09/2026",
-    "notes": "fix: Sửa triệt để lỗi rớt ca thứ 7 theo chuẩn bản v3 - gỡ bỏ staffSetupReady bị khóa nhầm vào tearEnd khiến KTV/BS bị đóng băng sau ca đầu, chuẩn hóa thời gian thu dọn (teardown) thứ 7 về 1 phút như v3, roomStaff thả nổi không khóa phòng, cho phép xếp cả sáng lẫn chiều linh hoạt."
+    "releaseTime": "19:15 18/09/2026",
+    "notes": "feat: Quy hoạch kiến trúc thống nhất C:\\PMCG-System (PMCG-Engine, PMCG-Data, PMCG-Solver). Chuyển Trạm giải toán Google OR-Tools CP-SAT cổng 5055 chạy ngầm ở mức dịch vụ hệ thống (SYSTEM BootTrigger), hoàn toàn độc lập với Google Drive, khởi động tức thì khi bật nguồn."
 }

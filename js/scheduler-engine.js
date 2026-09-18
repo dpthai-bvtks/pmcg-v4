@@ -2448,14 +2448,19 @@ function getSafeCache() {
 
   // ============================================================
   // 🛰️ GOOGLE OR-TOOLS CP-SAT LOCAL SOLVER CLIENT (MINI PC STATION)
-  // Giao tiếp với Trạm giải toán C++ native qua cổng 5055 trên Mini PC
+  // Giao tiếp với Trạm giải toán C++ native qua cổng 5055 trên Mini PC (C:\PMCG-System\PMCG-Solver)
   // ============================================================
   let _lastSolverStatus = null;
   let _lastCheckTime = 0;
 
-  async function checkMiniPCSolverOnline(timeoutMs = 600) {
+  function getCachedSolverInfo() {
+    return _lastSolverStatus;
+  }
+
+  async function checkMiniPCSolverOnline(timeoutMs = 1000) {
     const now = Date.now();
-    if (_lastSolverStatus !== null && (now - _lastCheckTime < 3000)) {
+    const cacheDuration = (_lastSolverStatus && _lastSolverStatus.online) ? 15000 : 3000;
+    if (_lastSolverStatus !== null && (now - _lastCheckTime < cacheDuration)) {
       return _lastSolverStatus.online;
     }
     try {
@@ -2483,9 +2488,16 @@ function getSafeCache() {
     return false;
   }
 
-  async function getMiniPCSolverInfo(timeoutMs = 600) {
+  async function getMiniPCSolverInfo(timeoutMs = 1000) {
     await checkMiniPCSolverOnline(timeoutMs);
     return _lastSolverStatus;
+  }
+
+  // Tự động làm ấm (warm-up) kiểm tra trạm solver ngay khi nạp trang
+  if (typeof window !== 'undefined') {
+    setTimeout(() => {
+      checkMiniPCSolverOnline(1500).catch(() => {});
+    }, 500);
   }
 
   async function solveWithMiniPC(db, options = {}, timeoutMs = 25000) {
@@ -3074,6 +3086,7 @@ function getSafeCache() {
     validateNoOverlapWithExisting,
     checkMiniPCSolverOnline,
     getMiniPCSolverInfo,
+    getCachedSolverInfo,
     solveWithMiniPC,
     runScheduling: runClientScheduling,
     runSchedulingAsync: runSchedulingAsync,
@@ -3098,6 +3111,7 @@ function getSafeCache() {
     gScope.isContinuousProcedure = SchedulerEngine.isContinuousProcedure;
     gScope.checkMiniPCSolverOnline = SchedulerEngine.checkMiniPCSolverOnline;
     gScope.getMiniPCSolverInfo = SchedulerEngine.getMiniPCSolverInfo;
+    gScope.getCachedSolverInfo = SchedulerEngine.getCachedSolverInfo;
     gScope.solveWithMiniPC = SchedulerEngine.solveWithMiniPC;
   }
 })();

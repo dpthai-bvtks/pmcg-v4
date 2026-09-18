@@ -7108,13 +7108,25 @@ window.renderSttOrderControl = function (type, i, total) {
             const chk = document.getElementById('chk-use-minipc-solver');
             if (!dot || !label) return;
 
+            // 1. Kiểm tra bộ đệm tức thì nếu trạm đã sẵn sàng từ trước (0ms, không flicker)
+            if (window.SchedulerEngine && typeof window.SchedulerEngine.getCachedSolverInfo === 'function') {
+                const cached = window.SchedulerEngine.getCachedSolverInfo();
+                if (cached && cached.online) {
+                    dot.style.background = '#27ae60';
+                    dot.style.boxShadow = '0 0 7px #2ecc71';
+                    label.innerHTML = `🟢 Trạm Mini PC: <b style="color:#27ae60;">Sẵn sàng</b> (Google OR-Tools CP-SAT 4 Luồng)`;
+                    if (chk) { chk.disabled = false; }
+                    return;
+                }
+            }
+
             dot.style.background = '#f39c12';
             dot.style.boxShadow = '0 0 5px #f39c12';
             label.innerHTML = '<span style="color:#d35400;">Trạm Mini PC: Đang kiểm tra...</span>';
 
             try {
                 if (window.SchedulerEngine && typeof window.SchedulerEngine.getMiniPCSolverInfo === 'function') {
-                    const info = await window.SchedulerEngine.getMiniPCSolverInfo(700);
+                    const info = await window.SchedulerEngine.getMiniPCSolverInfo(1000);
                     if (info && info.online) {
                         dot.style.background = '#27ae60';
                         dot.style.boxShadow = '0 0 7px #2ecc71';

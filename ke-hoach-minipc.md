@@ -44,12 +44,12 @@
                                 ▼ (Vượt Firewall / NAT Bệnh Viện)
    ┌─────────────────────────────────────────────────────────┐
    │  Mini PC Công Nghiệp (Windows 10 Pro - Đặt tại Viện)    │
+   │  Thư mục quản lý hợp nhất: C:\PMCG-System\              │
    │                                                         │
    │  1. Cloudflare Tunnel Service (cloudflared.exe)         │
    │     └─ Nhận traffic từ db.xeplichthuthuat.io.vn         │
    │     └─ Forward về http://127.0.0.1:8080                 │
    │                                                         │
-   │  2. Windows Service: sqld / Local LibSQL Engine         │
    │     └─ Lắng nghe cổng 8080                              │
    │     └─ Hỗ trợ native giao thức HTTP /v2/pipeline        │
    │                                                         │

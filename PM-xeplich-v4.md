@@ -4405,3 +4405,51 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `index.html`: Khôi phục khối Service Worker & Auto-update; đồng bộ phiên bản `4.1.1-rev9` và footer timestamp `18:41 18/09/2026`.
   - `sw.js`: Nâng cache buster `pmcg-v4-cache-4.1.1-rev9`.
   - `version.json`: Nâng phiên bản `4.1.1-rev9`.
+
+### [18/09/2026 - 19:15] Phiên bản v4.1.1-rev10: Quy hoạch kiến trúc thống nhất C:\PMCG-System & Vận hành độc lập OR-Tools khi khởi động máy
+
+  **Yêu cầu của người dùng:**
+  - Khắc phục triệt để lỗi OR-Tools không hoạt động khi máy tính khởi động lại do thư mục nằm trên ổ Google Drive (`G:`).
+  - Quy hoạch và hợp nhất toàn bộ hệ thống vào thư mục duy nhất `C:\PMCG-System` chứa `PMCG-Engine`, `PMCG-Data` và `PMCG-Solver`.
+  - Tối ưu hóa toàn bộ hệ thống, loại bỏ sự phụ thuộc vào việc mở Google Drive, đảm bảo máy tính bật lên là OR-Tools sẵn sàng tức thì.
+
+  **Kiến trúc & Tối ưu hóa triển khai:**
+  1. **Tổ chức thư mục hợp nhất `C:\PMCG-System`**:
+     - `C:\PMCG-System\PMCG-Data`: Chứa cơ sở dữ liệu SQLite Hot DB (`pmcg.db`, `WAL`).
+     - `C:\PMCG-System\PMCG-Engine`: Chứa Server Node.js CSDL cổng 8080 (`server.mjs`, `startup-sync.mjs`, `cloudflared.exe`).
+     - `C:\PMCG-System\PMCG-Solver`: Chứa Trạm giải toán Google OR-Tools CP-SAT cổng 5055 (`server.py`, `solver.py`, `run_solver.cmd`).
+     - Tạo liên kết thư mục NTFS Junction (`C:\PMCG-Data`, `C:\PMCG-Engine`, `C:\PMCG-Solver`) trỏ về `C:\PMCG-System\...` để tương thích ngược 100% cho mọi công cụ ngoại vi.
+  2. **Cấu hình Windows Scheduled Task mức dịch vụ hệ thống (SYSTEM BootTrigger)**:
+     - `PMCG_ORTools_Solver`: Chạy ngầm `C:\Python314\python.exe -u C:\PMCG-System\PMCG-Solver\server.py --port 5055` dưới quyền `SYSTEM` tại `BootTrigger` (khởi động ngay khi bật máy, trước khi đăng nhập Windows). Tự động phục hồi khi có lỗi (RestartCount: 5).
+     - `PMCG_Database_Engine`: Chuyển đường dẫn thực thi sang `C:\PMCG-System\PMCG-Engine\server.mjs`, kết nối `C:\PMCG-System\PMCG-Data\pmcg.db`.
+     - `PMCG_Startup_Sync`: Cập nhật đồng bộ Turso vào `C:\PMCG-System\PMCG-Data\pmcg.db`.
+     - `Cloudflared Service`: Cập nhật binary path sang `C:\PMCG-System\PMCG-Engine\cloudflared.exe`.
+     - `D:\PMCG-Backups\backup.mjs`: Cập nhật đường dẫn cơ sở dữ liệu nguồn sang `C:\PMCG-System\PMCG-Data\pmcg.db`. Đã kiểm thử backup thành công.
+  3. **Tối ưu hóa phản hồi Web Frontend (Zero-Flicker & Pre-Warmup)**:
+     - `js/scheduler-engine.js`: Bổ sung cơ chế tự động làm ấm kết nối (`warm-up ping`) sau 500ms khi vừa tải trang web; tăng bộ đệm trạng thái online lên 15 giây; cung cấp hàm `getCachedSolverInfo()`.
+     - `js/app.js`: Tối ưu hàm `updateMiniPCSolverStatusUI()` đọc từ bộ đệm bộ nhớ trước, lập tức hiển thị 🟢 **Sẵn sàng** (0ms) khi mở modal mà không có bất kỳ độ trễ hay chớp giật nào.
+  4. **Bộ công cụ quản lý đồng bộ 1-click trong `local-solver`**:
+     - `local-solver\install_service.bat`: Tự động cài đặt và đăng ký dịch vụ vào `C:\PMCG-System\PMCG-Solver`.
+     - `local-solver\sync_to_system.bat`: Đồng bộ nhanh mã nguồn thuật toán sang `C:\PMCG-System\PMCG-Solver` và khởi động lại dịch vụ sau 1 click.
+     - `local-solver\check_service.bat`: Kiểm tra toàn diện trạng thái task, cổng 5055 và phản hồi API.
+     - `local-solver\start_solver.bat`: Thông báo nếu dịch vụ đã chạy ngầm và cho phép khởi chạy thủ công nếu cần.
+
+  **Kết quả nghiệm thu:**
+  - Cổng 5055 (OR-Tools) và cổng 8080 (Database) đều hoạt động `LISTENING` độc lập 100% với Google Drive.
+  - Kiểm thử giải toán thực tế trên `http://127.0.0.1:5055/api/solve` trả về kết quả `OPTIMAL` trong chỉ **16 mili-giây**!
+  - Kiểm thử sao lưu online SQLite (`backup.mjs`): Thành công snapshot 5.5MB vào `D:\PMCG-Backups`.
+
+  **File sửa đổi & tạo mới:**
+  - `C:\PMCG-System\` [NEW DIRECTORY STRUCTURE: PMCG-Data, PMCG-Engine, PMCG-Solver]
+  - `local-solver\install_service.bat` [MODIFY]
+  - `local-solver\check_service.bat` [MODIFY]
+  - `local-solver\start_solver.bat` [MODIFY]
+  - `local-solver\uninstall_service.bat` [MODIFY]
+  - `local-solver\sync_to_system.bat` [NEW]
+  - `js/scheduler-engine.js` [MODIFY]
+  - `js/app.js` [MODIFY]
+  - `sw.js` [MODIFY: CACHE_NAME = 'pmcg-v4-cache-4.1.1-rev10']
+  - `version.json` [MODIFY: 4.1.1-rev10]
+  - `ke-hoach-minipc.md` [MODIFY]
+  - `PM-xeplich-v4.md` [MODIFY]
+
