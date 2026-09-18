@@ -1,6 +1,6 @@
 {
-    "version":  "4.1.1-rev1",
-    "releaseDate":  "18/09/2026",
-    "releaseTime":  "07:30 18/09/2026",
-    "notes":  "Khắc phục triệt để lỗi nhân đôi ca trong lịch sử (lich_su) khi chốt sổ hoặc chốt sổ tự động, bổ sung cơ chế khử trùng lặp tự phục hồi trong CSDL và lọc trùng phòng thủ trong Tiện ích tìm kiếm rảnh."
+    "version": "4.1.1-rev2",
+    "releaseDate": "18/09/2026",
+    "releaseTime": "08:05 18/09/2026",
+    "notes": "Triệt để dọn sạch bộ nhớ đệm lịch trình (localStorage, IndexedDB Dexie, bootstrap cache) khi chốt sổ hoặc khi mở máy sang ngày làm việc mới, ngăn chặn hoàn toàn việc hiển thị lịch cũ của hôm qua."
 }

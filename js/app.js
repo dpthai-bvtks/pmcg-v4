@@ -3373,23 +3373,27 @@ window.renderSttOrderControl = function (type, i, total) {
                         const mm = String(nowVN.getUTCMonth() + 1).padStart(2, '0');
                         const todaySlash = `${dd}/${mm}/${nowVN.getUTCFullYear()}`; // VD: 21/08/2026
 
-                        // Kiểm tra cache có phải của ngày hôm nay không
-                        let cacheIsStale = false;
-                        if (b.patients && Array.isArray(b.patients) && b.patients.length > 0) {
-                            const firstPatDate = b.patients[0].ngayVao || b.patients[0].ngay_vao || '';
-                            if (firstPatDate && firstPatDate !== todaySlash && firstPatDate !== todayYMD) {
-                                cacheIsStale = true;
-                            }
-                        }
-                        if (!cacheIsStale && b.schedule && Array.isArray(b.schedule) && b.schedule.length > 0) {
-                            const firstSchedDate = b.schedule[0][0] || b.schedule[0].date || '';
-                            if (firstSchedDate && firstSchedDate !== todayYMD && firstSchedDate !== todaySlash) {
-                                cacheIsStale = true;
+                        // Kiểm tra lịch trong cache có phải của ngày hôm nay không
+                        let scheduleIsStale = false;
+                        if (b.schedule && Array.isArray(b.schedule) && b.schedule.length > 0) {
+                            const firstSched = b.schedule[0];
+                            const rawDate = Array.isArray(firstSched) ? firstSched[0] : (firstSched?.ngay || firstSched?.NGAY || firstSched?.date || firstSched?.Date || '');
+                            const toYMD_check = (s) => {
+                                if (!s) return '';
+                                const str = String(s).trim();
+                                if (str.includes('/')) {
+                                    const p = str.split('/');
+                                    return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+                                }
+                                return str;
+                            };
+                            const schedDateYMD = toYMD_check(rawDate);
+                            if (schedDateYMD && schedDateYMD !== todayYMD) {
+                                scheduleIsStale = true;
                             }
                         }
 
-                        if (cacheIsStale) {
-                            b.patients = [];
+                        if (scheduleIsStale) {
                             b.schedule = [];
                             try { localStorage.setItem(cacheKey, JSON.stringify(b)); } catch(e) {}
                         }
@@ -3566,6 +3570,18 @@ window.renderSttOrderControl = function (type, i, total) {
                         if (b && Array.isArray(b.schedule)) {
                             dataCache.schedule = b.schedule;
                             window.currentScheduleData = (b.schedule.length > 0 && typeof markDischargedInSchedule === 'function') ? markDischargedInSchedule(b.schedule) : (b.schedule || []);
+                            if (b.schedule.length === 0) {
+                                // Server xác nhận hôm nay chưa có lịch (ngày mới hoặc đã chốt sổ), dọn sạch cache local
+                                const curUnit = getCurrentUnitCode();
+                                const uKey = (base) => (typeof getUnitStorageKey === 'function') ? getUnitStorageKey(base) : (curUnit ? `${curUnit}_${base}` : base);
+                                localStorage.removeItem(uKey('meds_success'));
+                                localStorage.removeItem(uKey('meds_schedule_date'));
+                                localStorage.removeItem(uKey('meds_unscheduled'));
+                                localStorage.removeItem('meds_success');
+                                localStorage.removeItem('meds_schedule_date');
+                                localStorage.removeItem('meds_unscheduled');
+                                localStorage.removeItem('meds_schedule_unit');
+                            }
                             if (b.is_finalized_today) {
                                 window._todayIsFinalized = true;
                                 const displayEl = document.getElementById('display-date');
@@ -3584,6 +3600,15 @@ window.renderSttOrderControl = function (type, i, total) {
                             dataCache.schedule = [];
                             window.currentScheduleData = [];
                             window._todayIsFinalized = false;
+                            const curUnit = getCurrentUnitCode();
+                            const uKey = (base) => (typeof getUnitStorageKey === 'function') ? getUnitStorageKey(base) : (curUnit ? `${curUnit}_${base}` : base);
+                            localStorage.removeItem(uKey('meds_success'));
+                            localStorage.removeItem(uKey('meds_schedule_date'));
+                            localStorage.removeItem(uKey('meds_unscheduled'));
+                            localStorage.removeItem('meds_success');
+                            localStorage.removeItem('meds_schedule_date');
+                            localStorage.removeItem('meds_unscheduled');
+                            localStorage.removeItem('meds_schedule_unit');
                         }
                         if (typeof loadScheduleList === 'function') loadScheduleList();
 
@@ -6643,16 +6668,23 @@ window.renderSttOrderControl = function (type, i, total) {
                             const nowVN3 = new Date(Date.now() + 7 * 60 * 60 * 1000);
                             const todayYMD3 = `${nowVN3.getUTCFullYear()}-${String(nowVN3.getUTCMonth() + 1).padStart(2, '0')}-${String(nowVN3.getUTCDate()).padStart(2, '0')}`;
                             const toYMD3 = (s) => { if (!s) return ''; if (String(s).includes('/')) { const p = String(s).split('/'); return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`; } return String(s); };
-                            const schedDate3 = savedDate ? toYMD3(savedDate) : toYMD3(localSched[0]?.[0] || localSched[0]?.ngay || localSched[0]?.NGAY || '');
-                            if (!schedDate3 || schedDate3 === todayYMD3) {
+                            const rawDate = savedDate || (Array.isArray(localSched[0]) ? localSched[0][0] : (localSched[0]?.ngay || localSched[0]?.NGAY || localSched[0]?.date || ''));
+                            const schedDate3 = toYMD3(rawDate);
+                            
+                            // ⚠️ CHỈ dùng cache local NẾU có ngày xác định và ĐÚNG ngày hôm nay!
+                            if (schedDate3 && schedDate3 === todayYMD3) {
                                 data = localSched;
                                 if (typeof dataCache !== 'undefined') dataCache.schedule = localSched;
                                 if (window.dataCache) window.dataCache.schedule = localSched;
                             } else {
                                 localStorage.removeItem(getUnitStorageKey('meds_success'));
                                 localStorage.removeItem(getUnitStorageKey('meds_schedule_date'));
+                                localStorage.removeItem(getUnitStorageKey('meds_unscheduled'));
                                 localStorage.removeItem('meds_success');
                                 localStorage.removeItem('meds_schedule_date');
+                                localStorage.removeItem('meds_unscheduled');
+                                localStorage.removeItem('meds_schedule_unit');
+                                data = [];
                             }
                         }
                     } else {
@@ -8821,16 +8853,45 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (window.showGlobalLoading) window.showGlobalLoading("Đang thực hiện chốt sổ ngày cũ và mở sổ ngày mới...");
 
                 callApi('chuyenNgayMoi', [], res => {
-                    // Xóa toàn bộ cache phía client để tải lại dữ liệu mới
+                    // Xóa toàn bộ cache phía client để mở ngày mới sạch sẽ
                     window.currentScheduleData = [];
                     window.lastUnscheduledData = [];
                     window.currentRotData = [];
-                    if (window.dataCache) window.dataCache = {};
+                    if (window.dataCache) {
+                        window.dataCache.schedule = [];
+                    }
                     if (window.dataCacheTime) window.dataCacheTime = {};
                     if (window._historyCache) window._historyCache = {};
+                    
+                    const curUnit = (typeof getCurrentUnitCode === 'function') ? getCurrentUnitCode() : (localStorage.getItem('pm_unit_code') || '');
+                    const uKey = (base) => (typeof getUnitStorageKey === 'function') ? getUnitStorageKey(base) : (curUnit ? `${curUnit}_${base}` : base);
+
+                    // Xóa toàn bộ key local chứa lịch cũ
+                    localStorage.removeItem(uKey('meds_success'));
+                    localStorage.removeItem(uKey('meds_schedule_date'));
+                    localStorage.removeItem(uKey('meds_unscheduled'));
                     localStorage.removeItem('meds_success');
                     localStorage.removeItem('meds_schedule_date');
                     localStorage.removeItem('meds_unscheduled');
+                    localStorage.removeItem('meds_schedule_unit');
+
+                    // Cập nhật hoặc dọn sạch lịch trong bootstrap cache
+                    const bKey = (typeof window.getBootstrapCacheKey === 'function') ? window.getBootstrapCacheKey() : `times_bootstrap_cache_${curUnit}`;
+                    try {
+                        const bStr = localStorage.getItem(bKey) || localStorage.getItem('times_bootstrap_cache');
+                        if (bStr) {
+                            const b = JSON.parse(bStr);
+                            b.schedule = [];
+                            localStorage.setItem(bKey, JSON.stringify(b));
+                            localStorage.setItem('times_bootstrap_cache', JSON.stringify(b));
+                        }
+                    } catch(e) {}
+
+                    // Xóa cache Dexie IndexedDB
+                    if (window.OfflineSyncEngine && typeof window.OfflineSyncEngine.saveCache === 'function') {
+                        window.OfflineSyncEngine.saveCache('meds_success', []);
+                    }
+
                     sessionStorage.setItem('chot_so_success_toast', 'true');
                     if (window.hideGlobalLoading) window.hideGlobalLoading();
                     location.reload();
@@ -12071,8 +12132,9 @@ window.renderSttOrderControl = function (type, i, total) {
                                     if (String(s).includes('/')) { const p = String(s).split('/'); return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`; }
                                     return String(s);
                                 };
-                                const schedDate = savedDate ? toYMD2(savedDate) : toYMD2(localSched[0]?.[0] || localSched[0]?.ngay || localSched[0]?.NGAY || '');
-                                if (!schedDate || schedDate === todayYMD2) {
+                                const rawDate2 = savedDate || (Array.isArray(localSched[0]) ? localSched[0][0] : (localSched[0]?.ngay || localSched[0]?.NGAY || localSched[0]?.date || ''));
+                                const schedDate = toYMD2(rawDate2);
+                                if (schedDate && schedDate === todayYMD2) {
                                     // Lịch đúng ngày hôm nay → dùng bình thường
                                     rawSched = localSched;
                                     if (typeof dataCache !== 'undefined') dataCache.schedule = localSched;
@@ -12081,9 +12143,12 @@ window.renderSttOrderControl = function (type, i, total) {
                                 } else {
                                     localStorage.removeItem(getUnitStorageKey('meds_success'));
                                     localStorage.removeItem(getUnitStorageKey('meds_schedule_date'));
+                                    localStorage.removeItem(getUnitStorageKey('meds_unscheduled'));
                                     localStorage.removeItem('meds_success');
                                     localStorage.removeItem('meds_schedule_date');
+                                    localStorage.removeItem('meds_unscheduled');
                                     localStorage.removeItem('meds_schedule_unit');
+                                    rawSched = [];
                                 }
                             }
                         } else {

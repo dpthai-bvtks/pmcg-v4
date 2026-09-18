@@ -126,11 +126,44 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         const currentUnitCode = (localStorage.getItem('pm_unit_code') || '').toLowerCase();
         const scheduleUnitTag = (localStorage.getItem('meds_schedule_unit') || '').toLowerCase();
-        if (!scheduleUnitTag || (currentUnitCode && scheduleUnitTag !== currentUnitCode)) {
+        
+        // 🧹 Kiểm tra ngày của lịch cũ lưu trong LocalStorage, nếu sang ngày mới tự động dọn sạch
+        const nowVN_init = new Date(Date.now() + 7 * 60 * 60 * 1000);
+        const todayYMD_init = `${nowVN_init.getUTCFullYear()}-${String(nowVN_init.getUTCMonth() + 1).padStart(2, '0')}-${String(nowVN_init.getUTCDate()).padStart(2, '0')}`;
+        const toYMD_init = (s) => {
+            if (!s) return '';
+            const str = String(s).trim();
+            if (str.includes('/')) {
+                const p = str.split('/');
+                return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+            }
+            return str;
+        };
+        const savedDateRaw = localStorage.getItem('meds_schedule_date') || (currentUnitCode ? localStorage.getItem(`${currentUnitCode}_meds_schedule_date`) : '') || '';
+        const savedDateYMD = toYMD_init(savedDateRaw);
+
+        const isDifferentUnit = !scheduleUnitTag || (currentUnitCode && scheduleUnitTag !== currentUnitCode);
+        const isPastDate = savedDateYMD && savedDateYMD !== todayYMD_init;
+
+        if (isDifferentUnit || isPastDate) {
             localStorage.removeItem('meds_success');
             localStorage.removeItem('meds_unscheduled');
             localStorage.removeItem('meds_schedule_date');
-            localStorage.removeItem('times_bootstrap_cache');
+            localStorage.removeItem('meds_schedule_unit');
+            if (currentUnitCode) {
+                localStorage.removeItem(`${currentUnitCode}_meds_success`);
+                localStorage.removeItem(`${currentUnitCode}_meds_unscheduled`);
+                localStorage.removeItem(`${currentUnitCode}_meds_schedule_date`);
+                const bKey = `times_bootstrap_cache_${currentUnitCode}`;
+                try {
+                    const bStr = localStorage.getItem(bKey);
+                    if (bStr) {
+                        const bObj = JSON.parse(bStr);
+                        bObj.schedule = [];
+                        localStorage.setItem(bKey, JSON.stringify(bObj));
+                    }
+                } catch(e) {}
+            }
         }
     }
 

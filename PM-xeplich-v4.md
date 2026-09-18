@@ -4167,6 +4167,43 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `index.html`
   - `PM-xeplich-v4.md`
 
+### [18/09/2026 - 08:05] Phiên bản v4.1.1-rev2: Khắc phục triệt để lỗi bảng lịch trình ngày cũ vẫn hiển thị trên máy đã bấm chốt sổ khi sang ngày mới
+
+- **Bối cảnh & Phản hồi từ người dùng**:
+  - "dù hôm qua đã chốt sổ nhưng bảng lịch trình vẫn hiện ở máy đã bấm chốt sổ, hôm nay vẫn hiện".
+  - Trên máy bấm chốt sổ chiều hôm trước, sáng hôm sau mở lại phần mềm thì bảng lịch trình vẫn hiện 184 ca của ngày 17/09/2026 thay vì bảng trống sẵn sàng cho ngày 18/09/2026.
+- **Phân tích nguyên nhân gốc rễ (Root Cause Analysis)**:
+  1. Kiểm tra CSDL Turso Cloud qua `check_bootstrap.js`:
+     - Bảng `lich_trinh` trong CSDL hoàn toàn rỗng (`0 rows`) sau khi chốt sổ chiều 17/09.
+     - API `getBootstrapData('2026-09-18')` trả về `schedule: []` và `is_finalized_today: false`. CSDL máy chủ hoàn toàn sạch sẽ và đã chuyển ngày mới đúng chuẩn.
+  2. Lỗ hổng lưu đệm và phục hồi trên Client (Trình duyệt máy đã bấm chốt sổ):
+     - **Thiếu sót trong hàm `callChotSo`** ([js/app.js](file:///g:/Other%20computers/Laptop%20Th%C3%A1i/PM-DPT/PM-xeplich/khung_pm\ban_web\v4-thuongmai\js\app.js)): Trước đây chỉ xóa các khóa chung `localStorage.removeItem('meds_success')`, `meds_schedule_date`, `meds_unscheduled`. Hoàn toàn BỎ SÓT các khóa theo đơn vị như `bvtks-cs2_meds_success`, `bvtks-cs2_meds_schedule_date`, `bvtks-cs2_meds_unscheduled` do `getUnitStorageKey()` tạo ra, đồng thời bỏ sót bản sao lưu trong Dexie IndexedDB và cache bootstrap `times_bootstrap_cache_<unit>`.
+     - **Lỗi kiểm tra ngày trong `restoreOfflineCache()`** ([js/app.js](file:///g:/Other%20computers/Laptop%20Th%C3%A1i/PM-DPT/PM-xeplich/khung_pm\ban_web\v4-thuongmai\js\app.js)): Điều kiện kiểm tra ngày cũ dựa vào `b.schedule[0][0] || b.schedule[0].date`. Tuy nhiên, các dòng lịch đã chuẩn hóa lại lưu ngày ở thuộc tính `b.schedule[0].ngay`. Do đó biến ngày trả về `""` (falsy), `scheduleIsStale` nhận giá trị `false`, khiến trình duyệt ung dung phục hồi toàn bộ lịch cũ của ngày hôm qua từ bootstrap cache vào `dataCache.schedule`.
+     - **Điều kiện fallback lỏng lẻo trong `loadScheduleList()` và `statSchedule`** ([js/app.js](file:///g:/Other%20computers/Laptop%20Th%C3%A1i/PM-DPT/PM-xeplich/khung_pm\ban_web\v4-thuongmai\js\app.js)): Điều kiện `if (!schedDate || schedDate === todayYMD)`. Nếu `schedDate` bị rỗng (do xóa `meds_schedule_date` nhưng còn `meds_success`), nhánh `!schedDate` là `true` và lập tức phục hồi dữ liệu từ `meds_success` cũ lên bảng!
+     - **Khởi động ứng dụng chưa kiểm tra ngày cũ** ([js/init.js](file:///g:/Other%20computers/Laptop%20Th%C3%A1i/PM-DPT/PM-xeplich/khung_pm\ban_web\v4-thuongmai\js\init.js)): Khối khởi tạo chỉ kiểm tra đổi đơn vị `pm_unit_code`, hoàn toàn không kiểm tra nếu ngày lưu trữ là ngày hôm qua thì phải dọn sạch.
+- **Giải pháp xử lý triệt để**:
+  1. **Nâng cấp `js/init.js`**:
+     - Bổ sung cơ chế tự động kiểm tra ngày của lịch lưu trong LocalStorage ngay khi khởi động (`DOMContentLoaded`). Nếu ngày lưu trữ khác ngày hiện tại (Việt Nam UTC+7) hoặc khác đơn vị, tự động dọn sạch toàn bộ khóa chung, khóa đơn vị (`<unit>_meds_success`, `<unit>_meds_schedule_date`, `<unit>_meds_unscheduled`) và đặt `bObj.schedule = []` trong `times_bootstrap_cache_<unit>`.
+  2. **Nâng cấp `js/app.js`**:
+     - Trong `restoreOfflineCache()`: Kiểm tra toàn diện tất cả thuộc tính ngày (`ngay`, `NGAY`, `date`, `Date`, `[0]`). Nếu ngày lưu trữ khác ngày hôm nay, lập tức dọn sạch `b.schedule = []` và cập nhật lại cache.
+     - Trong `loadBootstrapData()`: Khi máy chủ trả về `b.schedule.length === 0` (ngày mới chưa xếp lịch hoặc sau khi chốt sổ), chủ động xóa sạch tất cả các khóa lưu trữ lịch cục bộ.
+     - Trong `loadScheduleList()` & `statSchedule`: Sửa điều kiện fallback thành **nghiêm ngặt**: `if (schedDate && schedDate === todayYMD)`. Nếu không có ngày hoặc khác ngày hôm nay, dọn sạch bộ nhớ đệm và thiết lập `data = []` (bảng lịch trình rỗng sẵn sàng cho ngày mới).
+     - Trong `callChotSo()`: Xóa sạch toàn bộ khóa theo đơn vị `uKey('meds_success')`, `uKey('meds_schedule_date')`, `uKey('meds_unscheduled')`, các khóa toàn cục, reset `b.schedule = []` trong `times_bootstrap_cache`, và gọi `OfflineSyncEngine.saveCache('meds_success', [])` để dọn sạch Dexie IndexedDB.
+  3. **Đồng bộ phiên bản theo RULES.md**:
+     - Nâng số hiệu phiên bản lên `4.1.1-rev2` (18/09/2026).
+     - `version.json`: `version: "4.1.1-rev2"`, `releaseTime: "08:05 18/09/2026"`.
+     - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.1.1-rev2'`.
+     - `index.html`: Cập nhật toàn bộ cache busters `?v=4.1.1-rev2`, `APP_VERSION = '4.1.1-rev2'`, `#sys-last-update` -> `⏱ Cập nhật lần cuối: 08:05 18/09/2026`, chân trang giữ chuẩn `Phiên bản: 4.1.1`.
+     - Triển khai thành công lên Cloudflare Worker `pmcg-api` và Cloudflare Pages `pmcg-v4`.
+- **File sửa đổi**:
+  - `js/init.js`
+  - `js/app.js`
+  - `version.json`
+  - `sw.js`
+  - `index.html`
+  - `PM-xeplich-v4.md`
+
+
 
 
 
