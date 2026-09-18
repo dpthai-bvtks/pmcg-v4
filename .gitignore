@@ -13,3 +13,5 @@ backups/
 *.xlsx
 *.log
 @AutomationLog.txt
+__pycache__/
+*.pyc

@@ -7099,7 +7099,38 @@ window.renderSttOrderControl = function (type, i, total) {
             if (window._crowdedMode === null || window._crowdedMode === undefined) {
                 setCrowdedMode(true);
             }
+            updateMiniPCSolverStatusUI();
         }
+
+        async function updateMiniPCSolverStatusUI() {
+            const dot = document.getElementById('minipc-solver-dot');
+            const label = document.getElementById('minipc-solver-label');
+            const chk = document.getElementById('chk-use-minipc-solver');
+            if (!dot || !label) return;
+
+            dot.style.background = '#f39c12';
+            dot.style.boxShadow = '0 0 5px #f39c12';
+            label.innerHTML = '<span style="color:#d35400;">Trạm Mini PC: Đang kiểm tra...</span>';
+
+            try {
+                if (window.SchedulerEngine && typeof window.SchedulerEngine.getMiniPCSolverInfo === 'function') {
+                    const info = await window.SchedulerEngine.getMiniPCSolverInfo(700);
+                    if (info && info.online) {
+                        dot.style.background = '#27ae60';
+                        dot.style.boxShadow = '0 0 7px #2ecc71';
+                        label.innerHTML = `🟢 Trạm Mini PC: <b style="color:#27ae60;">Sẵn sàng</b> (Google OR-Tools CP-SAT 4 Luồng)`;
+                        if (chk) { chk.disabled = false; }
+                        return;
+                    }
+                }
+            } catch (e) {}
+
+            dot.style.background = '#95a5a6';
+            dot.style.boxShadow = 'none';
+            label.innerHTML = `⚪ Trạm Mini PC: <span style="color:#7f8c8d;">Ngoại tuyến</span> (Dùng Turbo-Engine JS)`;
+            if (chk) { chk.disabled = true; chk.checked = false; }
+        }
+        window.updateMiniPCSolverStatusUI = updateMiniPCSolverStatusUI;
 
         function closeStrategyModal() { document.getElementById('strategyModal').style.display = 'none'; }
 
@@ -7122,6 +7153,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         async function executeScheduling(strategy) {
             window.viewingImportedScheduleFile = false;
+            const preferLocal = document.getElementById('chk-use-minipc-solver')?.checked ?? true;
             closeStrategyModal();
             const dateVal = document.getElementById('schedule-date').value;
             const skipVal = document.getElementById('modal-skip-procs')?.value || "";
@@ -7144,6 +7176,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 const yhctLunchNum = (dataCache?.settings?.yhctLunch !== undefined && dataCache.settings.yhctLunch !== '') ? Math.max(0, parseInt(dataCache.settings.yhctLunch) || 0) : 0;
                 const yhctEndNum = (dataCache?.settings?.yhctEnd !== undefined && dataCache.settings.yhctEnd !== '') ? Math.max(0, parseInt(dataCache.settings.yhctEnd) || 0) : 0;
                 const schedulingOptions = {
+                    preferLocalSolver: preferLocal,
                     weights: {
                         drop: parseInt(dataCache?.settings?.dropWeight) || 10000,
                         overtime: parseFloat(dataCache?.settings?.overtimeWeight) || 2,

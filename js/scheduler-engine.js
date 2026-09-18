@@ -2446,6 +2446,66 @@ function getSafeCache() {
     return { database, forcedDrops };
   }
 
+  // ============================================================
+  // 🛰️ GOOGLE OR-TOOLS CP-SAT LOCAL SOLVER CLIENT (MINI PC STATION)
+  // Giao tiếp với Trạm giải toán C++ native qua cổng 5055 trên Mini PC
+  // ============================================================
+  let _lastSolverStatus = null;
+  let _lastCheckTime = 0;
+
+  async function checkMiniPCSolverOnline(timeoutMs = 600) {
+    const now = Date.now();
+    if (_lastSolverStatus !== null && (now - _lastCheckTime < 3000)) {
+      return _lastSolverStatus.online;
+    }
+    try {
+      let tid = null;
+      const abortPromise = new Promise((_, reject) => {
+        tid = setTimeout(() => reject(new Error('MiniPC Solver Timeout')), timeoutMs);
+      });
+      const fetchPromise = fetch('http://127.0.0.1:5055/api/health', {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+      const res = await Promise.race([fetchPromise, abortPromise]);
+      if (tid) clearTimeout(tid);
+      if (res && res.ok) {
+        const data = await res.json();
+        _lastSolverStatus = { online: data.status === 'ok', info: data };
+        _lastCheckTime = now;
+        return _lastSolverStatus.online;
+      }
+    } catch (e) {
+      // Mini PC Solver offline hoặc chưa bật dịch vụ
+    }
+    _lastSolverStatus = { online: false, info: null };
+    _lastCheckTime = now;
+    return false;
+  }
+
+  async function getMiniPCSolverInfo(timeoutMs = 600) {
+    await checkMiniPCSolverOnline(timeoutMs);
+    return _lastSolverStatus;
+  }
+
+  async function solveWithMiniPC(db, options = {}, timeoutMs = 25000) {
+    let tid = null;
+    const abortPromise = new Promise((_, reject) => {
+      tid = setTimeout(() => reject(new Error('MiniPC Solver Timeout')), timeoutMs);
+    });
+    const fetchPromise = fetch('http://127.0.0.1:5055/api/solve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ db, options })
+    });
+    const res = await Promise.race([fetchPromise, abortPromise]);
+    if (tid) clearTimeout(tid);
+    if (!res || !res.ok) {
+      throw new Error(`Mini PC Solver Error: HTTP ${res ? res.status : 'Unknown'}`);
+    }
+    return await res.json();
+  }
+
   function runClientScheduling(dateVal, strategyKey = 'opt_rare', skipProcsStr = '', crowdedOverride = -1, existingSched = [], options = {}) {
     const startTime = performance.now();
     const cleanExistingSched = (Array.isArray(existingSched) ? existingSched : [])
@@ -2596,6 +2656,95 @@ function getSafeCache() {
         yhctLunch: yhctLunchMins,
         yhctEnd: yhctEndMins
       };
+
+      // 🧠 MINI PC GOOGLE OR-TOOLS CP-SAT SOLVER INTEGRATION (HYBRID STATION)
+      const preferLocalSolver = options.preferLocalSolver !== false;
+      if (preferLocalSolver && (strategyKey === 'opt_math' || strategyKey === 'opt_ortools' || options.forceMiniPC)) {
+        const isOnline = await checkMiniPCSolverOnline(600);
+        if (isOnline) {
+          try {
+            console.log('[SchedulerEngine]: 🚀 Đang điều phối bài toán xếp lịch sang Trạm Mini PC (Google OR-Tools CP-SAT 4 Luồng)...');
+            const payloadDb = {
+              dateVal: dateVal,
+              settings: db.settings || {},
+              thuThuatInfo: db.thuThuatInfo || {},
+              rawStaff: db.rawStaff || [],
+              rawPatients: db.rawPatients || [],
+              roomBeds: db.roomBeds || {},
+              roomMachines: db.roomMachines || {},
+              machineTypes: db.machineTypes || {}
+            };
+            const solverOptions = {
+              timeLimitSeconds: options.timeLimitSeconds || 6.0,
+              numWorkers: 4
+            };
+            const localRes = await solveWithMiniPC(payloadDb, solverOptions);
+            if (localRes && localRes.success && Array.isArray(localRes.schedule)) {
+              const finalDropList = (localRes.unscheduled || []).concat(forcedDrops).map(r => ({
+                pId: r.pId || r.id,
+                bn: r.bn || r.HOTEN || r.tenBN,
+                ns: r.ns || r.NAMSINH || r.namSinh,
+                room: r.room || r.PHONG || r.phong,
+                tt: r.tt || r.DICHVU || r.thuThuat,
+                reason: r.reason || 'Hết tài nguyên hoặc xung đột giờ trực (OR-Tools CP-SAT)',
+                ngay: r.ngay || dateVal
+              }));
+
+              const formattedSched = localRes.schedule.map(x => ({
+                ngay: x.NGAY || dateVal,
+                tenBN: cleanAndHealPatientName(x.HOTEN || x.tenBN, (db.rawPatients || []).map(p => p.name)),
+                namSinh: x.NAMSINH || x.namSinh,
+                phong: x.PHONG || x.phong,
+                thuThuat: cleanAndHealProcedureName(x.DICHVU || x.thuThuat, (db.rawProcedures || [])),
+                gioDienRa: x.GIODIENRA || x.gioDienRa,
+                gioKetThuc: x.GIOKETTHUC || x.gioKetThuc,
+                nvChinh: x["NV CHÍNH"] || x.nvChinh,
+                nvPhu: x["NV PHỤ"] || x.nvPhu,
+                may: x.MAY || x.may,
+                giuong: x.GIUONG || x.giuong
+              }));
+
+              const rawCompactedSched = compactTimelineGaps(formattedSched, db);
+              const { cleanSched: compactedSched, collisionDrops } = validateNoOverlapWithExisting(rawCompactedSched, cleanExistingSched, db);
+              const allDrops = finalDropList.concat(collisionDrops);
+              const elapsed = localRes.elapsedMs || Math.round(performance.now() - startTime);
+
+              const diagnosedRot = allDrops.map(item => {
+                if (typeof UnscheduledDiagnosticEngine !== 'undefined') {
+                  const diag = UnscheduledDiagnosticEngine.diagnose(item, db, compactedSched);
+                  if (diag) {
+                    return {
+                      ...item,
+                      causeCode: diag.causeCode,
+                      causeTitle: diag.causeTitle,
+                      causeDetail: diag.causeDetail,
+                      reason: diag.causeDetail,
+                      advices: diag.advices
+                    };
+                  }
+                }
+                return item;
+              });
+
+              return {
+                scheduleCount: compactedSched.length,
+                unscheduledCount: diagnosedRot.length,
+                schedule: compactedSched,
+                sched: compactedSched,
+                unscheduled: diagnosedRot,
+                rot: diagnosedRot,
+                elapsedMs: elapsed,
+                threadCount: 4,
+                engine: `🧠 Mini PC Google OR-Tools CP-SAT (${localRes.status || 'OPTIMAL'}, 4 Luồng)`
+              };
+            }
+          } catch (localErr) {
+            console.warn('[SchedulerEngine]: Trạm Mini PC không phản hồi kịp hoặc lỗi, tự động chuyển về Turbo-Engine (JS):', localErr);
+          }
+        } else {
+          console.log('[SchedulerEngine]: Trạm Mini PC Solver ngoại tuyến, tự động dùng Turbo-Engine (JS).');
+        }
+      }
 
     // ⚡ 1. AI Smart Patient Ranking trực tiếp (1ms)
     if (typeof window !== 'undefined' && window.AIScheduler && typeof window.AIScheduler.rankPatients === 'function') {
@@ -2909,6 +3058,9 @@ function getSafeCache() {
     healProcedureName: cleanAndHealProcedureName,
     buildDbFromCache,
     validateNoOverlapWithExisting,
+    checkMiniPCSolverOnline,
+    getMiniPCSolverInfo,
+    solveWithMiniPC,
     runScheduling: runClientScheduling,
     runSchedulingAsync: runSchedulingAsync,
     runExtraScheduling: runExtraScheduling,
@@ -2930,6 +3082,9 @@ function getSafeCache() {
     gScope.healProcedureName = SchedulerEngine.cleanAndHealProcedureName;
     gScope.normalizeScheduleItem = SchedulerEngine.normalizeScheduleItem;
     gScope.isContinuousProcedure = SchedulerEngine.isContinuousProcedure;
+    gScope.checkMiniPCSolverOnline = SchedulerEngine.checkMiniPCSolverOnline;
+    gScope.getMiniPCSolverInfo = SchedulerEngine.getMiniPCSolverInfo;
+    gScope.solveWithMiniPC = SchedulerEngine.solveWithMiniPC;
   }
 })();
 

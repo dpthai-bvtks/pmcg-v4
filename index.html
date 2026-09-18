@@ -171,9 +171,9 @@
     }
     </script>
     <meta name="theme-color" content="#1e3d2b">
-    <link rel="icon" type="image/png" sizes="128x128" href="favicon-128.png?v=4.1.1-rev5">
+    <link rel="icon" type="image/png" sizes="128x128" href="favicon-128.png?v=4.1.1-rev6">
     <!-- Thêm icon cho iOS -->
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=4.1.1-rev5">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=4.1.1-rev6">
 
 
 
@@ -184,15 +184,15 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=4.1.1-rev5">
+    <link rel="stylesheet" href="css/style.css?v=4.1.1-rev6">
     <!-- PWA & Mobile Web App Meta Tags -->
-    <link rel="manifest" href="manifest.json?v=4.1.1-rev5">
+    <link rel="manifest" href="manifest.json?v=4.1.1-rev6">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.1.1-rev5">
+    <link rel="stylesheet" href="css/mobile.css?v=4.1.1-rev6">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
     <script src="js/dexie.min.js?v=3.2.6"></script>
@@ -3898,7 +3898,7 @@
 
                     <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 4.1.1</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 14:55 18/09/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">Cập nhật lần cuối: 16:30 18/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -3956,6 +3956,19 @@
                 </div>
             </div>
 
+            <!-- Trạng thái Trạm tính toán Mini PC Google OR-Tools CP-SAT -->
+            <div id="minipc-solver-status-box"
+                style="margin-bottom: 14px; padding: 10px 14px; border-radius: 8px; font-size: 12px; display: flex; align-items: center; justify-content: space-between; background: #eef2f7; border: 1px solid #cbd5e1; transition: all 0.3s;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span id="minipc-solver-dot" style="width:10px; height:10px; border-radius:50%; background:#95a5a6; display:inline-block; transition: all 0.3s;"></span>
+                    <span id="minipc-solver-label" style="font-weight:600; color:#334155;">Trạm Mini PC: Đang dò tìm...</span>
+                </div>
+                <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; color:#1e3d2b; margin:0; user-select:none;">
+                    <input type="checkbox" id="chk-use-minipc-solver" checked style="cursor:pointer; accent-color:#1e3d2b;">
+                    <span>Ưu tiên OR-Tools</span>
+                </label>
+            </div>
+
             <button onclick="executeScheduling('opt_rare')"
                 style="width:100%; padding:15px; margin-bottom:12px; background:#1e3d2b; color:white; border:none; border-radius:8px; cursor:pointer; text-align:left; transition:all 0.2s; box-shadow:0 3px 8px rgba(30,61,43,0.2);">
                 <b>🚀 Kịch bản 1: Tối Ưu Nhanh (Đa Luồng Metaheuristics)</b><br>
@@ -3964,8 +3977,8 @@
 
             <button onclick="executeScheduling('opt_math')"
                 style="width:100%; padding:15px; margin-bottom:12px; background:linear-gradient(135deg, #16a085, #2c3e50); color:white; border:none; border-radius:8px; cursor:pointer; text-align:left; transition:all 0.2s; box-shadow: 0 4px 10px rgba(22, 160, 133, 0.25);">
-                <b>🧠 Kịch bản 2: Toán Học Chuyên Sâu (CP-SAT Math Optimizer)</b><br>
-                <small>Quy hoạch ràng buộc toán học, tối ưu triệt để xung đột ca khó & ngày siêu cao điểm.</small>
+                <b>🧠 Kịch bản 2: Toán Học Chuyên Sâu (Google OR-Tools CP-SAT)</b><br>
+                <small>Quy hoạch ràng buộc toàn cục 4 luồng CPU Mini PC (hoặc JS Fallback), tối ưu triệt để xung đột ca khó.</small>
             </button>
 
             <button onclick="closeStrategyModal()"
@@ -4416,18 +4429,18 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.1.1-rev5"></script>
-    <script src="js/ai-scheduler.js?v=4.1.1-rev5"></script>
-    <script src="js/cp-solver.js?v=4.1.1-rev5"></script>
-    <script src="js/scheduler-engine.js?v=4.1.1-rev5"></script>
-    <script src="js/app.js?v=4.1.1-rev5"></script>
-    <script src="js/init.js?v=4.1.1-rev5"></script>
-    <script src="js/sync.js?v=4.1.1-rev5"></script>
-    <script src="js/thongke.js?v=4.1.1-rev5"></script>
+    <script src="js/offline-sync-engine.js?v=4.1.1-rev6"></script>
+    <script src="js/ai-scheduler.js?v=4.1.1-rev6"></script>
+    <script src="js/cp-solver.js?v=4.1.1-rev6"></script>
+    <script src="js/scheduler-engine.js?v=4.1.1-rev6"></script>
+    <script src="js/app.js?v=4.1.1-rev6"></script>
+    <script src="js/init.js?v=4.1.1-rev6"></script>
+    <script src="js/sync.js?v=4.1.1-rev6"></script>
+    <script src="js/thongke.js?v=4.1.1-rev6"></script>
 
     <!-- PWA Service Worker Registration + Instant Auto-Update Detection & Blocking Modal -->
     <script>
-    const APP_VERSION = '4.1.1-rev5';
+    const APP_VERSION = '4.1.1-rev6';
 
     (function registerAndAutoUpdate() {
         // 1. Kênh BroadcastChannel đồng bộ tức thì mọi tab đang mở trên cùng một máy

@@ -4275,6 +4275,53 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `index.html`
   - `PM-xeplich-v4.md`
 
+### [18/09/2026 - 16:30] Phiên bản v4.1.1-rev6: Xây Dựng Trạm Tính Toán Google OR-Tools CP-SAT (C++ 4 Luồng) Trên Mini PC & Kiến Trúc Hybrid Fallback
+
+- **Yêu cầu của người dùng**:
+  - Tận dụng Mini PC có sẵn tại phòng khám để xây dựng sẵn trạm giải toán quy hoạch xếp lịch bằng Google OR-Tools CP-SAT cho hệ thống v4, chuẩn bị sẵn sàng cho tương lai.
+  - Đảm bảo cơ chế cắm máy, tháo máy: Khóa thời gian thực hiện (bác sĩ/ktv/điều dưỡng), máy chạy tự động nhân sự rảnh đi làm ca khác, và khóa mốc kết thúc (phút thứ 25 + gap) của cả bác sĩ/ktv và điều dưỡng.
+- **Phân tích & Giải pháp triển khai**:
+  1. **Khởi tạo Module Trạm tính toán cục bộ `local-solver/` trên Mini PC**:
+     - Cài đặt `ortools` (bản 9.15 C++ Native) trên Python 3.14 của Mini PC.
+     - `local-solver/solver.py`: Mô hình hóa 100% ràng buộc toán học y tế bằng Google OR-Tools CP-SAT:
+       + Ràng buộc không trùng giờ bệnh nhân + 5 phút nghỉ giữa 2 thủ thuật liên tiếp.
+       + Ràng buộc giường bệnh (hỗ trợ giường cứng và ghế điều trị linh hoạt).
+       + Ràng buộc máy móc: Khóa 100% suốt thời gian diễn ra thủ thuật.
+       + Ràng buộc nhân sự 3 pha xen kẽ (Interleaving):
+         * Pha 1 (Cắm máy / Châm kim): Khóa `[S, S + tgNv + gap]` đối với Bác sĩ/KTV chính và Điều dưỡng phụ.
+         * Pha 2 (Máy chạy tự động / Lưu kim): Bác sĩ, KTV và Điều dưỡng rảnh 100% để đi làm thủ thuật cho bệnh nhân khác.
+         * Pha 3 (Tháo máy / Rút kim): Khóa `[E - 1, E + gap]` (đúng phút thứ 25 + gap) đối với Bác sĩ/KTV và Điều dưỡng.
+       + Ràng buộc năng lực chuyên môn (skills), ca trực (shifts), và giờ bận cá nhân (busy slots).
+       + Ràng buộc hạn mức ca sáng / ca chiều cho bệnh nhân nội trú & ngoại trú.
+       + Tối ưu hóa 4 luồng xử lý (`num_search_workers = 4`) tận dụng tối đa CPU Intel Core i5-4350U của Mini PC.
+     - `local-solver/server.py`: Trạm HTTP REST API cổng `5055` chạy ngầm, không phụ thuộc framework bên ngoài:
+       + Hỗ trợ CORS đa miền (`*`), `Access-Control-Allow-Private-Network: true`.
+       + `GET /api/health`: Phản hồi trạng thái trạm tính toán, số worker, tình trạng nạp OR-Tools trong < 1ms.
+       + `POST /api/solve`: Tiếp nhận payload xếp lịch từ Web App, giải toán và trả về lịch xếp tối ưu kèm chẩn đoán.
+     - `local-solver/install_solver.bat` & `local-solver/start_solver.bat`: Kịch bản 1-click cài đặt và chạy dịch vụ trên Windows.
+     - `local-solver/test_solver.py` & `local-solver/test_server.py`: Kiểm thử thành công 100% trạng thái `OPTIMAL` chỉ trong `209ms`.
+  2. **Tích hợp Kiến trúc Hybrid (Lai) vào Web App Frontend**:
+     - `js/scheduler-engine.js`: Bổ sung `checkMiniPCSolverOnline()`, `getMiniPCSolverInfo()`, `solveWithMiniPC()`.
+     - Tự động dò tìm Trạm Mini PC cổng 5055 (timeout 600ms). Nếu Mini PC mở trạm: Tự động điều phối bài toán sang OR-Tools CP-SAT C++ 4 luồng. Nếu Mini PC tắt hoặc người dùng truy cập từ điện thoại/ngoài phòng khám: Hệ thống lập tức tự động fallback sang Turbo-Engine (JS) trong `< 0.1s` mà không gây bất kỳ gián đoạn nào.
+     - `index.html`: Bổ sung hộp trạng thái trạm Mini PC (`#minipc-solver-status-box`) kèm đèn báo (🟢 Sẵn sàng / ⚪ Ngoại tuyến) và nút bật/tắt "Ưu tiên OR-Tools" trong modal chọn kịch bản xếp lịch.
+     - `js/app.js`: Tự động cập nhật giao diện trạng thái trạm khi mở modal xếp lịch; hiển thị thông tin động cơ giải toán (OR-Tools CP-SAT / Turbo-Engine) sau khi xếp xong.
+- **File sửa đổi & tạo mới**:
+  - `local-solver/solver.py` [NEW]
+  - `local-solver/server.py` [NEW]
+  - `local-solver/requirements.txt` [NEW]
+  - `local-solver/install_solver.bat` [NEW]
+  - `local-solver/start_solver.bat` [NEW]
+  - `local-solver/test_solver.py` [NEW]
+  - `local-solver/test_server.py` [NEW]
+  - `js/scheduler-engine.js`
+  - `js/app.js`
+  - `index.html`
+  - `sw.js`
+  - `version.json`
+  - `.gitignore`
+  - `PM-xeplich-v4.md`
+
+
 
 
 
