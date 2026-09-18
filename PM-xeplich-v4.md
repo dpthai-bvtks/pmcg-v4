@@ -4497,4 +4497,33 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev11]
   - `PM-xeplich-v4.md` [MODIFY]
 
+---
+
+### [v4.1.1-rev12] - 21:35 18/09/2026: Chuẩn hóa thời gian Rút kim / Tháo máy về 1 phút cuối ca - Khớp chuẩn mô hình OR-Tools & Khử báo động giả
+- **Phản hồi của người dùng:**
+  + Trường hợp KTV Bs Khuyến:
+    - Ca 1 (Tạ Văn Tuấn): Điện châm `07:31 -> 07:56`.
+    - Ca 2 (Ngô Văn Thọ): Điện châm `07:49 -> 08:14`.
+    - Hệ thống trước đó báo lỗi: "Thiếu khoảng đệm 1p chuyển giường giữa Thao tác đầu ca (5p) (kết thúc 07:54) và Rút kim/tháo máy (2p cuối) (bắt đầu 07:54)".
+    - Người dùng chỉ rõ: Ca 2 làm xong thao tác cắm kim lúc 07:54, trong khi Ca 1 đến 07:56 mới kết thúc! Bác sĩ rảnh hoàn toàn từ 07:54 đến 07:56 để đi sang rút kim, không hề trùng kết thúc và không ảnh hưởng đến nhau.
+
+- **Nguyên nhân kỹ thuật & Giải pháp:**
+  1. **Nguyên nhân**:
+     - Phiên bản trước tạm đặt `tearDurationMins = 2` (2 phút cuối ca), khiến Ca 1 bị gán rút kim bắt đầu từ `07:54` (`07:56 - 2p`). Khi Ca 2 thao tác xong lúc `07:54`, khoảng cách giữa 2 pha bị tính là `0 phút`, dẫn đến báo động giả thiếu khoảng đệm 1 phút.
+  2. **Chuẩn hóa đồng bộ 100% với OR-Tools CP-SAT & Scheduler Engine**:
+     - Trong mô hình giải toán Google OR-Tools (`solver.py` dòng 379: `tear_start == end_var - 1`) và thuật toán xếp lịch (`scheduler-engine.js` dòng 1829: `cTearStart = cE - 1`), pha rút kim/tháo máy được quy ước chuẩn xác là **1 phút cuối ca** (`tearDurationMins = 1`).
+     - Đặt lại `tearDurationMins = 1` trong `js/app.js`:
+       + Ca 1 kết thúc lúc 07:56 -> Rút kim diễn ra từ `07:55` đến `07:56`.
+       + Ca 2 cắm kim xong lúc `07:54`.
+       + Khoảng đệm giữa 07:54 và 07:55 là tròn **1 phút** (`GAP_MS = 60000ms`), đủ thời gian chuyển giường/rửa tay.
+       + Hệ thống xác định lịch hoàn toàn hợp lệ, triệt tiêu 100% cảnh báo giả!
+
+- **File sửa đổi:**
+  - `js/app.js` [MODIFY: tearDurationMins = 1]
+  - `index.html` [MODIFY: v4.1.1-rev12]
+  - `version.json` [MODIFY: 4.1.1-rev12]
+  - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev12]
+  - `PM-xeplich-v4.md` [MODIFY]
+
+
 

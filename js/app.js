@@ -13533,7 +13533,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 const procTenLower = procInfo ? String(procInfo.ten || '').toLowerCase() : procName.toLowerCase();
                 const hasTeardown = !isCont && (canRutMay || ttg_mins > tth_mins || procTenLower.includes('điện châm') || procTenLower.includes('thủy châm') || procTenLower.includes('châm'));
-                const tearDurationMins = (procTenLower.includes('thủy châm') || procTenLower.includes('điện châm')) ? 2 : 1;
+                const tearDurationMins = 1; // Rút kim / tháo máy chỉ chiếm 1 phút cuối ca (khớp 100% với OR-Tools và lâm sàng)
 
                 // Xây dựng các khoảng thời gian bận thực tế (Busy Intervals) của nhân viên cho ca này:
                 const busyIntervals = [];
@@ -13553,7 +13553,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     if (hasTeardown) {
                         const tearStartMs = Math.max(setupEndMs, end.getTime() - tearDurationMins * 60000);
                         busyIntervals.push({
-                            name: `Rút kim/tháo máy (${tearDurationMins}p cuối)`,
+                            name: `Rút kim/tháo máy (1p cuối)`,
                             start: tearStartMs,
                             end: end.getTime()
                         });
