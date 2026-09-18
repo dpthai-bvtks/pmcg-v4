@@ -4129,6 +4129,45 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `index.html`
   - `PM-xeplich-v4.md`
 
+### [18/09/2026 - 07:30] Phiên bản v4.1.1-rev1: Khắc phục triệt để lỗi nhân đôi ca trong bảng lịch sử (336 ca ngày 17/09/2026), bổ sung cơ chế khử trùng lặp CSDL và lọc phòng thủ
+- **Bối cảnh & Phản hồi từ người dùng**:
+  - "xem lại cho mình xem khi tìm giờ rảnh ngày 17/09/2026 lại có tận 336 ca dù hôm qua chỉ có 185 ca".
+  - Trên giao diện "Tiện ích tìm kiếm rảnh", khi chọn ngày 17/09/2026, huy hiệu hiển thị `[✅ Ngày 17/09/2026: 336 ca]`.
+- **Phân tích nguyên nhân gốc rễ (Root Cause Analysis)**:
+  1. Kiểm tra trực tiếp bảng `lich_su` trên cơ sở dữ liệu Turso Cloud: ngày 17/09/2026 có đúng 336 bản ghi được tạo ra từ 2 đợt chèn chỉ cách nhau 2 giây:
+     - Đợt 1 lúc `16:12:45` (09:12:45 UTC): Gồm **184 ca** (toàn bộ các ca đã xếp thành công của ngày 17/09).
+     - Đợt 2 lúc `16:12:47` (09:12:47 UTC): Gồm **152 ca** (ID từ `172648` đến `172799`).
+     - 152/152 ca của đợt 2 là bản sao trùng khớp 100% từng người, từng thủ thuật, từng khung giờ (từ 07:56 đến 16:00) với đợt 1. $184 + 152 = 336$ ca.
+  2. Lỗ hổng logic ở Backend ([backend/src/index.js](file:///g:/Other%20computers/Laptop%20Th%C3%A1i/PM-DPT/PM-xeplich/khung_pm/ban_web/v4-thuongmai/backend/src/index.js)):
+     - Cả `chotSo` / `chuyenNgayMoi` và Worker Cron `checkAutoChotSo` đều thực hiện `INSERT INTO lich_su SELECT ... FROM lich_trinh WHERE unit_code = ?` mà không hề có lệnh `DELETE` trước khi chèn, đồng thời bảng `lich_su` chưa có ràng buộc `UNIQUE`.
+     - Nếu chốt sổ bị gọi lặp lại (do người dùng bấm hoặc do Worker Cron tự động chạy chốt sổ song song), các ca trong `lich_trinh` bị chèn nối tiếp vào `lich_su`.
+     - Hàm `getHistoryFullData` truy vấn `SELECT ... FROM lich_su` thuần túy mà không có cơ chế `DISTINCT` hay khử trùng lọc bỏ bản ghi trùng, khiến giao diện Tiện ích tìm kiếm rảnh nhận đủ 336 ca.
+- **Giải pháp xử lý triệt để**:
+  1. **Khử trùng lặp dữ liệu CSDL Turso**:
+     - Xóa triệt để 152 bản ghi trùng lặp trong bảng `lich_su`, giữ lại nguyên vẹn 184 ca gốc sạch sẽ.
+  2. **Vá lỗ hổng Backend ([backend/src/index.js](file:///g:/Other%20computers/Laptop%20Th%C3%A1i/PM-DPT/PM-xeplich/khung_pm/ban_web/v4-thuongmai/backend/src/index.js))**:
+     - Trong `chotSo` / `chuyenNgayMoi`: Thêm `DELETE FROM lich_su WHERE unit_code = ? AND date = ?` trước khi `INSERT INTO lich_su ...`.
+     - Trong `checkAutoChotSo`: Thêm `DELETE FROM lich_su WHERE unit_code = ? AND date IN (SELECT DISTINCT date FROM lich_trinh WHERE unit_code = ?)` trước khi INSERT.
+     - Thêm `DELETE FROM gio_ban_chung_cu WHERE unit_code = ? AND date = ?` trước khi lưu giờ bận trong cả 2 hàm.
+     - Trong `ensureSchema`: Bổ sung cơ chế tự phục hồi (Self-healing Deduplication) tự động dò tìm và xóa các bản ghi trùng lặp có `id` lớn hơn trong bảng `lich_su`.
+     - Trong `getHistoryFullData`: Bổ sung bộ lọc trùng phòng thủ (Defensive Deduplication) bằng `Set` chữ ký định danh bản ghi, đảm bảo API không bao giờ trả về ca trùng lặp kể cả khi CSDL có lỗi ngoại lai.
+     - Bổ sung action `deduplicateHistory` vào backend API và danh sách `MUTATION_ACTIONS`.
+  3. **Kiểm nghiệm thực tế**:
+     - Chạy script kiểm tra API `getHistoryFullData('2026-09-17')` và `getHistoryFullData('17/09/2026')`: Trả về chính xác **184 ca** (đã loại bỏ sạch 152 ca trùng).
+     - `exportDatabase` xác nhận tổng số hàng của ngày 17/09/2026 trong bảng `lich_su` là đúng **184 hàng**.
+  4. **Nâng cấp phiên bản & Triển khai toàn hệ thống**:
+     - Nâng phiên bản ngày mới (18/09/2026) lên `4.1.1` (revision: `4.1.1-rev1`).
+     - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.1.1-rev1'`.
+     - `index.html`: Cập nhật toàn bộ cache busters `?v=4.1.1-rev1`, `APP_VERSION = '4.1.1-rev1'`, `#sys-last-update` -> `⏱ Cập nhật lần cuối: 07:30 18/09/2026`, `#app-footer-version` hiển thị chuẩn `Phiên bản: 4.1.1` (không có hậu tố rev).
+     - Triển khai đồng thời Cloudflare Worker `pmcg-api` và Cloudflare Pages `pmcg-v4` thành công.
+- **File sửa đổi**:
+  - `backend/src/index.js`
+  - `version.json`
+  - `sw.js`
+  - `index.html`
+  - `PM-xeplich-v4.md`
+
+
 
 
 

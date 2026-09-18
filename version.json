@@ -1,6 +1,6 @@
 {
-    "version":  "4.1.0-rev8",
-    "releaseDate":  "17/09/2026",
-    "releaseTime":  "16:30 17/09/2026",
-    "notes":  "Toi uu do lien mach nhan su (Staff Continuity): nang cap gapPenalty luy tien theo do dai khoang ranh trong turbo core logic, mo rong compactTimelineGaps voi Cross-Staff Gap Filler giup giam thieu gio ranh lien nhan su."
+    "version":  "4.1.1-rev1",
+    "releaseDate":  "18/09/2026",
+    "releaseTime":  "07:30 18/09/2026",
+    "notes":  "Khắc phục triệt để lỗi nhân đôi ca trong lịch sử (lich_su) khi chốt sổ hoặc chốt sổ tự động, bổ sung cơ chế khử trùng lặp tự phục hồi trong CSDL và lọc trùng phòng thủ trong Tiện ích tìm kiếm rảnh."
 }

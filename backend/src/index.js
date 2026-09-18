@@ -1610,6 +1610,30 @@ async function ensureSchema(db) {
       } catch(eDedup) {
         console.warn("[Deduplicate benh_nhan error]:", eDedup);
       }
+
+      // 🛡️ TỰ ĐỘNG KHỬ TRÙNG LẶP LỊCH SỬ (LICH_SU DEDUPLICATION SELF-HEALING)
+      try {
+        await db.prepare(`
+          DELETE FROM lich_su 
+          WHERE id IN (
+            SELECT b.id
+            FROM lich_su b
+            JOIN lich_su a ON a.unit_code = b.unit_code
+              AND a.date = b.date
+              AND a.patient_name = b.patient_name
+              AND a.dob = b.dob
+              AND a.procedure_name = b.procedure_name
+              AND a.start_time = b.start_time
+              AND a.end_time = b.end_time
+              AND a.staff_name = b.staff_name
+              AND a.machine_name = b.machine_name
+              AND a.bed = b.bed
+              AND a.id < b.id
+          )
+        `).run().catch((e) => console.warn("[Deduplicate lich_su self-healing query error]:", e));
+      } catch(eDedupHist) {
+        console.warn("[Deduplicate lich_su error]:", eDedupHist);
+      }
     } catch(e) {
       console.warn("[Migrate benh_nhan error]:", e);
     }
@@ -1898,7 +1922,7 @@ export default {
 function dispatchBackgroundSync(action, args, env, ctx) {
   const MUTATION_ACTIONS = [
     "addBenhNhan", "editBenhNhan", "deleteBenhNhan", "bulkUpdateBenhNhan",
-    "saveSchedule", "chotSo", "chuyenNgayMoi", "saveGioBan", "saveChamCong",
+    "saveSchedule", "chotSo", "chuyenNgayMoi", "saveGioBan", "saveChamCong", "deduplicateHistory",
     "addNhanSu", "editNhanSu", "deleteNhanSu",
     "addMayMoc", "editMayMoc", "deleteMayMoc",
     "addPhong", "editPhong", "deletePhong",
@@ -4210,6 +4234,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
       // 1. Sao lưu giờ bận thực tế của nhân viên trước khi reset (chỉ lưu vào gio_ban_chung_cu)
       statements.push(
+        db.prepare("DELETE FROM gio_ban_chung_cu WHERE unit_code = ? AND (date = ? OR date = ?)").bind(unitCode, targetDateStr, targetDateYMD),
         db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, busy_ranges) SELECT unit_code, ?, 'nhan_su', name, temp_busy FROM nhan_su WHERE unit_code = ? AND temp_busy IS NOT NULL AND temp_busy != '' AND temp_busy != '[]' AND temp_busy != '[\"\"]'").bind(targetDateStr, unitCode),
         // 2. Sao lưu giờ bận thực tế của bệnh nhân trước khi reset
         db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'benh_nhan', name, age, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(targetDateStr, unitCode),
@@ -4218,12 +4243,15 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       );
 
       if (date && typeof date === "string" && date.trim()) {
+        const targetDate = date.trim();
         statements.push(
-          db.prepare("INSERT INTO lich_su (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE unit_code = ? AND date = ?").bind(unitCode, date.trim()),
-          db.prepare("DELETE FROM lich_trinh WHERE unit_code = ? AND date = ?").bind(unitCode, date.trim())
+          db.prepare("DELETE FROM lich_su WHERE unit_code = ? AND date = ?").bind(unitCode, targetDate),
+          db.prepare("INSERT INTO lich_su (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE unit_code = ? AND date = ?").bind(unitCode, targetDate),
+          db.prepare("DELETE FROM lich_trinh WHERE unit_code = ? AND date = ?").bind(unitCode, targetDate)
         );
       } else {
         statements.push(
+          db.prepare("DELETE FROM lich_su WHERE unit_code = ? AND date IN (SELECT DISTINCT date FROM lich_trinh WHERE unit_code = ?)").bind(unitCode, unitCode),
           db.prepare("INSERT INTO lich_su (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE unit_code = ?").bind(unitCode),
           db.prepare("DELETE FROM lich_trinh WHERE unit_code = ?").bind(unitCode)
         );
@@ -4347,6 +4375,37 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       return success({ deletedDate: delDate, changes: delRes?.meta?.changes ?? '?' });
     }
 
+    case "deduplicateHistory": {
+      const targetDate = args[0] ? String(args[0]).trim() : "";
+      let sql = `
+        DELETE FROM lich_su 
+        WHERE id IN (
+          SELECT b.id
+          FROM lich_su b
+          JOIN lich_su a ON a.unit_code = b.unit_code
+            AND a.date = b.date
+            AND a.patient_name = b.patient_name
+            AND a.dob = b.dob
+            AND a.procedure_name = b.procedure_name
+            AND a.start_time = b.start_time
+            AND a.end_time = b.end_time
+            AND a.staff_name = b.staff_name
+            AND a.machine_name = b.machine_name
+            AND a.bed = b.bed
+            AND a.id < b.id
+          WHERE b.unit_code = ?
+      `;
+      const bindings = [unitCode];
+      if (targetDate) {
+        sql += " AND (b.date = ? OR b.date = ?) ";
+        bindings.push(targetDate, targetDate.includes('-') ? targetDate.split('-').reverse().join('/') : targetDate.split('/').reverse().join('-'));
+      }
+      sql += " )";
+      const delRes = await db.prepare(sql).bind(...bindings).run();
+      await bumpDataVersion(db, unitCode);
+      return success({ message: "Đã khử trùng lặp lịch sử thành công!", changes: delRes?.meta?.changes ?? 0 });
+    }
+
     case "getHistoryFullData": {
       const rawDate = String(args[0] || "").trim();
       let y = "", m = "", d = "";
@@ -4393,6 +4452,18 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           console.warn("Error querying fallback lich_trinh:", e);
         }
       }
+
+      // 🛡️ Lọc trùng phòng thủ: đảm bảo không bao giờ trả về các ca trùng lặp cùng người, thủ thuật, giờ, phòng, máy, giường
+      const seenRowKeys = new Set();
+      const dedupedRows = [];
+      for (const r of rows) {
+        const sig = `${String(r.patient_name).trim().toUpperCase()}|${String(r.dob || '').trim()}|${String(r.procedure_name).trim().toLowerCase()}|${r.start_time}|${r.end_time}|${String(r.staff_name || '').trim()}|${String(r.machine_name || '').trim()}|${String(r.bed || '').trim()}`;
+        if (!seenRowKeys.has(sig)) {
+          seenRowKeys.add(sig);
+          dedupedRows.push(r);
+        }
+      }
+      rows = dedupedRows;
 
       const schedule = rows.map(r => ({
         ngay: r.date,
@@ -5663,11 +5734,13 @@ async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
       
       const statements = [
         // 1. Sao lưu giờ bận thực tế của nhân viên trước khi reset (chỉ lưu vào gio_ban_chung_cu)
+        db.prepare("DELETE FROM gio_ban_chung_cu WHERE unit_code = ? AND date = ?").bind(unitCode, todayYMD),
         db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, busy_ranges) SELECT unit_code, ?, 'nhan_su', name, temp_busy FROM nhan_su WHERE unit_code = ? AND temp_busy IS NOT NULL AND temp_busy != '' AND temp_busy != '[]' AND temp_busy != '[\"\"]'").bind(todayYMD, unitCode),
         // 2. Sao lưu giờ bận thực tế của bệnh nhân trước khi reset
         db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'benh_nhan', name, age, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(todayYMD, unitCode),
         // 3. Sao lưu giờ ra viện của bệnh nhân trước khi reset
         db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'ra_vien', name, age, leave_time FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(todayYMD, unitCode),
+        db.prepare("DELETE FROM lich_su WHERE unit_code = ? AND date IN (SELECT DISTINCT date FROM lich_trinh WHERE unit_code = ?)").bind(unitCode, unitCode),
         db.prepare("INSERT INTO lich_su (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE unit_code = ?").bind(unitCode),
         db.prepare("DELETE FROM lich_trinh WHERE unit_code = ?").bind(unitCode),
         db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(unitCode),
