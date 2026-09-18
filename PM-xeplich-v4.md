@@ -4555,6 +4555,34 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev13]
   - `PM-xeplich-v4.md` [MODIFY]
 
+---
+
+### [v4.1.1-rev14] - 22:15 18/09/2026: Bỏ qua lỗi riêng ngày 18/09/2026 đã xếp đúng thực tế & Tạm dừng kiểm tra lỗi trùng của Điều Dưỡng
+- **Yêu cầu của người dùng:**
+  1. Lịch ngày 18/09/2026 đã xếp và kiểm chứng đúng thực tế tại bệnh viện nên bỏ qua thông báo lỗi của riêng ngày 18/09/2026.
+  2. Tạm thời chưa kiểm tra lỗi trùng giờ của điều dưỡng (phụ tá), sau này sẽ bổ sung hoàn thiện phần này sau.
+  3. Giữ nguyên tính năng thống kê đếm số lượng thủ thuật các loại để ghi nhận công việc của nhân sự.
+
+- **Giải pháp kỹ thuật:**
+  1. **Hàm nhận diện ngày 18/09/2026 (`isDate18Sep2026`)**:
+     - Kiểm tra đối tượng `Date` (cả local và UTC) khớp `year === 2026 && month === 8 && date === 18`.
+     - Đồng thời rà soát toàn bộ các cột dữ liệu trong `row` nếu chứa chuỗi ngày `18/09/2026`, `18/9/2026`, `2026-09-18`, `18/09`.
+     - Bỏ qua các ca của ngày 18/09/2026 khi quét lỗi trùng giờ nhân sự (`groupedStaff`), trùng giờ bệnh nhân (`groupedPatients`) và lỗi quy trình / phân quyền (`otherTbody`).
+  2. **Tạm dừng kiểm tra lỗi trùng giờ Điều dưỡng (`isDieuDuong`)**:
+     - Tạm ngưng đưa `techPhuNorm` vào danh sách quét trùng của `groupedStaff`.
+     - Bổ sung hàm nhận diện `isDieuDuong` hỗ trợ Unicode tiếng Việt (`phụ \d+`, `dd`, `đd`, `điều dưỡng`) và đối soát vai trò/chức vụ trong CSDL nhân sự, tự động bỏ qua khi quét trùng giờ.
+     - Sau này khi người dùng yêu cầu, quy trình kiểm tra điều dưỡng phụ sẽ được tinh chỉnh và bật lại dễ dàng.
+  3. **Bảo toàn thống kê đếm thủ thuật**:
+     - Bảng đếm thủ thuật Loại 1, Loại 2, Loại 3, Khác (`#table-count`) vẫn hoạt động bình thường cho mọi ca, bảo đảm số liệu tổng hợp công việc không bị ảnh hưởng.
+
+- **File sửa đổi:**
+  - `js/app.js` [MODIFY: isDate18Sep2026, isDieuDuong, bypass date 18/09 & pause nurse collision checks in processErrorChecking]
+  - `index.html` [MODIFY: v4.1.1-rev14, cache busters, footer timestamp 22:15 18/09/2026]
+  - `version.json` [MODIFY: 4.1.1-rev14]
+  - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev14]
+  - `PM-xeplich-v4.md` [MODIFY]
+
+
 
 
 

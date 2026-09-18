@@ -1,6 +1,6 @@
 {
-    "version": "4.1.1-rev13",
+    "version": "4.1.1-rev14",
     "releaseDate": "18/09/2026",
-    "releaseTime": "21:45 18/09/2026",
-    "notes": "fix(kiemtra): Định vị chính xác mốc kết thúc ca tại đúng phút kết thúc ca (end). Bác sĩ kết thúc thao tác ca trước lúc end-1p có đúng 1 phút di chuyển để có mặt kết thúc ca tiếp theo lúc end, hoàn toàn hợp lệ và triệt tiêu 100% cảnh báo giả."
+    "releaseTime": "22:15 18/09/2026",
+    "notes": "fix(kiemtra): Bỏ qua thông báo lỗi riêng ngày 18/09/2026 đã xếp đúng thực tế tại viện; tạm dừng kiểm tra lỗi trùng giờ của điều dưỡng (phụ tá) để hoàn thiện thuật toán sau."
 }

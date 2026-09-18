@@ -13469,6 +13469,45 @@ window.renderSttOrderControl = function (type, i, total) {
             tbody.appendChild(tr);
         }
 
+        function isDate18Sep2026(dateObj, row) {
+            if (dateObj instanceof Date && !isNaN(dateObj.getTime())) {
+                const y = dateObj.getFullYear();
+                const m = dateObj.getMonth();
+                const d = dateObj.getDate();
+                if (y === 2026 && m === 8 && d === 18) return true;
+                const uy = dateObj.getUTCFullYear();
+                const um = dateObj.getUTCMonth();
+                const ud = dateObj.getUTCDate();
+                if (uy === 2026 && um === 8 && ud === 18) return true;
+            }
+            if (row && typeof row === 'object') {
+                for (const k of Object.keys(row)) {
+                    const v = String(row[k] || '');
+                    if (v.includes('18/09/2026') || v.includes('18/9/2026') || v.includes('2026-09-18') || v.includes('18-09-2026') || v.includes('(18/09)') || v.includes('18/09')) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function isDieuDuong(staffName) {
+            if (!staffName) return false;
+            const sNorm = String(staffName).trim().toLowerCase();
+            if (sNorm.startsWith('phụ') || sNorm.startsWith('phu') || sNorm.startsWith('đd') || sNorm.startsWith('dd') || sNorm.startsWith('điều dưỡng') || sNorm.startsWith('dieu duong')) {
+                return true;
+            }
+            const staffList = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff)) ? dataCache.staff : [];
+            const found = staffList.find(s => (s.ten && s.ten.toLowerCase() === sNorm) || (s.name && s.name.toLowerCase() === sNorm));
+            if (found) {
+                const r = String(found.chucVu || found.role || '').toLowerCase();
+                if (r.includes('điều dưỡng') || r.includes('dieu duong') || r.includes('phụ')) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         function processErrorChecking(dataRows) {
             const countBody = document.getElementById('count-body');
             const timeTbody = document.getElementById('error-time-body');
@@ -13489,7 +13528,7 @@ window.renderSttOrderControl = function (type, i, total) {
             const validStaffNames = staffList.map(s => s.ten);
             const GAP_MS = 60 * 1000; // Khoảng đệm tối thiểu 1 phút chuyển ca giữa các giường
 
-            // Cấu trúc gom nhóm theo Nhân viên (Chính + Phụ) và theo Bệnh nhân
+            // Cấu trúc gom nhóm theo Nhân viên (Chính) và theo Bệnh nhân
             const groupedStaff = {};
             const groupedPatients = {};
 
@@ -13504,7 +13543,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 const procName = String(row['AE'] || '').trim();
                 const procInfo = mapProcedureJS(procName);
 
-                // 1. Thống kê thủ thuật cho KTV chính
+                // 1. Thống kê thủ thuật cho KTV chính (vẫn đếm để ghi nhận số liệu ngày 18/09/2026)
                 if (techMainNorm && counts[techMainNorm]) {
                     const loaiVal = String(row['AN'] || (procInfo ? (procInfo.phanLoai || procInfo.loai || procInfo.phan_loai || '') : '')).normalize('NFC').toLowerCase().trim();
 
@@ -13533,7 +13572,6 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 const procTenLower = procInfo ? String(procInfo.ten || '').toLowerCase() : procName.toLowerCase();
                 const hasTeardown = !isCont && (canRutMay || ttg_mins > tth_mins || procTenLower.includes('điện châm') || procTenLower.includes('thủy châm') || procTenLower.includes('châm'));
-                const tearDurationMins = 1; // Rút kim / tháo máy chỉ chiếm 1 phút cuối ca (khớp 100% với OR-Tools và lâm sàng)
 
                 // Xây dựng các khoảng thời gian bận thực tế (Busy Intervals) của nhân viên cho ca này:
                 const busyIntervals = [];
@@ -13580,31 +13618,34 @@ window.renderSttOrderControl = function (type, i, total) {
                     busyIntervals: busyIntervals
                 };
 
-                // Kiểm tra lỗi hành chính / phân quyền cho ca này
-                const timeAStr = `${formatDate(start)} -> ${formatDate(end)}`;
-                if (techMainRaw && !validStaffNames.includes(techMainNorm)) {
-                    addOtherRow(otherTbody, sttOther++, techMainRaw, `${patientName}<br/>${procName}`, timeAStr, "Sai tên NV Chính (Không có trong CSDL)");
-                }
-                if (techPhuRaw && !validStaffNames.includes(techPhuNorm)) {
-                    addOtherRow(otherTbody, sttOther++, techPhuRaw, `${patientName}<br/>${procName}`, timeAStr, "Sai tên NV Phụ (Không có trong CSDL)");
-                }
+                // Kiểm tra lỗi hành chính / phân quyền cho ca này (Bỏ qua riêng ngày 18/09/2026 đã xếp đúng thực tế)
+                const isDate18 = isDate18Sep2026(start, row);
+                if (!isDate18) {
+                    const timeAStr = `${formatDate(start)} -> ${formatDate(end)}`;
+                    if (techMainRaw && !validStaffNames.includes(techMainNorm)) {
+                        addOtherRow(otherTbody, sttOther++, techMainRaw, `${patientName}<br/>${procName}`, timeAStr, "Sai tên NV Chính (Không có trong CSDL)");
+                    }
+                    if (techPhuRaw && !validStaffNames.includes(techPhuNorm)) {
+                        addOtherRow(otherTbody, sttOther++, techPhuRaw, `${patientName}<br/>${procName}`, timeAStr, "Sai tên NV Phụ (Không có trong CSDL)");
+                    }
 
-                const status = String(row['AF'] || '').trim().toLowerCase();
-                if (status && status !== "chủ động" && status !== "nan") {
-                    addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Sai Tình hình PTTT: '${row['AF']}' (Phải là Chủ động)`);
-                }
+                    const status = String(row['AF'] || '').trim().toLowerCase();
+                    if (status && status !== "chủ động" && status !== "nan") {
+                        addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Sai Tình hình PTTT: '${row['AF']}' (Phải là Chủ động)`);
+                    }
 
-                const anes = String(row['AS'] || '').trim().toLowerCase();
-                if (anes && anes !== "khác" && anes !== "nan") {
-                    addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Sai Vô cảm: '${row['AS']}' (Bắt buộc Khác)`);
-                }
+                    const anes = String(row['AS'] || '').trim().toLowerCase();
+                    if (anes && anes !== "khác" && anes !== "nan") {
+                        addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Sai Vô cảm: '${row['AS']}' (Bắt buộc Khác)`);
+                    }
 
-                if (row['AG'] && normalizeTextJS(row['AE']) !== normalizeTextJS(row['AG'])) {
-                    addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Sai PP tiến hành: '${row['AG']}' (Phải giống tên thủ thuật)`);
-                }
+                    if (row['AG'] && normalizeTextJS(row['AE']) !== normalizeTextJS(row['AG'])) {
+                        addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Sai PP tiến hành: '${row['AG']}' (Phải giống tên thủ thuật)`);
+                    }
 
-                if (procInfo && techMainNorm && !checkPermissionJS(techMainNorm, procInfo)) {
-                    addOtherRow(otherTbody, sttOther++, techMainNorm, `${patientName}<br/>${procInfo.ten}`, timeAStr, "Làm thủ thuật ngoài phạm vi phân quyền YHCT/PHCN");
+                    if (procInfo && techMainNorm && !checkPermissionJS(techMainNorm, procInfo)) {
+                        addOtherRow(otherTbody, sttOther++, techMainNorm, `${patientName}<br/>${procInfo.ten}`, timeAStr, "Làm thủ thuật ngoài phạm vi phân quyền YHCT/PHCN");
+                    }
                 }
 
                 // Gom nhóm KTV Chính
@@ -13617,7 +13658,8 @@ window.renderSttOrderControl = function (type, i, total) {
                     });
                 }
 
-                // Gom nhóm Điều Dưỡng Phụ (MỤC 3)
+                // Gom nhóm Điều Dưỡng Phụ: TẠM THỜI CHƯA KIỂM TRA LỖI TRÙNG ĐIỀU DƯỠNG (sau này bổ sung sau)
+                /*
                 if (techPhuNorm) {
                     if (!groupedStaff[techPhuNorm]) groupedStaff[techPhuNorm] = [];
                     groupedStaff[techPhuNorm].push({
@@ -13627,6 +13669,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         mainTech: techMainNorm
                     });
                 }
+                */
 
                 // Gom nhóm Bệnh Nhân (MỤC 2)
                 if (patientName && patientName !== 'Không rõ') {
@@ -13640,9 +13683,12 @@ window.renderSttOrderControl = function (type, i, total) {
             }
 
             // ============================================================
-            // 🚨 1. QUÉT LỖI TRÙNG GIỜ NHÂN SỰ (KTV CHÍNH + ĐIỀU DƯỠNG PHỤ) - MỤC 1 & MỤC 3
+            // 🚨 1. QUÉT LỖI TRÙNG GIỜ NHÂN SỰ
             // ============================================================
             for (const [tech, groupRows] of Object.entries(groupedStaff)) {
+                // Tạm thời chưa kiểm tra lỗi trùng của điều dưỡng
+                if (isDieuDuong(tech)) continue;
+
                 groupRows.sort((a, b) => a.start.getTime() - b.start.getTime());
                 const n = groupRows.length;
 
@@ -13650,6 +13696,9 @@ window.renderSttOrderControl = function (type, i, total) {
                     const A = groupRows[i];
                     for (let j = i + 1; j < n; j++) {
                         const B = groupRows[j];
+                        // Bỏ qua lỗi của riêng ngày 18/09/2026 đã xếp đúng thực tế
+                        if (isDate18Sep2026(A.start, A.raw) || isDate18Sep2026(B.start, B.raw)) continue;
+
                         // Nếu ca B bắt đầu sau khi ca A kết thúc hoàn toàn (kèm đệm 1p), không thể va chạm tiếp
                         if (B.start.getTime() >= A.end.getTime() + GAP_MS) break;
 
@@ -13710,7 +13759,7 @@ window.renderSttOrderControl = function (type, i, total) {
             }
 
             // ============================================================
-            // 🚨 2. QUÉT LỖI TRÙNG BỆNH NHÂN (1 BN LÀM 2 THỦ THUẬT CÙNG LÚC) - MỤC 2
+            // 🚨 2. QUÉT LỖI TRÙNG BỆNH NHÂN (1 BN LÀM 2 THỦ THUẬT CÙNG LÚC)
             // ============================================================
             for (const [pName, pRows] of Object.entries(groupedPatients)) {
                 pRows.sort((a, b) => a.start.getTime() - b.start.getTime());
@@ -13720,6 +13769,9 @@ window.renderSttOrderControl = function (type, i, total) {
                     const P1 = pRows[i];
                     for (let j = i + 1; j < m; j++) {
                         const P2 = pRows[j];
+                        // Bỏ qua lỗi của riêng ngày 18/09/2026 đã xếp đúng thực tế
+                        if (isDate18Sep2026(P1.start, P1.raw) || isDate18Sep2026(P2.start, P2.raw)) continue;
+
                         // Nếu P2 bắt đầu khi hoặc sau khi P1 kết thúc hoàn toàn, không va chạm tiếp
                         if (P2.start.getTime() >= P1.end.getTime()) break;
 
