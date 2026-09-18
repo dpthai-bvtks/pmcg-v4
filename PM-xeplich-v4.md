@@ -4203,6 +4203,47 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `index.html`
   - `PM-xeplich-v4.md`
 
+### [18/09/2026 - 11:00] Phiên bản v4.1.2-rev1: Tối ưu hóa cơ chế đa pha (Multi-phase Interleaving) cho thủ thuật dùng máy & lưu kim
+
+- **Bối cảnh & Yêu cầu của người dùng**:
+  - "cơ chế cắm máy, tháo máy như sau: ktv/bs thao tác lắp máy/cắm kim, điều dưỡng hỗ trợ cắm dây, máy chạy tự động, kết thúc ca thì điều dưỡng rút kim trong sự giám sát của bác sĩ/ktv, như vậy khóa thời gian thực hiện của bs/ktv và khóa giờ kết thúc của cả bs/ktv/điều dưỡng. Ví dụ: điện châm từ 08:00-08:25 thì khóa giờ của bs từ 08:00-08:05 (thời gian thực hiện) và 08:25 (thời điểm kết thúc ca), khoảng từ 08:06-08:24 rảnh đi làm việc khác."
+  - So sánh đối chuẩn giải thuật với phần mềm MEDS System (`scheduler.exe`, CP-SAT OR-Tools): MEDS áp dụng mô hình `hands_on` và `needs_unplug`, nhưng MEDS hoàn toàn không quản lý giường bệnh và phòng bệnh (`roomBeds`, `roomMachines`).
+  - Yêu cầu đặt ra cho `v4-thuongmai`: Triển khai cơ chế phân pha thời gian chuẩn xác theo thực tế bệnh viện, giải phóng nhân sự trong pha máy chạy tự động / lưu kim (Phase 2), đồng thời giữ nguyên tắc bảo vệ tuyệt đối 100% tài nguyên Giường bệnh và Máy móc suốt thời gian ca điều trị.
+- **Phân tích cơ chế & Thiết kế giải thuật**:
+  - **Pha 1 (Setup - Cắm kim / Lắp máy)**: Ví dụ 08:00 - 08:05 (5 phút). Bác sĩ/KTV cắm kim/lắp máy, Điều dưỡng hỗ trợ cắm dây $\to$ Khóa cả Bác sĩ/KTV và Điều dưỡng trong khoảng `[start, start + tgNv]`.
+  - **Pha 2 (Auto Running / Retention - Máy chạy tự động / Lưu kim)**: Ví dụ 08:06 - 08:24 (19 phút). Bệnh nhân nằm trên giường, máy chạy kết nối với bệnh nhân $\to$ Bệnh nhân, Máy và Giường bị khóa 100% thời gian `[start, end]`. TUY NHIÊN, Bác sĩ/KTV và Điều dưỡng hoàn toàn **RẢNH** để thực hiện thủ thuật khác hoặc xen kẽ ca khác (Interleaving).
+  - **Pha 3 (Teardown - Rút kim / Tháo máy)**: Ví dụ tại phút 08:25 (khoảng `[end, end + 1]`). Điều dưỡng rút kim dưới sự giám sát của Bác sĩ/KTV $\to$ Khóa cả Bác sĩ/KTV và Điều dưỡng tại mốc kết thúc, ngăn không cho trùng với pha thao tác tay không thể gián đoạn của ca khác.
+- **Các cải tiến kỹ thuật thực hiện**:
+  1. **`js/scheduler-engine.js`**:
+     - Nâng cấp `isContinuousProcedure`: Nhận biết chính xác cờ tường minh từ CSDL `lien_tuc` (trường thứ 14 trong `thuThuatInfo`). Với thủ thuật Thủ công nhưng có lưu kim (như Hào châm: `tgNv = 5, tgMay = 25, lien_tuc = 0`), không còn bị cưỡng bức thành ca liên tục 25 phút.
+     - Thêm `getStaffBusyIntervals(s, e, ttInfo)`: Trả về `[[s, s + tgNv], [e, e + 1]]` đối với thủ thuật phân pha (multi-phase) và `[[s, e]]` đối với thủ thuật liên tục 1:1 (như XBBH, tập vận động).
+     - Thêm `hasStaffIntervalOverlap(intervalsA, intervalsB)`: Kiểm tra giao cắt chính xác giữa 2 tập khoảng bận của nhân sự.
+     - Nâng cấp `hasConflictAt` trong bộ dồn lịch `compactTimelineGaps`: Nhân sự được kiểm tra va chạm theo `hasStaffIntervalOverlap`, trong khi Bệnh nhân, Giường bệnh và Máy móc vẫn được bảo vệ 100% không trùng lặp suốt thời lượng ca điều trị `[s, e]`.
+     - Nâng cấp `runCrossStaffGapFillerPass`: Quét thêm các khoảng rảnh nội bộ giữa pha cắm kim và rút kim (nếu $\ge 15$ phút) để chèn ca rảnh của nhân sự khác, tăng tối đa công suất phục vụ.
+     - Xuất khẩu các helper `getStaffBusyIntervals` và `hasStaffIntervalOverlap` cho toàn hệ thống sử dụng.
+  2. **`js/cp-solver.js` (Bộ giải quy hoạch ràng buộc toán học)**:
+     - Thêm hàm cục bộ `isContinuousProcedureLocal` và `getStaffIntervalsLocal`.
+     - Cập nhật hàm kiểm tra khả thi `isFeasibleAssignment` và hàm tiền chỉ mục `pre-indexing`: Phân tách khoảng bận của nhân sự theo 2 mốc Setup và Teardown.
+     - Cập nhật kiểm tra ứng viên `validStaff` và `validSubStaff`: Kiểm tra ca trực và xung đột lịch theo các khoảng bận thực tế `candStaffIntervals` thay vì chiếm dụng toàn bộ `[candStart, candEnd]`.
+     - Cập nhật cập nhật interval: Ghi nhận chính xác mốc cắm máy và rút kim vào `staffIntervals`.
+  3. **Kiểm thử tự động & Xác minh trên CSDL thực tế**:
+     - Tạo bộ kiểm thử đơn vị `scratch/test_interleaving.js`: 100% PASS kiểm tra phân loại thủ thuật, tính khoảng bận, chèn xen kẽ ca giữa giờ rảnh, chặn va chạm pha Setup và chặn va chạm tại mốc Teardown 08:25, bảo vệ máy và giường 100%.
+     - Kiểm thử toàn diện trên CSDL thực tế ngày 17/09/2026: Xếp thành công 185/185 ca (0 ca rớt), 0 va chạm giường, 0 va chạm máy móc, 0 va chạm bệnh nhân, 0 va chạm nhân sự.
+  4. **Đồng bộ phiên bản theo RULES.md**:
+     - Nâng số hiệu phiên bản lên `4.1.2-rev1` (18/09/2026).
+     - `version.json`: `version: "4.1.2-rev1"`, `releaseTime: "11:00 18/09/2026"`.
+     - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.1.2-rev1'`.
+     - `index.html`: Cập nhật cache busters `?v=4.1.2-rev1`, `APP_VERSION = '4.1.2-rev1'`, `#sys-last-update` -> `⏱ Cập nhật lần cuối: 11:00 18/09/2026`, chân trang giữ chuẩn `Phiên bản: 4.1.2`.
+     - Triển khai thành công đồng thời Cloudflare Worker `pmcg-api` và Cloudflare Pages `pmcg-v3`.
+- **File sửa đổi**:
+  - `js/scheduler-engine.js`
+  - `js/cp-solver.js`
+  - `version.json`
+  - `sw.js`
+  - `index.html`
+  - `PM-xeplich-v4.md`
+
+
 
 
 

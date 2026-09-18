@@ -192,11 +192,47 @@ function isContinuousProcedure(info, duration) {
   const loaiMay = String(info[0] || 'Thủ công').trim();
   const baseTgMay = parseInt(info[1]) || 15;
   const tgNvMin = parseInt(info[2]) || 5;
-  const isExplicit = info[13] === 1 || info[13] === '1' || info[13] === 'Có' || info[13] === true;
-  if (isExplicit) return true;
-  if (loaiMay === 'Thủ công') return true;
+  
+  // 1. Kiểm tra cờ tường minh từ CSDL (trường lien_tuc)
+  const isExplicitTrue = info[13] === 1 || info[13] === '1' || info[13] === 'Có' || info[13] === true;
+  if (isExplicitTrue) return true;
+  const isExplicitFalse = info[13] === 0 || info[13] === '0' || info[13] === 'Không' || info[13] === false;
+  if (isExplicitFalse) return false;
+
+  // 2. Nếu thời gian thao tác >= thời lượng thủ thuật -> bắt buộc làm trực tiếp suốt ca
   if (duration !== undefined && !isNaN(duration) && tgNvMin >= duration) return true;
+
+  // 3. Với thủ thuật Thủ công: chỉ liên tục nếu không có khoảng lưu kim (tgNvMin >= baseTgMay)
+  if (loaiMay === 'Thủ công' && tgNvMin >= baseTgMay) return true;
   if (baseTgMay === tgNvMin && tgNvMin >= 10) return true;
+
+  // Các thủ thuật dùng máy (hoặc lưu kim ngắt quãng) -> tách pha
+  return false;
+}
+
+// 🕒 Trả về các khoảng thời gian nhân sự thực sự bận trong một ca thủ thuật
+function getStaffBusyIntervals(s, e, ttInfo) {
+  const isContinuous = isContinuousProcedure(ttInfo, e - s);
+  if (isContinuous) return [[s, e]];
+  const tgNv = ttInfo ? (parseInt(ttInfo[2]) || 5) : 5;
+  const setupEnd = Math.min(s + tgNv, e);
+  const intervals = [[s, setupEnd]];
+  if (e > setupEnd) {
+    intervals.push([e, e + 1]); // Mốc kết thúc (rút kim / tháo dây / tắt máy)
+  }
+  return intervals;
+}
+
+// 🔍 Kiểm tra va chạm giữa 2 tập khoảng bận của nhân sự
+function hasStaffIntervalOverlap(intervalsA, intervalsB) {
+  if (!intervalsA || !intervalsB) return false;
+  for (let i = 0; i < intervalsA.length; i++) {
+    const a = intervalsA[i];
+    for (let j = 0; j < intervalsB.length; j++) {
+      const b = intervalsB[j];
+      if (is_overlap(a[0], a[1], b[0], b[1])) return true;
+    }
+  }
   return false;
 }
 
@@ -796,7 +832,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
           });
         };
 
-        if (checkSlot(tNow, tNow + tgNhanVien + 1)) return;
+        if (checkSlot(tNow, tNow + tgNhanVien)) return;
         if (hasTeardown && checkSlot(tearStart, tearEnd)) return;
         
         if (!isSupplemental && !isBackfill && staffRole[tenNV] === 'Kỹ thuật viên' && (staffMyRooms[tenNV] || []).length > 0 && !staffMyRooms[tenNV].includes(targetRoom)) return;
@@ -1456,7 +1492,7 @@ function getPatientSignature(pat) {
     }
 
     // 2. Helper: Kiểm tra nhân sự có trong ca làm việc và không ở giờ bận riêng
-    function isStaffAvailableDuring(staffName, start, end) {
+    function isStaffAvailableDuring(staffName, start, end, staffIntervals = null) {
       if (!staffName || !db || !Array.isArray(db.rawStaff)) return true;
       const row = db.rawStaff.find(r => r[0] === staffName);
       if (!row) return true;
@@ -1475,8 +1511,12 @@ function getPatientSignature(pat) {
           const pts = tp.split('-');
           return [t2m(pts[0].trim()), t2m(pts[1].trim())];
         }).filter(Boolean);
+        
+        const intervalsToCheck = (staffIntervals && staffIntervals.length > 0) ? staffIntervals : [[start, end]];
         for (const [bStart, bEnd] of busySlots) {
-          if (is_overlap(start, end, bStart, bEnd)) return false;
+          for (const [sSlot, eSlot] of intervalsToCheck) {
+            if (is_overlap(sSlot, eSlot, bStart, bEnd)) return false;
+          }
         }
       }
       return true;
@@ -1500,39 +1540,53 @@ function getPatientSignature(pat) {
         }
       }
 
+      // Lấy danh sách khoảng bận của ca đang thử nghiệm
+      const curTT = (curItem.thuThuat || curItem.DICHVU || '').trim().toLowerCase();
+      const curTtInfo = db?.thuThuatInfo ? (db.thuThuatInfo[curTT] || db.thuThuatInfo[cleanAndHealProcedureName(curTT)]) : null;
+      const curStaffIntervals = getStaffBusyIntervals(testStart, testEnd, curTtInfo);
+
       // Giờ trực & giờ bận nhân sự chính
-      if (!isStaffAvailableDuring(targetStaff, testStart, testEnd)) return true;
+      if (!isStaffAvailableDuring(targetStaff, testStart, testEnd, curStaffIntervals)) return true;
 
       // Giờ trực & giờ bận nhân sự phụ (nếu có)
       const nvPhu = curItem.nvPhu;
-      if (nvPhu && !isStaffAvailableDuring(nvPhu, testStart, testEnd)) return true;
+      if (nvPhu && !isStaffAvailableDuring(nvPhu, testStart, testEnd, curStaffIntervals)) return true;
 
       for (let j = 0; j < sched.length; j++) {
         if (j === excludeIdx) continue;
         const other = sched[j];
 
-        // 1. Bệnh nhân
+        // 1. Bệnh nhân (vẫn khóa 100% thời gian [testStart, testEnd])
         const otherPatKey = (other.tenBN || other.HOTEN || '').trim().toUpperCase() + '_' + String(other.namSinh || other.NAMSINH || '').trim();
         if (patKey === otherPatKey && is_overlap(testStart, testEnd, other._s, other._e)) {
           return true;
         }
 
+        // Lấy khoảng bận thực tế của nhân sự ở ca đối chiếu (tách pha Setup và Teardown)
+        let otherStaffIntervals = null;
+        if ((targetStaff && (targetStaff === other.nvChinh || targetStaff === other.nvPhu)) ||
+            (nvPhu && (nvPhu === other.nvChinh || nvPhu === other.nvPhu))) {
+          const otherTT = (other.thuThuat || other.DICHVU || '').trim().toLowerCase();
+          const otherTtInfo = db?.thuThuatInfo ? (db.thuThuatInfo[otherTT] || db.thuThuatInfo[cleanAndHealProcedureName(otherTT)]) : null;
+          otherStaffIntervals = getStaffBusyIntervals(other._s, other._e, otherTtInfo);
+        }
+
         // 2. Nhân sự chính
         if (targetStaff && (targetStaff === other.nvChinh || targetStaff === other.nvPhu)) {
-          if (is_overlap(testStart, testEnd, other._s, other._e)) return true;
+          if (hasStaffIntervalOverlap(curStaffIntervals, otherStaffIntervals)) return true;
         }
 
         // 3. Nhân sự phụ
         if (nvPhu && (nvPhu === other.nvChinh || nvPhu === other.nvPhu)) {
-          if (is_overlap(testStart, testEnd, other._s, other._e)) return true;
+          if (hasStaffIntervalOverlap(curStaffIntervals, otherStaffIntervals)) return true;
         }
 
-        // 4. Máy móc
+        // 4. Máy móc (vẫn khóa 100% thời gian [testStart, testEnd])
         if (curItem.may && other.may && curItem.may !== 'Thủ công' && other.may !== 'Thủ công' && curItem.may === other.may) {
           if (is_overlap(testStart, testEnd, other._s, other._e)) return true;
         }
 
-        // 5. Giường
+        // 5. Giường (vẫn khóa 100% thời gian [testStart, testEnd])
         if (curItem.phong && other.phong && curItem.phong === other.phong && curItem.giuong && other.giuong && curItem.giuong === other.giuong) {
           if (is_overlap(testStart, testEnd, other._s, other._e)) return true;
         }
@@ -1594,19 +1648,35 @@ function getPatientSignature(pat) {
 
         if (myItems.length === 0) continue;
 
-        // Xây dựng danh sách các khoảng rảnh của targetStaff
+        // Xây dựng danh sách các khoảng rảnh của targetStaff (bao gồm cả khoảng rảnh nội bộ giữa pha cắm & rút kim)
         const gaps = [];
         if (myItems[0]._s > 450) {
           gaps.push({ start: 450, end: myItems[0]._s });
         }
-        for (let m = 0; m < myItems.length - 1; m++) {
-          const gStart = myItems[m]._e;
-          const gEnd = myItems[m + 1]._s;
-          if (gStart < LUNCH_START && gEnd >= LUNCH_END) {
-            if (LUNCH_START - gStart >= 15) gaps.push({ start: gStart, end: LUNCH_START });
-            if (gEnd - LUNCH_END >= 15) gaps.push({ start: LUNCH_END, end: gEnd });
-          } else if (gEnd - gStart >= 15) {
-            gaps.push({ start: gStart, end: gEnd });
+        for (let m = 0; m < myItems.length; m++) {
+          // Khoảng rảnh nội bộ giữa pha cắm kim và rút kim (nếu là ca dùng máy/lưu kim dài >= 15p)
+          const curTT = (myItems[m].thuThuat || myItems[m].DICHVU || '').trim().toLowerCase();
+          const curTtInfo = db?.thuThuatInfo ? (db.thuThuatInfo[curTT] || db.thuThuatInfo[cleanAndHealProcedureName(curTT)]) : null;
+          const isCont = isContinuousProcedure(curTtInfo, myItems[m]._e - myItems[m]._s);
+          if (!isCont) {
+            const tgNv = curTtInfo ? (parseInt(curTtInfo[2]) || 5) : 5;
+            const intraStart = myItems[m]._s + tgNv;
+            const intraEnd = myItems[m]._e;
+            if (intraEnd - intraStart >= 15) {
+              gaps.push({ start: intraStart, end: intraEnd });
+            }
+          }
+
+          // Khoảng rảnh giữa các ca liên tiếp
+          if (m < myItems.length - 1) {
+            const gStart = myItems[m]._e;
+            const gEnd = myItems[m + 1]._s;
+            if (gStart < LUNCH_START && gEnd >= LUNCH_END) {
+              if (LUNCH_START - gStart >= 15) gaps.push({ start: gStart, end: LUNCH_START });
+              if (gEnd - LUNCH_END >= 15) gaps.push({ start: LUNCH_END, end: gEnd });
+            } else if (gEnd - gStart >= 15) {
+              gaps.push({ start: gStart, end: gEnd });
+            }
           }
         }
 
@@ -2818,6 +2888,8 @@ function getSafeCache() {
     m2t,
     normalizeScheduleItem,
     isContinuousProcedure,
+    getStaffBusyIntervals,
+    hasStaffIntervalOverlap,
     decodeVietnameseEncoding,
     toVietnameseProperCase,
     compactTimelineGaps,
@@ -2838,6 +2910,8 @@ if (globalScope) {
   globalScope.decodeVietnameseEncoding = SchedulerEngine.decodeVietnameseEncoding;
   globalScope.toVietnameseProperCase = SchedulerEngine.toVietnameseProperCase;
   globalScope.compactTimelineGaps = SchedulerEngine.compactTimelineGaps;
+  globalScope.getStaffBusyIntervals = SchedulerEngine.getStaffBusyIntervals;
+  globalScope.hasStaffIntervalOverlap = SchedulerEngine.hasStaffIntervalOverlap;
   globalScope.cleanAndHealPatientName = SchedulerEngine.cleanAndHealPatientName;
   globalScope.healPatientName = SchedulerEngine.cleanAndHealPatientName;
   globalScope.cleanAndHealProcedureName = SchedulerEngine.cleanAndHealProcedureName;

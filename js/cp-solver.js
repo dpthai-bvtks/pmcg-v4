@@ -5,7 +5,9 @@
  * Phiên bản v4.0.6-rev8: Tối ưu hoá Pre-indexed Intervals O(1) & Branch Pruning siêu tốc (< 50ms)
  */
 
-window.MedicalCPSolver = (function () {
+const globalScope = typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this);
+
+globalScope.MedicalCPSolver = (function () {
   'use strict';
 
   function t2m(t) {
@@ -42,6 +44,33 @@ window.MedicalCPSolver = (function () {
       map.set(key, list);
     }
     list.push([s, e]);
+  }
+
+  function isContinuousProcedureLocal(info, dur) {
+    const globalSE = typeof window !== 'undefined' ? window.SchedulerEngine : (typeof globalThis !== 'undefined' ? globalThis.SchedulerEngine : null);
+    if (globalSE && typeof globalSE.isContinuousProcedure === 'function') {
+      return globalSE.isContinuousProcedure(info, dur);
+    }
+    if (!info) return false;
+    if (info[13] === 1 || info[13] === '1' || info[13] === 'Có' || info[13] === true) return true;
+    if (info[13] === 0 || info[13] === '0' || info[13] === 'Không' || info[13] === false) return false;
+    const tgNv = parseInt(info[2]) || 5;
+    const baseTgMay = parseInt(info[1]) || 15;
+    if (dur && tgNv >= dur) return true;
+    if (String(info[0]).trim() === 'Thủ công' && tgNv >= baseTgMay) return true;
+    return false;
+  }
+
+  function getStaffIntervalsLocal(start, end, ttInfo) {
+    const isCont = isContinuousProcedureLocal(ttInfo, end - start);
+    if (isCont) return [[start, end]];
+    const tgNv = ttInfo ? (parseInt(ttInfo[2]) || 5) : 5;
+    const staffEnd = Math.min(start + tgNv, end);
+    const intervals = [[start, staffEnd]];
+    if (end > staffEnd) {
+      intervals.push([end, end + 1]);
+    }
+    return intervals;
   }
 
   function parseShifts(shiftStr) {
@@ -124,17 +153,28 @@ window.MedicalCPSolver = (function () {
       }
     }
 
-    // 2. Ràng buộc nhân viên chính & nhân viên phụ không trùng giờ
+    // 2. Ràng buộc nhân viên chính & nhân viên phụ không trùng giờ (tính theo pha thao tác và rút kim)
+    const candTT = (tenTT || '').toLowerCase();
+    const candTtInfo = db?.thuThuatInfo ? (db.thuThuatInfo[candTT] || null) : null;
+    const candIntervals = getStaffIntervalsLocal(start, end, candTtInfo);
+
     for (let i = 0; i < currentSched.length; i++) {
       const item = currentSched[i];
-      const iStart = t2m(item.gioDienRa || item.GIODIENRA);
-      const iEnd = t2m(item.gioKetThuc || item.GIOKETTHUC);
       const iNv1 = item.nvChinh || item["NV CHÍNH"];
       const iNv2 = item.nvPhu || item["NV PHỤ"];
+      const hasSharedStaff = (nvChinh && (nvChinh === iNv1 || nvChinh === iNv2)) || (nvPhu && (nvPhu === iNv1 || nvPhu === iNv2));
+      if (hasSharedStaff) {
+        const iStart = t2m(item.gioDienRa || item.GIODIENRA);
+        const iEnd = t2m(item.gioKetThuc || item.GIOKETTHUC);
+        const iTT = (item.thuThuat || item.DICHVU || '').toLowerCase();
+        const iTtInfo = db?.thuThuatInfo ? (db.thuThuatInfo[iTT] || null) : null;
+        const iIntervals = getStaffIntervalsLocal(iStart, iEnd, iTtInfo);
 
-      if (isOverlap(start, end, iStart, iEnd)) {
-        if (nvChinh && (nvChinh === iNv1 || nvChinh === iNv2)) return false;
-        if (nvPhu && (nvPhu === iNv1 || nvPhu === iNv2)) return false;
+        for (const [s1, e1] of candIntervals) {
+          for (const [s2, e2] of iIntervals) {
+            if (isOverlap(s1, e1, s2, e2)) return false;
+          }
+        }
       }
     }
 
@@ -219,9 +259,7 @@ window.MedicalCPSolver = (function () {
         };
       };
 
-    const isContFn = (typeof window !== 'undefined' && window.SchedulerEngine && typeof window.SchedulerEngine.isContinuousProcedure === 'function')
-      ? window.SchedulerEngine.isContinuousProcedure
-      : (info, dur) => (!info || info[0] === 'Thủ công' || info[13] === 1 || (dur && info[2] >= dur));
+    const isContFn = isContinuousProcedureLocal;
 
     const preSchedList = (Array.isArray(existingSched) ? existingSched : [])
       .map(normalizeFn)
@@ -311,10 +349,18 @@ window.MedicalCPSolver = (function () {
       // Nghỉ tối thiểu 5 phút giữa 2 ca của cùng bệnh nhân
       addInterval(patIntervals, pKey, s, e + 5);
 
+      const tenTT = String(item.thuThuat || item.DICHVU || '').trim().toLowerCase();
+      const ttInfo = db.thuThuatInfo ? db.thuThuatInfo[tenTT] : null;
+      const sIntervals = getStaffIntervalsLocal(s, e, ttInfo);
+
       const nv1 = item.nvChinh || item["NV CHÍNH"];
       const nv2 = item.nvPhu || item["NV PHỤ"];
-      if (nv1) addInterval(staffIntervals, nv1, s, e);
-      if (nv2) addInterval(staffIntervals, nv2, s, e);
+      if (nv1) {
+        for (const [stS, stE] of sIntervals) addInterval(staffIntervals, nv1, stS, stE);
+      }
+      if (nv2) {
+        for (const [stS, stE] of sIntervals) addInterval(staffIntervals, nv2, stS, stE);
+      }
 
       const may = item.may || item.MAY;
       if (may && may !== 'Thủ công') addInterval(machineIntervals, may, s, e);
@@ -488,20 +534,33 @@ window.MedicalCPSolver = (function () {
           }
           if (!validBed) continue; // Không có giường rảnh tại t -> bỏ qua t!
 
+          const candStaffIntervals = getStaffIntervalsLocal(candStart, candEnd, ttInfo);
+
           // Cắt tỉa 4: Tìm nhân viên rảnh đầu tiên đúng ca làm việc
           let validStaff = null;
           for (let stIdx = 0; stIdx < staffCandidates.length; stIdx++) {
             const sName = staffCandidates[stIdx];
             // Phải nằm trọn trong ca trực
             const sShifts = staffShiftMap.get(sName);
-            if (sShifts && sShifts.length > 0 && !sShifts.some(w => candStart >= w[0] && candEnd <= w[1] + (isYHCT ? (w[0] < 780 ? yhctLunchMins : yhctEndMins) : 0))) continue;
-            // Không dính giờ bận cá nhân
-            if (hasOverlap(staffBusyMap.get(sName), candStart, candEnd)) continue;
-            // Không trùng ca đã xếp
-            if (!hasOverlap(staffIntervals.get(sName), candStart, candEnd)) {
-              validStaff = sName;
-              break;
+            if (sShifts && sShifts.length > 0) {
+              const inShift = candStaffIntervals.every(([ivS, ivE]) => {
+                return sShifts.some(w => {
+                  const shiftEnd = w[1] + (isYHCT ? (w[0] < 780 ? yhctLunchMins : yhctEndMins) : 0);
+                  return ivS >= w[0] && ivE <= shiftEnd;
+                });
+              });
+              if (!inShift) continue;
             }
+            // Không dính giờ bận cá nhân
+            const sBusy = staffBusyMap.get(sName);
+            if (candStaffIntervals.some(([ivS, ivE]) => hasOverlap(sBusy, ivS, ivE))) continue;
+
+            // Không trùng ca đã xếp
+            const sIntervals = staffIntervals.get(sName);
+            if (candStaffIntervals.some(([ivS, ivE]) => hasOverlap(sIntervals, ivS, ivE))) continue;
+
+            validStaff = sName;
+            break;
           }
           if (!validStaff) continue; // Bắt buộc phải có nhân sự chính hợp lệ rảnh tại thời điểm t!
 
@@ -524,12 +583,23 @@ window.MedicalCPSolver = (function () {
             for (let subIdx = 0; subIdx < subPool.length; subIdx++) {
               const subName = subPool[subIdx];
               const subShifts = staffShiftMap.get(subName);
-              if (subShifts && subShifts.length > 0 && !subShifts.some(w => candStart >= w[0] && candEnd <= w[1] + (isYHCT ? (w[0] < 780 ? yhctLunchMins : yhctEndMins) : 0))) continue;
-              if (hasOverlap(staffBusyMap.get(subName), candStart, candEnd)) continue;
-              if (!hasOverlap(staffIntervals.get(subName), candStart, candEnd)) {
-                validSubStaff = subName;
-                break;
+              if (subShifts && subShifts.length > 0) {
+                const inShift = candStaffIntervals.every(([ivS, ivE]) => {
+                  return subShifts.some(w => {
+                    const shiftEnd = w[1] + (isYHCT ? (w[0] < 780 ? yhctLunchMins : yhctEndMins) : 0);
+                    return ivS >= w[0] && ivE <= shiftEnd;
+                  });
+                });
+                if (!inShift) continue;
               }
+              const subBusy = staffBusyMap.get(subName);
+              if (candStaffIntervals.some(([ivS, ivE]) => hasOverlap(subBusy, ivS, ivE))) continue;
+
+              const subIntervals = staffIntervals.get(subName);
+              if (candStaffIntervals.some(([ivS, ivE]) => hasOverlap(subIntervals, ivS, ivE))) continue;
+
+              validSubStaff = subName;
+              break;
             }
             if (!validSubStaff) continue; // Bắt buộc phải có nhân sự phụ thực tế rảnh (Phương án 1)
           }
@@ -554,9 +624,11 @@ window.MedicalCPSolver = (function () {
           addInterval(patIntervals, pKey, candStart, candEnd + 5);
           if (validMachine !== 'Thủ công') addInterval(machineIntervals, validMachine, candStart, candEnd);
           addInterval(bedIntervals, `${patRoom}_${validBed}`, candStart, candEnd);
-          addInterval(staffIntervals, validStaff, candStart, candEnd);
-          if (validSubStaff) {
-            addInterval(staffIntervals, validSubStaff, candStart, candEnd);
+          for (const [ivS, ivE] of candStaffIntervals) {
+            addInterval(staffIntervals, validStaff, ivS, ivE);
+            if (validSubStaff) {
+              addInterval(staffIntervals, validSubStaff, ivS, ivE);
+            }
           }
 
           break shiftLoop;
@@ -600,3 +672,7 @@ window.MedicalCPSolver = (function () {
     solve: solveBranchAndBound
   };
 })();
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = globalScope.MedicalCPSolver;
+}

@@ -1,6 +1,6 @@
 {
-    "version": "4.1.1-rev2",
+    "version": "4.1.2-rev1",
     "releaseDate": "18/09/2026",
-    "releaseTime": "08:05 18/09/2026",
-    "notes": "Triệt để dọn sạch bộ nhớ đệm lịch trình (localStorage, IndexedDB Dexie, bootstrap cache) khi chốt sổ hoặc khi mở máy sang ngày làm việc mới, ngăn chặn hoàn toàn việc hiển thị lịch cũ của hôm qua."
+    "releaseTime": "11:00 18/09/2026",
+    "notes": "Tối ưu hóa cơ chế đa pha cho thủ thuật dùng máy & lưu kim: Nhân sự rảnh đi làm việc khác trong thời gian máy chạy/lưu kim (08:06-08:24), chỉ khóa thời gian thao tác lắp máy/cắm kim và mốc kết thúc rút kim/tháo máy; bảo vệ 100% máy và giường không trùng lặp."
 }
