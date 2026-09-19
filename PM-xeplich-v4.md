@@ -4777,6 +4777,30 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `index.html` [MODIFY: query string v=4.1.2-rev1, APP_VERSION = '4.1.2-rev1', timestamp 13:39 19/09/2026]
   - `PM-xeplich-v4.md` [MODIFY]
 
+---
+
+### [v4.1.2-rev2] - 14:30 19/09/2026: Kiểm tra định mức TG TH Min/Max & TG TT Min/Max theo ngày ca (Hỗ trợ file HIS quét cả tháng) & Đồng bộ Teardown Xếp lịch
+- **Yêu cầu của người dùng:**
+  - Triển khai kiểm tra cả TG TH min/max và TG TT min/max.
+  - Giải thích và xử lý cơ chế quét kiểm tra file HIS dữ liệu của cả tháng (ví dụ tháng 9 khi có sự thay đổi định mức từ ngày 20/09/2026).
+- **Phân tích & Giải pháp kỹ thuật:**
+  1. **Kiểm tra theo ngày ca (Hỗ trợ file HIS quét cả tháng)**:
+     - Nâng cấp hàm `mapProcedureJS(procStr, targetDate)` trong `js/app.js` nhận thêm tham số `targetDate` trích xuất trực tiếp từ ngày của từng dòng thủ thuật trong file HIS.
+     - Khi quét file HIS cả tháng 9, mỗi dòng ca được đối chiếu với định mức Min/Max tương ứng tại đúng ngày diễn ra ca đó.
+     - Các ngày từ `01/09` đến `19/09` áp dụng định mức cũ; các ngày từ `20/09` trở đi áp dụng định mức mới đã cập nhật $\rightarrow$ Không báo lỗi sai lệch cho những ngày trước 20/09.
+  2. **Kiểm tra toàn diện cả TG TH Min/Max và TG TT Min/Max**:
+     - `TG TT (MIN) - TG TT (MAX)`: Kiểm tra tổng thời gian của ca ($T = \text{Kết thúc} - \text{Bắt đầu}$).
+     - `TG TH (MIN) - TG TH (MAX)`: Kiểm tra thời gian thao tác liên tục đối với các thủ thuật làm liên tục (`lienTuc = Có`).
+  3. **Đồng bộ hóa Xếp lịch (`scheduler-engine.js`)**:
+     - Cập nhật hàm `checkScheduleCollisions` trong `js/scheduler-engine.js`: Khóa giờ kết thúc (rút kim) cho TTV chính của Điện châm, Hào châm và tháo máy PHCN; giải phóng giờ TTV chính ca Thủy châm.
+- **File sửa đổi:**
+  - `js/app.js` [MODIFY: mapProcedureJS hỗ trợ targetDate, processErrorChecking trích xuất start date để đối chiếu định mức theo ngày]
+  - `js/scheduler-engine.js` [MODIFY: checkScheduleCollisions đồng bộ mainTeardown và subTeardown]
+  - `version.json` [MODIFY: 4.1.2-rev2, timestamp 14:30 19/09/2026]
+  - `sw.js` [MODIFY: pmcg-v4-cache-4.1.2-rev2]
+  - `index.html` [MODIFY: query string v=4.1.2-rev2, APP_VERSION = '4.1.2-rev2', timestamp 14:30 19/09/2026]
+  - `PM-xeplich-v4.md` [MODIFY]
+
 
 
 

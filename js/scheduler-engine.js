@@ -1858,6 +1858,8 @@ function getPatientSignature(pat) {
         hasTeardown,
         tearStart,
         tearEnd,
+        tt,
+        ttInfo,
         nv1: cleanStaffStr(row.nvChinh),
         nv2: cleanStaffStr(row.nvPhu),
         may: String(row.may || '').toLowerCase().replace(/\s+/g, ''),
@@ -1905,16 +1907,23 @@ function getPatientSignature(pat) {
 
         // 2. Kiểm tra va chạm Nhân sự (chỉ tính khoảng thời gian KTV trực tiếp làm việc: setup + teardown)
         const candIsDienCham = /điện châm|đc\b/i.test(cTenTT) || (cInfo && cInfo[8] && /điện châm|đc\b/i.test(cInfo[8]));
-        const candTeardownStaff = cHasTeardown ? (candIsDienCham && cNv2 ? cNv2 : cNv1) : null;
+        const candIsHaoCham = /hào châm|hc\b/i.test(cTenTT) || (cInfo && cInfo[8] && /hào châm|hc\b/i.test(cInfo[8]));
+        const candIsThuyCham = /thủy châm|tc\b/i.test(cTenTT) || (cInfo && cInfo[8] && /thủy châm|tc\b/i.test(cInfo[8]));
 
-        const exIsDienCham = /điện châm|đc\b/i.test(ex.name || '') || (ex.tt && /điện châm|đc\b/i.test(ex.tt));
-        const exTeardownStaff = ex.hasTeardown ? (exIsDienCham && ex.nv2 ? ex.nv2 : ex.nv1) : null;
+        const candMainTeardown = cHasTeardown && !candIsThuyCham && (candIsDienCham || candIsHaoCham || (cInfo && (cInfo[4] === 1 || cInfo[9] === 'Có' || cInfo[9] === 1)));
+        const candSubTeardown = cHasTeardown && (candIsDienCham || candIsHaoCham || candIsThuyCham);
 
-        const checkStaffOverlap = (candStaff) => {
+        const exIsDienCham = /điện châm|đc\b/i.test(ex.name || '') || (ex.tt && /điện châm|đc\b/i.test(ex.tt)) || (ex.ttInfo && ex.ttInfo[8] && /điện châm|đc\b/i.test(ex.ttInfo[8]));
+        const exIsHaoCham = /hào châm|hc\b/i.test(ex.name || '') || (ex.tt && /hào châm|hc\b/i.test(ex.tt)) || (ex.ttInfo && ex.ttInfo[8] && /hào châm|hc\b/i.test(ex.ttInfo[8]));
+        const exIsThuyCham = /thủy châm|tc\b/i.test(ex.name || '') || (ex.tt && /thủy châm|tc\b/i.test(ex.tt)) || (ex.ttInfo && ex.ttInfo[8] && /thủy châm|tc\b/i.test(ex.ttInfo[8]));
+
+        const exMainTeardown = ex.hasTeardown && !exIsThuyCham && (exIsDienCham || exIsHaoCham || (ex.ttInfo && (ex.ttInfo[4] === 1 || ex.ttInfo[9] === 'Có' || ex.ttInfo[9] === 1)));
+        const exSubTeardown = ex.hasTeardown && (exIsDienCham || exIsHaoCham || exIsThuyCham);
+
+        const checkStaffOverlap = (candStaff, candDoesTeardown) => {
           if (!candStaff) return false;
           if (candStaff !== ex.nv1 && candStaff !== ex.nv2) return false;
-          const candDoesTeardown = (candStaff === candTeardownStaff);
-          const exDoesTeardown = (candStaff === exTeardownStaff);
+          const exDoesTeardown = (candStaff === ex.nv1 && exMainTeardown) || (candStaff === ex.nv2 && exSubTeardown);
           if (isOverlap(cS, cStaffEnd, ex.s, ex.staffEnd)) return true;
           if (candDoesTeardown && isOverlap(cTearStart, cTearEnd, ex.s, ex.staffEnd)) return true;
           if (exDoesTeardown && isOverlap(cS, cStaffEnd, ex.tearStart, ex.tearEnd)) return true;
@@ -1922,7 +1931,7 @@ function getPatientSignature(pat) {
           return false;
         };
 
-        if (checkStaffOverlap(cNv1) || checkStaffOverlap(cNv2)) {
+        if (checkStaffOverlap(cNv1, candMainTeardown) || checkStaffOverlap(cNv2, candSubTeardown)) {
           collisionReason = `Nhân sự đã có lịch với ca khác (${m2t(ex.s)}-${m2t(ex.e)})`;
           break;
         }

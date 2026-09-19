@@ -1,6 +1,6 @@
 {
-    "version": "4.1.2-rev1",
+    "version": "4.1.2-rev2",
     "releaseDate": "19/09/2026",
-    "releaseTime": "13:39 19/09/2026",
-    "notes": "fix(error-check): Tạm thời vô hiệu hóa kiểm tra Người phụ trong tab Kiểm tra lỗi vì file HIS chưa nhập dữ liệu người phụ; chỉ bật lại khi cần."
+    "releaseTime": "14:30 19/09/2026",
+    "notes": "feat(audit & schedule): Cập nhật kiểm tra định mức TG TH Min/Max & TG TT Min/Max theo ngày ca (hỗ trợ quét file HIS cả tháng); khóa giờ rút kim TTV chính cho Điện châm/Hào châm và giải phóng giờ TTV chính ca Thủy châm."
 }

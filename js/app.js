@@ -13424,15 +13424,42 @@ window.renderSttOrderControl = function (type, i, total) {
             return String(fullName).trim();
         }
 
-        function mapProcedureJS(procStr) {
+        function mapProcedureJS(procStr, targetDate) {
+            if (!procStr) return null;
             const procStrLower = normalizeTextJS(procStr);
-            for (const p of dataCache.proc) {
-                const ten = String(p.ten || '').toLowerCase();
+            const procList = (typeof dataCache !== 'undefined' && dataCache && dataCache.proc) ? dataCache.proc : [];
+            let matched = null;
+            for (const p of procList) {
+                const ten = String(p.ten || p.name || '').toLowerCase();
                 const vietTat = String(p.vietTat || '').toLowerCase();
-                if (ten && procStrLower.includes(ten)) return p;
-                if (vietTat && procStrLower === vietTat) return p;
+                if ((ten && procStrLower.includes(ten)) || (vietTat && procStrLower === vietTat)) {
+                    matched = p;
+                    break;
+                }
             }
-            return null;
+            if (!matched) return null;
+
+            if (!targetDate) return matched;
+
+            let dObj = (targetDate instanceof Date) ? targetDate : new Date(targetDate);
+            if (isNaN(dObj.getTime())) return matched;
+
+            const yyyy = dObj.getFullYear();
+            const mm = String(dObj.getMonth() + 1).padStart(2, '0');
+            const dd = String(dObj.getDate()).padStart(2, '0');
+            const dateStr = `${yyyy}-${mm}-${dd}`;
+
+            if (matched.history && Array.isArray(matched.history)) {
+                for (const h of matched.history) {
+                    const from = h.from || h.tuNgay || '0000-00-00';
+                    const to = h.to || h.denNgay || '9999-99-99';
+                    if (dateStr >= from && dateStr <= to) {
+                        return { ...matched, ...h };
+                    }
+                }
+            }
+
+            return matched;
         }
 
         function checkPermissionJS(techName, procInfo) {
@@ -13577,7 +13604,10 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 const patientName = String(row['C'] || 'Không rõ').replace(/\s*\((?:✔ RV|❌ Rớt|RV|Rớt)\)/gi, '').trim();
                 const procName = String(row['AE'] || '').trim();
-                const procInfo = mapProcedureJS(procName);
+
+                let start = row['AH'] ? convertExcelDateToJSDate(row['AH']) : null;
+                let end = row['L'] ? convertExcelDateToJSDate(row['L']) : null;
+                const procInfo = mapProcedureJS(procName, start);
                 const phongRaw = String(row.phong || row['PHÒNG'] || row['phong'] || '').trim();
                 const giuongRaw = String(row.giuong || row['GIƯỜNG'] || row['giuong'] || '').trim();
                 const mayRaw = String(row.may || row['MÁY'] || row['may'] || '').trim();
@@ -13597,10 +13627,6 @@ window.renderSttOrderControl = function (type, i, total) {
                     }
                 }
 
-                if (!row['AH'] || !row['L']) continue;
-
-                let start = convertExcelDateToJSDate(row['AH']);
-                let end = convertExcelDateToJSDate(row['L']);
                 if (!start || isNaN(start.getTime()) || !end || isNaN(end.getTime())) continue;
 
                 // Tính toán các mốc thời gian của thủ thuật
