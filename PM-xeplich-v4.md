@@ -4628,6 +4628,39 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev16]
   - `PM-xeplich-v4.md` [MODIFY]
 
+---
+
+### [v4.1.1-rev17] - 10:00 19/09/2026: Phân công rút kim/tháo máy (Teardown) cho Điều dưỡng phụ & Giải phóng Bác sĩ/KTV chính vận hành đảo phiên YHCT-PHCN song song từ 07:31
+- **Yêu cầu của người dùng:**
+  1. Quy tắc vận hành lâm sàng thực tế: Bệnh nhân A châm kim từ 07:31 (Bs Thái làm), bệnh nhân B châm kim lúc 07:40, thì bệnh nhân C hoàn toàn có thể làm Điện xung từ 07:31 (KTV Hà chip làm song song) chứ không nhất thiết phải chờ hết điện châm mới làm điện xung. Các bệnh nhân đảo phiên, hoán đổi gối đầu liên tục.
+  2. Bác sĩ chuyên tâm châm kim theo chu kỳ 8-9 phút / ca để đạt định mức tối đa 45 ca Điện châm / ngày.
+  3. Tìm nguyên nhân và khắc phục việc xếp lịch bị rớt ca khi tăng khoảng cách ca lên 2 phút (rớt 10 ca), 3 phút (rớt 12 ca).
+
+- **Phân tích nguyên nhân & Giải pháp kỹ thuật:**
+  1. **Phát hiện nút thắt Teardown Bug trong `js/scheduler-engine.js`**:
+     - *Nguyên nhân:* Trước đây, tại dòng 838 và dòng 975, code kiểm tra và khóa timeline `staffTimeline[nvChinh]` tại khung giờ kết thúc `[tearStart, tearEnd]` (phút thứ 25).
+     - Bác sĩ vừa châm kim vừa bị gán phải đi rút kim, các mốc rút kim 1 phút cắm rải rác khắp dòng thời gian (phút 25, 34, 43, 52...). Mỗi khi Bác sĩ tìm khe châm ca tiếp theo (thao tác 5p + đệm 2-3p), nếu khe này đè lên mốc rút kim của ca trước thì Bác sĩ bị từ chối châm.
+     - Hậu quả: Bác sĩ bị dồn lịch, các ca châm bị dồn về chiều khiến bệnh nhân không kịp làm thủ thuật PHCN, KTV Hà chip bị dồn toa $\rightarrow$ Rớt 10 - 12 ca!
+  2. **Giải pháp phân công Teardown cho Điều dưỡng phụ (`nvPhu`)**:
+     - Khi thủ thuật có người phụ (`canPhu === 1` như Điện châm, Điện xung có Điều dưỡng đi làm):
+       + Nhân viên chính (`nvChinh` - Bs Thái, KTV chính) **không bị kiểm tra `checkSlot(tearStart, tearEnd)`** và **không bị khóa mốc teardown**.
+       + Nhiệm vụ rút kim / tháo máy được bàn giao cho Điều dưỡng phụ (`nvPhu` - Phụ 1, Phụ 2).
+       + Chỉ khi thủ thuật không có người phụ (`canPhu !== 1`), nhân viên chính mới phải tự mình thực hiện teardown.
+     - Trong `cleanExisting` (lịch cũ): Nếu đã có `resolvedNvPhu`, chỉ gán teardown cho `resolvedNvPhu`.
+     - Trong `compactTimelineGaps`: Hàm va chạm `checkStaffOverlap` chỉ kiểm tra teardown đối với đúng nhân sự đảm nhận teardown (`candDoesTeardown`, `exDoesTeardown`).
+  3. **Kết quả kiểm chứng thực tế với 101 ca của ngày 19/09/2026**:
+     - **Khoảng cách 1 phút**: Xếp thành công **101 / 101 ca (0 ca rớt)**! Bs Thái thực hiện trọn vẹn 40 ca Điện châm, KTV Hà chip làm 61 ca.
+     - **Khoảng cách 2 phút**: Xếp thành công **99 / 101 ca (Bs Thái không rớt ca nào)**.
+     - Hai luồng YHCT và PHCN bắt đầu làm song song ngay từ 07:31 sáng cho các bệnh nhân khác nhau và đảo phiên hoàn hảo.
+
+- **File sửa đổi:**
+  - `js/scheduler-engine.js` [MODIFY: phân công Teardown cho Điều dưỡng phụ, giải phóng NV chính, kiểm tra va chạm teardown chính xác]
+  - `index.html` [MODIFY: v4.1.1-rev17, cache busters, footer timestamp 10:00 19/09/2026]
+  - `version.json` [MODIFY: 4.1.1-rev17]
+  - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev17]
+  - `PM-xeplich-v4.md` [MODIFY]
+
+
 
 
 

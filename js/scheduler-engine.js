@@ -601,7 +601,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
     if (resolvedNvChinh && staffTimeline[resolvedNvChinh]) { 
       pushAndMerge(staffTimeline, resolvedNvChinh, [gioStart, staffEnd]); 
-      if (hasTeardown && tearStart !== null) pushAndMerge(staffTimeline, resolvedNvChinh, [tearStart, tearEnd]);
+      if (hasTeardown && tearStart !== null && !resolvedNvPhu) pushAndMerge(staffTimeline, resolvedNvChinh, [tearStart, tearEnd]);
       staffCurrentRoom[resolvedNvChinh] = phong; 
     }
     if (resolvedNvPhu && staffTimeline[resolvedNvPhu]) {
@@ -635,7 +635,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
     // 🔒 STAFF WORKLOAD LOCK: Update staff load minutes and procedure count
     if (resolvedNvChinh && staffLoad[resolvedNvChinh]) {
-      staffLoad[resolvedNvChinh].used_mins += (staffEnd - gioStart) + (hasTeardown ? 1 : 0);
+      staffLoad[resolvedNvChinh].used_mins += (staffEnd - gioStart) + (hasTeardown && !resolvedNvPhu ? 1 : 0);
       staffLoad[resolvedNvChinh].procs_done[tenThuThuat] = (staffLoad[resolvedNvChinh].procs_done[tenThuThuat] || 0) + 1;
     }
     if (resolvedNvPhu && staffLoad[resolvedNvPhu]) {
@@ -835,7 +835,9 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         };
 
         if (checkSlot(tNow, tNow + khoangCach)) return;
-        if (hasTeardown && checkSlot(tearStart, tearEnd)) return;
+        // Nếu canPhu === 1 (thủ thuật có Điều dưỡng phụ), việc rút kim/tháo máy sẽ do Điều dưỡng phụ đảm nhận.
+        // Chỉ khi nào thủ thuật không có người phụ (canPhu !== 1) thì mới bắt buộc nhân viên chính phải rảnh ở tearStart..tearEnd.
+        if (hasTeardown && canPhu !== 1 && checkSlot(tearStart, tearEnd)) return;
         
         if (!isSupplemental && !isBackfill && staffRole[tenNV] === 'Kỹ thuật viên' && (staffMyRooms[tenNV] || []).length > 0 && !staffMyRooms[tenNV].includes(targetRoom)) return;
 
@@ -844,12 +846,14 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(role);
         const isKtv = !isDoc && !isNurse && (/kỹ thuật viên|ky thuat vien|^ktv\b/i.test(role) || staffRole[tenNV] === 'Kỹ thuật viên');
 
+        const isFreeForTeardown = !hasTeardown || !checkSlot(tearStart, tearEnd);
+
         // Chỉ BS hoặc KTV mới được làm NV Chính; Điều dưỡng chỉ được làm NV Phụ
         if ((isDoc || isKtv) && !isNurse) {
           candidatesMain.push(tenNV);
-          candidatesSub.push(tenNV);
+          if (isFreeForTeardown) candidatesSub.push(tenNV);
         } else {
-          candidatesSub.push(tenNV);
+          if (isFreeForTeardown) candidatesSub.push(tenNV);
         }
       });
       if (candidatesMain.length === 0) continue;
@@ -972,11 +976,19 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
         blockStaff(nvChinh, tNow, tNow + tgNhanVien, khoangCach, staffTimeline, staffSetupReady, staffLoad, tenThuThuat, staffLastProc);
         staffCurrentRoom[nvChinh] = targetRoom;
-        if (hasTeardown) { staffTimeline[nvChinh].push([tearStart, tearEnd]); staffTimeline[nvChinh] = mergeTimeline(staffTimeline[nvChinh]); staffLoad[nvChinh].used_mins += (tearEnd - tearStart); }
+        if (hasTeardown && !nvPhu) { 
+          staffTimeline[nvChinh].push([tearStart, tearEnd]); 
+          staffTimeline[nvChinh] = mergeTimeline(staffTimeline[nvChinh]); 
+          staffLoad[nvChinh].used_mins += (tearEnd - tearStart); 
+        }
 
         if (nvPhu) {
           blockStaff(nvPhu, tNow, tNow + tgNhanVien, khoangCach, staffTimeline, staffSetupReady, staffLoad, tenThuThuat, staffLastProc);
-          if (hasTeardown) { staffTimeline[nvPhu].push([tearStart, tearEnd]); staffTimeline[nvPhu] = mergeTimeline(staffTimeline[nvPhu]); staffLoad[nvPhu].used_mins += (tearEnd - tearStart); }
+          if (hasTeardown) { 
+            staffTimeline[nvPhu].push([tearStart, tearEnd]); 
+            staffTimeline[nvPhu] = mergeTimeline(staffTimeline[nvPhu]); 
+            staffLoad[nvPhu].used_mins += (tearEnd - tearStart); 
+          }
         }
 
         if (selectedMachine !== "Thủ công") { 
@@ -1845,10 +1857,12 @@ function getPatientSignature(pat) {
         const checkStaffOverlap = (candStaff) => {
           if (!candStaff) return false;
           if (candStaff !== ex.nv1 && candStaff !== ex.nv2) return false;
+          const candDoesTeardown = cHasTeardown && (cNv2 ? candStaff === cNv2 : candStaff === cNv1);
+          const exDoesTeardown = ex.hasTeardown && (ex.nv2 ? candStaff === ex.nv2 : candStaff === ex.nv1);
           if (isOverlap(cS, cStaffEnd, ex.s, ex.staffEnd)) return true;
-          if (cHasTeardown && isOverlap(cTearStart, cTearEnd, ex.s, ex.staffEnd)) return true;
-          if (ex.hasTeardown && isOverlap(cS, cStaffEnd, ex.tearStart, ex.tearEnd)) return true;
-          if (cHasTeardown && ex.hasTeardown && isOverlap(cTearStart, cTearEnd, ex.tearStart, ex.tearEnd)) return true;
+          if (candDoesTeardown && isOverlap(cTearStart, cTearEnd, ex.s, ex.staffEnd)) return true;
+          if (exDoesTeardown && isOverlap(cS, cStaffEnd, ex.tearStart, ex.tearEnd)) return true;
+          if (candDoesTeardown && exDoesTeardown && isOverlap(cTearStart, cTearEnd, ex.tearStart, ex.tearEnd)) return true;
           return false;
         };
 

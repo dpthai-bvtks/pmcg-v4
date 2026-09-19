@@ -1,6 +1,6 @@
 {
-    "version": "4.1.1-rev16",
+    "version": "4.1.1-rev17",
     "releaseDate": "19/09/2026",
-    "releaseTime": "07:25 19/09/2026",
-    "notes": "fix(xep-lich): Ràng buộc khoảng đệm chuyển ca (khoangCach) trong checkSlot thuật toán xếp lịch và duy trì kiểm tra nghiêm ngặt khoảng đệm 1p giữa kết thúc ca và đầu ca."
+    "releaseTime": "10:00 19/09/2026",
+    "notes": "fix(xep-lich): Phân công rút kim/tháo máy (Teardown) cho Điều dưỡng phụ khi có mặt, giải phóng Bác sĩ và KTV chính để duy trì nhịp thao tác liên tục và đảo phiên YHCT-PHCN từ 07:31."
 }
