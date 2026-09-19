@@ -900,14 +900,40 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       });
 
       let possibleMachines = [];
-      const loaiMayKey = loaiMay.toLowerCase();
-      const roomSpecific = (db.roomMachines?.[targetRoom]?.[loaiMayKey]) || (db.roomMachines?.[targetRoom]?.[loaiMay]) || [];
-      if (loaiMay === 'Thủ công') {
-        possibleMachines = [loaiMay];
-      } else if (roomSpecific.length > 0) {
-        possibleMachines = roomSpecific;
+      let effectiveLoaiMay = loaiMay;
+      if (!effectiveLoaiMay || effectiveLoaiMay === 'Thủ công') {
+        if (/điện châm|đc\b/i.test(tenThuThuat) || (info[8] && /điện châm|đc\b/i.test(info[8]))) {
+          effectiveLoaiMay = 'điện châm';
+        }
+      }
+
+      if (effectiveLoaiMay === 'Thủ công') {
+        possibleMachines = ['Thủ công'];
       } else {
-        possibleMachines = machineTypes[loaiMay] || [];
+        const resolveFromMap = (mMap, typeName) => {
+          if (!mMap || !typeName) return null;
+          if (mMap[typeName] && mMap[typeName].length > 0) return mMap[typeName];
+          const low = typeName.toLowerCase().trim();
+          if (mMap[low] && mMap[low].length > 0) return mMap[low];
+          const clean = low.replace(/^(máy|may|đèn|den)\s+/i, '').trim();
+          if (mMap[clean] && mMap[clean].length > 0) return mMap[clean];
+          for (const k in mMap) {
+            const kLow = k.toLowerCase().trim();
+            const kClean = kLow.replace(/^(máy|may|đèn|den)\s+/i, '').trim();
+            if (kLow === low || kClean === clean || (clean && kClean && (clean.includes(kClean) || kClean.includes(clean)))) {
+              return mMap[k];
+            }
+          }
+          return null;
+        };
+
+        const roomMatch = resolveFromMap(db.roomMachines?.[targetRoom], effectiveLoaiMay);
+        if (roomMatch && roomMatch.length > 0) {
+          possibleMachines = roomMatch;
+        } else {
+          const globalMatch = resolveFromMap(machineTypes, effectiveLoaiMay);
+          possibleMachines = (globalMatch && globalMatch.length > 0) ? globalMatch : [];
+        }
       }
       const availableMachines = scenario === 3 ? possibleMachines.filter(m => !reservedMachines.has(m)) : possibleMachines;
       const finalMachines = availableMachines.length === 0 ? possibleMachines : availableMachines;
@@ -2173,12 +2199,16 @@ function getSafeCache() {
     // 1. Machines
     const machineList = cache.machine || cache.machines || [];
     machineList.forEach(m => {
-      const tenLoai = m.tenLoai || m[1] || "";
-      const maMay = m.maMay || m[2] || "";
-      const trangThai = m.trangThai || m[3] || "Sẵn sàng";
+      const tenLoai = (m.tenLoai || m.ten_loai || (Array.isArray(m) ? m[1] : '') || "").trim();
+      const maMay = (m.maMay || m.ma_may || (Array.isArray(m) ? m[2] : '') || "").trim();
+      const trangThai = m.trangThai || m.trang_thai || (Array.isArray(m) ? m[3] : '') || "Sẵn sàng";
       if (trangThai === "Sẵn sàng" && tenLoai && maMay) {
-        if (!database.machineTypes[tenLoai]) database.machineTypes[tenLoai] = [];
-        database.machineTypes[tenLoai].push(maMay);
+        const lowKey = tenLoai.toLowerCase();
+        const cleanKey = lowKey.replace(/^(máy|may|đèn|den)\s+/i, '').trim();
+        [tenLoai, lowKey, cleanKey].forEach(k => {
+          if (!database.machineTypes[k]) database.machineTypes[k] = [];
+          if (!database.machineTypes[k].includes(maMay)) database.machineTypes[k].push(maMay);
+        });
       }
     });
 
@@ -2238,8 +2268,22 @@ function getSafeCache() {
 
       const isLienTuc = (p.lienTuc === 'Có' || p.lienTuc === 1 || p.lienTuc === '1' || p.lienTuc === true || p[14] === 'Có' || p[14] === 1 || p[14] === '1') ? 1 : 0;
 
+      let rawMay = String(p.may || p[5] || "").trim();
+      // 🛡️ TỰ ĐỘNG KHÔI PHỤC LOẠI MÁY THẬT (AUTO-HEAL MACHINE TYPE):
+      // Tuyệt đối không để thủ thuật dùng máy (như điện châm, điện xung, sóng ngắn, hồng ngoại...) bị biến thành 'Thủ công'
+      if (!rawMay || rawMay === "Thủ công") {
+        if (/điện châm|đc\b/i.test(ten)) rawMay = "điện châm";
+        else if (/điện xung|dx\b/i.test(ten)) rawMay = "điện xung";
+        else if (/sóng ngắn|sn\b/i.test(ten)) rawMay = "sóng ngắn";
+        else if (/hồng ngoại|hn\b/i.test(ten)) rawMay = "hồng ngoại";
+        else if (/siêu âm|sa\b/i.test(ten)) rawMay = "siêu âm";
+        else if (/kéo giãn|kg\b/i.test(ten)) rawMay = "kéo giãn";
+        else if (/parafin|pa\b/i.test(ten)) rawMay = "parafin";
+        else if (/điện phân|dp\b/i.test(ten)) rawMay = "điện phân";
+      }
+
       database.thuThuatInfo[ten] = [
-        p.may || p[5] || "Thủ công",
+        rawMay || "Thủ công",
         Math.max(1, tgMayMin),
         Math.max(1, tgNvMin),
         p.he || p[3] || "PHCN",

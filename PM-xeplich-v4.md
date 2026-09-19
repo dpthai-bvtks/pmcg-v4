@@ -4660,6 +4660,32 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev17]
   - `PM-xeplich-v4.md` [MODIFY]
 
+---
+
+### [v4.1.1-rev18] - 10:10 19/09/2026: Khôi phục loại máy điện châm trong CSDL & Tự động nhận diện (Auto-heal) loại máy thực tế trong thuật toán xếp lịch
+- **Yêu cầu của người dùng:**
+  - Báo lỗi: *"sao máy lại thành Thủ công hết thế này"* kèm ảnh chụp màn hình Bảng xếp lịch thứ 7 hiển thị toàn bộ cột MÁY của các ca điện châm bị gán nhãn `Thủ công` thay vì mã máy thực tế (`Máy DC MS: 0972`, `Máy DC MS: 0973`, `Máy DC MS: 1090`...).
+
+- **Phân tích nguyên nhân & Giải pháp kỹ thuật:**
+  1. **Nguyên nhân cốt lõi trong CSDL**:
+     - Khi kiểm tra bảng `thu_thuat` trong CSDL SQLite cục bộ và MiniPC, bản ghi `ten_thu_thuat = 'điện châm'` (ID 1) có cột `may` bị lưu nhầm thành giá trị `"Thủ công"` (thay vì `"điện châm"`).
+     - Khi nạp vào bộ xếp lịch, `info[0] = "Thủ công"`, khiến thuật toán gán `selectedMachine = "Thủ công"` cho toàn bộ ca điện châm.
+  2. **Giải pháp xử lý toàn diện 2 tầng**:
+     - *Tầng 1 (CSDL)*: Đã chạy cập nhật trực tiếp `UPDATE thu_thuat SET may = 'điện châm' WHERE ten_thu_thuat = 'điện châm';` đồng bộ trên cả SQLite cục bộ (`C:\PMCG-System\PMCG-Data\pmcg.db`) và MiniPC API (`db.xeplichthuthuat.io.vn`).
+     - *Tầng 2 (Thuật toán Auto-heal trong `js/scheduler-engine.js`)*:
+       + Trong `buildDbFromCache`: Nếu thủ thuật yêu cầu máy móc (như điện châm, điện xung, sóng ngắn, hồng ngoại, siêu âm, kéo giãn, parafin, điện phân) nhưng trường `may` bị rỗng hoặc lưu nhầm là `"Thủ công"`, thuật toán sẽ tự động khôi phục về đúng tên loại máy chuẩn.
+       + Trong phần quản lý máy `database.machineTypes`: Lưu trữ linh hoạt với cả key gốc, key chữ thường và key đã lược bỏ tiền tố (`máy `, `đèn `).
+       + Trong `tryScheduleOne`: Bổ sung cơ chế tra cứu mờ `resolveFromMap`, đối soát thông minh giữa danh mục máy phòng và danh mục máy toàn viện, đảm bảo luôn gán đúng mã máy cụ thể (`Máy DC MS: ...`) vào từng ca điều trị.
+
+- **File sửa đổi:**
+  - `C:\PMCG-System\PMCG-Data\pmcg.db` & MiniPC API [UPDATE: thu_thuat.may = 'điện châm']
+  - `js/scheduler-engine.js` [MODIFY: auto-heal machine type, resolveFromMap in tryScheduleOne, multi-key machineTypes]
+  - `index.html` [MODIFY: v4.1.1-rev18, cache busters, footer timestamp 10:10 19/09/2026]
+  - `version.json` [MODIFY: 4.1.1-rev18]
+  - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev18]
+  - `PM-xeplich-v4.md` [MODIFY]
+
+
 
 
 

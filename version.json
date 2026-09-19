@@ -1,6 +1,6 @@
 {
-    "version": "4.1.1-rev17",
+    "version": "4.1.1-rev18",
     "releaseDate": "19/09/2026",
-    "releaseTime": "10:00 19/09/2026",
-    "notes": "fix(xep-lich): Phân công rút kim/tháo máy (Teardown) cho Điều dưỡng phụ khi có mặt, giải phóng Bác sĩ và KTV chính để duy trì nhịp thao tác liên tục và đảo phiên YHCT-PHCN từ 07:31."
+    "releaseTime": "10:10 19/09/2026",
+    "notes": "fix(thu-thuat): Khôi phục loại máy điện châm trong CSDL và tự động nhận diện (Auto-heal) loại máy thực tế trong thuật toán xếp lịch, chấm dứt tình trạng hiển thị nhầm thành 'Thủ công'."
 }
