@@ -13604,35 +13604,50 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (!start || isNaN(start.getTime()) || !end || isNaN(end.getTime())) continue;
 
                 // Tính toán các mốc thời gian của thủ thuật
-                const tth_mins = procInfo ? (parseInt(procInfo.thoiGianThucHienMin || procInfo.thoiGianThucHien || procInfo[6]) || 5) : 5;
-                const ttg_mins = procInfo ? (parseInt(procInfo.thoiGianThuThuatMin || procInfo.thoiGianThuThuat || procInfo[7]) || 15) : 15;
-                const isCont = procInfo ? (procInfo.lienTuc === 'Có' || procInfo.lienTuc === 1 || procInfo.lienTuc === '1' || procInfo.lienTuc === true || procInfo[14] === 'Có' || procInfo[14] === 1 || (tth_mins >= ttg_mins && tth_mins >= 10)) : false;
+                const tgThMin = procInfo ? (parseInt(procInfo.thoiGianThucHienMin || procInfo.thoiGianThucHien || procInfo[6]) || 5) : 5;
+                let tgThMax = procInfo ? (parseInt(procInfo.thoiGianThucHienMax || procInfo[13]) || tgThMin) : tgThMin;
+                if (tgThMax < tgThMin) tgThMax = tgThMin;
+
+                const tgTtMin = procInfo ? (parseInt(procInfo.thoiGianThuThuatMin || procInfo.thoiGianThuThuat || procInfo[7]) || 15) : 15;
+                let tgTtMax = procInfo ? (parseInt(procInfo.thoiGianThuThuatMax || procInfo[12]) || tgTtMin) : tgTtMin;
+                if (tgTtMax < tgTtMin) tgTtMax = tgTtMin;
+
+                const isCont = procInfo ? (procInfo.lienTuc === 'Có' || procInfo.lienTuc === 1 || procInfo.lienTuc === '1' || procInfo.lienTuc === true || procInfo[14] === 'Có' || procInfo[14] === 1 || (tgThMin === tgTtMin && tgThMax === tgTtMax && tgThMin >= 10)) : false;
                 const canRutMay = procInfo ? (procInfo.canRutMay === 'Có' || procInfo.canRutMay === 1 || procInfo.canRutMay === '1' || procInfo.canRutMay === true || procInfo[9] === 'Có' || procInfo[9] === 1) : false;
+                const canNguoiPhu = procInfo ? (procInfo.canNguoiPhu === 'Có' || procInfo.nguoiPhu === 'Có' || procInfo[10] === 'Có' || procInfo.canNguoiPhu === 1 || procInfo.canNguoiPhu === '1' || procInfo.canNguoiPhu === true) : false;
 
                 const procTenLower = procInfo ? String(procInfo.ten || '').toLowerCase() : procName.toLowerCase();
-                const hasTeardown = !isCont && (canRutMay || ttg_mins > tth_mins || procTenLower.includes('điện châm') || procTenLower.includes('thủy châm') || procTenLower.includes('châm'));
+                const isDienCham = procTenLower.includes('điện châm') || procTenLower === 'đc' || procTenLower === 'dctb';
+                const isHaoCham = procTenLower.includes('hào châm') || procTenLower === 'hc';
+                const isThuyCham = procTenLower.includes('thủy châm') || procTenLower === 'tc';
 
-                // Xây dựng các khoảng thời gian bận thực tế (Busy Intervals) của nhân viên cho ca này:
+                // Khóa giờ kết thúc đối với TTV chính:
+                // Điện châm, Hào châm (kể cả có Điều dưỡng phụ) và thủ thuật PHCN có rút máy -> TTV chính bị khóa giờ kết thúc ca.
+                // Riêng Thủy châm: TTV chính chỉ tiêm/thao tác đầu ca, không bị khóa giờ kết thúc.
+                const mainHasTeardown = !isCont && !isThuyCham && (isDienCham || isHaoCham || canRutMay);
+
+                const durMinutes = Math.round((end.getTime() - start.getTime()) / 60000);
+
+                // Xây dựng các khoảng thời gian bận thực tế (Busy Intervals) của nhân viên chính cho ca này:
                 const busyIntervals = [];
                 if (isCont) {
                     busyIntervals.push({
-                        name: `Thao tác liên tục (${Math.round((end.getTime() - start.getTime()) / 60000)}p)`,
+                        name: `Thao tác liên tục (${durMinutes}p)`,
                         start: start.getTime(),
                         end: end.getTime(),
                         isTear: false
                     });
                 } else {
-                    const setupEndMs = Math.min(end.getTime(), start.getTime() + tth_mins * 60000);
+                    const setupEndMs = Math.min(end.getTime(), start.getTime() + tgThMin * 60000);
                     busyIntervals.push({
-                        name: `Thao tác đầu ca (${tth_mins}p)`,
+                        name: `Thao tác đầu ca (${tgThMin}p)`,
                         start: start.getTime(),
                         end: setupEndMs,
                         isTear: false
                     });
-                    if (hasTeardown) {
-                        // Mốc kết thúc ca diễn ra tại đúng thời điểm kết thúc ca (end)
+                    if (mainHasTeardown) {
                         busyIntervals.push({
-                            name: `Kết thúc ca (rút kim/tháo máy)`,
+                            name: (isDienCham || isHaoCham) ? `Rút kim kết thúc ca` : `Tháo máy/tắt máy kết thúc ca`,
                             start: end.getTime(),
                             end: end.getTime(),
                             isTear: true
@@ -13651,16 +13666,17 @@ window.renderSttOrderControl = function (type, i, total) {
                     start: start,
                     end: end,
                     isCont: isCont,
-                    hasTeardown: hasTeardown,
-                    tth_mins: tth_mins,
-                    ttg_mins: ttg_mins,
+                    hasTeardown: mainHasTeardown,
+                    tth_mins: tgThMin,
+                    ttg_mins: tgTtMin,
+                    durMinutes: durMinutes,
                     busyIntervals: busyIntervals,
                     phong: phongRaw,
                     giuong: giuongRaw,
                     may: mayRaw
                 };
 
-                // Kiểm tra lỗi hành chính / phân quyền cho ca này (Bỏ qua riêng ngày 18/09/2026 đã xếp đúng thực tế)
+                // Kiểm tra lỗi hành chính / phân quyền / thời gian cho ca này (Bỏ qua riêng ngày 18/09/2026 đã xếp đúng thực tế)
                 const isDate18 = isDate18Sep2026(start, row);
                 if (!isDate18) {
                     const timeAStr = `${formatDate(start)} -> ${formatDate(end)}`;
@@ -13687,6 +13703,29 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     if (procInfo && techMainNorm && !checkPermissionJS(techMainNorm, procInfo)) {
                         addOtherRow(otherTbody, sttOther++, techMainNorm, `${patientName}<br/>${procInfo.ten}`, timeAStr, "Làm thủ thuật ngoài phạm vi phân quyền YHCT/PHCN");
+                    }
+
+                    // 1. Kiểm tra thời gian thủ thuật của ca so với định mức TG TT (MIN) và TG TT (MAX)
+                    if (procInfo) {
+                        if (durMinutes < tgTtMin) {
+                            addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thời gian thủ thuật ngắn hơn quy định (${durMinutes} phút < ${tgTtMin} phút)`);
+                        } else if (durMinutes > tgTtMax) {
+                            addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thời gian thủ thuật vượt quá quy định (${durMinutes} phút > ${tgTtMax} phút)`);
+                        }
+
+                        // 2. Nếu là thủ thuật làm liên tục: thời gian thao tác liên tục của KTV phải tuân thủ TG TH
+                        if (isCont) {
+                            if (durMinutes < tgThMin) {
+                                addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thời gian thao tác liên tục ngắn hơn định mức (${durMinutes} phút < ${tgThMin} phút)`);
+                            } else if (durMinutes > tgThMax) {
+                                addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thời gian thao tác liên tục vượt quá định mức (${durMinutes} phút > ${tgThMax} phút)`);
+                            }
+                        }
+
+                        // 3. Kiểm tra Người phụ
+                        if (canNguoiPhu && (!techPhuRaw || techPhuRaw === '--' || techPhuRaw === 'Không' || techPhuRaw === 'nan')) {
+                            addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thủ thuật yêu cầu có Người phụ nhưng chưa phân công`);
+                        }
                     }
                 }
 

@@ -4738,6 +4738,31 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev21]
   - `PM-xeplich-v4.md` [MODIFY]
 
+---
+
+### [v4.1.2] - 11:45 19/09/2026: Khóa giờ rút kim cho TTV chính Điện châm & Hào châm, Bỏ khóa kết thúc TTV chính Thủy châm và Bổ sung bộ kiểm tra thời gian Min/Max, Người phụ
+- **Yêu cầu của người dùng:**
+  1. *"với thủ thuật như điện châm/hào châm thì dù có Điều dường(Phụ) là người rút kim nhưng vẫn phải khóa giờ rút kim, coi như là giờ bận của thủ thuật viên chính. Với thủy châm thì theo dõi là xong, thủ thuật viên chính không bị khóa giờ bận kết thúc thủ thuật (nếu khóa thì cũng không sao), chỉ khóa với người Phụ"*.
+  2. Nâng phiên bản hệ thống lên 4.1.2.
+- **Phân tích nguyên nhân & Giải pháp kỹ thuật:**
+  1. **Khóa giờ rút kim cho Thủ thuật viên chính trong `scheduler-engine.js`**:
+     - Với `Điện châm` và `Hào châm`: Dù có Điều dưỡng phụ rút kim, Thủ thuật viên chính (KTV/Bác sĩ chính) vẫn được gán mốc giờ bận rút kim `[tearStart, tearEnd]`. Điều này đảm bảo TTV chính không bị xếp đè một ca thủ thuật khác vào đúng thời điểm rút kim, tuân thủ đúng yêu cầu giám sát lâm sàng.
+     - Với `Thủy châm`: TTV chính chỉ tiêm và thao tác trong 10 - 15 phút đầu rồi rảnh (`mainNeedsTeardown = false`); chỉ người Phụ (Điều dưỡng) theo dõi đến hết ca (`subNeedsTeardown = true`).
+     - Với các thủ thuật PHCN dùng máy có rút máy (`canRutMay`): TTV chính bận phút kết thúc để tháo máy/thu sáp.
+  2. **Nâng cấp toàn diện Bộ Kiểm tra Lỗi (`processErrorChecking` trong `app.js`)**:
+     - Bổ sung kiểm tra định mức thời gian thủ thuật của ca so với `TG TT (MIN)` và `TG TT (MAX)`. Nếu ca ngắn hơn tối thiểu hoặc dài hơn tối đa $\rightarrow$ Báo lỗi cụ thể vào bảng **⚠️ Lỗi sai quy trình / phân quyền**.
+     - Bổ sung kiểm tra thủ thuật làm liên tục: Thời gian thao tác liên tục của KTV phải nằm trong khoảng `[TG TH (MIN), TG TH (MAX)]`.
+     - Bổ sung kiểm tra Người phụ: Nếu thủ thuật cấu hình có `NGƯỜI PHỤ = Có` mà dòng dữ liệu chưa phân công Điều dưỡng/KTV phụ $\rightarrow$ Cảnh báo lỗi.
+     - Chuẩn hóa khoảng bận (Busy Intervals): Đồng bộ hóa quy tắc khóa rút kim cho TTV chính của Điện châm/Hào châm và bỏ khóa kết thúc TTV chính cho Thủy châm.
+- **File sửa đổi:**
+  - `js/scheduler-engine.js` [MODIFY: mainNeedsTeardown & subNeedsTeardown trong tryScheduleOne và loadExistingSchedule]
+  - `js/app.js` [MODIFY: bổ sung kiểm tra Min/Max, người phụ và chuẩn hóa busyIntervals trong processErrorChecking]
+  - `version.json` [MODIFY: 4.1.2, timestamp 11:45 19/09/2026]
+  - `sw.js` [MODIFY: pmcg-v4-cache-4.1.2]
+  - `index.html` [MODIFY: query string v=4.1.2, APP_VERSION = '4.1.2', Phiên bản 4.1.2, timestamp 11:45 19/09/2026]
+  - `PM-xeplich-v4.md` [MODIFY]
+
+
 
 
 

@@ -600,16 +600,23 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
     const resolvedNvPhu = resolveStaffKey(nvPhu);
 
     const isDienChamProc = /điện châm|đc\b/i.test(tenThuThuat) || (info[8] && /điện châm|đc\b/i.test(info[8]));
-    const isNurseTeardownProc = isDienChamProc && Boolean(resolvedNvPhu);
+    const isHaoChamProc = /hào châm|hc\b/i.test(tenThuThuat) || (info[8] && /hào châm|hc\b/i.test(info[8]));
+    const isThuyChamProc = /thủy châm|tc\b/i.test(tenThuThuat) || (info[8] && /thủy châm|tc\b/i.test(info[8]));
+
+    // Khóa giờ kết thúc:
+    // TTV chính bị khóa giờ rút kim (Điện châm, Hào châm) hoặc rút máy PHCN (info[4] === 1). Riêng Thủy châm không khóa.
+    const mainNeedsTeardown = hasTeardown && tearStart !== null && !isThuyChamProc && (isDienChamProc || isHaoChamProc || (info[4] === 1));
+    // Người phụ bị khóa giờ kết thúc/rút kim (Điện châm, Hào châm) hoặc theo dõi đến hết ca (Thủy châm).
+    const subNeedsTeardown = hasTeardown && tearStart !== null && (isDienChamProc || isHaoChamProc || isThuyChamProc);
 
     if (resolvedNvChinh && staffTimeline[resolvedNvChinh]) { 
       pushAndMerge(staffTimeline, resolvedNvChinh, [gioStart, staffEnd]); 
-      if (hasTeardown && tearStart !== null && !isNurseTeardownProc) pushAndMerge(staffTimeline, resolvedNvChinh, [tearStart, tearEnd]);
+      if (mainNeedsTeardown) pushAndMerge(staffTimeline, resolvedNvChinh, [tearStart, tearEnd]);
       staffCurrentRoom[resolvedNvChinh] = phong; 
     }
     if (resolvedNvPhu && staffTimeline[resolvedNvPhu]) {
       pushAndMerge(staffTimeline, resolvedNvPhu, [gioStart, staffEnd]);
-      if (hasTeardown && tearStart !== null && isNurseTeardownProc) pushAndMerge(staffTimeline, resolvedNvPhu, [tearStart, tearEnd]);
+      if (subNeedsTeardown) pushAndMerge(staffTimeline, resolvedNvPhu, [tearStart, tearEnd]);
     }
     
     const resolvedMay = resolveMachineKey(may);
@@ -807,11 +814,19 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       const tgNhanVien = pair.tgNv;
       const khoangCach = tgNhanVien + gapMinutes;
       const gioKetThuc = tNow + tgMay;
-      const hasTeardown = tgMay > tgNhanVien;
+      const hasTeardown = !isContinuous && (tgMay > tgNhanVien);
       const tearStart = hasTeardown ? (db.isSaturday ? (tNow + tgMay) : (tNow + tgMay - 1)) : null;
       const tearEnd = hasTeardown ? (db.isSaturday ? (tNow + tgMay + 1) : (tNow + tgMay + gapMinutes)) : null;
       const isDienChamProc = /điện châm|đc\b/i.test(tenThuThuat) || (info[8] && /điện châm|đc\b/i.test(info[8]));
-      const isNurseTeardown = isDienChamProc && (canPhu === 1);
+      const isHaoChamProc = /hào châm|hc\b/i.test(tenThuThuat) || (info[8] && /hào châm|hc\b/i.test(info[8]));
+      const isThuyChamProc = /thủy châm|tc\b/i.test(tenThuThuat) || (info[8] && /thủy châm|tc\b/i.test(info[8]));
+
+      // Khóa giờ kết thúc thủ thuật:
+      // 1. TTV chính: bị khóa giờ rút kim (Điện châm, Hào châm - kể cả khi có Điều dưỡng phụ) hoặc rút máy PHCN (info[4] === 1). Riêng Thủy châm không khóa.
+      const mainNeedsTeardown = hasTeardown && !isThuyChamProc && (isDienChamProc || isHaoChamProc || (info[4] === 1));
+
+      // 2. Người phụ (Điều dưỡng): bị khóa giờ kết thúc cho Điện châm, Hào châm (rút kim) hoặc Thủy châm (theo dõi đến hết ca).
+      const subNeedsTeardown = hasTeardown && (isDienChamProc || isHaoChamProc || isThuyChamProc);
 
       // 🔒 RÀNG BUỘC CHẶN GIỜ NGHỈ TRƯA VÀ HẾT CA: Tuân thủ tuyệt đối cài đặt yhctLunch và yhctEnd
       if (tNow < 690 && gioKetThuc > (690 + allowedOvertimeAtLunch)) continue;
@@ -840,9 +855,8 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         };
 
         if (checkSlot(tNow, tNow + khoangCach)) return;
-        // Chỉ có điện châm thì người rút kim/tắt máy là Điều dưỡng (khi có canPhu === 1).
-        // Còn thủ thuật PHCN dùng máy (điện xung, sóng ngắn, hồng ngoại...) thì KTV chính là người rút máy/kết thúc!
-        if (hasTeardown && !isNurseTeardown && checkSlot(tearStart, tearEnd)) return;
+        // Khóa giờ kết thúc đối với Thủ thuật viên chính
+        if (mainNeedsTeardown && checkSlot(tearStart, tearEnd)) return;
         
         if (!isSupplemental && !isBackfill && staffRole[tenNV] === 'Kỹ thuật viên' && (staffMyRooms[tenNV] || []).length > 0 && !staffMyRooms[tenNV].includes(targetRoom)) return;
 
@@ -851,15 +865,15 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(role);
         const isKtv = !isDoc && !isNurse && (/kỹ thuật viên|ky thuat vien|^ktv\b/i.test(role) || staffRole[tenNV] === 'Kỹ thuật viên');
 
-        // Đối với candidatesSub (Điều dưỡng phụ): nếu là ca Điện châm (isNurseTeardown), Điều dưỡng phải rảnh ở tearStart..tearEnd để đi rút kim!
-        const isFreeForNurseTeardown = !isNurseTeardown || !checkSlot(tearStart, tearEnd);
+        // Đối với candidatesSub (Người phụ): nếu ca yêu cầu người phụ khóa giờ kết thúc, người phụ phải rảnh ở tearStart..tearEnd!
+        const isFreeForSubTeardown = !subNeedsTeardown || !checkSlot(tearStart, tearEnd);
 
         // Chỉ BS hoặc KTV mới được làm NV Chính; Điều dưỡng chỉ được làm NV Phụ
         if ((isDoc || isKtv) && !isNurse) {
           candidatesMain.push(tenNV);
-          if (isFreeForNurseTeardown) candidatesSub.push(tenNV);
+          if (isFreeForSubTeardown) candidatesSub.push(tenNV);
         } else {
-          if (isFreeForNurseTeardown) candidatesSub.push(tenNV);
+          if (isFreeForSubTeardown) candidatesSub.push(tenNV);
         }
       });
       if (candidatesMain.length === 0) continue;
@@ -1009,18 +1023,18 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         blockStaff(nvChinh, tNow, tNow + tgNhanVien, khoangCach, staffTimeline, staffSetupReady, staffLoad, tenThuThuat, staffLastProc);
         staffCurrentRoom[nvChinh] = targetRoom;
 
-        // Chỉ có điện châm thì người rút kim/tắt máy là Điều dưỡng (nvPhu).
-        // Còn thủ thuật PHCN dùng máy (điện xung, sóng ngắn...) thì KTV chính (nvChinh) là người rút máy/kết thúc!
-        if (hasTeardown) {
-          if (isNurseTeardown && nvPhu) {
-            staffTimeline[nvPhu].push([tearStart, tearEnd]);
-            staffTimeline[nvPhu] = mergeTimeline(staffTimeline[nvPhu]);
-            staffLoad[nvPhu].used_mins += (tearEnd - tearStart);
-          } else {
-            staffTimeline[nvChinh].push([tearStart, tearEnd]);
-            staffTimeline[nvChinh] = mergeTimeline(staffTimeline[nvChinh]);
-            staffLoad[nvChinh].used_mins += (tearEnd - tearStart);
-          }
+        // Khóa giờ bận kết thúc ca (Teardown / Rút kim / Rút máy):
+        // 1. TTV chính: khóa giờ rút kim (Điện châm, Hào châm) hoặc rút máy PHCN (Thủy châm không khóa)
+        if (mainNeedsTeardown) {
+          staffTimeline[nvChinh].push([tearStart, tearEnd]);
+          staffTimeline[nvChinh] = mergeTimeline(staffTimeline[nvChinh]);
+          staffLoad[nvChinh].used_mins += (tearEnd - tearStart);
+        }
+        // 2. Người phụ (Điều dưỡng): khóa giờ rút kim (Điện châm, Hào châm) hoặc theo dõi đến hết ca (Thủy châm)
+        if (subNeedsTeardown && nvPhu) {
+          staffTimeline[nvPhu].push([tearStart, tearEnd]);
+          staffTimeline[nvPhu] = mergeTimeline(staffTimeline[nvPhu]);
+          staffLoad[nvPhu].used_mins += (tearEnd - tearStart);
         }
 
         if (nvPhu) {
