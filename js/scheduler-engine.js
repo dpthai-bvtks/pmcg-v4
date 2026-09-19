@@ -834,7 +834,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
           });
         };
 
-        if (checkSlot(tNow, tNow + tgNhanVien)) return;
+        if (checkSlot(tNow, tNow + khoangCach)) return;
         if (hasTeardown && checkSlot(tearStart, tearEnd)) return;
         
         if (!isSupplemental && !isBackfill && staffRole[tenNV] === 'Kỹ thuật viên' && (staffMyRooms[tenNV] || []).length > 0 && !staffMyRooms[tenNV].includes(targetRoom)) return;

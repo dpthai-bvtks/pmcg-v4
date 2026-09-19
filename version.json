@@ -1,6 +1,6 @@
 {
-    "version": "4.1.1-rev15",
+    "version": "4.1.1-rev16",
     "releaseDate": "19/09/2026",
-    "releaseTime": "07:15 19/09/2026",
-    "notes": "feat(kiemtra): Kích hoạt kiểm tra Giường & Máy cho lịch đang mở / file nội bộ; xử lý dứt điểm cảnh báo thiếu khoảng đệm khi kết thúc ca nối tiếp đầu ca tại cùng một phút."
+    "releaseTime": "07:25 19/09/2026",
+    "notes": "fix(xep-lich): Ràng buộc khoảng đệm chuyển ca (khoangCach) trong checkSlot thuật toán xếp lịch và duy trì kiểm tra nghiêm ngặt khoảng đệm 1p giữa kết thúc ca và đầu ca."
 }

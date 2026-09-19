@@ -4600,10 +4600,32 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
        + Xuất cảnh báo lên bảng `#table-error-time` với nhãn `🛏️ [Phòng - Giường] (Trùng Giường)` và `⚡ [Tên Máy] (Trùng Máy)`.
 
 - **File sửa đổi:**
-  - `js/app.js` [MODIFY: stripVietnamese, colIdx mapping, phong/giuong/may extraction, fix teardown-setup gap bypass, bed & machine overlap checker]
+  - `js/app.js` [MODIFY: stripVietnamese, colIdx mapping, phong/giuong/may extraction, bed & machine overlap checker]
   - `index.html` [MODIFY: v4.1.1-rev15, cache busters, footer timestamp 07:15 19/09/2026, table headers]
   - `version.json` [MODIFY: 4.1.1-rev15]
   - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev15]
+  - `PM-xeplich-v4.md` [MODIFY]
+
+### [v4.1.1-rev16] - 07:25 19/09/2026: Ràng buộc khoảng đệm chuyển ca (khoangCach) trong thuật toán xếp lịch & Duy trì kiểm tra nghiêm ngặt khoảng đệm 1p
+- **Yêu cầu của người dùng:**
+  - Xác nhận báo lỗi thiếu khoảng đệm 1p giữa Thao tác đầu ca (2p) (kết thúc 07:49) và Kết thúc ca (rút kim/tháo máy) (bắt đầu 07:49) là **HOÀN TOÀN CHÍNH XÁC**.
+  - Quy tắc chuyên môn: Ca 2 thao tác 2 phút đến 07:49 thì không thể lúc 07:49 đi tháo máy ca 1 ngay được vì có cấu hình khoảng cách ca là 1 phút. Phải 07:50 mới rút kim/tháo máy được.
+  - Lịch xuất ra bị lỗi này là do thuật toán xếp lịch chưa chặn khoảng cách ca khi tìm khe cho nhân sự.
+
+- **Giải pháp kỹ thuật:**
+  1. **Khôi phục quy tắc kiểm tra khoảng đệm trong `js/app.js`**:
+     - Bỏ qua đoạn code loại trừ, duy trì kiểm tra nghiêm ngặt: bất kỳ 2 thao tác của cùng 1 KTV trên 2 bệnh nhân khác nhau mà thời gian bắt đầu của ca sau nhỏ hơn thời gian kết thúc của ca trước cộng 1 phút (`second.start < first.end + GAP_MS`) đều được báo lỗi "Thiếu khoảng đệm 1p chuyển giường...".
+  2. **Khắc phục triệt để gốc rễ trong thuật toán xếp lịch (`js/scheduler-engine.js`)**:
+     - Trong hàm duyệt nhân viên: Trước đây `checkSlot(tNow, tNow + tgNhanVien)` chỉ kiểm tra thời gian thao tác mà không kèm khoảng đệm `gapMinutes`.
+     - Cập nhật thành: `checkSlot(tNow, tNow + khoangCach)` (với `khoangCach = tgNhanVien + gapMinutes`).
+     - Nhờ đó, thuật toán xếp lịch sẽ tự động bảo lưu trọn vẹn thời gian thao tác + 1 phút đệm chuyển giường, không bao giờ xếp chồng hoặc xếp tiếp nối tại cùng 1 phút với thao tác kết thúc ca của ca khác.
+
+- **File sửa đổi:**
+  - `js/app.js` [MODIFY: khôi phục kiểm tra khoảng đệm 1p nghiêm ngặt]
+  - `js/scheduler-engine.js` [MODIFY: checkSlot(tNow, tNow + khoangCach) trong bộ xếp lịch]
+  - `index.html` [MODIFY: v4.1.1-rev16, cache busters, footer timestamp 07:25 19/09/2026]
+  - `version.json` [MODIFY: 4.1.1-rev16]
+  - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev16]
   - `PM-xeplich-v4.md` [MODIFY]
 
 

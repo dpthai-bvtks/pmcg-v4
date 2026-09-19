@@ -13796,11 +13796,6 @@ window.renderSttOrderControl = function (type, i, total) {
                                 }
                                 // 3. Thiếu khoảng đệm 1 phút chuyển giường giữa 2 bệnh nhân khác nhau (MỤC 1)
                                 else if (A.patientName !== B.patientName && second.start < first.end + GAP_MS) {
-                                    // Nếu 1 trong 2 mốc là kết thúc ca (rút kim/tháo máy) và diễn ra nối tiếp ngay tại phút kết thúc (second.start === first.end)
-                                    // thì KTV thao tác xong ca này có mặt tại đúng phút kết thúc ca kia là hoàn toàn hợp lệ, không vi phạm đệm
-                                    if ((first.isTear || second.isTear) && second.start === first.end) {
-                                        continue;
-                                    }
                                     conflictFound = {
                                         type: 'GAP',
                                         reason: `Thiếu khoảng đệm 1p chuyển giường giữa ${first.name} (kết thúc ${formatDate(new Date(first.end))}) và ${second.name} (bắt đầu ${formatDate(new Date(second.start))})`
