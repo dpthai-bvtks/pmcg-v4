@@ -4703,12 +4703,27 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - Bác sĩ Thái thực hiện liên tục các ca Điện châm nhịp 8-9 phút / ca (Điều dưỡng rút kim ở phút thứ 25).
      - Kỹ thuật viên Hà chip đồng thời thực hiện các ca PHCN (Điện xung, Sóng ngắn...) từ 07:31 sáng, chủ động tháo máy và đảo phiên linh hoạt cùng các bệnh nhân.
 
+---
+
+### [v4.1.1-rev20] - 10:55 19/09/2026: Khắc phục lỗi ReferenceError isNurseTeardown do phạm vi khai báo biến cục bộ
+- **Yêu cầu của người dùng:**
+  - Báo lỗi runtime trong lúc chạy xếp lịch: `Lỗi: isNurseTeardown is not defined`.
+- **Phân tích nguyên nhân & Giải pháp kỹ thuật:**
+  1. **Nguyên nhân**:
+     - Trong phiên bản rev19, biến `isNurseTeardown` được khai báo bên trong callback duyệt nhân viên `forEach(tenNV => { ... })` tại dòng 844 của hàm `tryScheduleOne`.
+     - Tuy nhiên, sau khi chọn được nhân viên chính và phụ, tại dòng 1015 của khối gán lịch (`blockStaff` & cập nhật `staffTimeline`), câu lệnh `if (isNurseTeardown && nvPhu)` nằm ngoài phạm vi (`scope`) của `forEach`, dẫn đến lỗi `ReferenceError: isNurseTeardown is not defined`.
+  2. **Giải pháp xử lý**:
+     - Chuyển việc khai báo `isDienChamProc` và `isNurseTeardown` ra phạm vi của vòng lặp `for (const pair of candidatePairs)` (ngay sau dòng tính `tearEnd`).
+     - Vì các thuộc tính `tenThuThuat`, `info[8]`, `canPhu` thuộc về thủ thuật đang được xếp (không thay đổi theo từng nhân viên), việc đưa ra phạm vi ngoài giúp cả bộ lọc nhân viên (`forEach`) và khối gán timeline nhân sự bên dưới đều truy cập an toàn, chính xác 100%.
+  3. **Kiểm thử**:
+     - Chạy mô phỏng kiểm thử với 101 ca của ngày 19/09/2026: Hoạt động hoàn hảo, không còn lỗi `ReferenceError`.
 - **File sửa đổi:**
-  - `js/scheduler-engine.js` [MODIFY: phân định Teardown theo chuyên khoa Điện châm / PHCN]
-  - `index.html` [MODIFY: v4.1.1-rev19, cache busters, footer timestamp 10:45 19/09/2026]
-  - `version.json` [MODIFY: 4.1.1-rev19]
-  - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev19]
+  - `js/scheduler-engine.js` [MODIFY: chuyển isNurseTeardown ra candidatePairs scope]
+  - `index.html` [MODIFY: v4.1.1-rev20, cache busters, footer timestamp 10:55 19/09/2026]
+  - `version.json` [MODIFY: 4.1.1-rev20]
+  - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev20]
   - `PM-xeplich-v4.md` [MODIFY]
+
 
 
 

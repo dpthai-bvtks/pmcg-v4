@@ -810,6 +810,8 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       const hasTeardown = tgMay > tgNhanVien;
       const tearStart = hasTeardown ? (db.isSaturday ? (tNow + tgMay) : (tNow + tgMay - 1)) : null;
       const tearEnd = hasTeardown ? (db.isSaturday ? (tNow + tgMay + 1) : (tNow + tgMay + gapMinutes)) : null;
+      const isDienChamProc = /điện châm|đc\b/i.test(tenThuThuat) || (info[8] && /điện châm|đc\b/i.test(info[8]));
+      const isNurseTeardown = isDienChamProc && (canPhu === 1);
 
       // 🔒 RÀNG BUỘC CHẶN GIỜ NGHỈ TRƯA VÀ HẾT CA: Tuân thủ tuyệt đối cài đặt yhctLunch và yhctEnd
       if (tNow < 690 && gioKetThuc > (690 + allowedOvertimeAtLunch)) continue;
@@ -840,8 +842,6 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         if (checkSlot(tNow, tNow + khoangCach)) return;
         // Chỉ có điện châm thì người rút kim/tắt máy là Điều dưỡng (khi có canPhu === 1).
         // Còn thủ thuật PHCN dùng máy (điện xung, sóng ngắn, hồng ngoại...) thì KTV chính là người rút máy/kết thúc!
-        const isDienChamProc = /điện châm|đc\b/i.test(tenThuThuat) || (info[8] && /điện châm|đc\b/i.test(info[8]));
-        const isNurseTeardown = isDienChamProc && (canPhu === 1);
         if (hasTeardown && !isNurseTeardown && checkSlot(tearStart, tearEnd)) return;
         
         if (!isSupplemental && !isBackfill && staffRole[tenNV] === 'Kỹ thuật viên' && (staffMyRooms[tenNV] || []).length > 0 && !staffMyRooms[tenNV].includes(targetRoom)) return;

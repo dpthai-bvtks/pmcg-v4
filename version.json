@@ -1,6 +1,6 @@
 {
-    "version": "4.1.1-rev19",
+    "version": "4.1.1-rev20",
     "releaseDate": "19/09/2026",
-    "releaseTime": "10:45 19/09/2026",
-    "notes": "fix(teardown): Điều dưỡng phụ trách rút kim/tắt máy đối với Điện châm (khi có canPhu), còn thủ thuật PHCN dùng máy (Điện xung, Sóng ngắn...) do chính KTV thực hiện trực tiếp tháo máy/kết thúc."
+    "releaseTime": "10:55 19/09/2026",
+    "notes": "fix(scheduler): Khắc phục lỗi ReferenceError isNurseTeardown do khai báo trong scope cục bộ, chuyển ra phạm vi vòng lặp candidatePairs giúp thuật toán xếp lịch chạy mượt mà."
 }
