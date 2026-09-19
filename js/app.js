@@ -13723,9 +13723,12 @@ window.renderSttOrderControl = function (type, i, total) {
                         }
 
                         // 3. Kiểm tra Người phụ
-                        if (canNguoiPhu && (!techPhuRaw || techPhuRaw === '--' || techPhuRaw === 'Không' || techPhuRaw === 'nan')) {
-                            addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thủ thuật yêu cầu có Người phụ nhưng chưa phân công`);
-                        }
+                        // ⚠️ TẠM THỜI VÔ HIỆU HÓA: File HIS hiện chưa nhập dữ liệu người phụ.
+                        // Chỉ file lịch trình do phần mềm xếp mới có trường người phụ.
+                        // Bật lại kiểm tra này khi cần bằng cách bỏ comment dưới đây.
+                        // if (canNguoiPhu && (!techPhuRaw || techPhuRaw === '--' || techPhuRaw === 'Không' || techPhuRaw === 'nan')) {
+                        //     addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thủ thuật yêu cầu có Người phụ nhưng chưa phân công`);
+                        // }
                     }
                 }
 
