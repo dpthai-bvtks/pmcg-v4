@@ -3106,12 +3106,12 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (el && !el.value) el.value = todayYMD;
             });
 
-            // Chỉ nạp trước lịch sử bận nếu đang đứng tại tab Quản lý bận (tab-busy)
-            const activeTabEl = document.querySelector('.main-nav .nav-tab.active, .nav-tab.active');
-            const currentTab = activeTabEl ? activeTabEl.getAttribute('data-tab') : '';
-            if (currentTab === 'tab-busy' && typeof window.loadBusyHistoryDates === 'function') {
-                window.loadBusyHistoryDates();
-            }
+            // Tự động nạp trước danh sách ngày có lịch sử bận
+            setTimeout(() => {
+                if (typeof window.loadBusyHistoryDates === 'function') {
+                    window.loadBusyHistoryDates();
+                }
+            }, 600);
 
             if (typeof populateMonthYearDropdown === 'function') {
                 populateMonthYearDropdown();
@@ -6345,6 +6345,11 @@ window.renderSttOrderControl = function (type, i, total) {
             const thead = document.getElementById('busy-staff-thead');
             const tbody = document.getElementById('busy-staff-tbody');
             if (!thead || !tbody) return;
+
+            if (typeof window.loadBusyHistoryDates === 'function') {
+                const qs = document.getElementById('busy-quick-date-select');
+                if (qs && !qs._loaded) window.loadBusyHistoryDates();
+            }
 
             const isHistory = !!window._forceHistoryMode;
             const targetDate = window._viewingHistoryDate || (document.getElementById('busy-date-filter') ? document.getElementById('busy-date-filter').value : '');
@@ -15708,15 +15713,16 @@ window.setAppDateToToday = function(sourceTab) {
 };
 
 // ============================================================
-// 📜 TẢI DANH SÁCH CÁC NGÀY CÓ LỊCH SỬ BẬN TỪ CSDL ĐÁM MÂY TURSO
+// 📜 TẢI DANH SÁCH CÁC NGÀY CÓ LỊCH SỬ BẬN TỪ CSDL ĐÁM MÂY TURSO / MINIPC
 // ============================================================
-window.loadBusyHistoryDates = function() {
+window.loadBusyHistoryDates = function(forceReload) {
     const quickSelect = document.getElementById('busy-quick-date-select');
     if (!quickSelect) return;
-    if (quickSelect._loaded) return;
+    if (quickSelect._loaded && !forceReload) return;
 
     const populateDates = function(dates) {
         if (!dates || !Array.isArray(dates) || dates.length === 0) return;
+        window._cachedBusyHistoryDates = dates;
         quickSelect._loaded = true;
         let html = '<option value="">-- Chọn ngày có lịch sử bận --</option>';
         dates.forEach(d => {
@@ -15731,20 +15737,44 @@ window.loadBusyHistoryDates = function() {
         }
     };
 
+    // Nếu đã có cache trong bộ nhớ và không bắt buộc tải lại
+    if (window._cachedBusyHistoryDates && Array.isArray(window._cachedBusyHistoryDates) && window._cachedBusyHistoryDates.length > 0 && !forceReload) {
+        populateDates(window._cachedBusyHistoryDates);
+        return;
+    }
+
     if (typeof callApi === 'function') {
         callApi('getGioBanChungCu', ['all', 'all', ''], res => {
-            const dates = (res && res.data && res.data.dates) ? res.data.dates : (res && res.dates ? res.dates : []);
-            populateDates(dates);
-        }, () => {});
+            let dates = [];
+            if (Array.isArray(res)) dates = res;
+            else if (res && Array.isArray(res.dates)) dates = res.dates;
+            else if (res && res.data && Array.isArray(res.data.dates)) dates = res.data.dates;
+            else if (res && res.data && Array.isArray(res.data)) dates = res.data;
+            else if (res && Array.isArray(res.records)) {
+                dates = Array.from(new Set(res.records.map(r => r.date).filter(Boolean)));
+            }
+            if (dates.length > 0) {
+                populateDates(dates);
+            }
+        }, err => {
+            console.warn('[loadBusyHistoryDates] Không thể tải danh mục ngày bận:', err);
+        });
     } else if (window.google && window.google.script && window.google.script.run && window.google.script.run.getGioBanChungCu) {
         window.google.script.run
             .withSuccessHandler(res => {
                 const dates = (res && res.dates) ? res.dates : [];
-                populateDates(dates);
+                if (dates.length > 0) populateDates(dates);
             })
             .getGioBanChungCu('all', 'all', '');
     }
 };
+
+// Tự động gọi nạp danh sách ngày ngay khi khởi động
+setTimeout(() => {
+    if (typeof window.loadBusyHistoryDates === 'function') {
+        window.loadBusyHistoryDates();
+    }
+}, 500);
 
 // Khởi tạo và tương thích ngược
 window.switchBusySubTab = function(mode) {};

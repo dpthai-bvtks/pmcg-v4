@@ -1,6 +1,6 @@
 {
-    "version": "4.1.1-rev20",
+    "version": "4.1.1-rev21",
     "releaseDate": "19/09/2026",
-    "releaseTime": "10:55 19/09/2026",
-    "notes": "fix(scheduler): Khắc phục lỗi ReferenceError isNurseTeardown do khai báo trong scope cục bộ, chuyển ra phạm vi vòng lặp candidatePairs giúp thuật toán xếp lịch chạy mượt mà."
+    "releaseTime": "11:10 19/09/2026",
+    "notes": "fix(busy-tab): Tự động nạp danh sách các ngày có lịch sử bận vào dropdown khi mở trang/chuyển tab, bổ sung sự kiện onfocus/onmousedown khi click vào droplist và tối ưu hóa bộ đệm ngày."
 }

@@ -184,15 +184,15 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=4.1.1-rev20">
+    <link rel="stylesheet" href="css/style.css?v=4.1.1-rev21">
     <!-- PWA & Mobile Web App Meta Tags -->
-    <link rel="manifest" href="manifest.json?v=4.1.1-rev20">
+    <link rel="manifest" href="manifest.json?v=4.1.1-rev21">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.1.1-rev20">
+    <link rel="stylesheet" href="css/mobile.css?v=4.1.1-rev21">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
     <script src="js/dexie.min.js?v=3.2.6"></script>
@@ -1484,7 +1484,10 @@
                             
                             <!-- Dropdown chọn nhanh ngày có dữ liệu lịch sử bận trên đám mây -->
                             <label style="font-size: 12.5px; font-weight: 600; color: #475569; margin: 0; margin-left: 4px; white-space: nowrap;">📜 Ngày có lịch sử bận:</label>
-                            <select id="busy-quick-date-select" onchange="if(this.value) onAppDateChange(this.value, 'busy');"
+                            <select id="busy-quick-date-select"
+                                onchange="if(this.value) onAppDateChange(this.value, 'busy');"
+                                onfocus="if(typeof loadBusyHistoryDates === 'function') loadBusyHistoryDates(true);"
+                                onmousedown="if(typeof loadBusyHistoryDates === 'function') loadBusyHistoryDates(true);"
                                 style="padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 12.5px; font-weight: 600; color: #1e293b; outline: none; background: #f8fafc; cursor: pointer; max-width: 250px;"
                                 title="Danh sách các ngày có ghi nhận giờ bận trong CSDL đám mây Turso">
                                 <option value="">-- Chọn ngày có lịch sử bận --</option>
@@ -3902,7 +3905,7 @@
 
                     <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 4.1.1</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">⏱ Cập nhật lần cuối: 10:55 19/09/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">⏱ Cập nhật lần cuối: 11:10 19/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -4433,18 +4436,18 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.1.1-rev20"></script>
-    <script src="js/ai-scheduler.js?v=4.1.1-rev20"></script>
-    <script src="js/cp-solver.js?v=4.1.1-rev20"></script>
-    <script src="js/scheduler-engine.js?v=4.1.1-rev20"></script>
-    <script src="js/app.js?v=4.1.1-rev20"></script>
-    <script src="js/init.js?v=4.1.1-rev20"></script>
-    <script src="js/sync.js?v=4.1.1-rev20"></script>
-    <script src="js/thongke.js?v=4.1.1-rev20"></script>
+    <script src="js/offline-sync-engine.js?v=4.1.1-rev21"></script>
+    <script src="js/ai-scheduler.js?v=4.1.1-rev21"></script>
+    <script src="js/cp-solver.js?v=4.1.1-rev21"></script>
+    <script src="js/scheduler-engine.js?v=4.1.1-rev21"></script>
+    <script src="js/app.js?v=4.1.1-rev21"></script>
+    <script src="js/init.js?v=4.1.1-rev21"></script>
+    <script src="js/sync.js?v=4.1.1-rev21"></script>
+    <script src="js/thongke.js?v=4.1.1-rev21"></script>
 
     <!-- PWA Service Worker Registration + Instant Auto-Update Detection & Blocking Modal -->
     <script>
-    const APP_VERSION = '4.1.1-rev20';
+    const APP_VERSION = '4.1.1-rev21';
 
     (function registerAndAutoUpdate() {
         // 1. Kênh BroadcastChannel đồng bộ tức thì mọi tab đang mở trên cùng một máy

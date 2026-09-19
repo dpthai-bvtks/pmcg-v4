@@ -4717,12 +4717,27 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - Vì các thuộc tính `tenThuThuat`, `info[8]`, `canPhu` thuộc về thủ thuật đang được xếp (không thay đổi theo từng nhân viên), việc đưa ra phạm vi ngoài giúp cả bộ lọc nhân viên (`forEach`) và khối gán timeline nhân sự bên dưới đều truy cập an toàn, chính xác 100%.
   3. **Kiểm thử**:
      - Chạy mô phỏng kiểm thử với 101 ca của ngày 19/09/2026: Hoạt động hoàn hảo, không còn lỗi `ReferenceError`.
+---
+
+### [v4.1.1-rev21] - 11:10 19/09/2026: Tối ưu tự động nạp danh sách ngày có lịch sử bận vào Dropdown tab Giờ Bận
+- **Yêu cầu của người dùng:**
+  - Báo lỗi: *"nếu để nguyên ngày hôm nay mà chọn vào droplist như ảnh thì không hiện"* kèm ảnh chụp droplist `#busy-quick-date-select` chỉ có duy nhất một dòng `-- Chọn ngày có lịch sử bận --`.
+- **Phân tích nguyên nhân & Giải pháp kỹ thuật:**
+  1. **Nguyên nhân**:
+     - Hàm `window.loadBusyHistoryDates` được định nghĩa ở cuối file `app.js`, nhưng lúc khởi tạo `DOMContentLoaded` ban đầu ở đầu file, hàm chưa sẵn sàng nên lệnh gọi nạp ngày bị bỏ qua.
+     - Thẻ `<select id="busy-quick-date-select">` chỉ có sự kiện `onchange`, thiếu sự kiện `onfocus` và `onmousedown`, dẫn đến việc khi người dùng click chuột trực tiếp vào droplist thì hệ thống không tự kích hoạt nạp ngày.
+     - Ngoài ra, hàm `loadBusyHistoryDates` chưa có bộ nhớ đệm `window._cachedBusyHistoryDates` và cơ chế phân tích linh hoạt cấu trúc trả về từ API.
+  2. **Giải pháp xử lý**:
+     - Bổ sung sự kiện `onfocus="if(typeof loadBusyHistoryDates === 'function') loadBusyHistoryDates(true);"` và `onmousedown="if(typeof loadBusyHistoryDates === 'function') loadBusyHistoryDates(true);"` trực tiếp vào thẻ `<select id="busy-quick-date-select">` trong `index.html`. Ngay khi người dùng click hoặc rê chuột vào droplist, hệ thống sẽ tự nạp tức thì danh sách các ngày lịch sử.
+     - Nâng cấp hàm `loadBusyHistoryDates(forceReload)` với bộ nhớ đệm `window._cachedBusyHistoryDates` (0ms) và bóc tách dữ liệu mảng ngày chuẩn xác.
+     - Bổ sung lệnh kích hoạt nạp tự động trong `setTimeout` khởi động và trong hàm `renderBusyStaff` mỗi khi mở tab Giờ Bận.
 - **File sửa đổi:**
-  - `js/scheduler-engine.js` [MODIFY: chuyển isNurseTeardown ra candidatePairs scope]
-  - `index.html` [MODIFY: v4.1.1-rev20, cache busters, footer timestamp 10:55 19/09/2026]
-  - `version.json` [MODIFY: 4.1.1-rev20]
-  - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev20]
+  - `index.html` [MODIFY: onfocus & onmousedown cho busy-quick-date-select, v4.1.1-rev21, timestamp 11:10 19/09/2026]
+  - `js/app.js` [MODIFY: nâng cấp loadBusyHistoryDates, trigger renderBusyStaff & initUiEvents]
+  - `version.json` [MODIFY: 4.1.1-rev21]
+  - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev21]
   - `PM-xeplich-v4.md` [MODIFY]
+
 
 
 
