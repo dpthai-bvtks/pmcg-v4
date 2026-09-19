@@ -1,6 +1,6 @@
 {
-    "version": "4.1.1-rev14",
-    "releaseDate": "18/09/2026",
-    "releaseTime": "22:15 18/09/2026",
-    "notes": "fix(kiemtra): Bỏ qua thông báo lỗi riêng ngày 18/09/2026 đã xếp đúng thực tế tại viện; tạm dừng kiểm tra lỗi trùng giờ của điều dưỡng (phụ tá) để hoàn thiện thuật toán sau."
+    "version": "4.1.1-rev15",
+    "releaseDate": "19/09/2026",
+    "releaseTime": "07:15 19/09/2026",
+    "notes": "feat(kiemtra): Kích hoạt kiểm tra Giường & Máy cho lịch đang mở / file nội bộ; xử lý dứt điểm cảnh báo thiếu khoảng đệm khi kết thúc ca nối tiếp đầu ca tại cùng một phút."
 }

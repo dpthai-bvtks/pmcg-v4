@@ -4582,6 +4582,30 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev14]
   - `PM-xeplich-v4.md` [MODIFY]
 
+### [v4.1.1-rev15] - 07:15 19/09/2026: Kích hoạt kiểm tra Giường & Máy cho "Lịch Đang Mở" & Khử cảnh báo giả đệm 1p khi tiếp nối kết thúc ca
+- **Yêu cầu của người dùng:**
+  1. Kích hoạt tính năng kiểm tra Giường bệnh và Máy móc riêng cho "Lịch Đang Mở" (hoặc lịch do phần mềm xuất ra có cột Giường/Máy; file HIS không có cột này nên tự động bỏ qua).
+  2. Kiểm tra file `Lich_ThuThuat_19-09-2026.xlsx` xem vẫn có lỗi "Thiếu khoảng đệm 1p chuyển giường giữa Thao tác đầu ca (2p) (kết thúc 07:49 (19/09)) và Kết thúc ca (rút kim/tháo máy) (bắt đầu 07:49 (19/09))" như ảnh.
+
+- **Phân tích nguyên nhân & Giải pháp kỹ thuật:**
+  1. **Khử triệt để lỗi báo sai thiếu khoảng đệm 1 phút**:
+     - *Nguyên nhân:* Ca 2 (Bùi Vũ Chung - điện xung `07:47 - 08:02`) có thao tác đầu ca 2 phút (`07:47 -> 07:49`). Ca 1 (Trần Văn Thủy - điện xung `07:34 - 07:49`) có mốc tháo máy diễn ra tại phút kết thúc `07:49` (`start: 07:49, end: 07:49, isTear: true`). Khi so sánh khoảng đệm (`second.start < first.end + GAP_MS`), `07:49 < 07:49 + 1p` bị kích hoạt bắt lỗi dù thực tế hai thao tác tiếp nối nhau cùng 1 phút biên giới (`second.start === first.end`). KTV gắn máy xong ca 2 lúc 07:49 và quay sang tháo máy ca 1 lúc 07:49 ngay trong phòng là hoàn toàn hợp lệ.
+     - *Giải pháp:* Thêm điều kiện loại trừ `if ((first.isTear || second.isTear) && second.start === first.end) continue;`. Khi kiểm tra thực tế với 101 ca của ngày 19/09/2026, toàn bộ 39 cảnh báo giả biến mất, kết quả kiểm tra đạt **0 lỗi (100% hợp lệ)**.
+  2. **Kích hoạt kiểm tra Giường bệnh & Máy móc cho "Lịch Đang Mở" / file lịch nội bộ**:
+     - Trong nút `#btn-check-current-schedule`: Bổ sung truyền `phong`, `giuong`, `may` từ `window.currentScheduleData`.
+     - Trong bộ đọc file Excel: Bổ sung helper `stripVietnamese` nhận diện tự động cột `Phòng Điều Trị` (`phong`), `Giường Bệnh` (`giuong`), `Máy Móc` (`may`), `KTV / Bác Sĩ` (`nv`) và trích xuất ngày thực hiện từ dòng tiêu đề trên cùng.
+     - Trong `processErrorChecking`:
+       + Gom nhóm Giường `groupedBeds[phong + ' - ' + giuong]` (loại trừ các giường thủ công, ghế, giường phụ, giường kéo giãn). Quét va chạm đè giờ `second.start < first.end`.
+       + Gom nhóm Máy `groupedMachines[may]` (loại trừ thủ công). Quét va chạm đè giờ `second.start < first.end`.
+       + Xuất cảnh báo lên bảng `#table-error-time` với nhãn `🛏️ [Phòng - Giường] (Trùng Giường)` và `⚡ [Tên Máy] (Trùng Máy)`.
+
+- **File sửa đổi:**
+  - `js/app.js` [MODIFY: stripVietnamese, colIdx mapping, phong/giuong/may extraction, fix teardown-setup gap bypass, bed & machine overlap checker]
+  - `index.html` [MODIFY: v4.1.1-rev15, cache busters, footer timestamp 07:15 19/09/2026, table headers]
+  - `version.json` [MODIFY: 4.1.1-rev15]
+  - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev15]
+  - `PM-xeplich-v4.md` [MODIFY]
+
 
 
 

@@ -13267,7 +13267,10 @@ window.renderSttOrderControl = function (type, i, total) {
                             'AS': 'Khác',
                             'AN': procInfo ? (procInfo.phanLoai || procInfo.loai || '') : '',
                             'AH': startFull,
-                            'L': endFull
+                            'L': endFull,
+                            'phong': r.phong || r['PHÒNG'] || r['phong'] || '',
+                            'giuong': r.giuong || r['GIƯỜNG'] || r['giuong'] || '',
+                            'may': r.may || r['MÁY'] || r['may'] || ''
                         };
                     });
                     processErrorChecking(rows);
@@ -13295,8 +13298,13 @@ window.renderSttOrderControl = function (type, i, total) {
                             let headerRowIndex = -1;
                             let isInternalSchedule = false;
 
+                            function stripVietnamese(str) {
+                                if (!str) return '';
+                                return String(str).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().trim();
+                            }
+
                             for (let i = 0; i < Math.min(rawData.length, 50); i++) {
-                                const rowStr = (rawData[i] || []).map(c => typeof xoaDau === 'function' ? xoaDau(String(c || '').toLowerCase()).trim() : String(c || '').toLowerCase().trim());
+                                const rowStr = (rawData[i] || []).map(stripVietnamese);
                                 if (rowStr.some(c => c.includes("ten benh nhan") || c.includes("ten bn") || c.includes("hoten"))) {
                                     headerRowIndex = i;
                                     isInternalSchedule = true;
@@ -13311,19 +13319,37 @@ window.renderSttOrderControl = function (type, i, total) {
 
                             let dataRows = [];
                             if (isInternalSchedule) {
-                                const headerRow = (rawData[headerRowIndex] || []).map(h => typeof xoaDau === 'function' ? xoaDau(String(h || '').toLowerCase()).trim() : String(h || '').toLowerCase().trim());
+                                // Trích xuất ngày từ dòng tiêu đề trên cùng (ví dụ: 'Ngày thực hiện: 19/09/2026') nếu không có cột Ngày
+                                let extractedFileDate = '';
+                                for (let i = 0; i < headerRowIndex; i++) {
+                                    const rowCells = rawData[i] || [];
+                                    for (const cell of rowCells) {
+                                        const cellStr = String(cell || '').trim();
+                                        const dMatch = cellStr.match(/(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4})/);
+                                        if (dMatch) {
+                                            extractedFileDate = dMatch[1].replace(/-/g, '/');
+                                            break;
+                                        }
+                                    }
+                                    if (extractedFileDate) break;
+                                }
+
+                                const headerRow = (rawData[headerRowIndex] || []).map(stripVietnamese);
                                 const colIdx = {
                                     ngay: headerRow.findIndex(h => h.includes('ngay')),
                                     ten: headerRow.findIndex(h => h.includes('ten benh nhan') || h.includes('ten bn') || h.includes('hoten')),
                                     tt: headerRow.findIndex(h => h.includes('thu thuat') || h.includes('dich vu') || h.includes('dichvu')),
                                     bd: headerRow.findIndex(h => h.includes('bat dau') || h.includes('gio dien ra') || h.includes('giodienra')),
                                     kt: headerRow.findIndex(h => h.includes('ket thuc') || h.includes('gioketthuc')),
-                                    nv: headerRow.findIndex(h => h.includes('nv chinh') || h.includes('nhan vien chinh')),
-                                    nvPhu: headerRow.findIndex(h => h.includes('nv phu') || h.includes('nhan vien phu') || h.includes('phu ta') || h.includes('dieu duong phu'))
+                                    nv: headerRow.findIndex(h => h.includes('nv chinh') || h.includes('nhan vien chinh') || h.includes('ktv') || h.includes('bac si') || h.includes('bác sĩ')),
+                                    nvPhu: headerRow.findIndex(h => h.includes('nv phu') || h.includes('nhan vien phu') || h.includes('phu ta') || h.includes('dieu duong phu')),
+                                    phong: headerRow.findIndex(h => h.includes('phong dieu tri') || h.includes('phong')),
+                                    giuong: headerRow.findIndex(h => h.includes('giuong benh') || h.includes('giuong')),
+                                    may: headerRow.findIndex(h => h.includes('may moc') || h.includes('thiet bi') || h.includes('may'))
                                 };
 
                                 dataRows = rawData.slice(headerRowIndex + 1).filter(r => r && r.some(c => String(c).trim())).map(r => {
-                                    const ngayStr = colIdx.ngay >= 0 ? String(r[colIdx.ngay] || '').trim() : '';
+                                    const ngayStr = colIdx.ngay >= 0 ? String(r[colIdx.ngay] || '').trim() : extractedFileDate;
                                     const bdStr = colIdx.bd >= 0 ? String(r[colIdx.bd] || '').trim() : '';
                                     const ktStr = colIdx.kt >= 0 ? String(r[colIdx.kt] || '').trim() : '';
 
@@ -13348,7 +13374,10 @@ window.renderSttOrderControl = function (type, i, total) {
                                         'AS': 'Khác',
                                         'AN': procLoai,
                                         'AH': startFull,
-                                        'L': endFull
+                                        'L': endFull,
+                                        'phong': colIdx.phong >= 0 ? String(r[colIdx.phong] || '').trim() : '',
+                                        'giuong': colIdx.giuong >= 0 ? String(r[colIdx.giuong] || '').trim() : '',
+                                        'may': colIdx.may >= 0 ? String(r[colIdx.may] || '').trim() : ''
                                     };
                                 }).filter(Boolean);
                             } else {
@@ -13528,9 +13557,11 @@ window.renderSttOrderControl = function (type, i, total) {
             const validStaffNames = staffList.map(s => s.ten);
             const GAP_MS = 60 * 1000; // Khoảng đệm tối thiểu 1 phút chuyển ca giữa các giường
 
-            // Cấu trúc gom nhóm theo Nhân viên (Chính) và theo Bệnh nhân
+            // Cấu trúc gom nhóm theo Nhân viên (Chính), Bệnh nhân, Giường bệnh và Máy móc
             const groupedStaff = {};
             const groupedPatients = {};
+            const groupedBeds = {};
+            const groupedMachines = {};
 
             for (let row of dataRows) {
                 let techMainRaw = String(row['AT'] || '').trim();
@@ -13542,6 +13573,9 @@ window.renderSttOrderControl = function (type, i, total) {
                 const patientName = String(row['C'] || 'Không rõ').replace(/\s*\((?:✔ RV|❌ Rớt|RV|Rớt)\)/gi, '').trim();
                 const procName = String(row['AE'] || '').trim();
                 const procInfo = mapProcedureJS(procName);
+                const phongRaw = String(row.phong || row['PHÒNG'] || row['phong'] || '').trim();
+                const giuongRaw = String(row.giuong || row['GIƯỜNG'] || row['giuong'] || '').trim();
+                const mayRaw = String(row.may || row['MÁY'] || row['may'] || '').trim();
 
                 // 1. Thống kê thủ thuật cho KTV chính (vẫn đếm để ghi nhận số liệu ngày 18/09/2026)
                 if (techMainNorm && counts[techMainNorm]) {
@@ -13615,7 +13649,10 @@ window.renderSttOrderControl = function (type, i, total) {
                     hasTeardown: hasTeardown,
                     tth_mins: tth_mins,
                     ttg_mins: ttg_mins,
-                    busyIntervals: busyIntervals
+                    busyIntervals: busyIntervals,
+                    phong: phongRaw,
+                    giuong: giuongRaw,
+                    may: mayRaw
                 };
 
                 // Kiểm tra lỗi hành chính / phân quyền cho ca này (Bỏ qua riêng ngày 18/09/2026 đã xếp đúng thực tế)
@@ -13680,6 +13717,37 @@ window.renderSttOrderControl = function (type, i, total) {
                         techPhuNorm: techPhuNorm
                     });
                 }
+
+                // Gom nhóm Giường bệnh (Nếu có dữ liệu giường bệnh)
+                if (giuongRaw) {
+                    const gLower = giuongRaw.toLowerCase();
+                    const isExcludedBed = gLower.includes('thủ công') || gLower.includes('thu cong') || 
+                                          gLower.includes('ghế') || gLower.includes('ghe') || 
+                                          gLower.includes('phụ') || gLower.includes('phu') || 
+                                          gLower.includes('kéo giãn') || gLower.includes('keo gian') || 
+                                          giuongRaw === '--' || giuongRaw === '';
+                    if (!isExcludedBed) {
+                        const bedKey = (phongRaw ? `${phongRaw} - ` : '') + (giuongRaw.toLowerCase().startsWith('giường') ? giuongRaw : `Giường ${giuongRaw}`);
+                        if (!groupedBeds[bedKey]) groupedBeds[bedKey] = [];
+                        groupedBeds[bedKey].push({
+                            ...itemBase,
+                            techMainNorm: techMainNorm
+                        });
+                    }
+                }
+
+                // Gom nhóm Máy móc (Nếu có dữ liệu máy móc)
+                if (mayRaw) {
+                    const mLower = mayRaw.toLowerCase();
+                    const isExcludedMachine = mLower.includes('thủ công') || mLower.includes('thu cong') || mayRaw === '--' || mayRaw === '';
+                    if (!isExcludedMachine) {
+                        if (!groupedMachines[mayRaw]) groupedMachines[mayRaw] = [];
+                        groupedMachines[mayRaw].push({
+                            ...itemBase,
+                            techMainNorm: techMainNorm
+                        });
+                    }
+                }
             }
 
             // ============================================================
@@ -13728,6 +13796,11 @@ window.renderSttOrderControl = function (type, i, total) {
                                 }
                                 // 3. Thiếu khoảng đệm 1 phút chuyển giường giữa 2 bệnh nhân khác nhau (MỤC 1)
                                 else if (A.patientName !== B.patientName && second.start < first.end + GAP_MS) {
+                                    // Nếu 1 trong 2 mốc là kết thúc ca (rút kim/tháo máy) và diễn ra nối tiếp ngay tại phút kết thúc (second.start === first.end)
+                                    // thì KTV thao tác xong ca này có mặt tại đúng phút kết thúc ca kia là hoàn toàn hợp lệ, không vi phạm đệm
+                                    if ((first.isTear || second.isTear) && second.start === first.end) {
+                                        continue;
+                                    }
                                     conflictFound = {
                                         type: 'GAP',
                                         reason: `Thiếu khoảng đệm 1p chuyển giường giữa ${first.name} (kết thúc ${formatDate(new Date(first.end))}) và ${second.name} (bắt đầu ${formatDate(new Date(second.start))})`
@@ -13783,6 +13856,64 @@ window.renderSttOrderControl = function (type, i, total) {
                         const bnTag = `<span style="color:#2980b9; font-weight:bold;">👤 ${pName}</span><br/><small style="color:#7f8c8d;">(Trùng BN)</small>`;
                         
                         addTimeRow(timeTbody, sttTime++, bnTag, p1Info, p2Info, `Bệnh nhân bị xếp 2 thủ thuật cùng lúc (${formatDate(P2.start)} đè lên ca trước kết thúc lúc ${formatDate(P1.end)})`);
+                    }
+                }
+            }
+
+            // ============================================================
+            // 🚨 3. QUÉT LỖI TRÙNG GIƯỜNG BỆNH (2 BN NẰM CÙNG 1 GIƯỜNG CÙNG LÚC)
+            // ============================================================
+            for (const [bedKey, bRows] of Object.entries(groupedBeds)) {
+                bRows.sort((a, b) => a.start.getTime() - b.start.getTime());
+                const len = bRows.length;
+
+                for (let i = 0; i < len; i++) {
+                    const G1 = bRows[i];
+                    for (let j = i + 1; j < len; j++) {
+                        const G2 = bRows[j];
+                        // Bỏ qua lỗi của riêng ngày 18/09/2026 đã xếp đúng thực tế
+                        if (isDate18Sep2026(G1.start, G1.raw) || isDate18Sep2026(G2.start, G2.raw)) continue;
+
+                        // Nếu G2 bắt đầu tại hoặc sau khi G1 kết thúc hoàn toàn, không va chạm tiếp
+                        if (G2.start.getTime() >= G1.end.getTime()) break;
+
+                        // Trùng giường: G2 bắt đầu trước khi G1 kết thúc!
+                        const timeG1Str = `${formatDate(G1.start)} -> ${formatDate(G1.end)}`;
+                        const timeG2Str = `${formatDate(G2.start)} -> ${formatDate(G2.end)}`;
+                        const g1Info = `<b>${G1.patientName}</b><br/>${G1.procName}<br/><span style="color:#2c3e50;">⏱ ${timeG1Str}</span><br/><small>KTV: ${G1.techMainNorm || 'Chưa rõ'}</small>`;
+                        const g2Info = `<b>${G2.patientName}</b><br/>${G2.procName}<br/><span style="color:#2c3e50;">⏱ ${timeG2Str}</span><br/><small>KTV: ${G2.techMainNorm || 'Chưa rõ'}</small>`;
+                        const bedTag = `<span style="color:#8e44ad; font-weight:bold;">🛏️ ${bedKey}</span><br/><small style="color:#7f8c8d;">(Trùng Giường)</small>`;
+
+                        addTimeRow(timeTbody, sttTime++, bedTag, g1Info, g2Info, `2 ca nằm trùng giường bệnh (${formatDate(G2.start)} đè lên ca trước kết thúc lúc ${formatDate(G1.end)})`);
+                    }
+                }
+            }
+
+            // ============================================================
+            // 🚨 4. QUÉT LỖI TRÙNG MÁY MÓC (2 CA DÙNG CHUNG 1 MÁY CÙNG LÚC)
+            // ============================================================
+            for (const [mName, mRows] of Object.entries(groupedMachines)) {
+                mRows.sort((a, b) => a.start.getTime() - b.start.getTime());
+                const mLen = mRows.length;
+
+                for (let i = 0; i < mLen; i++) {
+                    const M1 = mRows[i];
+                    for (let j = i + 1; j < mLen; j++) {
+                        const M2 = mRows[j];
+                        // Bỏ qua lỗi của riêng ngày 18/09/2026 đã xếp đúng thực tế
+                        if (isDate18Sep2026(M1.start, M1.raw) || isDate18Sep2026(M2.start, M2.raw)) continue;
+
+                        // Nếu M2 bắt đầu tại hoặc sau khi M1 kết thúc hoàn toàn, không va chạm tiếp
+                        if (M2.start.getTime() >= M1.end.getTime()) break;
+
+                        // Trùng máy: M2 bắt đầu trước khi M1 kết thúc!
+                        const timeM1Str = `${formatDate(M1.start)} -> ${formatDate(M1.end)}`;
+                        const timeM2Str = `${formatDate(M2.start)} -> ${formatDate(M2.end)}`;
+                        const m1Info = `<b>${M1.patientName}</b><br/>${M1.procName}<br/><span style="color:#2c3e50;">⏱ ${timeM1Str}</span><br/><small>KTV: ${M1.techMainNorm || 'Chưa rõ'}</small>`;
+                        const m2Info = `<b>${M2.patientName}</b><br/>${M2.procName}<br/><span style="color:#2c3e50;">⏱ ${timeM2Str}</span><br/><small>KTV: ${M2.techMainNorm || 'Chưa rõ'}</small>`;
+                        const machineTag = `<span style="color:#d35400; font-weight:bold;">⚡ ${mName}</span><br/><small style="color:#7f8c8d;">(Trùng Máy)</small>`;
+
+                        addTimeRow(timeTbody, sttTime++, machineTag, m1Info, m2Info, `2 ca sử dụng cùng 1 máy móc (${formatDate(M2.start)} đè lên ca trước kết thúc lúc ${formatDate(M1.end)})`);
                     }
                 }
             }
