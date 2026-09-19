@@ -1,6 +1,6 @@
 {
-    "version": "4.1.2",
+    "version": "4.1.2-rev1",
     "releaseDate": "19/09/2026",
-    "releaseTime": "11:45 19/09/2026",
-    "notes": "feat(procedures-error-checking): Khóa giờ rút kim cho TTV chính Điện châm & Hào châm, bỏ khóa kết thúc TTV chính Thủy châm và bổ sung bộ kiểm tra thời gian Min/Max, người phụ trong tab Kiểm tra lỗi."
+    "releaseTime": "13:39 19/09/2026",
+    "notes": "fix(error-check): Tạm thời vô hiệu hóa kiểm tra Người phụ trong tab Kiểm tra lỗi vì file HIS chưa nhập dữ liệu người phụ; chỉ bật lại khi cần."
 }

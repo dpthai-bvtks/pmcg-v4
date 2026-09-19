@@ -4762,6 +4762,22 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `index.html` [MODIFY: query string v=4.1.2, APP_VERSION = '4.1.2', Phiên bản 4.1.2, timestamp 11:45 19/09/2026]
   - `PM-xeplich-v4.md` [MODIFY]
 
+---
+
+### [v4.1.2-rev1] - 13:39 19/09/2026: Tạm thời vô hiệu hóa kiểm tra Người phụ trong tab Kiểm tra lỗi
+- **Yêu cầu của người dùng:**
+  - *"hiện tại với file HIS thì chưa nhập người phụ nên tất cả thủ thuật cần người phụ như điện châm, thủy châm sẽ chỉ có thủ thuật viên chính, còn file lịch trình do phần mềm xếp ra mới có người phụ nên tạm thời bỏ qua lỗi đó đi, khi nào cần thì sẽ hoạt động sau"*.
+- **Phân tích & Giải pháp kỹ thuật:**
+  - Comment out khối kiểm tra `canNguoiPhu` trong hàm `processErrorChecking` tại `js/app.js`. Code được giữ lại nguyên vẹn kèm chú thích rõ ràng để bật lại sau.
+  - Lý do: Nguồn dữ liệu HIS (file Excel xuất từ HIS bệnh viện) chưa nhập trường người phụ. Chỉ file lịch trình do phần mềm T.I.M.E.S xếp ra mới có đầy đủ trường này.
+- **File sửa đổi:**
+  - `js/app.js` [MODIFY: comment out kiểm tra canNguoiPhu trong processErrorChecking]
+  - `version.json` [MODIFY: 4.1.2-rev1, timestamp 13:39 19/09/2026]
+  - `sw.js` [MODIFY: pmcg-v4-cache-4.1.2-rev1]
+  - `index.html` [MODIFY: query string v=4.1.2-rev1, APP_VERSION = '4.1.2-rev1', timestamp 13:39 19/09/2026]
+  - `PM-xeplich-v4.md` [MODIFY]
+
+
 
 
 
