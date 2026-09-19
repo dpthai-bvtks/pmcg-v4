@@ -1,6 +1,6 @@
 {
-    "version": "4.1.1-rev18",
+    "version": "4.1.1-rev19",
     "releaseDate": "19/09/2026",
-    "releaseTime": "10:10 19/09/2026",
-    "notes": "fix(thu-thuat): Khôi phục loại máy điện châm trong CSDL và tự động nhận diện (Auto-heal) loại máy thực tế trong thuật toán xếp lịch, chấm dứt tình trạng hiển thị nhầm thành 'Thủ công'."
+    "releaseTime": "10:45 19/09/2026",
+    "notes": "fix(teardown): Điều dưỡng phụ trách rút kim/tắt máy đối với Điện châm (khi có canPhu), còn thủ thuật PHCN dùng máy (Điện xung, Sóng ngắn...) do chính KTV thực hiện trực tiếp tháo máy/kết thúc."
 }

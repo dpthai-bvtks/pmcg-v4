@@ -4677,13 +4677,39 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
        + Trong phần quản lý máy `database.machineTypes`: Lưu trữ linh hoạt với cả key gốc, key chữ thường và key đã lược bỏ tiền tố (`máy `, `đèn `).
        + Trong `tryScheduleOne`: Bổ sung cơ chế tra cứu mờ `resolveFromMap`, đối soát thông minh giữa danh mục máy phòng và danh mục máy toàn viện, đảm bảo luôn gán đúng mã máy cụ thể (`Máy DC MS: ...`) vào từng ca điều trị.
 
+---
+
+### [v4.1.1-rev19] - 10:45 19/09/2026: Phân định chính xác vai trò Teardown - Điều dưỡng rút kim Điện châm & KTV tự tắt máy/kết thúc thủ thuật PHCN
+- **Yêu cầu của người dùng:**
+  - Quy tắc phân công kết thúc thủ thuật (Teardown: rút kim / tháo máy):
+    1. *Chỉ có Điện châm*: Người rút kim/tắt máy là **Điều dưỡng** (`nvPhu`). Bác sĩ chuyên tâm châm kim liên tục theo nhịp (khoảng 8-9 phút / ca) mà không bị giữ chân ở phút kết thúc.
+    2. *Thủ thuật PHCN dùng máy* (Điện xung, Sóng ngắn, Hồng ngoại, Siêu âm điều trị, Kéo giãn...): Kỹ thuật viên chính (`nvChinh`) là người trực tiếp tháo máy, rút cực và kết thúc ca điều trị để đảm bảo an toàn kỹ thuật cho bệnh nhân.
+
+- **Phân tích nghiệp vụ & Giải pháp kỹ thuật trong `js/scheduler-engine.js`:**
+  1. **Nhận diện chính xác thủ thuật có Điều dưỡng phụ trách Teardown (`isNurseTeardown`)**:
+     - Định nghĩa `isDienChamProc = /điện châm|đc\b/i.test(tenThuThuat) || (info[8] && /điện châm|đc\b/i.test(info[8]))`.
+     - `isNurseTeardown = isDienChamProc && (canPhu === 1)`: Chỉ áp dụng cơ chế Điều dưỡng rút kim khi thủ thuật là **Điện châm** và có cấu hình cần người phụ.
+     - Với tất cả thủ thuật PHCN dùng máy (Điện xung, Sóng ngắn...), `isNurseTeardown` luôn là `false`.
+  2. **Kiểm tra tính sẵn sàng của Nhân sự (Slot availability check)**:
+     - Với thủ thuật PHCN: KTV chính (`nvChinh`) bắt buộc phải có slot trống tại khoảng thời gian kết thúc `[tearStart, tearEnd]` (`if (hasTeardown && !isNurseTeardown && checkSlot(tearStart, tearEnd)) return;`).
+     - Với ca Điện châm: Bác sĩ chính (`candidatesMain`) không bị ràng buộc tại `[tearStart, tearEnd]`, trong khi Điều dưỡng phụ (`candidatesSub`) bắt buộc phải rảnh ở `[tearStart, tearEnd]` để đi rút kim (`const isFreeForNurseTeardown = !isNurseTeardown || !checkSlot(tearStart, tearEnd);`).
+  3. **Khóa Timeline và tính thời lượng làm việc (`staffTimeline`, `staffLoad`)**:
+     - Nếu `hasTeardown`:
+       + Trường hợp `isNurseTeardown && nvPhu`: Khóa `staffTimeline[nvPhu]` tại `[tearStart, tearEnd]`.
+       + Trường hợp PHCN dùng máy: Khóa `staffTimeline[nvChinh]` tại `[tearStart, tearEnd]`.
+  4. **Đồng bộ hóa trong nạp lịch cũ và nén khoảng trống (`compactTimelineGaps`)**:
+     - Phân định rõ ràng `candTeardownStaff` và `exTeardownStaff` tùy theo thủ thuật là Điện châm hay PHCN, đồng thời đồng bộ mốc thời gian `tearStart` với cờ `dbRef?.isSaturday`.
+  5. **Kiểm chứng thực tế**:
+     - Bác sĩ Thái thực hiện liên tục các ca Điện châm nhịp 8-9 phút / ca (Điều dưỡng rút kim ở phút thứ 25).
+     - Kỹ thuật viên Hà chip đồng thời thực hiện các ca PHCN (Điện xung, Sóng ngắn...) từ 07:31 sáng, chủ động tháo máy và đảo phiên linh hoạt cùng các bệnh nhân.
+
 - **File sửa đổi:**
-  - `C:\PMCG-System\PMCG-Data\pmcg.db` & MiniPC API [UPDATE: thu_thuat.may = 'điện châm']
-  - `js/scheduler-engine.js` [MODIFY: auto-heal machine type, resolveFromMap in tryScheduleOne, multi-key machineTypes]
-  - `index.html` [MODIFY: v4.1.1-rev18, cache busters, footer timestamp 10:10 19/09/2026]
-  - `version.json` [MODIFY: 4.1.1-rev18]
-  - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev18]
+  - `js/scheduler-engine.js` [MODIFY: phân định Teardown theo chuyên khoa Điện châm / PHCN]
+  - `index.html` [MODIFY: v4.1.1-rev19, cache busters, footer timestamp 10:45 19/09/2026]
+  - `version.json` [MODIFY: 4.1.1-rev19]
+  - `sw.js` [MODIFY: pmcg-v4-cache-4.1.1-rev19]
   - `PM-xeplich-v4.md` [MODIFY]
+
 
 
 

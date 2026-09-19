@@ -599,14 +599,17 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
     const resolvedNvChinh = resolveStaffKey(nvChinh);
     const resolvedNvPhu = resolveStaffKey(nvPhu);
 
+    const isDienChamProc = /điện châm|đc\b/i.test(tenThuThuat) || (info[8] && /điện châm|đc\b/i.test(info[8]));
+    const isNurseTeardownProc = isDienChamProc && Boolean(resolvedNvPhu);
+
     if (resolvedNvChinh && staffTimeline[resolvedNvChinh]) { 
       pushAndMerge(staffTimeline, resolvedNvChinh, [gioStart, staffEnd]); 
-      if (hasTeardown && tearStart !== null && !resolvedNvPhu) pushAndMerge(staffTimeline, resolvedNvChinh, [tearStart, tearEnd]);
+      if (hasTeardown && tearStart !== null && !isNurseTeardownProc) pushAndMerge(staffTimeline, resolvedNvChinh, [tearStart, tearEnd]);
       staffCurrentRoom[resolvedNvChinh] = phong; 
     }
     if (resolvedNvPhu && staffTimeline[resolvedNvPhu]) {
       pushAndMerge(staffTimeline, resolvedNvPhu, [gioStart, staffEnd]);
-      if (hasTeardown && tearStart !== null) pushAndMerge(staffTimeline, resolvedNvPhu, [tearStart, tearEnd]);
+      if (hasTeardown && tearStart !== null && isNurseTeardownProc) pushAndMerge(staffTimeline, resolvedNvPhu, [tearStart, tearEnd]);
     }
     
     const resolvedMay = resolveMachineKey(may);
@@ -835,9 +838,11 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         };
 
         if (checkSlot(tNow, tNow + khoangCach)) return;
-        // Nếu canPhu === 1 (thủ thuật có Điều dưỡng phụ), việc rút kim/tháo máy sẽ do Điều dưỡng phụ đảm nhận.
-        // Chỉ khi nào thủ thuật không có người phụ (canPhu !== 1) thì mới bắt buộc nhân viên chính phải rảnh ở tearStart..tearEnd.
-        if (hasTeardown && canPhu !== 1 && checkSlot(tearStart, tearEnd)) return;
+        // Chỉ có điện châm thì người rút kim/tắt máy là Điều dưỡng (khi có canPhu === 1).
+        // Còn thủ thuật PHCN dùng máy (điện xung, sóng ngắn, hồng ngoại...) thì KTV chính là người rút máy/kết thúc!
+        const isDienChamProc = /điện châm|đc\b/i.test(tenThuThuat) || (info[8] && /điện châm|đc\b/i.test(info[8]));
+        const isNurseTeardown = isDienChamProc && (canPhu === 1);
+        if (hasTeardown && !isNurseTeardown && checkSlot(tearStart, tearEnd)) return;
         
         if (!isSupplemental && !isBackfill && staffRole[tenNV] === 'Kỹ thuật viên' && (staffMyRooms[tenNV] || []).length > 0 && !staffMyRooms[tenNV].includes(targetRoom)) return;
 
@@ -846,14 +851,15 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(role);
         const isKtv = !isDoc && !isNurse && (/kỹ thuật viên|ky thuat vien|^ktv\b/i.test(role) || staffRole[tenNV] === 'Kỹ thuật viên');
 
-        const isFreeForTeardown = !hasTeardown || !checkSlot(tearStart, tearEnd);
+        // Đối với candidatesSub (Điều dưỡng phụ): nếu là ca Điện châm (isNurseTeardown), Điều dưỡng phải rảnh ở tearStart..tearEnd để đi rút kim!
+        const isFreeForNurseTeardown = !isNurseTeardown || !checkSlot(tearStart, tearEnd);
 
         // Chỉ BS hoặc KTV mới được làm NV Chính; Điều dưỡng chỉ được làm NV Phụ
         if ((isDoc || isKtv) && !isNurse) {
           candidatesMain.push(tenNV);
-          if (isFreeForTeardown) candidatesSub.push(tenNV);
+          if (isFreeForNurseTeardown) candidatesSub.push(tenNV);
         } else {
-          if (isFreeForTeardown) candidatesSub.push(tenNV);
+          if (isFreeForNurseTeardown) candidatesSub.push(tenNV);
         }
       });
       if (candidatesMain.length === 0) continue;
@@ -1002,19 +1008,23 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
         blockStaff(nvChinh, tNow, tNow + tgNhanVien, khoangCach, staffTimeline, staffSetupReady, staffLoad, tenThuThuat, staffLastProc);
         staffCurrentRoom[nvChinh] = targetRoom;
-        if (hasTeardown && !nvPhu) { 
-          staffTimeline[nvChinh].push([tearStart, tearEnd]); 
-          staffTimeline[nvChinh] = mergeTimeline(staffTimeline[nvChinh]); 
-          staffLoad[nvChinh].used_mins += (tearEnd - tearStart); 
+
+        // Chỉ có điện châm thì người rút kim/tắt máy là Điều dưỡng (nvPhu).
+        // Còn thủ thuật PHCN dùng máy (điện xung, sóng ngắn...) thì KTV chính (nvChinh) là người rút máy/kết thúc!
+        if (hasTeardown) {
+          if (isNurseTeardown && nvPhu) {
+            staffTimeline[nvPhu].push([tearStart, tearEnd]);
+            staffTimeline[nvPhu] = mergeTimeline(staffTimeline[nvPhu]);
+            staffLoad[nvPhu].used_mins += (tearEnd - tearStart);
+          } else {
+            staffTimeline[nvChinh].push([tearStart, tearEnd]);
+            staffTimeline[nvChinh] = mergeTimeline(staffTimeline[nvChinh]);
+            staffLoad[nvChinh].used_mins += (tearEnd - tearStart);
+          }
         }
 
         if (nvPhu) {
           blockStaff(nvPhu, tNow, tNow + tgNhanVien, khoangCach, staffTimeline, staffSetupReady, staffLoad, tenThuThuat, staffLastProc);
-          if (hasTeardown) { 
-            staffTimeline[nvPhu].push([tearStart, tearEnd]); 
-            staffTimeline[nvPhu] = mergeTimeline(staffTimeline[nvPhu]); 
-            staffLoad[nvPhu].used_mins += (tearEnd - tearStart); 
-          }
         }
 
         if (selectedMachine !== "Thủ công") { 
@@ -1823,7 +1833,7 @@ function getPatientSignature(pat) {
       const gap = (ttInfo && ttInfo[12] !== undefined && ttInfo[12] > 0) ? ttInfo[12] : 1;
       const staffEnd = isContinuous ? (e + gap) : (Math.min(s + tgNv, e) + gap);
       const hasTeardown = !isContinuous && ((e - s) > tgNv);
-      const tearStart = hasTeardown ? (e - 1) : null;
+      const tearStart = hasTeardown ? (dbRef?.isSaturday ? e : (e - 1)) : null;
       const tearEnd = hasTeardown ? (e + gap) : null;
 
       return {
@@ -1864,7 +1874,7 @@ function getPatientSignature(pat) {
       const cGap = (cInfo && cInfo[12] !== undefined && cInfo[12] > 0) ? cInfo[12] : 1;
       const cStaffEnd = cIsContinuous ? (cE + cGap) : (Math.min(cS + cTgNv, cE) + cGap);
       const cHasTeardown = !cIsContinuous && ((cE - cS) > cTgNv);
-      const cTearStart = cHasTeardown ? (cE - 1) : null;
+      const cTearStart = cHasTeardown ? (dbRef?.isSaturday ? cE : (cE - 1)) : null;
       const cTearEnd = cHasTeardown ? (cE + cGap) : null;
 
       let collisionReason = null;
@@ -1880,11 +1890,17 @@ function getPatientSignature(pat) {
         }
 
         // 2. Kiểm tra va chạm Nhân sự (chỉ tính khoảng thời gian KTV trực tiếp làm việc: setup + teardown)
+        const candIsDienCham = /điện châm|đc\b/i.test(cTenTT) || (cInfo && cInfo[8] && /điện châm|đc\b/i.test(cInfo[8]));
+        const candTeardownStaff = cHasTeardown ? (candIsDienCham && cNv2 ? cNv2 : cNv1) : null;
+
+        const exIsDienCham = /điện châm|đc\b/i.test(ex.name || '') || (ex.tt && /điện châm|đc\b/i.test(ex.tt));
+        const exTeardownStaff = ex.hasTeardown ? (exIsDienCham && ex.nv2 ? ex.nv2 : ex.nv1) : null;
+
         const checkStaffOverlap = (candStaff) => {
           if (!candStaff) return false;
           if (candStaff !== ex.nv1 && candStaff !== ex.nv2) return false;
-          const candDoesTeardown = cHasTeardown && (cNv2 ? candStaff === cNv2 : candStaff === cNv1);
-          const exDoesTeardown = ex.hasTeardown && (ex.nv2 ? candStaff === ex.nv2 : candStaff === ex.nv1);
+          const candDoesTeardown = (candStaff === candTeardownStaff);
+          const exDoesTeardown = (candStaff === exTeardownStaff);
           if (isOverlap(cS, cStaffEnd, ex.s, ex.staffEnd)) return true;
           if (candDoesTeardown && isOverlap(cTearStart, cTearEnd, ex.s, ex.staffEnd)) return true;
           if (exDoesTeardown && isOverlap(cS, cStaffEnd, ex.tearStart, ex.tearEnd)) return true;
