@@ -4955,6 +4955,20 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `index.html` [MODIFY: query string v=4.1.3-rev7, APP_VERSION = '4.1.3-rev7']
   - `PM-xeplich-v4.md` [MODIFY]
 
+### [21/09/2026 - 10:25] Phiên bản v4.1.3-rev8: Khởi tạo bảng độc lập lich_su_dinh_muc trong CSDL MiniPC để lưu vết định mức
+- **Bối cảnh & Xử lý**:
+  1. Tạo bảng riêng độc lập `lich_su_dinh_muc` trong CSDL (`pmcg.db` trên MiniPC và Turso Cloud) để hiển thị tường minh dưới dạng một bảng riêng trong DB Browser for SQLite.
+  2. Bảng `lich_su_dinh_muc` lưu các cột: `id`, `unit_code`, `ten_thu_thuat`, `tu_ngay`, `den_ngay`, `tg_thuc_hien_min`, `tg_thuc_hien_max`, `tg_thu_thuat_min`, `tg_thu_thuat_max`, `lien_tuc`, `updated_at`.
+  3. Cập nhật `getThuThuat`, `addThuThuat`, `editThuThuat` đọc/ghi song song bảng `lich_su_dinh_muc`, giữ tương thích 100% với giao diện frontend `mapProcedureJS`.
+- **File sửa đổi:**
+  - `backend/schema.sql` [NEW TABLE: lich_su_dinh_muc]
+  - `backend/src/index.js` [MODIFY: ensureSchema (CREATE TABLE lich_su_dinh_muc), getThuThuat, addThuThuat, editThuThuat]
+  - `version.json` [MODIFY: 4.1.3-rev8, timestamp 10:25 21/09/2026]
+  - `sw.js` [MODIFY: CACHE_NAME = 'pmcg-v4-cache-4.1.3-rev8']
+  - `index.html` [MODIFY: query string v=4.1.3-rev8, APP_VERSION = '4.1.3-rev8']
+  - `PM-xeplich-v4.md` [MODIFY]
+
+
 
 
 

@@ -1218,6 +1218,20 @@ async function ensureSchema(db) {
         attempt_count INTEGER DEFAULT 1,
         last_attempt INTEGER NOT NULL,
         locked_until INTEGER DEFAULT 0
+      )`),
+      db.prepare(`CREATE TABLE IF NOT EXISTS lich_su_dinh_muc (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
+        ten_thu_thuat TEXT NOT NULL,
+        tu_ngay TEXT NOT NULL,
+        den_ngay TEXT NOT NULL,
+        tg_thuc_hien_min INTEGER DEFAULT 0,
+        tg_thuc_hien_max INTEGER DEFAULT 0,
+        tg_thu_thuat_min INTEGER DEFAULT 0,
+        tg_thu_thuat_max INTEGER DEFAULT 0,
+        lien_tuc TEXT DEFAULT 'Không',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`)
     ];
     await db.batch(stmts);
@@ -1259,6 +1273,7 @@ async function ensureSchema(db) {
       "CREATE INDEX IF NOT EXISTS idx_tai_khoan_unit ON tai_khoan(unit_code, username)",
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_cham_cong_unit_my ON cham_cong(unit_code, month_year)",
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_thong_ke_unit_my ON thong_ke(unit_code, month_year)",
+      "CREATE INDEX IF NOT EXISTS idx_lsdm_unit_tt ON lich_su_dinh_muc(unit_code, ten_thu_thuat)",
       "ALTER TABLE may_moc ADD COLUMN is_active INTEGER DEFAULT 1",
       "ALTER TABLE may_moc ADD COLUMN order_idx INTEGER DEFAULT 0",
       "ALTER TABLE phong ADD COLUMN is_active INTEGER DEFAULT 1",
@@ -3514,39 +3529,66 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     }
 
     case "getThuThuat": {
-      try {
-        await db.prepare("ALTER TABLE thu_thuat ADD COLUMN lich_su_dinh_muc TEXT DEFAULT '[]'").run().catch(() => {});
-      } catch (e) {}
-      const res = await db.prepare("SELECT * FROM thu_thuat WHERE unit_code = ? ORDER BY order_idx ASC, id ASC").bind(unitCode).all();
-      return success((res.results || []).map(p => ({
-        id: p.id,
-        ten: p.ten_thu_thuat,
-        name: p.ten_thu_thuat,
-        vietTat: p.viet_tat,
-        he: p.he,
-        phanLoai: p.phan_loai,
-        may: p.may,
-        thoiGianThucHien: p.tg_thuc_hien,
-        thoiGianThucHienMin: p.tg_thuc_hien,
-        thoiGianThucHienMax: (p.tg_thuc_hien_max && p.tg_thuc_hien_max > 0) ? p.tg_thuc_hien_max : p.tg_thuc_hien,
-        thoiGianThuThuat: p.tg_thu_thuat,
-        thoiGianThuThuatMin: p.tg_thu_thuat,
-        thoiGianThuThuatMax: (p.tg_thu_thuat_max && p.tg_thu_thuat_max > 0) ? p.tg_thu_thuat_max : p.tg_thu_thuat,
-        khoangCach: p.khoang_cach,
-        canRutMay: (p.can_rut_may === 1 || p.can_rut_may === '1' || p.can_rut_may === 'Có' || p.can_rut_may === true) ? 'Có' : 'Không',
-        canNguoiPhu: (p.can_nguoi_phu === 1 || p.can_nguoi_phu === '1' || p.can_nguoi_phu === 'Có' || p.can_nguoi_phu === true) ? 'Có' : 'Không',
-        dsNguoiPhu: p.ds_nguoi_phu,
-        lienTuc: (p.lien_tuc === 1 || p.lien_tuc === '1' || p.lien_tuc === 'Có' || p.lien_tuc === true) ? 'Có' : ((p.tg_thuc_hien === p.tg_thu_thuat && ((p.tg_thuc_hien_max || p.tg_thuc_hien) === (p.tg_thu_thuat_max || p.tg_thu_thuat)) && p.tg_thuc_hien >= 10) ? 'Có' : 'Không'),
-        lichSuDinhMuc: p.lich_su_dinh_muc ? (typeof p.lich_su_dinh_muc === 'string' ? (JSON.parse(p.lich_su_dinh_muc || '[]')) : p.lich_su_dinh_muc) : [],
-        history: p.lich_su_dinh_muc ? (typeof p.lich_su_dinh_muc === 'string' ? (JSON.parse(p.lich_su_dinh_muc || '[]')) : p.lich_su_dinh_muc) : []
-      })));
+      const [procRes, histRes] = await Promise.all([
+        db.prepare("SELECT * FROM thu_thuat WHERE unit_code = ? ORDER BY order_idx ASC, id ASC").bind(unitCode).all().catch(() => ({ results: [] })),
+        db.prepare("SELECT * FROM lich_su_dinh_muc WHERE unit_code = ? ORDER BY tu_ngay ASC, id ASC").bind(unitCode).all().catch(() => ({ results: [] }))
+      ]);
+
+      const historyMap = {};
+      (histRes.results || []).forEach(h => {
+        const key = String(h.ten_thu_thuat || '').trim().toLowerCase();
+        if (!historyMap[key]) historyMap[key] = [];
+        historyMap[key].push({
+          id: h.id,
+          tuNgay: h.tu_ngay,
+          denNgay: h.den_ngay,
+          from: h.tu_ngay,
+          to: h.den_ngay,
+          thoiGianThucHienMin: h.tg_thuc_hien_min,
+          thoiGianThucHienMax: h.tg_thuc_hien_max,
+          thoiGianThuThuatMin: h.tg_thu_thuat_min,
+          thoiGianThuThuatMax: h.tg_thu_thuat_max,
+          lienTuc: h.lien_tuc || 'Không'
+        });
+      });
+
+      return success((procRes.results || []).map(p => {
+        const key = String(p.ten_thu_thuat || '').trim().toLowerCase();
+        let listH = historyMap[key] || [];
+
+        if (listH.length === 0 && p.lich_su_dinh_muc) {
+          try {
+            listH = typeof p.lich_su_dinh_muc === 'string' ? (JSON.parse(p.lich_su_dinh_muc || '[]')) : p.lich_su_dinh_muc;
+          } catch(e) { listH = []; }
+        }
+
+        return {
+          id: p.id,
+          ten: p.ten_thu_thuat,
+          name: p.ten_thu_thuat,
+          vietTat: p.viet_tat,
+          he: p.he,
+          phanLoai: p.phan_loai,
+          may: p.may,
+          thoiGianThucHien: p.tg_thuc_hien,
+          thoiGianThucHienMin: p.tg_thuc_hien,
+          thoiGianThucHienMax: (p.tg_thuc_hien_max && p.tg_thuc_hien_max > 0) ? p.tg_thuc_hien_max : p.tg_thuc_hien,
+          thoiGianThuThuat: p.tg_thu_thuat,
+          thoiGianThuThuatMin: p.tg_thu_thuat,
+          thoiGianThuThuatMax: (p.tg_thu_thuat_max && p.tg_thu_thuat_max > 0) ? p.tg_thu_thuat_max : p.tg_thu_thuat,
+          khoangCach: p.khoang_cach,
+          canRutMay: (p.can_rut_may === 1 || p.can_rut_may === '1' || p.can_rut_may === 'Có' || p.can_rut_may === true) ? 'Có' : 'Không',
+          canNguoiPhu: (p.can_nguoi_phu === 1 || p.can_nguoi_phu === '1' || p.can_nguoi_phu === 'Có' || p.can_nguoi_phu === true) ? 'Có' : 'Không',
+          dsNguoiPhu: p.ds_nguoi_phu,
+          lienTuc: (p.lien_tuc === 1 || p.lien_tuc === '1' || p.lien_tuc === 'Có' || p.lien_tuc === true) ? 'Có' : ((p.tg_thuc_hien === p.tg_thu_thuat && ((p.tg_thuc_hien_max || p.tg_thuc_hien) === (p.tg_thu_thuat_max || p.tg_thu_thuat)) && p.tg_thuc_hien >= 10) ? 'Có' : 'Không'),
+          lichSuDinhMuc: listH,
+          history: listH
+        };
+      }));
     }
 
     case "addThuThuat":
     case "editThuThuat": {
-      try {
-        await db.prepare("ALTER TABLE thu_thuat ADD COLUMN lich_su_dinh_muc TEXT DEFAULT '[]'").run().catch(() => {});
-      } catch (e) {}
       let payload = {};
       if (typeof args[0] === "object" && args[0] !== null) {
         payload = args[0];
@@ -3645,12 +3687,41 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         }
       }
 
+      // Lưu các dòng lịch sử vào bảng riêng lich_su_dinh_muc
+      if (historyList && historyList.length > 0) {
+        for (const h of historyList) {
+          const hTu = String(h.tuNgay || h.from || '2026-01-01').trim();
+          const hDen = String(h.denNgay || h.to || '2026-12-31').trim();
+          const hThMin = parseInt(h.thoiGianThucHienMin || h.thoiGianThucHien || 0) || 0;
+          const hThMax = parseInt(h.thoiGianThucHienMax || hThMin) || hThMin;
+          const hTtMin = parseInt(h.thoiGianThuThuatMin || h.thoiGianThuThuat || 0) || 0;
+          const hTtMax = parseInt(h.thoiGianThuThuatMax || hTtMin) || hTtMin;
+          const hLt = String(h.lienTuc || 'Không');
+
+          try {
+            await db.prepare(`
+              INSERT INTO lich_su_dinh_muc (unit_code, ten_thu_thuat, tu_ngay, den_ngay, tg_thuc_hien_min, tg_thuc_hien_max, tg_thu_thuat_min, tg_thu_thuat_max, lien_tuc, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            `).bind(unitCode, ten, hTu, hDen, hThMin, hThMax, hTtMin, hTtMax, hLt).run().catch(() => {});
+          } catch(eH) {}
+        }
+      }
+
       const lichSuStr = JSON.stringify(historyList);
 
-      const stmt = db.prepare(`INSERT INTO thu_thuat (unit_code, ten_thu_thuat, viet_tat, he, phan_loai, may, tg_thuc_hien, tg_thuc_hien_max, tg_thu_thuat, tg_thu_thuat_max, khoang_cach, can_rut_may, can_nguoi_phu, ds_nguoi_phu, lien_tuc, lich_su_dinh_muc, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(unit_code, ten_thu_thuat) DO UPDATE SET viet_tat = excluded.viet_tat, he = excluded.he, phan_loai = excluded.phan_loai, may = excluded.may, tg_thuc_hien = excluded.tg_thuc_hien, tg_thuc_hien_max = excluded.tg_thuc_hien_max, tg_thu_thuat = excluded.tg_thu_thuat, tg_thu_thuat_max = excluded.tg_thu_thuat_max, khoang_cach = excluded.khoang_cach, can_rut_may = excluded.can_rut_may, can_nguoi_phu = excluded.can_nguoi_phu, ds_nguoi_phu = excluded.ds_nguoi_phu, lien_tuc = excluded.lien_tuc, lich_su_dinh_muc = excluded.lich_su_dinh_muc, updated_at = CURRENT_TIMESTAMP`)
-        .bind(unitCode, ten, vietTat, he, phanLoai, may, tgThMin, tgThMax, tgTtMin, tgTtMax, kc, rut, phu, dsPhu, isLt, lichSuStr);
+      let stmt;
+      try {
+        stmt = db.prepare(`INSERT INTO thu_thuat (unit_code, ten_thu_thuat, viet_tat, he, phan_loai, may, tg_thuc_hien, tg_thuc_hien_max, tg_thu_thuat, tg_thu_thuat_max, khoang_cach, can_rut_may, can_nguoi_phu, ds_nguoi_phu, lien_tuc, lich_su_dinh_muc, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(unit_code, ten_thu_thuat) DO UPDATE SET viet_tat = excluded.viet_tat, he = excluded.he, phan_loai = excluded.phan_loai, may = excluded.may, tg_thuc_hien = excluded.tg_thuc_hien, tg_thuc_hien_max = excluded.tg_thuc_hien_max, tg_thu_thuat = excluded.tg_thu_thuat, tg_thu_thuat_max = excluded.tg_thu_thuat_max, khoang_cach = excluded.khoang_cach, can_rut_may = excluded.can_rut_may, can_nguoi_phu = excluded.can_nguoi_phu, ds_nguoi_phu = excluded.ds_nguoi_phu, lien_tuc = excluded.lien_tuc, lich_su_dinh_muc = excluded.lich_su_dinh_muc, updated_at = CURRENT_TIMESTAMP`)
+          .bind(unitCode, ten, vietTat, he, phanLoai, may, tgThMin, tgThMax, tgTtMin, tgTtMax, kc, rut, phu, dsPhu, isLt, lichSuStr);
+      } catch(ePrep) {
+        stmt = db.prepare(`INSERT INTO thu_thuat (unit_code, ten_thu_thuat, viet_tat, he, phan_loai, may, tg_thuc_hien, tg_thuc_hien_max, tg_thu_thuat, tg_thu_thuat_max, khoang_cach, can_rut_may, can_nguoi_phu, ds_nguoi_phu, lien_tuc, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(unit_code, ten_thu_thuat) DO UPDATE SET viet_tat = excluded.viet_tat, he = excluded.he, phan_loai = excluded.phan_loai, may = excluded.may, tg_thuc_hien = excluded.tg_thuc_hien, tg_thuc_hien_max = excluded.tg_thuc_hien_max, tg_thu_thuat = excluded.tg_thu_thuat, tg_thu_thuat_max = excluded.tg_thu_thuat_max, khoang_cach = excluded.khoang_cach, can_rut_may = excluded.can_rut_may, can_nguoi_phu = excluded.can_nguoi_phu, ds_nguoi_phu = excluded.ds_nguoi_phu, lien_tuc = excluded.lien_tuc, updated_at = CURRENT_TIMESTAMP`)
+          .bind(unitCode, ten, vietTat, he, phanLoai, may, tgThMin, tgThMax, tgTtMin, tgTtMax, kc, rut, phu, dsPhu, isLt);
+      }
+
       await db.batch([stmt, makeBumpDataVersionStmt(db, unitCode)]);
       return success({ message: "Lưu thủ thuật thành công" });
     }

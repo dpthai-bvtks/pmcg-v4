@@ -1,6 +1,6 @@
 {
-    "version": "4.1.3-rev7",
+    "version": "4.1.3-rev8",
     "releaseDate": "21/09/2026",
-    "releaseTime": "10:10 21/09/2026",
-    "notes": "fix(schema): Tự động kiểm tra và thêm cột lich_su_dinh_muc vào bảng thu_thuat trực tiếp khi truy vấn getThuThuat / addThuThuat / editThuThuat."
+    "releaseTime": "10:25 21/09/2026",
+    "notes": "feat(schema): Khởi tạo bảng độc lập lich_su_dinh_muc trong CSDL MiniPC để lưu vết các mốc định mức Min/Max thời gian thủ thuật theo mốc [Từ Ngày - Đến Ngày]."
 }

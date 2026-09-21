@@ -125,6 +125,23 @@ CREATE TABLE IF NOT EXISTS thu_thuat (
 );
 CREATE INDEX IF NOT EXISTS idx_thu_thuat_unit ON thu_thuat(unit_code, is_active, order_idx);
 
+-- 7b. LỊCH SỬ THAY ĐỔI ĐỊNH MỨC MIN/MAX THỦ THUẬT
+CREATE TABLE IF NOT EXISTS lich_su_dinh_muc (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    unit_code TEXT NOT NULL DEFAULT 'bvtks_cs2',
+    ten_thu_thuat TEXT NOT NULL,
+    tu_ngay TEXT NOT NULL,
+    den_ngay TEXT NOT NULL,
+    tg_thuc_hien_min INTEGER DEFAULT 0,
+    tg_thuc_hien_max INTEGER DEFAULT 0,
+    tg_thu_thuat_min INTEGER DEFAULT 0,
+    tg_thu_thuat_max INTEGER DEFAULT 0,
+    lien_tuc TEXT DEFAULT 'Không',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_lsdm_unit_tt ON lich_su_dinh_muc(unit_code, ten_thu_thuat);
+
 -- 8. DANH SÁCH BỆNH NHÂN ĐIỀU TRỊ
 CREATE TABLE IF NOT EXISTS benh_nhan (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
