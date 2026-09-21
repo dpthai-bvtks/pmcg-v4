@@ -4977,16 +4977,63 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `backend/src/index.js` [MODIFY: getThuThuat auto-seed baseline history records for bvtks-cs2]
   - `version.json` [MODIFY: 4.1.3-rev9, timestamp 10:35 21/09/2026]
   - `sw.js` [MODIFY: CACHE_NAME = 'pmcg-v4-cache-4.1.3-rev9']
-  - `index.html` [MODIFY: query string v=4.1.3-rev9, APP_VERSION = '4.1.3-rev9']
+### [21/09/2026 - 12:10] Phiên bản v4.1.3-rev10: Xóa toàn bộ và tái tạo bảng lich_su_dinh_muc với đầy đủ 100% cột tham số thủ thuật
+- **Bối cảnh & Xử lý**:
+  1. Thực hiện lệnh `DELETE FROM lich_su_dinh_muc` theo yêu cầu người dùng để làm sạch toàn bộ dữ liệu lịch sử định mức cũ.
+  2. Tái tạo lại đầy đủ 16 thủ thuật chính thức cho đơn vị `bvtks-cs2` với mốc thời gian áp dụng trước ngày `21/09/2026` (`tu_ngay: '2026-01-01'`, `den_ngay: '2026-09-20'`).
+  3. Bổ sung đầy đủ 100% các cột tham số của thủ thuật vào từng bản ghi lịch sử: `khoang_cach`, `can_rut_may`, `can_nguoi_phu`, `ds_nguoi_phu`, `viet_tat`, `he`, `phan_loai`, `may`, `lien_tuc`.
+  4. Cập nhật đồng bộ cả cột JSON `thu_thuat.lich_su_dinh_muc` và tăng `data_version` để tự động làm mới bộ nhớ cache của client.
+  5. Nâng cấp API Worker:
+     - Thêm cơ chế kiểm tra nhanh `ensureSchema` (chỉ 1 subrequest) tránh vượt quá hạn mức subrequest (50) của Cloudflare Workers.
+     - Đồng bộ ánh xạ đầy đủ tất cả các trường tham số thủ thuật (`khoangCach`, `canRutMay`, `canNguoiPhu`, `dsNguoiPhu`, `vietTat`, `he`, `phanLoai`, `may`) trong `getBootstrapData` và `getThuThuat`.
+     - Tự động dọn sạch bản ghi lịch sử trong `lich_su_dinh_muc` khi xóa một thủ thuật.
+- **File sửa đổi:**
+  - `backend/src/index.js` [MODIFY: ensureSchema subrequest optimization, getBootstrapData & getThuThuat & editThuThuat history mapping, deleteThuThuat cleanup]
+  - `version.json` [MODIFY: 4.1.3-rev10, timestamp 12:10 21/09/2026]
   - `PM-xeplich-v4.md` [MODIFY]
-
-
-
-
-
-
-
-
+### [21/09/2026 - 12:20] Phiên bản v4.1.3-rev11: Sửa lỗi ReferenceError dateStr is not defined trong mapProcedureJS & tối ưu hóa Service Worker Cache
+- **Bối cảnh & Xử lý**:
+  1. Khi người dùng bấm nút kiểm tra lỗi ("Kiểm tra lỗi xếp lịch"), hàm `mapProcedureJS` gọi đối chiếu lịch sử định mức nhưng biến `dateStr` chưa được khai báo, dẫn đến lỗi `ReferenceError: dateStr is not defined at mapProcedureJS (app.js:13564)`.
+  2. Bổ sung khai báo `const dateStr = \`\${yyyy}-\${mm}-\${dd}\`;\` và chuẩn hóa đầu vào `targetDate` hỗ trợ linh hoạt cả `Date` instance, Excel serial number, chuỗi `DD/MM/YYYY` và chuỗi ISO `YYYY-MM-DD`.
+  3. Bổ sung đầy đủ các trường tham số thủ thuật trong đối tượng trả về của `mapProcedureJS` (`khoangCach`, `canRutMay`, `canNguoiPhu`, `dsNguoiPhu`, `vietTat`, `he`, `phanLoai`, `may`, `lienTuc`).
+  4. Cấu hình `app.onError` toàn cục trên Backend Hono để bắt tất cả các ngoại lệ máy chủ và trả về thông điệp JSON chi tiết thay vì lỗi 500 trống.
+  5. Nâng cấp Service Worker cache lên `pmcg-v4-cache-4.1.3-rev11` và cập nhật chuỗi query string `?v=4.1.3-rev11` trên toàn bộ tệp assets trong `index.html`.
+- **File sửa đổi:**
+  - `js/app.js` [FIX: mapProcedureJS date parsing and dateStr definition]
+  - `backend/src/index.js` [ADD: app.onError global error handler]
+  - `sw.js` [MODIFY: CACHE_NAME = 'pmcg-v4-cache-4.1.3-rev11']
+  - `index.html` [MODIFY: APP_VERSION = '4.1.3-rev11', query strings v=4.1.3-rev11]
+### [21/09/2026 - 20:15] Phiên bản v4.1.3-rev12: Khắc phục triệt để lỗi chốt sổ tự động lúc 16h20 không kích hoạt
+- **Yêu cầu của người dùng**:
+  - Xem xem tại sao mình cài đặt chốt sổ tự động vào lúc 16h20 nhưng kết quả lại không thấy chốt sổ.
+- **Phân tích nguyên nhân**:
+  1. *Lỗi ghi nhận nhầm ngày chốt sổ do Safety Catch-up*: Sáng sớm ngày 21/09/2026 (00:00:04 UTC), hàm `checkAutoChotSo` chạy cơ chế hồi phục an toàn để dọn dẹp lịch cũ tồn đọng từ ngày 19/09/2026. Tuy nhiên, lệnh `setCaiDat` lại lưu `lastChotSoDate = todayYMD` (`2026-09-21`), khiến hệ thống tưởng ngày hôm nay đã chốt sổ rồi và từ chối kích hoạt lúc 16:20 chiều khi 205 ca lịch mới cần được chốt.
+  2. *Lỗi so sánh chuỗi thời gian khi nhập 16h20*: Người dùng quen tay gõ `16h20` có chữ `'h'`. Vì ký tự `':'` có mã ASCII 58 nhỏ hơn `'h'` (mã 104), phép so sánh chuỗi `"16:20" >= "16h20"` luôn trả về `FALSE` trong suốt khung giờ từ 16:20 đến 16:59.
+  3. *Giao diện Client im lặng khi API phản hồi*: Callback `callApi('autoChotSo')` chỉ in `console.log`, không xóa bộ nhớ cache, không xóa LocalStorage/IndexedDB và không làm mới bảng lịch hay hiện thông báo.
+- **Giải pháp xử lý**:
+  1. *Backend (`backend/src/index.js`)*:
+     - Sửa `checkAutoChotSo`: Khi dọn lịch ngày cũ bằng Safety Catch-up, gán `lastChotSoDate` và lưu giờ bận theo đúng ngày của lịch cũ đó (`pastSched.date`), không ghi đè ngày hôm nay.
+     - Bổ sung cơ chế chốt sổ vét cho lịch hôm nay: Nếu `currentHourMin >= chotSoTime` và `lich_trinh` vẫn còn lịch hôm nay chưa được lưu sang `lich_su`, hệ thống vẫn tiếp tục kích hoạt chốt sổ an toàn kể cả khi `lastChotSoDate` bị gắn nhầm.
+     - Chuẩn hóa thời gian chốt sổ: Tự động loại bỏ ký tự lạ và quy đổi `16h20` thành `16:20`.
+     - Phản hồi chi tiết cho API `autoChotSo`: Trả về `{ closed: true/false, closedDate, reason }`.
+  2. *Frontend (`js/app.js`)*:
+     - Thêm hàm `normalizeTimeHHMM(str)` chuẩn hóa tự động mọi định dạng `16h20`, `16H20`, `16h`, `16:2` về dạng chuẩn `HH:mm`.
+     - Tích hợp chuẩn hóa vào `luuCaiDatChotSo`, `attachSystemSettingsAutoSave` (bắt sự kiện change/blur) và `applySystemSettings`.
+     - Nâng cấp Client-side auto-chotso listener (`setInterval`): Chuyển sang so sánh tổng số phút trong ngày (`currentMinutes >= targetMinutes`), triệt tiêu 100% lỗi chuỗi ASCII.
+     - Khi chốt sổ tự động thành công: Dọn sạch cache RAM (`dataCache.schedule = []`, `currentScheduleData = []`), dọn LocalStorage và Dexie IndexedDB, làm mới bảng lịch và bật popup thông báo nổi bật qua `showCustomAlert`.
+  3. *Cơ sở dữ liệu SQLite (`pmcg.db`)*:
+     - Khôi phục `lastChotSoDate` của đơn vị `bvtks-cs2` về `2026-09-19` để giải phóng trạng thái kẹt lịch hôm nay.
+  4. *Đồng bộ phiên bản theo RULES.md*:
+     - `version.json`: Cập nhật `4.1.3-rev12`, `releaseTime`: `20:15 21/09/2026`.
+     - `sw.js`: Cập nhật `CACHE_NAME = 'pmcg-v4-cache-4.1.3-rev12'`.
+     - `index.html`: Cập nhật cache busters `?v=4.1.3-rev12`, `APP_VERSION = '4.1.3-rev12'`, `#sys-last-update` $\rightarrow$ `⏱ Cập nhật lần cuối: 20:15 21/09/2026`. Chân trang `#app-footer-version` giữ nguyên `Phiên bản: 4.1.3`.
+- **File sửa đổi:**
+  - `backend/src/index.js` [MODIFY: checkAutoChotSo safety catch-up date clamping, current day schedule rescue check, time string normalization, autoChotSo detailed response]
+  - `js/app.js` [MODIFY: normalizeTimeHHMM, luuCaiDatChotSo, attachSystemSettingsAutoSave, applySystemSettings, client-side auto-chotso numeric listener and UI refresh with alert]
+  - `index.html` [MODIFY: cache busters ?v=4.1.3-rev12, APP_VERSION, sys-last-update]
+  - `sw.js` [MODIFY: CACHE_NAME pmcg-v4-cache-4.1.3-rev12]
+  - `version.json` [MODIFY: version 4.1.3-rev12, releaseTime 20:15 21/09/2026]
+  - `PM-xeplich-v4.md` [MODIFY]
 
 
 

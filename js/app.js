@@ -3272,7 +3272,7 @@ window.renderSttOrderControl = function (type, i, total) {
             const chotSoEl = document.getElementById("admin-chotso-time");
             if (chotSoEl) {
                 if (res.chotSoTime !== undefined && res.chotSoTime !== null && String(res.chotSoTime).trim() !== "") {
-                    chotSoEl.value = String(res.chotSoTime).trim();
+                    chotSoEl.value = (typeof normalizeTimeHHMM === 'function') ? normalizeTimeHHMM(res.chotSoTime) : String(res.chotSoTime).trim();
                 } else if (!chotSoEl.value) {
                     chotSoEl.value = "16:20";
                 }
@@ -4868,11 +4868,14 @@ window.renderSttOrderControl = function (type, i, total) {
 
             if (!ten) return alert("Nhập tên thủ thuật");
 
-            const existingItem = (editIndex.proc > -1) ? dataCache.proc[editIndex.proc] : null;
+            const isEdit = editIndex.proc > -1;
+            const existingItem = isEdit ? dataCache.proc[editIndex.proc] : null;
             const existingHistory = existingItem ? (existingItem.lichSuDinhMuc || existingItem.history || []) : [];
+            const procId = existingItem ? existingItem.id : undefined;
+            const oldTen = existingItem ? (existingItem.ten || existingItem.name) : undefined;
 
             const obj = {
-                id: existingItem ? existingItem.id : undefined,
+                id: procId,
                 ten, vietTat: vt, he, phanLoai: loai, may,
                 thoiGianThucHien: tgThucHienMin,
                 thoiGianThucHienMin: tgThucHienMin,
@@ -4886,19 +4889,46 @@ window.renderSttOrderControl = function (type, i, total) {
                 history: existingHistory
             };
 
-            if (editIndex.proc > -1) {
+            if (isEdit) {
                 dataCache.proc[editIndex.proc] = obj;
-                if (typeof callApi === 'function') {
-                    callApi('editThuThuat', [editIndex.proc, ten, vt, he, loai, may, tgThucHienMin, tgThuThuatMin, kc, rut, phu, dsPhu, tgThuThuatMax, tgThucHienMax, lienTuc, JSON.stringify(existingHistory)]);
-                }
             } else {
                 dataCache.proc.push(obj);
-                if (typeof callApi === 'function') {
-                    callApi('addThuThuat', [ten, vt, he, loai, may, tgThucHienMin, tgThuThuatMin, kc, rut, phu, dsPhu, tgThuThuatMax, tgThucHienMax, lienTuc, JSON.stringify(existingHistory)]);
-                }
             }
 
-            cancelEdit('proc'); renderProceduresTable(); renderProcedureCheckboxes();
+            // Đồng bộ ngay lập tức vào bootstrap cache trong localStorage để khi F5 / reload không bị giật về cũ
+            try {
+                const bKey = typeof getBootstrapCacheKey === 'function' ? getBootstrapCacheKey() : 'times_bootstrap_cache';
+                const bStr = localStorage.getItem(bKey);
+                if (bStr) {
+                    const b = JSON.parse(bStr);
+                    b.procedures = dataCache.proc;
+                    b.thu_thuat = dataCache.proc;
+                    localStorage.setItem(bKey, JSON.stringify(b));
+                }
+            } catch (e) {}
+
+            cancelEdit('proc');
+            renderProceduresTable();
+            renderProcedureCheckboxes();
+
+            const actionName = isEdit ? 'editThuThuat' : 'addThuThuat';
+            if (typeof callApi === 'function') {
+                callApi(actionName, [
+                    isEdit ? editIndex.proc : ten,
+                    ten, vt, he, loai, may,
+                    tgThucHienMin, tgThuThuatMin, kc, rut, phu, dsPhu,
+                    tgThuThuatMax, tgThucHienMax, lienTuc,
+                    JSON.stringify(existingHistory),
+                    procId,
+                    oldTen
+                ], () => {
+                    if (typeof showToastSuccess === 'function') showToastSuccess(`Đã lưu thủ thuật "${ten}" thành công!`);
+                    else if (typeof window.showToast === 'function') window.showToast(`Đã lưu thủ thuật "${ten}" thành công!`, 'success');
+                }, (err) => {
+                    console.error("Lỗi lưu thủ thuật:", err);
+                    alert("Lỗi lưu thủ thuật lên máy chủ: " + err);
+                });
+            }
         }
 
         function editProc(index) {
@@ -4943,11 +4973,24 @@ window.renderSttOrderControl = function (type, i, total) {
             const item = dataCache.proc[i];
             if (!item) return;
             const ten = String(item.ten || item.name || item[1] || '').trim();
+            const procId = item.id || null;
 
             showCustomConfirm("Xác nhận xóa thủ thuật", `Bác sĩ có chắc chắn muốn xóa thủ thuật "${ten}" không?`, function () {
                 dataCache.proc.splice(i, 1);
                 renderProceduresTable();
                 renderProcedureCheckboxes();
+
+                // Đồng bộ ngay vào times_bootstrap_cache
+                try {
+                    const bKey = typeof getBootstrapCacheKey === 'function' ? getBootstrapCacheKey() : 'times_bootstrap_cache';
+                    const bStr = localStorage.getItem(bKey);
+                    if (bStr) {
+                        const b = JSON.parse(bStr);
+                        b.procedures = dataCache.proc;
+                        b.thu_thuat = dataCache.proc;
+                        localStorage.setItem(bKey, JSON.stringify(b));
+                    }
+                } catch(e) {}
 
                 google.script.run
                     .withSuccessHandler(() => {
@@ -4957,7 +5000,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     .withFailureHandler(e => {
                         alert('Lỗi xóa thủ thuật: ' + e);
                         if (typeof loadProcedures === 'function') loadProcedures();
-                    }).deleteThuThuat(i, ten);
+                    }).deleteThuThuat({ ten, id: procId, index: i }, ten, procId);
             });
         }
 
@@ -6706,7 +6749,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         hasHealedStorage = true;
                     }
                 } else if (rawTen.includes('\ufffd') || rawTen.includes('?')) {
-                    const selfHealed = cleanHealFn(rawTen, (dataCache.pat || []).map(p => p.ten), true);
+                    const selfHealed = cleanHealFn(rawTen, [], true);
                     if (selfHealed && selfHealed !== row.tenBN) {
                         row.tenBN = selfHealed;
                         hasHealedStorage = true;
@@ -7393,28 +7436,28 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     newSched.forEach(row => {
                         if (!row) return;
+                        const rName = String(row.tenBN || row.HOTEN || '').normalize('NFC').trim();
                         const rNs = String(row.namSinh || '').trim();
-                        const rRoom = String(row.phong || '').trim().toLowerCase();
-                        let targetCand = candNames;
 
+                        // Khớp đúng họ tên bệnh nhân, tuyệt đối không gán đè sang bệnh nhân khác
                         const matchedPat = patList.find(p => {
+                            const pName = String(p?.ten || p?.name || '').normalize('NFC').trim();
                             const pNs = String(p?.namSinh || '').trim();
-                            const pRoom = String(p?.phong || '').trim().toLowerCase();
-                            return (!rNs || !pNs || rNs === pNs) && (!rRoom || !pRoom || rRoom === pRoom);
+                            return pName.toLowerCase() === rName.toLowerCase() && (!rNs || !pNs || rNs === pNs);
                         }) || currentSched.find(r => {
+                            const pName = String(r?.tenBN || r?.HOTEN || '').normalize('NFC').trim();
                             const pNs = String(r?.namSinh || '').trim();
-                            const pRoom = String(r?.phong || '').trim().toLowerCase();
-                            return (!rNs || !pNs || rNs === pNs) && (!rRoom || !pRoom || rRoom === pRoom);
+                            return pName.toLowerCase() === rName.toLowerCase() && (!rNs || !pNs || rNs === pNs);
                         });
 
                         if (matchedPat) {
                             const mName = String(matchedPat.ten || matchedPat.tenBN || matchedPat.name || '').normalize('NFC').trim();
                             if (mName && !mName.includes('\ufffd')) {
-                                targetCand = [mName, ...candNames];
+                                row.tenBN = mName.toUpperCase();
                             }
+                        } else {
+                            row.tenBN = cleanHealFn(rName, [], true);
                         }
-
-                        row.tenBN = cleanHealFn(row.tenBN, targetCand);
                     });
 
                     const mergedSched = [...currentSched];
@@ -10804,7 +10847,8 @@ window.renderSttOrderControl = function (type, i, total) {
                     });
 
                     const patientList = rows.slice(1).filter(r => r[1]).map(r => {
-                        const ten = healFn(r[1], candNames, false);
+                        const rawT = decodeFn(r[1]);
+                        const ten = (rawT.includes('\ufffd') || rawT.includes('?')) ? healFn(rawT, [], false) : properFn(rawT);
                         const namSinh = decodeFn(r[2]);
                         const key = buildMatchKeyLocal(ten, namSinh);
                         const existing = existingMap[key];
@@ -10992,9 +11036,9 @@ window.renderSttOrderControl = function (type, i, total) {
                         let totalRead = 0;
 
                         dataRows.forEach(row => {
-                            const rawTen = row[colTen];
-                            // 🩹 Chữa lành họ tên ngay tại lúc đọc file Excel
-                            const ten = healFn(rawTen, candNames, false);
+                            const rawTen = decodeFn(row[colTen]);
+                            // Giữ nguyên họ tên thực tế từ file Excel, không đoán mò gán nhầm sang BN khác
+                            const ten = (rawTen.includes('\ufffd') || rawTen.includes('?')) ? healFn(rawTen, [], false) : properFn(rawTen);
                             const namSinh = decodeFn(row[colNamSinh]);
                             const dichVu = decodeFn(row[colDichVu]);
                             // Bỏ qua cột D (idx 3 - Buồng bệnh nội trú HIS), mặc định để phòng trống
@@ -11716,6 +11760,20 @@ window.renderSttOrderControl = function (type, i, total) {
         // ============================================================
         // ⚙️ CÀI ĐẶT HỆ THỐNG
         // ============================================================
+        function normalizeTimeHHMM(str) {
+            if (!str) return "16:20";
+            let s = String(str).trim().toLowerCase().replace(/h/g, ':');
+            s = s.replace(/[^0-9:]/g, '');
+            const parts = s.split(':').filter(Boolean);
+            if (parts.length === 0) return "16:20";
+            let hh = parseInt(parts[0], 10) || 0;
+            let mm = parts.length > 1 ? (parseInt(parts[1], 10) || 0) : 0;
+            if (hh < 0) hh = 0; if (hh > 23) hh = 23;
+            if (mm < 0) mm = 0; if (mm > 59) mm = 59;
+            return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+        }
+        window.normalizeTimeHHMM = normalizeTimeHHMM;
+
         function luuCaiDatChotSo(btn, isAutoSave = false) {
             const timeEl = document.getElementById("admin-chotso-time");
             const yhctLunchEl = document.getElementById("admin-yhct-lunch");
@@ -11724,7 +11782,10 @@ window.renderSttOrderControl = function (type, i, total) {
             const overtimeWEl = document.getElementById("admin-weight-overtime");
             const imbalanceWEl = document.getElementById("admin-weight-imbalance");
 
-            const timeVal = (timeEl && timeEl.value ? timeEl.value.trim() : "16:20");
+            const rawTimeVal = (timeEl && timeEl.value ? timeEl.value.trim() : "16:20");
+            const timeVal = normalizeTimeHHMM(rawTimeVal);
+            if (timeEl) timeEl.value = timeVal;
+
             const yhctLunchVal = (yhctLunchEl && yhctLunchEl.value !== undefined && yhctLunchEl.value !== "") ? yhctLunchEl.value.trim() : "5";
             const yhctEndVal = (yhctEndEl && yhctEndEl.value !== undefined && yhctEndEl.value !== "") ? yhctEndEl.value.trim() : "5";
             const dropW = (dropWEl && dropWEl.value !== undefined && dropWEl.value !== "") ? dropWEl.value.trim() : "10000";
@@ -11794,9 +11855,15 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (el && !el._hasAutoSaveBound) {
                     el._hasAutoSaveBound = true;
                     el.addEventListener('change', () => {
+                        if (id === "admin-chotso-time") {
+                            el.value = normalizeTimeHHMM(el.value);
+                        }
                         luuCaiDatChotSo(null, true);
                     });
                     el.addEventListener('blur', () => {
+                        if (id === "admin-chotso-time") {
+                            el.value = normalizeTimeHHMM(el.value);
+                        }
                         luuCaiDatChotSo(null, true);
                     });
                 }
@@ -13545,12 +13612,26 @@ window.renderSttOrderControl = function (type, i, total) {
 
             if (!targetDate) return matched;
 
-            let dObj = (targetDate instanceof Date) ? targetDate : new Date(targetDate);
-            if (isNaN(dObj.getTime())) return matched;
+            let dObj = null;
+            if (targetDate instanceof Date) {
+                dObj = targetDate;
+            } else if (typeof targetDate === 'number') {
+                dObj = convertExcelDateToJSDate(targetDate);
+            } else if (typeof targetDate === 'string') {
+                const s = targetDate.trim();
+                if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) {
+                    const [d, m, y] = s.split('/');
+                    dObj = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+                } else {
+                    dObj = new Date(s);
+                }
+            }
+            if (!dObj || isNaN(dObj.getTime())) return matched;
 
             const yyyy = dObj.getFullYear();
             const mm = String(dObj.getMonth() + 1).padStart(2, '0');
             const dd = String(dObj.getDate()).padStart(2, '0');
+            const dateStr = `${yyyy}-${mm}-${dd}`;
             const historyList = (matched.history && Array.isArray(matched.history))
                 ? matched.history
                 : ((matched.lichSuDinhMuc && Array.isArray(matched.lichSuDinhMuc))
@@ -13570,6 +13651,14 @@ window.renderSttOrderControl = function (type, i, total) {
                             thoiGianThuThuat: h.thoiGianThuThuat || h.thoiGianThuThuatMin || h.tg_thu_thuat || matched.thoiGianThuThuat,
                             thoiGianThuThuatMin: h.thoiGianThuThuatMin || h.thoiGianThuThuat || h.tg_thu_thuat || matched.thoiGianThuThuatMin,
                             thoiGianThuThuatMax: h.thoiGianThuThuatMax || h.tg_thu_thuat_max || matched.thoiGianThuThuatMax,
+                            khoangCach: h.khoangCach !== undefined ? h.khoangCach : matched.khoangCach,
+                            canRutMay: h.canRutMay || matched.canRutMay,
+                            canNguoiPhu: h.canNguoiPhu || matched.canNguoiPhu,
+                            dsNguoiPhu: h.dsNguoiPhu || matched.dsNguoiPhu,
+                            vietTat: h.vietTat || matched.vietTat,
+                            he: h.he || matched.he,
+                            phanLoai: h.phanLoai || matched.phanLoai,
+                            may: h.may || matched.may,
                             lienTuc: h.lienTuc !== undefined ? h.lienTuc : matched.lienTuc
                         };
                     }
@@ -14990,13 +15079,13 @@ window.loadDocumentListFromServer = function() {
         window.renderDocLookupTableUI(window.cachedDocuments);
     };
 
-    if (window.google && window.google.script && window.google.script.run) {
+    if (typeof callApi === 'function') {
+        callApi('getDocuments', [], handleSuccess, handleFailure);
+    } else if (window.google && window.google.script && window.google.script.run) {
         window.google.script.run
             .withSuccessHandler(handleSuccess)
             .withFailureHandler(handleFailure)
             .getDocuments();
-    } else if (typeof callApi === 'function') {
-        callApi('getDocuments', [], handleSuccess, handleFailure);
     } else {
         handleFailure("No API");
     }
@@ -15216,13 +15305,13 @@ window.saveDocListToServer = function() {
         alert("❌ Lỗi khi lưu văn bản lên máy chủ: " + (err.message || err));
     };
 
-    if (window.google && window.google.script && window.google.script.run) {
+    if (typeof callApi === 'function') {
+        callApi('saveDocuments', [window.cachedDocuments], handleSuccess, handleFailure);
+    } else if (window.google && window.google.script && window.google.script.run) {
         window.google.script.run
             .withSuccessHandler(handleSuccess)
             .withFailureHandler(handleFailure)
             .saveDocuments(window.cachedDocuments);
-    } else if (typeof callApi === 'function') {
-        callApi('saveDocuments', [window.cachedDocuments], handleSuccess, handleFailure);
     }
 };
 
@@ -16024,16 +16113,68 @@ window.filterGioBanChungCuClient = function() {};
             lastCheckedMinute = currentMin;
 
             const chotSoEl = document.getElementById("admin-chotso-time");
-            const targetTime = chotSoEl && chotSoEl.value ? chotSoEl.value.trim() : "16:20";
-            const hh = String(now.getHours()).padStart(2, '0');
-            const mm = String(now.getMinutes()).padStart(2, '0');
-            const currentTimeStr = `${hh}:${mm}`;
+            const rawTarget = chotSoEl && chotSoEl.value ? chotSoEl.value.trim() : (dataCache?.settings?.chotSoTime || "16:20");
+            const targetTime = (typeof normalizeTimeHHMM === 'function') ? normalizeTimeHHMM(rawTarget) : (rawTarget || "16:20");
+
+            const timeParts = targetTime.split(':').map(Number);
+            const targetMinutes = (timeParts[0] || 0) * 60 + (timeParts[1] || 0);
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
             // Khi đến hoặc qua giờ chốt sổ, kiểm tra với server
-            if (currentTimeStr >= targetTime && !window._chotSoDone) {
+            if (currentMinutes >= targetMinutes && !window._chotSoDone) {
                 if (typeof callApi === 'function') {
                     callApi('autoChotSo', [], res => {
-                        if (res && res.status === 'success') {
+                        if (res && res.closed) {
+                            window._chotSoDone = true;
+                            console.log(`[Client Auto-ChotSo]: Máy chủ đã tự động chốt sổ ngày ${res.closedDate || ''}.`);
+
+                            // Dọn dẹp bộ nhớ client và làm mới giao diện
+                            window.currentScheduleData = [];
+                            window.lastUnscheduledData = [];
+                            window.currentRotData = [];
+                            if (window.dataCache) window.dataCache.schedule = [];
+                            if (window.dataCacheTime) window.dataCacheTime = {};
+
+                            const curUnit = (typeof getCurrentUnitCode === 'function') ? getCurrentUnitCode() : (localStorage.getItem('pm_unit_code') || '');
+                            const uKey = (base) => (typeof getUnitStorageKey === 'function') ? getUnitStorageKey(base) : (curUnit ? `${curUnit}_${base}` : base);
+
+                            localStorage.removeItem(uKey('meds_success'));
+                            localStorage.removeItem(uKey('meds_schedule_date'));
+                            localStorage.removeItem(uKey('meds_unscheduled'));
+                            localStorage.removeItem('meds_success');
+                            localStorage.removeItem('meds_schedule_date');
+                            localStorage.removeItem('meds_unscheduled');
+                            localStorage.removeItem('meds_schedule_unit');
+
+                            const bKey = (typeof window.getBootstrapCacheKey === 'function') ? window.getBootstrapCacheKey() : `times_bootstrap_cache_${curUnit}`;
+                            try {
+                                const bStr = localStorage.getItem(bKey) || localStorage.getItem('times_bootstrap_cache');
+                                if (bStr) {
+                                    const b = JSON.parse(bStr);
+                                    b.schedule = [];
+                                    localStorage.setItem(bKey, JSON.stringify(b));
+                                    localStorage.setItem('times_bootstrap_cache', JSON.stringify(b));
+                                }
+                            } catch(e) {}
+
+                            if (window.OfflineSyncEngine && typeof window.OfflineSyncEngine.saveCache === 'function') {
+                                window.OfflineSyncEngine.saveCache('meds_success', []);
+                            }
+
+                            if (typeof filterSchedule === 'function') filterSchedule();
+                            if (typeof renderScheduleCalendar === 'function') renderScheduleCalendar();
+                            if (typeof updateStats === 'function') updateStats();
+                            if (typeof loadDashboard === 'function') loadDashboard();
+
+                            if (typeof showCustomAlert === 'function') {
+                                showCustomAlert(
+                                    "Chốt sổ tự động",
+                                    `Đã đến giờ chốt sổ (${targetTime}). Hệ thống đã tự động chốt sổ và sao lưu toàn bộ lịch ngày ${res.closedDate || ''} vào lịch sử!`,
+                                    "⏰",
+                                    "#10b981"
+                                );
+                            }
+                        } else if (res && res.status === 'success') {
                             console.log("[Client Auto-ChotSo]: Đồng bộ kiểm tra chốt sổ tự động với máy chủ thành công.");
                         }
                     }, () => {});

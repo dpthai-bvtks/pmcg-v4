@@ -241,14 +241,17 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
                 b_int = model.NewIntervalVar(b_s, b_dur, b_e, f"busy_{s_name}_{b_idx}")
                 staff_intervals[s_name].append(b_int)
 
-    # Khởi tạo danh sách máy khả dụng
+    # Khởi tạo danh sách máy khả dụng (hỗ trợ không phân biệt hoa/thường)
     all_machines_by_type = {}
     for m_type, m_list in machine_types.items():
-        all_machines_by_type[m_type] = list(m_list)
+        all_machines_by_type[str(m_type).strip().lower()] = list(m_list)
 
     total_drop_penalties = []
     total_start_costs = []
     total_overtime_costs = []
+
+    day_start = 450
+    day_end = max(afternoon_end + 30, 1050)
 
     for t in tasks:
         tid = t["id"]
@@ -264,29 +267,34 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
         model.Add(is_scheduled + is_dropped == 1)
         total_drop_penalties.append(is_dropped * 100000)
 
-        # Biến thời gian bắt đầu S và kết thúc E
         min_start = max(450, t["p_arrive"])
         max_end = min(afternoon_end, t["p_leave"])
-        max_start = max(min_start, max_end - tg_may)
+        can_fit = (min_start + tg_may <= max_end)
 
-        start_var = model.NewIntVar(min_start, max_start, f"start_{tid}")
-        end_var = model.NewIntVar(min_start + tg_may, max_end, f"end_{tid}")
+        # Nếu thời gian giữa giờ vào và giờ ra của BN ngắn hơn thời lượng thủ thuật, tự động đánh dấu rớt an toàn
+        if not can_fit:
+            model.Add(is_scheduled == 0)
+
+        # Miền giá trị toàn cục an toàn tránh tuyệt đối lỗi lb > ub gây MODEL_INVALID
+        start_var = model.NewIntVar(day_start, day_end, f"start_{tid}")
+        end_var = model.NewIntVar(day_start, day_end, f"end_{tid}")
         model.Add(end_var == start_var + tg_may)
 
-        # Ràng buộc không bắt đầu trước giờ vào và không kết thúc sau giờ ra
-        # Nếu là ngoại trú buổi sáng: kết thúc <= morning_end
+        if can_fit:
+            model.Add(start_var >= min_start).OnlyEnforceIf(is_scheduled)
+            model.Add(end_var <= max_end).OnlyEnforceIf(is_scheduled)
+
+        # Chặn chạy xuyên trưa: ca phải kết thúc trước trưa hoặc bắt đầu sau trưa
+        is_morning = model.NewBoolVar(f"is_morning_{tid}")
+        model.Add(end_var <= morning_end).OnlyEnforceIf([is_scheduled, is_morning])
+        model.Add(start_var >= lunch_end).OnlyEnforceIf([is_scheduled, is_morning.Not()])
+
+        # Ngoại trú: khóa buổi sáng hoặc chiều
         if t["p_loai"] == "NgoaiTru":
             if t["p_buoi"] == "Sang":
-                model.Add(end_var <= morning_end).OnlyEnforceIf(is_scheduled)
+                model.Add(is_morning == 1).OnlyEnforceIf(is_scheduled)
             elif t["p_buoi"] == "Chieu":
-                model.Add(start_var >= lunch_end).OnlyEnforceIf(is_scheduled)
-
-        # Chặn ca chạy xuyên qua giờ nghỉ trưa
-        # Nếu start < lunch_start thì end <= lunch_start + yhct_lunch
-        cross_lunch = model.NewBoolVar(f"cross_lunch_{tid}")
-        model.Add(start_var < lunch_start).OnlyEnforceIf(cross_lunch)
-        model.Add(end_var > morning_end).OnlyEnforceIf(cross_lunch)
-        model.Add(cross_lunch == 0).OnlyEnforceIf(is_scheduled)
+                model.Add(is_morning == 0).OnlyEnforceIf(is_scheduled)
 
         # Khoảng thời gian chính của thủ thuật trên Giường và Máy
         proc_interval = model.NewOptionalIntervalVar(start_var, tg_may, end_var, is_scheduled, f"proc_iv_{tid}")
@@ -296,7 +304,9 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
         patient_intervals.setdefault(t["p_id"], []).append(p_iv)
 
         # 2. Phân công Giường bệnh trong phòng của bệnh nhân
-        candidate_beds = list(room_beds.get(p_room, ["Giường 1", "Giường 2", "Giường 3", "Giường 4", "Giường 5"]))
+        candidate_beds = list(room_beds.get(p_room, []))
+        if not candidate_beds:
+            candidate_beds = ["Giường 1", "Giường 2", "Giường 3", "Giường 4", "Giường 5"]
         # Ghế phụ / giường kéo giãn linh hoạt
         is_keo_gian = "kéo giãn" in t["loai_may"].lower()
         if is_keo_gian or any(k in t["tt_name"].lower() for k in ["siêu âm", "tập vận", "cứu", "thủy châm", "điện châm", "hồng ngoại", "xoa bóp"]):
@@ -315,7 +325,7 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
         # 3. Phân công Máy móc
         mach_choice_vars = {}
         if t["loai_may"] != "Thủ công":
-            c_machs = all_machines_by_type.get(t["loai_may"], [])
+            c_machs = all_machines_by_type.get(t["loai_may"].strip().lower(), [])
             if not c_machs:
                 c_machs = [f"{t['loai_may']} 01"]
             for m_name in c_machs:
@@ -361,24 +371,16 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
             if is_cont:
                 # Thủ thuật liên tục: khóa suốt ca
                 full_dur = tg_may + gap_min
-                full_end = model.NewIntVar(min_start + full_dur, max_end + gap_min, f"f_end_{tid}_{s_name}")
-                model.Add(full_end == start_var + full_dur)
-                st_iv = model.NewOptionalIntervalVar(start_var, full_dur, full_end, s_var, f"st_full_{tid}_{s_name}")
+                st_iv = model.NewOptionalIntervalVar(start_var, full_dur, start_var + full_dur, s_var, f"st_full_{tid}_{s_name}")
                 staff_intervals[s_name].append(st_iv)
             else:
                 # Pha 1: Setup
-                setup_end = model.NewIntVar(min_start + setup_dur, max_end, f"s_end_{tid}_{s_name}")
-                model.Add(setup_end == start_var + setup_dur)
-                st_setup_iv = model.NewOptionalIntervalVar(start_var, setup_dur, setup_end, s_var, f"st_set_{tid}_{s_name}")
+                st_setup_iv = model.NewOptionalIntervalVar(start_var, setup_dur, start_var + setup_dur, s_var, f"st_set_{tid}_{s_name}")
                 staff_intervals[s_name].append(st_setup_iv)
 
                 # Pha 3: Teardown (Phút thứ 25 + gapMinutes)
                 if has_teardown:
-                    tear_start = model.NewIntVar(min_start + tg_may - 1, max_end, f"t_st_{tid}_{s_name}")
-                    tear_end = model.NewIntVar(min_start + tg_may + gap_min, max_end + gap_min, f"t_end_{tid}_{s_name}")
-                    model.Add(tear_start == end_var - 1)
-                    model.Add(tear_end == end_var + gap_min)
-                    st_tear_iv = model.NewOptionalIntervalVar(tear_start, teardown_dur, tear_end, s_var, f"st_tear_{tid}_{s_name}")
+                    st_tear_iv = model.NewOptionalIntervalVar(end_var - 1, teardown_dur, end_var + gap_min, s_var, f"st_tear_{tid}_{s_name}")
                     staff_intervals[s_name].append(st_tear_iv)
 
         model.Add(sum(staff_choice_vars.values()) == is_scheduled)
@@ -394,22 +396,14 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
                 # Nhân sự phụ cũng bận theo pha Setup và Teardown
                 if is_cont:
                     n_full_dur = tg_may + gap_min
-                    n_full_end = model.NewIntVar(min_start + n_full_dur, max_end + gap_min, f"n_fend_{tid}_{n_name}")
-                    model.Add(n_full_end == start_var + n_full_dur)
-                    n_iv = model.NewOptionalIntervalVar(start_var, n_full_dur, n_full_end, n_var, f"n_full_{tid}_{n_name}")
+                    n_iv = model.NewOptionalIntervalVar(start_var, n_full_dur, start_var + n_full_dur, n_var, f"n_full_{tid}_{n_name}")
                     staff_intervals[n_name].append(n_iv)
                 else:
-                    n_setup_end = model.NewIntVar(min_start + setup_dur, max_end, f"n_send_{tid}_{n_name}")
-                    model.Add(n_setup_end == start_var + setup_dur)
-                    n_setup_iv = model.NewOptionalIntervalVar(start_var, setup_dur, n_setup_end, n_var, f"n_set_{tid}_{n_name}")
+                    n_setup_iv = model.NewOptionalIntervalVar(start_var, setup_dur, start_var + setup_dur, n_var, f"n_set_{tid}_{n_name}")
                     staff_intervals[n_name].append(n_setup_iv)
 
                     if has_teardown:
-                        n_tear_start = model.NewIntVar(min_start + tg_may - 1, max_end, f"n_tst_{tid}_{n_name}")
-                        n_tear_end = model.NewIntVar(min_start + tg_may + gap_min, max_end + gap_min, f"n_tend_{tid}_{n_name}")
-                        model.Add(n_tear_start == end_var - 1)
-                        model.Add(n_tear_end == end_var + gap_min)
-                        n_tear_iv = model.NewOptionalIntervalVar(n_tear_start, teardown_dur, n_tear_end, n_var, f"n_tear_{tid}_{n_name}")
+                        n_tear_iv = model.NewOptionalIntervalVar(end_var - 1, teardown_dur, end_var + gap_min, n_var, f"n_tear_{tid}_{n_name}")
                         staff_intervals[n_name].append(n_tear_iv)
 
             model.Add(sum(sub_choice_vars.values()) == is_scheduled)

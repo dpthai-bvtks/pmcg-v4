@@ -2009,14 +2009,14 @@ function getSafeCache() {
     const shouldUpper = forceUpperCase || isAllUpper;
 
     const hasCorruptChar = /[\ufffd\u0000]/.test(name) || /\b[A-Za-zÀ-ỹ]+\?[A-Za-zÀ-ỹ]+\b/.test(name);
-    const hasSwallowedVowel = /\b(Trn|Cưng|Lnh|Nguyn|Phm)\b/i.test(name) ||
-      /\bTr[\ufffd\s\?]*n\b/i.test(name) ||
-      /\bL[\ufffd\s\?]*nh\b/i.test(name) ||
-      /\bC[\ufffd\s\?]*ng\b/i.test(name) ||
-      /\bNguy[\ufffd\s\?]*n\b/i.test(name) ||
-      /\bPh[\ufffd\s\?]*m\b/i.test(name);
+    const hasSwallowedVowel = /\b(Trn|Lnh|Nguyn|Phm)\b/i.test(name) ||
+      /\bTr[\ufffd\?]+n\b/i.test(name) ||
+      /\bL[\ufffd\?]+nh\b/i.test(name) ||
+      /\bC[\ufffd\?]+ng\b/i.test(name) ||
+      /\bNguy[\ufffd\?]+n\b/i.test(name) ||
+      /\bPh[\ufffd\?]+m\b/i.test(name);
 
-    // Nếu tên hoàn toàn bình thường, trả về theo định dạng yêu cầu
+    // Nếu tên hoàn toàn bình thường, trả về nguyên dạng, không đoán mò hay thay thế
     if (!hasCorruptChar && !hasSwallowedVowel) {
       return shouldUpper ? name.toUpperCase() : toVietnameseProperCase(name);
     }
@@ -2027,91 +2027,81 @@ function getSafeCache() {
       return String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'd').trim().toLowerCase();
     };
 
-    // 1. Đối chiếu danh sách ứng viên (candidates) nếu có
+    // 1. Đối chiếu danh sách ứng viên (candidates) nếu có - CHỈ chấp nhận khi tên gọi chính (từ cuối) trùng khớp hoàn toàn
     const candList = Array.isArray(candidates) ? candidates : [];
     for (const cand of candList) {
       if (!cand) continue;
       const cleanCand = String(cand).normalize('NFC').trim();
-      if (/[\ufffd\u0000]/.test(cleanCand) || /\b(Trn|Cưng|Lnh)\b/i.test(cleanCand)) continue;
+      if (/[\ufffd\u0000]/.test(cleanCand) || /\b(Trn|Lnh)\b/i.test(cleanCand)) continue;
 
-      // So khớp wildcard trên chuỗi không dấu
       const noToneName = stripTones(name.replace(/[\ufffd\u0000\?]+/g, ' '));
       const noToneCand = stripTones(cleanCand);
-      const wildcardPattern = '^' + noToneName
-        .replace(/\btrn\b/gi, 'tr.*n')
-        .replace(/\bcung\b/gi, 'c.*ng')
-        .replace(/\blnh\b/gi, 'l.*nh')
-        .replace(/\bnguyn\b/gi, 'nguy.*n')
-        .replace(/\bphm\b/gi, 'ph.*m')
-        .replace(/\bth\b/gi, 'th.*')
-        .replace(/\bvan\b/gi, 'v.*n')
-        .replace(/\s+/g, '\\s+') + '$';
-      try {
-        if (new RegExp(wildcardPattern, 'i').test(noToneCand)) {
-          return shouldUpper ? cleanCand.toUpperCase() : toVietnameseProperCase(cleanCand);
-        }
-      } catch (e) {}
 
-      // So khớp theo âm tiết không dấu
       if (noToneName && noToneCand) {
         if (noToneName === noToneCand) {
           return shouldUpper ? cleanCand.toUpperCase() : toVietnameseProperCase(cleanCand);
         }
-        const nameTokens = noToneName.split(/\s+/).filter(t => t.length >= 2);
-        const candTokens = noToneCand.split(/\s+/).filter(t => t.length >= 2);
-        const matchedTokens = nameTokens.filter(t => candTokens.includes(t));
-        if (nameTokens.length >= 2 && matchedTokens.length >= nameTokens.length - 1) {
-          return shouldUpper ? cleanCand.toUpperCase() : toVietnameseProperCase(cleanCand);
+        const nameTokens = noToneName.split(/\s+/).filter(Boolean);
+        const candTokens = noToneCand.split(/\s+/).filter(Boolean);
+        // Bắt buộc cùng số âm tiết và Tên gọi chính (từ cuối cùng) phải giống nhau 100%!
+        // Tuyệt đối không tráo tên người này thành người khác vì trùng họ đệm ("Nguyễn Thị...")
+        if (nameTokens.length === candTokens.length && nameTokens.length >= 2) {
+          const lastN = nameTokens[nameTokens.length - 1];
+          const lastC = candTokens[candTokens.length - 1];
+          if (lastN === lastC) {
+            let diffCount = 0;
+            for (let i = 0; i < nameTokens.length; i++) {
+              if (nameTokens[i] !== candTokens[i]) diffCount++;
+            }
+            if (diffCount === 1) {
+              return shouldUpper ? cleanCand.toUpperCase() : toVietnameseProperCase(cleanCand);
+            }
+          }
         }
       }
     }
 
-    // 2. Bộ từ điển âm tiết tiếng Việt chính xác (chữa lành chuẩn ngữ âm, không nuốt chữ)
+    // 2. Bộ từ điển âm tiết tiếng Việt chính xác (chữa lành chuẩn ngữ âm khi có dấu lỗi)
     let healed = name;
 
-    // Họ Trần: Trn / Trn / Tr?n -> Trần
-    healed = healed.replace(/\bTr[\ufffd\s\?]*n\b/gi, 'Trần');
+    // Họ Trần: Trn / Tr?n -> Trần
+    healed = healed.replace(/\bTr[\ufffd\?]+n\b/gi, 'Trần');
     healed = healed.replace(/\bTrn\b/gi, 'Trần');
 
-    // Họ Lãnh: Lnh / Lnh / L?nh -> Lãnh
-    healed = healed.replace(/\bL[\ufffd\s\?]*nh\b/gi, 'Lãnh');
+    // Họ Lãnh: Lnh / L?nh -> Lãnh
+    healed = healed.replace(/\bL[\ufffd\?]+nh\b/gi, 'Lãnh');
     healed = healed.replace(/\bLnh\b/gi, 'Lãnh');
 
-    // Tên Cường: Cng / Cưng / C?ng -> Cường
-    healed = healed.replace(/\bC[\ufffd\s\?]*ng\b/gi, 'Cường');
-    healed = healed.replace(/\bCưng\b/gi, 'Cường');
+    // Tên Cường: C?ng (chỉ thay khi có ký tự lỗi ?, \ufffd)
+    healed = healed.replace(/\bC[\ufffd\?]+ng\b/gi, 'Cường');
 
-    // Họ Nguyễn: Nguyn / Nguyn / Nguy?n -> Nguyễn
-    healed = healed.replace(/\bNguy[\ufffd\s\?]*n\b/gi, 'Nguyễn');
+    // Họ Nguyễn: Nguyn / Nguy?n -> Nguyễn
+    healed = healed.replace(/\bNguy[\ufffd\?]+n\b/gi, 'Nguyễn');
     healed = healed.replace(/\bNguyn\b/gi, 'Nguyễn');
 
-    // Họ Phạm: Phm / Phm / Ph?m -> Phạm
-    healed = healed.replace(/\bPh[\ufffd\s\?]*m\b/gi, 'Phạm');
+    // Họ Phạm: Phm / Ph?m -> Phạm
+    healed = healed.replace(/\bPh[\ufffd\?]+m\b/gi, 'Phạm');
     healed = healed.replace(/\bPhm\b/gi, 'Phạm');
 
     // Đệm Thị: Th? / Th -> Thị
     healed = healed.replace(/\bTh[\ufffd\?]+(?=\s+|$)/gi, 'Thị');
 
-    // Đệm Văn: V?n / Vn / Vn -> Văn
+    // Đệm Văn: V?n / Vn -> Văn
     healed = healed.replace(/\bV[\ufffd\?]+n\b/gi, 'Văn');
     healed = healed.replace(/\bVn\b/gi, 'Văn');
 
-    // Đệm Đình: D?nh / Dnh -> Đình
-    healed = healed.replace(/\bD[\ufffd\?]*nh\b/gi, 'Đình');
+    // Đệm Đình: D?nh -> Đình
+    healed = healed.replace(/\bD[\ufffd\?]+nh\b/gi, 'Đình');
 
-    // Đệm Đức: D?c / Dc -> Đức
-    healed = healed.replace(/\bD[\ufffd\?]*c\b/gi, 'Đức');
+    // Đệm Đức: D?c -> Đức
+    healed = healed.replace(/\bD[\ufffd\?]+c\b/gi, 'Đức');
 
-    // Họ/Tên Hoàng: Hong -> Hoàng
-    healed = healed.replace(/\bHo[\ufffd\s\?]*ng\b/gi, 'Hoàng');
-
-    // Tên Hồng (sau Văn / Thị): Văn Hng -> Văn Hồng
-    healed = healed.replace(/(Văn|Thị)\s+H[\ufffd\s\?]*ng\b/gi, '$1 Hồng');
+    // Họ/Tên Hoàng: Ho?ng -> Hoàng
+    healed = healed.replace(/\bHo[\ufffd\?]+ng\b/gi, 'Hoàng');
 
     // Dọn sạch các ký tự \ufffd, \u0000 còn sót nếu có
     healed = healed.replace(/[\ufffd\u0000]/g, '').replace(/\s+/g, ' ').trim();
 
-    // Chuẩn hóa Title Case hoặc UPPERCASE
     if (shouldUpper) {
       return healed.toUpperCase();
     }
@@ -2409,22 +2399,14 @@ function getSafeCache() {
         }
       }
 
-      // Phục hồi họ tên nếu phát hiện ký tự lạ
+      // Phục hồi họ tên nếu phát hiện ký tự lạ (chỉ đối chiếu ứng viên có cùng tên gọi/âm tiết)
       const matchedCandidates = validPatientCandidates.filter(c => {
         const cUp = c.toUpperCase();
-        return (cUp === rawPName) || cleanExisting.some(r => {
-          const rName = String(r.tenBN || '').toUpperCase().trim();
-          const rNs = String(r.namSinh || '').trim();
-          const rRoom = String(r.phong || '').trim();
-          return rName === cUp && (!pNs || !rNs || pNs === rNs) && (!pRoom || !rRoom || pRoom === rRoom);
-        });
+        return (cUp === rawPName);
       });
 
-      const pName = cleanAndHealPatientName(rawPName, matchedCandidates.length > 0 ? matchedCandidates : validPatientCandidates, true);
-      const titleCaseName = cleanAndHealPatientName(p.ten || p.name || rawPName, matchedCandidates.length > 0 ? matchedCandidates : validPatientCandidates, false);
-      if (p.ten && p.ten !== titleCaseName) p.ten = titleCaseName;
-      if (p.name && p.name !== titleCaseName) p.name = titleCaseName;
-      if (Array.isArray(p) && p[1] && p[1] !== titleCaseName) p[1] = titleCaseName;
+      const pName = cleanAndHealPatientName(rawPName, matchedCandidates, true);
+      // Giữ nguyên vẹn 100% đối tượng gốc trong cache, KHÔNG ghi đè p.ten / p.name / p[1]
 
       const pId = p.id || (pName + "_" + pNs + "_" + pRoom + "_" + idx);
       const key = pId;

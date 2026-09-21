@@ -477,6 +477,17 @@ app.use('*', async (c, next) => {
   c.header("Referrer-Policy", "strict-origin-when-cross-origin");
 });
 
+// Global Error Handler
+app.onError((err, c) => {
+  const origin = c.req.header("Origin") || "";
+  console.error("[Global Hono Error]:", err);
+  return jsonResponse({
+    status: "error",
+    error: err.message || "Internal Server Error",
+    code: "SERVER_ERROR"
+  }, 500, origin);
+});
+
 // Root & Health Check
 app.get('/', (c) => {
   const origin = c.req.header("Origin") || "";
@@ -967,6 +978,13 @@ let schemaEnsured = false;
 async function ensureSchema(db) {
   if (schemaEnsured || !db) return;
   try {
+    const chk = await db.prepare("SELECT 1 FROM lich_su_dinh_muc LIMIT 1").all().catch(() => null);
+    if (chk && Array.isArray(chk.results)) {
+      schemaEnsured = true;
+      return;
+    }
+  } catch(e) {}
+  try {
     const stmts = [
       db.prepare(`CREATE TABLE IF NOT EXISTS tenants (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1234,7 +1252,11 @@ async function ensureSchema(db) {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`)
     ];
-    await db.batch(stmts);
+    for (const stmt of stmts) {
+      try {
+        await stmt.run();
+      } catch (eStmt) {}
+    }
 
     // Multi-tenant Migration safe column additions & Indexes
     const migrations = [
@@ -1992,7 +2014,7 @@ export default {
   }
 };
 
-function dispatchBackgroundSync(action, args, env, ctx) {
+function dispatchBackgroundSync(action, args, env, ctx, unitCode = "bvtks-cs2") {
   const MUTATION_ACTIONS = [
     "addBenhNhan", "editBenhNhan", "deleteBenhNhan", "bulkUpdateBenhNhan",
     "saveSchedule", "chotSo", "chuyenNgayMoi", "saveGioBan", "saveChamCong", "deduplicateHistory",
@@ -2012,6 +2034,7 @@ function dispatchBackgroundSync(action, args, env, ctx) {
     try {
       const db = getDatabase(env);
       if (!db) return;
+      const rec = await db.prepare("SELECT value FROM cai_dat WHERE (key = 'google_sheets_webhook_url' OR key = 'backup_api_url') AND unit_code = ?").bind(unitCode).first().catch(() => null);
       let webhookUrl = rec ? String(rec.value).trim() : "";
       if (!webhookUrl || !webhookUrl.startsWith("http")) return;
       const dupIdx = webhookUrl.indexOf('/exechttps://');
@@ -3221,28 +3244,68 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           protocolsList = typeof rawProtocols === 'string' ? JSON.parse(rawProtocols) : rawProtocols;
         } catch(e) {}
       }
-      const thu_thuat = (proceduresRes.results || []).map(p => ({
-        id: p.id,
-        ten: p.ten_thu_thuat,
-        name: p.ten_thu_thuat,
-        vietTat: p.viet_tat,
-        he: p.he,
-        phanLoai: p.phan_loai,
-        may: p.may,
-        thoiGianThucHien: p.tg_thuc_hien,
-        thoiGianThucHienMin: p.tg_thuc_hien,
-        thoiGianThucHienMax: (p.tg_thuc_hien_max && p.tg_thuc_hien_max > 0) ? p.tg_thuc_hien_max : p.tg_thuc_hien,
-        thoiGianThuThuat: p.tg_thu_thuat,
-        thoiGianThuThuatMin: p.tg_thu_thuat,
-        thoiGianThuThuatMax: (p.tg_thu_thuat_max && p.tg_thu_thuat_max > 0) ? p.tg_thu_thuat_max : p.tg_thu_thuat,
-        khoangCach: p.khoang_cach,
-        canRutMay: (p.can_rut_may === 1 || p.can_rut_may === '1' || p.can_rut_may === 'Có' || p.can_rut_may === true) ? 'Có' : 'Không',
-        canNguoiPhu: (p.can_nguoi_phu === 1 || p.can_nguoi_phu === '1' || p.can_nguoi_phu === 'Có' || p.can_nguoi_phu === true) ? 'Có' : 'Không',
-        dsNguoiPhu: p.ds_nguoi_phu,
-        lienTuc: (p.lien_tuc === 1 || p.lien_tuc === '1' || p.lien_tuc === 'Có' || p.lien_tuc === true) ? 'Có' : ((p.tg_thuc_hien === p.tg_thu_thuat && ((p.tg_thuc_hien_max || p.tg_thuc_hien) === (p.tg_thu_thuat_max || p.tg_thu_thuat)) && p.tg_thuc_hien >= 10) ? 'Có' : 'Không'),
-        lichSuDinhMuc: p.lich_su_dinh_muc ? (typeof p.lich_su_dinh_muc === 'string' ? (JSON.parse(p.lich_su_dinh_muc || '[]')) : p.lich_su_dinh_muc) : [],
-        history: p.lich_su_dinh_muc ? (typeof p.lich_su_dinh_muc === 'string' ? (JSON.parse(p.lich_su_dinh_muc || '[]')) : p.lich_su_dinh_muc) : []
-      }));
+      const historyMap = {};
+      try {
+        const histRes = await db.prepare("SELECT * FROM lich_su_dinh_muc WHERE unit_code = ? ORDER BY tu_ngay ASC, id ASC").bind(unitCode).all().catch(() => ({ results: [] }));
+        (histRes.results || []).forEach(h => {
+          const key = String(h.ten_thu_thuat || '').trim().toLowerCase();
+          if (!historyMap[key]) historyMap[key] = [];
+          historyMap[key].push({
+            id: h.id,
+            tuNgay: h.tu_ngay,
+            denNgay: h.den_ngay,
+            from: h.tu_ngay,
+            to: h.den_ngay,
+            thoiGianThucHienMin: h.tg_thuc_hien_min,
+            thoiGianThucHienMax: h.tg_thuc_hien_max,
+            thoiGianThuThuatMin: h.tg_thu_thuat_min,
+            thoiGianThuThuatMax: h.tg_thu_thuat_max,
+            khoangCach: h.khoang_cach ?? 0,
+            canRutMay: h.can_rut_may || 'Không',
+            canNguoiPhu: h.can_nguoi_phu || 'Không',
+            dsNguoiPhu: h.ds_nguoi_phu || '',
+            vietTat: h.viet_tat || '',
+            he: h.he || 'PHCN',
+            phanLoai: h.phan_loai || '',
+            may: h.may || '',
+            lienTuc: h.lien_tuc || 'Không'
+          });
+        });
+      } catch(eHist) {}
+
+      const thu_thuat = (proceduresRes.results || []).map(p => {
+        const key = String(p.ten_thu_thuat || '').trim().toLowerCase();
+        let listH = historyMap[key] || [];
+
+        if (listH.length === 0 && p.lich_su_dinh_muc) {
+          try {
+            listH = typeof p.lich_su_dinh_muc === 'string' ? (JSON.parse(p.lich_su_dinh_muc || '[]')) : p.lich_su_dinh_muc;
+          } catch(e) { listH = []; }
+        }
+
+        return {
+          id: p.id,
+          ten: p.ten_thu_thuat,
+          name: p.ten_thu_thuat,
+          vietTat: p.viet_tat,
+          he: p.he,
+          phanLoai: p.phan_loai,
+          may: p.may,
+          thoiGianThucHien: p.tg_thuc_hien,
+          thoiGianThucHienMin: p.tg_thuc_hien,
+          thoiGianThucHienMax: (p.tg_thuc_hien_max && p.tg_thuc_hien_max > 0) ? p.tg_thuc_hien_max : p.tg_thuc_hien,
+          thoiGianThuThuat: p.tg_thu_thuat,
+          thoiGianThuThuatMin: p.tg_thu_thuat,
+          thoiGianThuThuatMax: (p.tg_thu_thuat_max && p.tg_thu_thuat_max > 0) ? p.tg_thu_thuat_max : p.tg_thu_thuat,
+          khoangCach: p.khoang_cach,
+          canRutMay: (p.can_rut_may === 1 || p.can_rut_may === '1' || p.can_rut_may === 'Có' || p.can_rut_may === true) ? 'Có' : 'Không',
+          canNguoiPhu: (p.can_nguoi_phu === 1 || p.can_nguoi_phu === '1' || p.can_nguoi_phu === 'Có' || p.can_nguoi_phu === true) ? 'Có' : 'Không',
+          dsNguoiPhu: p.ds_nguoi_phu,
+          lienTuc: (p.lien_tuc === 1 || p.lien_tuc === '1' || p.lien_tuc === 'Có' || p.lien_tuc === true) ? 'Có' : ((p.tg_thuc_hien === p.tg_thu_thuat && ((p.tg_thuc_hien_max || p.tg_thuc_hien) === (p.tg_thu_thuat_max || p.tg_thu_thuat)) && p.tg_thuc_hien >= 10) ? 'Có' : 'Không'),
+          lichSuDinhMuc: listH,
+          history: listH
+        };
+      });
 
       // Staff
       const staffList = (staffRes.results || []).map((s, idx) => {
@@ -3540,12 +3603,20 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
               const thMax = (p.tg_thuc_hien_max && p.tg_thuc_hien_max > 0) ? p.tg_thuc_hien_max : thMin;
               const ttMin = p.tg_thu_thuat || 0;
               const ttMax = (p.tg_thu_thuat_max && p.tg_thu_thuat_max > 0) ? p.tg_thu_thuat_max : ttMin;
+              const kc = p.khoang_cach || 0;
               const isLt = (p.lien_tuc === 1 || p.lien_tuc === '1' || p.lien_tuc === 'Có' || p.lien_tuc === true) ? 'Có' : 'Không';
+              const rut = p.can_rut_may || 'Không';
+              const phu = p.can_nguoi_phu || 'Không';
+              const dsPhu = p.ds_nguoi_phu || '';
+              const vt = p.viet_tat || '';
+              const he = p.he || 'PHCN';
+              const pl = p.phan_loai || '';
+              const may = p.may || '';
 
               await db.prepare(`
-                INSERT INTO lich_su_dinh_muc (unit_code, ten_thu_thuat, tu_ngay, den_ngay, tg_thuc_hien_min, tg_thuc_hien_max, tg_thu_thuat_min, tg_thu_thuat_max, lien_tuc, created_at, updated_at)
-                VALUES (?, ?, '2026-01-01', '2026-09-20', ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-              `).bind(unitCode, p.ten_thu_thuat, thMin, thMax, ttMin, ttMax, isLt).run().catch(() => {});
+                INSERT INTO lich_su_dinh_muc (unit_code, ten_thu_thuat, tu_ngay, den_ngay, tg_thuc_hien_min, tg_thuc_hien_max, tg_thu_thuat_min, tg_thu_thuat_max, khoang_cach, lien_tuc, can_rut_may, can_nguoi_phu, ds_nguoi_phu, viet_tat, he, phan_loai, may, created_at, updated_at)
+                VALUES (?, ?, '2026-01-01', '2026-09-20', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+              `).bind(unitCode, p.ten_thu_thuat, thMin, thMax, ttMin, ttMax, kc, isLt, rut, phu, dsPhu, vt, he, pl, may).run().catch(() => {});
             }
           }
         }
@@ -3570,6 +3641,14 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           thoiGianThucHienMax: h.tg_thuc_hien_max,
           thoiGianThuThuatMin: h.tg_thu_thuat_min,
           thoiGianThuThuatMax: h.tg_thu_thuat_max,
+          khoangCach: h.khoang_cach ?? 0,
+          canRutMay: h.can_rut_may || 'Không',
+          canNguoiPhu: h.can_nguoi_phu || 'Không',
+          dsNguoiPhu: h.ds_nguoi_phu || '',
+          vietTat: h.viet_tat || '',
+          he: h.he || 'PHCN',
+          phanLoai: h.phan_loai || '',
+          may: h.may || '',
           lienTuc: h.lien_tuc || 'Không'
         });
       });
@@ -3633,7 +3712,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           thoiGianThuThuatMax: args[offset + 11],
           thoiGianThucHienMax: args[offset + 12],
           lienTuc: args[offset + 13],
-          lichSuDinhMuc: args[offset + 14] || args[14]
+          lichSuDinhMuc: args[offset + 14] || args[14],
+          id: args[offset + 15] || args[15] || undefined,
+          oldTen: args[offset + 16] || args[16] || undefined
         };
       }
       const ten = sanitizeInputText(String(payload.ten || payload.name || "").trim());
@@ -3652,8 +3733,20 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const dsPhu = String(payload.dsNguoiPhu || payload.ds_nguoi_phu || "");
       const isLt = (payload.lienTuc === 'Có' || payload.lienTuc === 1 || payload.lienTuc === '1' || payload.lienTuc === true || payload.lien_tuc === 1 || payload.lien_tuc === '1' || payload.lien_tuc === 'Có' || payload.lien_tuc === true) ? 1 : ((tgThMin === tgTtMin && tgThMax === tgTtMax && tgThMin >= 10) ? 1 : 0);
 
-      // 1. Kiểm tra bản ghi cũ trong DB
-      const existing = await db.prepare("SELECT * FROM thu_thuat WHERE unit_code = ? AND (ten_thu_thuat = ? OR id = ?)").bind(unitCode, ten, payload.id || -1).first();
+      const targetId = payload.id || null;
+      const oldTen = payload.oldTen ? sanitizeInputText(String(payload.oldTen).trim()) : null;
+
+      // 1. Kiểm tra bản ghi cũ trong DB (hỗ trợ theo id, oldTen, hoặc ten_thu_thuat case-insensitive)
+      let existing = null;
+      if (targetId) {
+        existing = await db.prepare("SELECT * FROM thu_thuat WHERE unit_code = ? AND id = ?").bind(unitCode, targetId).first().catch(() => null);
+      }
+      if (!existing && oldTen) {
+        existing = await db.prepare("SELECT * FROM thu_thuat WHERE unit_code = ? AND (ten_thu_thuat = ? OR LOWER(ten_thu_thuat) = LOWER(?))").bind(unitCode, oldTen, oldTen).first().catch(() => null);
+      }
+      if (!existing) {
+        existing = await db.prepare("SELECT * FROM thu_thuat WHERE unit_code = ? AND (ten_thu_thuat = ? OR LOWER(ten_thu_thuat) = LOWER(?))").bind(unitCode, ten, ten).first().catch(() => null);
+      }
       
       let historyList = [];
       if (payload.lichSuDinhMuc || payload.history || payload.lich_su_dinh_muc) {
@@ -3703,6 +3796,14 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
               thoiGianThucHienMax: oldThMax,
               thoiGianThuThuatMin: oldTtMin,
               thoiGianThuThuatMax: oldTtMax,
+              khoangCach: existing.khoang_cach || 0,
+              canRutMay: (existing.can_rut_may === 1 || existing.can_rut_may === '1' || existing.can_rut_may === 'Có') ? 'Có' : 'Không',
+              canNguoiPhu: (existing.can_nguoi_phu === 1 || existing.can_nguoi_phu === '1' || existing.can_nguoi_phu === 'Có') ? 'Có' : 'Không',
+              dsNguoiPhu: existing.ds_nguoi_phu || '',
+              vietTat: existing.viet_tat || '',
+              he: existing.he || 'PHCN',
+              phanLoai: existing.phan_loai || '',
+              may: existing.may || '',
               lienTuc: oldLt
             });
           }
@@ -3719,12 +3820,20 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           const hTtMin = parseInt(h.thoiGianThuThuatMin || h.thoiGianThuThuat || 0) || 0;
           const hTtMax = parseInt(h.thoiGianThuThuatMax || hTtMin) || hTtMin;
           const hLt = String(h.lienTuc || 'Không');
+          const hKc = h.khoangCach !== undefined ? parseInt(h.khoangCach) || 0 : (payload.khoangCach !== undefined ? parseInt(payload.khoangCach) || 0 : 0);
+          const hCrm = String(h.canRutMay || payload.canRutMay || 'Không');
+          const hCnp = String(h.canNguoiPhu || payload.canNguoiPhu || 'Không');
+          const hDsnp = String(h.dsNguoiPhu || payload.dsNguoiPhu || '');
+          const hVt = String(h.vietTat || payload.vietTat || '');
+          const hHe = String(h.he || payload.he || 'PHCN');
+          const hPl = String(h.phanLoai || payload.phanLoai || '');
+          const hMay = String(h.may || payload.may || '');
 
           try {
             await db.prepare(`
-              INSERT INTO lich_su_dinh_muc (unit_code, ten_thu_thuat, tu_ngay, den_ngay, tg_thuc_hien_min, tg_thuc_hien_max, tg_thu_thuat_min, tg_thu_thuat_max, lien_tuc, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-            `).bind(unitCode, ten, hTu, hDen, hThMin, hThMax, hTtMin, hTtMax, hLt).run().catch(() => {});
+              INSERT INTO lich_su_dinh_muc (unit_code, ten_thu_thuat, tu_ngay, den_ngay, tg_thuc_hien_min, tg_thuc_hien_max, tg_thu_thuat_min, tg_thu_thuat_max, khoang_cach, lien_tuc, can_rut_may, can_nguoi_phu, ds_nguoi_phu, viet_tat, he, phan_loai, may, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            `).bind(unitCode, ten, hTu, hDen, hThMin, hThMax, hTtMin, hTtMax, hKc, hLt, hCrm, hCnp, hDsnp, hVt, hHe, hPl, hMay).run().catch(() => {});
           } catch(eH) {}
         }
       }
@@ -3732,19 +3841,45 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const lichSuStr = JSON.stringify(historyList);
 
       let stmt;
-      try {
+      if (existing && existing.id) {
+        stmt = db.prepare(`UPDATE thu_thuat SET
+          ten_thu_thuat = ?, viet_tat = ?, he = ?, phan_loai = ?, may = ?,
+          tg_thuc_hien = ?, tg_thuc_hien_max = ?, tg_thu_thuat = ?, tg_thu_thuat_max = ?,
+          khoang_cach = ?, can_rut_may = ?, can_nguoi_phu = ?, ds_nguoi_phu = ?,
+          lien_tuc = ?, lich_su_dinh_muc = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ? AND unit_code = ?`)
+          .bind(ten, vietTat, he, phanLoai, may, tgThMin, tgThMax, tgTtMin, tgTtMax, kc, rut, phu, dsPhu, isLt, lichSuStr, existing.id, unitCode);
+      } else {
         stmt = db.prepare(`INSERT INTO thu_thuat (unit_code, ten_thu_thuat, viet_tat, he, phan_loai, may, tg_thuc_hien, tg_thuc_hien_max, tg_thu_thuat, tg_thu_thuat_max, khoang_cach, can_rut_may, can_nguoi_phu, ds_nguoi_phu, lien_tuc, lich_su_dinh_muc, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
           ON CONFLICT(unit_code, ten_thu_thuat) DO UPDATE SET viet_tat = excluded.viet_tat, he = excluded.he, phan_loai = excluded.phan_loai, may = excluded.may, tg_thuc_hien = excluded.tg_thuc_hien, tg_thuc_hien_max = excluded.tg_thuc_hien_max, tg_thu_thuat = excluded.tg_thu_thuat, tg_thu_thuat_max = excluded.tg_thu_thuat_max, khoang_cach = excluded.khoang_cach, can_rut_may = excluded.can_rut_may, can_nguoi_phu = excluded.can_nguoi_phu, ds_nguoi_phu = excluded.ds_nguoi_phu, lien_tuc = excluded.lien_tuc, lich_su_dinh_muc = excluded.lich_su_dinh_muc, updated_at = CURRENT_TIMESTAMP`)
           .bind(unitCode, ten, vietTat, he, phanLoai, may, tgThMin, tgThMax, tgTtMin, tgTtMax, kc, rut, phu, dsPhu, isLt, lichSuStr);
-      } catch(ePrep) {
-        stmt = db.prepare(`INSERT INTO thu_thuat (unit_code, ten_thu_thuat, viet_tat, he, phan_loai, may, tg_thuc_hien, tg_thuc_hien_max, tg_thu_thuat, tg_thu_thuat_max, khoang_cach, can_rut_may, can_nguoi_phu, ds_nguoi_phu, lien_tuc, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-          ON CONFLICT(unit_code, ten_thu_thuat) DO UPDATE SET viet_tat = excluded.viet_tat, he = excluded.he, phan_loai = excluded.phan_loai, may = excluded.may, tg_thuc_hien = excluded.tg_thuc_hien, tg_thuc_hien_max = excluded.tg_thuc_hien_max, tg_thu_thuat = excluded.tg_thu_thuat, tg_thu_thuat_max = excluded.tg_thu_thuat_max, khoang_cach = excluded.khoang_cach, can_rut_may = excluded.can_rut_may, can_nguoi_phu = excluded.can_nguoi_phu, ds_nguoi_phu = excluded.ds_nguoi_phu, lien_tuc = excluded.lien_tuc, updated_at = CURRENT_TIMESTAMP`)
-          .bind(unitCode, ten, vietTat, he, phanLoai, may, tgThMin, tgThMax, tgTtMin, tgTtMax, kc, rut, phu, dsPhu, isLt);
       }
 
-      await db.batch([stmt, makeBumpDataVersionStmt(db, unitCode)]);
+      try {
+        await db.batch([stmt, makeBumpDataVersionStmt(db, unitCode)]);
+      } catch(errBatch) {
+        if (String(errBatch.message || errBatch).includes("lich_su_dinh_muc")) {
+          let fallbackStmt;
+          if (existing && existing.id) {
+            fallbackStmt = db.prepare(`UPDATE thu_thuat SET
+              ten_thu_thuat = ?, viet_tat = ?, he = ?, phan_loai = ?, may = ?,
+              tg_thuc_hien = ?, tg_thuc_hien_max = ?, tg_thu_thuat = ?, tg_thu_thuat_max = ?,
+              khoang_cach = ?, can_rut_may = ?, can_nguoi_phu = ?, ds_nguoi_phu = ?,
+              lien_tuc = ?, updated_at = CURRENT_TIMESTAMP
+              WHERE id = ? AND unit_code = ?`)
+              .bind(ten, vietTat, he, phanLoai, may, tgThMin, tgThMax, tgTtMin, tgTtMax, kc, rut, phu, dsPhu, isLt, existing.id, unitCode);
+          } else {
+            fallbackStmt = db.prepare(`INSERT INTO thu_thuat (unit_code, ten_thu_thuat, viet_tat, he, phan_loai, may, tg_thuc_hien, tg_thuc_hien_max, tg_thu_thuat, tg_thu_thuat_max, khoang_cach, can_rut_may, can_nguoi_phu, ds_nguoi_phu, lien_tuc, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+              ON CONFLICT(unit_code, ten_thu_thuat) DO UPDATE SET viet_tat = excluded.viet_tat, he = excluded.he, phan_loai = excluded.phan_loai, may = excluded.may, tg_thuc_hien = excluded.tg_thuc_hien, tg_thuc_hien_max = excluded.tg_thuc_hien_max, tg_thu_thuat = excluded.tg_thu_thuat, tg_thu_thuat_max = excluded.tg_thu_thuat_max, khoang_cach = excluded.khoang_cach, can_rut_may = excluded.can_rut_may, can_nguoi_phu = excluded.can_nguoi_phu, ds_nguoi_phu = excluded.ds_nguoi_phu, lien_tuc = excluded.lien_tuc, updated_at = CURRENT_TIMESTAMP`)
+              .bind(unitCode, ten, vietTat, he, phanLoai, may, tgThMin, tgThMax, tgTtMin, tgTtMax, kc, rut, phu, dsPhu, isLt);
+          }
+          await db.batch([fallbackStmt, makeBumpDataVersionStmt(db, unitCode)]);
+        } else {
+          throw errBatch;
+        }
+      }
       return success({ message: "Lưu thủ thuật thành công" });
     }
 
@@ -3752,8 +3887,21 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       let payload = {};
       if (typeof args[0] === "object" && args[0] !== null) payload = args[0];
       let offset = (typeof args[0] === "number" || (typeof args[0] === "string" && /^\d+$/.test(args[0]))) ? 1 : 0;
+      const targetId = payload.id || null;
       const ten = String(payload.ten || payload.name || args[offset] || args[0] || "").trim();
-      await db.prepare("DELETE FROM thu_thuat WHERE unit_code = ? AND (ten_thu_thuat = ? OR id = ?)").bind(unitCode, ten, ten).run();
+      if (targetId) {
+        const oldProc = await db.prepare("SELECT ten_thu_thuat FROM thu_thuat WHERE unit_code = ? AND id = ?").bind(unitCode, targetId).first().catch(() => null);
+        const oldProcName = oldProc?.ten_thu_thuat || ten;
+        await db.prepare("DELETE FROM thu_thuat WHERE unit_code = ? AND id = ?").bind(unitCode, targetId).run();
+        if (oldProcName) {
+          await db.prepare("DELETE FROM lich_su_dinh_muc WHERE unit_code = ? AND (ten_thu_thuat = ? OR LOWER(ten_thu_thuat) = LOWER(?))").bind(unitCode, oldProcName, oldProcName).run().catch(() => {});
+        }
+      } else {
+        await db.prepare("DELETE FROM thu_thuat WHERE unit_code = ? AND (ten_thu_thuat = ? OR LOWER(ten_thu_thuat) = LOWER(?) OR id = ?)").bind(unitCode, ten, ten, ten).run();
+        if (ten) {
+          await db.prepare("DELETE FROM lich_su_dinh_muc WHERE unit_code = ? AND (ten_thu_thuat = ? OR LOWER(ten_thu_thuat) = LOWER(?))").bind(unitCode, ten, ten).run().catch(() => {});
+        }
+      }
       await bumpDataVersion(db, unitCode);
       return success({ message: "Xóa thủ thuật thành công" });
     }
@@ -5911,8 +6059,13 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     }
 
     case "autoChotSo": {
-      await checkAutoChotSo(db, unitCode);
-      return success({ message: "Đã kiểm tra chốt sổ tự động!" });
+      const closeRes = await checkAutoChotSo(db, unitCode);
+      return success({
+        message: closeRes?.closed ? `Đã chốt sổ tự động ngày ${closeRes.date} thành công!` : "Đã kiểm tra chốt sổ tự động.",
+        closed: !!closeRes?.closed,
+        closedDate: closeRes?.date || null,
+        reason: closeRes?.reason || ""
+      });
     }
 
     case "exportDatabase": {
@@ -6002,17 +6155,43 @@ async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
     (keysRes.results || []).forEach(r => { settings[r.key] = r.value; });
 
     // Giờ chốt sổ linh hoạt theo cấu hình đơn vị (mặc định 16:20)
-    let chotSoTime = settings.chotSoTime ? String(settings.chotSoTime).trim() : "16:20";
-    if (!chotSoTime.includes(':')) chotSoTime = "16:20";
+    let rawChotSo = settings.chotSoTime ? String(settings.chotSoTime).trim().toLowerCase().replace(/h/g, ':') : "16:20";
+    rawChotSo = rawChotSo.replace(/[^0-9:]/g, '');
+    const timeParts = rawChotSo.split(':').filter(Boolean);
+    let chotSoTime = "16:20";
+    if (timeParts.length >= 1) {
+      const chH = String(Math.min(23, Math.max(0, parseInt(timeParts[0], 10) || 0))).padStart(2, '0');
+      const chM = String(timeParts.length > 1 ? Math.min(59, Math.max(0, parseInt(timeParts[1], 10) || 0)) : 0).padStart(2, '0');
+      chotSoTime = `${chH}:${chM}`;
+    }
     const lastChotSoDate = settings.lastChotSoDate ? String(settings.lastChotSoDate).trim() : "";
 
     let shouldClose = false;
+    let closeTargetDate = "";
     let reason = "";
 
     // 1. Kích hoạt chốt sổ hôm nay khi đã đến hoặc qua giờ chốt sổ (ví dụ: >= 16:20)
-    if (lastChotSoDate !== todayDateStr && lastChotSoDate !== todayYMD && currentHourMin >= chotSoTime) {
-      shouldClose = true;
-      reason = `Đã đến giờ chốt sổ hàng ngày (${currentHourMin} >= ${chotSoTime})`;
+    const todaySched = await db.prepare(
+      "SELECT date FROM lich_trinh WHERE unit_code = ? AND (date = ? OR date = ?) LIMIT 1"
+    ).bind(unitCode, todayDateStr, todayYMD).first().catch(() => null);
+
+    if (currentHourMin >= chotSoTime) {
+      if (lastChotSoDate !== todayDateStr && lastChotSoDate !== todayYMD) {
+        shouldClose = true;
+        closeTargetDate = todaySched ? (todaySched.date || todayYMD) : todayYMD;
+        reason = `Đã đến giờ chốt sổ hàng ngày (${currentHourMin} >= ${chotSoTime})`;
+      } else if (todaySched) {
+        // Trường hợp đặc biệt: lastChotSoDate bị gắn nhầm (do catch-up ngày cũ vào buổi sáng)
+        // nhưng lich_trinh hôm nay vẫn còn dữ liệu và lich_su chưa có -> vẫn chốt sổ!
+        const todayHist = await db.prepare(
+          "SELECT id FROM lich_su WHERE unit_code = ? AND (date = ? OR date = ?) LIMIT 1"
+        ).bind(unitCode, todayDateStr, todayYMD).first().catch(() => null);
+        if (!todayHist) {
+          shouldClose = true;
+          closeTargetDate = todaySched.date || todayYMD;
+          reason = `Lịch hôm nay (${closeTargetDate}) còn tồn đọng chưa được lưu vào lịch sử`;
+        }
+      }
     }
 
     // 2. Cơ chế hồi phục an toàn (Safety Catch-up):
@@ -6024,21 +6203,23 @@ async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
 
       if (pastSched && pastSched.date) {
         shouldClose = true;
+        closeTargetDate = pastSched.date;
         reason = `Tồn đọng lịch ngày cũ (${pastSched.date}) chưa chốt`;
       }
     }
 
     if (shouldClose) {
-      console.log(`[Worker Auto-ChotSo]: Triggering auto closure for unit '${unitCode}'. Lý do: ${reason}. today=${todayDateStr}, lastClosed=${lastChotSoDate}, time=${currentHourMin}, chotSoTime=${chotSoTime}`);
+      const targetArchiveDate = closeTargetDate || todayYMD;
+      console.log(`[Worker Auto-ChotSo]: Triggering auto closure for unit '${unitCode}'. Lý do: ${reason}. targetArchiveDate=${targetArchiveDate}, today=${todayDateStr}, lastClosed=${lastChotSoDate}, time=${currentHourMin}, chotSoTime=${chotSoTime}`);
       
       const statements = [
-        // 1. Sao lưu giờ bận thực tế của nhân viên trước khi reset (chỉ lưu vào gio_ban_chung_cu)
-        db.prepare("DELETE FROM gio_ban_chung_cu WHERE unit_code = ? AND date = ?").bind(unitCode, todayYMD),
-        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, busy_ranges) SELECT unit_code, ?, 'nhan_su', name, temp_busy FROM nhan_su WHERE unit_code = ? AND temp_busy IS NOT NULL AND temp_busy != '' AND temp_busy != '[]' AND temp_busy != '[\"\"]'").bind(todayYMD, unitCode),
+        // 1. Sao lưu giờ bận thực tế của nhân viên trước khi reset (chỉ lưu vào gio_ban_chung_cu theo đúng ngày chốt)
+        db.prepare("DELETE FROM gio_ban_chung_cu WHERE unit_code = ? AND date = ?").bind(unitCode, targetArchiveDate),
+        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, busy_ranges) SELECT unit_code, ?, 'nhan_su', name, temp_busy FROM nhan_su WHERE unit_code = ? AND temp_busy IS NOT NULL AND temp_busy != '' AND temp_busy != '[]' AND temp_busy != '[\"\"]'").bind(targetArchiveDate, unitCode),
         // 2. Sao lưu giờ bận thực tế của bệnh nhân trước khi reset
-        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'benh_nhan', name, age, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(todayYMD, unitCode),
+        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'benh_nhan', name, age, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(targetArchiveDate, unitCode),
         // 3. Sao lưu giờ ra viện của bệnh nhân trước khi reset
-        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'ra_vien', name, age, leave_time FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(todayYMD, unitCode),
+        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'ra_vien', name, age, leave_time FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(targetArchiveDate, unitCode),
         db.prepare("DELETE FROM lich_su WHERE unit_code = ? AND date IN (SELECT DISTINCT date FROM lich_trinh WHERE unit_code = ?)").bind(unitCode, unitCode),
         db.prepare("INSERT INTO lich_su (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE unit_code = ?").bind(unitCode),
         db.prepare("DELETE FROM lich_trinh WHERE unit_code = ?").bind(unitCode),
@@ -6048,14 +6229,18 @@ async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
       ];
 
       await db.batch(statements);
-      await setCaiDat(db, unitCode, 'lastChotSoDate', todayYMD);
+      // Ghi nhận lastChotSoDate theo đúng ngày thực tế vừa chốt (tránh làm tê liệt ngày hôm nay)
+      await setCaiDat(db, unitCode, 'lastChotSoDate', targetArchiveDate);
       // Tự động huấn luyện mô hình AI ngay sau khi chuyển dữ liệu vào lịch sử
       await trainAIModelOnServer(db, unitCode).catch(() => {});
       await bumpDataVersion(db, unitCode);
-      console.log(`[Worker Auto-ChotSo]: Automated day closure executed successfully for unit '${unitCode}'!`);
+      console.log(`[Worker Auto-ChotSo]: Automated day closure executed successfully for unit '${unitCode}' (Date: ${targetArchiveDate})!`);
+      return { closed: true, date: targetArchiveDate, reason };
     }
+    return { closed: false };
   } catch (err) {
     console.error("[Worker Auto-ChotSo Error]:", err);
+    return { closed: false, error: err.message };
   }
 }
 
