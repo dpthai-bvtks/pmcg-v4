@@ -1281,9 +1281,11 @@ async function ensureSchema(db) {
       "ALTER TABLE benh_nhan ADD COLUMN is_saturday INTEGER DEFAULT 0",
       "UPDATE thu_thuat SET viet_tat = 'TKT' WHERE (viet_tat = 'TTK' OR viet_tat = 'tk') AND (ten_thu_thuat LIKE '%kháng trở%' OR ten_thu_thuat LIKE '%khang tro%')",
     ];
-    try {
-      await db.batch(migrations.map(sql => db.prepare(sql)));
-    } catch(e) {}
+    for (const sql of migrations) {
+      try {
+        await db.prepare(sql).run();
+      } catch(e) {}
+    }
 
     // Multi-tenant auto-migration: chuyển dữ liệu từ gio_ban_cu sang gio_ban_chung_cu và lọc sạch dữ liệu ảo
     try {

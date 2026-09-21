@@ -4930,6 +4930,21 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `sw.js` [MODIFY: CACHE_NAME = 'pmcg-v4-cache-4.1.3-rev5']
   - `PM-xeplich-v4.md` [MODIFY: thêm nhật ký v4.1.3-rev5]
 
+### [21/09/2026 - 09:55] Phiên bản v4.1.3-rev6: Sửa lỗi tự động di trú Schema CSDL MiniPC (Bổ sung cột lich_su_dinh_muc)
+- **Bối cảnh & Nguyên nhân**:
+  1. Trong `backend/src/index.js`, hàm `ensureSchema` chạy danh sách di trú `migrations` bằng lệnh `await db.batch(migrations.map(sql => db.prepare(sql)))`.
+  2. Trong SQLite/Turso pipeline, nếu 1 câu lệnh trong giao dịch `db.batch` bị lỗi (ví dụ: `ALTER TABLE cai_dat ADD COLUMN unit_code...` bị đụng do cột đã tồn tại từ trước), SQLite lập tức hủy (abort/rollback) toàn bộ giao dịch `db.batch`.
+  3. Việc này khiến toàn bộ các câu lệnh `ALTER TABLE` đứng sau (trong đó có `ALTER TABLE thu_thuat ADD COLUMN lich_su_dinh_muc TEXT DEFAULT '[]'`) KHÔNG BAO GIỜ được thực thi trên tệp SQLite hiện tại của MiniPC (`pmcg.db`).
+- **Giải pháp xử lý**:
+  1. **Thực thi di trú từng dòng độc lập**: Thay thế `db.batch(migrations)` bằng vòng lặp `for (const sql of migrations)` chạy riêng rẽ từng câu lệnh trong khối `try/catch`. Nếu một cột đã tồn tại từ trước, SQLite bỏ qua câu lệnh đó và tiếp tục thực thi các câu lệnh sau, đảm bảo cột `lich_su_dinh_muc` được thêm vào bảng `thu_thuat` thành công ngay lập tức.
+- **File sửa đổi:**
+  - `backend/src/index.js` [MODIFY: loop qua từng migration query trong ensureSchema]
+  - `version.json` [MODIFY: 4.1.3-rev6, timestamp 09:55 21/09/2026]
+  - `sw.js` [MODIFY: CACHE_NAME = 'pmcg-v4-cache-4.1.3-rev6']
+  - `index.html` [MODIFY: query string v=4.1.3-rev6, APP_VERSION = '4.1.3-rev6']
+  - `PM-xeplich-v4.md` [MODIFY]
+
+
 
 
 
