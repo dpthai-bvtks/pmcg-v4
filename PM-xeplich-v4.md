@@ -4844,6 +4844,24 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `version.json` [MODIFY: 4.1.3-rev1]
   - `PM-xeplich-v4.md` [MODIFY]
 
+---
+
+### [21/09/2026 07:35] - v4.1.3-rev2: TINH GIẢN GIAO DIỆN CÀI ĐẶT HỆ THỐNG - ẨN NÚT LƯU TỔNG DƯỚI CÙNG
+
+- **Yêu cầu người dùng:** *"ẩn nút to đùng dưới cùng đi"*.
+- **Phân tích & Tối ưu UI:**
+  - Sau khi đã trang bị 2 nút lưu trực quan ngay trong từng Card (`💾 Lưu Giờ Vận Hành & Chốt Sổ` và `💾 Lưu Trọng Số Thuật Toán`) kết hợp với cơ chế Auto-save tự động lưu ngầm, nút lưu tổng dài ở dưới cùng trở nên thừa thãi và làm rối giao diện.
+  - Loại bỏ nút lưu tổng dưới cùng giúp tab Cài Đặt Hệ Thống thoáng đãng, gọn gàng và trực quan hơn.
+- **Chi tiết thay đổi:**
+  1. `index.html`: Xóa bỏ nút `<button class="btn-success">LƯU THAY ĐỔI CÀI ĐẶT HỆ THỐNG</button>` dưới cùng; cập nhật cache buster `?v=4.1.3-rev2`, `APP_VERSION = '4.1.3-rev2'`, `#sys-last-update` = `⏱ Cập nhật lần cuối: 07:35 21/09/2026`.
+  2. `sw.js`: Nâng `CACHE_NAME = 'pmcg-v4-cache-4.1.3-rev2'`.
+  3. `version.json`: Cập nhật `4.1.3-rev2`, `releaseTime: 07:35 21/09/2026`.
+- **Kiểm thử & Deploy:**
+  - `node -c`: Cú pháp JavaScript hợp lệ 100%.
+  - Deploy Cloudflare Pages + Worker: `npm run deploy:all` thành công.
+  - Commit & push nhánh `main` GitHub.
+
+
 
 
 

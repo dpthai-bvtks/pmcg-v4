@@ -1,6 +1,6 @@
 {
-    "version": "4.1.3-rev1",
+    "version": "4.1.3-rev2",
     "releaseDate": "21/09/2026",
-    "releaseTime": "07:20 21/09/2026",
-    "notes": "fix(settings): Khắc phục lỗi cài đặt thời gian vận hành & giờ lố YHCT bị quay về mặc định khi tải lại trang hoặc nâng cấp phiên bản; bổ sung nút Lưu trực tiếp và cơ chế Tự động lưu (Auto-save on change/blur)."
+    "releaseTime": "07:35 21/09/2026",
+    "notes": "ui(settings): Tinh giản giao diện Cài Đặt Hệ Thống, ẩn nút Lưu tổng dưới cùng; giữ nút Lưu chuyên biệt tại từng Card (Thời gian vận hành & Trọng số) kèm Tự động lưu ngầm."
 }
