@@ -1,6 +1,6 @@
 {
-    "version": "4.1.3-rev4",
+    "version": "4.1.3-rev5",
     "releaseDate": "21/09/2026",
-    "releaseTime": "08:10 21/09/2026",
-    "notes": "feat(db & audit): Bổ sung cột JSON lich_su_dinh_muc vào bảng thu_thuat trên CSDL MiniPC & Turso; tự động lưu vết các mốc thay đổi định mức Min/Max phục vụ quét file HIS nhiều tháng."
+    "releaseTime": "09:35 21/09/2026",
+    "notes": "fix(turso-lock): Khắc phục triệt để lỗi database is locked khi xóa máy/thủ thuật/phòng/nhân sự/bệnh nhân bằng cơ chế retry tự động và gộp lệnh DB batch."
 }

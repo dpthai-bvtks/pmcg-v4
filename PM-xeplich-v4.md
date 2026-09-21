@@ -4911,6 +4911,26 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `index.html` [MODIFY: query string v=4.1.3-rev4, APP_VERSION = '4.1.3-rev4', timestamp 08:10 21/09/2026]
   - `PM-xeplich-v4.md` [MODIFY]
 
+### [21/09/2026 - 09:35] Phiên bản v4.1.3-rev5: Khắc phục triệt để lỗi database is locked khi xóa máy/thủ thuật/phòng/nhân sự/bệnh nhân
+- **Bối cảnh & Nguyên nhân**:
+  1. Khi thực hiện hành động xóa máy (`deleteMayMoc`), thủ thuật (`deleteThuThuat`), phòng (`deletePhong`), nhân sự (`deleteNhanSu`), bệnh nhân (`deleteBenhNhan`), hệ thống trước đây chạy lệnh `DELETE FROM ...` rồi gọi riêng rẽ `await bumpDataVersion(db, unitCode)` thành 2 yêu cầu HTTP pipeline nối tiếp nhau đến MiniPC DB / Turso Cloud.
+  2. Hai câu lệnh ghi nối tiếp trên HTTP với tần suất cực nhanh gây xung đột khóa (Lock Contention) trên tệp SQLite của MiniPC, sinh ra lỗi `[Server Action Error - deleteMayMoc]: Turso SQL error: {"message":"database is locked","code":"ERR_SQLITE_ERROR"}`.
+  3. `createTursoAdapter` chưa có cơ chế tự động thử lại (Retry) khi `runPipeline` nhận phản hồi `database is locked` từ CSDL SQLite.
+- **Giải pháp xử lý triệt để**:
+  1. **Gộp giao dịch Atomic qua `db.batch`**:
+     - Gộp câu lệnh `DELETE` cùng câu lệnh `makeBumpDataVersionStmt` vào một giao dịch `db.batch([stmtDel, makeBumpDataVersionStmt(db, unitCode)])` duy nhất. CSDL SQLite thực thi cả 2 câu lệnh ghi nguyên tử trong 1 transaction, loại bỏ khoảng trống khóa giữa 2 request HTTP.
+  2. **Cơ chế Tự động Thử lại (Auto-Retry với Jitter Backoff)**:
+     - Trong `createTursoAdapter.runPipeline`, khi gặp lỗi `database is locked` / `SQLITE_BUSY`, adapter tự động thử lại tối đa 3 lần trên Primary (MiniPC DB) với khoảng hoãn 200ms, 400ms.
+     - Nếu sau 3 lần Primary vẫn locked, hệ thống tự động Failover sang Turso Cloud (`FALLBACK_URL`).
+  3. **Tối ưu Cấu hình CSDL (`ensureSchema`)**:
+     - Thiết lập `PRAGMA busy_timeout = 5000;` và `PRAGMA journal_mode = WAL;` cho CSDL SQLite trên MiniPC để tăng khả năng chịu tải đồng thời.
+- **File sửa đổi:**
+  - `backend/src/index.js` [MODIFY: createTursoAdapter (auto-retry & failover), ensureSchema (busy_timeout, journal_mode WAL), deleteMayMoc, deleteThuThuat, deletePhong, deleteNhanSu, deleteBenhNhan (batch transaction)]
+  - `version.json` [MODIFY: 4.1.3-rev5, timestamp 09:35 21/09/2026]
+  - `sw.js` [MODIFY: CACHE_NAME = 'pmcg-v4-cache-4.1.3-rev5']
+  - `PM-xeplich-v4.md` [MODIFY: thêm nhật ký v4.1.3-rev5]
+
+
 
 
 

@@ -59,57 +59,108 @@ function createTursoAdapter(env, ctx) {
     const isWrite = isWriteOperation(requests);
     const writeCopy = isWrite ? JSON.parse(JSON.stringify(requests)) : null;
 
-    requests.push({ type: 'close' });
-    let res;
+    let primaryJson = null;
     let usedFallback = false;
+    let lastPrimaryError = null;
 
-    try {
-      res = await fetchWithTimeout(PRIMARY_URL, PRIMARY_TOKEN, requests, 3500);
-      // Nếu Mini PC trả về lỗi 5xx (500, 502, 503, 504, 521, 522... do tắt máy hoặc lỗi origin) và có Fallback
-      if (!res.ok && res.status >= 500 && FALLBACK_URL) {
-        console.warn(`[TURSO-FAILOVER] Primary returned HTTP ${res.status}. Falling back to Turso Cloud...`);
-        usedFallback = true;
-        res = await fetchWithTimeout(FALLBACK_URL, FALLBACK_TOKEN, requests, 8000);
-      }
-    } catch (err) {
-      if (FALLBACK_URL) {
-        console.warn(`[TURSO-FAILOVER] Primary failed (${err.message}). Falling back to Turso Cloud...`);
-        usedFallback = true;
-        res = await fetchWithTimeout(FALLBACK_URL, FALLBACK_TOKEN, requests, 8000);
-      } else {
-        throw err;
-      }
-    }
+    // Retry loop on Primary (up to 3 attempts) for transient "database is locked" errors
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const payload = JSON.parse(JSON.stringify(requests));
+      payload.push({ type: 'close' });
 
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`Turso HTTP ${res.status}${usedFallback ? ' (FALLBACK)' : ''}: ${txt.substring(0, 300)}`);
-    }
-    const json = await res.json();
-    // Kiểm tra lỗi trong từng result
-    const errResult = json.results?.find(r => r.type === 'error');
-    if (errResult) throw new Error(`Turso SQL error: ${JSON.stringify(errResult.error)}`);
+      try {
+        const res = await fetchWithTimeout(PRIMARY_URL, PRIMARY_TOKEN, payload, 4000);
 
-    // Dual-Write: Nếu ghi thành công trên Mini PC, nhân bản ngầm an toàn sang Turso Cloud
-    if (!usedFallback && FALLBACK_URL && isWrite && writeCopy) {
-      writeCopy.push({ type: 'close' });
-      const replicatePromise = fetchWithTimeout(FALLBACK_URL, FALLBACK_TOKEN, writeCopy, 8000)
-        .then(async fbRes => {
-          if (!fbRes.ok) {
-            const fbErr = await fbRes.text().catch(() => '');
-            console.warn(`[DUAL-WRITE WARNING] Turso Cloud HTTP ${fbRes.status}: ${fbErr.substring(0, 150)}`);
+        if (!res.ok && res.status >= 500 && FALLBACK_URL) {
+          console.warn(`[TURSO-FAILOVER] Primary returned HTTP ${res.status} (attempt ${attempt}). Falling back...`);
+          break; // Failover to Fallback URL
+        }
+
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(`Turso HTTP ${res.status}: ${txt.substring(0, 300)}`);
+        }
+
+        const json = await res.json();
+        const errResult = json.results?.find(r => r.type === 'error');
+
+        if (errResult) {
+          const errObjStr = JSON.stringify(errResult.error || {});
+          const errMessage = String(errResult.error?.message || errObjStr).toLowerCase();
+          const isLocked = errMessage.includes('database is locked') || errMessage.includes('sqlite_busy') || errMessage.includes('busy');
+
+          if (isLocked && attempt < maxAttempts) {
+            console.warn(`[TURSO-RETRY] Database locked on Primary (attempt ${attempt}/${maxAttempts}). Retrying in ${attempt * 200}ms...`);
+            await new Promise(resolve => setTimeout(resolve, attempt * 200));
+            continue;
           }
-        })
-        .catch(fbErr => {
-          console.warn(`[DUAL-WRITE ERROR] Could not replicate to Turso Cloud: ${fbErr.message}`);
-        });
+          throw new Error(`Turso SQL error: ${errObjStr}`);
+        }
 
-      if (ctx && typeof ctx.waitUntil === 'function') {
-        ctx.waitUntil(replicatePromise);
+        primaryJson = json;
+        break; // Successfully executed on Primary
+      } catch (err) {
+        lastPrimaryError = err;
+        const errMessage = String(err.message || '').toLowerCase();
+        const isLocked = errMessage.includes('database is locked') || errMessage.includes('sqlite_busy') || errMessage.includes('busy');
+
+        if (isLocked && attempt < maxAttempts) {
+          console.warn(`[TURSO-RETRY] Primary caught lock error (attempt ${attempt}/${maxAttempts}): ${err.message}. Retrying...`);
+          await new Promise(resolve => setTimeout(resolve, attempt * 200));
+          continue;
+        }
+
+        if (FALLBACK_URL) {
+          console.warn(`[TURSO-FAILOVER] Primary attempt ${attempt} failed (${err.message}). Trying Fallback...`);
+          break;
+        } else {
+          throw err;
+        }
       }
     }
 
-    return json.results || [];
+    if (primaryJson) {
+      // Dual-Write: Nếu ghi thành công trên Primary, nhân bản ngầm an toàn sang Turso Cloud
+      if (!usedFallback && FALLBACK_URL && isWrite && writeCopy) {
+        writeCopy.push({ type: 'close' });
+        const replicatePromise = fetchWithTimeout(FALLBACK_URL, FALLBACK_TOKEN, writeCopy, 8000)
+          .then(async fbRes => {
+            if (!fbRes.ok) {
+              const fbErr = await fbRes.text().catch(() => '');
+              console.warn(`[DUAL-WRITE WARNING] Turso Cloud HTTP ${fbRes.status}: ${fbErr.substring(0, 150)}`);
+            }
+          })
+          .catch(fbErr => {
+            console.warn(`[DUAL-WRITE ERROR] Could not replicate to Turso Cloud: ${fbErr.message}`);
+          });
+
+        if (ctx && typeof ctx.waitUntil === 'function') {
+          ctx.waitUntil(replicatePromise);
+        }
+      }
+
+      return primaryJson.results || [];
+    }
+
+    // Attempt Fallback if Primary failed completely
+    if (FALLBACK_URL) {
+      usedFallback = true;
+      const fbPayload = JSON.parse(JSON.stringify(requests));
+      fbPayload.push({ type: 'close' });
+
+      const res = await fetchWithTimeout(FALLBACK_URL, FALLBACK_TOKEN, fbPayload, 8000);
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(`Turso HTTP ${res.status} (FALLBACK): ${txt.substring(0, 300)}`);
+      }
+      const json = await res.json();
+      const errResult = json.results?.find(r => r.type === 'error');
+      if (errResult) throw new Error(`Turso SQL error (FALLBACK): ${JSON.stringify(errResult.error)}`);
+      return json.results || [];
+    }
+
+    throw lastPrimaryError || new Error("Turso pipeline execution failed");
   }
 
   // Chuyển hàng Turso [{type,value}, ...] → Object plain
