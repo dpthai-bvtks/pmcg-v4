@@ -3514,6 +3514,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     }
 
     case "getThuThuat": {
+      try {
+        await db.prepare("ALTER TABLE thu_thuat ADD COLUMN lich_su_dinh_muc TEXT DEFAULT '[]'").run().catch(() => {});
+      } catch (e) {}
       const res = await db.prepare("SELECT * FROM thu_thuat WHERE unit_code = ? ORDER BY order_idx ASC, id ASC").bind(unitCode).all();
       return success((res.results || []).map(p => ({
         id: p.id,
@@ -3541,6 +3544,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
 
     case "addThuThuat":
     case "editThuThuat": {
+      try {
+        await db.prepare("ALTER TABLE thu_thuat ADD COLUMN lich_su_dinh_muc TEXT DEFAULT '[]'").run().catch(() => {});
+      } catch (e) {}
       let payload = {};
       if (typeof args[0] === "object" && args[0] !== null) {
         payload = args[0];

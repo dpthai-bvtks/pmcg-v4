@@ -4944,6 +4944,18 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `index.html` [MODIFY: query string v=4.1.3-rev6, APP_VERSION = '4.1.3-rev6']
   - `PM-xeplich-v4.md` [MODIFY]
 
+### [21/09/2026 - 10:10] Phiên bản v4.1.3-rev7: Đảm bảo tự động bổ sung cột lich_su_dinh_muc trực tiếp khi truy vấn thủ thuật
+- **Bối cảnh & Xử lý**:
+  1. Bổ sung đoạn tự động nâng cấp cấu trúc bảng `ALTER TABLE thu_thuat ADD COLUMN lich_su_dinh_muc TEXT DEFAULT '[]'` trực tiếp vào các hàm `getThuThuat`, `addThuThuat`, `editThuThuat` trong `backend/src/index.js`.
+  2. Đảm bảo ngay khi bất kỳ thao tác nào chạm vào danh mục thủ thuật, CSDL MiniPC `pmcg.db` lập tức tự tạo cột `lich_su_dinh_muc` mà không phụ thuộc vào cờ `schemaEnsured`.
+- **File sửa đổi:**
+  - `backend/src/index.js` [MODIFY: getThuThuat, addThuThuat, editThuThuat auto ALTER TABLE]
+  - `version.json` [MODIFY: 4.1.3-rev7, timestamp 10:10 21/09/2026]
+  - `sw.js` [MODIFY: CACHE_NAME = 'pmcg-v4-cache-4.1.3-rev7']
+  - `index.html` [MODIFY: query string v=4.1.3-rev7, APP_VERSION = '4.1.3-rev7']
+  - `PM-xeplich-v4.md` [MODIFY]
+
+
 
 
 
