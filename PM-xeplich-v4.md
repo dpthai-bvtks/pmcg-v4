@@ -4861,6 +4861,36 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - Deploy Cloudflare Pages + Worker: `npm run deploy:all` thành công.
   - Commit & push nhánh `main` GitHub.
 
+---
+
+### [21/09/2026 07:45] - v4.1.3-rev3: KHẮC PHỤC TRIỆT ĐỂ TÍNH NĂNG TỰ ĐỘNG HUẤN LUYỆN AI HÀNG NGÀY (MULTI-TRIGGER AUTO-LEARN)
+
+- **Yêu cầu người dùng:** *"đã cài đặt tự động học theo ngày mà mình thấy toàn phải bấm thủ công"*.
+- **Phân tích nguyên nhân cốt lõi:**
+  1. *Bẫy khung giờ (Time-Window Trap)*: `checkAutoTrain()` chỉ kiểm tra `currentMins >= targetMins` (17:00). Khi nhân viên y tế kết thúc ca làm việc tắt máy trước 17:00 (ví dụ 16:30), hàm không chạy. Đến sáng hôm sau (07:00), `currentMins` (420) < `targetMins` (1020) nên điều kiện sai và bỏ qua, dẫn tới không bao giờ tự động học nếu tắt máy sớm.
+  2. *Thiếu dữ liệu khi tự học*: Trước đây `calibrateFromAppContext()` chỉ đọc cache RAM ngắn hạn thay vì gọi CSDL `lich_su` (hơn 22.000 dòng) như khi bấm thủ công.
+  3. *Chưa kích hoạt sau Chốt Sổ*: Khi chốt sổ cuối ngày (dữ liệu vừa chuyển sang `lich_su`), hệ thống chưa tự động gắn trigger huấn luyện AI.
+  4. *Backend Cloudflare Worker chưa tự học*: Worker Edge chỉ backup Google Drive và chốt sổ mà chưa tự động huấn luyện và cập nhật `ai_learned_model` vào `cai_dat`.
+- **Giải pháp kỹ thuật toàn diện:**
+  1. **Đa cơ chế kích hoạt tự động (Multi-Trigger Engine)**:
+     - *Trigger 1 (Đến giờ chỉ định)*: Tự động chạy ngầm khi đến 17:00 nếu tab trình duyệt đang mở.
+     - *Trigger 2 (Bù giờ buổi sáng - Morning Catch-Up)*: Khi mở app vào buổi sáng, nếu phát hiện ngày hôm trước chưa kịp học do tắt máy sớm, hệ thống tự động học bù ngầm sau 3.5 giây tải trang.
+     - *Trigger 3 (Hậu chốt sổ - Post Chốt Sổ)*: Tự động học ngay sau khi hoàn tất chốt sổ cuối ngày trên cả Frontend và Backend.
+     - *Trigger 4 (Edge Worker Server CRON)*: Tự động học trên Cloudflare Worker và lưu vào `cai_dat` độc lập với máy trạm.
+  2. **Nâng cấp `calibrateAIFromHistory(options)`**:
+     - Hỗ trợ chế độ chạy ngầm `silent: true`: Nạp toàn bộ lịch sử CSDL, cập nhật mô hình, lưu xuống Server + LocalStorage, cập nhật UI tức thì và hiển thị toast nhẹ nhàng thay vì popup chặn màn hình.
+  3. **Tự động lưu cấu hình**:
+     - Gắn auto-save khi người dùng đổi dropdown Trạng thái hoặc Giờ tự động huấn luyện trong tab AI Engine.
+- **File sửa đổi:**
+  - `backend/src/index.js` [MODIFY: trainAIModelOnServer, tích hợp vào scheduled, chotSo, autoChotSo, trainAI API]
+  - `js/ai-scheduler.js` [MODIFY: checkAutoTrain multi-trigger, saveModel, setModel UI sync]
+  - `js/app.js` [MODIFY: calibrateAIFromHistory silent mode, saveAIAutoTrainConfig auto-save listener]
+  - `index.html` [MODIFY: cache buster v4.1.3-rev3, footer timestamp 07:45 21/09/2026]
+  - `sw.js` [MODIFY: CACHE_NAME = 'pmcg-v4-cache-4.1.3-rev3']
+  - `version.json` [MODIFY: 4.1.3-rev3]
+  - `PM-xeplich-v4.md` [MODIFY]
+
+
 
 
 

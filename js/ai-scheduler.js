@@ -72,7 +72,12 @@ window.AIScheduler = (function () {
       }
       currentModel = model;
 
-      // ☁️ Tự động đồng bộ mô hình AI lên CSDL đám mây Cloudflare D1 (cai_dat)
+      // Cập nhật UI ngay lập tức nếu tab cài đặt AI đang mở
+      if (typeof window !== 'undefined' && typeof window.renderAISettingsUI === 'function') {
+        window.renderAISettingsUI();
+      }
+
+      // ☁️ Tự động đồng bộ mô hình AI lên CSDL đám mây (cai_dat)
       if (syncCloud && typeof window !== 'undefined' && typeof window.callApi === 'function') {
         try {
           window.callApi('saveSystemSettings', [{ ai_learned_model: JSON.stringify(model) }], null, null);
@@ -104,6 +109,9 @@ window.AIScheduler = (function () {
         localStorage.setItem(unitKey, jsonStr);
         localStorage.setItem(STORAGE_KEY, jsonStr);
       } catch(e) {}
+    }
+    if (typeof window !== 'undefined' && typeof window.renderAISettingsUI === 'function') {
+      window.renderAISettingsUI();
     }
     if (syncCloud && typeof window !== 'undefined' && typeof window.callApi === 'function') {
       try {
@@ -293,7 +301,9 @@ window.AIScheduler = (function () {
   }
 
   /**
-   * ⏰ Tự động kiểm tra và huấn luyện AI theo khung giờ chỉ định hàng ngày
+   * ⏰ Tự động kiểm tra và kích hoạt huấn luyện AI:
+   * 1. Khi đến hoặc qua khung giờ chỉ định hàng ngày (targetTime, vd: 17:00).
+   * 2. Cơ chế Bù Giờ (Morning Catch-Up): Nếu hôm qua tắt máy sớm trước giờ học, sáng hôm sau vừa mở app sẽ tự động học bù ngay.
    */
   function checkAutoTrain() {
     try {
@@ -310,12 +320,21 @@ window.AIScheduler = (function () {
       const todayStr = now.toISOString().slice(0, 10);
       const lastTrainedDate = localStorage.getItem('ai_last_auto_train_date') || '';
 
-      if (todayStr !== lastTrainedDate && currentMins >= targetMins) {
-        console.log(`[AIScheduler] ⏰ Đã đến giờ tự động huấn luyện AI (${targetTimeStr}). Đang nạp dữ liệu...`);
-        const model = calibrateFromAppContext();
-        localStorage.setItem('ai_last_auto_train_date', todayStr);
-        if (model && model.trainedRows > 0) {
-          console.log(`[AIScheduler] ✅ Đã tự động cập nhật mô hình AI (${model.trainedRows} dòng) thành công!`);
+      const isTargetTimeReached = (currentMins >= targetMins);
+      const isMorningCatchUp = (lastTrainedDate && lastTrainedDate !== todayStr && currentMins >= 420); // Từ 7:00 sáng trở đi
+
+      if ((todayStr !== lastTrainedDate && isTargetTimeReached) || (isMorningCatchUp && todayStr !== lastTrainedDate)) {
+        const reason = isTargetTimeReached ? 'scheduled_time' : 'morning_catchup';
+        console.log(`[AIScheduler] ⏰ Kích hoạt tự động huấn luyện AI ngầm (${targetTimeStr}, lý do: ${reason}). Đang nạp dữ liệu...`);
+        
+        if (typeof window !== 'undefined' && typeof window.calibrateAIFromHistory === 'function') {
+          window.calibrateAIFromHistory({ silent: true, reason });
+        } else {
+          const model = calibrateFromAppContext();
+          localStorage.setItem('ai_last_auto_train_date', todayStr);
+          if (model && model.trainedRows > 0) {
+            console.log(`[AIScheduler] ✅ Đã tự động cập nhật mô hình AI (${model.trainedRows} dòng) thành công!`);
+          }
         }
       }
     } catch (e) {
@@ -323,9 +342,9 @@ window.AIScheduler = (function () {
     }
   }
 
-  // Khởi động tiến trình chạy nền kiểm tra định kỳ mỗi 60 giây
+  // Khởi động tiến trình chạy nền: 3s sau khi mở app và định kỳ mỗi 60 giây
   if (typeof window !== 'undefined') {
-    setTimeout(checkAutoTrain, 3000);
+    setTimeout(checkAutoTrain, 3500);
     setInterval(checkAutoTrain, 60000);
   }
 

@@ -1839,10 +1839,13 @@ export default {
         if (unitCodes.length === 0) unitCodes.push("bvtks-cs2");
         for (const uCode of unitCodes) {
           await checkAutoChotSo(db, uCode);
+          // Tự động huấn luyện & cập nhật mô hình AI hàng ngày trên Cloudflare Edge
+          await trainAIModelOnServer(db, uCode).catch(() => {});
         }
       } catch(eAuto) {
         console.error("[Worker CRON Auto-ChotSo Error]:", eAuto);
         await checkAutoChotSo(db, "bvtks-cs2");
+        await trainAIModelOnServer(db, "bvtks-cs2").catch(() => {});
       }
 
       // 2. 💾 TỰ ĐỘNG SAO LƯU GOOGLE DRIVE VÀO KHUNG 17:00 GIỜ VN (10:00 UTC)
@@ -4335,6 +4338,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       );
 
       await db.batch(statements);
+      // Tự động huấn luyện mô hình AI ngay sau khi chuyển dữ liệu vào lịch sử
+      await trainAIModelOnServer(db, unitCode).catch(() => {});
       await bumpDataVersion(db, unitCode);
       return success({ message: "Đã chốt sổ và chuyển ngày mới thành công!" });
     }
@@ -4788,6 +4793,14 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         try { model = JSON.parse(rec.value); } catch(e) {}
       }
       return success(model);
+    }
+
+    case "trainAI":
+    case "calibrateAI":
+    case "autoTrainAI": {
+      const model = await trainAIModelOnServer(db, unitCode);
+      await bumpDataVersion(db, unitCode);
+      return success({ message: "Đã huấn luyện mô hình AI thành công!", model });
     }
 
     // ============================================================
@@ -5818,6 +5831,8 @@ async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
 
       await db.batch(statements);
       await setCaiDat(db, unitCode, 'lastChotSoDate', todayYMD);
+      // Tự động huấn luyện mô hình AI ngay sau khi chuyển dữ liệu vào lịch sử
+      await trainAIModelOnServer(db, unitCode).catch(() => {});
       await bumpDataVersion(db, unitCode);
       console.log(`[Worker Auto-ChotSo]: Automated day closure executed successfully for unit '${unitCode}'!`);
     }
@@ -5825,3 +5840,90 @@ async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
     console.error("[Worker Auto-ChotSo Error]:", err);
   }
 }
+
+/**
+ * 🤖 Tự động học & cập nhật mô hình AI từ toàn bộ dữ liệu lịch sử trên máy chủ / Cloud
+ */
+async function trainAIModelOnServer(db, unitCode = "bvtks-cs2") {
+  try {
+    const res = await db.prepare(
+      "SELECT procedure_name, room, staff_name, start_time, machine_name FROM lich_su WHERE unit_code = ? ORDER BY id DESC LIMIT 30000"
+    ).bind(unitCode).all().catch(() => ({ results: [] }));
+    const historyRows = res.results || [];
+    if (historyRows.length === 0) return null;
+
+    const defaultCongestion = {
+      "Kéo giãn": 1.45,
+      "Siêu âm": 1.35,
+      "Sóng ngắn": 1.20,
+      "Parafin": 1.15,
+      "Điện xung": 1.05,
+      "Laser": 1.10
+    };
+    const defaultPatientWeights = {
+      discharged: 3.5,
+      rareMachine: 2.8,
+      procCount: 1.8,
+      earlyArrival: 1.2,
+      elderly: 0.8
+    };
+
+    const model = {
+      version: "4.1.3-AI",
+      trainedRows: historyRows.length,
+      lastTrained: new Date().toISOString(),
+      staffAffinity: {},
+      timeSlotDist: {},
+      machineCongestion: { ...defaultCongestion },
+      patientWeights: { ...defaultPatientWeights }
+    };
+
+    const machineCounts = {};
+
+    historyRows.forEach(row => {
+      if (!row) return;
+      const proc = String(row.procedure_name || '').trim();
+      const room = String(row.room || '').trim();
+      const staff = String(row.staff_name || '').trim();
+      const timeStart = String(row.start_time || '').trim();
+      const machine = String(row.machine_name || '').trim();
+
+      if (!proc || !staff) return;
+
+      const affinityKey = `${proc.toLowerCase()}@${room.toLowerCase()}`;
+      if (!model.staffAffinity[affinityKey]) model.staffAffinity[affinityKey] = {};
+      model.staffAffinity[affinityKey][staff] = (model.staffAffinity[affinityKey][staff] || 0) + 1;
+
+      if (timeStart && timeStart.includes(':')) {
+        const hour = parseInt(timeStart.split(':')[0], 10) || 7;
+        const isMorning = hour < 12;
+        if (!model.timeSlotDist[proc]) model.timeSlotDist[proc] = { morning: 0, afternoon: 0, total: 0 };
+        if (isMorning) model.timeSlotDist[proc].morning++;
+        else model.timeSlotDist[proc].afternoon++;
+        model.timeSlotDist[proc].total++;
+      }
+
+      if (machine && machine !== 'Thủ công' && machine !== 'None' && machine !== '--') {
+        const loaiMay = machine.split('-')[0].trim();
+        machineCounts[loaiMay] = (machineCounts[loaiMay] || 0) + 1;
+      }
+    });
+
+    const totalMachineUses = Object.values(machineCounts).reduce((a, b) => a + b, 0);
+    if (totalMachineUses > 0) {
+      const avgUsesPerType = totalMachineUses / Object.keys(machineCounts).length;
+      Object.keys(machineCounts).forEach(mType => {
+        const ratio = machineCounts[mType] / avgUsesPerType;
+        model.machineCongestion[mType] = Math.max(1.0, Math.min(2.0, Number(ratio.toFixed(2))));
+      });
+    }
+
+    await setCaiDat(db, unitCode, "ai_learned_model", JSON.stringify(model));
+    console.log(`[Worker AI-Train]: Successfully auto-trained AI model for unit '${unitCode}' with ${historyRows.length} rows.`);
+    return model;
+  } catch (err) {
+    console.error("[Worker AI-Train Error]:", err);
+    return null;
+  }
+}
+

@@ -14284,8 +14284,24 @@ window.renderAISettingsUI = function() {
 
         const autoEnable = localStorage.getItem('ai_auto_train_enable') !== '0';
         const autoTime = localStorage.getItem('ai_auto_train_time') || '17:00';
-        if (autoEnableEl) autoEnableEl.value = autoEnable ? "1" : "0";
-        if (autoTimeEl) autoTimeEl.value = autoTime;
+        if (autoEnableEl) {
+            autoEnableEl.value = autoEnable ? "1" : "0";
+            if (!autoEnableEl._hasAutoSave) {
+                autoEnableEl._hasAutoSave = true;
+                autoEnableEl.addEventListener('change', () => {
+                    if (typeof saveAIAutoTrainConfig === 'function') saveAIAutoTrainConfig();
+                });
+            }
+        }
+        if (autoTimeEl) {
+            autoTimeEl.value = autoTime;
+            if (!autoTimeEl._hasAutoSave) {
+                autoTimeEl._hasAutoSave = true;
+                autoTimeEl.addEventListener('change', () => {
+                    if (typeof saveAIAutoTrainConfig === 'function') saveAIAutoTrainConfig();
+                });
+            }
+        }
     } catch(e) {
         console.warn('[renderAISettingsUI] Lỗi hiển thị thông số AI:', e);
     }
@@ -14295,19 +14311,33 @@ window.saveAIAutoTrainConfig = function() {
     const enableEl = document.getElementById('ai-auto-train-enable');
     const timeEl = document.getElementById('ai-auto-train-time');
     const enable = enableEl ? enableEl.value : '1';
-    const time = timeEl ? timeEl.value : '17:00';
+    const time = (timeEl && timeEl.value ? timeEl.value.trim() : '17:00');
 
     localStorage.setItem('ai_auto_train_enable', enable);
     localStorage.setItem('ai_auto_train_time', time);
 
     const configObj = { enable, time };
-    callApi('saveSystemSettings', [{ ai_auto_train_config: JSON.stringify(configObj) }], null, null);
+    callApi('saveSystemSettings', [{ 
+        ai_auto_train_config: JSON.stringify(configObj),
+        ai_auto_train_enable: enable,
+        ai_auto_train_time: time
+    }], null, null);
 
-    showCustomAlert("Thành công", `Đã lưu cấu hình tự động huấn luyện AI hàng ngày vào lúc ${time} thành công!`);
+    showCustomAlert("Thành công", `Đã lưu cấu hình tự động huấn luyện AI hàng ngày (${enable === '1' ? 'BẬT' : 'TẮT'}) vào lúc ${time} thành công!`);
+
+    // Kích hoạt kiểm tra ngay
+    if (window.AIScheduler && typeof window.AIScheduler.checkAutoTrain === 'function') {
+        setTimeout(window.AIScheduler.checkAutoTrain, 800);
+    }
 };
 
-window.calibrateAIFromHistory = async function() {
-    if (window.showGlobalLoading) window.showGlobalLoading("Đang nạp dữ liệu từ Cloudflare D1 và lịch trình thực tế để huấn luyện AI...");
+window.calibrateAIFromHistory = async function(options = {}) {
+    const isSilent = (typeof options === 'object' && options !== null && options.silent === true);
+    const reason = (typeof options === 'object' && options !== null && options.reason) ? options.reason : 'manual';
+
+    if (!isSilent && window.showGlobalLoading) {
+        window.showGlobalLoading("Đang nạp dữ liệu lịch sử và lịch trình thực tế để huấn luyện AI...");
+    }
 
     const executeTraining = (historyRows) => {
         try {
@@ -14336,8 +14366,8 @@ window.calibrateAIFromHistory = async function() {
             } catch(e) {}
 
             if (combinedRows.length === 0) {
-                if (window.hideGlobalLoading) window.hideGlobalLoading();
-                showCustomAlert("Thông báo", "Chưa có dữ liệu lịch trình hoặc lịch sử điều trị để huấn luyện AI. Bác sĩ hãy xếp lịch hoặc nhập dữ liệu trước nhé!");
+                if (!isSilent && window.hideGlobalLoading) window.hideGlobalLoading();
+                if (!isSilent) showCustomAlert("Thông báo", "Chưa có dữ liệu lịch trình hoặc lịch sử điều trị để huấn luyện AI. Bác sĩ hãy xếp lịch hoặc nhập dữ liệu trước nhé!");
                 return;
             }
 
@@ -14346,12 +14376,16 @@ window.calibrateAIFromHistory = async function() {
                 model = window.AIScheduler.trainFromHistory(combinedRows);
             }
 
-            // ☁️ Lưu trực tiếp mô hình AI lên CSDL đám mây Cloudflare D1
+            // ☁️ Lưu trực tiếp mô hình AI lên CSDL đám mây (cai_dat)
             if (model && typeof callApi === 'function') {
                 callApi('saveSystemSettings', [{ ai_learned_model: JSON.stringify(model) }], null, null);
             }
 
-            if (window.hideGlobalLoading) window.hideGlobalLoading();
+            // Ghi nhận ngày tự động học gần nhất
+            const todayStr = new Date().toISOString().slice(0, 10);
+            localStorage.setItem('ai_last_auto_train_date', todayStr);
+
+            if (!isSilent && window.hideGlobalLoading) window.hideGlobalLoading();
             const trainedCount = model ? (model.trainedRows || 0) : combinedRows.length;
             const affinityCount = model && model.staffAffinity ? Object.keys(model.staffAffinity).length : 0;
             
@@ -14366,13 +14400,21 @@ window.calibrateAIFromHistory = async function() {
             const yyyy = d.getFullYear();
             const timeStr = `${hh}:${mm}:${ss} - ${dd}/${MM}/${yyyy}`;
 
-            showCustomAlert(
-                "Huấn luyện AI thành công",
-                `Đã cập nhật mô hình AI lúc ${timeStr}!\n\n📊 Dữ liệu thực tế: ${trainedCount.toLocaleString('vi-VN')} dòng (Đã đồng bộ lên CSDL Cloudflare D1)\n👥 Cặp thói quen nhân sự: ${affinityCount.toLocaleString('vi-VN')} mẫu thói quen\n🚦 Tắc nghẽn máy móc & khung giờ vàng đã được tối ưu.`
-            );
+            if (!isSilent) {
+                showCustomAlert(
+                    "Huấn luyện AI thành công",
+                    `Đã cập nhật mô hình AI lúc ${timeStr}!\n\n📊 Dữ liệu thực tế: ${trainedCount.toLocaleString('vi-VN')} dòng (Đã đồng bộ lên CSDL máy chủ)\n👥 Cặp thói quen nhân sự: ${affinityCount.toLocaleString('vi-VN')} mẫu thói quen\n🚦 Tắc nghẽn máy móc & khung giờ vàng đã được tối ưu.`
+                );
+            } else {
+                console.log(`[AIScheduler] ✅ [Auto-Train ${reason}] Đã tự động cập nhật mô hình AI (${trainedCount.toLocaleString('vi-VN')} dòng, ${affinityCount} thói quen) lúc ${timeStr}`);
+                if (typeof window.showToast === 'function') {
+                    window.showToast(`🤖 AI đã tự động học từ ${trainedCount.toLocaleString('vi-VN')} dòng dữ liệu lâm sàng!`, 'success', 3500);
+                }
+            }
         } catch(err) {
-            if (window.hideGlobalLoading) window.hideGlobalLoading();
-            showCustomAlert("Thông báo", "Lỗi huấn luyện AI: " + err.message);
+            if (!isSilent && window.hideGlobalLoading) window.hideGlobalLoading();
+            if (!isSilent) showCustomAlert("Thông báo", "Lỗi huấn luyện AI: " + err.message);
+            else console.warn('[AIScheduler] Lỗi tự động huấn luyện AI ngầm:', err);
         }
     };
 

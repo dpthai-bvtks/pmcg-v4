@@ -1,6 +1,6 @@
 {
-    "version": "4.1.3-rev2",
+    "version": "4.1.3-rev3",
     "releaseDate": "21/09/2026",
-    "releaseTime": "07:35 21/09/2026",
-    "notes": "ui(settings): Tinh giản giao diện Cài Đặt Hệ Thống, ẩn nút Lưu tổng dưới cùng; giữ nút Lưu chuyên biệt tại từng Card (Thời gian vận hành & Trọng số) kèm Tự động lưu ngầm."
+    "releaseTime": "07:45 21/09/2026",
+    "notes": "fix(ai-engine): Khắc phục lỗi tự động huấn luyện AI hàng ngày; bổ sung đa cơ chế kích hoạt tự động (đến giờ hẹn, bù giờ buổi sáng sau khi mở app, và tự động học sau khi chốt sổ) trên cả Cloudflare Edge Worker và Web Client."
 }
