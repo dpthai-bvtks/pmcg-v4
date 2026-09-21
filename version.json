@@ -1,6 +1,6 @@
 {
-    "version": "4.1.3-rev3",
+    "version": "4.1.3-rev4",
     "releaseDate": "21/09/2026",
-    "releaseTime": "07:45 21/09/2026",
-    "notes": "fix(ai-engine): Khắc phục lỗi tự động huấn luyện AI hàng ngày; bổ sung đa cơ chế kích hoạt tự động (đến giờ hẹn, bù giờ buổi sáng sau khi mở app, và tự động học sau khi chốt sổ) trên cả Cloudflare Edge Worker và Web Client."
+    "releaseTime": "08:10 21/09/2026",
+    "notes": "feat(db & audit): Bổ sung cột JSON lich_su_dinh_muc vào bảng thu_thuat trên CSDL MiniPC & Turso; tự động lưu vết các mốc thay đổi định mức Min/Max phục vụ quét file HIS nhiều tháng."
 }

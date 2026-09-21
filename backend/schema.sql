@@ -117,6 +117,7 @@ CREATE TABLE IF NOT EXISTS thu_thuat (
     can_nguoi_phu INTEGER DEFAULT 0,
     ds_nguoi_phu TEXT DEFAULT '',
     lien_tuc INTEGER DEFAULT 0,
+    lich_su_dinh_muc TEXT DEFAULT '[]',
     order_idx INTEGER DEFAULT 0,
     is_active INTEGER DEFAULT 1,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,

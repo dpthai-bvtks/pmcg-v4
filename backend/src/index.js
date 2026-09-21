@@ -1011,6 +1011,7 @@ async function ensureSchema(db) {
         can_nguoi_phu INTEGER DEFAULT 0,
         ds_nguoi_phu TEXT DEFAULT '',
         lien_tuc INTEGER DEFAULT 0,
+        lich_su_dinh_muc TEXT DEFAULT '[]',
         order_idx INTEGER DEFAULT 0,
         is_active INTEGER DEFAULT 1,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -1216,6 +1217,7 @@ async function ensureSchema(db) {
       "ALTER TABLE thu_thuat ADD COLUMN tg_thu_thuat_max INTEGER DEFAULT 0",
       "ALTER TABLE thu_thuat ADD COLUMN tg_thuc_hien_max INTEGER DEFAULT 0",
       "ALTER TABLE thu_thuat ADD COLUMN lien_tuc INTEGER DEFAULT 0",
+      "ALTER TABLE thu_thuat ADD COLUMN lich_su_dinh_muc TEXT DEFAULT '[]'",
       "ALTER TABLE nhan_su ADD COLUMN is_active INTEGER DEFAULT 1",
       "ALTER TABLE nhan_su ADD COLUMN temp_busy TEXT DEFAULT ''",
       "ALTER TABLE nhan_su ADD COLUMN his_name TEXT DEFAULT ''",
@@ -3169,7 +3171,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         canRutMay: (p.can_rut_may === 1 || p.can_rut_may === '1' || p.can_rut_may === 'Có' || p.can_rut_may === true) ? 'Có' : 'Không',
         canNguoiPhu: (p.can_nguoi_phu === 1 || p.can_nguoi_phu === '1' || p.can_nguoi_phu === 'Có' || p.can_nguoi_phu === true) ? 'Có' : 'Không',
         dsNguoiPhu: p.ds_nguoi_phu,
-        lienTuc: (p.lien_tuc === 1 || p.lien_tuc === '1' || p.lien_tuc === 'Có' || p.lien_tuc === true) ? 'Có' : ((p.tg_thuc_hien === p.tg_thu_thuat && ((p.tg_thuc_hien_max || p.tg_thuc_hien) === (p.tg_thu_thuat_max || p.tg_thu_thuat)) && p.tg_thuc_hien >= 10) ? 'Có' : 'Không')
+        lienTuc: (p.lien_tuc === 1 || p.lien_tuc === '1' || p.lien_tuc === 'Có' || p.lien_tuc === true) ? 'Có' : ((p.tg_thuc_hien === p.tg_thu_thuat && ((p.tg_thuc_hien_max || p.tg_thuc_hien) === (p.tg_thu_thuat_max || p.tg_thu_thuat)) && p.tg_thuc_hien >= 10) ? 'Có' : 'Không'),
+        lichSuDinhMuc: p.lich_su_dinh_muc ? (typeof p.lich_su_dinh_muc === 'string' ? (JSON.parse(p.lich_su_dinh_muc || '[]')) : p.lich_su_dinh_muc) : [],
+        history: p.lich_su_dinh_muc ? (typeof p.lich_su_dinh_muc === 'string' ? (JSON.parse(p.lich_su_dinh_muc || '[]')) : p.lich_su_dinh_muc) : []
       }));
 
       // Staff
@@ -3476,7 +3480,9 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         canRutMay: (p.can_rut_may === 1 || p.can_rut_may === '1' || p.can_rut_may === 'Có' || p.can_rut_may === true) ? 'Có' : 'Không',
         canNguoiPhu: (p.can_nguoi_phu === 1 || p.can_nguoi_phu === '1' || p.can_nguoi_phu === 'Có' || p.can_nguoi_phu === true) ? 'Có' : 'Không',
         dsNguoiPhu: p.ds_nguoi_phu,
-        lienTuc: (p.lien_tuc === 1 || p.lien_tuc === '1' || p.lien_tuc === 'Có' || p.lien_tuc === true) ? 'Có' : ((p.tg_thuc_hien === p.tg_thu_thuat && ((p.tg_thuc_hien_max || p.tg_thuc_hien) === (p.tg_thu_thuat_max || p.tg_thu_thuat)) && p.tg_thuc_hien >= 10) ? 'Có' : 'Không')
+        lienTuc: (p.lien_tuc === 1 || p.lien_tuc === '1' || p.lien_tuc === 'Có' || p.lien_tuc === true) ? 'Có' : ((p.tg_thuc_hien === p.tg_thu_thuat && ((p.tg_thuc_hien_max || p.tg_thuc_hien) === (p.tg_thu_thuat_max || p.tg_thu_thuat)) && p.tg_thuc_hien >= 10) ? 'Có' : 'Không'),
+        lichSuDinhMuc: p.lich_su_dinh_muc ? (typeof p.lich_su_dinh_muc === 'string' ? (JSON.parse(p.lich_su_dinh_muc || '[]')) : p.lich_su_dinh_muc) : [],
+        history: p.lich_su_dinh_muc ? (typeof p.lich_su_dinh_muc === 'string' ? (JSON.parse(p.lich_su_dinh_muc || '[]')) : p.lich_su_dinh_muc) : []
       })));
     }
 
@@ -3503,7 +3509,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
           dsNguoiPhu: args[offset + 10],
           thoiGianThuThuatMax: args[offset + 11],
           thoiGianThucHienMax: args[offset + 12],
-          lienTuc: args[offset + 13]
+          lienTuc: args[offset + 13],
+          lichSuDinhMuc: args[offset + 14] || args[14]
         };
       }
       const ten = sanitizeInputText(String(payload.ten || payload.name || "").trim());
@@ -3522,10 +3529,69 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       const dsPhu = String(payload.dsNguoiPhu || payload.ds_nguoi_phu || "");
       const isLt = (payload.lienTuc === 'Có' || payload.lienTuc === 1 || payload.lienTuc === '1' || payload.lienTuc === true || payload.lien_tuc === 1 || payload.lien_tuc === '1' || payload.lien_tuc === 'Có' || payload.lien_tuc === true) ? 1 : ((tgThMin === tgTtMin && tgThMax === tgTtMax && tgThMin >= 10) ? 1 : 0);
 
-      const stmt = db.prepare(`INSERT INTO thu_thuat (unit_code, ten_thu_thuat, viet_tat, he, phan_loai, may, tg_thuc_hien, tg_thuc_hien_max, tg_thu_thuat, tg_thu_thuat_max, khoang_cach, can_rut_may, can_nguoi_phu, ds_nguoi_phu, lien_tuc, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(unit_code, ten_thu_thuat) DO UPDATE SET viet_tat = excluded.viet_tat, he = excluded.he, phan_loai = excluded.phan_loai, may = excluded.may, tg_thuc_hien = excluded.tg_thuc_hien, tg_thuc_hien_max = excluded.tg_thuc_hien_max, tg_thu_thuat = excluded.tg_thu_thuat, tg_thu_thuat_max = excluded.tg_thu_thuat_max, khoang_cach = excluded.khoang_cach, can_rut_may = excluded.can_rut_may, can_nguoi_phu = excluded.can_nguoi_phu, ds_nguoi_phu = excluded.ds_nguoi_phu, lien_tuc = excluded.lien_tuc, updated_at = CURRENT_TIMESTAMP`)
-        .bind(unitCode, ten, vietTat, he, phanLoai, may, tgThMin, tgThMax, tgTtMin, tgTtMax, kc, rut, phu, dsPhu, isLt);
+      // 1. Kiểm tra bản ghi cũ trong DB
+      const existing = await db.prepare("SELECT * FROM thu_thuat WHERE unit_code = ? AND (ten_thu_thuat = ? OR id = ?)").bind(unitCode, ten, payload.id || -1).first();
+      
+      let historyList = [];
+      if (payload.lichSuDinhMuc || payload.history || payload.lich_su_dinh_muc) {
+        const rawH = payload.lichSuDinhMuc || payload.history || payload.lich_su_dinh_muc;
+        historyList = typeof rawH === 'string' ? (JSON.parse(rawH) || []) : (Array.isArray(rawH) ? rawH : []);
+      } else if (existing && existing.lich_su_dinh_muc) {
+        try {
+          historyList = JSON.parse(existing.lich_su_dinh_muc) || [];
+        } catch(e) {
+          historyList = [];
+        }
+      }
+
+      // 2. Nếu đã tồn tại bản ghi cũ và các giá trị định mức thời gian thay đổi -> tự động lưu vết mốc cũ vào history
+      if (existing) {
+        const oldThMin = existing.tg_thuc_hien;
+        const oldThMax = (existing.tg_thuc_hien_max && existing.tg_thuc_hien_max > 0) ? existing.tg_thuc_hien_max : oldThMin;
+        const oldTtMin = existing.tg_thu_thuat;
+        const oldTtMax = (existing.tg_thu_thuat_max && existing.tg_thu_thuat_max > 0) ? existing.tg_thu_thuat_max : oldTtMin;
+        const oldLt = (existing.lien_tuc === 1 || existing.lien_tuc === '1' || existing.lien_tuc === 'Có' || existing.lien_tuc === true) ? 'Có' : 'Không';
+
+        const isChanged = (oldThMin !== tgThMin || oldThMax !== tgThMax || oldTtMin !== tgTtMin || oldTtMax !== tgTtMax);
+
+        if (isChanged) {
+          const nowVN = new Date(Date.now() + 7 * 3600 * 1000);
+          const yesterdayVN = new Date(nowVN.getTime() - 86400 * 1000);
+          const denNgayStr = yesterdayVN.toISOString().slice(0, 10);
+          
+          let tuNgayStr = '2026-01-01';
+          if (existing.updated_at) {
+            tuNgayStr = String(existing.updated_at).slice(0, 10);
+          }
+          if (tuNgayStr > denNgayStr) {
+            tuNgayStr = denNgayStr;
+          }
+
+          // Kiểm tra xem đã có mốc này trong historyList chưa để tránh trùng lặp
+          const alreadyExists = historyList.some(h => (h.tuNgay === tuNgayStr && h.denNgay === denNgayStr) || (h.thoiGianThucHienMin === oldThMin && h.thoiGianThuThuatMin === oldTtMin && h.denNgay === denNgayStr));
+          
+          if (!alreadyExists) {
+            historyList.push({
+              tuNgay: tuNgayStr,
+              denNgay: denNgayStr,
+              from: tuNgayStr,
+              to: denNgayStr,
+              thoiGianThucHienMin: oldThMin,
+              thoiGianThucHienMax: oldThMax,
+              thoiGianThuThuatMin: oldTtMin,
+              thoiGianThuThuatMax: oldTtMax,
+              lienTuc: oldLt
+            });
+          }
+        }
+      }
+
+      const lichSuStr = JSON.stringify(historyList);
+
+      const stmt = db.prepare(`INSERT INTO thu_thuat (unit_code, ten_thu_thuat, viet_tat, he, phan_loai, may, tg_thuc_hien, tg_thuc_hien_max, tg_thu_thuat, tg_thu_thuat_max, khoang_cach, can_rut_may, can_nguoi_phu, ds_nguoi_phu, lien_tuc, lich_su_dinh_muc, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(unit_code, ten_thu_thuat) DO UPDATE SET viet_tat = excluded.viet_tat, he = excluded.he, phan_loai = excluded.phan_loai, may = excluded.may, tg_thuc_hien = excluded.tg_thuc_hien, tg_thuc_hien_max = excluded.tg_thuc_hien_max, tg_thu_thuat = excluded.tg_thu_thuat, tg_thu_thuat_max = excluded.tg_thu_thuat_max, khoang_cach = excluded.khoang_cach, can_rut_may = excluded.can_rut_may, can_nguoi_phu = excluded.can_nguoi_phu, ds_nguoi_phu = excluded.ds_nguoi_phu, lien_tuc = excluded.lien_tuc, lich_su_dinh_muc = excluded.lich_su_dinh_muc, updated_at = CURRENT_TIMESTAMP`)
+        .bind(unitCode, ten, vietTat, he, phanLoai, may, tgThMin, tgThMax, tgTtMin, tgTtMax, kc, rut, phu, dsPhu, isLt, lichSuStr);
       await db.batch([stmt, makeBumpDataVersionStmt(db, unitCode)]);
       return success({ message: "Lưu thủ thuật thành công" });
     }

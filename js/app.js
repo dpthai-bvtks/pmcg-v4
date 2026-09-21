@@ -4868,7 +4868,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
             if (!ten) return alert("Nhập tên thủ thuật");
 
+            const existingItem = (editIndex.proc > -1) ? dataCache.proc[editIndex.proc] : null;
+            const existingHistory = existingItem ? (existingItem.lichSuDinhMuc || existingItem.history || []) : [];
+
             const obj = {
+                id: existingItem ? existingItem.id : undefined,
                 ten, vietTat: vt, he, phanLoai: loai, may,
                 thoiGianThucHien: tgThucHienMin,
                 thoiGianThucHienMin: tgThucHienMin,
@@ -4877,18 +4881,20 @@ window.renderSttOrderControl = function (type, i, total) {
                 thoiGianThuThuatMin: tgThuThuatMin,
                 thoiGianThuThuatMax: tgThuThuatMax,
                 khoangCach: kc, canRutMay: rut, canNguoiPhu: phu, dsNguoiPhu: dsPhu,
-                lienTuc: lienTuc
+                lienTuc: lienTuc,
+                lichSuDinhMuc: existingHistory,
+                history: existingHistory
             };
 
             if (editIndex.proc > -1) {
                 dataCache.proc[editIndex.proc] = obj;
                 if (typeof callApi === 'function') {
-                    callApi('editThuThuat', [editIndex.proc, ten, vt, he, loai, may, tgThucHienMin, tgThuThuatMin, kc, rut, phu, dsPhu, tgThuThuatMax, tgThucHienMax, lienTuc]);
+                    callApi('editThuThuat', [editIndex.proc, ten, vt, he, loai, may, tgThucHienMin, tgThuThuatMin, kc, rut, phu, dsPhu, tgThuThuatMax, tgThucHienMax, lienTuc, JSON.stringify(existingHistory)]);
                 }
             } else {
                 dataCache.proc.push(obj);
                 if (typeof callApi === 'function') {
-                    callApi('addThuThuat', [ten, vt, he, loai, may, tgThucHienMin, tgThuThuatMin, kc, rut, phu, dsPhu, tgThuThuatMax, tgThucHienMax, lienTuc]);
+                    callApi('addThuThuat', [ten, vt, he, loai, may, tgThucHienMin, tgThuThuatMin, kc, rut, phu, dsPhu, tgThuThuatMax, tgThucHienMax, lienTuc, JSON.stringify(existingHistory)]);
                 }
             }
 
@@ -13545,14 +13551,27 @@ window.renderSttOrderControl = function (type, i, total) {
             const yyyy = dObj.getFullYear();
             const mm = String(dObj.getMonth() + 1).padStart(2, '0');
             const dd = String(dObj.getDate()).padStart(2, '0');
-            const dateStr = `${yyyy}-${mm}-${dd}`;
+            const historyList = (matched.history && Array.isArray(matched.history))
+                ? matched.history
+                : ((matched.lichSuDinhMuc && Array.isArray(matched.lichSuDinhMuc))
+                    ? matched.lichSuDinhMuc
+                    : (typeof matched.lichSuDinhMuc === 'string' ? JSON.parse(matched.lichSuDinhMuc || '[]') : []));
 
-            if (matched.history && Array.isArray(matched.history)) {
-                for (const h of matched.history) {
-                    const from = h.from || h.tuNgay || '0000-00-00';
-                    const to = h.to || h.denNgay || '9999-99-99';
+            if (historyList && historyList.length) {
+                for (const h of historyList) {
+                    const from = h.from || h.tuNgay || h.tu_ngay || '0000-00-00';
+                    const to = h.to || h.denNgay || h.den_ngay || '9999-99-99';
                     if (dateStr >= from && dateStr <= to) {
-                        return { ...matched, ...h };
+                        return {
+                            ...matched,
+                            thoiGianThucHien: h.thoiGianThucHien || h.thoiGianThucHienMin || h.tg_thuc_hien || matched.thoiGianThucHien,
+                            thoiGianThucHienMin: h.thoiGianThucHienMin || h.thoiGianThucHien || h.tg_thuc_hien || matched.thoiGianThucHienMin,
+                            thoiGianThucHienMax: h.thoiGianThucHienMax || h.tg_thuc_hien_max || matched.thoiGianThucHienMax,
+                            thoiGianThuThuat: h.thoiGianThuThuat || h.thoiGianThuThuatMin || h.tg_thu_thuat || matched.thoiGianThuThuat,
+                            thoiGianThuThuatMin: h.thoiGianThuThuatMin || h.thoiGianThuThuat || h.tg_thu_thuat || matched.thoiGianThuThuatMin,
+                            thoiGianThuThuatMax: h.thoiGianThuThuatMax || h.tg_thu_thuat_max || matched.thoiGianThuThuatMax,
+                            lienTuc: h.lienTuc !== undefined ? h.lienTuc : matched.lienTuc
+                        };
                     }
                 }
             }

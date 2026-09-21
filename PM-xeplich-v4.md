@@ -4887,7 +4887,28 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `js/app.js` [MODIFY: calibrateAIFromHistory silent mode, saveAIAutoTrainConfig auto-save listener]
   - `index.html` [MODIFY: cache buster v4.1.3-rev3, footer timestamp 07:45 21/09/2026]
   - `sw.js` [MODIFY: CACHE_NAME = 'pmcg-v4-cache-4.1.3-rev3']
-  - `version.json` [MODIFY: 4.1.3-rev3]
+  ---
+
+### [v4.1.3-rev4] - 08:10 21/09/2026: Lưu Lịch Sử Thay Đổi Định Mức Min/Max Thủ Thuật vào CSDL MiniPC & Turso (Phương Án 1 - Cột JSON lich_su_dinh_muc)
+- **Yêu cầu của người dùng:**
+  - *"trong database trên minipc thì cột nào hay bảng nào thể hiện việc lịch sử thay định mức min/max của thủ thuật vậy"* $\rightarrow$ Người dùng chọn *"phương án 1 đi"*.
+- **Phân tích & Giải pháp kỹ thuật:**
+  1. **Nâng cấp CSDL MiniPC & Turso Cloud (`schema.sql` & `ensureSchema`)**:
+     - Bổ sung cột `lich_su_dinh_muc TEXT DEFAULT '[]'` vào bảng `thu_thuat`.
+     - Thêm migration tự động an toàn trong `ensureSchema`: `"ALTER TABLE thu_thuat ADD COLUMN lich_su_dinh_muc TEXT DEFAULT '[]'"`.
+  2. **Tự động lưu vết khi sửa thủ thuật (`addThuThuat` & `editThuThuat` trong `backend/src/index.js`)**:
+     - Khi lưu sửa một thủ thuật: Backend kiểm tra so với bản ghi hiện hành trong DB; nếu phát hiện có thay đổi `TG TH Min/Max` hoặc `TG TT Min/Max`, hệ thống tự động đóng gói định mức cũ thành một mốc thời gian `[tuNgay, denNgay]` và lưu vào mảng JSON `lich_su_dinh_muc`.
+  3. **Đồng bộ hóa API & Giao diện (`getThuThuat`, `getBootstrapData`, `js/app.js`)**:
+     - Trả về `lichSuDinhMuc` và `history` trong danh mục thủ thuật.
+     - Hàm `mapProcedureJS(procStr, targetDate)` đối chiếu ngày của từng ca trong file HIS với các mốc `[tuNgay, denNgay]` để lấy chính xác 100% định mức của từng thời kỳ.
+     - Hàm `saveProcedure()` lưu trữ và gửi kèm lịch sử khi cập nhật.
+- **File sửa đổi:**
+  - `backend/schema.sql` [MODIFY: thêm cột lich_su_dinh_muc]
+  - `backend/src/index.js` [MODIFY: ensureSchema, getThuThuat, getBootstrapData, addThuThuat, editThuThuat]
+  - `js/app.js` [MODIFY: mapProcedureJS, saveProcedure]
+  - `version.json` [MODIFY: 4.1.3-rev4, timestamp 08:10 21/09/2026]
+  - `sw.js` [MODIFY: CACHE_NAME = 'pmcg-v4-cache-4.1.3-rev4']
+  - `index.html` [MODIFY: query string v=4.1.3-rev4, APP_VERSION = '4.1.3-rev4', timestamp 08:10 21/09/2026]
   - `PM-xeplich-v4.md` [MODIFY]
 
 
