@@ -3529,6 +3529,28 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
     }
 
     case "getThuThuat": {
+      // Tự động nạp mốc lịch sử định mức ban đầu (áp dụng từ trước 21/09/2026) vào bảng lich_su_dinh_muc nếu chưa có
+      try {
+        const cntLsdm = await db.prepare("SELECT count(*) as total FROM lich_su_dinh_muc WHERE unit_code = ?").bind(unitCode).first().catch(() => null);
+        if (!cntLsdm || cntLsdm.total === 0) {
+          const allProcs = await db.prepare("SELECT * FROM thu_thuat WHERE unit_code = ?").bind(unitCode).all().catch(() => ({ results: [] }));
+          if (allProcs && allProcs.results && allProcs.results.length > 0) {
+            for (const p of allProcs.results) {
+              const thMin = p.tg_thuc_hien || 0;
+              const thMax = (p.tg_thuc_hien_max && p.tg_thuc_hien_max > 0) ? p.tg_thuc_hien_max : thMin;
+              const ttMin = p.tg_thu_thuat || 0;
+              const ttMax = (p.tg_thu_thuat_max && p.tg_thu_thuat_max > 0) ? p.tg_thu_thuat_max : ttMin;
+              const isLt = (p.lien_tuc === 1 || p.lien_tuc === '1' || p.lien_tuc === 'Có' || p.lien_tuc === true) ? 'Có' : 'Không';
+
+              await db.prepare(`
+                INSERT INTO lich_su_dinh_muc (unit_code, ten_thu_thuat, tu_ngay, den_ngay, tg_thuc_hien_min, tg_thuc_hien_max, tg_thu_thuat_min, tg_thu_thuat_max, lien_tuc, created_at, updated_at)
+                VALUES (?, ?, '2026-01-01', '2026-09-20', ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+              `).bind(unitCode, p.ten_thu_thuat, thMin, thMax, ttMin, ttMax, isLt).run().catch(() => {});
+            }
+          }
+        }
+      } catch (eSeed) {}
+
       const [procRes, histRes] = await Promise.all([
         db.prepare("SELECT * FROM thu_thuat WHERE unit_code = ? ORDER BY order_idx ASC, id ASC").bind(unitCode).all().catch(() => ({ results: [] })),
         db.prepare("SELECT * FROM lich_su_dinh_muc WHERE unit_code = ? ORDER BY tu_ngay ASC, id ASC").bind(unitCode).all().catch(() => ({ results: [] }))

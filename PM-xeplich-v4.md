@@ -4968,6 +4968,19 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `index.html` [MODIFY: query string v=4.1.3-rev8, APP_VERSION = '4.1.3-rev8']
   - `PM-xeplich-v4.md` [MODIFY]
 
+### [21/09/2026 - 10:35] Phiên bản v4.1.3-rev9: Tự động nạp mốc lịch sử định mức ban đầu trước ngày 21/09/2026 cho 16+ thủ thuật của đơn vị bvtks-cs2
+- **Bối cảnh & Xử lý**:
+  1. Tự động kiểm tra và khởi tạo sẵn 16 bản ghi lịch sử định mức áp dụng cho giai đoạn từ `2026-01-01` đến `2026-09-20` vào bảng `lich_su_dinh_muc` cho toàn bộ danh mục thủ thuật của đơn vị `bvtks-cs2`.
+  2. Lưu vết chính xác mốc ban đầu (điện châm 5-5/25-30, thủy châm 10-15/25-25, hảo châm 5-5/25-30, cấy chỉ 30-30/30-30, điện xung 2-2/15-20, parafin 2-2/20-30, hồng ngoại 2-2/15-20, tập trợ giúp 15-20/15-20, sóng ngắn 2-2/15-20, siêu âm 15-20/15-20, kéo giãn 2-2/15-20, xoa bóp vùng 15-20/15-20, tập kháng trở 15-20/15-20, tập thở 15-20/15-20, điện phân 2-2/15-20, xoa bóp bấm huyệt 20-30/20-30).
+  3. Đảm bảo khi người dùng tiến hành sửa đổi định mức mới từ ngày 21/09/2026 trở đi, các file HIS trong quá khứ vẫn đối chiếu chuẩn xác mốc định mức cũ.
+- **File sửa đổi:**
+  - `backend/src/index.js` [MODIFY: getThuThuat auto-seed baseline history records for bvtks-cs2]
+  - `version.json` [MODIFY: 4.1.3-rev9, timestamp 10:35 21/09/2026]
+  - `sw.js` [MODIFY: CACHE_NAME = 'pmcg-v4-cache-4.1.3-rev9']
+  - `index.html` [MODIFY: query string v=4.1.3-rev9, APP_VERSION = '4.1.3-rev9']
+  - `PM-xeplich-v4.md` [MODIFY]
+
+
 
 
 

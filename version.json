@@ -1,6 +1,6 @@
 {
-    "version": "4.1.3-rev8",
+    "version": "4.1.3-rev9",
     "releaseDate": "21/09/2026",
-    "releaseTime": "10:25 21/09/2026",
-    "notes": "feat(schema): Khởi tạo bảng độc lập lich_su_dinh_muc trong CSDL MiniPC để lưu vết các mốc định mức Min/Max thời gian thủ thuật theo mốc [Từ Ngày - Đến Ngày]."
+    "releaseTime": "10:35 21/09/2026",
+    "notes": "feat(history-seed): Tự động nạp mốc lịch sử định mức ban đầu áp dụng từ 2026-01-01 đến 2026-09-20 cho toàn bộ 16+ thủ thuật của đơn vị bvtks-cs2 vào bảng lich_su_dinh_muc."
 }
