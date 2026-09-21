@@ -4801,6 +4801,48 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `index.html` [MODIFY: query string v=4.1.2-rev2, APP_VERSION = '4.1.2-rev2', timestamp 14:30 19/09/2026]
   - `PM-xeplich-v4.md` [MODIFY]
 
+---
+
+### [v4.1.3-rev1] - 07:20 21/09/2026: Khắc phục triệt để lỗi cài đặt Giờ vận hành & Giờ lố YHCT bị quay về mặc định khi tải lại trang hoặc nâng cấp phiên bản
+
+- **Yêu cầu của người dùng:**
+  + *"đọc rules.md: mình đã chỉnh các thông số này nhưng khi load lại trang hay làm phiên bản mới thì lại quay về như cũ"* (kèm ảnh chụp khối Cài đặt "Thời Gian Vận Hành & Chốt Sổ": Giờ chốt sổ tự động hàng ngày 16:20, Giờ YHCT lố trưa 5p, Giờ YHCT lố chiều 5p).
+
+- **Phân tích nguyên nhân gốc rễ:**
+  1. **Thiếu nút Lưu trực tiếp trong từng Card (UI/UX)**:
+     - Khối "Thời Gian Vận Hành & Chốt Sổ" và khối "Trọng Số Thuật Toán Xếp Lịch" là 2 Card riêng biệt nhưng không có nút Lưu ngay trong Card. Nút "LƯU THAY ĐỔI CÀI ĐẶT HỆ THỐNG" nằm tít bên dưới cả 2 cột lớn, khiến người dùng sau khi nhập số vào ô không nhận biết nút lưu hoặc bỏ quên không bấm.
+  2. **Thiếu cơ chế Tự Động Lưu (Auto-Save on Change / Blur)**:
+     - Khi người dùng chỉnh sửa các ô input (`#admin-chotso-time`, `#admin-yhct-lunch`, `#admin-yhct-end`, `#admin-weight-drop`, `#admin-weight-overtime`, `#admin-weight-imbalance`), hệ thống không tự động lưu vào `localStorage` hay CSDL Server nếu chưa bấm nút.
+  3. **Lỗ hổng Fallback đè giá trị trong `applySystemSettings` & `loadSystemSettings`**:
+     - Khi tải lại trang hoặc khi Service Worker dọn sạch cache để nâng cấp phiên bản mới ("làm phiên bản mới"), `loadSystemSettings` đọc cache `localStorage` chưa kịp nạp xong nên gọi `applySystemSettings({})`.
+     - Hàm `applySystemSettings` trước đây gán đè các giá trị mặc định tĩnh (`"16:20"`, `"5"`, `"5"`, `"10000"`, `"2"`, `"0.1"`) lên các ô input, đồng thời không gọi API `getSystemSettings` từ Server CSDL (MiniPC + Turso) để đồng bộ bản ghi mới nhất.
+  4. **Thiếu các key cài đặt trong `defaultSettings` Backend**:
+     - Danh mục `defaultSettings` khởi tạo đơn vị mới trong `backend/src/index.js` chưa khai báo sẵn các key `chotSoTime`, `yhctLunch`, `yhctEnd`, `dropWeight`, `overtimeWeight`, `imbalanceWeight`.
+
+- **Giải pháp kỹ thuật toàn diện:**
+  1. **Nâng cấp Giao diện (`index.html`)**:
+     - Bổ sung nút `💾 Lưu Giờ Vận Hành & Chốt Sổ` trực tiếp ngay dưới Card "Thời Gian Vận Hành & Chốt Sổ".
+     - Bổ sung nút `💾 Lưu Trọng Số Thuật Toán` trực tiếp ngay dưới Card "Trọng Số Thuật Toán Xếp Lịch".
+     - Giữ nguyên nút tổng quát `💾 LƯU THAY ĐỔI CÀI ĐẶT HỆ THỐNG` ở bên dưới để lưu toàn bộ.
+  2. **Cơ chế Tự Động Lưu & Đồng Bộ Hai Chiều (`js/app.js`)**:
+     - Xây dựng hàm `attachSystemSettingsAutoSave()`: Bắt sự kiện `change` và `blur` trên toàn bộ 6 ô input cấu hình; tự động cập nhật ngay vào `dataCache.settings`, `localStorage`, và gọi `saveSystemSettings` lưu xuống CSDL đám mây (MiniPC + Turso) trong nền mà không bắt người dùng phải bấm nút thủ công.
+     - Cải tiến `applySystemSettings(res)`: Xử lý an toàn các giá trị chuỗi/số (kể cả `"0"` phút), không gán đè fallback nếu ô input hoặc cache đã có giá trị hợp lệ.
+     - Cải tiến `loadSystemSettings()`: Khôi phục tức thì từ LocalStorage/RAM, đồng thời bất đồng bộ gọi `callApi('getSystemSettings')` để lấy cấu hình chuẩn xác từ CSDL máy chủ.
+  3. **Đồng bộ mặc định trong Backend (`backend/src/index.js`)**:
+     - Bổ sung `chotSoTime: "16:20"`, `yhctLunch: "5"`, `yhctEnd: "5"`, `dropWeight: "10000"`, `overtimeWeight: "2"`, `imbalanceWeight: "0.1"` vào `defaultSettings` của backend.
+  4. **Quy tắc phiên bản theo ngày & Cache Buster (`RULES.md`)**:
+     - Ngày: `21/09/2026`, nâng phiên bản: `4.1.3-rev1`.
+     - Footer `#app-footer-version`: `Phiên bản: 4.1.3` (không có hậu tố rev).
+     - Footer timestamp `#sys-last-update`: `⏱ Cập nhật lần cuối: 07:20 21/09/2026`.
+     - Cache busters: `?v=4.1.3-rev1` trên toàn bộ thẻ script, link CSS, `sw.js` và `version.json`.
+
+- **File sửa đổi:**
+  - `index.html` [MODIFY: thêm 2 nút lưu trong card, nâng version 4.1.3-rev1, footer timestamp 07:20 21/09/2026]
+  - `js/app.js` [MODIFY: applySystemSettings, luuCaiDatChotSo, attachSystemSettingsAutoSave, loadSystemSettings]
+  - `backend/src/index.js` [MODIFY: defaultSettings trong onboarding & addTenant]
+  - `sw.js` [MODIFY: CACHE_NAME = 'pmcg-v4-cache-4.1.3-rev1']
+  - `version.json` [MODIFY: 4.1.3-rev1]
+  - `PM-xeplich-v4.md` [MODIFY]
 
 
 

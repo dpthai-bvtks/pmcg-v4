@@ -2064,7 +2064,13 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         ["ai_auto_learning", "1"],
         ["ai_active_engine", "CP_SOLVER"],
         ["gio_mo_cua", "07:30"],
-        ["gio_dong_cua", "16:30"]
+        ["gio_dong_cua", "16:30"],
+        ["chotSoTime", "16:20"],
+        ["yhctLunch", "5"],
+        ["yhctEnd", "5"],
+        ["dropWeight", "10000"],
+        ["overtimeWeight", "2"],
+        ["imbalanceWeight", "0.1"]
       ];
       for (const [k, v] of defaultSettings) {
         seedBatch.push(db.prepare("INSERT OR REPLACE INTO cai_dat (unit_code, key, value) VALUES (?, ?, ?)").bind(uCode, k, v));
@@ -2624,7 +2630,13 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         ["ai_auto_learning", "1"],
         ["ai_active_engine", "CP_SOLVER"],
         ["gio_mo_cua", "07:30"],
-        ["gio_dong_cua", "16:30"]
+        ["gio_dong_cua", "16:30"],
+        ["chotSoTime", "16:20"],
+        ["yhctLunch", "5"],
+        ["yhctEnd", "5"],
+        ["dropWeight", "10000"],
+        ["overtimeWeight", "2"],
+        ["imbalanceWeight", "0.1"]
       ];
       for (const [k, v] of defaultSettings) {
         seedBatch.push(db.prepare("INSERT OR REPLACE INTO cai_dat (unit_code, key, value) VALUES (?, ?, ?)").bind(uCode, k, v));

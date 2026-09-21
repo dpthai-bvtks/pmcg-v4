@@ -3270,22 +3270,58 @@ window.renderSttOrderControl = function (type, i, total) {
         function applySystemSettings(res) {
             if (!res) res = {};
             const chotSoEl = document.getElementById("admin-chotso-time");
-            if (chotSoEl) chotSoEl.value = res.chotSoTime || "16:20";
+            if (chotSoEl) {
+                if (res.chotSoTime !== undefined && res.chotSoTime !== null && String(res.chotSoTime).trim() !== "") {
+                    chotSoEl.value = String(res.chotSoTime).trim();
+                } else if (!chotSoEl.value) {
+                    chotSoEl.value = "16:20";
+                }
+            }
 
             const yhctLunchEl = document.getElementById("admin-yhct-lunch");
-            if (yhctLunchEl) yhctLunchEl.value = (res.yhctLunch !== undefined && res.yhctLunch !== null && res.yhctLunch !== "") ? res.yhctLunch : "5";
+            if (yhctLunchEl) {
+                if (res.yhctLunch !== undefined && res.yhctLunch !== null && String(res.yhctLunch).trim() !== "") {
+                    yhctLunchEl.value = String(res.yhctLunch).trim();
+                } else if (!yhctLunchEl.value) {
+                    yhctLunchEl.value = "5";
+                }
+            }
 
             const yhctEndEl = document.getElementById("admin-yhct-end");
-            if (yhctEndEl) yhctEndEl.value = (res.yhctEnd !== undefined && res.yhctEnd !== null && res.yhctEnd !== "") ? res.yhctEnd : "5";
+            if (yhctEndEl) {
+                if (res.yhctEnd !== undefined && res.yhctEnd !== null && String(res.yhctEnd).trim() !== "") {
+                    yhctEndEl.value = String(res.yhctEnd).trim();
+                } else if (!yhctEndEl.value) {
+                    yhctEndEl.value = "5";
+                }
+            }
 
             const dropWeightEl = document.getElementById("admin-weight-drop");
-            if (dropWeightEl) dropWeightEl.value = (res.dropWeight !== undefined && res.dropWeight !== null && res.dropWeight !== "") ? res.dropWeight : "10000";
+            if (dropWeightEl) {
+                if (res.dropWeight !== undefined && res.dropWeight !== null && String(res.dropWeight).trim() !== "") {
+                    dropWeightEl.value = String(res.dropWeight).trim();
+                } else if (!dropWeightEl.value) {
+                    dropWeightEl.value = "10000";
+                }
+            }
 
             const overtimeWeightEl = document.getElementById("admin-weight-overtime");
-            if (overtimeWeightEl) overtimeWeightEl.value = (res.overtimeWeight !== undefined && res.overtimeWeight !== null && res.overtimeWeight !== "") ? res.overtimeWeight : "2";
+            if (overtimeWeightEl) {
+                if (res.overtimeWeight !== undefined && res.overtimeWeight !== null && String(res.overtimeWeight).trim() !== "") {
+                    overtimeWeightEl.value = String(res.overtimeWeight).trim();
+                } else if (!overtimeWeightEl.value) {
+                    overtimeWeightEl.value = "2";
+                }
+            }
 
             const imbalanceWeightEl = document.getElementById("admin-weight-imbalance");
-            if (imbalanceWeightEl) imbalanceWeightEl.value = (res.imbalanceWeight !== undefined && res.imbalanceWeight !== null && res.imbalanceWeight !== "") ? res.imbalanceWeight : "0.1";
+            if (imbalanceWeightEl) {
+                if (res.imbalanceWeight !== undefined && res.imbalanceWeight !== null && String(res.imbalanceWeight).trim() !== "") {
+                    imbalanceWeightEl.value = String(res.imbalanceWeight).trim();
+                } else if (!imbalanceWeightEl.value) {
+                    imbalanceWeightEl.value = "0.1";
+                }
+            }
             
             // Restore backup reminder settings from D1 database configuration
             if (res.backup_schedule_config) {
@@ -11674,71 +11710,133 @@ window.renderSttOrderControl = function (type, i, total) {
         // ============================================================
         // ⚙️ CÀI ĐẶT HỆ THỐNG
         // ============================================================
-        function luuCaiDatChotSo(btn) {
-            const timeVal = document.getElementById("admin-chotso-time").value;
-            const yhctLunchVal = document.getElementById("admin-yhct-lunch").value;
-            const yhctEndVal = document.getElementById("admin-yhct-end").value;
-            const dropW = document.getElementById("admin-weight-drop").value;
-            const overtimeW = document.getElementById("admin-weight-overtime").value;
-            const imbalanceW = document.getElementById("admin-weight-imbalance").value;
-            if (!timeVal) {
-                alert("Vui lòng chọn giờ chốt sổ!");
-                return;
-            }
-            const oldText = btn.innerText;
-            btn.innerText = "Đang lưu...";
-            btn.disabled = true;
-            google.script.run.withSuccessHandler(function (res) {
-                btn.innerText = oldText;
-                btn.disabled = false;
-                if (typeof dataCache !== 'undefined') {
-                    dataCache.settings = Object.assign(dataCache.settings || {}, {
-                        chotSoTime: timeVal,
-                        yhctLunch: yhctLunchVal,
-                        yhctEnd: yhctEndVal,
-                        dropWeight: dropW,
-                        overtimeWeight: overtimeW,
-                        imbalanceWeight: imbalanceW
-                    });
-                }
-                if (window.dataCache) {
-                    window.dataCache.settings = Object.assign(window.dataCache.settings || {}, dataCache?.settings || {});
-                }
-                const cacheKey = window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache";
-                try {
-                    const b = JSON.parse(localStorage.getItem(cacheKey) || '{}');
-                    b.settings = Object.assign(b.settings || {}, dataCache?.settings || {});
-                    localStorage.setItem(cacheKey, JSON.stringify(b));
-                } catch(e) {}
-                showCustomAlert("Cài đặt", res, "✅", "#2ecc71");
-            }).withFailureHandler(function (err) {
-                btn.innerText = oldText;
-                btn.disabled = false;
-                alert("Lỗi: " + err);
-            }).saveSystemSettings({ 
+        function luuCaiDatChotSo(btn, isAutoSave = false) {
+            const timeEl = document.getElementById("admin-chotso-time");
+            const yhctLunchEl = document.getElementById("admin-yhct-lunch");
+            const yhctEndEl = document.getElementById("admin-yhct-end");
+            const dropWEl = document.getElementById("admin-weight-drop");
+            const overtimeWEl = document.getElementById("admin-weight-overtime");
+            const imbalanceWEl = document.getElementById("admin-weight-imbalance");
+
+            const timeVal = (timeEl && timeEl.value ? timeEl.value.trim() : "16:20");
+            const yhctLunchVal = (yhctLunchEl && yhctLunchEl.value !== undefined && yhctLunchEl.value !== "") ? yhctLunchEl.value.trim() : "5";
+            const yhctEndVal = (yhctEndEl && yhctEndEl.value !== undefined && yhctEndEl.value !== "") ? yhctEndEl.value.trim() : "5";
+            const dropW = (dropWEl && dropWEl.value !== undefined && dropWEl.value !== "") ? dropWEl.value.trim() : "10000";
+            const overtimeW = (overtimeWEl && overtimeWEl.value !== undefined && overtimeWEl.value !== "") ? overtimeWEl.value.trim() : "2";
+            const imbalanceW = (imbalanceWEl && imbalanceWEl.value !== undefined && imbalanceWEl.value !== "") ? imbalanceWEl.value.trim() : "0.1";
+
+            const newSettings = {
                 chotSoTime: timeVal,
                 yhctLunch: yhctLunchVal,
                 yhctEnd: yhctEndVal,
                 dropWeight: dropW,
                 overtimeWeight: overtimeW,
                 imbalanceWeight: imbalanceW
+            };
+
+            // 1. Cập nhật ngay vào RAM Cache để các giải thuật (CP Solver, Scheduler Engine) nhận giá trị tức thì
+            if (typeof dataCache !== 'undefined') {
+                dataCache.settings = Object.assign(dataCache.settings || {}, newSettings);
+            }
+            if (window.dataCache) {
+                window.dataCache.settings = Object.assign(window.dataCache.settings || {}, newSettings);
+            }
+
+            // 2. Cập nhật ngay vào LocalStorage Offline Cache
+            const cacheKey = window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache";
+            try {
+                const b = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+                b.settings = Object.assign(b.settings || {}, newSettings);
+                localStorage.setItem(cacheKey, JSON.stringify(b));
+            } catch(e) {}
+
+            let oldText = "";
+            if (btn && !isAutoSave) {
+                oldText = btn.innerHTML;
+                btn.innerHTML = "<span>⏳</span> Đang lưu...";
+                btn.disabled = true;
+            }
+
+            // 3. Lưu trực tiếp vào CSDL máy chủ (MiniPC + Turso Cloud)
+            google.script.run.withSuccessHandler(function (res) {
+                if (btn && !isAutoSave) {
+                    btn.innerHTML = oldText;
+                    btn.disabled = false;
+                    showCustomAlert("Cài đặt hệ thống", "Đã lưu thành công cài đặt thời gian vận hành và trọng số thuật toán!", "✅", "#16a085");
+                }
+            }).withFailureHandler(function (err) {
+                if (btn && !isAutoSave) {
+                    btn.innerHTML = oldText;
+                    btn.disabled = false;
+                    alert("Lỗi lưu cài đặt: " + err);
+                }
+            }).saveSystemSettings(newSettings);
+        }
+        window.luuCaiDatChotSo = luuCaiDatChotSo;
+
+        function attachSystemSettingsAutoSave() {
+            const inputIds = [
+                "admin-chotso-time",
+                "admin-yhct-lunch",
+                "admin-yhct-end",
+                "admin-weight-drop",
+                "admin-weight-overtime",
+                "admin-weight-imbalance"
+            ];
+            inputIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el && !el._hasAutoSaveBound) {
+                    el._hasAutoSaveBound = true;
+                    el.addEventListener('change', () => {
+                        luuCaiDatChotSo(null, true);
+                    });
+                    el.addEventListener('blur', () => {
+                        luuCaiDatChotSo(null, true);
+                    });
+                }
             });
         }
+        window.attachSystemSettingsAutoSave = attachSystemSettingsAutoSave;
 
         function loadSystemSettings() {
+            // 1. Khôi phục từ Cache LocalStorage / RAM ngay lập tức
             const cachedStr = localStorage.getItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache");
             if (cachedStr) {
                 try {
                     const b = JSON.parse(cachedStr);
                     if (b && b.settings) applySystemSettings(b.settings);
-                    else applySystemSettings({});
-                } catch(e) {
-                    applySystemSettings({});
-                }
-            } else {
-                applySystemSettings({});
+                } catch(e) {}
+            } else if (window.dataCache && window.dataCache.settings) {
+                applySystemSettings(window.dataCache.settings);
             }
+
+            // 2. Đồng thời gọi API lấy bản mới nhất từ Server CSDL (MiniPC + Turso)
+            if (typeof callApi === 'function') {
+                callApi('getSystemSettings', [], function(serverSettings) {
+                    if (serverSettings && typeof serverSettings === 'object') {
+                        if (typeof dataCache !== 'undefined') {
+                            dataCache.settings = Object.assign(dataCache.settings || {}, serverSettings);
+                        }
+                        if (window.dataCache) {
+                            window.dataCache.settings = Object.assign(window.dataCache.settings || {}, serverSettings);
+                        }
+                        const cKey = window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache";
+                        try {
+                            const b = JSON.parse(localStorage.getItem(cKey) || '{}');
+                            b.settings = Object.assign(b.settings || {}, serverSettings);
+                            localStorage.setItem(cKey, JSON.stringify(b));
+                        } catch(e) {}
+                        applySystemSettings(serverSettings);
+                    }
+                }, function(err) {
+                    console.warn('[SystemSettings] Không thể nạp cài đặt từ máy chủ, dùng bản cache cục bộ:', err);
+                });
+            }
+
+            // 3. Gắn bộ tự động lưu onchange/onblur
+            attachSystemSettingsAutoSave();
         }
+        window.loadSystemSettings = loadSystemSettings;
 
         // ============================================================
 
