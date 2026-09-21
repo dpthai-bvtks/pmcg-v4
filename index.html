@@ -184,15 +184,15 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=4.1.3-rev12">
+    <link rel="stylesheet" href="css/style.css?v=4.1.3-rev13">
     <!-- PWA & Mobile Web App Meta Tags -->
-    <link rel="manifest" href="manifest.json?v=4.1.3-rev12">
+    <link rel="manifest" href="manifest.json?v=4.1.3-rev13">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.1.3-rev12">
+    <link rel="stylesheet" href="css/mobile.css?v=4.1.3-rev13">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
     <script src="js/dexie.min.js?v=3.2.6"></script>
@@ -2808,26 +2808,22 @@
                                     </div>
                                 </div>
 
-                                <!-- CẤU HÌNH TỰ ĐỘNG HUẤN LUYỆN THEO GIỜ CHỈ ĐỊNH -->
+                                <!-- CẤU HÌNH TỰ ĐỘNG HUẤN LUYỆN SAU KHI CHỐT SỔ HÀNG NGÀY -->
                                 <div style="background: #f0fdf4; padding: 18px; border-radius: 10px; border: 1px solid #bbf7d0; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.06);">
                                     <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px; border-bottom:1px solid #dcfce7; padding-bottom:8px;">
-                                        <span style="font-size:20px;">⏰</span>
-                                        <h4 style="margin:0; font-size:14px; font-weight:700; color:#166534;">Cấu Hình Tự Động Học Theo Khung Giờ Chỉ Định</h4>
+                                        <span style="font-size:20px;">🧠</span>
+                                        <h4 style="margin:0; font-size:14px; font-weight:700; color:#166534;">Cấu Hình Tự Động Học Sau Khi Chốt Sổ Hàng Ngày</h4>
                                     </div>
-                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                                        <div>
-                                            <label style="font-size:12.5px; font-weight:600; color:#14532d; display:block; margin-bottom:5px;">🔄 Trạng thái tự động học:</label>
-                                            <select id="ai-auto-train-enable" style="width:100%; padding:9px 12px; border-radius:6px; border:1px solid #86efac; outline:none; font-size:13px; background:#fff;">
-                                                <option value="1">✅ Bật tự động học hàng ngày</option>
-                                                <option value="0">❌ Tắt (Chỉ học khi bấm nút thủ công)</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label style="font-size:12.5px; font-weight:600; color:#14532d; display:block; margin-bottom:5px;">⏱️ Giờ tự động huấn luyện hàng ngày:</label>
-                                            <input type="text" id="ai-auto-train-time" value="17:00" placeholder="VD: 17:00" class="time-input"
-                                                style="width:100%; padding:8px 12px; border-radius:6px; border:1px solid #86efac; outline:none; font-size:13px; background:#fff; text-align:center; font-weight:700;">
-                                        </div>
+                                    <div style="margin-bottom: 12px;">
+                                        <label style="font-size:12.5px; font-weight:600; color:#14532d; display:block; margin-bottom:6px;">🔄 Chế độ tự động học AI:</label>
+                                        <select id="ai-auto-train-enable" style="width:100%; max-width:550px; padding:10px 14px; border-radius:6px; border:1px solid #86efac; outline:none; font-size:13.5px; background:#fff; font-weight:600; color:#14532d;">
+                                            <option value="1">✅ Tự động học ngay sau khi chốt sổ hàng ngày (Khuyên dùng)</option>
+                                            <option value="0">❌ Tắt tự động học (Chỉ học khi bấm nút thủ công)</option>
+                                        </select>
                                     </div>
+                                    <p style="font-size:12px; color:#15803d; margin:0 0 14px 0; line-height:1.5;">
+                                        💡 <i>Khi bật tính năng này, mỗi khi hệ thống thực hiện chốt sổ ngày (dù chốt thủ công hoặc chốt tự động), AI sẽ tự động phân tích toàn bộ dữ liệu lịch sử để cập nhật ma trận thói quen phân công và điểm tắc nghẽn.</i>
+                                    </p>
                                     <button class="btn-success" onclick="saveAIAutoTrainConfig()" style="padding:10px 22px; font-size:13px; font-weight:700; border:none; border-radius:6px; background:#16a085; color:#fff; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(22,160,133,0.25);">
                                         <span>💾</span> Lưu Cấu Hình Tự Động Học
                                     </button>
@@ -3907,7 +3903,7 @@
 
                     <p><span class="f-icon">🏷️</span> <span id="app-footer-version">Phiên bản: 4.1.3</span></p>
 
-                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">⏱ Cập nhật lần cuối: 20:15 21/09/2026</span></p>
+                    <p><span class="f-icon">⏱</span> <span id="sys-last-update">⏱ Cập nhật lần cuối: 20:30 21/09/2026</span></p>
 
                     <p><span class="f-icon">👨‍💻</span> <span>Thiết kế & Phát triển: <b>Bác sĩ Thái</b></span></p>
 
@@ -4438,18 +4434,18 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/offline-sync-engine.js?v=4.1.3-rev12"></script>
-    <script src="js/ai-scheduler.js?v=4.1.3-rev12"></script>
-    <script src="js/cp-solver.js?v=4.1.3-rev12"></script>
-    <script src="js/scheduler-engine.js?v=4.1.3-rev12"></script>
-    <script src="js/app.js?v=4.1.3-rev12"></script>
-    <script src="js/init.js?v=4.1.3-rev12"></script>
-    <script src="js/sync.js?v=4.1.3-rev12"></script>
-    <script src="js/thongke.js?v=4.1.3-rev12"></script>
+    <script src="js/offline-sync-engine.js?v=4.1.3-rev13"></script>
+    <script src="js/ai-scheduler.js?v=4.1.3-rev13"></script>
+    <script src="js/cp-solver.js?v=4.1.3-rev13"></script>
+    <script src="js/scheduler-engine.js?v=4.1.3-rev13"></script>
+    <script src="js/app.js?v=4.1.3-rev13"></script>
+    <script src="js/init.js?v=4.1.3-rev13"></script>
+    <script src="js/sync.js?v=4.1.3-rev13"></script>
+    <script src="js/thongke.js?v=4.1.3-rev13"></script>
 
     <!-- PWA Service Worker Registration + Instant Auto-Update Detection & Blocking Modal -->
     <script>
-    const APP_VERSION = '4.1.3-rev12';
+    const APP_VERSION = '4.1.3-rev13';
 
     (function registerAndAutoUpdate() {
         // 1. Kênh BroadcastChannel đồng bộ tức thì mọi tab đang mở trên cùng một máy

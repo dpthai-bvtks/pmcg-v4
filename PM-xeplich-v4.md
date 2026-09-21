@@ -5035,6 +5035,38 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `version.json` [MODIFY: version 4.1.3-rev12, releaseTime 20:15 21/09/2026]
   - `PM-xeplich-v4.md` [MODIFY]
 
+### [21/09/2026 - 20:30] Phiên bản v4.1.3-rev13: Giữ bảng lịch trống sau khi chốt sổ & Chuyển AI thành Tự động học ngay sau khi chốt sổ hàng ngày
+- **Yêu cầu của người dùng**:
+  1. Kiểm tra xem kịch bản 2 có chạy với Google OR-Tools tại `C:\PMCG-System\PMCG-Solver` không? (Đã kiểm tra và xác nhận: 100% chạy kết nối thông suốt qua cổng 5055).
+  2. Tại sao khi chốt sổ xong thì bảng lịch trình trên web vẫn hiện nội dung (205 ca) mà không được xóa trắng để mở sổ ngày mới?
+  3. Ở phần Huấn luyện AI, mục "Cấu hình tự động học theo khung giờ chỉ định" cài đặt thẳng luôn thành "Học tự động sau khi chốt sổ hàng ngày" được không?
+- **Phân tích nguyên nhân & Giải pháp**:
+  1. *Nguyên nhân bảng lịch vẫn hiện 205 ca sau khi chốt sổ*:
+     - Trong hàm `getBootstrapData` (`backend/src/index.js` dòng 3388-3406), có một khối mã dự phòng: nếu `scheduleRows.length === 0`, hệ thống tự động truy vấn `SELECT * FROM lich_su WHERE unit_code = ? AND date = ?` để nạp ngược lại toàn bộ 205 ca vừa chốt vào biến `scheduleRows`!
+     - Hệ quả là khi người dùng bấm "Chốt sổ" (hoặc chốt sổ tự động), lệnh `chuyenNgayMoi` đã dọn sạch bảng `lich_trinh`, nhưng khi trang reload và gọi `getBootstrapData`, server lại gán ngược 205 ca lịch sử vào `b.schedule`, khiến client vẽ lại toàn bộ 205 ca như thể chưa hề chốt sổ.
+     - **Giải pháp**: Xóa bỏ hoàn toàn việc nạp `lich_su` vào `scheduleRows`. Khi `scheduleRows.length === 0`, chỉ thực hiện truy vấn `SELECT count(*) as cnt FROM lich_su...` để gắn cờ `is_finalized_today: true` và `finalized_today_count: cnt`. Trả về `schedule: []` hoàn toàn sạch sẽ.
+     - **Giao diện Client (`js/app.js`)**: Khi `is_finalized_today: true` và bảng lịch trống, hiển thị banner thông báo lịch sự, trang nhã: *"Hôm nay đã hoàn tất chốt sổ ngày (X ca đã lưu trữ an toàn vào Lịch sử). Bảng lịch trình hiện tại đã sẵn sàng cho ngày mới"* kèm nút bấm chuyển nhanh sang Tab Lịch Sử `[👁️ Xem Dữ Liệu Trong Lịch Sử]`.
+  2. *Chuyển cấu hình Huấn luyện AI thành Tự động học sau khi chốt sổ hàng ngày*:
+     - Loại bỏ việc chọn giờ cố định (17:00,...) vì không cần thiết và dễ lệch với thời điểm chốt sổ thực tế.
+     - **Giao diện (`index.html`)**: Cập nhật khu vực Cấu hình AI thành: *"Cấu Hình Tự Động Học Sau Khi Chốt Sổ Hàng Ngày"*, thay bằng dropdown chọn:
+       + `✅ Tự động học ngay sau khi chốt sổ hàng ngày (Khuyên dùng)` (`value="1"`)
+       + `❌ Tắt tự động học (Chỉ học khi bấm nút thủ công)` (`value="0"`)
+     - **Logic thực thi (`backend/src/index.js` & `js/app.js`)**:
+       + Cả chốt sổ thủ công (`chuyenNgayMoi`) lẫn chốt sổ tự động (`checkAutoChotSo`) trên máy chủ đều kiểm tra `ai_auto_train_enable !== '0'` để tự động kích hoạt `trainAIModelOnServer` học ngay từ dữ liệu tích lũy.
+       + Client khi nhận được sự kiện chốt sổ thành công (cả manual toast lẫn listener tự động) cũng sẽ kích hoạt `window.calibrateAIFromHistory({ silent: true })` để cập nhật ma trận thói quen bác sĩ/nhân sự trên trình duyệt mà không làm phiền màn hình làm việc.
+  3. *Đồng bộ phiên bản theo RULES.md*:
+     - `version.json`: Nâng lên `4.1.3-rev13`, `releaseTime`: `20:30 21/09/2026`.
+     - `sw.js`: Nâng `CACHE_NAME = 'pmcg-v4-cache-4.1.3-rev13'`.
+     - `index.html`: Cập nhật toàn bộ cache busters `?v=4.1.3-rev13`, `APP_VERSION = '4.1.3-rev13'`, `#sys-last-update` $\rightarrow$ `⏱ Cập nhật lần cuối: 20:30 21/09/2026`. Chân trang `#app-footer-version` giữ nguyên `Phiên bản: 4.1.3`.
+- **File sửa đổi:**
+  - `backend/src/index.js` [MODIFY: getBootstrapData giữ schedule trống sau chốt sổ, autoChotSo & chuyenNgayMoi kiểm tra ai_auto_train_enable trước khi train server]
+  - `index.html` [MODIFY: Cấu hình AI Tự động học sau chốt sổ, cache busters ?v=4.1.3-rev13, APP_VERSION, sys-last-update]
+  - `js/app.js` [MODIFY: loadBootstrapData, renderSchedPage empty banner, renderAISettingsUI, saveAIAutoTrainConfig, auto chotso listener silent AI trigger]
+  - `sw.js` [MODIFY: CACHE_NAME pmcg-v4-cache-4.1.3-rev13]
+  - `version.json` [MODIFY: 4.1.3-rev13, 20:30 21/09/2026]
+  - `PM-xeplich-v4.md` [MODIFY]
+
+
 
 
 

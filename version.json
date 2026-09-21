@@ -1,6 +1,6 @@
 {
-    "version": "4.1.3-rev12",
+    "version": "4.1.3-rev13",
     "releaseDate": "21/09/2026",
-    "releaseTime": "20:15 21/09/2026",
-    "notes": "fix(autoChotSo): Khắc phục lỗi chốt sổ tự động lúc 16h20: chuẩn hóa định dạng 16h20/16:20, sửa lỗi Safety Catch-up gán nhầm lastChotSoDate, bổ sung chốt sổ vét lịch tồn đọng và tự động làm mới giao diện kèm thông báo khi máy chủ chốt sổ thành công."
+    "releaseTime": "20:30 21/09/2026",
+    "notes": "feat(chotSo-AI): Giữ bảng lịch trống sẵn sàng cho ngày mới sau khi chốt sổ (không nạp lại lịch sử vào bảng hiện hành); chuyển cấu hình Huấn luyện AI thành Tự động học ngay sau khi chốt sổ hàng ngày."
 }

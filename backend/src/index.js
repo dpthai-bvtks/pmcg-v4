@@ -3384,25 +3384,14 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       ]));
 
       let isFinalizedToday = false;
-      // 🛡️ Tự động nạp lịch từ lich_su nếu ngày hôm nay đã chốt sổ (giúp người dùng xem lại được lịch ngay sau khi chốt)
+      let finalizedTodayCount = 0;
+      // 🛡️ Kiểm tra xem ngày hôm nay đã chốt sổ chưa (không nạp lịch sử vào lịch trình hiện tại để bảng lịch trống sẵn sàng cho ngày mới)
       if (scheduleRows.length === 0) {
         try {
-          const histTodayRes = await db.prepare("SELECT * FROM lich_su WHERE unit_code = ? AND (date = ? OR date = ?) ORDER BY start_time ASC").bind(unitCode, todayVN, todayVNSlash).all();
-          if (histTodayRes.results && histTodayRes.results.length > 0) {
-            scheduleRows = histTodayRes.results.map(s => ([
-              s.date,
-              healBackendPatientName(s.patient_name, true),
-              s.dob || "",
-              s.room || "",
-              s.procedure_name,
-              s.start_time,
-              s.end_time,
-              s.staff_name || "",
-              s.sub_staff_name || "",
-              s.machine_name || "",
-              s.bed || ""
-            ]));
+          const histTodayRes = await db.prepare("SELECT count(*) as cnt FROM lich_su WHERE unit_code = ? AND (date = ? OR date = ?)").bind(unitCode, todayVN, todayVNSlash).first();
+          if (histTodayRes && histTodayRes.cnt > 0) {
             isFinalizedToday = true;
+            finalizedTodayCount = Number(histTodayRes.cnt);
           }
         } catch(e) {
           console.warn("Lỗi kiểm tra lich_su hôm nay:", e);
@@ -3431,6 +3420,7 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         schedules: scheduleRows,
         lich_trinh: scheduleRows,
         is_finalized_today: isFinalizedToday,
+        finalized_today_count: finalizedTodayCount,
         accounts: accountsRes.results || [],
         tai_khoan: accountsRes.results || [],
         version: "v3.0.0-cloudflare"
@@ -4704,8 +4694,15 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
       );
 
       await db.batch(statements);
-      // Tự động huấn luyện mô hình AI ngay sau khi chuyển dữ liệu vào lịch sử
-      await trainAIModelOnServer(db, unitCode).catch(() => {});
+      // Tự động huấn luyện mô hình AI ngay sau khi chuyển dữ liệu vào lịch sử (nếu không tắt)
+      try {
+        const aiSetting = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'ai_auto_train_enable'").bind(unitCode).first();
+        if (!aiSetting || aiSetting.value !== '0') {
+          await trainAIModelOnServer(db, unitCode).catch((err) => console.warn("Lỗi trainAIModelOnServer sau chotSo:", err));
+        }
+      } catch(e) {
+        await trainAIModelOnServer(db, unitCode).catch(() => {});
+      }
       await bumpDataVersion(db, unitCode);
       return success({ message: "Đã chốt sổ và chuyển ngày mới thành công!" });
     }
@@ -6064,7 +6061,8 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
         message: closeRes?.closed ? `Đã chốt sổ tự động ngày ${closeRes.date} thành công!` : "Đã kiểm tra chốt sổ tự động.",
         closed: !!closeRes?.closed,
         closedDate: closeRes?.date || null,
-        reason: closeRes?.reason || ""
+        reason: closeRes?.reason || "",
+        count: closeRes?.count || 0
       });
     }
 
@@ -6212,6 +6210,9 @@ async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
       const targetArchiveDate = closeTargetDate || todayYMD;
       console.log(`[Worker Auto-ChotSo]: Triggering auto closure for unit '${unitCode}'. Lý do: ${reason}. targetArchiveDate=${targetArchiveDate}, today=${todayDateStr}, lastClosed=${lastChotSoDate}, time=${currentHourMin}, chotSoTime=${chotSoTime}`);
       
+      const countRes = await db.prepare("SELECT count(*) as cnt FROM lich_trinh WHERE unit_code = ?").bind(unitCode).first().catch(() => null);
+      const countToArchive = countRes ? Number(countRes.cnt || 0) : 0;
+
       const statements = [
         // 1. Sao lưu giờ bận thực tế của nhân viên trước khi reset (chỉ lưu vào gio_ban_chung_cu theo đúng ngày chốt)
         db.prepare("DELETE FROM gio_ban_chung_cu WHERE unit_code = ? AND date = ?").bind(unitCode, targetArchiveDate),
@@ -6231,11 +6232,18 @@ async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
       await db.batch(statements);
       // Ghi nhận lastChotSoDate theo đúng ngày thực tế vừa chốt (tránh làm tê liệt ngày hôm nay)
       await setCaiDat(db, unitCode, 'lastChotSoDate', targetArchiveDate);
-      // Tự động huấn luyện mô hình AI ngay sau khi chuyển dữ liệu vào lịch sử
-      await trainAIModelOnServer(db, unitCode).catch(() => {});
+      // Tự động huấn luyện mô hình AI ngay sau khi chuyển dữ liệu vào lịch sử (nếu không tắt)
+      try {
+        const aiSetting = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'ai_auto_train_enable'").bind(unitCode).first();
+        if (!aiSetting || aiSetting.value !== '0') {
+          await trainAIModelOnServer(db, unitCode).catch((err) => console.warn("Lỗi trainAIModelOnServer sau auto-chotSo:", err));
+        }
+      } catch(e) {
+        await trainAIModelOnServer(db, unitCode).catch(() => {});
+      }
       await bumpDataVersion(db, unitCode);
-      console.log(`[Worker Auto-ChotSo]: Automated day closure executed successfully for unit '${unitCode}' (Date: ${targetArchiveDate})!`);
-      return { closed: true, date: targetArchiveDate, reason };
+      console.log(`[Worker Auto-ChotSo]: Automated day closure executed successfully for unit '${unitCode}' (Date: ${targetArchiveDate}, Count: ${countToArchive})!`);
+      return { closed: true, date: targetArchiveDate, reason, count: countToArchive };
     }
     return { closed: false };
   } catch (err) {

@@ -801,9 +801,15 @@ window.showGlobalLoading = function (text) {
             sessionStorage.removeItem('chot_so_success_toast');
             setTimeout(() => {
                 if (typeof showCustomAlert === 'function') {
-                    showCustomAlert('Chốt sổ thành công', 'Hệ thống đã chốt sổ và tự động cập nhật dữ liệu mới thành công!', '🎉', '#27ae60');
+                    showCustomAlert('Chốt sổ thành công', 'Hệ thống đã chốt sổ và lưu trữ dữ liệu vào Lịch sử. Bảng lịch trình đã sẵn sàng cho ngày mới!', '🎉', '#27ae60');
                 } else {
                     alert('✅ Chốt sổ thành công!');
+                }
+                // Tự động kích hoạt huấn luyện mô hình AI sau khi chốt sổ nếu đang bật
+                if (localStorage.getItem('ai_auto_train_enable') !== '0') {
+                    if (typeof window.calibrateAIFromHistory === 'function') {
+                        window.calibrateAIFromHistory({ silent: true, reason: 'auto_after_chot_so' });
+                    }
                 }
             }, 600);
         }
@@ -3620,22 +3626,26 @@ window.renderSttOrderControl = function (type, i, total) {
                             }
                             if (b.is_finalized_today) {
                                 window._todayIsFinalized = true;
+                                window._finalizedTodayCount = b.finalized_today_count || 0;
+                                const countInfo = window._finalizedTodayCount ? ` (${window._finalizedTodayCount} ca)` : '';
                                 const displayEl = document.getElementById('display-date');
                                 if (displayEl) {
-                                    displayEl.innerHTML = `<span style="color:#b45309; background:#fef3c7; padding:2px 8px; border-radius:6px; font-weight:700;">📋 Hôm nay (Đã chốt sổ)</span>`;
+                                    displayEl.innerHTML = `<span style="color:#b45309; background:#fef3c7; padding:2px 8px; border-radius:6px; font-weight:700;">📋 Hôm nay (Đã chốt sổ${countInfo})</span>`;
                                 }
                                 const statusEl = document.getElementById('utils-lich-status');
                                 if (statusEl) {
-                                    statusEl.innerText = '📋 Hôm nay (Đã chốt sổ)';
+                                    statusEl.innerText = `📋 Hôm nay (Đã chốt sổ${countInfo})`;
                                     statusEl.style.color = '#b45309';
                                 }
                             } else {
                                 window._todayIsFinalized = false;
+                                window._finalizedTodayCount = 0;
                             }
                         } else {
                             dataCache.schedule = [];
                             window.currentScheduleData = [];
                             window._todayIsFinalized = false;
+                            window._finalizedTodayCount = 0;
                             const curUnit = getCurrentUnitCode();
                             const uKey = (base) => (typeof getUnitStorageKey === 'function') ? getUnitStorageKey(base) : (curUnit ? `${curUnit}_${base}` : base);
                             localStorage.removeItem(uKey('meds_success'));
@@ -7019,13 +7029,39 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
+            if (schedFilteredData.length === 0) {
+                if (window._todayIsFinalized) {
+                    const countTxt = window._finalizedTodayCount ? `${window._finalizedTodayCount.toLocaleString('vi-VN')} ca` : 'toàn bộ ca thủ thuật';
+                    tbody.innerHTML = `<tr>
+                        <td colspan="12" style="text-align:center; padding: 45px 20px; background:#f8fafc;">
+                            <div style="max-width:560px; margin:0 auto;">
+                                <div style="font-size:36px; margin-bottom:10px;">📋</div>
+                                <div style="font-size:16px; font-weight:700; color:#1e293b; margin-bottom:6px;">Hôm nay đã hoàn tất chốt sổ ngày</div>
+                                <div style="font-size:13px; color:#64748b; margin-bottom:18px; line-height:1.6;">
+                                    Lịch trình hôm nay (${countTxt}) đã được lưu trữ an toàn vào Lịch sử. Bảng lịch trình hiện tại đã sẵn sàng cho ngày mới hoặc lần xếp lịch tiếp theo.
+                                </div>
+                                <button type="button" class="btn-primary" onclick="if(typeof switchTab==='function')switchTab('tab-lich-su')" style="padding:9px 20px; font-size:13px; border-radius:6px; background:#16a085; color:#fff; border:none; cursor:pointer; font-weight:700; box-shadow:0 2px 8px rgba(22,160,133,0.3); display:inline-flex; align-items:center; gap:6px;">
+                                    <span>👁️</span> Xem Dữ Liệu Trong Lịch Sử
+                                </button>
+                            </div>
+                        </td>
+                    </tr>`;
+                } else {
+                    tbody.innerHTML = `<tr>
+                        <td colspan="12" style="text-align:center; padding: 35px 20px; color:#94a3b8; font-style:italic;">
+                            Chưa có dữ liệu lịch trình. Bác sĩ hãy bấm "Xếp Lịch Tự Động" để bắt đầu.
+                        </td>
+                    </tr>`;
+                }
+                renderPaginationUI('sched-pagination-container', 0, 1, 1, 'SCHED');
+                return;
+            }
+
             const totalPages = Math.ceil(schedFilteredData.length / PAGE_SIZE) || 1;
 
             const start = (schedCurrentPage - 1) * PAGE_SIZE;
 
             const pageData = schedFilteredData.slice(start, start + PAGE_SIZE);
-
-
 
             tbody.innerHTML = pageData.map((item, i) => {
 
@@ -14391,21 +14427,11 @@ window.renderAISettingsUI = function() {
         }
 
         const autoEnable = localStorage.getItem('ai_auto_train_enable') !== '0';
-        const autoTime = localStorage.getItem('ai_auto_train_time') || '17:00';
         if (autoEnableEl) {
             autoEnableEl.value = autoEnable ? "1" : "0";
             if (!autoEnableEl._hasAutoSave) {
                 autoEnableEl._hasAutoSave = true;
                 autoEnableEl.addEventListener('change', () => {
-                    if (typeof saveAIAutoTrainConfig === 'function') saveAIAutoTrainConfig();
-                });
-            }
-        }
-        if (autoTimeEl) {
-            autoTimeEl.value = autoTime;
-            if (!autoTimeEl._hasAutoSave) {
-                autoTimeEl._hasAutoSave = true;
-                autoTimeEl.addEventListener('change', () => {
                     if (typeof saveAIAutoTrainConfig === 'function') saveAIAutoTrainConfig();
                 });
             }
@@ -14417,26 +14443,18 @@ window.renderAISettingsUI = function() {
 
 window.saveAIAutoTrainConfig = function() {
     const enableEl = document.getElementById('ai-auto-train-enable');
-    const timeEl = document.getElementById('ai-auto-train-time');
     const enable = enableEl ? enableEl.value : '1';
-    const time = (timeEl && timeEl.value ? timeEl.value.trim() : '17:00');
 
     localStorage.setItem('ai_auto_train_enable', enable);
-    localStorage.setItem('ai_auto_train_time', time);
 
-    const configObj = { enable, time };
+    const configObj = { enable };
     callApi('saveSystemSettings', [{ 
         ai_auto_train_config: JSON.stringify(configObj),
-        ai_auto_train_enable: enable,
-        ai_auto_train_time: time
+        ai_auto_train_enable: enable
     }], null, null);
 
-    showCustomAlert("Thành công", `Đã lưu cấu hình tự động huấn luyện AI hàng ngày (${enable === '1' ? 'BẬT' : 'TẮT'}) vào lúc ${time} thành công!`);
-
-    // Kích hoạt kiểm tra ngay
-    if (window.AIScheduler && typeof window.AIScheduler.checkAutoTrain === 'function') {
-        setTimeout(window.AIScheduler.checkAutoTrain, 800);
-    }
+    const statusText = enable === '1' ? 'BẬT (Tự động học ngay sau khi chốt sổ hàng ngày)' : 'TẮT';
+    showCustomAlert("Thành công", `Đã lưu cấu hình tự động huấn luyện AI: ${statusText}!`);
 };
 
 window.calibrateAIFromHistory = async function(options = {}) {
@@ -16161,15 +16179,35 @@ window.filterGioBanChungCuClient = function() {};
                                 window.OfflineSyncEngine.saveCache('meds_success', []);
                             }
 
+                            window._todayIsFinalized = true;
+                            window._finalizedTodayCount = res.count || 0;
+                            const countInfo = window._finalizedTodayCount ? ` (${window._finalizedTodayCount} ca)` : '';
+                            const displayEl = document.getElementById('display-date');
+                            if (displayEl) {
+                                displayEl.innerHTML = `<span style="color:#b45309; background:#fef3c7; padding:2px 8px; border-radius:6px; font-weight:700;">📋 Hôm nay (Đã chốt sổ${countInfo})</span>`;
+                            }
+                            const statusEl = document.getElementById('utils-lich-status');
+                            if (statusEl) {
+                                statusEl.innerText = `📋 Hôm nay (Đã chốt sổ${countInfo})`;
+                                statusEl.style.color = '#b45309';
+                            }
+
                             if (typeof filterSchedule === 'function') filterSchedule();
                             if (typeof renderScheduleCalendar === 'function') renderScheduleCalendar();
                             if (typeof updateStats === 'function') updateStats();
                             if (typeof loadDashboard === 'function') loadDashboard();
 
+                            // Tự động kích hoạt huấn luyện mô hình AI trên client nếu đang bật
+                            if (localStorage.getItem('ai_auto_train_enable') !== '0') {
+                                if (typeof window.calibrateAIFromHistory === 'function') {
+                                    window.calibrateAIFromHistory({ silent: true, reason: 'auto_after_chot_so' });
+                                }
+                            }
+
                             if (typeof showCustomAlert === 'function') {
                                 showCustomAlert(
                                     "Chốt sổ tự động",
-                                    `Đã đến giờ chốt sổ (${targetTime}). Hệ thống đã tự động chốt sổ và sao lưu toàn bộ lịch ngày ${res.closedDate || ''} vào lịch sử!`,
+                                    `Đã đến giờ chốt sổ (${targetTime}). Hệ thống đã tự động chốt sổ và lưu trữ dữ liệu ngày ${res.closedDate || ''} vào Lịch sử. Bảng lịch trình đã sẵn sàng cho ngày mới!`,
                                     "⏰",
                                     "#10b981"
                                 );
