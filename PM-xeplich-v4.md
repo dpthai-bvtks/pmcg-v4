@@ -5076,3 +5076,19 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
 
 
 
+
+### Fix Kịch Bản 2 OR-Tools UNKNOWN - Fallback Turbo-Engine (22/09/2026 - v4.1.3-rev14)
+
+**Yêu cầu của người dùng:** Kịch bản 2 (Google OR-Tools CP-SAT) luôn xếp được 0 ca, 192 ca rớt toàn bộ.
+
+**Phân tích nguyên nhân & Giải pháp:**
+- Mini PC solver nhận 192 ca nhưng time limit chỉ 6 giây → OR-Tools hết thời gian, trả về `status: "UNKNOWN"` và `schedule: []` (rỗng).
+- Code cũ chỉ kiểm tra `Array.isArray(localRes.schedule)` — điều kiện vẫn `true` khi schedule là `[]` → trả về 0 ca xếp, 192 rớt.
+- **Fix 1:** Tăng `timeLimitSeconds` từ `6.0s` lên `20.0s` và JS fetch timeout từ `25s` lên `30s`.
+- **Fix 2:** Kiểm tra `solverStatus` — nếu UNKNOWN/INFEASIBLE/MODEL_INVALID hoặc schedule rỗng → log cảnh báo và tự động fallback về Turbo-Engine JS thay vì trả 0 ca.
+
+**File sửa đổi:**
+- `js/scheduler-engine.js` (dòng 2768-2835): tăng timeout + thêm fallback logic
+- `index.html`: cache buster rev13→rev14, footer timestamp 07:31 22/09/2026
+- `sw.js`: CACHE_NAME rev13→rev14
+- `version.json`: version 4.1.3-rev14
