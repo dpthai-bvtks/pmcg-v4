@@ -2,15 +2,19 @@
    T.I.M.E.S SYSTEM - THỐNG KÊ HIS & EXCEL EXPORT
    ========================================== */
 
-var callApi = (typeof window !== 'undefined' && window.callApi) ? window.callApi : (typeof callApi === 'function' ? callApi : function(name, args, cb, err) {
-    if (typeof window !== 'undefined' && window.callApi) return window.callApi(name, args, cb, err);
+var callApi = function(name, args, cb, err) {
+    if (typeof window !== 'undefined' && typeof window.callApi === 'function' && window.callApi !== callApi) {
+        return window.callApi(name, args, cb, err);
+    }
     if (typeof window !== 'undefined' && window.google?.script?.run) {
         return new Promise((res, rej) => {
             window.google.script.run.withSuccessHandler(r => { if (cb) cb(r); res(r); }).withFailureHandler(e => { if (err) err(e); rej(e); })[name](...(args || []));
         });
     }
+    console.warn(`[callApi] API '${name}' gọi khi hệ thống chưa khởi tạo.`);
+    if (typeof err === 'function') err(new Error("API not available"));
     return Promise.reject(new Error("API not available"));
-});
+};
 
         // ==========================================
         // QUẢN LÝ NHÂN SỰ CHẤM CÔNG (HỌ VÀ TÊN ĐẦY ĐỦ CHUẨN BVTKS CS2)

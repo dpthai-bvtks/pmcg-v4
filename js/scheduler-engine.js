@@ -2005,10 +2005,10 @@ function getSafeCache() {
     let name = decodeVietnameseEncoding(rawName);
     if (!name) return '';
 
-    const isAllUpper = (name === name.toUpperCase() && /[A-ZÀ-Ỹ]/.test(name));
+    const isAllUpper = (name === name.toUpperCase() && /[A-Z\u00C0-\u024F\u1EA0-\u1EF9]/.test(name));
     const shouldUpper = forceUpperCase || isAllUpper;
 
-    const hasCorruptChar = /[\ufffd\u0000]/.test(name) || /\b[A-Za-zÀ-ỹ]+\?[A-Za-zÀ-ỹ]+\b/.test(name);
+    const hasCorruptChar = /[\ufffd\u0000]/.test(name) || /\b[A-Za-z\u00C0-\u024F\u1EA0-\u1EF9]+\?[A-Za-z\u00C0-\u024F\u1EA0-\u1EF9]+\b/.test(name);
     const hasSwallowedVowel = /\b(Trn|Lnh|Nguyn|Phm)\b/i.test(name) ||
       /\bTr[\ufffd\?]+n\b/i.test(name) ||
       /\bL[\ufffd\?]+nh\b/i.test(name) ||
@@ -2118,7 +2118,7 @@ function getSafeCache() {
     let str = decodeVietnameseEncoding(rawProc);
     if (!str) return '';
 
-    const hasCorruptChar = /[\ufffd\u0000]/.test(str) || /\b[A-Za-zÀ-ỹ]+\?[A-Za-zÀ-ỹ]+\b/.test(str) || /\?[A-Za-zÀ-ỹ]+/.test(str) || /[A-Za-zÀ-ỹ]+\?+/.test(str);
+    const hasCorruptChar = /[\ufffd\u0000]/.test(str) || /\b[A-Za-z\u00C0-\u024F\u1EA0-\u1EF9]+\?[A-Za-z\u00C0-\u024F\u1EA0-\u1EF9]+\b/.test(str) || /\?[A-Za-z\u00C0-\u024F\u1EA0-\u1EF9]+/.test(str) || /[A-Za-z\u00C0-\u024F\u1EA0-\u1EF9]+\?+/.test(str);
     const hasSwallowedChar = /\b(chm|ngi|bop|bam|huyet)\b/i.test(str);
 
     const stripTones = (s) => {

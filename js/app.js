@@ -462,10 +462,10 @@ function healPatientName(rawName, candidates = [], forceUpperCase = false) {
     let name = String(rawName).normalize('NFC').trim();
     if (!name) return '';
 
-    const isAllUpper = (name === name.toUpperCase() && /[A-ZÀ-Ỹ]/.test(name));
+    const isAllUpper = (name === name.toUpperCase() && /[A-Z\u00C0-\u024F\u1EA0-\u1EF9]/.test(name));
     const shouldUpper = forceUpperCase || isAllUpper;
 
-    const hasCorruptChar = /[\ufffd\u0000]/.test(name) || /\b[A-Za-zÀ-ỹ]+\?[A-Za-zÀ-ỹ]+\b/.test(name);
+    const hasCorruptChar = /[\ufffd\u0000]/.test(name) || /\b[A-Za-z\u00C0-\u024F\u1EA0-\u1EF9]+\?[A-Za-z\u00C0-\u024F\u1EA0-\u1EF9]+\b/.test(name);
     const hasSwallowedVowel = /\b(Trn|Cưng|Lnh|Nguyn|Phm)\b/i.test(name) ||
         /\bTr[\ufffd\s\?]*n\b/i.test(name) ||
         /\bL[\ufffd\s\?]*nh\b/i.test(name) ||
@@ -2747,7 +2747,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                             primaryDiff = isAsc ? valA.localeCompare(valB, 'vi', { numeric: true }) : valB.localeCompare(valA, 'vi', { numeric: true });
 
-                        } else if (!isNaN(numA) && !isNaN(numB) && !valA.match(/[a-zA-ZÀ-ỹ]/) && !valB.match(/[a-zA-ZÀ-ỹ]/)) {
+                        } else if (!isNaN(numA) && !isNaN(numB) && !valA.match(/[a-zA-Z\u00C0-\u024F\u1EA0-\u1EF9]/) && !valB.match(/[a-zA-Z\u00C0-\u024F\u1EA0-\u1EF9]/)) {
 
                             primaryDiff = isAsc ? numA - numB : numB - numA;
 
@@ -6955,7 +6955,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     let primaryDiff = 0;
 
-                    if (!isNaN(numA) && !isNaN(numB) && !String(valA).match(/[a-zA-ZÀ-ỹ]/) && !String(valB).match(/[a-zA-ZÀ-ỹ]/)) {
+                    if (!isNaN(numA) && !isNaN(numB) && !String(valA).match(/[a-zA-Z\u00C0-\u024F\u1EA0-\u1EF9]/) && !String(valB).match(/[a-zA-Z\u00C0-\u024F\u1EA0-\u1EF9]/)) {
 
                         primaryDiff = (numA - numB) * dir;
 

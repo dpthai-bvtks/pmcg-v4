@@ -1,6 +1,6 @@
 {
-    "version": "4.1.3-rev15",
+    "version": "4.1.3-rev16",
     "releaseDate": "22/09/2026",
-    "releaseTime": "10:15 22/09/2026",
-    "notes": "fix: Sửa lỗi HIS mapping nhầm 'Kim Châm cứu các số' (vật tư y tế) thành thủ thuật 'Hào châm'. Thêm excludes và regex xóa đơn vị vật tư (Cái/Chiếc/Ống...) trong cleanHISLine."
+    "releaseTime": "10:36 22/09/2026",
+    "notes": "fix: Cập nhật mã ký tự Unicode cho regex tiếng Việt, chuẩn hóa charset UTF-8 đầu trang index.html, xóa đệ quy thongke.js và làm mới cache Service Worker."
 }

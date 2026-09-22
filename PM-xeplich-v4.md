@@ -5109,3 +5109,15 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - Phát sinh do thao tác ghi file trước đó làm sai lệch encoding sang UTF-8 with BOM và chuyển đổi nhầm bảng mã.
      - Đã phục hồi và chuẩn hóa 100% các file index.html, js/app.js, sw.js, version.json về định dạng UTF-8 không BOM (No BOM).
      - Kiểm tra toàn diện không còn ký tự lạ, giao diện và pop-up hiển thị tiếng Việt dấu thanh chuẩn tuyệt đối.
+
+### Khắc Phục Triệt Để Regex SyntaxError, RangeError thongke.js & Cưỡng Chế Làm Mới PWA Cache (22/09/2026 - v4.1.3-rev16)
+
+- *Sự cố phát sinh*:
+  1. Trình duyệt báo `SyntaxError: Invalid regular expression: /[A-ZÃ€-á»¸]/: Range out of order in character class` do Service Worker trên máy client còn giữ cache bản lỗi `pmcg-v4-cache-4.1.3-rev15`.
+  2. `thongke.js:5 RangeError: Maximum call stack size exceeded` do `app.js` gặp SyntaxError dừng lại ở dòng 465 khiến `window.callApi` chưa được gán, dẫn tới hàm fallback tự gọi đệ quy chính nó.
+
+- *Các giải pháp triệt để*:
+  1. **Nâng phiên bản lên v4.1.3-rev16**: Đổi tên cache `sw.js` thành `pmcg-v4-cache-4.1.3-rev16` và cập nhật toàn bộ query cache buster trong `index.html` lên `?v=4.1.3-rev16`. Khi kích hoạt, Service Worker sẽ tự động xóa sạch toàn bộ cache cũ và nạp lại toàn bộ mã nguồn mới.
+  2. **Chuẩn hóa Regex tiếng Việt với mã Unicode**: Thay toàn bộ các dải ký tự chữ Việt literal trong `js/app.js` và `js/scheduler-engine.js` (như `[A-ZÀ-Ỹ]`) bằng dải Unicode thoát hiểm chuẩn `[A-Z\u00C0-\u024F\u1EA0-\u1EF9]`. Điều này đảm bảo an toàn 100%, không bao giờ phát sinh lỗi Range out of order dù trình duyệt nhận file qua bất kỳ encoding nào.
+  3. **Chuẩn hóa vị trí `<meta charset="UTF-8">`**: Đưa thẻ khai báo charset lên dòng đầu tiên ngay sau `<head>` trong `index.html` theo chuẩn W3C.
+  4. **Phòng hộ đệ quy `thongke.js`**: Bỏ cơ chế gán đệ quy của `callApi`, thêm log cảnh báo và Promise reject nếu gọi API trước khi hệ thống hoàn tất khởi tạo.
