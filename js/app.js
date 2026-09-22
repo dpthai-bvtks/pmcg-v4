@@ -9369,7 +9369,247 @@ window.renderSttOrderControl = function (type, i, total) {
 
         };
 
+        // ============================================================
+        // 🛠️ TIỆN ÍCH TÌM KIẾM RẢNH (HỖ TRỢ CẢ LỊCH HỆ THỐNG & FILE HIS)
+        // ============================================================
+
+        window.utilsHisScheduleData = null;
+        window.utilsHisFileName = '';
+        window.utilsDataSource = 'SYSTEM'; // 'SYSTEM' hoặc 'HIS'
+
+        function updateUtilsSourceUI() {
+            const badge = document.getElementById('utils-source-badge');
+            const resetBtn = document.getElementById('btn-utils-reset-source');
+            const statusEl = document.getElementById('utils-lich-status');
+            const searchDate = document.getElementById('utils-search-date')?.value || '';
+            const dd = searchDate ? searchDate.split('-').reverse().join('/') : '';
+
+            if (window.utilsDataSource === 'HIS' && Array.isArray(window.utilsHisScheduleData)) {
+                const matchingRows = window.utilsHisScheduleData.filter(r => !r.dateYMD || r.dateYMD === searchDate || r.dateYMD === '1900-01-01');
+                if (badge) {
+                    badge.style.display = 'inline-block';
+                    badge.innerText = `📁 File HIS (${window.utilsHisScheduleData.length} ca)`;
+                    badge.title = window.utilsHisFileName;
+                }
+                if (resetBtn) resetBtn.style.display = 'inline-block';
+                if (statusEl) {
+                    statusEl.innerText = `✅ File HIS "${window.utilsHisFileName}": ${matchingRows.length} ca ngày ${dd}. Sẵn sàng tìm rảnh!`;
+                    statusEl.style.color = '#2980b9';
+                }
+            } else {
+                if (badge) badge.style.display = 'none';
+                if (resetBtn) resetBtn.style.display = 'none';
+            }
+        }
+
+        function resetUtilsDataSource() {
+            window.utilsDataSource = 'SYSTEM';
+            window.utilsHisScheduleData = null;
+            window.utilsHisFileName = '';
+            const hisInput = document.getElementById('utils-his-file-input');
+            if (hisInput) hisInput.value = '';
+
+            updateUtilsSourceUI();
+            taiLichTheoNgay(function () {
+                timBacSiRanh();
+            });
+            if (window.showToast) {
+                window.showToast('Đã quay về sử dụng Lịch Hệ Thống!', 'info', 2000);
+            }
+        }
+
+        function initUtilsHisUploader() {
+            const fileInput = document.getElementById('utils-his-file-input');
+            if (!fileInput) return;
+
+            fileInput.addEventListener('change', function (e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                if (window.showGlobalLoading) window.showGlobalLoading('Đang đọc và phân tích file HIS tìm giờ rảnh...');
+                const reader = new FileReader();
+                reader.onload = function (ev) {
+                    try {
+                        const data = new Uint8Array(ev.target.result);
+                        const workbook = XLSX.read(data, { type: 'array', cellDates: false });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+
+                        const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+                        let headerRowIndex = -1;
+                        let isInternalSchedule = false;
+
+                        function stripVietnamese(str) {
+                            if (!str) return '';
+                            return String(str).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().trim();
+                        }
+
+                        for (let i = 0; i < Math.min(rawData.length, 50); i++) {
+                            const rowStr = (rawData[i] || []).map(stripVietnamese);
+                            if (rowStr.some(c => c.includes("ten benh nhan") || c.includes("ten bn") || c.includes("hoten"))) {
+                                headerRowIndex = i;
+                                isInternalSchedule = true;
+                                break;
+                            } else if (rowStr.some(c => c.includes("stt") || c.includes("name") || c.includes("mabn"))) {
+                                headerRowIndex = i;
+                                break;
+                            }
+                        }
+
+                        if (headerRowIndex < 0) headerRowIndex = 0;
+
+                        let dataRows = [];
+                        if (isInternalSchedule) {
+                            let extractedFileDate = '';
+                            for (let i = 0; i < headerRowIndex; i++) {
+                                const rowCells = rawData[i] || [];
+                                for (const cell of rowCells) {
+                                    const cellStr = String(cell || '').trim();
+                                    const dMatch = cellStr.match(/(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4})/);
+                                    if (dMatch) {
+                                        extractedFileDate = dMatch[1].replace(/-/g, '/');
+                                        break;
+                                    }
+                                }
+                                if (extractedFileDate) break;
+                            }
+
+                            const headerRow = (rawData[headerRowIndex] || []).map(stripVietnamese);
+                            const colIdx = {
+                                ngay: headerRow.findIndex(h => h.includes('ngay')),
+                                ten: headerRow.findIndex(h => h.includes('ten benh nhan') || h.includes('ten bn') || h.includes('hoten')),
+                                tt: headerRow.findIndex(h => h.includes('thu thuat') || h.includes('dich vu') || h.includes('dichvu')),
+                                bd: headerRow.findIndex(h => h.includes('bat dau') || h.includes('gio dien ra') || h.includes('giodienra')),
+                                kt: headerRow.findIndex(h => h.includes('ket thuc') || h.includes('gioketthuc')),
+                                nv: headerRow.findIndex(h => h.includes('nv chinh') || h.includes('nhan vien chinh') || h.includes('ktv') || h.includes('bac si') || h.includes('bác sĩ')),
+                                nvPhu: headerRow.findIndex(h => h.includes('nv phu') || h.includes('nhan vien phu') || h.includes('phu ta') || h.includes('dieu duong phu')),
+                                phong: headerRow.findIndex(h => h.includes('phong dieu tri') || h.includes('phong')),
+                                giuong: headerRow.findIndex(h => h.includes('giuong benh') || h.includes('giuong')),
+                                may: headerRow.findIndex(h => h.includes('may moc') || h.includes('thiet bi') || h.includes('may'))
+                            };
+
+                            dataRows = rawData.slice(headerRowIndex + 1).filter(r => r && r.some(c => String(c).trim())).map(r => {
+                                const ngayStr = colIdx.ngay >= 0 ? String(r[colIdx.ngay] || '').trim() : extractedFileDate;
+                                const bdStr = colIdx.bd >= 0 ? String(r[colIdx.bd] || '').trim() : '';
+                                const ktStr = colIdx.kt >= 0 ? String(r[colIdx.kt] || '').trim() : '';
+                                if (bdStr.includes('Rớt') || bdStr === '--' || !bdStr) return null;
+
+                                const datePart = ngayStr.includes('-') ? ngayStr.split('-').reverse().join('/') : ngayStr;
+                                const startFull = datePart ? `${bdStr} ${datePart}` : bdStr;
+                                const endFull = datePart ? `${ktStr} ${datePart}` : ktStr;
+                                const cleanBN = (colIdx.ten >= 0 ? String(r[colIdx.ten] || '') : '').replace(/\s*\((?:✔ RV|❌ Rớt|RV|Rớt)\)/gi, '').trim();
+                                const procName = colIdx.tt >= 0 ? String(r[colIdx.tt] || '').trim() : '';
+                                const procInfo = mapProcedureJS(procName);
+
+                                return {
+                                    'AT': colIdx.nv >= 0 ? r[colIdx.nv] : '',
+                                    'AU': colIdx.nvPhu >= 0 ? r[colIdx.nvPhu] : '',
+                                    'C': cleanBN,
+                                    'AE': procName,
+                                    'AG': procName,
+                                    'AN': procInfo ? (procInfo.phanLoai || procInfo.loai || '') : '',
+                                    'AH': startFull,
+                                    'L': endFull,
+                                    'phong': colIdx.phong >= 0 ? String(r[colIdx.phong] || '').trim() : '',
+                                    'giuong': colIdx.giuong >= 0 ? String(r[colIdx.giuong] || '').trim() : '',
+                                    'may': colIdx.may >= 0 ? String(r[colIdx.may] || '').trim() : ''
+                                };
+                            }).filter(Boolean);
+                        } else {
+                            dataRows = XLSX.utils.sheet_to_json(worksheet, { header: "A", range: headerRowIndex, defval: "" });
+                        }
+
+                        const parsedSchedule = [];
+                        const foundDates = new Set();
+
+                        for (const row of dataRows) {
+                            const techMainRaw = String(row['AT'] || row['nvChinh'] || '').trim();
+                            const techPhuRaw = String(row['AU'] || row['nvPhu'] || '').trim();
+                            const patientName = String(row['C'] || row['tenBN'] || '').replace(/\s*\((?:✔ RV|❌ Rớt|RV|Rớt)\)/gi, '').trim();
+                            const procName = String(row['AE'] || row['AG'] || row['thuThuat'] || '').trim();
+
+                            const start = row['AH'] ? convertExcelDateToJSDate(row['AH']) : null;
+                            const end = row['L'] ? convertExcelDateToJSDate(row['L']) : null;
+                            if (!start || isNaN(start.getTime()) || !end || isNaN(end.getTime())) continue;
+
+                            const procInfo = mapProcedureJS(procName, start);
+                            const techMainNorm = getShortNameJS(techMainRaw);
+                            const techPhuNorm = getShortNameJS(techPhuRaw);
+
+                            let dateYMD = '';
+                            if (start.getFullYear() > 1900) {
+                                const y = start.getFullYear();
+                                const m = String(start.getMonth() + 1).padStart(2, '0');
+                                const d = String(start.getDate()).padStart(2, '0');
+                                dateYMD = `${y}-${m}-${d}`;
+                                foundDates.add(dateYMD);
+                            }
+
+                            const gVao = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
+                            const gRa = `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`;
+
+                            parsedSchedule.push({
+                                nvChinh: techMainNorm || techMainRaw,
+                                nvPhu: techPhuNorm || techPhuRaw,
+                                tenBN: patientName,
+                                thuThuat: procName,
+                                gioDienRa: gVao,
+                                gioKetThuc: gRa,
+                                may: String(row.may || row['MÁY'] || (procInfo && procInfo.may ? procInfo.may : '') || '').trim(),
+                                phong: String(row.phong || row['PHÒNG'] || '').trim(),
+                                giuong: String(row.giuong || row['GIƯỜNG'] || '').trim(),
+                                ngay: dateYMD,
+                                dateYMD: dateYMD,
+                                startDate: start,
+                                endDate: end,
+                                procInfo: procInfo
+                            });
+                        }
+
+                        if (parsedSchedule.length === 0) {
+                            if (window.hideGlobalLoading) window.hideGlobalLoading();
+                            alert('Không tìm thấy ca thủ thuật hợp lệ nào trong file HIS vừa chọn. Vui lòng kiểm tra lại cấu trúc file.');
+                            return;
+                        }
+
+                        window.utilsHisScheduleData = parsedSchedule;
+                        window.utilsHisFileName = file.name;
+                        window.utilsDataSource = 'HIS';
+
+                        const dateArr = [...foundDates];
+                        let chosenDate = document.getElementById('utils-search-date')?.value || '';
+                        if (dateArr.length > 0 && (!chosenDate || !dateArr.includes(chosenDate))) {
+                            chosenDate = dateArr[0];
+                            const dateInput = document.getElementById('utils-search-date');
+                            if (dateInput) dateInput.value = chosenDate;
+                        }
+
+                        updateUtilsSourceUI();
+
+                        if (window.hideGlobalLoading) window.hideGlobalLoading();
+                        if (window.showToast) {
+                            window.showToast(`Đã nạp file HIS "${file.name}" (${parsedSchedule.length} ca)!`, 'success', 3000);
+                        }
+
+                        timBacSiRanh();
+                    } catch (err) {
+                        if (window.hideGlobalLoading) window.hideGlobalLoading();
+                        console.error('initUtilsHisUploader error:', err);
+                        alert('Có lỗi khi đọc file HIS: ' + (err.message || err));
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
         function taiLichTheoNgay(callback) {
+            if (window.utilsDataSource === 'HIS' && Array.isArray(window.utilsHisScheduleData)) {
+                updateUtilsSourceUI();
+                if (typeof callback === 'function') callback(window.utilsHisScheduleData);
+                timBacSiRanh();
+                return;
+            }
+
             var dateEl = document.getElementById('utils-search-date');
             var date = dateEl ? dateEl.value : '';
             if (!date) {
@@ -9421,15 +9661,11 @@ window.renderSttOrderControl = function (type, i, total) {
                 .getHistoryFullData(date);
         }
 
-
-
-
-
         // Chạy luôn hàm tải dữ liệu ngay khi mở web
-
-        document.addEventListener('DOMContentLoaded', window.loadTimRanhDataFromServer);
-
-
+        document.addEventListener('DOMContentLoaded', function () {
+            if (typeof window.loadTimRanhDataFromServer === 'function') window.loadTimRanhDataFromServer();
+            initUtilsHisUploader();
+        });
 
         function filterDoctorTable() {
             var input = document.getElementById("filter-doc-name").value.toLowerCase();
@@ -9457,8 +9693,10 @@ window.renderSttOrderControl = function (type, i, total) {
             const searchDate = document.getElementById('utils-search-date')?.value || '';
             if (!searchDate) return alert("Vui lòng chọn Ngày cần tìm ở trên trước!");
 
-            // Tự động tải lịch nếu chưa tải hoặc ngày tìm khác ngày trong cache
-            if (!window.utilsScheduleData || window.utilsScheduleDate !== searchDate) {
+            const isHisMode = (window.utilsDataSource === 'HIS' && Array.isArray(window.utilsHisScheduleData));
+
+            // Tự động tải lịch nếu chưa tải hoặc ngày tìm khác ngày trong cache (chỉ áp dụng chế độ SYSTEM)
+            if (!isHisMode && (!window.utilsScheduleData || window.utilsScheduleDate !== searchDate)) {
                 taiLichTheoNgay(function () {
                     timBacSiRanh();
                 });
@@ -9472,7 +9710,14 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (timeInput) timeInput.value = "07:30";
             }
 
-            let sourceData = window.utilsScheduleData || [];
+            let sourceData = [];
+            if (isHisMode) {
+                sourceData = window.utilsHisScheduleData.filter(r => !r.dateYMD || r.dateYMD === searchDate || r.dateYMD === '1900-01-01');
+                updateUtilsSourceUI();
+            } else {
+                sourceData = window.utilsScheduleData || [];
+            }
+
             const t_vao = t2m(vao_str);
             const tbody = document.getElementById('free-doc-list');
             tbody.innerHTML = '';
@@ -9510,18 +9755,27 @@ window.renderSttOrderControl = function (type, i, total) {
                     if (isNaN(tStart) || isNaN(tEnd) || tEnd <= tStart) return;
 
                     const thuThuat = String(row.thuThuat || row[4] || '').trim().toLowerCase();
-                    const procInfo = (dataCache.proc || []).find(p =>
+                    const procInfo = row.procInfo || (dataCache.proc || []).find(p =>
                         String(p.ten || '').toLowerCase() === thuThuat ||
                         (p.vietTat && String(p.vietTat || '').toLowerCase() === thuThuat)
                     );
 
-                    const tgNhanVien = procInfo && procInfo.thoiGianThucHien ? parseInt(procInfo.thoiGianThucHien) : Math.min(5, tEnd - tStart);
-                    const khoangCachRaw = procInfo && procInfo.khoangCach ? parseInt(procInfo.khoangCach) : tgNhanVien;
-                    const khoangCach = Math.max(khoangCachRaw, tgNhanVien + 1);
+                    const tgThMin = procInfo ? (parseInt(procInfo.thoiGianThucHienMin || procInfo.thoiGianThucHien || procInfo[6]) || 5) : 5;
+                    const tgTtMin = procInfo ? (parseInt(procInfo.thoiGianThuThuatMin || procInfo.thoiGianThuThuat || procInfo[7]) || 15) : 15;
+                    const isCont = procInfo ? (procInfo.lienTuc === 'Có' || procInfo.lienTuc === 1 || procInfo.lienTuc === '1' || procInfo.lienTuc === true || procInfo[14] === 'Có' || procInfo[14] === 1 || (tgThMin === tgTtMin && tgThMin >= 10)) : false;
 
-                    busy.push([tStart, tStart + khoangCach]);
-                    if (tEnd > tStart + tgNhanVien) {
-                        busy.push([tEnd, tEnd + 1]);
+                    if (isCont) {
+                        // Thủ thuật liên tục: Nhân sự bận suốt ca
+                        busy.push([tStart, tEnd + 1]);
+                    } else {
+                        const tgNhanVien = procInfo && procInfo.thoiGianThucHien ? parseInt(procInfo.thoiGianThucHien) : Math.min(5, tEnd - tStart);
+                        const khoangCachRaw = procInfo && procInfo.khoangCach ? parseInt(procInfo.khoangCach) : tgNhanVien;
+                        const khoangCach = Math.max(khoangCachRaw, tgNhanVien + 1);
+
+                        busy.push([tStart, tStart + khoangCach]);
+                        if (tEnd > tStart + tgNhanVien) {
+                            busy.push([tEnd, tEnd + 1]);
+                        }
                     }
                 });
 
@@ -9632,8 +9886,10 @@ window.renderSttOrderControl = function (type, i, total) {
             const searchDate = document.getElementById('utils-search-date')?.value || '';
             if (!searchDate) return alert("Vui lòng chọn Ngày cần tìm ở trên trước!");
 
-            // Tự động tải lịch nếu chưa tải hoặc ngày tìm khác ngày trong cache
-            if (!window.utilsScheduleData || window.utilsScheduleDate !== searchDate) {
+            const isHisMode = (window.utilsDataSource === 'HIS' && Array.isArray(window.utilsHisScheduleData));
+
+            // Tự động tải lịch nếu chưa tải hoặc ngày tìm khác ngày trong cache (chỉ áp dụng chế độ SYSTEM)
+            if (!isHisMode && (!window.utilsScheduleData || window.utilsScheduleDate !== searchDate)) {
                 taiLichTheoNgay(function () {
                     timMayRanh();
                 });
@@ -9648,7 +9904,12 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (timeInput) timeInput.value = "07:30";
             }
 
-            let sourceData = window.utilsScheduleData || [];
+            let sourceData = [];
+            if (isHisMode) {
+                sourceData = window.utilsHisScheduleData.filter(r => !r.dateYMD || r.dateYMD === searchDate || r.dateYMD === '1900-01-01');
+            } else {
+                sourceData = window.utilsScheduleData || [];
+            }
 
             if (!loai || loai.includes("Chọn loại")) return alert("Vui lòng chọn Loại máy cần tìm!");
 
@@ -9675,8 +9936,29 @@ window.renderSttOrderControl = function (type, i, total) {
                 const rowMay = String(row.may || row[9] || '').trim().toLowerCase();
                 const gVao = row.gioDienRa || row[5];
                 const gRa = row.gioKetThuc || row[6];
+                if (!gVao || !gRa) return;
+
                 const mMatch = may_thuoc_loai.find(x => x.toLowerCase() === rowMay);
-                if (mMatch) m_busy[mMatch].push([t2m(gVao), t2m(gRa) + 1]);
+                if (mMatch) {
+                    m_busy[mMatch].push([t2m(gVao), t2m(gRa) + 1]);
+                } else if (isHisMode && (!rowMay || rowMay === '--')) {
+                    // Nếu file HIS không ghi rõ mã máy cụ thể (ví dụ KG1), nhưng thủ thuật cần loại máy này:
+                    const pInfo = row.procInfo || (dataCache.proc || []).find(p =>
+                        String(p.ten || '').toLowerCase() === String(row.thuThuat || '').toLowerCase() ||
+                        (p.vietTat && String(p.vietTat || '').toLowerCase() === String(row.thuThuat || '').toLowerCase())
+                    );
+                    const reqMachine = pInfo ? String(pInfo.may || '').trim().toLowerCase() : '';
+                    if (reqMachine && reqMachine === loai.trim().toLowerCase()) {
+                        const firstAvail = may_thuoc_loai.find(m => {
+                            const bList = m_busy[m] || [];
+                            const tStart = t2m(gVao), tEnd = t2m(gRa);
+                            return !bList.some(b => Math.max(b[0], tStart) < Math.min(b[1], tEnd));
+                        }) || may_thuoc_loai[0];
+                        if (firstAvail) {
+                            m_busy[firstAvail].push([t2m(gVao), t2m(gRa) + 1]);
+                        }
+                    }
+                }
             });
 
             let found = false;
@@ -15987,11 +16269,17 @@ window.onAppDateChange = function(dateStr, sourceTab) {
         window.utilsScheduleData = fullData.schedule || [];
         window.utilsScheduleDate = targetDate;
         window.utilsStaffBusy = fullData.staffBusy || [];
-        const statusEl = document.getElementById('utils-lich-status');
-        if (statusEl) {
-            const count = (fullData.schedule || []).length;
-            statusEl.innerText = isToday ? `📋 Lịch Hôm Nay (Đã chốt): ${count} ca` : `✅ Ngày ${dmy}: ${count} ca`;
-            statusEl.style.color = isToday ? '#b45309' : '#27ae60';
+        if (window.utilsDataSource === 'HIS' && Array.isArray(window.utilsHisScheduleData)) {
+            if (typeof updateUtilsSourceUI === 'function') updateUtilsSourceUI();
+            if (typeof timBacSiRanh === 'function') timBacSiRanh();
+        } else {
+            const statusEl = document.getElementById('utils-lich-status');
+            if (statusEl) {
+                const count = (fullData.schedule || []).length;
+                statusEl.innerText = isToday ? `📋 Lịch Hôm Nay (Đã chốt): ${count} ca` : `✅ Ngày ${dmy}: ${count} ca`;
+                statusEl.style.color = isToday ? '#b45309' : '#27ae60';
+            }
+            if (typeof timBacSiRanh === 'function') timBacSiRanh();
         }
 
         if (displayEl) {

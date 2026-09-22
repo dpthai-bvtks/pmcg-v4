@@ -5170,3 +5170,41 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   4. **Giữ nguyên họ tên thực tế trong `formattedSched`**: Giữ trực tiếp `x.HOTEN || x.tenBN` như `v3-Cloudflare`.
   5. **Bảo vệ tên bệnh nhân khi import HIS**: Sử dụng `properFn(rawTen)` chuẩn hóa viết hoa chữ cái đầu, không fuzzy-swap qua candidate.
   6. **Nâng phiên bản v4.1.3-rev19**: Cập nhật `version.json`, `sw.js` (`pmcg-v4-cache-4.1.3-rev19`) và `index.html` cache busters.
+
+### Bổ Sung Chức Năng Tìm Giờ Rảnh Dựa Vào File HIS (22/09/2026 - v4.1.3-rev20)
+
+- *Yêu cầu của người dùng*:
+  - Tab Tìm Giờ Rảnh hiện tại chỉ tìm giờ dựa trên bảng lịch trình xếp lịch và tab giờ bận của nhân sự.
+  - Thêm chức năng tìm giờ rảnh dựa vào file HIS đưa vào; các cột cần đọc đồng bộ giống với Tab Kiểm Tra Lỗi và Tab Thống Kê Tổng Hợp.
+
+- *Phân tích & Giải pháp kỹ thuật*:
+  1. **Thanh công cụ Tab Tìm Giờ Rảnh (`tab-utils`)**:
+     - Bổ sung nút **`📁 Nạp File HIS`** kèm input file ẩn `#utils-his-file-input` hỗ trợ file Excel `.xlsx`, `.xls`.
+     - Thêm huy hiệu nguồn dữ liệu: hiển thị rõ ràng `Nguồn: Lịch Hệ Thống` hoặc `📁 File HIS: [tên file] (X ca)`.
+     - Thêm nút **`🔄 Dùng Lịch Hệ Thống`** để người dùng có thể linh hoạt chuyển đổi qua lại giữa dữ liệu file HIS và lịch trình hệ thống mà không cần tải lại trang.
+  2. **Chuẩn hóa đọc cột File HIS đồng bộ Tab Kiểm Tra Lỗi & Thống Kê**:
+     - Cột `AT`: KTV / Bác sĩ chính (`techMainRaw`) -> Chuẩn hóa qua `getShortNameJS()` khớp vào danh sách nhân sự CSDL.
+     - Cột `AU`: KTV / Điều dưỡng phụ (`techPhuRaw`) -> Chuẩn hóa qua `getShortNameJS()`.
+     - Cột `C`: Tên bệnh nhân (loại bỏ hậu tố `(✔ RV)`, `(❌ Rớt)`).
+     - Cột `AE` / `AG`: Tên thủ thuật -> Ánh xạ qua `mapProcedureJS(procName, start)` lấy đầy đủ định mức thời gian thực hiện (`thoiGianThucHien`), khoảng cách chuyển ca (`khoangCach`), làm liên tục (`lienTuc`), máy móc (`may`).
+     - Cột `AH`: Thời gian bắt đầu (`start`) -> Hỗ trợ chuỗi `HH:mm DD/MM/YYYY`, `DD/MM/YYYY HH:mm` và serial Excel qua `convertExcelDateToJSDate()`.
+     - Cột `L`: Thời gian kết thúc (`end`) -> Convert qua `convertExcelDateToJSDate()`.
+     - Cột `AN`: Phân loại thủ thuật.
+     - Cột `phong`, `giuong`, `may`: Tự động nhận diện thiết bị / phòng bệnh nếu file có cột hoặc từ định mức thủ thuật.
+     - Hỗ trợ cả 2 định dạng file: File xuất HIS bệnh viện và File xuất lịch nội bộ (tự động nhận diện header tiếng Việt).
+     - Tự động phát hiện ngày ca trong file HIS và đồng bộ vào ô `📅 Ngày tìm` (`#utils-search-date`).
+  3. **Thuật toán tính giờ rảnh từ dữ liệu HIS**:
+     - *Bác sĩ / KTV (`timBacSiRanh`)*: Phân tích ca từ File HIS, tính đúng thời gian bận theo tính chất thủ thuật (thủ thuật liên tục `isCont` thì bận trọn vẹn suốt ca; thủ thuật không liên tục thì bận đầu ca `[tStart, tStart + khoangCach]` và teardown `[tEnd, tEnd + 1]`), kết hợp giờ bận cá nhân và ca làm việc để xuất danh sách khung giờ rảnh chính xác.
+     - *Máy móc (`timMayRanh`)*: Phân tích ca chiếm máy từ File HIS theo mã máy cụ thể hoặc định mức thủ thuật cần loại máy, tính toán các máy rảnh và mốc rảnh đến khi nào.
+  4. **Quy chuẩn phiên bản & triển khai (RULES.md)*:
+     - Nâng phiên bản `4.1.3-rev20`.
+     - Đồng bộ Service Worker Cache `pmcg-v4-cache-4.1.3-rev20`, `version.json`, `index.html` cache busters, footer timestamp `16:30 22/09/2026`.
+     - Syntax check sạch hoàn toàn. Deploy Cloudflare Pages và commit Git.
+
+- *File sửa đổi*:
+  - `index.html`: Thêm nút Nạp File HIS, badge nguồn, nút chuyển đổi nguồn, cập nhật cache buster.
+  - `js/app.js`: Thêm `initUtilsHisUploader`, `updateUtilsSourceUI`, `resetUtilsDataSource`, nâng cấp `timBacSiRanh` và `timMayRanh` hỗ trợ nguồn File HIS.
+  - `sw.js`: Cập nhật `CACHE_NAME = 'pmcg-v4-cache-4.1.3-rev20'`.
+  - `version.json`: Cập nhật phiên bản và ghi chú bản phát hành.
+  - `PM-xeplich-v4.md`: Ghi nhật ký phát triển tính năng.
+
