@@ -1,6 +1,6 @@
 {
-    "version": "4.1.3-rev13",
-    "releaseDate": "21/09/2026",
-    "releaseTime": "20:30 21/09/2026",
-    "notes": "feat(chotSo-AI): Giữ bảng lịch trống sẵn sàng cho ngày mới sau khi chốt sổ (không nạp lại lịch sử vào bảng hiện hành); chuyển cấu hình Huấn luyện AI thành Tự động học ngay sau khi chốt sổ hàng ngày."
+    "version": "4.1.3-rev14",
+    "releaseDate": "22/09/2026",
+    "releaseTime": "07:31 22/09/2026",
+    "notes": "fix(KB2): Tăng timeout Mini PC OR-Tools từ 6s lên 20s; fallback về Turbo-Engine JS khi solver trả về UNKNOWN/INFEASIBLE hoặc schedule rỗng."
 }

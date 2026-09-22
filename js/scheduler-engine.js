@@ -2766,11 +2766,14 @@ function getSafeCache() {
               machineTypes: db.machineTypes || {}
             };
             const solverOptions = {
-              timeLimitSeconds: options.timeLimitSeconds || 6.0,
+              timeLimitSeconds: options.timeLimitSeconds || 20.0,
               numWorkers: 4
             };
-            const localRes = await solveWithMiniPC(payloadDb, solverOptions);
-            if (localRes && localRes.success && Array.isArray(localRes.schedule)) {
+            const localRes = await solveWithMiniPC(payloadDb, solverOptions, 30000);
+            // ⚠️ Kiểm tra kết quả hợp lệ: phải có success + schedule không rỗng + status không phải UNKNOWN/INFEASIBLE
+            const solverStatus = (localRes && localRes.status) ? String(localRes.status).toUpperCase() : '';
+            const solverFailed = !solverStatus || solverStatus === 'UNKNOWN' || solverStatus === 'INFEASIBLE' || solverStatus === 'MODEL_INVALID';
+            if (localRes && localRes.success && Array.isArray(localRes.schedule) && localRes.schedule.length > 0 && !solverFailed) {
               const finalDropList = (localRes.unscheduled || []).concat(forcedDrops).map(r => ({
                 pId: r.pId || r.id,
                 bn: r.bn || r.HOTEN || r.tenBN,
@@ -2828,6 +2831,8 @@ function getSafeCache() {
                 threadCount: 4,
                 engine: `🧠 Mini PC Google OR-Tools CP-SAT (${localRes.status || 'OPTIMAL'}, 4 Luồng)`
               };
+            } else if (solverFailed) {
+              console.warn(`[SchedulerEngine]: Mini PC trả về status '${solverStatus}' (schedule rỗng hoặc không khả thi), tự động fallback về Turbo-Engine JS.`);
             }
           } catch (localErr) {
             console.warn('[SchedulerEngine]: Trạm Mini PC không phản hồi kịp hoặc lỗi, tự động chuyển về Turbo-Engine (JS):', localErr);
