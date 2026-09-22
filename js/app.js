@@ -10242,12 +10242,9 @@ window.renderSttOrderControl = function (type, i, total) {
             { keywords: ['thăng bằng', 'thang bang', 'tập đi', 'tap di', 'tập đứng', 'thanh song song'], target: 'Tập thăng bằng' }
         ];
 
-        // Chuẩn hóa chuỗi (bỏ dấu, viết thường, KHÔNG trim)
+        // Chuẩn hóa chuỗi (bỏ dấu, viết thường, KHÔNG trim để bảo toàn khoảng trắng cho từ khóa viết tắt như ' hc ')
         function normalizeStrNoTrim(str) {
-            const decodeFn = (typeof window !== 'undefined' && typeof window.decodeVietnameseEncoding === 'function')
-                ? window.decodeVietnameseEncoding
-                : (s => String(s || '').normalize('NFC').trim());
-            return decodeFn(str).toLowerCase()
+            return String(str || '').toLowerCase()
                 .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
                 .replace(/đ/g, 'd').replace(/Đ/g, 'd');
         }
@@ -10260,6 +10257,8 @@ window.renderSttOrderControl = function (type, i, total) {
         // Làm sạch chuỗi dịch vụ thô từ dòng HIS
         function cleanHISLine(line) {
             if (!line) return '';
+            // Bỏ qua nếu là dòng tiền giường / buồng bệnh (không phải dịch vụ kỹ thuật thủ thuật)
+            if (/^\s*(?:giường|giuong)\b/i.test(line)) return '';
             const decodeFn = (typeof window !== 'undefined' && typeof window.decodeVietnameseEncoding === 'function')
                 ? window.decodeVietnameseEncoding
                 : (s => String(s || '').normalize('NFC').trim());

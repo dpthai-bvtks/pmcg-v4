@@ -5130,3 +5130,19 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
 - *Khắc phục triệt để*:
   - Trong `js/thongke.js`: Ưu tiên sử dụng trực tiếp `window.callApi` đã được khởi tạo bởi `app.js` (`typeof window.callApi === 'function'`), loại bỏ hoàn toàn việc gọi `window.google.script.run` trong fallback.
   - Nâng phiên bản hệ thống lên **v4.1.3-rev17**, cập nhật cache buster trong `index.html` và cache name `pmcg-v4-cache-4.1.3-rev17` trong `sw.js`.
+
+### Sửa Triệt Để Lỗi HIS Mapping Nhầm 'Giường YHCT' Thành 'Hào châm' (22/09/2026 - v4.1.3-rev18)
+
+- *Sự cố người dùng báo*:
+  - Khi thêm file HIS (22.xls), một số bệnh nhân vẫn bị nhảy thêm thủ thuật 'Hào châm' dù không hề có chỉ định hào châm trong dịch vụ kỹ thuật.
+
+- *Nguyên nhân cốt lõi (Root Cause)*:
+  - Trong `js/app.js`, hàm `normalizeStrNoTrim(str)` gọi `decodeFn(str)` (`decodeVietnameseEncoding`) vốn có hàm `.trim()` ở cuối.
+  - Khi chuẩn hóa từ khóa viết tắt `' hc '` của Hào châm, chuỗi `' hc '` bị trim thành `'hc'` (mất khoảng trắng bảo vệ trước và sau).
+  - Dòng dịch vụ HIS: `Giường YHCT ban ngày Nội khoa loại 3` chứa từ viết tắt khoa `yhct`. Chuỗi này chứa 2 ký tự `hc` ở giữa (y-**hc**-t).
+  - Do `normalizeStrNoTrim(' hc ')` thành `'hc'`, biểu thức `normalized.includes('hc')` trả về `true`! Kết quả là tất cả các bệnh nhân có dịch vụ tiền giường YHCT đều bị ánh xạ nhầm thành thủ thuật **Hào châm**.
+
+- *Khắc phục triệt để đối chiếu bản v3-Cloudflare*:
+  1. **Khôi phục chuẩn `normalizeStrNoTrim(str)`**: Giống hệt bản v3, không gọi `decodeFn` mà chỉ bỏ dấu và chuyển chữ thường, bảo toàn nguyên vẹn khoảng trắng đầu/cuối của các từ khóa viết tắt như `' hc '`, `' dc '`, `' tc '`...
+  2. **Bổ sung lọc dòng tiền giường trong `cleanHISLine`**: Tự động bỏ qua các dòng tiền giường / buồng bệnh HIS (bắt đầu bằng `giường` / `giuong`) vì tiền giường không phải là dịch vụ thủ thuật cần xếp lịch.
+  3. **Nâng phiên bản v4.1.3-rev18**: Nâng cache Service Worker và cache buster để client làm mới ngay lập tức.
