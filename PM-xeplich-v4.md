@@ -5121,3 +5121,12 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   2. **Chuẩn hóa Regex tiếng Việt với mã Unicode**: Thay toàn bộ các dải ký tự chữ Việt literal trong `js/app.js` và `js/scheduler-engine.js` (như `[A-ZÀ-Ỹ]`) bằng dải Unicode thoát hiểm chuẩn `[A-Z\u00C0-\u024F\u1EA0-\u1EF9]`. Điều này đảm bảo an toàn 100%, không bao giờ phát sinh lỗi Range out of order dù trình duyệt nhận file qua bất kỳ encoding nào.
   3. **Chuẩn hóa vị trí `<meta charset="UTF-8">`**: Đưa thẻ khai báo charset lên dòng đầu tiên ngay sau `<head>` trong `index.html` theo chuẩn W3C.
   4. **Phòng hộ đệ quy `thongke.js`**: Bỏ cơ chế gán đệ quy của `callApi`, thêm log cảnh báo và Promise reject nếu gọi API trước khi hệ thống hoàn tất khởi tạo.
+
+### Khắc Phục Lỗi Maximum Call Stack Size Exceeded Ở thongke.js (22/09/2026 - v4.1.3-rev17)
+
+- *Sự cố phát sinh*:
+  - `thongke.js:10 RangeError: Maximum call stack size exceeded` do trong hàm khai báo `callApi` của `thongke.js`, biến toàn cục đã ghi đè `window.callApi`, sau đó kích hoạt vòng lặp ping-pong giữa hàm fallback và Proxy `window.google.script.run` của `app.js`.
+
+- *Khắc phục triệt để*:
+  - Trong `js/thongke.js`: Ưu tiên sử dụng trực tiếp `window.callApi` đã được khởi tạo bởi `app.js` (`typeof window.callApi === 'function'`), loại bỏ hoàn toàn việc gọi `window.google.script.run` trong fallback.
+  - Nâng phiên bản hệ thống lên **v4.1.3-rev17**, cập nhật cache buster trong `index.html` và cache name `pmcg-v4-cache-4.1.3-rev17` trong `sw.js`.

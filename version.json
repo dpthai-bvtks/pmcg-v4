@@ -1,6 +1,6 @@
 {
-    "version": "4.1.3-rev16",
+    "version": "4.1.3-rev17",
     "releaseDate": "22/09/2026",
-    "releaseTime": "10:36 22/09/2026",
-    "notes": "fix: Cập nhật mã ký tự Unicode cho regex tiếng Việt, chuẩn hóa charset UTF-8 đầu trang index.html, xóa đệ quy thongke.js và làm mới cache Service Worker."
+    "releaseTime": "10:40 22/09/2026",
+    "notes": "fix: Sửa triệt để vòng lặp đệ quy thongke.js với window.callApi, nâng cache Service Worker lên rev17."
 }

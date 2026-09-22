@@ -2,14 +2,9 @@
    T.I.M.E.S SYSTEM - THỐNG KÊ HIS & EXCEL EXPORT
    ========================================== */
 
-var callApi = function(name, args, cb, err) {
+var callApi = (typeof window !== 'undefined' && typeof window.callApi === 'function') ? window.callApi : function(name, args, cb, err) {
     if (typeof window !== 'undefined' && typeof window.callApi === 'function' && window.callApi !== callApi) {
         return window.callApi(name, args, cb, err);
-    }
-    if (typeof window !== 'undefined' && window.google?.script?.run) {
-        return new Promise((res, rej) => {
-            window.google.script.run.withSuccessHandler(r => { if (cb) cb(r); res(r); }).withFailureHandler(e => { if (err) err(e); rej(e); })[name](...(args || []));
-        });
     }
     console.warn(`[callApi] API '${name}' gọi khi hệ thống chưa khởi tạo.`);
     if (typeof err === 'function') err(new Error("API not available"));
