@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SERVICE WORKER CHO PHẦN MỀM XẾP LỊCH YHCT - PHCN (T.I.M.E.S System v4.0.2 Multi-Tenant SaaS)
  * Quản lý Cache đệm tĩnh, cho phép mở App ngoại tuyến (Offline-first) và tải tức thì.
  */

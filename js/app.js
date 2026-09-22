@@ -1,4 +1,4 @@
-﻿
+
 window.toggleUserDropdown = function(e) {
     if (e) {
         e.preventDefault();
@@ -17,7 +17,7 @@ window.openChangePasswordModal = function(e) {
         if (typeof e.preventDefault === 'function') e.preventDefault();
         if (typeof e.stopPropagation === 'function') e.stopPropagation();
     }
-    // ÄÃ³ng dropdown
+    // Đóng dropdown
     const userMenu = document.getElementById('user-dropdown-menu');
     if (userMenu) userMenu.style.display = 'none';
     const arrow = document.getElementById('user-dropdown-arrow');
@@ -30,10 +30,10 @@ window.openChangePasswordModal = function(e) {
         currentUsername = sess.username || currentUsername;
     } catch(e2) {}
 
-    // Láº¥y modal vÃ  hiá»ƒn thá»‹ trá»±c tiáº¿p báº±ng removeProperty Ä‘á»ƒ xÃ³a display:none cÅ©
+    // Lấy modal và hiển thị trực tiếp bằng removeProperty để xóa display:none cũ
     const modal = document.getElementById('modal-change-password');
     if (modal) {
-        // GÃ¡n username
+        // Gán username
         const uInput = document.getElementById('cpw-username');
         if (uInput) uInput.value = currentUsername;
         const oldInput = document.getElementById('cpw-old-password');
@@ -43,11 +43,11 @@ window.openChangePasswordModal = function(e) {
         if (newInput) newInput.value = '';
         if (confInput) confInput.value = '';
 
-        // Di chuyá»ƒn modal lÃªn body náº¿u chÆ°a lÃ  con trá»±c tiáº¿p cá»§a body
+        // Di chuyển modal lên body nếu chưa là con trực tiếp của body
         if (modal.parentElement !== document.body) {
             document.body.appendChild(modal);
         }
-        // XÃ³a style cÅ© vÃ  gÃ¡n display má»›i
+        // Xóa style cũ và gán display mới
         modal.style.cssText = 'display:flex !important; position:fixed !important; top:0 !important; left:0 !important; width:100vw !important; height:100vh !important; background:rgba(15,23,42,0.65) !important; backdrop-filter:blur(4px) !important; z-index:2147483647 !important; align-items:center !important; justify-content:center !important;';
 
         setTimeout(() => { if (oldInput) oldInput.focus(); }, 100);
@@ -68,9 +68,9 @@ window.closeProtocolModal = function() {
 
 window.saveProtocolFromModal = function() {
     if (typeof showCustomAlert === 'function') {
-        showCustomAlert('PhÃ¡c Äá»“ Má»›i', 'TÃ­nh nÄƒng thÃªm phÃ¡c Ä‘á»“ nhanh qua cá»­a sá»• ná»•i Ä‘ang Ä‘á»“ng bá»™ vá»›i danh má»¥c phÃ¡c Ä‘á»“ tiÃªu chuáº©n.');
+        showCustomAlert('Phác Đồ Mới', 'Tính năng thêm phác đồ nhanh qua cửa sổ nổi đang đồng bộ với danh mục phác đồ tiêu chuẩn.');
     } else if (typeof showThongBao === 'function') {
-        showThongBao('ThÃ´ng bÃ¡o', 'Äang cáº­p nháº­t phÃ¡c Ä‘á»“.', 'info');
+        showThongBao('Thông báo', 'Đang cập nhật phác đồ.', 'info');
     }
     window.closeProtocolModal();
 };
@@ -94,19 +94,19 @@ window.updateAppHeader = function(unitCode, role) {
     const isSuper = (String(sessRole).toUpperCase() === 'SUPER_ADMIN' || String(sessRole).toUpperCase() === 'SUPERADMIN');
     if (isSuper) {
         if (appHosp) appHosp.innerText = 'T.I.M.E.S SYSTEM';
-        if (appSub) appSub.innerText = 'Há»† THá»NG Xáº¾P Lá»ŠCH THá»¦ THUáº¬T YHCT- PHCN THÃ”NG MINH';
-        if (appSlogan) appSlogan.innerText = 'NHANH Gá»ŒN, Tá»I Æ¯U, CHÃNH XÃC';
+        if (appSub) appSub.innerText = 'HỆ THỐNG XẾP LỊCH THỦ THUẬT YHCT- PHCN THÔNG MINH';
+        if (appSlogan) appSlogan.innerText = 'NHANH GỌN, TỐI ƯU, CHÍNH XÁC';
         if (mobSub) mobSub.innerText = 'YHCT - PHCN';
     } else if (uCode === 'bvtks-cs2') {
-        if (appHosp) appHosp.innerText = 'Bá»†NH VIá»†N THAN - KHOÃNG Sáº¢N CS2';
-        if (appSub) appSub.innerText = 'KHOA Y Há»ŒC Cá»” TRUYá»€N - PHá»¤C Há»’I CHá»¨C NÄ‚NG';
-        if (appSlogan) appSlogan.innerText = 'Y Há»ŒC Tá»T, PHá»¤C Há»’I NHANH';
+        if (appHosp) appHosp.innerText = 'BỆNH VIỆN THAN - KHOÁNG SẢN CS2';
+        if (appSub) appSub.innerText = 'KHOA Y HỌC CỔ TRUYỀN - PHỤC HỒI CHỨC NĂNG';
+        if (appSlogan) appSlogan.innerText = 'Y HỌC TỐT, PHỤC HỒI NHANH';
         if (mobSub) mobSub.innerText = 'Khoa YHCT - PHCN';
     } else {
         const uName = localStorage.getItem('pm_unit_name') || 'T.I.M.E.S SYSTEM';
         if (appHosp) appHosp.innerText = uName;
-        if (appSub) appSub.innerText = 'Há»‡ thá»‘ng xáº¿p lá»‹ch thá»§ thuáº­t YHCT- PHCN thÃ´ng minh';
-        if (appSlogan) appSlogan.innerText = 'Nhanh gá»n, tá»‘i Æ°u, chÃ­nh xÃ¡c';
+        if (appSub) appSub.innerText = 'Hệ thống xếp lịch thủ thuật YHCT- PHCN thông minh';
+        if (appSlogan) appSlogan.innerText = 'Nhanh gọn, tối ưu, chính xác';
         if (mobSub) mobSub.innerText = 'YHCT - PHCN';
     }
 };
@@ -116,28 +116,28 @@ window.openServerStatusModal = function (e) {
         if (typeof e.preventDefault === 'function') e.preventDefault();
         if (typeof e.stopPropagation === 'function') e.stopPropagation();
     }
-    // ÄÃ³ng dropdown náº¿u Ä‘ang má»Ÿ
+    // Đóng dropdown nếu đang mở
     const userMenu = document.getElementById('user-dropdown-menu');
     if (userMenu) userMenu.style.display = 'none';
     const arrow = document.getElementById('user-dropdown-arrow');
     if (arrow) arrow.style.transform = 'rotate(0deg)';
 
-    // TÃ¬m modal tÄ©nh trong DOM (Ä‘Ã£ cÃ³ sáºµn á»Ÿ cuá»‘i body)
+    // Tìm modal tĩnh trong DOM (đã có sẵn ở cuối body)
     const modal = document.getElementById('modal-server-status');
-    if (!modal) { console.error('[ServerStatus] KhÃ´ng tÃ¬m tháº¥y modal-server-status trong DOM!'); return; }
+    if (!modal) { console.error('[ServerStatus] Không tìm thấy modal-server-status trong DOM!'); return; }
 
-    // Äáº£m báº£o modal lÃ  con trá»±c tiáº¿p cá»§a body Ä‘á»ƒ trÃ¡nh bá»‹ clip bá»Ÿi container cha
+    // Đảm bảo modal là con trực tiếp của body để tránh bị clip bởi container cha
     if (modal.parentElement !== document.body) {
         document.body.appendChild(modal);
     }
 
-    // Cáº­p nháº­t thÃ´ng tin Ä‘Æ¡n vá»‹
-    const uName = localStorage.getItem('pm_unit_name') || 'Bá»‡nh viá»‡n Than - KhoÃ¡ng sáº£n CÆ¡ sá»Ÿ 2';
+    // Cập nhật thông tin đơn vị
+    const uName = localStorage.getItem('pm_unit_name') || 'Bệnh viện Than - Khoáng sản Cơ sở 2';
     const uCode = (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
     const unitEl = document.getElementById('modal-server-unit-name');
     if (unitEl) unitEl.innerText = `${uName} (${uCode})`;
 
-    // PhÃ¢n quyá»n: Chá»‰ Super Admin má»›i tháº¥y cÃ¡c nÃºt Sync Google Sheets, Xuáº¥t JSON, Cáº¥u hÃ¬nh GAS
+    // Phân quyền: Chỉ Super Admin mới thấy các nút Sync Google Sheets, Xuất JSON, Cấu hình GAS
     let sessRole = '';
     try {
         const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
@@ -149,7 +149,7 @@ window.openServerStatusModal = function (e) {
         superAdminActions.style.display = isSuperAdmin ? 'flex' : 'none';
     }
 
-    // Hiá»ƒn thá»‹ modal â€” dÃ¹ng cssText !important (pattern Ä‘Ã¡ng tin cáº­y nháº¥t)
+    // Hiển thị modal — dùng cssText !important (pattern đáng tin cậy nhất)
     modal.style.cssText = 'display:flex !important; position:fixed !important; top:0 !important; left:0 !important; width:100vw !important; height:100vh !important; background:rgba(15,23,42,0.65) !important; backdrop-filter:blur(5px) !important; z-index:2147483647 !important; align-items:center !important; justify-content:center !important;';
 };
 
@@ -162,7 +162,7 @@ window.toggleEmergencyBackupMenu = function (e) {
     window.openServerStatusModal(e);
 };
 
-// Äáº£m báº£o gáº¯n sá»± kiá»‡n click cho badge
+// Đảm bảo gắn sự kiện click cho badge
 if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function () {
@@ -179,24 +179,24 @@ window.pingServerConnection = function () {
     const btn = document.getElementById('btn-ping-server');
     const resultArea = document.getElementById('ping-result-area');
 
-    // Hiá»ƒn thá»‹ tráº¡ng thÃ¡i Ä‘ang ping
-    if (btn) { btn.disabled = true; btn.innerHTML = '<span>â³</span> Äang kiá»ƒm tra...'; }
+    // Hiển thị trạng thái đang ping
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span>⏳</span> Đang kiểm tra...'; }
     if (resultArea) { resultArea.style.display = 'none'; resultArea.innerHTML = ''; }
 
     const t0 = performance.now();
     callApi('ping', [], res => {
         const pingTime = Math.round(performance.now() - t0);
         const unitCode = res && res.unit_code ? res.unit_code : (localStorage.getItem('pm_unit_code') || 'bvtks-cs2');
-        if (btn) { btn.disabled = false; btn.innerHTML = '<span>ðŸ”„</span> Kiá»ƒm Tra Tá»‘c Äá»™ Pháº£n Há»“i (Ping API)'; }
+        if (btn) { btn.disabled = false; btn.innerHTML = '<span>🔄</span> Kiểm Tra Tốc Độ Phản Hồi (Ping API)'; }
         if (resultArea) {
             resultArea.style.cssText = 'display:block; padding:10px 14px; border-radius:8px; font-size:12px; font-weight:600; line-height:1.8; background:#f0fdf4; border:1px solid #bbf7d0; color:#166534;';
-            resultArea.innerHTML = `âš¡ <strong>Pháº£n há»“i: ${pingTime} ms</strong><br>ðŸŸ¢ Tráº¡ng thÃ¡i: Hoáº¡t Ä‘á»™ng hoÃ n háº£o<br>ðŸ—„ï¸ CSDL: Mini PC+Turso<br>ðŸ¥ MÃ£ Ä‘Æ¡n vá»‹: ${unitCode}`;
+            resultArea.innerHTML = `⚡ <strong>Phản hồi: ${pingTime} ms</strong><br>🟢 Trạng thái: Hoạt động hoàn hảo<br>🗄️ CSDL: Mini PC+Turso<br>🏥 Mã đơn vị: ${unitCode}`;
         }
     }, err => {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<span>ðŸ”„</span> Kiá»ƒm Tra Tá»‘c Äá»™ Pháº£n Há»“i (Ping API)'; }
+        if (btn) { btn.disabled = false; btn.innerHTML = '<span>🔄</span> Kiểm Tra Tốc Độ Phản Hồi (Ping API)'; }
         if (resultArea) {
             resultArea.style.cssText = 'display:block; padding:10px 14px; border-radius:8px; font-size:12px; font-weight:600; line-height:1.8; background:#fef2f2; border:1px solid #fecaca; color:#991b1b;';
-            resultArea.innerHTML = `âš ï¸ <strong>Lá»—i káº¿t ná»‘i</strong><br>${err && err.message ? err.message : 'KhÃ´ng thá»ƒ káº¿t ná»‘i tá»›i mÃ¡y chá»§'}`;
+            resultArea.innerHTML = `⚠️ <strong>Lỗi kết nối</strong><br>${err && err.message ? err.message : 'Không thể kết nối tới máy chủ'}`;
         }
     });
 };
@@ -207,7 +207,7 @@ window.sanitizeGoogleScriptUrl = function (rawUrl) {
     let url = rawUrl.trim();
     if (!url) return '';
 
-    // Kháº¯c phá»¥c trÆ°á»ng há»£p dÃ­nh liá»n 2 URL /exechttps://...
+    // Khắc phục trường hợp dính liền 2 URL /exechttps://...
     const duplicateExecIdx = url.indexOf('/exechttps://');
     if (duplicateExecIdx !== -1) {
         url = url.substring(0, duplicateExecIdx + 5);
@@ -230,13 +230,13 @@ let _gasCallbackOnSave = null;
 window.openConfigGoogleScriptModal = function (callback) {
     _gasCallbackOnSave = typeof callback === 'function' ? callback : null;
 
-    // ÄÃ³ng dropdown vÃ  modal tráº¡ng thÃ¡i náº¿u Ä‘ang má»Ÿ
+    // Đóng dropdown và modal trạng thái nếu đang mở
     const userMenu = document.getElementById('user-dropdown-menu');
     if (userMenu) userMenu.style.display = 'none';
 
     const modal = document.getElementById('modal-config-gas');
     if (!modal) {
-        console.error('[ConfigGAS] KhÃ´ng tÃ¬m tháº¥y modal-config-gas!');
+        console.error('[ConfigGAS] Không tìm thấy modal-config-gas!');
         return;
     }
 
@@ -274,7 +274,7 @@ window.saveConfigGoogleScript = function () {
     if (!url) {
         if (msg) {
             msg.style.cssText = 'display:block; background:#fef2f2; border:1px solid #fecaca; color:#991b1b;';
-            msg.innerHTML = 'âš ï¸ Vui lÃ²ng nháº­p Ä‘Æ°á»ng dáº«n URL WebApp há»£p lá»‡!';
+            msg.innerHTML = '⚠️ Vui lòng nhập đường dẫn URL WebApp hợp lệ!';
         }
         return;
     }
@@ -284,7 +284,7 @@ window.saveConfigGoogleScript = function () {
     if (!url.startsWith('https://script.google.com/') || !url.endsWith('/exec')) {
         if (msg) {
             msg.style.cssText = 'display:block; background:#fffbeb; border:1px solid #fde68a; color:#92400e;';
-            msg.innerHTML = 'âš ï¸ URL WebApp chuáº©n thÆ°á»ng cÃ³ dáº¡ng: <code>https://script.google.com/macros/s/.../exec</code>. Há»‡ thá»‘ng váº«n sáº½ lÆ°u URL nÃ y.';
+            msg.innerHTML = '⚠️ URL WebApp chuẩn thường có dạng: <code>https://script.google.com/macros/s/.../exec</code>. Hệ thống vẫn sẽ lưu URL này.';
         }
     }
 
@@ -295,9 +295,9 @@ window.saveConfigGoogleScript = function () {
 
     window.closeConfigGoogleScriptModal();
     if (typeof window.showToast === 'function') {
-        window.showToast('âœ… ÄÃ£ lÆ°u URL Google Apps Script thÃ nh cÃ´ng!', 'success');
+        window.showToast('✅ Đã lưu URL Google Apps Script thành công!', 'success');
     } else {
-        alert('âœ… ÄÃ£ lÆ°u URL Google Apps Script thÃ nh cÃ´ng!');
+        alert('✅ Đã lưu URL Google Apps Script thành công!');
     }
 
     if (typeof _gasCallbackOnSave === 'function') {
@@ -316,13 +316,13 @@ window.testGasConnection = async function () {
     if (!url) {
         if (msg) {
             msg.style.cssText = 'display:block; background:#fef2f2; border:1px solid #fecaca; color:#991b1b;';
-            msg.innerHTML = 'âš ï¸ Vui lÃ²ng nháº­p URL trÆ°á»›c khi kiá»ƒm tra!';
+            msg.innerHTML = '⚠️ Vui lòng nhập URL trước khi kiểm tra!';
         }
         return;
     }
 
-    if (btn) { btn.disabled = true; btn.innerHTML = '<span>â³</span> Äang test...'; }
-    if (msg) { msg.style.cssText = 'display:block; background:#f8fafc; border:1px solid #e2e8f0; color:#475569;'; msg.innerHTML = 'ðŸ”„ Äang gá»­i tÃ­n hiá»‡u kiá»ƒm tra tá»›i Google Apps Script...'; }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span>⏳</span> Đang test...'; }
+    if (msg) { msg.style.cssText = 'display:block; background:#f8fafc; border:1px solid #e2e8f0; color:#475569;'; msg.innerHTML = '🔄 Đang gửi tín hiệu kiểm tra tới Google Apps Script...'; }
 
     try {
         const t0 = performance.now();
@@ -335,20 +335,20 @@ window.testGasConnection = async function () {
         const text = await resp.text();
 
         if (text.includes('<!DOCTYPE') || text.includes('<html') || text.includes('ServiceLogin')) {
-            throw new Error("ChÆ°a cáº¥p quyá»n 'Anyone' táº¡i má»¥c 'Who has access' khi deploy WebApp.");
+            throw new Error("Chưa cấp quyền 'Anyone' tại mục 'Who has access' khi deploy WebApp.");
         }
 
         if (msg) {
             msg.style.cssText = 'display:block; background:#f0fdf4; border:1px solid #bbf7d0; color:#166534;';
-            msg.innerHTML = `ðŸŸ¢ <strong>Káº¿t ná»‘i thÃ nh cÃ´ng!</strong> (Pháº£n há»“i: ${elapsed} ms)<br>WebApp Google Apps Script Ä‘Ã£ sáºµn sÃ ng nháº­n dá»¯ liá»‡u.`;
+            msg.innerHTML = `🟢 <strong>Kết nối thành công!</strong> (Phản hồi: ${elapsed} ms)<br>WebApp Google Apps Script đã sẵn sàng nhận dữ liệu.`;
         }
     } catch (err) {
         if (msg) {
             msg.style.cssText = 'display:block; background:#fef2f2; border:1px solid #fecaca; color:#991b1b;';
-            msg.innerHTML = `âŒ <strong>Lá»—i káº¿t ná»‘i:</strong> ${err.message || 'KhÃ´ng pháº£n há»“i'}<br><small>Kiá»ƒm tra láº¡i quyá»n truy cáº­p hoáº·c URL káº¿t thÃºc báº±ng /exec.</small>`;
+            msg.innerHTML = `❌ <strong>Lỗi kết nối:</strong> ${err.message || 'Không phản hồi'}<br><small>Kiểm tra lại quyền truy cập hoặc URL kết thúc bằng /exec.</small>`;
         }
     } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<span>ðŸ§ª</span> Kiá»ƒm Tra Káº¿t Ná»‘i'; }
+        if (btn) { btn.disabled = false; btn.innerHTML = '<span>🧪</span> Kiểm Tra Kết Nối'; }
     }
 };
 
@@ -363,19 +363,19 @@ window.dataCache = window.dataCache || { pat: [], staff: [], machine: [], room: 
 var dataCache = window.dataCache;
 
 var DEFAULT_PROTOCOLS = [
-    { id: '1', name: 'PhÃ¡c Ä‘á»“ 1', procs: ['Äiá»‡n chÃ¢m', 'Thá»§y chÃ¢m', 'Äiá»‡n xung'] },
-    { id: '2', name: 'PhÃ¡c Ä‘á»“ 2', procs: ['Äiá»‡n chÃ¢m', 'Thá»§y chÃ¢m', 'Äiá»‡n xung', 'Parafin'] },
-    { id: '3', name: 'PhÃ¡c Ä‘á»“ 3', procs: ['Äiá»‡n chÃ¢m', 'Thá»§y chÃ¢m', 'Äiá»‡n xung', 'SÃ³ng ngáº¯n'] },
-    { id: '4', name: 'PhÃ¡c Ä‘á»“ 4', procs: ['Äiá»‡n chÃ¢m', 'Thá»§y chÃ¢m', 'Chiáº¿u Ä‘Ã¨n há»“ng ngoáº¡i', 'Xoa bÃ³p vÃ¹ng'] },
-    { id: '5', name: 'PhÃ¡c Ä‘á»“ 5', procs: ['Thá»§y chÃ¢m', 'Äiá»‡n xung', 'SÃ³ng ngáº¯n'] },
-    { id: '6', name: 'PhÃ¡c Ä‘á»“ 6', procs: ['Äiá»‡n chÃ¢m', 'Thá»§y chÃ¢m', 'Chiáº¿u Ä‘Ã¨n há»“ng ngoáº¡i', 'Xoa bÃ³p báº¥m huyá»‡t'] },
-    { id: '7', name: 'PhÃ¡c Ä‘á»“ 7', procs: ['Äiá»‡n chÃ¢m liá»‡t', 'Thá»§y chÃ¢m', 'Äiá»‡n xung', 'Táº­p váº­n Ä‘á»™ng trá»£ giÃºp'] },
-    { id: '8', name: 'PhÃ¡c Ä‘á»“ 8', procs: ['Äiá»‡n chÃ¢m liá»‡t', 'Thá»§y chÃ¢m', 'Chiáº¿u Ä‘Ã¨n há»“ng ngoáº¡i', 'Táº­p váº­n Ä‘á»™ng trá»£ giÃºp'] },
-    { id: '9', name: 'PhÃ¡c Ä‘á»“ 9', procs: ['Thá»§y chÃ¢m', 'Äiá»‡n xung', 'SiÃªu Ã¢m Ä‘iá»u trá»‹'] },
-    { id: '10', name: 'PhÃ¡c Ä‘á»“ 10', procs: ['Chiáº¿u Ä‘Ã¨n há»“ng ngoáº¡i', 'Táº­p váº­n Ä‘á»™ng trá»£ giÃºp'] },
-    { id: '11', name: 'PhÃ¡c Ä‘á»“ 11', procs: ['Chiáº¿u Ä‘Ã¨n há»“ng ngoáº¡i', 'Táº­p váº­n Ä‘á»™ng cÃ³ khÃ¡ng trá»Ÿ'] },
-    { id: '12', name: 'PhÃ¡c Ä‘á»“ 12', procs: ['Chiáº¿u Ä‘Ã¨n há»“ng ngoáº¡i', 'Táº­p thá»Ÿ PHCN'] },
-    { id: '13', name: 'PhÃ¡c Ä‘á»“ 13', procs: ['Äiá»‡n xung', 'Táº­p thá»Ÿ PHCN'] }
+    { id: '1', name: 'Phác đồ 1', procs: ['Điện châm', 'Thủy châm', 'Điện xung'] },
+    { id: '2', name: 'Phác đồ 2', procs: ['Điện châm', 'Thủy châm', 'Điện xung', 'Parafin'] },
+    { id: '3', name: 'Phác đồ 3', procs: ['Điện châm', 'Thủy châm', 'Điện xung', 'Sóng ngắn'] },
+    { id: '4', name: 'Phác đồ 4', procs: ['Điện châm', 'Thủy châm', 'Chiếu đèn hồng ngoại', 'Xoa bóp vùng'] },
+    { id: '5', name: 'Phác đồ 5', procs: ['Thủy châm', 'Điện xung', 'Sóng ngắn'] },
+    { id: '6', name: 'Phác đồ 6', procs: ['Điện châm', 'Thủy châm', 'Chiếu đèn hồng ngoại', 'Xoa bóp bấm huyệt'] },
+    { id: '7', name: 'Phác đồ 7', procs: ['Điện châm liệt', 'Thủy châm', 'Điện xung', 'Tập vận động trợ giúp'] },
+    { id: '8', name: 'Phác đồ 8', procs: ['Điện châm liệt', 'Thủy châm', 'Chiếu đèn hồng ngoại', 'Tập vận động trợ giúp'] },
+    { id: '9', name: 'Phác đồ 9', procs: ['Thủy châm', 'Điện xung', 'Siêu âm điều trị'] },
+    { id: '10', name: 'Phác đồ 10', procs: ['Chiếu đèn hồng ngoại', 'Tập vận động trợ giúp'] },
+    { id: '11', name: 'Phác đồ 11', procs: ['Chiếu đèn hồng ngoại', 'Tập vận động có kháng trở'] },
+    { id: '12', name: 'Phác đồ 12', procs: ['Chiếu đèn hồng ngoại', 'Tập thở PHCN'] },
+    { id: '13', name: 'Phác đồ 13', procs: ['Điện xung', 'Tập thở PHCN'] }
 ];
 
 window.google = window.google || {};
@@ -424,7 +424,7 @@ var google = window.google;
 
 
 // =========================================================
-// ðŸ›¡ï¸ Báº¢O Máº¬T Dá»® LIá»†U (DOMPURIFY) & ðŸ” TÃŒM KIáº¾M Má»œ (FUSE.JS)
+// 🛡️ BẢO MẬT DỮ LIỆU (DOMPURIFY) & 🔍 TÌM KIẾM MỜ (FUSE.JS)
 // =========================================================
 function sanitizeInput(dirty) {
     if (!dirty) return '';
@@ -445,28 +445,28 @@ function removeVietnameseTones(str) {
     return String(str)
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
-        .replace(/Ä‘/g, 'd')
-        .replace(/Ä/g, 'd')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'd')
         .trim()
         .toLowerCase();
 }
 window.removeVietnameseTones = removeVietnameseTones;
 
 /**
- * ðŸ›¡ï¸ HÃ€M PHá»¤C Há»’I Há»Œ TÃŠN Bá»†NH NHÃ‚N TOÃ€N DIá»†N (SELF-HEALING PATIENT NAMES)
- * Tá»± Ä‘á»™ng phÃ¡t hiá»‡n vÃ  sá»­a chá»¯a cÃ¡c chuá»—i bá»‹ lá»—i kÃ½ tá»± (\uFFFD, \u0000) hoáº·c nuá»‘t nguyÃªn Ã¢m
- * (Trn -> Tráº§n, CÆ°ng -> CÆ°á»ng, Lnh -> LÃ£nh, Nguyn -> Nguyá»…n, Phm -> Pháº¡m...)
+ * 🛡️ HÀM PHỤC HỒI HỌ TÊN BỆNH NHÂN TOÀN DIỆN (SELF-HEALING PATIENT NAMES)
+ * Tự động phát hiện và sửa chữa các chuỗi bị lỗi ký tự (\uFFFD, \u0000) hoặc nuốt nguyên âm
+ * (Trn -> Trần, Cưng -> Cường, Lnh -> Lãnh, Nguyn -> Nguyễn, Phm -> Phạm...)
  */
 function healPatientName(rawName, candidates = [], forceUpperCase = false) {
     if (!rawName) return '';
     let name = String(rawName).normalize('NFC').trim();
     if (!name) return '';
 
-    const isAllUpper = (name === name.toUpperCase() && /[A-ZÃ€-á»¸]/.test(name));
+    const isAllUpper = (name === name.toUpperCase() && /[A-ZÀ-Ỹ]/.test(name));
     const shouldUpper = forceUpperCase || isAllUpper;
 
-    const hasCorruptChar = /[\ufffd\u0000]/.test(name) || /\b[A-Za-zÃ€-á»¹]+\?[A-Za-zÃ€-á»¹]+\b/.test(name);
-    const hasSwallowedVowel = /\b(Trn|CÆ°ng|Lnh|Nguyn|Phm)\b/i.test(name) ||
+    const hasCorruptChar = /[\ufffd\u0000]/.test(name) || /\b[A-Za-zÀ-ỹ]+\?[A-Za-zÀ-ỹ]+\b/.test(name);
+    const hasSwallowedVowel = /\b(Trn|Cưng|Lnh|Nguyn|Phm)\b/i.test(name) ||
         /\bTr[\ufffd\s\?]*n\b/i.test(name) ||
         /\bL[\ufffd\s\?]*nh\b/i.test(name) ||
         /\bC[\ufffd\s\?]*ng\b/i.test(name) ||
@@ -481,12 +481,12 @@ function healPatientName(rawName, candidates = [], forceUpperCase = false) {
     for (const cand of candList) {
         if (!cand) continue;
         const cleanCand = String(cand).normalize('NFC').trim();
-        if (/[\ufffd\u0000]/.test(cleanCand) || /\b(Trn|CÆ°ng|Lnh)\b/i.test(cleanCand)) continue;
+        if (/[\ufffd\u0000]/.test(cleanCand) || /\b(Trn|Cưng|Lnh)\b/i.test(cleanCand)) continue;
 
         const wildcardPattern = '^' + name
             .replace(/[\ufffd\u0000\?]+/g, '.*')
             .replace(/\bTrn\b/gi, 'Tr.*n')
-            .replace(/\bCÆ°ng\b/gi, 'C.*ng')
+            .replace(/\bCưng\b/gi, 'C.*ng')
             .replace(/\bLnh\b/gi, 'L.*nh')
             .replace(/\s+/g, '\\s+') + '$';
         try {
@@ -511,18 +511,18 @@ function healPatientName(rawName, candidates = [], forceUpperCase = false) {
     }
 
     let healed = name;
-    healed = healed.replace(/\bTr[\ufffd\s\?]*n\b/gi, 'Tráº§n');
-    healed = healed.replace(/\bTrn\b/gi, 'Tráº§n');
-    healed = healed.replace(/\bL[\ufffd\s\?]*nh\b/gi, 'LÃ£nh');
-    healed = healed.replace(/\bLnh\b/gi, 'LÃ£nh');
-    healed = healed.replace(/\bC[\ufffd\s\?]*ng\b/gi, 'CÆ°á»ng');
-    healed = healed.replace(/\bCÆ°ng\b/gi, 'CÆ°á»ng');
-    healed = healed.replace(/\bNguy[\ufffd\s\?]*n\b/gi, 'Nguyá»…n');
-    healed = healed.replace(/\bNguyn\b/gi, 'Nguyá»…n');
-    healed = healed.replace(/\bPh[\ufffd\s\?]*m\b/gi, 'Pháº¡m');
-    healed = healed.replace(/\bPhm\b/gi, 'Pháº¡m');
-    healed = healed.replace(/\bHo[\ufffd\s\?]*ng\b/gi, 'HoÃ ng');
-    healed = healed.replace(/(VÄƒn|Thá»‹)\s+H[\ufffd\s\?]*ng\b/gi, '$1 Há»“ng');
+    healed = healed.replace(/\bTr[\ufffd\s\?]*n\b/gi, 'Trần');
+    healed = healed.replace(/\bTrn\b/gi, 'Trần');
+    healed = healed.replace(/\bL[\ufffd\s\?]*nh\b/gi, 'Lãnh');
+    healed = healed.replace(/\bLnh\b/gi, 'Lãnh');
+    healed = healed.replace(/\bC[\ufffd\s\?]*ng\b/gi, 'Cường');
+    healed = healed.replace(/\bCưng\b/gi, 'Cường');
+    healed = healed.replace(/\bNguy[\ufffd\s\?]*n\b/gi, 'Nguyễn');
+    healed = healed.replace(/\bNguyn\b/gi, 'Nguyễn');
+    healed = healed.replace(/\bPh[\ufffd\s\?]*m\b/gi, 'Phạm');
+    healed = healed.replace(/\bPhm\b/gi, 'Phạm');
+    healed = healed.replace(/\bHo[\ufffd\s\?]*ng\b/gi, 'Hoàng');
+    healed = healed.replace(/(Văn|Thị)\s+H[\ufffd\s\?]*ng\b/gi, '$1 Hồng');
     healed = healed.replace(/[\ufffd\u0000]/g, '').replace(/\s+/g, ' ').trim();
 
     if (shouldUpper) {
@@ -558,7 +558,7 @@ function fuzzySearchList(list, query, keys = ['tenBN', 'phong', 'nvChinh', 'nvPh
 window.fuzzySearchList = fuzzySearchList;
 
 // =========================================================
-// ðŸ›¡ï¸ DATA VALIDATION SCHEMAS (ZOD ENGINE)
+// 🛡️ DATA VALIDATION SCHEMAS (ZOD ENGINE)
 // =========================================================
 (function initMedicalSchemas() {
     try {
@@ -566,17 +566,17 @@ window.fuzzySearchList = fuzzySearchList;
         if (_z) {
             window.MedicalSchemas = {
                 patient: _z.object({
-                    ten: _z.string().min(1, 'TÃªn bá»‡nh nhÃ¢n khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng'),
+                    ten: _z.string().min(1, 'Tên bệnh nhân không được để trống'),
                     namSinh: _z.union([_z.string(), _z.number()]).optional(),
                     phong: _z.string().optional(),
                     giuong: _z.string().optional(),
                     thuThuat: _z.union([_z.string(), _z.array(_z.any())]).optional()
                 }),
                 scheduleRow: _z.object({
-                    tenBN: _z.string().min(1, 'TÃªn bá»‡nh nhÃ¢n khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng'),
-                    thuThuat: _z.string().min(1, 'Thá»§ thuáº­t khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng'),
-                    gioDienRa: _z.string().regex(/^\d{1,2}:\d{2}$/, 'Giá» báº¯t Ä‘áº§u khÃ´ng há»£p lá»‡ (HH:MM)'),
-                    gioKetThuc: _z.string().regex(/^\d{1,2}:\d{2}$/, 'Giá» káº¿t thÃºc khÃ´ng há»£p lá»‡ (HH:MM)'),
+                    tenBN: _z.string().min(1, 'Tên bệnh nhân không được để trống'),
+                    thuThuat: _z.string().min(1, 'Thủ thuật không được để trống'),
+                    gioDienRa: _z.string().regex(/^\d{1,2}:\d{2}$/, 'Giờ bắt đầu không hợp lệ (HH:MM)'),
+                    gioKetThuc: _z.string().regex(/^\d{1,2}:\d{2}$/, 'Giờ kết thúc không hợp lệ (HH:MM)'),
                     phong: _z.string().optional(),
                     nvChinh: _z.string().optional(),
                     may: _z.string().optional()
@@ -590,7 +590,7 @@ window.fuzzySearchList = fuzzySearchList;
             };
         }
     } catch (e) {
-        console.warn('Lá»—i khá»Ÿi táº¡o Zod schemas:', e);
+        console.warn('Lỗi khởi tạo Zod schemas:', e);
     }
 })();
 
@@ -601,7 +601,7 @@ function withLock(fn) {
     let locked = false;
     return function (...args) {
         if (locked) {
-            console.warn('[withLock]: Thao tÃ¡c Ä‘ang Ä‘Æ°á»£c xá»­ lÃ½, vui lÃ²ng chá»...');
+            console.warn('[withLock]: Thao tác đang được xử lý, vui lòng chờ...');
             return;
         }
         locked = true;
@@ -654,7 +654,7 @@ window.moveRowDown = function (type, index) {
 
 window.renderSttOrderControl = function (type, i, total) {
     return `<div class="stt-order-cell" style="display:inline-flex; align-items:center; justify-content:center; gap:5px;">
-        <span class="drag-handle-btn" title="Báº¥m giá»¯ kÃ©o tháº£ â˜° Ä‘á»ƒ sáº¯p xáº¿p thá»© tá»±" style="cursor:grab; user-select:none; font-size:14px; color:#475569; padding:2px 4px; border-radius:4px; transition:background 0.2s;">â˜°</span>
+        <span class="drag-handle-btn" title="Bấm giữ kéo thả ☰ để sắp xếp thứ tự" style="cursor:grab; user-select:none; font-size:14px; color:#475569; padding:2px 4px; border-radius:4px; transition:background 0.2s;">☰</span>
         <span style="font-weight:700; min-width:18px; text-align:center;">${i + 1}</span>
     </div>`;
 };
@@ -673,9 +673,9 @@ function saveReorderedData(type, list) {
     reorderDebounceTimers[type] = setTimeout(() => {
         delete reorderDebounceTimers[type];
         callApi('saveReorderedData', [type, list], res => {
-            console.log(`[Reorder]: ÄÃ£ Ä‘á»“ng bá»™ thá»© tá»± ${type} lÃªn CSDL!`);
+            console.log(`[Reorder]: Đã đồng bộ thứ tự ${type} lên CSDL!`);
         }, err => {
-            console.warn('[Reorder] Lá»—i Ä‘á»“ng bá»™:', err);
+            console.warn('[Reorder] Lỗi đồng bộ:', err);
         });
     }, 300);
 }
@@ -736,7 +736,7 @@ window.showGlobalLoading = function (text) {
 
             }
 
-            document.getElementById('global-loading-text').innerText = text || 'Äang xá»­ lÃ½...';
+            document.getElementById('global-loading-text').innerText = text || 'Đang xử lý...';
 
             overlay.style.display = 'flex';
 
@@ -760,10 +760,10 @@ window.showGlobalLoading = function (text) {
             }
             const toast = document.createElement('div');
             toast.className = `toast-card ${type}`;
-            let icon = 'ðŸ””';
-            if (type === 'success') icon = 'âœ…';
-            else if (type === 'error') icon = 'âŒ';
-            else if (type === 'info') icon = 'â„¹ï¸';
+            let icon = '🔔';
+            if (type === 'success') icon = '✅';
+            else if (type === 'error') icon = '❌';
+            else if (type === 'info') icon = 'ℹ️';
 
             const iconSpan = document.createElement('span');
             iconSpan.className = 'toast-icon';
@@ -789,9 +789,9 @@ window.showGlobalLoading = function (text) {
             sessionStorage.removeItem('sync_success_toast');
             setTimeout(() => {
                 if (typeof showCustomAlert === 'function') {
-                    showCustomAlert('Äá»“ng bá»™ thÃ nh cÃ´ng', 'Há»‡ thá»‘ng Ä‘Ã£ náº¡p vÃ  lÃ m sáº¡ch toÃ n bá»™ dá»¯ liá»‡u tá»« Google Sheets thÃ nh cÃ´ng!', 'ðŸŽ‰', '#27ae60');
+                    showCustomAlert('Đồng bộ thành công', 'Hệ thống đã nạp và làm sạch toàn bộ dữ liệu từ Google Sheets thành công!', '🎉', '#27ae60');
                 } else {
-                    alert('âœ… Äá»“ng bá»™ thÃ nh cÃ´ng!');
+                    alert('✅ Đồng bộ thành công!');
                 }
             }, 600);
         }
@@ -801,11 +801,11 @@ window.showGlobalLoading = function (text) {
             sessionStorage.removeItem('chot_so_success_toast');
             setTimeout(() => {
                 if (typeof showCustomAlert === 'function') {
-                    showCustomAlert('Chá»‘t sá»• thÃ nh cÃ´ng', 'Há»‡ thá»‘ng Ä‘Ã£ chá»‘t sá»• vÃ  lÆ°u trá»¯ dá»¯ liá»‡u vÃ o Lá»‹ch sá»­. Báº£ng lá»‹ch trÃ¬nh Ä‘Ã£ sáºµn sÃ ng cho ngÃ y má»›i!', 'ðŸŽ‰', '#27ae60');
+                    showCustomAlert('Chốt sổ thành công', 'Hệ thống đã chốt sổ và lưu trữ dữ liệu vào Lịch sử. Bảng lịch trình đã sẵn sàng cho ngày mới!', '🎉', '#27ae60');
                 } else {
-                    alert('âœ… Chá»‘t sá»• thÃ nh cÃ´ng!');
+                    alert('✅ Chốt sổ thành công!');
                 }
-                // Tá»± Ä‘á»™ng kÃ­ch hoáº¡t huáº¥n luyá»‡n mÃ´ hÃ¬nh AI sau khi chá»‘t sá»• náº¿u Ä‘ang báº­t
+                // Tự động kích hoạt huấn luyện mô hình AI sau khi chốt sổ nếu đang bật
                 if (localStorage.getItem('ai_auto_train_enable') !== '0') {
                     if (typeof window.calibrateAIFromHistory === 'function') {
                         window.calibrateAIFromHistory({ silent: true, reason: 'auto_after_chot_so' });
@@ -815,11 +815,11 @@ window.showGlobalLoading = function (text) {
         }
 
         window.onerror = function (msg, url, lineNo, columnNo, error) {
-            // Bá» qua lá»—i cross-origin (Script error. dÃ²ng 0) tá»« CDN/extension/JSONP
+            // Bỏ qua lỗi cross-origin (Script error. dòng 0) từ CDN/extension/JSONP
             if (msg === 'Script error.' || lineNo === 0 || !lineNo) {
                 return true;
             }
-            // Bá» qua lá»—i tá»« extension/Web Vitals/Cloudflare beacon/Chrome DevTools Live Metrics bÃªn ngoÃ i (reportAllChanges / startTime)
+            // Bỏ qua lỗi từ extension/Web Vitals/Cloudflare beacon/Chrome DevTools Live Metrics bên ngoài (reportAllChanges / startTime)
             const msgStr = String(msg || '');
             const urlStr = String(url || '');
             const stackStr = (error && error.stack) ? String(error.stack) : '';
@@ -830,7 +830,7 @@ window.showGlobalLoading = function (text) {
                 stackStr.includes('reportAllChanges') || 
                 (urlStr.includes('VM') && (msgStr.includes('startTime') || stackStr.includes('startTime')))
             ) {
-                return true; // Triá»‡t tiÃªu viá»‡c hiá»ƒn thá»‹ lá»—i Ä‘á» ra DevTools console
+                return true; // Triệt tiêu việc hiển thị lỗi đỏ ra DevTools console
             }
             console.error('JS ERROR:', msg, 'at', url, 'line', lineNo, error);
             return false;
@@ -872,7 +872,7 @@ window.showGlobalLoading = function (text) {
         }
 
         // ============================================================
-        // ðŸ¢ MULTI-TENANT STORAGE KEY & DOM SANITIZATION HELPERS
+        // 🏢 MULTI-TENANT STORAGE KEY & DOM SANITIZATION HELPERS
         // ============================================================
         function getCurrentUnitCode() {
             return (localStorage.getItem('pm_unit_code') || '').trim().toLowerCase();
@@ -916,7 +916,7 @@ window.showGlobalLoading = function (text) {
                 'doc-lookup-table-body'
             ];
 
-            const loadingHtml = '<tr><td colspan="12" align="center" style="padding:28px; color:#94a3b8;"><div class="spinner" style="margin:0 auto 10px auto;"></div><div style="font-size:12.5px;">Äang táº£i dá»¯ liá»‡u Ä‘Æ¡n vá»‹...</div></td></tr>';
+            const loadingHtml = '<tr><td colspan="12" align="center" style="padding:28px; color:#94a3b8;"><div class="spinner" style="margin:0 auto 10px auto;"></div><div style="font-size:12.5px;">Đang tải dữ liệu đơn vị...</div></td></tr>';
 
             tableBodyIds.forEach(id => {
                 const el = document.getElementById(id);
@@ -929,7 +929,7 @@ window.showGlobalLoading = function (text) {
             if (previewTbody) {
                 previewTbody.innerHTML = showLoading 
                     ? loadingHtml 
-                    : '<tr><td colspan="8" align="center" style="color:#94a3b8; padding:20px;">ChÆ°a cÃ³ dá»¯ liá»‡u lá»‹ch trÃ¬nh</td></tr>';
+                    : '<tr><td colspan="8" align="center" style="color:#94a3b8; padding:20px;">Chưa có dữ liệu lịch trình</td></tr>';
             }
 
             const statVal = showLoading ? '...' : '0';
@@ -968,7 +968,7 @@ window.showGlobalLoading = function (text) {
                 badge.innerHTML = '<span style="display:inline-block; width:6px; height:6px; background:#fde047; border-radius:50%;"></span> Google Sheets Backup';
             } else {
                 badge.style.background = '#e11d48';
-                badge.innerHTML = 'âš¡ï¸ Mode Ngoáº¡i Tuyáº¿n';
+                badge.innerHTML = '⚡️ Mode Ngoại Tuyến';
             }
         }
         window.updateServerStatusBadge = updateServerStatusBadge;
@@ -1029,14 +1029,14 @@ window.showGlobalLoading = function (text) {
                 modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.65); z-index:2147483647; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(5px);';
                 modal.innerHTML = `
                 <div class="modal-dialog" style="width:520px; max-width:92%; border-radius:16px; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.3); text-align:center; font-family:sans-serif; border:1px solid #e2e8f0;">
-                    <div style="font-size:36px; margin-bottom:10px;">ðŸ”„</div>
-                    <h3 id="sync-modal-title" style="margin:0 0 10px 0; color:#1e293b; font-size:18px; font-weight:800;">Äá»“ng bá»™ Trá»n bá»™ CSDL Turso Cloud âž” Google Sheets</h3>
-                    <p id="sync-step-text" style="color:#64748b; font-size:13px; margin:0 0 16px 0; line-height:1.5;">Äang khá»Ÿi táº¡o káº¿t ná»‘i...</p>
+                    <div style="font-size:36px; margin-bottom:10px;">🔄</div>
+                    <h3 id="sync-modal-title" style="margin:0 0 10px 0; color:#1e293b; font-size:18px; font-weight:800;">Đồng bộ Trọn bộ CSDL Turso Cloud ➔ Google Sheets</h3>
+                    <p id="sync-step-text" style="color:#64748b; font-size:13px; margin:0 0 16px 0; line-height:1.5;">Đang khởi tạo kết nối...</p>
                     <div style="background:#f1f5f9; border-radius:10px; height:16px; overflow:hidden; margin-bottom:16px; position:relative; border:1px solid #e2e8f0;">
                         <div id="sync-progress-bar" style="background:linear-gradient(90deg, #10b981, #059669); width:5%; height:100%; transition:width 0.3s ease; border-radius:10px;"></div>
                     </div>
                     <div id="sync-percentage" style="font-size:14px; font-weight:800; color:#059669;">5%</div>
-                    <button id="sync-close-btn" style="display:none; margin-top:16px; padding:10px 24px; background:#059669; color:#fff; border:none; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;" onclick="document.getElementById('sync-progress-modal').style.display='none'">HoÃ n táº¥t / ÄÃ³ng</button>
+                    <button id="sync-close-btn" style="display:none; margin-top:16px; padding:10px 24px; background:#059669; color:#fff; border:none; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;" onclick="document.getElementById('sync-progress-modal').style.display='none'">Hoàn tất / Đóng</button>
                 </div>`;
                 document.body.appendChild(modal);
             }
@@ -1047,8 +1047,8 @@ window.showGlobalLoading = function (text) {
             const titleEl = document.getElementById('sync-modal-title');
             if (titleEl) {
                 titleEl.innerText = isSuperAdmin
-                    ? 'Äá»“ng bá»™ CSDL ToÃ n Cá»¥c (Táº¥t Cáº£ CÃ¡c ÄÆ¡n Vá»‹) âž” Google Sheets'
-                    : 'Äá»“ng bá»™ Trá»n bá»™ CSDL Turso Cloud âž” Google Sheets';
+                    ? 'Đồng bộ CSDL Toàn Cục (Tất Cả Các Đơn Vị) ➔ Google Sheets'
+                    : 'Đồng bộ Trọn bộ CSDL Turso Cloud ➔ Google Sheets';
             }
 
             modal.style.display = 'flex';
@@ -1069,7 +1069,7 @@ window.showGlobalLoading = function (text) {
                 let dbPayload = null;
 
                 if (isSuperAdmin) {
-                    updateProgress(15, '[1/4] ðŸ“¡ Äang xuáº¥t trá»n bá»™ CSDL cá»§a Táº¤T Cáº¢ cÃ¡c Ä‘Æ¡n vá»‹ tá»« Turso libSQL Cloud...');
+                    updateProgress(15, '[1/4] 📡 Đang xuất trọn bộ CSDL của TẤT CẢ các đơn vị từ Turso libSQL Cloud...');
                     try {
                         const apiUrl = typeof getApiUrl === 'function' ? getApiUrl() : DEFAULT_API_URL;
                         const respExport = await fetch(apiUrl, {
@@ -1085,10 +1085,10 @@ window.showGlobalLoading = function (text) {
                             dbPayload = resExport.data || resExport;
                         }
                     } catch (e) {
-                        console.warn('[SyncSuperAdmin] KhÃ´ng thá»ƒ exportAllDatabase, fallback:', e);
+                        console.warn('[SyncSuperAdmin] Không thể exportAllDatabase, fallback:', e);
                     }
                 } else {
-                    updateProgress(15, `[1/4] ðŸ“¡ Äang xuáº¥t CSDL Ä‘Æ¡n vá»‹ '${curUnitCode}' tá»« Turso libSQL Cloud...`);
+                    updateProgress(15, `[1/4] 📡 Đang xuất CSDL đơn vị '${curUnitCode}' từ Turso libSQL Cloud...`);
                     try {
                         const apiUrl = typeof getApiUrl === 'function' ? getApiUrl() : DEFAULT_API_URL;
                         const respExport = await fetch(apiUrl, {
@@ -1118,13 +1118,13 @@ window.showGlobalLoading = function (text) {
                             };
                         }
                     } catch (e) {
-                        console.warn('[SyncTenant] KhÃ´ng thá»ƒ fetch bootstrap data, fallback cache:', e);
+                        console.warn('[SyncTenant] Không thể fetch bootstrap data, fallback cache:', e);
                     }
                 }
 
                 const cache = window.dataCache || {};
 
-                updateProgress(45, '[2/4] ðŸ“¦ ÄÃ³ng gÃ³i trá»n bá»™ cÃ¡c báº£ng dá»¯ liá»‡u...');
+                updateProgress(45, '[2/4] 📦 Đóng gói trọn bộ các bảng dữ liệu...');
                 await new Promise(r => setTimeout(r, 200));
 
                 const payload = dbPayload || {
@@ -1142,7 +1142,7 @@ window.showGlobalLoading = function (text) {
                     cai_dat: localStorage.getItem('times_settings_cache') || ''
                 };
 
-                updateProgress(75, '[3/4] ðŸ“¤ Truyá»n dá»¯ liá»‡u sang Google Apps Script...');
+                updateProgress(75, '[3/4] 📤 Truyền dữ liệu sang Google Apps Script...');
 
                 const resp = await fetch(backupUrl, {
                     method: 'POST',
@@ -1156,25 +1156,25 @@ window.showGlobalLoading = function (text) {
                     res = JSON.parse(rawText);
                 } catch (parseErr) {
                     if (rawText.includes('<!DOCTYPE') || rawText.includes('<html') || rawText.includes('ServiceLogin')) {
-                        throw new Error("Google Apps Script WebApp chÆ°a cáº¥p quyá»n cÃ´ng khai. Vui lÃ²ng vÃ o Apps Script -> Deploy -> Manage deployments -> Chá»n 'Anyone' táº¡i 'Who has access', hoáº·c kiá»ƒm tra URL káº¿t thÃºc báº±ng /exec.");
+                        throw new Error("Google Apps Script WebApp chưa cấp quyền công khai. Vui lòng vào Apps Script -> Deploy -> Manage deployments -> Chọn 'Anyone' tại 'Who has access', hoặc kiểm tra URL kết thúc bằng /exec.");
                     } else {
-                        throw new Error("Pháº£n há»“i khÃ´ng há»£p lá»‡ tá»« Apps Script: " + rawText.slice(0, 120));
+                        throw new Error("Phản hồi không hợp lệ từ Apps Script: " + rawText.slice(0, 120));
                     }
                 }
 
                 if (res && res.status === 'success') {
                     const successMsg = isSuperAdmin
-                        ? 'âœ… Äá»“ng bá»™ hoÃ n táº¥t 100%! ÄÃ£ lÆ°u trá»n bá»™ toÃ n bá»™ dá»¯ liá»‡u cá»§a Táº¤T Cáº¢ cÃ¡c Ä‘Æ¡n vá»‹ vÃ o Google Sheets!'
-                        : 'âœ… Äá»“ng bá»™ hoÃ n táº¥t 100%! ÄÃ£ lÆ°u trá»n bá»™ táº¥t cáº£ cÃ¡c trang Bá»‡nh nhÃ¢n, NhÃ¢n sá»±, MÃ¡y mÃ³c, PhÃ²ng, Thá»§ thuáº­t, PhÃ¡c Ä‘á»“, Lá»‹ch trÃ¬nh, Lá»‹ch sá»­, TÃ i khoáº£n vÃ o Google Sheets!';
+                        ? '✅ Đồng bộ hoàn tất 100%! Đã lưu trọn bộ toàn bộ dữ liệu của TẤT CẢ các đơn vị vào Google Sheets!'
+                        : '✅ Đồng bộ hoàn tất 100%! Đã lưu trọn bộ tất cả các trang Bệnh nhân, Nhân sự, Máy móc, Phòng, Thủ thuật, Phác đồ, Lịch trình, Lịch sử, Tài khoản vào Google Sheets!';
                     updateProgress(100, successMsg);
-                    if (percentText) percentText.innerHTML = '<span style="color:#059669">ðŸŽ‰ Äá»’NG Bá»˜ TRá»ŒN Bá»˜ THÃ€NH CÃ”NG!</span>';
+                    if (percentText) percentText.innerHTML = '<span style="color:#059669">🎉 ĐỒNG BỘ TRỌN BỘ THÀNH CÔNG!</span>';
                 } else {
-                    updateProgress(100, 'âš ï¸ Káº¿t quáº£: ' + (res.error || res.data || res.message || 'ÄÃ£ gá»­i'));
+                    updateProgress(100, '⚠️ Kết quả: ' + (res.error || res.data || res.message || 'Đã gửi'));
                 }
                 closeBtn.style.display = 'inline-block';
             } catch (err) {
-                updateProgress(100, 'âŒ Lá»—i káº¿t ná»‘i Google Apps Script dá»± phÃ²ng: ' + err.message);
-                if (percentText) percentText.innerHTML = '<span style="color:#e11d48">âŒ Lá»–I Äá»’NG Bá»˜</span>';
+                updateProgress(100, '❌ Lỗi kết nối Google Apps Script dự phòng: ' + err.message);
+                if (percentText) percentText.innerHTML = '<span style="color:#e11d48">❌ LỖI ĐỒNG BỘ</span>';
                 closeBtn.style.display = 'inline-block';
             }
         };
@@ -1236,7 +1236,7 @@ function withLock(fn) {
     let locked = false;
     return function (...args) {
         if (locked) {
-            console.warn('[withLock]: Thao tÃ¡c Ä‘ang Ä‘Æ°á»£c xá»­ lÃ½, vui lÃ²ng chá»...');
+            console.warn('[withLock]: Thao tác đang được xử lý, vui lòng chờ...');
             return;
         }
         locked = true;
@@ -1287,7 +1287,7 @@ window.moveRowDown = function (type, index) {
 
 window.renderSttOrderControl = function (type, i, total) {
     return `<div class="stt-order-cell" style="display:inline-flex; align-items:center; justify-content:center; gap:5px;">
-        <span class="drag-handle-btn" title="Báº¥m giá»¯ kÃ©o tháº£ â˜° Ä‘á»ƒ sáº¯p xáº¿p thá»© tá»±" style="cursor:grab; user-select:none; font-size:14px; color:#475569; padding:2px 4px; border-radius:4px; transition:background 0.2s;">â˜°</span>
+        <span class="drag-handle-btn" title="Bấm giữ kéo thả ☰ để sắp xếp thứ tự" style="cursor:grab; user-select:none; font-size:14px; color:#475569; padding:2px 4px; border-radius:4px; transition:background 0.2s;">☰</span>
         <span style="font-weight:700; min-width:18px; text-align:center;">${i + 1}</span>
     </div>`;
 };
@@ -1314,7 +1314,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         function checkMutationLoading() {
             if (mutationCount > 0) {
-                if (window.showGlobalLoading) window.showGlobalLoading("Äang xá»­ lÃ½ dá»¯ liá»‡u...");
+                if (window.showGlobalLoading) window.showGlobalLoading("Đang xử lý dữ liệu...");
             } else {
                 if (window.hideGlobalLoading) window.hideGlobalLoading();
             }
@@ -1374,9 +1374,9 @@ window.renderSttOrderControl = function (type, i, total) {
                     result = JSON.parse(rawText);
                 } catch (parseErr) {
                     if (rawText.includes('<!DOCTYPE') || rawText.includes('<html') || rawText.includes('ServiceLogin')) {
-                        const errMsg = "MÃ¡y chá»§ tráº£ vá» trang HTML thay vÃ¬ JSON. Náº¿u dÃ¹ng Google Apps Script dá»± phÃ²ng, vui lÃ²ng cáº¥p quyá»n 'Anyone' (Báº¥t ká»³ ai) khi Deploy Web App.";
+                        const errMsg = "Máy chủ trả về trang HTML thay vì JSON. Nếu dùng Google Apps Script dự phòng, vui lòng cấp quyền 'Anyone' (Bất kỳ ai) khi Deploy Web App.";
                         if (onError) onError(errMsg);
-                        else alert('Lá»—i: ' + errMsg);
+                        else alert('Lỗi: ' + errMsg);
                         return;
                     }
                     throw parseErr;
@@ -1388,7 +1388,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         try { onSuccess(result.data); } catch(e) { console.error(`Error in onSuccess for ${functionName}:`, e); }
                     }
                 } else {
-                    // ðŸ›¡ï¸ Xá»­ lÃ½ phiÃªn Ä‘Äƒng nháº­p háº¿t háº¡n hoáº·c chÆ°a xÃ¡c thá»±c (401)
+                    // 🛡️ Xử lý phiên đăng nhập hết hạn hoặc chưa xác thực (401)
                     if (result && (result.code === 'UNAUTHORIZED' || result.code === 'TOKEN_EXPIRED' || response.status === 401)) {
                         const hadSession = !!(localStorage.getItem('pm_jwt_token') || localStorage.getItem('meds_session'));
                         localStorage.removeItem('pm_jwt_token');
@@ -1399,10 +1399,10 @@ window.renderSttOrderControl = function (type, i, total) {
                             overlay.style.display = 'flex';
                             const errDiv = document.getElementById('login-error');
                             if (errDiv) {
-                                // Chá»‰ hiá»ƒn thá»‹ thÃ´ng bÃ¡o náº¿u ngÆ°á»i dÃ¹ng Ä‘ang Ä‘Äƒng nháº­p mÃ  bá»‹ rá»›t phiÃªn Ä‘á»™t ngá»™t
+                                // Chỉ hiển thị thông báo nếu người dùng đang đăng nhập mà bị rớt phiên đột ngột
                                 if (hadSession && !isOverlayAlreadyOpen) {
-                                    console.warn('[Auth Guard] PhiÃªn lÃ m viá»‡c Ä‘Ã£ háº¿t háº¡n hoáº·c khÃ´ng há»£p lá»‡. Hiá»ƒn thá»‹ láº¡i mÃ n hÃ¬nh Ä‘Äƒng nháº­p.');
-                                    errDiv.innerText = 'PhiÃªn Ä‘Äƒng nháº­p Ä‘Ã£ háº¿t háº¡n. Vui lÃ²ng Ä‘Äƒng nháº­p láº¡i!';
+                                    console.warn('[Auth Guard] Phiên làm việc đã hết hạn hoặc không hợp lệ. Hiển thị lại màn hình đăng nhập.');
+                                    errDiv.innerText = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!';
                                     errDiv.style.display = 'block';
                                 } else {
                                     errDiv.innerText = '';
@@ -1411,17 +1411,17 @@ window.renderSttOrderControl = function (type, i, total) {
                             }
                         }
                     }
-                    const errMsg = (result && result.error) ? result.error : 'Lá»—i khÃ´ng xÃ¡c Ä‘á»‹nh tá»« mÃ¡y chá»§.';
+                    const errMsg = (result && result.error) ? result.error : 'Lỗi không xác định từ máy chủ.';
                     if (onError) onError(errMsg);
-                    else alert('Lá»—i: ' + errMsg);
+                    else alert('Lỗi: ' + errMsg);
                 }
             } catch (err) {
                 console.warn(`[Cloudflare API Error] ${functionName}:`, err);
                 finish();
 
-                // Tá»± Ä‘á»™ng thá»­ láº¡i 1 láº§n cho cÃ¡c query Ä‘á»c dá»¯ liá»‡u náº¿u bá»‹ timeout hoáº·c lá»—i máº¡ng
+                // Tự động thử lại 1 lần cho các query đọc dữ liệu nếu bị timeout hoặc lỗi mạng
                 if (!isMutation && retries < 1) {
-                    console.log(`[API Retry] Thá»­ láº¡i ${functionName} sau 1 giÃ¢y...`);
+                    console.log(`[API Retry] Thử lại ${functionName} sau 1 giây...`);
                     setTimeout(() => {
                         apiQueue.push({ ...task, retries: retries + 1 });
                         scheduleNextApiRequest();
@@ -1431,8 +1431,8 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 const isTimeout = err.name === 'TimeoutError' || err.name === 'AbortError' || (err.message && err.message.includes('abort'));
                 const errMsg = isTimeout 
-                    ? `QuÃ¡ thá»i gian káº¿t ná»‘i mÃ¡y chá»§ (${functionName} - Timeout 30s).`
-                    : (err.message || 'Lá»—i káº¿t ná»‘i mÃ¡y chá»§ Cloudflare');
+                    ? `Quá thời gian kết nối máy chủ (${functionName} - Timeout 30s).`
+                    : (err.message || 'Lỗi kết nối máy chủ Cloudflare');
 
                 if (onError) onError(errMsg);
                 else console.error(err);
@@ -1473,7 +1473,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     }, 1000);
                 } else {
                     cleanup();
-                    const errMsg = `QuÃ¡ thá»i gian káº¿t ná»‘i mÃ¡y chá»§ (${functionName}).`;
+                    const errMsg = `Quá thời gian kết nối máy chủ (${functionName}).`;
                     if (onError) onError(errMsg);
                     else console.error(errMsg);
                 }
@@ -1497,9 +1497,9 @@ window.renderSttOrderControl = function (type, i, total) {
                         try { onSuccess(result.data); } catch(e) { console.error(`Error in onSuccess handler for ${functionName}:`, e); }
                     }
                 } else {
-                    const errMsg = (result && result.error) ? result.error : 'Lá»—i khÃ´ng xÃ¡c Ä‘á»‹nh tá»« mÃ¡y chá»§.';
+                    const errMsg = (result && result.error) ? result.error : 'Lỗi không xác định từ máy chủ.';
                     if (onError) onError(errMsg);
-                    else alert('Lá»—i: ' + errMsg);
+                    else alert('Lỗi: ' + errMsg);
                 }
             };
 
@@ -1515,7 +1515,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     }, 1000);
                 } else {
                     cleanup();
-                    const errMsg = `KhÃ´ng thá»ƒ káº¿t ná»‘i Ä‘áº¿n mÃ¡y chá»§ (${functionName}).`;
+                    const errMsg = `Không thể kết nối đến máy chủ (${functionName}).`;
                     if (onError) onError(errMsg);
                     else console.error(errMsg);
                 }
@@ -1547,7 +1547,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         function callApi(functionName, args, onSuccess, onError) {
             return new Promise((resolve, reject) => {
-                // Kiá»ƒm tra tráº¡ng thÃ¡i xÃ¡c thá»±c: náº¿u chÆ°a Ä‘Äƒng nháº­p vÃ  khÃ´ng pháº£i API cÃ´ng khai -> bá» qua, khÃ´ng gá»­i request 401
+                // Kiểm tra trạng thái xác thực: nếu chưa đăng nhập và không phải API công khai -> bỏ qua, không gửi request 401
                 const token = localStorage.getItem('pm_jwt_token');
                 let hasValidSession = false;
                 try {
@@ -1557,7 +1557,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 if (!PUBLIC_API_ACTIONS.has(functionName) && (!token || !hasValidSession)) {
                     if (onError) {
-                        try { onError('ChÆ°a Ä‘Äƒng nháº­p'); } catch(e) {}
+                        try { onError('Chưa đăng nhập'); } catch(e) {}
                     }
                     return resolve(null);
                 }
@@ -1598,7 +1598,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         resolveInFlight = res;
                         rejectInFlight = rej;
                     });
-                    // Báº«y lá»—i máº·c Ä‘á»‹nh Ä‘á»ƒ trÃ¡nh Uncaught (in promise) náº¿u khÃ´ng cÃ³ subscriber thá»© hai
+                    // Bẫy lỗi mặc định để tránh Uncaught (in promise) nếu không có subscriber thứ hai
                     inFlightPromise.catch(() => {});
                     inFlightRequests.set(reqKey, inFlightPromise);
 
@@ -1617,7 +1617,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         rejectInFlight(err);
                         if (origOnError) {
                             try { origOnError(err); } catch(e) { console.error(e); }
-                            // ÄÃ£ xá»­ lÃ½ qua callback onError -> resolve(null) Ä‘á»ƒ khÃ´ng gÃ¢y unhandled promise rejection cho caller
+                            // Đã xử lý qua callback onError -> resolve(null) để không gây unhandled promise rejection cho caller
                             resolve(null);
                         } else {
                             reject(err);
@@ -1807,19 +1807,19 @@ window.renderSttOrderControl = function (type, i, total) {
 
             if (!unit || !user || !pass) {
                 if (errDiv) {
-                    errDiv.innerText = "Vui lÃ²ng nháº­p Ä‘áº§y Ä‘á»§ mÃ£ Ä‘Æ¡n vá»‹, tÃªn Ä‘Äƒng nháº­p vÃ  máº­t kháº©u!";
+                    errDiv.innerText = "Vui lòng nhập đầy đủ mã đơn vị, tên đăng nhập và mật khẩu!";
                     errDiv.style.display = "block";
                 }
                 return;
             }
 
-            if (btn) { btn.innerText = "â³ Äang kiá»ƒm tra..."; btn.disabled = true; }
+            if (btn) { btn.innerText = "⏳ Đang kiểm tra..."; btn.disabled = true; }
             if (errDiv) errDiv.style.display = "none";
 
             localStorage.setItem('pm_unit_code', unit);
 
             const resetBtn = () => {
-                if (btn) { btn.innerText = "ÄÄƒng Nháº­p âž”"; btn.disabled = false; }
+                if (btn) { btn.innerText = "Đăng Nhập ➔"; btn.disabled = false; }
             };
 
             const handleSuccess = res => {
@@ -1829,7 +1829,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     const uRole = res.role || 'Admin';
                     const uPerms = res.permissions || 'all';
                     const uUnit = (res.unit_code || unit).toLowerCase();
-                    const uUnitName = res.unit_name || (uRole === 'SUPER_ADMIN' ? 'T.I.M.E.S SYSTEM' : 'Bá»‡nh viá»‡n Than - KhoÃ¡ng sáº£n CÆ¡ sá»Ÿ 2');
+                    const uUnitName = res.unit_name || (uRole === 'SUPER_ADMIN' ? 'T.I.M.E.S SYSTEM' : 'Bệnh viện Than - Khoáng sản Cơ sở 2');
 
                     if (res.token) {
                         localStorage.setItem('pm_jwt_token', res.token);
@@ -1837,7 +1837,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     const isBvtks = (uUnit === 'bvtks-cs2' || uUnit === 'bvtks_cs2');
                     const pTier = isBvtks ? 'ENTERPRISE' : (res.plan_tier || 'PLAN_1Y');
                     const pExp = isBvtks ? '2099-12-31' : (res.expires_at || '2099-12-31');
-                    const pName = isBvtks ? 'Báº£n Quyá»n VÄ©nh Viá»…n' : (res.subInfo ? res.subInfo.plan_name : (res.plan_name || 'Báº£n Quyá»n'));
+                    const pName = isBvtks ? 'Bản Quyền Vĩnh Viễn' : (res.subInfo ? res.subInfo.plan_name : (res.plan_name || 'Bản Quyền'));
                     const pDays = isBvtks ? 99999 : (res.subInfo ? res.subInfo.days_left : (res.days_left !== undefined ? res.days_left : 999));
 
                     localStorage.setItem('pm_plan_tier', pTier);
@@ -1858,13 +1858,13 @@ window.renderSttOrderControl = function (type, i, total) {
                         sessionId: 'sess_' + Date.now()
                     }));
 
-                    // âœ… 1. XÃ³a sáº¡ch bá»™ Ä‘á»‡m lá»‹ch trÃ¬nh cá»¥c bá»™ cá»§a Ä‘Æ¡n vá»‹ trÆ°á»›c Ä‘Ã³
+                    // ✅ 1. Xóa sạch bộ đệm lịch trình cục bộ của đơn vị trước đó
                     localStorage.removeItem('meds_success');
                     localStorage.removeItem('meds_unscheduled');
                     localStorage.removeItem('meds_schedule_date');
                     localStorage.removeItem('meds_schedule_unit');
 
-                    // âœ… 2. XÃ³a sáº¡ch dá»¯ liá»‡u trong RAM cá»§a Ä‘Æ¡n vá»‹ cÅ©
+                    // ✅ 2. Xóa sạch dữ liệu trong RAM của đơn vị cũ
                     window.currentScheduleData = null;
                     window.chamCongData = {};
                     window.thongKeData = {};
@@ -1892,7 +1892,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         window.dataCacheTime = {};
                     }
 
-                    // âœ… 3. Dá»n sáº¡ch toÃ n bá»™ cÃ¡c báº£ng DOM vÃ  hiá»ƒn thá»‹ tráº¡ng thÃ¡i Ä‘ang táº£i
+                    // ✅ 3. Dọn sạch toàn bộ các bảng DOM và hiển thị trạng thái đang tải
                     if (typeof clearAllDomTables === 'function') {
                         clearAllDomTables(true);
                     }
@@ -1905,7 +1905,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     if (typeof window.updateAppHeader === 'function') {
                         window.updateAppHeader(uUnit, uRole);
                     }
-                    document.title = 'T.I.M.E.S System - Pháº§n má»m xáº¿p lá»‹ch thá»§ thuáº­t thÃ´ng minh';
+                    document.title = 'T.I.M.E.S System - Phần mềm xếp lịch thủ thuật thông minh';
 
                     // Super Admin UI handling
                     if (uRole === 'SUPER_ADMIN') {
@@ -1925,9 +1925,9 @@ window.renderSttOrderControl = function (type, i, total) {
                         window.updateSubscriptionHeaderBadge(pTier, pExp, pName, pDays);
                     }
 
-                    // âœ… 4. Táº£i dá»¯ liá»‡u Bootstrap má»›i nháº¥t cá»§a Ä‘Æ¡n vá»‹ nÃ y ngay láº­p tá»©c (forceRefresh = true)
+                    // ✅ 4. Tải dữ liệu Bootstrap mới nhất của đơn vị này ngay lập tức (forceRefresh = true)
                     if (typeof window.loadBootstrapData === 'function') {
-                        try { window.loadBootstrapData(true); } catch(e) { console.warn('Lá»—i loadBootstrapData:', e); }
+                        try { window.loadBootstrapData(true); } catch(e) { console.warn('Lỗi loadBootstrapData:', e); }
                     } else if (typeof window.loadAllData === 'function') {
                         try { window.loadAllData(); } catch(e) {}
                     }
@@ -1947,7 +1947,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         try { loadAccounts(); } catch(e) {}
                     }
                 } else {
-                    const msg = (res && (res.message || res.error)) ? (res.message || res.error) : "TÃ i khoáº£n hoáº·c máº­t kháº©u khÃ´ng chÃ­nh xÃ¡c!";
+                    const msg = (res && (res.message || res.error)) ? (res.message || res.error) : "Tài khoản hoặc mật khẩu không chính xác!";
                     if (errDiv) { errDiv.innerText = msg; errDiv.style.display = "block"; }
                 }
             };
@@ -1955,7 +1955,7 @@ window.renderSttOrderControl = function (type, i, total) {
             const handleError = err => {
                 resetBtn();
                 if (errDiv) {
-                    const msg = (err && err.message) ? err.message : (typeof err === 'string' && err ? err : "Lá»—i káº¿t ná»‘i mÃ¡y chá»§!");
+                    const msg = (err && err.message) ? err.message : (typeof err === 'string' && err ? err : "Lỗi kết nối máy chủ!");
                     errDiv.innerText = msg;
                     errDiv.style.display = "block";
                 }
@@ -1966,7 +1966,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // ðŸ”§ HELPER UTILITIES
+        // 🔧 HELPER UTILITIES
 
         // ============================================================
 
@@ -1978,19 +1978,19 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const [type, title] =
 
-                (m.includes('lá»—i') || m.includes('tháº¥t báº¡i')) ? ['error', 'Lá»–I Há»† THá»NG'] :
+                (m.includes('lỗi') || m.includes('thất bại')) ? ['error', 'LỖI HỆ THỐNG'] :
 
-                    (m.includes('thÃ nh cÃ´ng') || m.includes('xong')) ? ['success', 'THÃ€NH CÃ”NG'] :
+                    (m.includes('thành công') || m.includes('xong')) ? ['success', 'THÀNH CÔNG'] :
 
-                        (m.includes('vui lÃ²ng') || m.includes('chÆ°a')) ? ['warning', 'LÆ¯U Ã'] :
+                        (m.includes('vui lòng') || m.includes('chưa')) ? ['warning', 'LƯU Ý'] :
 
-                            ['info', 'THÃ”NG BÃO'];
+                            ['info', 'THÔNG BÁO'];
 
             if (typeof showCustomAlert === 'function') {
-                let icon = 'ðŸ’¡', color = '#3498db';
-                if (type === 'error') { icon = 'ðŸ›‘'; color = '#e74c3c'; }
-                else if (type === 'success') { icon = 'âœ…'; color = '#27ae60'; }
-                else if (type === 'warning') { icon = 'âš ï¸'; color = '#f39c12'; }
+                let icon = '💡', color = '#3498db';
+                if (type === 'error') { icon = '🛑'; color = '#e74c3c'; }
+                else if (type === 'success') { icon = '✅'; color = '#27ae60'; }
+                else if (type === 'warning') { icon = '⚠️'; color = '#f39c12'; }
                 showCustomAlert(title, message, icon, color);
             } else if (typeof showThongBao === 'function') {
                 showThongBao(title, message, type);
@@ -2023,7 +2023,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-        // â”€â”€â”€ Chá»‘ng double-click â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ─── Chống double-click ───────────────────────────────────────
 
         function withLock(fn, delay = 500) {
 
@@ -2045,11 +2045,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-        // â”€â”€â”€ Tiá»‡n Ã­ch chung â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ─── Tiện ích chung ──────────────────────────────────────────
 
         function xoaDau(str) {
 
-            return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/Ä‘/g, "d").replace(/Ä/g, "D");
+            return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D");
 
         }
 
@@ -2061,7 +2061,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         }
 
-        // âš ï¸ Cáº¢NH BÃO: Äá»’NG Bá»˜ Vá»šI t2m() trong code.gs-v2.txt â€” sá»­a 1 bÃªn PHáº¢I sá»­a bÃªn kia!
+        // ⚠️ CẢNH BÁO: ĐỒNG BỘ VỚI t2m() trong code.gs-v2.txt — sửa 1 bên PHẢI sửa bên kia!
         function t2m(t_str) {
 
             if (!t_str || !String(t_str).includes(":")) return 0;
@@ -2078,7 +2078,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const g = String(row?.gioDienRa || row?.[5] || '');
 
-            return g === '--' || g.includes('Rá»›t');
+            return g === '--' || g.includes('Rớt');
 
         }
 
@@ -2094,7 +2094,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 : (typeof window.cleanAndHealProcedureName === 'function' ? window.cleanAndHealProcedureName : (s => String(s || '').trim()));
             if (Array.isArray(row)) {
                 const gioDienRa = String(row[5] || '').trim();
-                const isDrop = gioDienRa === 'âŒ Rá»›t' || gioDienRa === '--' || gioDienRa.includes('Rá»›t');
+                const isDrop = gioDienRa === '❌ Rớt' || gioDienRa === '--' || gioDienRa.includes('Rớt');
                 return {
                     ngay: row[0] || '', tenBN: row[1] || '', namSinh: row[2] || '', phong: row[3] || '', thuThuat: cleanHealProcFn(row[4] || ''),
                     gioDienRa: gioDienRa, gioKetThuc: row[6] || '', nvChinh: row[7] || '', nvPhu: row[8] || '', may: row[9] || '', giuong: row[10] || '',
@@ -2103,7 +2103,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 };
             }
             const rawGio = String(row.gioDienRa || row.GIODIENRA || row.start_time || row.start || '').trim();
-            const isDrop = !!row.__dropped || rawGio === 'âŒ Rá»›t' || rawGio === '--' || rawGio.includes('Rá»›t');
+            const isDrop = !!row.__dropped || rawGio === '❌ Rớt' || rawGio === '--' || rawGio.includes('Rớt');
             return {
                 ngay: row.ngay || row.NGAY || row.date || '',
                 tenBN: row.tenBN || row.HOTEN || row.patient_name || row.ten || row.name || '',
@@ -2112,8 +2112,8 @@ window.renderSttOrderControl = function (type, i, total) {
                 thuThuat: cleanHealProcFn(row.thuThuat || row.DICHVU || row.procedure_name || row.tt || ''),
                 gioDienRa: rawGio,
                 gioKetThuc: row.gioKetThuc || row.GIOKETTHUC || row.end_time || row.end || '',
-                nvChinh: row.nvChinh || row['NV CHÃNH'] || row.staff_name || row.staff || row.nv1 || '',
-                nvPhu: row.nvPhu || row['NV PHá»¤'] || row.sub_staff_name || row.sub_staff || row.nv2 || '',
+                nvChinh: row.nvChinh || row['NV CHÍNH'] || row.staff_name || row.staff || row.nv1 || '',
+                nvPhu: row.nvPhu || row['NV PHỤ'] || row.sub_staff_name || row.sub_staff || row.nv2 || '',
                 may: row.may || row.MAY || row.machine_name || row.machine || '',
                 giuong: row.giuong || row.GIUONG || row.bed || '',
                 __isDischarged: !!row.__isDischarged,
@@ -2150,7 +2150,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 return {
                     ngay: item[0] || fallbackDate, bn: item[1] || '', ns: item[2] || '',
                     room: item[3] || '', phong: item[3] || '', tt: cleanHealProcFn(item[4] || ''),
-                    staff: item[7] || '', reason: item[11] || item[8] || 'Thiáº¿u nhÃ¢n sá»±/MÃ¡y hoáº·c háº¿t giá»'
+                    staff: item[7] || '', reason: item[11] || item[8] || 'Thiếu nhân sự/Máy hoặc hết giờ'
                 };
             }
 
@@ -2163,7 +2163,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 room,
                 phong: room,
                 tt: cleanHealProcFn(item.tt || item.thuThuat || ''),
-                reason: item.reason || item.liDo || 'Thiáº¿u nhÃ¢n sá»±/MÃ¡y hoáº·c háº¿t giá»'
+                reason: item.reason || item.liDo || 'Thiếu nhân sự/Máy hoặc hết giờ'
             };
         }
 
@@ -2213,7 +2213,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         }
 
-        function renderEmptyRow(colspan, msg = 'ChÆ°a cÃ³ dá»¯ liá»‡u') {
+        function renderEmptyRow(colspan, msg = 'Chưa có dữ liệu') {
 
             return `<tr><td colspan="${colspan}" align="center" style="padding:20px;color:#999">${msg}</td></tr>`;
 
@@ -2235,7 +2235,7 @@ window.renderSttOrderControl = function (type, i, total) {
             return String(s || '')
                 .toLowerCase()
                 .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-                .replace(/Ä‘/g, 'd')
+                .replace(/đ/g, 'd')
                 .replace(/\b(van dong|co|dieu tri|va|cua|bang may|ky thuat|chieu den)\b/g, '')
                 .replace(/\s+/g, ' ')
                 .trim();
@@ -2250,7 +2250,7 @@ window.renderSttOrderControl = function (type, i, total) {
             }
             if (!raw) return [];
 
-            // 1. Dáº¡ng máº£ng
+            // 1. Dạng mảng
             if (Array.isArray(raw)) {
                 return raw.map(p => {
                     if (!p) return '';
@@ -2260,7 +2260,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 }).filter(Boolean);
             }
 
-            // 2. Dáº¡ng chuá»—i (bao gá»“m chuá»—i JSON hoáº·c chuá»—i phÃ¢n tÃ¡ch bá»Ÿi dáº¥u pháº©y/cháº¥m pháº©y/xuá»‘ng dÃ²ng)
+            // 2. Dạng chuỗi (bao gồm chuỗi JSON hoặc chuỗi phân tách bởi dấu phẩy/chấm phẩy/xuống dòng)
             if (typeof raw === 'string') {
                 const trimmed = raw.trim();
                 if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
@@ -2290,7 +2290,7 @@ window.renderSttOrderControl = function (type, i, total) {
             if (!isStaff) {
                 return arr.map(sk => {
                     const skLower = sk.toLowerCase();
-                    // 1. Khá»›p chÃ­nh xÃ¡c theo tÃªn hoáº·c viáº¿t táº¯t
+                    // 1. Khớp chính xác theo tên hoặc viết tắt
                     let proc = procList.find(p => p && ((p.ten && p.ten.toLowerCase() === skLower) || (p.vietTat && p.vietTat.toLowerCase() === skLower)));
                     if (proc) {
                         if (cleanMedicalProc(proc.ten).includes('khang tro') && (!proc.vietTat || proc.vietTat.toUpperCase() === 'TTK')) {
@@ -2302,7 +2302,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     const nSk = norm(sk);
                     const cSk = cleanMedicalProc(sk);
 
-                    // 2. Khá»›p theo chuáº©n hÃ³a khÃ´ng dáº¥u vÃ  bá» hÆ° tá»« y khoa
+                    // 2. Khớp theo chuẩn hóa không dấu và bỏ hư từ y khoa
                     proc = procList.find(p => {
                         if (!p || !p.ten) return false;
                         const np = norm(p.ten);
@@ -2311,7 +2311,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         return np === nSk || cp === cSk || vp === nSk || (cSk && vp === cSk);
                     });
 
-                    // 3. Khá»›p alias nhÃ³m thá»§ thuáº­t (Trá»£ giÃºp, KhÃ¡ng trá»Ÿ, Thá»¥ Ä‘á»™ng)
+                    // 3. Khớp alias nhóm thủ thuật (Trợ giúp, Kháng trở, Thụ động)
                     if (!proc) {
                         if (cSk.includes('tro giup') || nSk === 'ttg' || nSk === 'vd-tg' || nSk === 'vdtg') {
                             proc = procList.find(p => p && (cleanMedicalProc(p.ten).includes('tro giup') || (p.vietTat && norm(p.vietTat) === 'ttg')));
@@ -2321,11 +2321,11 @@ window.renderSttOrderControl = function (type, i, total) {
                             if (!proc) return 'TKT';
                         } else if (cSk.includes('thu dong') || nSk === 'ttd' || nSk === 'vd-td' || nSk === 'vdtd') {
                             proc = procList.find(p => p && (cleanMedicalProc(p.ten).includes('thu dong') || (p.vietTat && (norm(p.vietTat) === 'ttd' || norm(p.vietTat) === 'vd-td'))));
-                            if (!proc) return 'VÄ-TD';
+                            if (!proc) return 'VĐ-TD';
                         }
                     }
 
-                    // 4. Khá»›p chá»©a nhau an toÃ n
+                    // 4. Khớp chứa nhau an toàn
                     if (!proc) {
                         proc = procList.find(p => {
                             if (!p || !p.ten) return false;
@@ -2382,7 +2382,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-        // â”€â”€â”€ Index lookup gom chung â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ─── Index lookup gom chung ──────────────────────────────────
 
         
         function matchProc(a, b) {
@@ -2405,7 +2405,7 @@ window.renderSttOrderControl = function (type, i, total) {
             if (normA === normB) return true;
             if (cleanA && cleanB && cleanA === cleanB) return true;
 
-            // 1. NhÃ³m tá»« Ä‘á»“ng nghÄ©a chuáº©n xÃ¡c (Trá»£ giÃºp, KhÃ¡ng trá»Ÿ, Thá»¥ Ä‘á»™ng, Xoa bÃ³p báº¥m huyá»‡t)
+            // 1. Nhóm từ đồng nghĩa chuẩn xác (Trợ giúp, Kháng trở, Thụ động, Xoa bóp bấm huyệt)
             const isTroGiupA = cleanA.includes('tro giup') || normA === 'ttg' || normA === 'vd-tg' || normA === 'vdtg';
             const isTroGiupB = cleanB.includes('tro giup') || normB === 'ttg' || normB === 'vd-tg' || normB === 'vdtg';
             if (isTroGiupA && isTroGiupB) return true;
@@ -2418,7 +2418,7 @@ window.renderSttOrderControl = function (type, i, total) {
             const isThuDongB = cleanB.includes('thu dong') || normB === 'ttd' || normB === 'vd-td' || normB === 'vdtd';
             if (isThuDongA && isThuDongB) return true;
 
-            // Äá»“ng nghÄ©a YHCT: Xoa bÃ³p / Báº¥m huyá»‡t / Xoa bÃ³p báº¥m huyá»‡t
+            // Đồng nghĩa YHCT: Xoa bóp / Bấm huyệt / Xoa bóp bấm huyệt
             const isXoaBopA = cleanA.includes('xoa bop') || normA === 'xb' || normA === 'xbbh';
             const isXoaBopB = cleanB.includes('xoa bop') || normB === 'xb' || normB === 'xbbh';
             if (isXoaBopA && isXoaBopB) {
@@ -2427,7 +2427,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (hasVungA === hasVungB) return true;
             }
 
-            // 2. Tra cá»©u database theo mÃ£ viáº¿t táº¯t hoáº·c tÃªn Ä‘áº§y Ä‘á»§ (chÃ­nh xÃ¡c 100%)
+            // 2. Tra cứu database theo mã viết tắt hoặc tên đầy đủ (chính xác 100%)
             const procs = (window.dataCache && window.dataCache.proc) ? window.dataCache.proc : [];
             const procA = procs.find(p => {
                 if (!p) return false;
@@ -2465,11 +2465,11 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (pn === normA || pvt === normA || (pc && cleanA && pc === cleanA)) return true;
             }
 
-            // 3. Kiá»ƒm tra phÃ¢n biá»‡t tá»« khÃ³a Ä‘áº·c biá»‡t Ä‘á»ƒ trÃ¡nh báº¯t nháº§m (vd: 'liá»‡t', 'vÃ¹ng', 'báº¥m huyá»‡t', 'khÃ¡ng trá»Ÿ', 'trá»£ giÃºp', 'thá»Ÿ')
-            const distinctKeywords = ['liá»‡t', 'vÃ¹ng', 'báº¥m huyá»‡t', 'khÃ¡ng trá»Ÿ', 'trá»£ giÃºp', 'thá»Ÿ'];
+            // 3. Kiểm tra phân biệt từ khóa đặc biệt để tránh bắt nhầm (vd: 'liệt', 'vùng', 'bấm huyệt', 'kháng trở', 'trợ giúp', 'thở')
+            const distinctKeywords = ['liệt', 'vùng', 'bấm huyệt', 'kháng trở', 'trợ giúp', 'thở'];
             for (const kw of distinctKeywords) {
-                // Náº¿u lÃ  'báº¥m huyá»‡t' nhÆ°ng má»™t trong 2 bÃªn cÃ³ 'xoa bÃ³p', khÃ´ng cháº·n khá»›p
-                if (kw === 'báº¥m huyá»‡t' && (cleanA.includes('xoa bop') || cleanB.includes('xoa bop'))) {
+                // Nếu là 'bấm huyệt' nhưng một trong 2 bên có 'xoa bóp', không chặn khớp
+                if (kw === 'bấm huyệt' && (cleanA.includes('xoa bop') || cleanB.includes('xoa bop'))) {
                     continue;
                 }
                 const hasA = strA.includes(kw) || (procA && procA.ten && procA.ten.toLowerCase().includes(kw));
@@ -2477,11 +2477,11 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (hasA !== hasB) return false;
             }
 
-            // 4. Substring match an toÃ n (sau khi Ä‘Ã£ loáº¡i trá»« cÃ¡c keyword phÃ¢n biá»‡t)
+            // 4. Substring match an toàn (sau khi đã loại trừ các keyword phân biệt)
             if (strA.includes(strB) || strB.includes(strA)) return true;
             if (cleanA && cleanB && (cleanA.includes(cleanB) || cleanB.includes(cleanA))) return true;
 
-            // 5. Token-based matching: cÃ¡c token chÃ­nh cá»§a b Ä‘á»u náº±m trong a
+            // 5. Token-based matching: các token chính của b đều nằm trong a
             const tokensB = strB.split(/\s+/).filter(tok => tok.length > 1);
             if (tokensB.length >= 2 && tokensB.every(tok => strA.includes(tok))) return true;
             const tokensA = strA.split(/\s+/).filter(tok => tok.length > 1);
@@ -2529,7 +2529,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 const reqCountForThisProc = reqProcs.filter(p => matchProc(p, dropProc)).length || 1;
                 const schedCountForThisProc = schedProcsForPat.filter(p => matchProc(p, dropProc)).length;
 
-                // Náº¿u sá»‘ ca Ä‘Ã£ cÃ³ trong lá»‹ch >= sá»‘ ca yÃªu cáº§u, ca rá»›t nÃ y Ä‘Ã£ Ä‘Æ°á»£c giáº£i quyáº¿t
+                // Nếu số ca đã có trong lịch >= số ca yêu cầu, ca rớt này đã được giải quyết
                 if (schedCountForThisProc >= reqCountForThisProc) {
                     return;
                 }
@@ -2551,7 +2551,7 @@ window.renderSttOrderControl = function (type, i, total) {
             if (cacheKey === 'pat') {
                 const patList = dataCache.pat || [];
                 
-                // 1. Match format "TÃªn (NÄƒmSinh)" or "TÃªn - NÄƒmSinh"
+                // 1. Match format "Tên (NămSinh)" or "Tên - NămSinh"
                 const matchWithNs = val.match(/^(.*?)\s*[\(\-]\s*(\d{4}|\?)\s*(?:[\-\)].*)?$/);
                 if (matchWithNs) {
                     const rawName = matchWithNs[1].trim();
@@ -2591,7 +2591,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // â° TIME MASKING
+        // ⏰ TIME MASKING
 
         // ============================================================
 
@@ -2639,7 +2639,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // ðŸ”¤ TABLE SORTING
+        // 🔤 TABLE SORTING
 
         // ============================================================
 
@@ -2651,7 +2651,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 th.dataset.sortBound = "true";
 
-                th.title = 'Báº¥m Ä‘á»ƒ sáº¯p xáº¿p (A-Z / Z-A)';
+                th.title = 'Bấm để sắp xếp (A-Z / Z-A)';
 
                 th.addEventListener('click', function () {
 
@@ -2675,13 +2675,13 @@ window.renderSttOrderControl = function (type, i, total) {
 
                             if (el !== this) el.dataset.dir = '';
 
-                            el.innerText = el.innerText.replace(' â–²', '').replace(' â–¼', '');
+                            el.innerText = el.innerText.replace(' ▲', '').replace(' ▼', '');
 
                         });
 
                         this.dataset.dir = window.scheduleSortState.dir;
 
-                        this.innerText = this.innerText.replace(' â–²', '').replace(' â–¼', '') + (isAsc ? ' â–²' : ' â–¼');
+                        this.innerText = this.innerText.replace(' ▲', '').replace(' ▼', '') + (isAsc ? ' ▲' : ' ▼');
 
                         schedCurrentPage = 1;
 
@@ -2705,11 +2705,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
                         if (el !== this) el.dataset.dir = '';
 
-                        el.innerText = el.innerText.replace(' â–²', '').replace(' â–¼', '');
+                        el.innerText = el.innerText.replace(' ▲', '').replace(' ▼', '');
 
                     });
 
-                    this.innerText = this.innerText + (isAsc ? ' â–²' : ' â–¼');
+                    this.innerText = this.innerText + (isAsc ? ' ▲' : ' ▼');
 
 
 
@@ -2747,7 +2747,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                             primaryDiff = isAsc ? valA.localeCompare(valB, 'vi', { numeric: true }) : valB.localeCompare(valA, 'vi', { numeric: true });
 
-                        } else if (!isNaN(numA) && !isNaN(numB) && !valA.match(/[a-zA-ZÃ€-á»¹]/) && !valB.match(/[a-zA-ZÃ€-á»¹]/)) {
+                        } else if (!isNaN(numA) && !isNaN(numB) && !valA.match(/[a-zA-ZÀ-ỹ]/) && !valB.match(/[a-zA-ZÀ-ỹ]/)) {
 
                             primaryDiff = isAsc ? numA - numB : numB - numA;
 
@@ -2769,7 +2769,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                             const text = th.innerText.toLowerCase();
 
-                            return text.includes('báº¯t Ä‘áº§u') || text.includes('giá»') || text.includes('thá»i gian') || text.includes('b.Ä‘áº§u');
+                            return text.includes('bắt đầu') || text.includes('giờ') || text.includes('thời gian') || text.includes('b.đầu');
 
                         });
 
@@ -2817,7 +2817,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // âŒ¨ï¸ GLOBAL KEYBOARD SHORTCUTS
+        // ⌨️ GLOBAL KEYBOARD SHORTCUTS
 
         // ============================================================
 
@@ -2893,7 +2893,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 if (tabId === 'tab-utils') {
 
-                    // Tá»± Ä‘á»™ng Ä‘iá»n ngÃ y hÃ´m nay khi láº§n Ä‘áº§u má»Ÿ tab
+                    // Tự động điền ngày hôm nay khi lần đầu mở tab
                     const utilsDateEl = document.getElementById('utils-search-date');
                     if (utilsDateEl && !utilsDateEl.value) {
                         const todayStr = new Date().toISOString().slice(0, 10);
@@ -2945,13 +2945,13 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // ðŸš€ DOM READY
+        // 🚀 DOM READY
 
         // ============================================================
 
         document.addEventListener('DOMContentLoaded', function () {
 
-            // Pháº§n 1: BÆ¡m Footer
+            // Phần 1: Bơm Footer
 
             try {
 
@@ -2966,16 +2966,16 @@ window.renderSttOrderControl = function (type, i, total) {
                     if (typeof APP_VERSION !== 'undefined') {
                         const cleanVer = String(APP_VERSION).replace(/-rev\d+.*$/i, '').trim();
                         document.querySelectorAll('#app-footer-version, [id="app-footer-version"]').forEach(el => {
-                            el.textContent = `PhiÃªn báº£n: ${cleanVer}`;
+                            el.textContent = `Phiên bản: ${cleanVer}`;
                         });
                     }
                 }
 
-            } catch (err) { console.warn("Lá»—i khi bÆ¡m Footer:", err); }
+            } catch (err) { console.warn("Lỗi khi bơm Footer:", err); }
 
 
 
-            // Pháº§n 2: Chuyá»ƒn Tab
+            // Phần 2: Chuyển Tab
 
             const tabs = document.querySelectorAll('.nav-tab, .nav-item');
 
@@ -3008,12 +3008,12 @@ window.renderSttOrderControl = function (type, i, total) {
                             const scContainer = document.querySelector('.tab-scroll-content');
                             if (scContainer) scContainer.scrollTop = 0;
                         } else {
-                            console.warn("KhÃ´ng tÃ¬m tháº¥y tab:", targetTab);
+                            console.warn("Không tìm thấy tab:", targetTab);
                         }
 
 
 
-                        // Toggle class lÃªn body Ä‘á»ƒ CSS Ä‘iá»u chá»‰nh layout riÃªng cho tá»«ng tab
+                        // Toggle class lên body để CSS điều chỉnh layout riêng cho từng tab
 
                         document.body.classList.toggle('tab-sat-active', targetTab === 'tab-sat');
 
@@ -3021,7 +3021,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-                        // CÃ¡c lá»‡nh gá»i dá»¯ liá»‡u riÃªng cho tá»«ng Tab
+                        // Các lệnh gọi dữ liệu riêng cho từng Tab
 
                         if (targetTab === 'tab-sat' && typeof satCache !== 'undefined' && Object.keys(satCache).length === 0) {
 
@@ -3037,13 +3037,13 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-                        // ðŸ”¥ ÄOáº N FIX CHá»NG Lá»–I NHáº¢Y TRANG CHO TAB Xáº¾P Lá»ŠCH:
+                        // 🔥 ĐOẠN FIX CHỐNG LỖI NHẢY TRANG CHO TAB XẾP LỊCH:
 
                         if (targetTab === 'tab-schedule') {
 
-                            if (typeof schedCurrentPage !== 'undefined') schedCurrentPage = 1; // LuÃ´n quay vá» trang 1
+                            if (typeof schedCurrentPage !== 'undefined') schedCurrentPage = 1; // Luôn quay về trang 1
 
-                            if (typeof loadScheduleList === 'function') loadScheduleList(); // KÃ­ch hoáº¡t táº£i láº¡i dá»¯ liá»‡u tá»« Sheet & ngáº¯t trang
+                            if (typeof loadScheduleList === 'function') loadScheduleList(); // Kích hoạt tải lại dữ liệu từ Sheet & ngắt trang
 
                         }
 
@@ -3095,16 +3095,16 @@ window.renderSttOrderControl = function (type, i, total) {
                             }
                         }
 
-                        // Cáº­p nháº­t URL hash Ä‘á»ƒ há»— trá»£ chia sáº» / má»Ÿ trá»±c tiáº¿p tab
+                        // Cập nhật URL hash để hỗ trợ chia sẻ / mở trực tiếp tab
                         window.location.hash = '#' + targetTab;
 
-                    } catch (error) { console.error("Lá»—i chuyá»ƒn tab:", error); }
+                    } catch (error) { console.error("Lỗi chuyển tab:", error); }
 
                 });
 
             });
 
-            // Pháº§n 3: Khá»Ÿi táº¡o ngÃ y máº·c Ä‘á»‹nh vÃ  náº¡p Bootstrap
+            // Phần 3: Khởi tạo ngày mặc định và nạp Bootstrap
             const today = new Date();
             const todayYMD = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
             ['schedule-date', 'busy-date-filter', 'history-date', 'dashboard-date-filter', 'utils-search-date'].forEach(id => {
@@ -3112,7 +3112,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (el && !el.value) el.value = todayYMD;
             });
 
-            // Tá»± Ä‘á»™ng náº¡p trÆ°á»›c danh sÃ¡ch ngÃ y cÃ³ lá»‹ch sá»­ báº­n
+            // Tự động nạp trước danh sách ngày có lịch sử bận
             setTimeout(() => {
                 if (typeof window.loadBusyHistoryDates === 'function') {
                     window.loadBusyHistoryDates();
@@ -3132,11 +3132,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
             if (typeof setupTableSorting === 'function') setupTableSorting();
 
-            // Khá»Ÿi Ä‘á»™ng Context Menu vÃ  URL Hash Router
+            // Khởi động Context Menu và URL Hash Router
             if (typeof initTabContextMenu === 'function') initTabContextMenu();
             if (typeof handleInitialUrlTab === 'function') handleInitialUrlTab();
 
-            // Khá»Ÿi Ä‘á»™ng náº¡p dá»¯ liá»‡u Bootstrap (All-in-One + Offline Cache)
+            // Khởi động nạp dữ liệu Bootstrap (All-in-One + Offline Cache)
             if (typeof initProtocolsData === 'function') {
                 initProtocolsData();
             }
@@ -3148,7 +3148,7 @@ window.renderSttOrderControl = function (type, i, total) {
         });
 
         // ============================================================
-        // ðŸŒ TAB CONTEXT MENU & DEEP-LINKING (Má»ž TRONG TAB Má»šI)
+        // 🌐 TAB CONTEXT MENU & DEEP-LINKING (MỞ TRONG TAB MỚI)
         // ============================================================
         let _currentContextTabId = null;
         let _currentContextTabName = '';
@@ -3158,7 +3158,7 @@ window.renderSttOrderControl = function (type, i, total) {
             if (!menu) return;
 
             document.querySelectorAll('.nav-tab, .nav-item').forEach(tab => {
-                // Click chuá»™t pháº£i
+                // Click chuột phải
                 tab.addEventListener('contextmenu', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -3168,7 +3168,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     _currentContextTabName = textEl ? textEl.innerText.trim() : (tab.innerText || 'Tab').trim();
 
                     const titleEl = document.getElementById('tab-context-title');
-                    if (titleEl) titleEl.innerText = `ðŸ“Œ ${_currentContextTabName}`;
+                    if (titleEl) titleEl.innerText = `📌 ${_currentContextTabName}`;
 
                     const menuWidth = 230;
                     const menuHeight = 150;
@@ -3183,7 +3183,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     menu.style.display = 'block';
                 });
 
-                // Há»— trá»£ Middle Click (Click con lÄƒn chuá»™t) hoáº·c Ctrl+Click / Cmd+Click Ä‘á»ƒ má»Ÿ Tab má»›i
+                // Hỗ trợ Middle Click (Click con lăn chuột) hoặc Ctrl+Click / Cmd+Click để mở Tab mới
                 tab.addEventListener('auxclick', (e) => {
                     if (e.button === 1) { // Middle click
                         e.preventDefault();
@@ -3200,7 +3200,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 });
             });
 
-            // áº¨n context menu khi click ra ngoÃ i hoáº·c cuá»™n
+            // Ẩn context menu khi click ra ngoài hoặc cuộn
             document.addEventListener('click', (e) => {
                 if (!menu.contains(e.target)) {
                     menu.style.display = 'none';
@@ -3233,12 +3233,12 @@ window.renderSttOrderControl = function (type, i, total) {
             const targetUrl = `${baseUrl}#tab=${tabId}`;
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(targetUrl).then(() => {
-                    if (typeof window.showToast === 'function') window.showToast(`ðŸ“‹ ÄÃ£ sao chÃ©p liÃªn káº¿t Tab: ${targetUrl}`);
+                    if (typeof window.showToast === 'function') window.showToast(`📋 Đã sao chép liên kết Tab: ${targetUrl}`);
                 }).catch(() => {
-                    prompt('Sao chÃ©p liÃªn káº¿t Tab táº¡i Ä‘Ã¢y:', targetUrl);
+                    prompt('Sao chép liên kết Tab tại đây:', targetUrl);
                 });
             } else {
-                prompt('Sao chÃ©p liÃªn káº¿t Tab táº¡i Ä‘Ã¢y:', targetUrl);
+                prompt('Sao chép liên kết Tab tại đây:', targetUrl);
             }
         }
         window.copyCurrentTabLink = copyCurrentTabLink;
@@ -3270,7 +3270,7 @@ window.renderSttOrderControl = function (type, i, total) {
         window.handleInitialUrlTab = handleInitialUrlTab;
 
         // ============================================================
-        // ðŸš€ ALL-IN-ONE BOOTSTRAP DATA & OFFLINE-FIRST CACHE
+        // 🚀 ALL-IN-ONE BOOTSTRAP DATA & OFFLINE-FIRST CACHE
         // ============================================================
 
         function applySystemSettings(res) {
@@ -3343,11 +3343,11 @@ window.renderSttOrderControl = function (type, i, total) {
                         }
                     }
                 } catch(e) {
-                    console.error("Lá»—i Ä‘á»“ng bá»™ cáº¥u hÃ¬nh nháº¯c sao lÆ°u:", e);
+                    console.error("Lỗi đồng bộ cấu hình nhắc sao lưu:", e);
                 }
             }
 
-            // Äá»“ng bá»™ phÃ¡c Ä‘á»“ tá»« Server Settings
+            // Đồng bộ phác đồ từ Server Settings
             const rawProtocols = res.clinical_protocols || res.protocols;
             if (rawProtocols) {
                 try {
@@ -3360,11 +3360,11 @@ window.renderSttOrderControl = function (type, i, total) {
                         if (typeof renderProtocolSelectOptions === 'function') renderProtocolSelectOptions();
                     }
                 } catch(e) {
-                    console.error("Lá»—i Ä‘á»“ng bá»™ phÃ¡c Ä‘á»“ tá»« server:", e);
+                    console.error("Lỗi đồng bộ phác đồ từ server:", e);
                 }
             }
 
-            // ðŸ¤– Äá»“ng bá»™ mÃ´ hÃ¬nh AI tá»« CSDL Cloudflare D1 (náº¿u cÃ³)
+            // 🤖 Đồng bộ mô hình AI từ CSDL Cloudflare D1 (nếu có)
             if (res.ai_learned_model) {
                 try {
                     const m = typeof res.ai_learned_model === 'string' ? JSON.parse(res.ai_learned_model) : res.ai_learned_model;
@@ -3372,11 +3372,11 @@ window.renderSttOrderControl = function (type, i, total) {
                         window.AIScheduler.setModel(m, true, false);
                     }
                 } catch(e) {
-                    console.warn('[AI] Lá»—i phá»¥c há»“i mÃ´ hÃ¬nh tá»« Cloud:', e);
+                    console.warn('[AI] Lỗi phục hồi mô hình từ Cloud:', e);
                 }
             }
 
-            // â° Äá»“ng bá»™ cáº¥u hÃ¬nh tá»± Ä‘á»™ng há»c AI
+            // ⏰ Đồng bộ cấu hình tự động học AI
             if (res.ai_auto_train_config) {
                 try {
                     const cfg = typeof res.ai_auto_train_config === 'string' ? JSON.parse(res.ai_auto_train_config) : res.ai_auto_train_config;
@@ -3402,20 +3402,20 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (cachedStr) {
                     const b = JSON.parse(cachedStr);
                     if (b && typeof dataCache !== 'undefined') {
-                        // PhÃ¢n láº­p: tuyá»‡t Ä‘á»‘i khÃ´ng náº¡p cache cá»§a Ä‘Æ¡n vá»‹ khÃ¡c
+                        // Phân lập: tuyệt đối không nạp cache của đơn vị khác
                         const bUnit = (b.unit_code || b.unit || '').toLowerCase();
                         if (bUnit && bUnit !== curUnit) {
                             return;
                         }
 
-                        // âœ… TÃ­nh ngÃ y hÃ´m nay theo mÃºi giá» VN (UTC+7)
+                        // ✅ Tính ngày hôm nay theo múi giờ VN (UTC+7)
                         const nowVN = new Date(Date.now() + 7 * 60 * 60 * 1000);
                         const todayYMD = `${nowVN.getUTCFullYear()}-${String(nowVN.getUTCMonth() + 1).padStart(2, '0')}-${String(nowVN.getUTCDate()).padStart(2, '0')}`;
                         const dd = String(nowVN.getUTCDate()).padStart(2, '0');
                         const mm = String(nowVN.getUTCMonth() + 1).padStart(2, '0');
                         const todaySlash = `${dd}/${mm}/${nowVN.getUTCFullYear()}`; // VD: 21/08/2026
 
-                        // Kiá»ƒm tra lá»‹ch trong cache cÃ³ pháº£i cá»§a ngÃ y hÃ´m nay khÃ´ng
+                        // Kiểm tra lịch trong cache có phải của ngày hôm nay không
                         let scheduleIsStale = false;
                         if (b.schedule && Array.isArray(b.schedule) && b.schedule.length > 0) {
                             const firstSched = b.schedule[0];
@@ -3508,7 +3508,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         } else {
                             dataCache.pat = [];
                         }
-                        // Náº¡p phÃ¡c Ä‘á»“ tá»« cache hoáº·c cÃ i Ä‘áº·t mÃ¡y chá»§
+                        // Nạp phác đồ từ cache hoặc cài đặt máy chủ
                         const rawCachedProto = (b.settings && b.settings.clinical_protocols) || b.protocols;
                         if (rawCachedProto) {
                             try {
@@ -3536,7 +3536,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     }
                 }
             } catch (e) {
-                console.warn('[Offline Cache] Lá»—i Ä‘á»c dá»¯ liá»‡u cá»¥c bá»™:', e);
+                console.warn('[Offline Cache] Lỗi đọc dữ liệu cục bộ:', e);
             }
         }
 
@@ -3544,7 +3544,7 @@ window.renderSttOrderControl = function (type, i, total) {
             const sessionStr = localStorage.getItem('meds_session');
             const curUnit = getCurrentUnitCode();
             if (!sessionStr || !curUnit) {
-                console.log('[Bootstrap] ChÆ°a Ä‘Äƒng nháº­p hoáº·c chÆ°a chá»n Ä‘Æ¡n vá»‹, bá» qua náº¡p dá»¯ liá»‡u.');
+                console.log('[Bootstrap] Chưa đăng nhập hoặc chưa chọn đơn vị, bỏ qua nạp dữ liệu.');
                 return;
             }
 
@@ -3556,7 +3556,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 .withSuccessHandler(function (b) {
                     if (!b) return;
 
-                    // ðŸ›¡ï¸ Tá»± Ä‘á»™ng chá»¯a lÃ nh há» tÃªn bá»‡nh nhÃ¢n vÃ  lá»‹ch trÃ¬nh trÆ°á»›c khi lÆ°u cache
+                    // 🛡️ Tự động chữa lành họ tên bệnh nhân và lịch trình trước khi lưu cache
                     if (b.patients && Array.isArray(b.patients)) {
                         b.patients.forEach((pt, i) => {
                             if (pt) {
@@ -3613,7 +3613,7 @@ window.renderSttOrderControl = function (type, i, total) {
                             dataCache.schedule = b.schedule;
                             window.currentScheduleData = (b.schedule.length > 0 && typeof markDischargedInSchedule === 'function') ? markDischargedInSchedule(b.schedule) : (b.schedule || []);
                             if (b.schedule.length === 0) {
-                                // Server xÃ¡c nháº­n hÃ´m nay chÆ°a cÃ³ lá»‹ch (ngÃ y má»›i hoáº·c Ä‘Ã£ chá»‘t sá»•), dá»n sáº¡ch cache local
+                                // Server xác nhận hôm nay chưa có lịch (ngày mới hoặc đã chốt sổ), dọn sạch cache local
                                 const curUnit = getCurrentUnitCode();
                                 const uKey = (base) => (typeof getUnitStorageKey === 'function') ? getUnitStorageKey(base) : (curUnit ? `${curUnit}_${base}` : base);
                                 localStorage.removeItem(uKey('meds_success'));
@@ -3630,11 +3630,11 @@ window.renderSttOrderControl = function (type, i, total) {
                                 const countInfo = window._finalizedTodayCount ? ` (${window._finalizedTodayCount} ca)` : '';
                                 const displayEl = document.getElementById('display-date');
                                 if (displayEl) {
-                                    displayEl.innerHTML = `<span style="color:#b45309; background:#fef3c7; padding:2px 8px; border-radius:6px; font-weight:700;">ðŸ“‹ HÃ´m nay (ÄÃ£ chá»‘t sá»•${countInfo})</span>`;
+                                    displayEl.innerHTML = `<span style="color:#b45309; background:#fef3c7; padding:2px 8px; border-radius:6px; font-weight:700;">📋 Hôm nay (Đã chốt sổ${countInfo})</span>`;
                                 }
                                 const statusEl = document.getElementById('utils-lich-status');
                                 if (statusEl) {
-                                    statusEl.innerText = `ðŸ“‹ HÃ´m nay (ÄÃ£ chá»‘t sá»•${countInfo})`;
+                                    statusEl.innerText = `📋 Hôm nay (Đã chốt sổ${countInfo})`;
                                     statusEl.style.color = '#b45309';
                                 }
                             } else {
@@ -3665,7 +3665,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         }
                         if (typeof renderPatientsTable === 'function') renderPatientsTable();
 
-                        // Äá»“ng bá»™ phÃ¡c Ä‘á»“ má»›i nháº¥t tá»« mÃ¡y chá»§ (Cloudflare D1)
+                        // Đồng bộ phác đồ mới nhất từ máy chủ (Cloudflare D1)
                         const rawServerProto = (b.settings && b.settings.clinical_protocols) || b.protocols;
                         if (rawServerProto) {
                             try {
@@ -3699,7 +3699,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         if (uls.length) {
                             const htmlContent = b.links.length
                                 ? b.links.map(item => `<li><a href="${item.url}" target="_blank"><span class="f-icon">${item.icon}</span> ${item.ten}</a></li>`).join('')
-                                : '<li><a href="#"><span class="f-icon">âš ï¸</span> ChÆ°a cÃ³ liÃªn káº¿t nÃ o</a></li>';
+                                : '<li><a href="#"><span class="f-icon">⚠️</span> Chưa có liên kết nào</a></li>';
                             uls.forEach(ul => { ul.innerHTML = htmlContent; });
                         }
                     }
@@ -3710,15 +3710,15 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     if (!window._systemReadyLogged) {
                         window._systemReadyLogged = true;
-                        console.log('âœ… Há»‡ thá»‘ng T.I.M.E.S Ä‘Ã£ táº£i vÃ  Ä‘á»“ng bá»™ dá»¯ liá»‡u thÃ nh cÃ´ng! Sáºµn sÃ ng hoáº¡t Ä‘á»™ng.');
+                        console.log('✅ Hệ thống T.I.M.E.S đã tải và đồng bộ dữ liệu thành công! Sẵn sàng hoạt động.');
                     }
                 })
                 .withFailureHandler(function (err) {
                     if (!window._systemReadyLogged) {
                         window._systemReadyLogged = true;
-                        console.log('âœ… Há»‡ thá»‘ng T.I.M.E.S Ä‘Ã£ sáºµn sÃ ng hoáº¡t Ä‘á»™ng (Cháº¿ Ä‘á»™ ngoáº¡i tuyáº¿n).');
+                        console.log('✅ Hệ thống T.I.M.E.S đã sẵn sàng hoạt động (Chế độ ngoại tuyến).');
                     }
-                    console.warn('[Bootstrap API] MÃ¡y chá»§ báº­n, Ä‘ang sá»­ dá»¥ng dá»¯ liá»‡u Ä‘Ã£ lÆ°u trong mÃ¡y:', err);
+                    console.warn('[Bootstrap API] Máy chủ bận, đang sử dụng dữ liệu đã lưu trong máy:', err);
                     [loadMachines, loadRooms, loadScheduleList, loadProcedures, loadPatients, loadStaff].forEach(fn => fn());
                 })
                 .getBootstrapData();
@@ -3733,7 +3733,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // =================================================================
 
-        // ðŸš€ HÃ€M LÃ•I: Táº¢I Dá»® LIá»†U ÄA NÄ‚NG (Báº¢N FIX TRIá»†T Äá»‚ Lá»–I THAM Sá»)
+        // 🚀 HÀM LÕI: TẢI DỮ LIỆU ĐA NĂNG (BẢN FIX TRIỆT ĐỂ LỖI THAM SỐ)
 
         // =================================================================
 
@@ -3742,7 +3742,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
         function loadEntity(apiMethod, cacheKey, callback, extraCallbacks = [], forceRefresh = false) {
-            const CACHE_TTL = 5 * 60 * 1000; // LÆ°u Cache 5 phÃºt
+            const CACHE_TTL = 5 * 60 * 1000; // Lưu Cache 5 phút
             const now = Date.now();
             window.dataCacheTime = window.dataCacheTime || {};
 
@@ -3781,7 +3781,7 @@ window.renderSttOrderControl = function (type, i, total) {
                             }).map(item => {
                                 const tenLoai = String(item.tenLoai || item.ten_loai || (Array.isArray(item) ? item[1] : '') || '').trim();
                                 const maMay = String(item.maMay || item.ma_may || (Array.isArray(item) ? item[2] : '') || '').trim();
-                                const trangThai = String(item.trangThai || item.trang_thai || (Array.isArray(item) ? item[3] : '') || 'Sáºµn sÃ ng').trim();
+                                const trangThai = String(item.trangThai || item.trang_thai || (Array.isArray(item) ? item[3] : '') || 'Sẵn sàng').trim();
                                 return {
                                     ...((typeof item === 'object' && !Array.isArray(item)) ? item : {}),
                                     tenLoai,
@@ -3806,11 +3806,11 @@ window.renderSttOrderControl = function (type, i, total) {
                         if (cacheKey === 'staff') {
                             cleaned.forEach(item => {
                                 if (!item.thoiGianLam) item.thoiGianLam = "07:30-11:30, 13:00-16:30";
-                                if (!item.trangThai) item.trangThai = "Äi lÃ m";
+                                if (!item.trangThai) item.trangThai = "Đi làm";
                                 if (!item.gioBan) item.gioBan = "";
                                 if (!item.kyNang) item.kyNang = "";
                                 if (!item.quyen) item.quyen = item.system || item.he || "PHCN";
-                                if (!item.nguoiThayThe) item.nguoiThayThe = "KhÃ´ng";
+                                if (!item.nguoiThayThe) item.nguoiThayThe = "Không";
                             });
                             try {
                                 const localHisMap = JSON.parse(localStorage.getItem('staff_his_map') || '{}');
@@ -3831,7 +3831,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     callbacks.forEach(cb => cb());
                 })
                 .withFailureHandler(e => {
-                    console.error("âŒ Lá»—i táº£i [" + cacheKey + "]:", e);
+                    console.error("❌ Lỗi tải [" + cacheKey + "]:", e);
                     callbacks.forEach(cb => cb());
                 })
             [apiMethod]();
@@ -3840,10 +3840,10 @@ window.renderSttOrderControl = function (type, i, total) {
         function triggerDataRefresh(btn) {
             const origText = btn.innerText;
             btn.disabled = true;
-            btn.innerText = "â³ ÄANG Äá»’NG Bá»˜...";
-            if (window.showGlobalLoading) window.showGlobalLoading("Äang táº£i dá»¯ liá»‡u tá»« Google Sheets...");
+            btn.innerText = "⏳ ĐANG ĐỒNG BỘ...";
+            if (window.showGlobalLoading) window.showGlobalLoading("Đang tải dữ liệu từ Google Sheets...");
 
-            window.dataCacheTime = {}; // XÃ³a cache time
+            window.dataCacheTime = {}; // Xóa cache time
 
             Promise.all([
                 new Promise((resolve) => {
@@ -3863,9 +3863,9 @@ window.renderSttOrderControl = function (type, i, total) {
                 btn.disabled = false;
                 btn.innerText = origText;
                 if (window.showToast) {
-                    window.showToast("âŒ Lá»—i táº£i dá»¯ liá»‡u: " + err, "error", 5000);
+                    window.showToast("❌ Lỗi tải dữ liệu: " + err, "error", 5000);
                 } else {
-                    alert("âŒ Lá»—i táº£i dá»¯ liá»‡u: " + err);
+                    alert("❌ Lỗi tải dữ liệu: " + err);
                 }
             });
         }
@@ -3905,7 +3905,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // ðŸ“‹ CANCEL EDIT (Form reset)
+        // 📋 CANCEL EDIT (Form reset)
 
         // ============================================================
 
@@ -3921,26 +3921,26 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const configs = {
 
-                machine: () => { document.getElementById('group-qty').style.display = 'flex'; document.getElementById('btn-save-machine').innerText = "ThÃªm"; document.getElementById('btn-cancel-machine').style.display = "none"; },
+                machine: () => { document.getElementById('group-qty').style.display = 'flex'; document.getElementById('btn-save-machine').innerText = "Thêm"; document.getElementById('btn-cancel-machine').style.display = "none"; },
 
                 proc: () => { 
-                    document.getElementById('btn-save-proc').innerText = "ThÃªm"; 
+                    document.getElementById('btn-save-proc').innerText = "Thêm"; 
                     document.getElementById('btn-cancel-proc').style.display = "none"; 
                     document.getElementById('proc-system').value = 'YHCT'; 
-                    document.getElementById('proc-category').value = 'ChÆ°a phÃ¢n loáº¡i'; 
-                    document.getElementById('proc-machine').value = 'Thá»§ cÃ´ng'; 
+                    document.getElementById('proc-category').value = 'Chưa phân loại'; 
+                    document.getElementById('proc-machine').value = 'Thủ công'; 
                     if (document.getElementById('proc-continuous-cb')) document.getElementById('proc-continuous-cb').checked = false;
                 },
 
-                staff: () => { document.getElementById('btn-save-staff').innerText = "ThÃªm"; document.getElementById('btn-cancel-staff').style.display = "none"; document.getElementById('staff-quyen').value = 'Cáº£ hai'; document.getElementById('staff-role').value = 'BÃ¡c sÄ©'; document.getElementById('staff-status').value = 'Äi lÃ m'; },
+                staff: () => { document.getElementById('btn-save-staff').innerText = "Thêm"; document.getElementById('btn-cancel-staff').style.display = "none"; document.getElementById('staff-quyen').value = 'Cả hai'; document.getElementById('staff-role').value = 'Bác sĩ'; document.getElementById('staff-status').value = 'Đi làm'; },
 
-                room: () => { document.getElementById('btn-save-room').innerText = "ThÃªm"; document.getElementById('btn-cancel-room').style.display = "none"; },
+                room: () => { document.getElementById('btn-save-room').innerText = "Thêm"; document.getElementById('btn-cancel-room').style.display = "none"; },
 
                 proto: () => {
                     const btnSave = document.getElementById('btn-save-proto');
                     const btnCancel = document.getElementById('btn-cancel-proto');
                     const nameInput = document.getElementById('proto-name');
-                    if (btnSave) btnSave.innerText = "âž• ThÃªm PhÃ¡c Äá»“";
+                    if (btnSave) btnSave.innerText = "➕ Thêm Phác Đồ";
                     if (btnCancel) btnCancel.style.display = "none";
                     if (nameInput) nameInput.value = '';
                     document.querySelectorAll('.proto-proc-cb').forEach(c => c.checked = false);
@@ -3949,7 +3949,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 pat: () => {
 
-                    document.getElementById('btn-save-pat').innerText = "ThÃªm";
+                    document.getElementById('btn-save-pat').innerText = "Thêm";
 
                     document.getElementById('btn-cancel-pat').style.display = "none";
 
@@ -3992,7 +3992,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         function getGioVaoMinutes(gStr) {
             if (!gStr || typeof gStr !== 'string' || !gStr.includes(':')) {
-                return 7 * 60 + 30; // 07:30 máº·c Ä‘á»‹nh
+                return 7 * 60 + 30; // 07:30 mặc định
             }
             const parts = gStr.split(':');
             const h = parseInt(parts[0], 10) || 0;
@@ -4002,7 +4002,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // âš™ï¸ 1. MÃY MÃ“C
+        // ⚙️ 1. MÁY MÓC
 
         // ============================================================
 
@@ -4022,23 +4022,23 @@ window.renderSttOrderControl = function (type, i, total) {
             const searchMachineSelect = document.getElementById('search-machine-type');
             if (procMachineSelect && searchMachineSelect) {
                 const types = [...new Set(dataCache.machine.map(m => String(m.tenLoai || m[1] || '').trim()))].filter(Boolean);
-                procMachineSelect.innerHTML = '<option>Thá»§ cÃ´ng</option>' + types.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
-                searchMachineSelect.innerHTML = '<option>Chá»n loáº¡i mÃ¡y</option>' + types.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+                procMachineSelect.innerHTML = '<option>Thủ công</option>' + types.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+                searchMachineSelect.innerHTML = '<option>Chọn loại máy</option>' + types.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
             }
 
-            if (!dataCache.machine.length) { tbody.innerHTML = renderEmptyRow(5, 'ChÆ°a cÃ³ thiáº¿t bá»‹'); return; }
+            if (!dataCache.machine.length) { tbody.innerHTML = renderEmptyRow(5, 'Chưa có thiết bị'); return; }
 
             tbody.innerHTML = dataCache.machine.map((item, i) => {
                 const idx = dataCache.machine.indexOf(item);
                 const ten = String(item.tenLoai || item[1] || '').trim();
                 const ma = String(item.maMay || item[2] || '').trim();
                 const tt = item.trangThai || item[3] || '';
-                return `<tr class="draggable-row editable-row" data-drag-idx="${i}" data-machine-index="${idx}" onclick="if(!window._isDraggingRow) editRoomMachine(parseInt(this.dataset.machineIndex))" title="Báº¥m sá»­a (KÃ©o tháº£ nÃºt â˜° hoáº·c báº¥m â–²/â–¼ Ä‘á»ƒ Ä‘á»•i thá»© tá»±, PhÃ­m Delete Ä‘á»ƒ xÃ³a)">
+                return `<tr class="draggable-row editable-row" data-drag-idx="${i}" data-machine-index="${idx}" onclick="if(!window._isDraggingRow) editRoomMachine(parseInt(this.dataset.machineIndex))" title="Bấm sửa (Kéo thả nút ☰ hoặc bấm ▲/▼ để đổi thứ tự, Phím Delete để xóa)">
             <td>${renderSttOrderControl("machines", i, dataCache.machine.length)}</td>
             <td><b>${ten}</b></td>
             <td><span class="badge badge-info">${ma}</span></td>
-            <td><span class="status-badge ${tt === 'Sáºµn sÃ ng' ? 'status-ready' : 'status-busy'}">${tt}</span></td>
-            <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteMachine(${idx})">XÃ³a</button></td>
+            <td><span class="status-badge ${tt === 'Sẵn sàng' ? 'status-ready' : 'status-busy'}">${tt}</span></td>
+            <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteMachine(${idx})">Xóa</button></td>
         </tr>`;
             }).join('');
 
@@ -4061,7 +4061,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const s = document.getElementById('machine-status').value;
 
-            if (!t || !c) return alert("Äiá»n tÃªn vÃ  mÃ£ mÃ¡y!");
+            if (!t || !c) return alert("Điền tên và mã máy!");
 
             if (editIndex.machine > -1) {
                 const oldItem = dataCache.machine[editIndex.machine];
@@ -4101,7 +4101,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const tenLoai = String(item.tenLoai || item.ten_loai || (Array.isArray(item) ? item[1] : '') || '').trim();
             const maMay = String(item.maMay || item.ma_may || (Array.isArray(item) ? item[2] : '') || '').trim();
-            const trangThai = item.trangThai || item.trang_thai || (Array.isArray(item) ? item[3] : '') || 'Sáºµn sÃ ng';
+            const trangThai = item.trangThai || item.trang_thai || (Array.isArray(item) ? item[3] : '') || 'Sẵn sàng';
 
             document.getElementById('machine-type').value = tenLoai;
 
@@ -4111,14 +4111,14 @@ window.renderSttOrderControl = function (type, i, total) {
 
             document.getElementById('group-qty').style.display = 'none';
 
-            document.getElementById('btn-save-machine').innerText = "LÆ°u Sá»­a";
+            document.getElementById('btn-save-machine').innerText = "Lưu Sửa";
 
             document.getElementById('btn-cancel-machine').style.display = "inline-block";
 
         }
 
         function deleteMachine(i) {
-            showCustomConfirm("XÃ¡c nháº­n xÃ³a mÃ¡y", "BÃ¡c sÄ© cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a mÃ¡y nÃ y?", function () {
+            showCustomConfirm("Xác nhận xóa máy", "Bác sĩ có chắc chắn muốn xóa máy này?", function () {
                 const targetMachine = dataCache.machine ? dataCache.machine[i] : null;
                 const maMay = targetMachine ? String(targetMachine.maMay || targetMachine.ma_may || (Array.isArray(targetMachine) ? targetMachine[2] : '') || targetMachine.ma || '').trim() : '';
                 const machineId = targetMachine ? (targetMachine.id || null) : null;
@@ -4128,10 +4128,10 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 google.script.run
                     .withSuccessHandler(() => {
-                        if (typeof window.showToast === 'function') window.showToast('ÄÃ£ xÃ³a mÃ¡y mÃ³c thÃ nh cÃ´ng!', 'success');
+                        if (typeof window.showToast === 'function') window.showToast('Đã xóa máy móc thành công!', 'success');
                     })
                     .withFailureHandler(e => {
-                        alert('Lá»—i khi xÃ³a mÃ¡y: ' + e);
+                        alert('Lỗi khi xóa máy: ' + e);
                         if (typeof loadMachines === 'function') loadMachines();
                     }).deleteMayMoc({ maMay, id: machineId, index: i }, maMay, machineId);
             });
@@ -4144,7 +4144,7 @@ window.renderSttOrderControl = function (type, i, total) {
             if (!container) return;
 
             if (!dataCache.machine || !Array.isArray(dataCache.machine) || dataCache.machine.length === 0) {
-                container.innerHTML = '<div style="color:#7f8c8d; font-style:italic; grid-column:span 2;">ChÆ°a cÃ³ loáº¡i mÃ¡y trong kho</div>';
+                container.innerHTML = '<div style="color:#7f8c8d; font-style:italic; grid-column:span 2;">Chưa có loại máy trong kho</div>';
                 return;
             }
 
@@ -4165,7 +4165,7 @@ window.renderSttOrderControl = function (type, i, total) {
             });
 
             if (typeList.length === 0) {
-                container.innerHTML = '<div style="color:#7f8c8d; font-style:italic; grid-column:span 2;">ChÆ°a cÃ³ loáº¡i mÃ¡y trong kho</div>';
+                container.innerHTML = '<div style="color:#7f8c8d; font-style:italic; grid-column:span 2;">Chưa có loại máy trong kho</div>';
                 return;
             }
 
@@ -4184,7 +4184,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
         // ============================================================
-        // ðŸŽ¯ DYNAMIC CLINICAL PROTOCOLS ENGINE (Quáº£n lÃ½ PhÃ¡c Ä‘á»“ RiÃªng)
+        // 🎯 DYNAMIC CLINICAL PROTOCOLS ENGINE (Quản lý Phác đồ Riêng)
         // ============================================================
         function initProtocolsData() {
             if (!window.dataCache) window.dataCache = {};
@@ -4224,7 +4224,7 @@ window.renderSttOrderControl = function (type, i, total) {
             renderProtocolsTable();
             renderProtocolSelectOptions();
 
-            // Láº¯ng nghe sá»± kiá»‡n Ä‘á»“ng bá»™ thá»i gian thá»±c tá»« cÃ¡c Tab khÃ¡c
+            // Lắng nghe sự kiện đồng bộ thời gian thực từ các Tab khác
             if (typeof window.OfflineSyncEngine !== 'undefined' && typeof window.OfflineSyncEngine.registerLiveListener === 'function') {
                 window.OfflineSyncEngine.registerLiveListener((type, payload) => {
                     if (type === 'PROTOCOLS_UPDATED' && payload && Array.isArray(payload.protocols)) {
@@ -4239,7 +4239,7 @@ window.renderSttOrderControl = function (type, i, total) {
         }
         window.initProtocolsData = initProtocolsData;
 
-        // Render danh sÃ¡ch checkbox thá»§ thuáº­t trá»±c tiáº¿p trong Form bÃªn trÃ¡i cá»§a PhÃ¡c Ä‘á»“
+        // Render danh sách checkbox thủ thuật trực tiếp trong Form bên trái của Phác đồ
         function renderProtoProcsFormCheckboxes() {
             const yhctBox = document.getElementById('proto-checkboxes-yhct');
             const phcnBox = document.getElementById('proto-checkboxes-phcn');
@@ -4278,7 +4278,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 const escapedTen = escapeHtml(ten);
                 const heUpper = String(he || '').trim().toUpperCase();
-                const isYhct = heUpper === 'YHCT' || heUpper.includes('Cá»” TRUYá»€N') || heUpper.includes('ÄÃ”NG Y');
+                const isYhct = heUpper === 'YHCT' || heUpper.includes('CỔ TRUYỀN') || heUpper.includes('ĐÔNG Y');
                 
                 const cbHtml = `<label class="checkbox-item proto-proc-item" data-name="${escapedTen.toLowerCase()}" style="font-size:11.5px; padding:3px 6px; margin-bottom:3px; display:flex; align-items:center; gap:6px; cursor:pointer; border-radius:4px; border:1px solid #cbd5e1;">
                     <input type="checkbox" class="proto-proc-cb" data-he="${isYhct ? 'YHCT' : 'PHCN'}" value="${escapedTen}" onchange="updateProtoSelectedCount()" style="width:15px; height:15px; margin:0; cursor:pointer; flex-shrink:0;">
@@ -4289,8 +4289,8 @@ window.renderSttOrderControl = function (type, i, total) {
                 else phcnHtml += cbHtml;
             });
 
-            yhctBox.innerHTML = yhctHtml || '<em style="color:#94a3b8; font-size:11px;">ChÆ°a cÃ³ thá»§ thuáº­t YHCT</em>';
-            phcnBox.innerHTML = phcnHtml || '<em style="color:#94a3b8; font-size:11px;">ChÆ°a cÃ³ thá»§ thuáº­t PHCN</em>';
+            yhctBox.innerHTML = yhctHtml || '<em style="color:#94a3b8; font-size:11px;">Chưa có thủ thuật YHCT</em>';
+            phcnBox.innerHTML = phcnHtml || '<em style="color:#94a3b8; font-size:11px;">Chưa có thủ thuật PHCN</em>';
             updateProtoSelectedCount();
         }
         window.renderProtoProcsFormCheckboxes = renderProtoProcsFormCheckboxes;
@@ -4299,7 +4299,7 @@ window.renderSttOrderControl = function (type, i, total) {
             const badge = document.getElementById('proto-selected-count-badge');
             const count = document.querySelectorAll('.proto-proc-cb:checked').length;
             if (badge) {
-                badge.innerText = `${count} Ä‘Ã£ chá»n`;
+                badge.innerText = `${count} đã chọn`;
                 badge.style.background = count > 0 ? '#dbeafe' : '#eff6ff';
                 badge.style.color = count > 0 ? '#1e40af' : '#64748b';
             }
@@ -4337,11 +4337,11 @@ window.renderSttOrderControl = function (type, i, total) {
             if (typeof callApi === 'function') {
                 callApi('saveProtocolsData', [list], res => {
                     if (showToastMsg && typeof window.showToast === 'function') {
-                        window.showToast(`â˜ï¸ ÄÃ£ Ä‘á»“ng bá»™ ${list.length} phÃ¡c Ä‘á»“ vÃ o Cloudflare D1 thÃ nh cÃ´ng!`);
+                        window.showToast(`☁️ Đã đồng bộ ${list.length} phác đồ vào Cloudflare D1 thành công!`);
                     }
                 }, err => {
                     if (showToastMsg && typeof window.showToast === 'function') {
-                        window.showToast('âš ï¸ Lá»—i Ä‘á»“ng bá»™ Ä‘Ã¡m mÃ¢y: ' + err, 'error');
+                        window.showToast('⚠️ Lỗi đồng bộ đám mây: ' + err, 'error');
                     }
                 });
             }
@@ -4354,12 +4354,12 @@ window.renderSttOrderControl = function (type, i, total) {
             if (typeof dataCache !== 'undefined') dataCache.protocols = newList;
             window.dataCache.protocols = newList;
 
-            // 1. LÆ°u localStorage
+            // 1. Lưu localStorage
             try {
                 localStorage.setItem('meds_protocols', JSON.stringify(newList));
             } catch (e) {}
 
-            // 2. Cáº­p nháº­t trá»±c tiáº¿p vÃ o times_bootstrap_cache
+            // 2. Cập nhật trực tiếp vào times_bootstrap_cache
             try {
                 const cachedStr = localStorage.getItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache");
                 if (cachedStr) {
@@ -4374,7 +4374,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 }
             } catch (e) {}
 
-            // 3. LÆ°u vÃ o IndexedDB Dexie Cache
+            // 3. Lưu vào IndexedDB Dexie Cache
             if (typeof window.OfflineSyncEngine !== 'undefined') {
                 if (typeof window.OfflineSyncEngine.saveCache === 'function') {
                     window.OfflineSyncEngine.saveCache('protocols', newList);
@@ -4384,23 +4384,23 @@ window.renderSttOrderControl = function (type, i, total) {
                 }
             }
 
-            // 4. Äá»“ng bá»™ lÃªn Cloudflare D1 Backend
+            // 4. Đồng bộ lên Cloudflare D1 Backend
             syncProtocolsToCloud(false);
 
-            // 5. Cáº­p nháº­t giao diá»‡n báº£ng vÃ  dropdown chá»n phÃ¡c Ä‘á»“
+            // 5. Cập nhật giao diện bảng và dropdown chọn phác đồ
             renderProtocolsTable();
             renderProtocolSelectOptions();
         }
         window.saveProtocolsData = saveProtocolsData;
 
-        // LÆ°u / Cáº­p nháº­t phÃ¡c Ä‘á»“ tá»« Sidebar Form bÃªn trÃ¡i
+        // Lưu / Cập nhật phác đồ từ Sidebar Form bên trái
         function saveProtocolFromForm() {
             const nameInput = document.getElementById('proto-name');
             const name = (nameInput ? nameInput.value : '').trim();
 
             if (!name) {
-                if (typeof window.showToast === 'function') window.showToast('âš ï¸ Vui lÃ²ng nháº­p tÃªn phÃ¡c Ä‘á»“ Ä‘iá»u trá»‹!', 'warning');
-                else alert('Vui lÃ²ng nháº­p tÃªn phÃ¡c Ä‘á»“ Ä‘iá»u trá»‹!');
+                if (typeof window.showToast === 'function') window.showToast('⚠️ Vui lòng nhập tên phác đồ điều trị!', 'warning');
+                else alert('Vui lòng nhập tên phác đồ điều trị!');
                 if (nameInput) nameInput.focus();
                 return;
             }
@@ -4409,8 +4409,8 @@ window.renderSttOrderControl = function (type, i, total) {
             const selectedProcs = checkedCbs.map(cb => (cb.value || '').trim()).filter(Boolean);
 
             if (!selectedProcs.length) {
-                if (typeof window.showToast === 'function') window.showToast('âš ï¸ Vui lÃ²ng chá»n Ã­t nháº¥t 1 thá»§ thuáº­t cho phÃ¡c Ä‘á»“!', 'warning');
-                else alert('Vui lÃ²ng chá»n Ã­t nháº¥t 1 thá»§ thuáº­t cho phÃ¡c Ä‘á»“!');
+                if (typeof window.showToast === 'function') window.showToast('⚠️ Vui lòng chọn ít nhất 1 thủ thuật cho phác đồ!', 'warning');
+                else alert('Vui lòng chọn ít nhất 1 thủ thuật cho phác đồ!');
                 return;
             }
 
@@ -4432,25 +4432,25 @@ window.renderSttOrderControl = function (type, i, total) {
             cancelEdit('proto');
             
             if (typeof window.showToast === 'function') {
-                window.showToast(`âœ… ÄÃ£ lÆ°u phÃ¡c Ä‘á»“: "${name}" (${selectedProcs.length} thá»§ thuáº­t)`);
+                window.showToast(`✅ Đã lưu phác đồ: "${name}" (${selectedProcs.length} thủ thuật)`);
             }
         }
         window.saveProtocolFromForm = saveProtocolFromForm;
 
-        // Náº¡p phÃ¡c Ä‘á»“ vÃ o Sidebar Form bÃªn trÃ¡i Ä‘á»ƒ chá»‰nh sá»­a
+        // Nạp phác đồ vào Sidebar Form bên trái để chỉnh sửa
         function editProtocol(index) {
             editIndex.proto = index;
             const currentList = (window.dataCache && window.dataCache.protocols) ? window.dataCache.protocols : ((typeof dataCache !== 'undefined' && dataCache.protocols) ? dataCache.protocols : []);
             if (index < 0 || index >= currentList.length) return;
             const target = currentList[index];
 
-            // Äáº£m báº£o danh sÃ¡ch checkbox thá»§ thuáº­t Ä‘Ã£ Ä‘Æ°á»£c render
+            // Đảm bảo danh sách checkbox thủ thuật đã được render
             if (!document.querySelectorAll('.proto-proc-cb').length) {
                 renderProtoProcsFormCheckboxes();
             }
 
             const nameInput = document.getElementById('proto-name');
-            if (nameInput) nameInput.value = target.name || target.ten_phac_do || `PhÃ¡c Ä‘á»“ ${index + 1}`;
+            if (nameInput) nameInput.value = target.name || target.ten_phac_do || `Phác đồ ${index + 1}`;
 
             let procsArr = [];
             if (Array.isArray(target.procs)) {
@@ -4464,7 +4464,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 }
             }
 
-            // ÄÃ¡nh dáº¥u cÃ¡c checkbox
+            // Đánh dấu các checkbox
             document.querySelectorAll('.proto-proc-cb').forEach(cb => {
                 const cbVal = String(cb.value || '').trim();
                 const isMatch = procsArr.some(sp => {
@@ -4478,10 +4478,10 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const btnSave = document.getElementById('btn-save-proto');
             const btnCancel = document.getElementById('btn-cancel-proto');
-            if (btnSave) btnSave.innerText = "ðŸ’¾ LÆ°u Sá»­a PhÃ¡c Äá»“";
+            if (btnSave) btnSave.innerText = "💾 Lưu Sửa Phác Đồ";
             if (btnCancel) btnCancel.style.display = "inline-block";
 
-            // Cuá»™n nháº¹ lÃªn form trÃªn mÃ n hÃ¬nh di Ä‘á»™ng/mÃ¡y tÃ­nh
+            // Cuộn nhẹ lên form trên màn hình di động/máy tính
             const formBox = document.getElementById('sidebar-form-proto');
             if (formBox) {
                 formBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -4495,20 +4495,20 @@ window.renderSttOrderControl = function (type, i, total) {
             const list = Array.isArray(currentList) ? [...currentList] : [];
             if (index < 0 || index >= list.length) return;
             const target = list[index];
-            const targetName = target.name || target.ten_phac_do || `PhÃ¡c Ä‘á»“ ${index + 1}`;
+            const targetName = target.name || target.ten_phac_do || `Phác đồ ${index + 1}`;
 
             const doDelete = () => {
                 list.splice(index, 1);
                 saveProtocolsData(list);
                 if (editIndex.proto === index) cancelEdit('proto');
                 if (typeof window.showToast === 'function') {
-                    window.showToast(`ðŸ—‘ï¸ ÄÃ£ xÃ³a phÃ¡c Ä‘á»“: "${targetName}"`);
+                    window.showToast(`🗑️ Đã xóa phác đồ: "${targetName}"`);
                 }
             };
 
             if (typeof showCustomConfirm === 'function') {
-                showCustomConfirm("XÃ¡c nháº­n xÃ³a phÃ¡c Ä‘á»“", `BÃ¡c sÄ© cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a phÃ¡c Ä‘á»“ "${targetName}" khÃ´ng?`, doDelete);
-            } else if (confirm(`Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a phÃ¡c Ä‘á»“ "${targetName}" khÃ´ng?`)) {
+                showCustomConfirm("Xác nhận xóa phác đồ", `Bác sĩ có chắc chắn muốn xóa phác đồ "${targetName}" không?`, doDelete);
+            } else if (confirm(`Bạn có chắc chắn muốn xóa phác đồ "${targetName}" không?`)) {
                 doDelete();
             }
         }
@@ -4519,7 +4519,7 @@ window.renderSttOrderControl = function (type, i, total) {
             if (!tbody) return;
             const list = (window.dataCache && window.dataCache.protocols) ? window.dataCache.protocols : ((typeof dataCache !== 'undefined' && dataCache.protocols) ? dataCache.protocols : []);
             if (!list.length) {
-                tbody.innerHTML = '<tr><td colspan="4" align="center" style="color:#64748b; padding:20px; font-size:13px;">ChÆ°a cÃ³ phÃ¡c Ä‘á»“ Ä‘iá»u trá»‹ nÃ o. HÃ£y nháº­p thÃ´ng tin á»Ÿ Form bÃªn trÃ¡i Ä‘á»ƒ táº¡o phÃ¡c Ä‘á»“ má»›i.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" align="center" style="color:#64748b; padding:20px; font-size:13px;">Chưa có phác đồ điều trị nào. Hãy nhập thông tin ở Form bên trái để tạo phác đồ mới.</td></tr>';
                 return;
             }
             tbody.innerHTML = list.map((item, i) => {
@@ -4539,16 +4539,16 @@ window.renderSttOrderControl = function (type, i, total) {
                     return `<span class="badge" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:11px; padding:2px 7px; border-radius:10px; margin:2px 3px; display:inline-block;">${escapeHtml(pName)}</span>`;
                 }).join('');
                 const sttHtml = (typeof window.renderSttOrderControl === 'function') ? window.renderSttOrderControl("protocols", i, list.length) : `<span style="font-weight:700;">${i + 1}</span>`;
-                return `<tr class="draggable-row editable-row" data-drag-idx="${i}" ondblclick="editProtocol(${i})" title="Nháº¥p Ä‘Ãºp chuá»™t Ä‘á»ƒ chá»‰nh sá»­a phÃ¡c Ä‘á»“ nÃ y">
+                return `<tr class="draggable-row editable-row" data-drag-idx="${i}" ondblclick="editProtocol(${i})" title="Nhấp đúp chuột để chỉnh sửa phác đồ này">
                     <td align="center">${sttHtml}</td>
                     <td>
-                        <strong style="color:#1e3a8a; font-size:13px;">${escapeHtml(item.name || `PhÃ¡c Ä‘á»“ ${i + 1}`)}</strong>
-                        <div style="font-size:11px; color:#64748b; margin-top:2px;">${procsArr.length} thá»§ thuáº­t</div>
+                        <strong style="color:#1e3a8a; font-size:13px;">${escapeHtml(item.name || `Phác đồ ${i + 1}`)}</strong>
+                        <div style="font-size:11px; color:#64748b; margin-top:2px;">${procsArr.length} thủ thuật</div>
                     </td>
-                    <td>${procsHtml || '<em style="color:#94a3b8;">ChÆ°a chá»n thá»§ thuáº­t</em>'}</td>
+                    <td>${procsHtml || '<em style="color:#94a3b8;">Chưa chọn thủ thuật</em>'}</td>
                     <td align="center">
-                        <button type="button" class="btn btn-primary btn-sm" onclick="editProtocol(${i})" style="margin-right:4px; font-size:11px; padding:3px 8px; cursor:pointer;" title="Sá»­a phÃ¡c Ä‘á»“">âœï¸ Sá»­a</button>
-                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteProtocol(${i})" style="font-size:11px; padding:3px 8px; cursor:pointer;" title="XÃ³a phÃ¡c Ä‘á»“">ðŸ—‘ï¸ XÃ³a</button>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="editProtocol(${i})" style="margin-right:4px; font-size:11px; padding:3px 8px; cursor:pointer;" title="Sửa phác đồ">✏️ Sửa</button>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteProtocol(${i})" style="font-size:11px; padding:3px 8px; cursor:pointer;" title="Xóa phác đồ">🗑️ Xóa</button>
                     </td>
                 </tr>`;
             }).join('');
@@ -4567,7 +4567,7 @@ window.renderSttOrderControl = function (type, i, total) {
             if (!sel) return;
             const list = (window.dataCache && window.dataCache.protocols) ? window.dataCache.protocols : [];
             
-            let optionsHtml = '<option value="">-- Chá»n PhÃ¡c Ä‘á»“ --</option>';
+            let optionsHtml = '<option value="">-- Chọn Phác đồ --</option>';
             list.forEach((item, i) => {
                 let procsArr = [];
                 if (Array.isArray(item.procs)) {
@@ -4581,7 +4581,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     }
                 }
                 const procsSummary = procsArr.map(p => (typeof p === 'object' && p !== null) ? (p.name || p.ten || '') : String(p || '')).filter(Boolean).join(', ');
-                optionsHtml += `<option value="${i}">${escapeHtml(item.name || `PhÃ¡c Ä‘á»“ ${i + 1}`)}: ${escapeHtml(procsSummary)}</option>`;
+                optionsHtml += `<option value="${i}">${escapeHtml(item.name || `Phác đồ ${i + 1}`)}: ${escapeHtml(procsSummary)}</option>`;
             });
             sel.innerHTML = optionsHtml;
         }
@@ -4617,7 +4617,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 }
             }
 
-            // Bá» chá»n trÆ°á»›c khi Ã¡p dá»¥ng
+            // Bỏ chọn trước khi áp dụng
             document.querySelectorAll('.pat-proc-cb').forEach(cb => { cb.checked = false; });
             document.querySelectorAll('.pat-proc-cb-extra-container, .extra-proc-item').forEach(el => el.remove());
 
@@ -4641,7 +4641,7 @@ window.renderSttOrderControl = function (type, i, total) {
             });
 
             if (typeof window.showToast === 'function') {
-                window.showToast(`ðŸŽ¯ ÄÃ£ Ã¡p dá»¥ng: ${pObj.name} (${matchedCount} thá»§ thuáº­t)`);
+                window.showToast(`🎯 Đã áp dụng: ${pObj.name} (${matchedCount} thủ thuật)`);
             }
         }
         window.applyClinicalProtocol = applyClinicalProtocol;
@@ -4657,19 +4657,19 @@ window.renderSttOrderControl = function (type, i, total) {
             if (isHidden) {
                 form.style.display = 'block';
                 form.classList.remove('mobile-form-collapsed');
-                btn.innerHTML = 'âž– Thu Gá»n Form Nháº­p Liá»‡u';
+                btn.innerHTML = '➖ Thu Gọn Form Nhập Liệu';
                 btn.style.background = 'linear-gradient(135deg, #475569, #334155)';
             } else {
                 form.style.display = 'none';
                 form.classList.add('mobile-form-collapsed');
-                btn.innerHTML = 'âž• ThÃªm Má»›i / Nháº­p Liá»‡u';
+                btn.innerHTML = '➕ Thêm Mới / Nhập Liệu';
                 btn.style.background = 'linear-gradient(135deg, #0284c7, #0369a1)';
             }
         }
         window.toggleMobileForm = toggleMobileForm;
 
         // ============================================================
-        // ðŸ’‰ 2. THá»¦ THUáº¬T
+        // 💉 2. THỦ THUẬT
         // ============================================================
 
         function toggleAllSkills(checkbox, system) {
@@ -4680,8 +4680,8 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         function renderProcedureCheckboxes() {
-            // ðŸ›¡ï¸ Báº¢O Vá»† CHá»NG Máº¤T THá»¦ THUáº¬T KHI Äá»’NG Bá»˜:
-            // Thu tháº­p toÃ n bá»™ checkbox Ä‘ang Ä‘Æ°á»£c tÃ­ch trong DOM hiá»‡n táº¡i trÆ°á»›c khi váº½ láº¡i
+            // 🛡️ BẢO VỆ CHỐNG MẤT THỦ THUẬT KHI ĐỒNG BỘ:
+            // Thu thập toàn bộ checkbox đang được tích trong DOM hiện tại trước khi vẽ lại
             const domCheckedPatProcs = new Set();
             document.querySelectorAll('.pat-proc-cb:checked').forEach(cb => {
                 if (cb.value) domCheckedPatProcs.add(cb.value.trim().toLowerCase());
@@ -4691,10 +4691,10 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (cb.value) domCheckedStaffSkills.add(cb.value.trim().toLowerCase());
             });
 
-            let sYhct = `<h4 class="yhct">ðŸ’Š YHCT <input type="checkbox" onchange="toggleAllSkills(this, 'YHCT')" style="margin-left:8px; cursor:pointer; transform:scale(1.2);" title="Chá»n táº¥t cáº£ YHCT"></h4>`, 
-                sPhcn = `<h4 class="phcn">âš™ï¸ PHCN <input type="checkbox" onchange="toggleAllSkills(this, 'PHCN')" style="margin-left:8px; cursor:pointer; transform:scale(1.2);" title="Chá»n táº¥t cáº£ PHCN"></h4>`;
+            let sYhct = `<h4 class="yhct">💊 YHCT <input type="checkbox" onchange="toggleAllSkills(this, 'YHCT')" style="margin-left:8px; cursor:pointer; transform:scale(1.2);" title="Chọn tất cả YHCT"></h4>`, 
+                sPhcn = `<h4 class="phcn">⚙️ PHCN <input type="checkbox" onchange="toggleAllSkills(this, 'PHCN')" style="margin-left:8px; cursor:pointer; transform:scale(1.2);" title="Chọn tất cả PHCN"></h4>`;
 
-            let pYhct = '<h4 class="yhct">ðŸ’Š YHCT</h4>', pPhcn = '<h4 class="phcn">âš™ï¸ PHCN</h4>';
+            let pYhct = '<h4 class="yhct">💊 YHCT</h4>', pPhcn = '<h4 class="phcn">⚙️ PHCN</h4>';
 
             (dataCache.proc || []).forEach(p => {
                 if (!p) return;
@@ -4712,7 +4712,7 @@ window.renderSttOrderControl = function (type, i, total) {
             [['staff-skills-yhct', sYhct], ['staff-skills-phcn', sPhcn], ['pat-skills-yhct', pYhct], ['pat-skills-phcn', pPhcn]]
                 .forEach(([id, html]) => { const el = document.getElementById(id); if (el) el.innerHTML = html; });
 
-            // ðŸ›¡ï¸ KhÃ´i phá»¥c ngay láº­p tá»©c cÃ¡c checkbox ngÆ°á»i dÃ¹ng Ä‘ang tÃ­ch chá»n
+            // 🛡️ Khôi phục ngay lập tức các checkbox người dùng đang tích chọn
             if (domCheckedPatProcs.size > 0) {
                 document.querySelectorAll('.pat-proc-cb').forEach(cb => {
                     if (domCheckedPatProcs.has(cb.value.trim().toLowerCase())) {
@@ -4728,7 +4728,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 });
             }
 
-            // ðŸ›¡ï¸ Báº¢O Vá»† CHá»NG Máº¤T THá»¦ THUáº¬T: Náº¿u Ä‘ang má»Ÿ form sá»­a bá»‡nh nhÃ¢n VÃ€ chÆ°a cÃ³ checkbox nÃ o trong DOM Ä‘Æ°á»£c tÃ­ch
+            // 🛡️ BẢO VỆ CHỐNG MẤT THỦ THUẬT: Nếu đang mở form sửa bệnh nhân VÀ chưa có checkbox nào trong DOM được tích
             if (domCheckedPatProcs.size === 0 && typeof editIndex !== 'undefined' && editIndex.pat > -1 && window.dataCache && window.dataCache.pat && window.dataCache.pat[editIndex.pat]) {
                 const curPat = window.dataCache.pat[editIndex.pat];
                 const ttArr = typeof extractPatientProcedures === 'function' ? extractPatientProcedures(curPat) : (curPat.thuThuat ? curPat.thuThuat.split(',').map(t => t.trim()).filter(Boolean) : []);
@@ -4757,7 +4757,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         }
                     }
                     if (extraContainer) {
-                        let extraHtml = '<h4 style="color:#d35400; font-size:12px; margin:0 0 4px 0; font-weight:700;">ðŸ“Œ Thá»§ thuáº­t bá»• sung / ngoÃ i danh má»¥c:</h4>';
+                        let extraHtml = '<h4 style="color:#d35400; font-size:12px; margin:0 0 4px 0; font-weight:700;">📌 Thủ thuật bổ sung / ngoài danh mục:</h4>';
                         unmatched.forEach(t => {
                             const escaped = escapeHtml(t);
                             extraHtml += `<label class="checkbox-item extra-proc-item" style="display:inline-flex; align-items:center; margin-right:12px; margin-bottom:4px; font-weight:600; color:#d35400;">
@@ -4798,10 +4798,10 @@ window.renderSttOrderControl = function (type, i, total) {
 
             tbody.innerHTML = dataCache.proc.map((item, i) => {
                 const idx = dataCache.proc.indexOf(item);
-                const isRutMay = (item.canRutMay === 'CÃ³' || item.canRutMay === 1 || item.canRutMay === '1' || item.canRutMay === true || item[9] === 'CÃ³' || item[9] === 1 || item[9] === '1');
-                const isNguoiPhu = (item.canNguoiPhu === 'CÃ³' || item.canNguoiPhu === 1 || item.canNguoiPhu === '1' || item.canNguoiPhu === true || item[10] === 'CÃ³' || item[10] === 1 || item[10] === '1');
-                const rutText = isRutMay ? 'CÃ³' : 'KhÃ´ng';
-                const phuText = isNguoiPhu ? 'CÃ³' : 'KhÃ´ng';
+                const isRutMay = (item.canRutMay === 'Có' || item.canRutMay === 1 || item.canRutMay === '1' || item.canRutMay === true || item[9] === 'Có' || item[9] === 1 || item[9] === '1');
+                const isNguoiPhu = (item.canNguoiPhu === 'Có' || item.canNguoiPhu === 1 || item.canNguoiPhu === '1' || item.canNguoiPhu === true || item[10] === 'Có' || item[10] === 1 || item[10] === '1');
+                const rutText = isRutMay ? 'Có' : 'Không';
+                const phuText = isNguoiPhu ? 'Có' : 'Không';
 
                 let tgThMin = parseInt(item.thoiGianThucHienMin || item.thoiGianThucHien || item[6]) || 0;
                 let tgThMax = parseInt(item.thoiGianThucHienMax || item[13] || 0) || tgThMin;
@@ -4813,7 +4813,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 // Smart YHCT duration range fallback if not explicitly saved yet
                 if (!tgMax || tgMax <= tgMin) {
                     const tenLower = String(item.ten || item.name || item[1] || '').toLowerCase();
-                    if (tenLower.includes('Ä‘iá»‡n chÃ¢m') || tenLower === 'Ä‘c' || tenLower === 'dctb') {
+                    if (tenLower.includes('điện châm') || tenLower === 'đc' || tenLower === 'dctb') {
                         if (tgMin === 25) tgMax = 30;
                         else if (tgMin === 30) tgMax = 35;
                     } else if (tenLower.includes('parafin') || tenLower === 'pa') {
@@ -4823,20 +4823,20 @@ window.renderSttOrderControl = function (type, i, total) {
                     }
                 }
 
-                const isLienTuc = (item.lienTuc === 'CÃ³' || item.lienTuc === 1 || item.lienTuc === '1' || item.lienTuc === true || item[14] === 'CÃ³' || item[14] === 1 || (tgThMin === tgMin && tgThMax === tgMax && tgThMin >= 10));
-                const lienTucText = isLienTuc ? 'CÃ³' : 'KhÃ´ng';
+                const isLienTuc = (item.lienTuc === 'Có' || item.lienTuc === 1 || item.lienTuc === '1' || item.lienTuc === true || item[14] === 'Có' || item[14] === 1 || (tgThMin === tgMin && tgThMax === tgMax && tgThMin >= 10));
+                const lienTucText = isLienTuc ? 'Có' : 'Không';
 
-                const thMinDisplay = `<span class="proc-time-single">${tgThMin} phÃºt</span>`;
+                const thMinDisplay = `<span class="proc-time-single">${tgThMin} phút</span>`;
                 const thMaxDisplay = (tgThMax > tgThMin)
-                    ? `<span class="proc-time-range-badge">${tgThMax} phÃºt</span>`
-                    : `<span class="proc-time-single">${tgThMax} phÃºt</span>`;
+                    ? `<span class="proc-time-range-badge">${tgThMax} phút</span>`
+                    : `<span class="proc-time-single">${tgThMax} phút</span>`;
 
-                const minDisplay = `<span class="proc-time-single">${tgMin} phÃºt</span>`;
+                const minDisplay = `<span class="proc-time-single">${tgMin} phút</span>`;
                 const maxDisplay = (tgMax > tgMin)
-                    ? `<span class="proc-time-range-badge">${tgMax} phÃºt</span>`
-                    : `<span class="proc-time-single">${tgMax} phÃºt</span>`;
+                    ? `<span class="proc-time-range-badge">${tgMax} phút</span>`
+                    : `<span class="proc-time-single">${tgMax} phút</span>`;
 
-                return `<tr class="draggable-row editable-row" data-drag-idx="${i}" onclick="if(!window._isDraggingRow) editProc(${idx})" title="Báº¥m sá»­a (KÃ©o tháº£ nÃºt â˜° hoáº·c báº¥m â–²/â–¼ Ä‘á»ƒ Ä‘á»•i thá»© tá»±, PhÃ­m Delete Ä‘á»ƒ xÃ³a)">
+                return `<tr class="draggable-row editable-row" data-drag-idx="${i}" onclick="if(!window._isDraggingRow) editProc(${idx})" title="Bấm sửa (Kéo thả nút ☰ hoặc bấm ▲/▼ để đổi thứ tự, Phím Delete để xóa)">
             <td>${renderSttOrderControl("procedures", i, dataCache.proc.length)}</td>
             <td>${escapeHtml(item.ten || item[1] || '')}</td>
             <td><strong>${escapeHtml(item.vietTat || item[2] || '')}</strong></td>
@@ -4844,11 +4844,11 @@ window.renderSttOrderControl = function (type, i, total) {
             <td align="center">${thMaxDisplay}</td>
             <td align="center">${minDisplay}</td>
             <td align="center">${maxDisplay}</td>
-            <td>${item.khoangCach || item[8] || 0} phÃºt</td>
+            <td>${item.khoangCach || item[8] || 0} phút</td>
             <td align="center">${lienTucText}</td>
             <td align="center">${rutText}</td>
             <td align="center">${phuText}</td>
-            <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteProcedure(${idx})">XÃ³a</button></td>
+            <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteProcedure(${idx})">Xóa</button></td>
         </tr>`;
             }).join('');
 
@@ -4871,12 +4871,12 @@ window.renderSttOrderControl = function (type, i, total) {
             const tgThuThuatMaxInput = parseInt(document.getElementById('proc-machine-time-max').value);
             const tgThuThuatMax = (!isNaN(tgThuThuatMaxInput) && tgThuThuatMaxInput > 0) ? tgThuThuatMaxInput : tgThuThuatMin;
             const kc = parseInt(document.getElementById('proc-gap').value) || 0;
-            const rut = document.getElementById('proc-unplug-cb').checked ? 'CÃ³' : 'KhÃ´ng';
-            const phu = document.getElementById('proc-assist-cb').checked ? 'CÃ³' : 'KhÃ´ng';
-            const lienTuc = document.getElementById('proc-continuous-cb').checked ? 'CÃ³' : 'KhÃ´ng';
-            const dsPhu = (rut === 'CÃ³' || phu === 'CÃ³') ? 'Táº¥t cáº£ Äiá»u dÆ°á»¡ng' : '';
+            const rut = document.getElementById('proc-unplug-cb').checked ? 'Có' : 'Không';
+            const phu = document.getElementById('proc-assist-cb').checked ? 'Có' : 'Không';
+            const lienTuc = document.getElementById('proc-continuous-cb').checked ? 'Có' : 'Không';
+            const dsPhu = (rut === 'Có' || phu === 'Có') ? 'Tất cả Điều dưỡng' : '';
 
-            if (!ten) return alert("Nháº­p tÃªn thá»§ thuáº­t");
+            if (!ten) return alert("Nhập tên thủ thuật");
 
             const isEdit = editIndex.proc > -1;
             const existingItem = isEdit ? dataCache.proc[editIndex.proc] : null;
@@ -4905,7 +4905,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 dataCache.proc.push(obj);
             }
 
-            // Äá»“ng bá»™ ngay láº­p tá»©c vÃ o bootstrap cache trong localStorage Ä‘á»ƒ khi F5 / reload khÃ´ng bá»‹ giáº­t vá» cÅ©
+            // Đồng bộ ngay lập tức vào bootstrap cache trong localStorage để khi F5 / reload không bị giật về cũ
             try {
                 const bKey = typeof getBootstrapCacheKey === 'function' ? getBootstrapCacheKey() : 'times_bootstrap_cache';
                 const bStr = localStorage.getItem(bKey);
@@ -4932,11 +4932,11 @@ window.renderSttOrderControl = function (type, i, total) {
                     procId,
                     oldTen
                 ], () => {
-                    if (typeof showToastSuccess === 'function') showToastSuccess(`ÄÃ£ lÆ°u thá»§ thuáº­t "${ten}" thÃ nh cÃ´ng!`);
-                    else if (typeof window.showToast === 'function') window.showToast(`ÄÃ£ lÆ°u thá»§ thuáº­t "${ten}" thÃ nh cÃ´ng!`, 'success');
+                    if (typeof showToastSuccess === 'function') showToastSuccess(`Đã lưu thủ thuật "${ten}" thành công!`);
+                    else if (typeof window.showToast === 'function') window.showToast(`Đã lưu thủ thuật "${ten}" thành công!`, 'success');
                 }, (err) => {
-                    console.error("Lá»—i lÆ°u thá»§ thuáº­t:", err);
-                    alert("Lá»—i lÆ°u thá»§ thuáº­t lÃªn mÃ¡y chá»§: " + err);
+                    console.error("Lỗi lưu thủ thuật:", err);
+                    alert("Lỗi lưu thủ thuật lên máy chủ: " + err);
                 });
             }
         }
@@ -4968,14 +4968,14 @@ window.renderSttOrderControl = function (type, i, total) {
                 }
             });
 
-            const isRutMay = (item.canRutMay === 'CÃ³' || item.canRutMay === 1 || item.canRutMay === '1' || item.canRutMay === true || item[9] === 'CÃ³' || item[9] === 1 || item[9] === '1');
-            const isNguoiPhu = (item.canNguoiPhu === 'CÃ³' || item.canNguoiPhu === 1 || item.canNguoiPhu === '1' || item.canNguoiPhu === true || item[10] === 'CÃ³' || item[10] === 1 || item[10] === '1');
-            const isLienTuc = (item.lienTuc === 'CÃ³' || item.lienTuc === 1 || item.lienTuc === '1' || item.lienTuc === true || item[14] === 'CÃ³' || item[14] === 1 || (item.thoiGianThucHienMin === item.thoiGianThuThuatMin && (item.thoiGianThucHienMax || item.thoiGianThucHienMin) === (item.thoiGianThuThuatMax || item.thoiGianThuThuatMin) && item.thoiGianThucHienMin >= 10));
+            const isRutMay = (item.canRutMay === 'Có' || item.canRutMay === 1 || item.canRutMay === '1' || item.canRutMay === true || item[9] === 'Có' || item[9] === 1 || item[9] === '1');
+            const isNguoiPhu = (item.canNguoiPhu === 'Có' || item.canNguoiPhu === 1 || item.canNguoiPhu === '1' || item.canNguoiPhu === true || item[10] === 'Có' || item[10] === 1 || item[10] === '1');
+            const isLienTuc = (item.lienTuc === 'Có' || item.lienTuc === 1 || item.lienTuc === '1' || item.lienTuc === true || item[14] === 'Có' || item[14] === 1 || (item.thoiGianThucHienMin === item.thoiGianThuThuatMin && (item.thoiGianThucHienMax || item.thoiGianThucHienMin) === (item.thoiGianThuThuatMax || item.thoiGianThuThuatMin) && item.thoiGianThucHienMin >= 10));
 
             document.getElementById('proc-unplug-cb').checked = isRutMay;
             document.getElementById('proc-assist-cb').checked = isNguoiPhu;
             if (document.getElementById('proc-continuous-cb')) document.getElementById('proc-continuous-cb').checked = isLienTuc;
-            document.getElementById('btn-save-proc').innerText = "LÆ°u Sá»­a";
+            document.getElementById('btn-save-proc').innerText = "Lưu Sửa";
             document.getElementById('btn-cancel-proc').style.display = "inline-block";
         }
 
@@ -4985,12 +4985,12 @@ window.renderSttOrderControl = function (type, i, total) {
             const ten = String(item.ten || item.name || item[1] || '').trim();
             const procId = item.id || null;
 
-            showCustomConfirm("XÃ¡c nháº­n xÃ³a thá»§ thuáº­t", `BÃ¡c sÄ© cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a thá»§ thuáº­t "${ten}" khÃ´ng?`, function () {
+            showCustomConfirm("Xác nhận xóa thủ thuật", `Bác sĩ có chắc chắn muốn xóa thủ thuật "${ten}" không?`, function () {
                 dataCache.proc.splice(i, 1);
                 renderProceduresTable();
                 renderProcedureCheckboxes();
 
-                // Äá»“ng bá»™ ngay vÃ o times_bootstrap_cache
+                // Đồng bộ ngay vào times_bootstrap_cache
                 try {
                     const bKey = typeof getBootstrapCacheKey === 'function' ? getBootstrapCacheKey() : 'times_bootstrap_cache';
                     const bStr = localStorage.getItem(bKey);
@@ -5004,11 +5004,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 google.script.run
                     .withSuccessHandler(() => {
-                        if (typeof showToastSuccess === 'function') showToastSuccess(`ÄÃ£ xÃ³a thá»§ thuáº­t "${ten}" thÃ nh cÃ´ng!`);
-                        else if (typeof window.showToast === 'function') window.showToast(`ÄÃ£ xÃ³a thá»§ thuáº­t "${ten}" thÃ nh cÃ´ng!`, 'success');
+                        if (typeof showToastSuccess === 'function') showToastSuccess(`Đã xóa thủ thuật "${ten}" thành công!`);
+                        else if (typeof window.showToast === 'function') window.showToast(`Đã xóa thủ thuật "${ten}" thành công!`, 'success');
                     })
                     .withFailureHandler(e => {
-                        alert('Lá»—i xÃ³a thá»§ thuáº­t: ' + e);
+                        alert('Lỗi xóa thủ thuật: ' + e);
                         if (typeof loadProcedures === 'function') loadProcedures();
                     }).deleteThuThuat({ ten, id: procId, index: i }, ten, procId);
             });
@@ -5018,7 +5018,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // ðŸ‘¨â€âš•ï¸ 3. NHÃ‚N Sá»°
+        // 👨‍⚕️ 3. NHÂN SỰ
 
         // ============================================================
 
@@ -5026,17 +5026,17 @@ window.renderSttOrderControl = function (type, i, total) {
         function renderStaffTable() {
             renderStaffTable_Original();
             
-            // Populate the "TÃ¬m bÃ¡c sÄ© ráº£nh" filter dropdown
+            // Populate the "Tìm bác sĩ rảnh" filter dropdown
             const filterSelect = document.getElementById('filter-doc-name');
             if (filterSelect && dataCache.staff) {
                 const currentVal = filterSelect.value;
                 const docs = dataCache.staff.filter(s => {
                     const vt = String(s.vaiTro).toLowerCase();
-                    return (vt.includes('bÃ¡c sÄ©') || vt.includes('ktv') || vt.includes('ká»¹ thuáº­t viÃªn')) && s.trangThai !== 'Nghá»‰ cáº£ ngÃ y';
+                    return (vt.includes('bác sĩ') || vt.includes('ktv') || vt.includes('kỹ thuật viên')) && s.trangThai !== 'Nghỉ cả ngày';
                 }).map(s => s.ten.trim());
                 
                 const uniqueDocs = [...new Set(docs)].sort();
-                filterSelect.innerHTML = '<option value="">ðŸ” Lá»c tÃªn bÃ¡c sÄ©...</option>';
+                filterSelect.innerHTML = '<option value="">🔍 Lọc tên bác sĩ...</option>';
                 uniqueDocs.forEach(docName => {
                     filterSelect.innerHTML += `<option value="${escapeHtml(docName)}">${escapeHtml(docName)}</option>`;
                 });
@@ -5053,7 +5053,7 @@ window.renderSttOrderControl = function (type, i, total) {
             const staffList = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff)) ? dataCache.staff : [];
             const filteredStaff = staffList.filter(s => {
                 const role = String(s.vaiTro || s.role || '').toLowerCase();
-                return role.includes('bÃ¡c sÄ©') || role.includes('ká»¹ thuáº­t viÃªn') || role.includes('ktv') || role.includes('bs');
+                return role.includes('bác sĩ') || role.includes('kỹ thuật viên') || role.includes('ktv') || role.includes('bs');
             });
             const statEl = document.getElementById('stat-staff');
             if (statEl) statEl.innerText = filteredStaff.length;
@@ -5068,8 +5068,8 @@ window.renderSttOrderControl = function (type, i, total) {
                     if (!s || !s.ten) return;
                     const role = String(s.vaiTro || s.role || '').toLowerCase();
                     const tenLower = String(s.ten).toLowerCase();
-                    const isDoc = role.includes('bÃ¡c sÄ©') || role.startsWith('bs') || tenLower.startsWith('bs');
-                    const isKtv = role.includes('ká»¹ thuáº­t viÃªn') || role.includes('ktv') || tenLower.startsWith('ktv');
+                    const isDoc = role.includes('bác sĩ') || role.startsWith('bs') || tenLower.startsWith('bs');
+                    const isKtv = role.includes('kỹ thuật viên') || role.includes('ktv') || tenLower.startsWith('ktv');
                     
                     if (isDoc) {
                         docHtml += `<label class="checkbox-item"><input type="checkbox" class="room-doc-cb" value="${escapeHtml(s.ten)}"> ${escapeHtml(s.ten)}</label>`;
@@ -5087,20 +5087,20 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const tbody = document.getElementById('staff-list');
             if (!tbody) return;
-            if (!staffList.length) { tbody.innerHTML = renderEmptyRow(8, 'ChÆ°a cÃ³ dá»¯ liá»‡u nhÃ¢n sá»±'); return; }
+            if (!staffList.length) { tbody.innerHTML = renderEmptyRow(8, 'Chưa có dữ liệu nhân sự'); return; }
 
             tbody.innerHTML = staffList.map((item, i) => {
                 const idx = staffList.indexOf(item);
                 const kyNangHienThi = getShortSkills(item.kyNang, true);
-                return `<tr class="draggable-row editable-row" data-drag-idx="${i}" data-staff-index="${idx}" onclick="if(!window._isDraggingRow) editStaff(parseInt(this.dataset.staffIndex))" style="${item.trangThai !== 'Äi lÃ m' ? 'opacity:0.5; background:#f9f9f9;' : ''}" title="Báº¥m sá»­a (KÃ©o tháº£ nÃºt â˜° hoáº·c báº¥m â–²/â–¼ Ä‘á»ƒ Ä‘á»•i thá»© tá»±, PhÃ­m Delete Ä‘á»ƒ xÃ³a)">
+                return `<tr class="draggable-row editable-row" data-drag-idx="${i}" data-staff-index="${idx}" onclick="if(!window._isDraggingRow) editStaff(parseInt(this.dataset.staffIndex))" style="${item.trangThai !== 'Đi làm' ? 'opacity:0.5; background:#f9f9f9;' : ''}" title="Bấm sửa (Kéo thả nút ☰ hoặc bấm ▲/▼ để đổi thứ tự, Phím Delete để xóa)">
             <td>${renderSttOrderControl("staff", i, staffList.length)}</td>
             <td><strong>${escapeHtml(item.ten || '')}</strong></td>
             <td style="font-size:11px; max-width:100px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(item.tenHis || '')}">${escapeHtml(item.tenHis || '')}</td>
-            <td><span style="color:${item.trangThai === 'Äi lÃ m' ? '#28a745' : '#dc3545'}; font-weight:600">${escapeHtml(item.trangThai || 'Äi lÃ m')}</span></td>
+            <td><span style="color:${item.trangThai === 'Đi làm' ? '#28a745' : '#dc3545'}; font-weight:600">${escapeHtml(item.trangThai || 'Đi làm')}</span></td>
             <td>${escapeHtml(item.thoiGianLam || '07:30-11:30, 13:00-16:30')}</td>
             <td style="font-size:11px; max-width:180px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><strong>${escapeHtml(kyNangHienThi)}</strong></td>
-            <td style="font-size:11px;"><strong>${item.quyen === 'Cáº£ hai' ? 'YHCT+PHCN' : escapeHtml(item.quyen || '')}</strong></td>
-            <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteStaff(${idx})">XÃ³a</button></td>
+            <td style="font-size:11px;"><strong>${item.quyen === 'Cả hai' ? 'YHCT+PHCN' : escapeHtml(item.quyen || '')}</strong></td>
+            <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteStaff(${idx})">Xóa</button></td>
         </tr>`;
             }).join('');
 
@@ -5120,13 +5120,13 @@ window.renderSttOrderControl = function (type, i, total) {
             const trangThai = document.getElementById('staff-status').value;
             const tgLam = `${document.getElementById('staff-ms').value}-${document.getElementById('staff-me').value}, ${document.getElementById('staff-as').value}-${document.getElementById('staff-ae').value}`;
             const thayThe = document.getElementById('staff-replace').value;
-            const quyen = document.getElementById('staff-quyen').value || 'Cáº£ hai';
+            const quyen = document.getElementById('staff-quyen').value || 'Cả hai';
             const tenHis = document.getElementById('staff-ten-his').value.trim();
             const busyEl = document.getElementById('staff-busy');
             const gioBan = busyEl ? busyEl.value.trim() : (editIndex.staff > -1 ? (dataCache.staff[editIndex.staff]?.gioBan || '') : '');
             const kyNang = Array.from(document.querySelectorAll('.skill-checkbox:checked')).map(cb => cb.value).join(', ');
 
-            if (!ten) return alert("Nháº­p tÃªn!");
+            if (!ten) return alert("Nhập tên!");
 
             try {
                 const localHisMap = JSON.parse(localStorage.getItem('staff_his_map') || '{}');
@@ -5145,10 +5145,10 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (window.dataCacheTime) window.dataCacheTime['staff'] = Date.now();
                 google.script.run
                     .withSuccessHandler(() => {
-                        if (typeof window.showToast === 'function') window.showToast('ÄÃ£ lÆ°u nhÃ¢n sá»± thÃ nh cÃ´ng!', 'success');
+                        if (typeof window.showToast === 'function') window.showToast('Đã lưu nhân sự thành công!', 'success');
                     })
                     .withFailureHandler((err) => {
-                        alert("Lá»—i lÆ°u nhÃ¢n sá»±: " + (err.message || err));
+                        alert("Lỗi lưu nhân sự: " + (err.message || err));
                         if (typeof loadDashboard === 'function') loadDashboard();
                     })
                     .editNhanSu(sheetIdx, ten, vaiTro, trangThai, tgLam, kyNang, gioBan, thayThe, quyen, tenHis);
@@ -5157,10 +5157,10 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (window.dataCacheTime) window.dataCacheTime['staff'] = Date.now();
                 google.script.run
                     .withSuccessHandler(() => {
-                        if (typeof window.showToast === 'function') window.showToast('ÄÃ£ thÃªm nhÃ¢n sá»± thÃ nh cÃ´ng!', 'success');
+                        if (typeof window.showToast === 'function') window.showToast('Đã thêm nhân sự thành công!', 'success');
                     })
                     .withFailureHandler((err) => {
-                        alert("Lá»—i thÃªm nhÃ¢n sá»±: " + (err.message || err));
+                        alert("Lỗi thêm nhân sự: " + (err.message || err));
                         if (typeof loadDashboard === 'function') loadDashboard();
                     })
                     .addNhanSu(ten, vaiTro, trangThai, tgLam, kyNang, gioBan, thayThe, quyen, tenHis);
@@ -5182,12 +5182,12 @@ window.renderSttOrderControl = function (type, i, total) {
 
             document.getElementById('staff-status').value = item.trangThai;
 
-            document.getElementById('staff-quyen').value = item.quyen || 'Cáº£ hai';
+            document.getElementById('staff-quyen').value = item.quyen || 'Cả hai';
             document.getElementById('staff-ten-his').value = item.tenHis || '';
 
             document.getElementById('staff-busy').value = item.gioBan;
 
-            document.getElementById('staff-replace').value = item.nguoiThayThe || 'KhÃ´ng';
+            document.getElementById('staff-replace').value = item.nguoiThayThe || 'Không';
 
             if (item.thoiGianLam) {
 
@@ -5203,7 +5203,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             document.querySelectorAll('.skill-checkbox').forEach(cb => { cb.checked = skillsArr.includes(cb.value.toLowerCase()); });
 
-            document.getElementById('btn-save-staff').innerText = "LÆ°u Sá»­a";
+            document.getElementById('btn-save-staff').innerText = "Lưu Sửa";
 
             document.getElementById('btn-cancel-staff').style.display = "inline-block";
 
@@ -5213,7 +5213,7 @@ window.renderSttOrderControl = function (type, i, total) {
             const s = dataCache.staff[i];
             if (!s) return;
 
-            showCustomConfirm("XÃ¡c nháº­n xÃ³a nhÃ¢n sá»±", `BÃ¡c sÄ© cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a nhÃ¢n sá»± [ ${s.ten} ] khÃ´ng?`, function () {
+            showCustomConfirm("Xác nhận xóa nhân sự", `Bác sĩ có chắc chắn muốn xóa nhân sự [ ${s.ten} ] không?`, function () {
                 const deletedSheetIndex = s.sheetIndex !== undefined ? s.sheetIndex : i;
                 const staffName = s.ten;
                 dataCache.staff.splice(i, 1);
@@ -5226,10 +5226,10 @@ window.renderSttOrderControl = function (type, i, total) {
                 renderStaffTable();
 
                 google.script.run.withSuccessHandler(() => {
-                    if (typeof window.showToast === 'function') window.showToast(`ÄÃ£ xÃ³a nhÃ¢n sá»± [ ${staffName} ]!`, 'success');
+                    if (typeof window.showToast === 'function') window.showToast(`Đã xóa nhân sự [ ${staffName} ]!`, 'success');
                 })
                     .withFailureHandler(e => {
-                        alert('Lá»—i khi xÃ³a: ' + e);
+                        alert('Lỗi khi xóa: ' + e);
                         if (typeof loadDashboard === 'function') loadDashboard();
                     }).deleteNhanSu(deletedSheetIndex, staffName);
             });
@@ -5239,7 +5239,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // ðŸ¥ 4. PHÃ’NG
+        // 🏥 4. PHÒNG
 
         // ============================================================
 
@@ -5256,7 +5256,7 @@ window.renderSttOrderControl = function (type, i, total) {
             if (roomSelect) {
                 const currentVal = roomSelect.value;
                 const options = (dataCache.room || []).map(r => { const ten = String(r.tenPhong || r[1] || '').trim(); return `<option value="${escapeHtml(ten)}">${escapeHtml(ten)}</option>`; }).join('');
-                roomSelect.innerHTML = `<option value="">-- Chá»n phÃ²ng --</option>` + options;
+                roomSelect.innerHTML = `<option value="">-- Chọn phòng --</option>` + options;
                 if (currentVal) roomSelect.value = currentVal;
             }
 
@@ -5264,18 +5264,18 @@ window.renderSttOrderControl = function (type, i, total) {
                 renderDynamicMachineInputs();
             }
 
-            if (!dataCache.room || !dataCache.room.length) { tbody.innerHTML = renderEmptyRow(7, 'ChÆ°a cÃ³ dá»¯ liá»‡u phÃ²ng'); return; }
+            if (!dataCache.room || !dataCache.room.length) { tbody.innerHTML = renderEmptyRow(7, 'Chưa có dữ liệu phòng'); return; }
 
             tbody.innerHTML = dataCache.room.map((item, i) => {
                 const idx = dataCache.room.indexOf(item);
-                return `<tr class="draggable-row editable-row" data-drag-idx="${i}" onclick="if(!window._isDraggingRow) editRoom(${idx})" title="Báº¥m sá»­a (KÃ©o tháº£ nÃºt â˜° hoáº·c báº¥m â–²/â–¼ Ä‘á»ƒ Ä‘á»•i thá»© tá»±, PhÃ­m Delete Ä‘á»ƒ xÃ³a)">
+                return `<tr class="draggable-row editable-row" data-drag-idx="${i}" onclick="if(!window._isDraggingRow) editRoom(${idx})" title="Bấm sửa (Kéo thả nút ☰ hoặc bấm ▲/▼ để đổi thứ tự, Phím Delete để xóa)">
             <td>${renderSttOrderControl("rooms", i, dataCache.room.length)}</td>
             <td><strong>${escapeHtml(item.tenPhong || item[1] || '')}</strong></td>
             <td>${escapeHtml(item.bacSi || item[2] || '')}</td>
             <td style="font-size:11px">${item.ktv || item[3] || ''}</td>
             <td style="font-size:11px; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${item.danhSachMay || item[4] || ''}">${escapeHtml(item.danhSachMay || item[4] || '')}</td>
             <td style="text-align:center;">${item.soGiuong || item[5] || 0}</td>
-            <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteRoom(${idx})">XÃ³a</button></td>
+            <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteRoom(${idx})">Xóa</button></td>
         </tr>`;
             }).join('');
 
@@ -5292,7 +5292,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const slGiuong = parseInt(document.getElementById('room-beds').value) || 0;
 
-            if (!ten) return alert("Nháº­p tÃªn phÃ²ng");
+            if (!ten) return alert("Nhập tên phòng");
 
             const bs = Array.from(document.querySelectorAll('.room-doc-cb:checked')).map(cb => cb.value).join(', ');
 
@@ -5344,7 +5344,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 const assigned = machinesOfType.slice(usedCount, usedCount + reqQty);
 
-                if (assigned.length < reqQty) alert(`âš ï¸ Kho thiáº¿u mÃ¡y [${typeName.toUpperCase()}]! CÃ²n ${machinesOfType.length - usedCount} mÃ¡y ráº£nh.`);
+                if (assigned.length < reqQty) alert(`⚠️ Kho thiếu máy [${typeName.toUpperCase()}]! Còn ${machinesOfType.length - usedCount} máy rảnh.`);
 
                 finalMachineList = finalMachineList.concat(assigned);
 
@@ -5406,7 +5406,7 @@ window.renderSttOrderControl = function (type, i, total) {
             const item = dataCache.room[index];
             if (!item) return;
 
-            // LuÃ´n Ä‘áº£m báº£o dynamic machine inputs Ä‘Æ°á»£c render Ä‘áº§y Ä‘á»§ trÆ°á»›c khi gÃ¡n giÃ¡ trá»‹
+            // Luôn đảm bảo dynamic machine inputs được render đầy đủ trước khi gán giá trị
             if (typeof renderDynamicMachineInputs === 'function') {
                 renderDynamicMachineInputs();
             }
@@ -5448,14 +5448,14 @@ window.renderSttOrderControl = function (type, i, total) {
 
             }
 
-            document.getElementById('btn-save-room').innerText = "LÆ°u Sá»­a";
+            document.getElementById('btn-save-room').innerText = "Lưu Sửa";
 
             document.getElementById('btn-cancel-room').style.display = "inline-block";
 
         }
 
         function deleteRoom(i) {
-            showCustomConfirm("XÃ¡c nháº­n xÃ³a phÃ²ng", "BÃ¡c sÄ© cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a phÃ²ng nÃ y khÃ´ng?", function () {
+            showCustomConfirm("Xác nhận xóa phòng", "Bác sĩ có chắc chắn muốn xóa phòng này không?", function () {
                 const targetRoom = dataCache.room ? dataCache.room[i] : null;
                 const tenPhong = targetRoom ? String(targetRoom.tenPhong || targetRoom.ten_phong || (Array.isArray(targetRoom) ? targetRoom[1] : '') || targetRoom.ten || '').trim() : '';
                 const roomId = targetRoom ? (targetRoom.id || null) : null;
@@ -5465,10 +5465,10 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 google.script.run
                     .withSuccessHandler(() => {
-                        if (typeof window.showToast === 'function') window.showToast('ÄÃ£ xÃ³a phÃ²ng thÃ nh cÃ´ng!', 'success');
+                        if (typeof window.showToast === 'function') window.showToast('Đã xóa phòng thành công!', 'success');
                     })
                     .withFailureHandler(e => {
-                        alert('Lá»—i khi xÃ³a phÃ²ng: ' + e);
+                        alert('Lỗi khi xóa phòng: ' + e);
                         if (typeof loadRooms === 'function') loadRooms();
                     }).deletePhong({ tenPhong, id: roomId, index: i }, tenPhong, roomId);
             });
@@ -5478,20 +5478,20 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // ðŸ›Œ 5. Bá»†NH NHÃ‚N
+        // 🛌 5. BỆNH NHÂN
 
         // ============================================================
 
 
-        let _patSortMode = 2; // 2 = NgÃ y vÃ o cÅ© -> má»›i (Máº·c Ä‘á»‹nh), 1 = NgÃ y vÃ o má»›i -> cÅ©, 2 = NgÃ y vÃ o cÅ© -> má»›i
+        let _patSortMode = 2; // 2 = Ngày vào cũ -> mới (Mặc định), 1 = Ngày vào mới -> cũ, 2 = Ngày vào cũ -> mới
         window.toggleSortPatientsByNgayVao = function() {
             if (!dataCache.pat || !dataCache.pat.length) return;
             _patSortMode = (_patSortMode + 1) % 3;
             const th = document.getElementById('th-pat-ngayvao');
             if (th) {
-                if (_patSortMode === 1) th.innerText = "NgÃ y VÃ o â–¼";
-                else if (_patSortMode === 2) th.innerText = "NgÃ y VÃ o â–²";
-                else th.innerText = "NgÃ y VÃ o";
+                if (_patSortMode === 1) th.innerText = "Ngày Vào ▼";
+                else if (_patSortMode === 2) th.innerText = "Ngày Vào ▲";
+                else th.innerText = "Ngày Vào";
             }
             renderPatientsTable();
         };
@@ -5504,14 +5504,14 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         function renderPatientsTable_Original() {
-            // ðŸ›¡ï¸ Tá»± Ä‘á»™ng phá»¥c há»“i há» tÃªn bá»‡nh nhÃ¢n bá»‹ lá»—i hiá»ƒn thá»‹ trÆ°á»›c khi render
+            // 🛡️ Tự động phục hồi họ tên bệnh nhân bị lỗi hiển thị trước khi render
             (dataCache.pat || []).forEach(p => {
                 if (p && p.ten) {
                     p.ten = healPatientName(p.ten);
                 }
             });
 
-            // ðŸ›¡ï¸ Lá»šP PHÃ’NG THá»¦ DEDUPLICATION: Loáº¡i trá»« triá»‡t Ä‘á»ƒ báº£n ghi trÃ¹ng láº·p trÃªn giao diá»‡n
+            // 🛡️ LỚP PHÒNG THỦ DEDUPLICATION: Loại trừ triệt để bản ghi trùng lặp trên giao diện
             if (Array.isArray(dataCache.pat) && dataCache.pat.length > 1) {
                 const dedupMap = new Map();
                 dataCache.pat.forEach(p => {
@@ -5566,7 +5566,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const tbody = document.getElementById('patients-list');
             if (!tbody) return;
-            if (!dataCache.pat.length) { tbody.innerHTML = renderEmptyRow(10, 'ChÆ°a cÃ³ dá»¯ liá»‡u bá»‡nh nhÃ¢n'); return; }
+            if (!dataCache.pat.length) { tbody.innerHTML = renderEmptyRow(10, 'Chưa có dữ liệu bệnh nhân'); return; }
 
             const schedData = (window.currentScheduleData && window.currentScheduleData.length) ? window.currentScheduleData : ((typeof dataCache !== 'undefined' && dataCache.schedule) ? dataCache.schedule : []);
 
@@ -5582,32 +5582,32 @@ window.renderSttOrderControl = function (type, i, total) {
             }
             if (_patSortMode === 1) {
                 displayPatList.sort((a, b) => {
-                    // 1. NgÃ y vÃ o (Má»›i -> CÅ©)
+                    // 1. Ngày vào (Mới -> Cũ)
                     const dateA = parseNgayVao(a.ngayVao || '');
                     const dateB = parseNgayVao(b.ngayVao || '');
                     if (dateA !== dateB) return dateB - dateA;
 
-                    // 2. Giá» vÃ o (Muá»™n -> Sá»›m)
+                    // 2. Giờ vào (Muộn -> Sớm)
                     const timeA = getGioVaoMinutes(a.gioVao || '');
                     const timeB = getGioVaoMinutes(b.gioVao || '');
                     if (timeA !== timeB) return timeB - timeA;
 
-                    // 3. TÃªn tá»« Z-A
+                    // 3. Tên từ Z-A
                     return (b.ten || '').localeCompare(a.ten || '', 'vi');
                 });
             } else if (_patSortMode === 2) {
                 displayPatList.sort((a, b) => {
-                    // 1. NgÃ y vÃ o (CÅ© -> Má»›i)
+                    // 1. Ngày vào (Cũ -> Mới)
                     const dateA = parseNgayVao(a.ngayVao || '');
                     const dateB = parseNgayVao(b.ngayVao || '');
                     if (dateA !== dateB) return dateA - dateB;
 
-                    // 2. Giá» vÃ o (Sá»›m -> Muá»™n)
+                    // 2. Giờ vào (Sớm -> Muộn)
                     const timeA = getGioVaoMinutes(a.gioVao || '');
                     const timeB = getGioVaoMinutes(b.gioVao || '');
                     if (timeA !== timeB) return timeA - timeB;
 
-                    // 3. TÃªn tá»« A-Z
+                    // 3. Tên từ A-Z
                     return (a.ten || '').localeCompare(b.ten || '', 'vi');
                 });
             } else {
@@ -5631,7 +5631,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     const isSameNS = !patNS || !rNS || patNS === rNS;
                     const isSameRoom = !patRoom || !rRoom || patRoom === rRoom;
                     const gio = String(r.gioDienRa || r.GIODIENRA || r[5] || '');
-                    const isNotDropped = !r.__dropped && gio !== 'âŒ Rá»›t' && gio !== '--';
+                    const isNotDropped = !r.__dropped && gio !== '❌ Rớt' && gio !== '--';
                     return isSameName && isSameNS && isSameRoom && isNotDropped;
                 });
 
@@ -5649,28 +5649,28 @@ window.renderSttOrderControl = function (type, i, total) {
                 let nhanTrangThai = '';
                 if (reqCount > 0) {
                     if (schedItems.length === 0) {
-                        nhanTrangThai = `<span style="background:#f39c12;color:white;padding:2px 6px;border-radius:10px;font-size:10px;margin-left:5px;">ChÆ°a xáº¿p</span>`;
+                        nhanTrangThai = `<span style="background:#f39c12;color:white;padding:2px 6px;border-radius:10px;font-size:10px;margin-left:5px;">Chưa xếp</span>`;
                     } else if (missingProcs.length === 0) {
-                        nhanTrangThai = `<span style="background:#2ecc71;color:white;padding:2px 6px;border-radius:10px;font-size:10px;margin-left:5px;">ÄÃ£ Ä‘á»§</span>`;
+                        nhanTrangThai = `<span style="background:#2ecc71;color:white;padding:2px 6px;border-radius:10px;font-size:10px;margin-left:5px;">Đã đủ</span>`;
                     } else {
                         const displayText = getShortSkills(missingProcs.join(', '));
-                        nhanTrangThai = `<span style="background:#3498db;color:white;padding:2px 6px;border-radius:10px;font-size:10px;margin-left:5px;">Thiáº¿u: ${displayText}</span>`;
+                        nhanTrangThai = `<span style="background:#3498db;color:white;padding:2px 6px;border-radius:10px;font-size:10px;margin-left:5px;">Thiếu: ${displayText}</span>`;
                     }
                 }
 
                 const displayGioYLenh = (item.gioVao && item.gioVao !== '07:30' && item.gioVao !== '7:30') ? item.gioVao : '';
 
-                return `<tr class="editable-row" data-pat-index="${idx}" onclick="editPatient(parseInt(this.dataset.patIndex))" style="${item.gioRa ? 'background:#f8d7da;opacity:0.8;' : ''}" title="Báº¥m sá»­a (PhÃ­m Delete Ä‘á»ƒ xÃ³a)">
+                return `<tr class="editable-row" data-pat-index="${idx}" onclick="editPatient(parseInt(this.dataset.patIndex))" style="${item.gioRa ? 'background:#f8d7da;opacity:0.8;' : ''}" title="Bấm sửa (Phím Delete để xóa)">
             <td>${i + 1}</td>
             <td><strong>${escapeHtml(item.ten)}</strong> ${nhanTrangThai}</td>
             <td>${escapeHtml(item.namSinh || '')}</td>
-            <td style="text-align:center;">${item.loai_bn === 'NgoaiTru' ? '<span style="color:#d35400;font-weight:bold;font-size:11px;">Ngoáº¡i trÃº</span>' : '<span style="color:#27ae60;font-weight:bold;font-size:11px;">Ná»™i trÃº</span>'}</td>
+            <td style="text-align:center;">${item.loai_bn === 'NgoaiTru' ? '<span style="color:#d35400;font-weight:bold;font-size:11px;">Ngoại trú</span>' : '<span style="color:#27ae60;font-weight:bold;font-size:11px;">Nội trú</span>'}</td>
             <td>${escapeHtml(item.ngayVao || '')}</td>
             <td style="text-align:center;">${displayGioYLenh ? `<strong style="color:#e67e22">${escapeHtml(displayGioYLenh)}</strong>` : ''}</td>
             <td><strong style="color:#c0392b">${escapeHtml(item.gioRa || '')}</strong></td>
             <td>${escapeHtml(item.phong || '')}</td>
             <td style="font-size:11px;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(item.thuThuat)}"><strong>${escapeHtml(getShortSkills(item.thuThuat))}</strong></td>
-            <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deletePatient(parseInt(this.closest('tr').dataset.patIndex))">XÃ³a</button></td>
+            <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deletePatient(parseInt(this.closest('tr').dataset.patIndex))">Xóa</button></td>
         </tr>`;
             }).join('');
 
@@ -5693,14 +5693,14 @@ window.renderSttOrderControl = function (type, i, total) {
             if (checkUnclosedDay()) return;
 
 
-            // ðŸ›¡ï¸ Chá»‘ng gá»i kÃ©p: Bá» qua náº¿u Ä‘Ã£ Ä‘ang xá»­ lÃ½
+            // 🛡️ Chống gọi kép: Bỏ qua nếu đã đang xử lý
             if (window._savePatientLock) { console.warn("savePatient: blocked double call"); return; }
             window._savePatientLock = true;
 
             const currentEditIdx = editIndex.pat;
             const currentItem = currentEditIdx > -1 ? dataCache.pat[currentEditIdx] : null;
 
-            // ðŸ›¡ï¸ LÆ°u thÃ´ng tin nháº­n diá»‡n gá»‘c trÆ°á»›c khi Optimistic UI cáº­p nháº­t (trÃ¡nh gá»­i nháº§m tÃªn má»›i thay cho tÃªn cÅ©)
+            // 🛡️ Lưu thông tin nhận diện gốc trước khi Optimistic UI cập nhật (tránh gửi nhầm tên mới thay cho tên cũ)
             const origTen = currentItem ? currentItem.ten : '';
             const origNam = currentItem ? currentItem.namSinh : '';
             const origId = currentItem ? currentItem.id : null;
@@ -5713,26 +5713,26 @@ window.renderSttOrderControl = function (type, i, total) {
             const ban = document.getElementById('pat-busy').value;
             const ra = document.getElementById('pat-leave').value;
             const loai_bn = document.getElementById('pat-loai-bn').value;
-            // Tá»± Ä‘á»™ng xÃ¡c Ä‘á»‹nh buá»•i Ä‘iá»u trá»‹ cho bá»‡nh nhÃ¢n ngoáº¡i trÃº dá»±a trÃªn giá» Y lá»‡nh
-            // Concat ngÃ y vÃ o tá»« 2 Ã´ nháº­p
+            // Tự động xác định buổi điều trị cho bệnh nhân ngoại trú dựa trên giờ Y lệnh
+            // Concat ngày vào từ 2 ô nhập
             const dayVal = String(document.getElementById('pat-date-day')?.value || '').trim().padStart(2, '0');
             const myVal = document.getElementById('pat-date-month-year')?.value || '';
             const ngay = `${dayVal}/${myVal}`;
 
-            // Tá»± Ä‘á»™ng xÃ¡c Ä‘á»‹nh giá» vÃ o vÃ  buá»•i Ä‘iá»u trá»‹
+            // Tự động xác định giờ vào và buổi điều trị
             const gioTyped = (document.getElementById('pat-time')?.value || '').trim();
             let gio = gioTyped || '07:30';
-            // LuÃ´n máº·c Ä‘á»‹nh lÃ  Tá»± Ä‘á»™ng (TuDong) theo yÃªu cáº§u áº©n cá»™t cá»§a bÃ¡c sÄ©
+            // Luôn mặc định là Tự động (TuDong) theo yêu cầu ẩn cột của bác sĩ
             let buoi_dieu_tri = (currentEditIdx > -1 && currentItem) ? (currentItem.buoi_dieu_tri || 'TuDong') : 'TuDong';
 
-            // Náº¿u cÃ³ giá» ra viá»‡n -> báº¯t buá»™c SÃ¡ng
+            // Nếu có giờ ra viện -> bắt buộc Sáng
             if (ra) {
                 buoi_dieu_tri = 'Sang';
             }
             const tt = Array.from(document.querySelectorAll('.pat-proc-cb:checked')).map(cb => cb.value).join(', ');
 
-            if (!ten) { window._savePatientLock = false; return alert("Nháº­p tÃªn bá»‡nh nhÃ¢n"); }
-            if (!phong) { window._savePatientLock = false; return alert("Vui lÃ²ng chá»n PhÃ²ng"); }
+            if (!ten) { window._savePatientLock = false; return alert("Nhập tên bệnh nhân"); }
+            if (!phong) { window._savePatientLock = false; return alert("Vui lòng chọn Phòng"); }
 
             ten = (ten || '').normalize('NFC').trim();
             ten = healPatientName(ten, [origTen].filter(Boolean));
@@ -5741,7 +5741,7 @@ window.renderSttOrderControl = function (type, i, total) {
             }
             ten = ten.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
 
-            // ðŸ›¡ï¸ Kiá»ƒm soÃ¡t tÃ­nh toÃ n váº¹n dá»¯ liá»‡u báº±ng Zod Schema Engine
+            // 🛡️ Kiểm soát tính toàn vẹn dữ liệu bằng Zod Schema Engine
             if (window.MedicalSchemas && typeof window.MedicalSchemas.validatePatient === 'function') {
                 const zRes = window.MedicalSchemas.validatePatient({
                     ten: ten,
@@ -5751,16 +5751,16 @@ window.renderSttOrderControl = function (type, i, total) {
                 });
                 if (!zRes.success) {
                     window._savePatientLock = false;
-                    const errDetail = zRes.error?.issues?.[0]?.message || 'Dá»¯ liá»‡u khÃ´ng há»£p lá»‡';
-                    return alert('âš ï¸ ' + errDetail);
+                    const errDetail = zRes.error?.issues?.[0]?.message || 'Dữ liệu không hợp lệ';
+                    return alert('⚠️ ' + errDetail);
                 }
             }
 
-            // KhÃ³a form vÃ  nÃºt lÆ°u
+            // Khóa form và nút lưu
             const btnSave = document.getElementById('btn-save-pat');
-            if (btnSave) { btnSave.disabled = true; btnSave.innerText = 'Äang lÆ°u...'; }
+            if (btnSave) { btnSave.disabled = true; btnSave.innerText = 'Đang lưu...'; }
 
-            // Chá»¥p index TRÆ¯á»šC khi cancelEdit reset vá» -1
+            // Chụp index TRƯỚC khi cancelEdit reset về -1
 
             let createdPat = null;
             if (currentEditIdx > -1 && currentItem) {
@@ -5796,7 +5796,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 renderPatientsTable();
             }
 
-            // Giáº£i phÃ³ng form ngay láº­p tá»©c cho ngÆ°á»i dÃ¹ng thao tÃ¡c tiáº¿p
+            // Giải phóng form ngay lập tức cho người dùng thao tác tiếp
             cancelEdit('pat');
             document.getElementById('pat-name').focus();
 
@@ -5808,14 +5808,14 @@ window.renderSttOrderControl = function (type, i, total) {
                 }
                 if (window.dataCacheTime) window.dataCacheTime['pat'] = Date.now();
                 if (typeof loadDashboard === 'function') loadDashboard();
-                if (btnSave) { btnSave.disabled = false; btnSave.innerText = 'LÆ°u'; }
+                if (btnSave) { btnSave.disabled = false; btnSave.innerText = 'Lưu'; }
             };
 
             const onError = (e) => {
                 window._savePatientLock = false;
-                if (btnSave) { btnSave.disabled = false; btnSave.innerText = 'LÆ°u'; }
-                alert('Lá»—i khi lÆ°u bá»‡nh nhÃ¢n: ' + e);
-                // KhÃ´i phá»¥c láº¡i dá»¯ liá»‡u gá»‘c tá»« mÃ¡y chá»§ náº¿u xáº£y ra lá»—i
+                if (btnSave) { btnSave.disabled = false; btnSave.innerText = 'Lưu'; }
+                alert('Lỗi khi lưu bệnh nhân: ' + e);
+                // Khôi phục lại dữ liệu gốc từ máy chủ nếu xảy ra lỗi
                 if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
                 loadEntity('getBenhNhan', 'pat', renderPatientsTable, [], true);
             };
@@ -5849,7 +5849,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 }
             }
             if (!item) {
-                console.warn('[editPatient]: KhÃ´ng tÃ¬m tháº¥y bá»‡nh nhÃ¢n táº¡i vá»‹ trÃ­', index);
+                console.warn('[editPatient]: Không tìm thấy bệnh nhân tại vị trí', index);
                 return;
             }
 
@@ -5887,7 +5887,7 @@ window.renderSttOrderControl = function (type, i, total) {
             const busyVal = item.gioBan || '';
             document.getElementById('pat-busy').value = busyVal;
             document.getElementById('pat-loai-bn').value = item.loai_bn || 'NoiTru';
-            // Auto-detect buá»•i: náº¿u cÃ³ giá» ra viá»‡n â†’ sÃ¡ng, khÃ´ng thÃ¬ dÃ¹ng giÃ¡ trá»‹ Ä‘Ã£ lÆ°u (máº·c Ä‘á»‹nh TuDong)
+            // Auto-detect buổi: nếu có giờ ra viện → sáng, không thì dùng giá trị đã lưu (mặc định TuDong)
             const autoDetectedBuoi = item.gioRa ? 'Sang' : (item.buoi_dieu_tri || 'TuDong');
             document.getElementById('pat-buoi-dieu-tri').value = autoDetectedBuoi;
             if (typeof togglePatSessionSelect === 'function') togglePatSessionSelect();
@@ -5900,14 +5900,14 @@ window.renderSttOrderControl = function (type, i, total) {
                 document.getElementById('busy-end').value = '';
             }
 
-            // Äáº£m báº£o checkbox thá»§ thuáº­t Ä‘Ã£ Ä‘Æ°á»£c render trÆ°á»›c khi chá»n
+            // Đảm bảo checkbox thủ thuật đã được render trước khi chọn
             if (document.querySelectorAll('.pat-proc-cb').length === 0) {
                 if (typeof renderProcedureCheckboxes === 'function') {
                     renderProcedureCheckboxes();
                 }
             }
 
-            // Dá»n dáº¹p cÃ¡c checkbox ngoÃ i danh má»¥c trÆ°á»›c Ä‘Ã³
+            // Dọn dẹp các checkbox ngoài danh mục trước đó
             document.querySelectorAll('.pat-proc-cb-extra-container, .extra-proc-item').forEach(el => el.remove());
 
             const ttArr = extractPatientProcedures(item);
@@ -5925,8 +5925,8 @@ window.renderSttOrderControl = function (type, i, total) {
                 cb.checked = isMatched;
             });
 
-            // ðŸ›¡ï¸ CHá»NG Máº¤T THá»¦ THUáº¬T: Náº¿u cÃ³ thá»§ thuáº­t cá»§a bá»‡nh nhÃ¢n khÃ´ng náº±m trong danh má»¥c chuáº©n,
-            // tá»± Ä‘á»™ng táº¡o checkbox bá»• sung cÃ³ Ä‘Ã¡nh dáº¥u checked Ä‘á»ƒ báº£o toÃ n dá»¯ liá»‡u khi LÆ°u!
+            // 🛡️ CHỐNG MẤT THỦ THUẬT: Nếu có thủ thuật của bệnh nhân không nằm trong danh mục chuẩn,
+            // tự động tạo checkbox bổ sung có đánh dấu checked để bảo toàn dữ liệu khi Lưu!
             const unmatched = ttArr.filter(t => !matchedProcs.has(t));
             if (unmatched.length > 0) {
                 let extraContainer = document.getElementById('pat-skills-extra');
@@ -5941,7 +5941,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     }
                 }
                 if (extraContainer) {
-                    let extraHtml = '<h4 style="color:#d35400; font-size:12px; margin:0 0 4px 0; font-weight:700;">ðŸ“Œ Thá»§ thuáº­t bá»• sung / ngoÃ i danh má»¥c:</h4>';
+                    let extraHtml = '<h4 style="color:#d35400; font-size:12px; margin:0 0 4px 0; font-weight:700;">📌 Thủ thuật bổ sung / ngoài danh mục:</h4>';
                     unmatched.forEach(t => {
                         const escaped = escapeHtml(t);
                         extraHtml += `<label class="checkbox-item extra-proc-item" style="display:inline-flex; align-items:center; margin-right:12px; margin-bottom:4px; font-weight:600; color:#d35400;">
@@ -5953,14 +5953,14 @@ window.renderSttOrderControl = function (type, i, total) {
                 }
             }
 
-            document.getElementById('btn-save-pat').innerText = "LÆ°u Sá»­a";
+            document.getElementById('btn-save-pat').innerText = "Lưu Sửa";
             document.getElementById('btn-cancel-pat').style.display = "inline-block";
 
         }
 
         // ============================================================
 
-        // â™»ï¸ Há»† THá»NG XÃ“A Bá»†NH NHÃ‚N (TRá»°C TIáº¾P, AN TOÃ€N)
+        // ♻️ HỆ THỐNG XÓA BỆNH NHÂN (TRỰC TIẾP, AN TOÀN)
 
         // ============================================================
 
@@ -5970,15 +5970,15 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const p = dataCache.pat[i];
 
-            showCustomConfirm("XÃ¡c nháº­n xÃ³a", `BÃ¡c sÄ© cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a bá»‡nh nhÃ¢n [ ${p.ten} ]?`, function () {
-                // Náº¿u Ä‘ang má»Ÿ sá»­a chÃ­nh bá»‡nh nhÃ¢n nÃ y, reset form
+            showCustomConfirm("Xác nhận xóa", `Bác sĩ có chắc chắn muốn xóa bệnh nhân [ ${p.ten} ]?`, function () {
+                // Nếu đang mở sửa chính bệnh nhân này, reset form
                 if (editIndex.pat === i) {
                     cancelEdit('pat');
                 } else if (editIndex.pat > i) {
                     editIndex.pat--;
                 }
 
-                // XÃ³a táº¡m trÃªn giao diá»‡n
+                // Xóa tạm trên giao diện
                 const deletedSheetIndex = p.sheetIndex !== undefined ? p.sheetIndex : i;
                 const patName = p.ten;
                 dataCache.pat.splice(i, 1);
@@ -5990,15 +5990,15 @@ window.renderSttOrderControl = function (type, i, total) {
                 });
                 renderPatientsTable();
 
-                // Gá»i mÃ¡y chá»§ xÃ³a ngay láº­p tá»©c
+                // Gọi máy chủ xóa ngay lập tức
                 google.script.run
                     .withSuccessHandler(() => {
-                        if (typeof showToastSuccess === 'function') showToastSuccess(`ÄÃ£ xÃ³a bá»‡nh nhÃ¢n [ ${patName} ] thÃ nh cÃ´ng!`);
-                        else if (typeof window.showToast === 'function') window.showToast(`ÄÃ£ xÃ³a bá»‡nh nhÃ¢n [ ${patName} ] thÃ nh cÃ´ng!`, 'success');
+                        if (typeof showToastSuccess === 'function') showToastSuccess(`Đã xóa bệnh nhân [ ${patName} ] thành công!`);
+                        else if (typeof window.showToast === 'function') window.showToast(`Đã xóa bệnh nhân [ ${patName} ] thành công!`, 'success');
                         if (typeof loadDashboard === 'function') loadDashboard();
                     })
                     .withFailureHandler(e => {
-                        alert('Lá»—i khi xÃ³a: ' + e);
+                        alert('Lỗi khi xóa: ' + e);
                         if (typeof loadPatients === 'function') loadPatients();
                     })
                     .deleteBenhNhan(deletedSheetIndex, p.ten, p.namSinh, p.id);
@@ -6007,7 +6007,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-        // Tá»± Ä‘á»™ng Ä‘iá»n nÄƒm sinh khi gÃµ tÃªn bá»‡nh nhÃ¢n
+        // Tự động điền năm sinh khi gõ tên bệnh nhân
 
         document.getElementById('pat-name').addEventListener('input', function () {
 
@@ -6023,7 +6023,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-        // TÃ¬m kiáº¿m báº£ng bá»‡nh nhÃ¢n (debounce chá»‘ng Unikey)
+        // Tìm kiếm bảng bệnh nhân (debounce chống Unikey)
 
         let patSearchTimeout;
 
@@ -6058,7 +6058,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // â± TAB GIá»œ Báº¬N Bá»†NH NHÃ‚N
+        // ⏱ TAB GIỜ BẬN BỆNH NHÂN
 
         // ============================================================
 
@@ -6091,14 +6091,14 @@ window.renderSttOrderControl = function (type, i, total) {
                             <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 65px;">${ns}</td>
                             <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 75px;">${phong}</td>
                             <td align="center" style="white-space: nowrap; width: 110px; min-width: 100px;">
-                                <span style="display:inline-block; padding:2px 7px; background:#f0fdfa; color:#0f766e; border:1px solid #ccfbf1; border-radius:12px; font-weight:700; font-size:11.5px; font-family:monospace;">â± ${formatSlotDisplay(slot)}</span>
+                                <span style="display:inline-block; padding:2px 7px; background:#f0fdfa; color:#0f766e; border:1px solid #ccfbf1; border-radius:12px; font-weight:700; font-size:11.5px; font-family:monospace;">⏱ ${formatSlotDisplay(slot)}</span>
                             </td>
                         </tr>`;
                     } else {
                         const safeTenAttr = String(p.ten || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                         const safeNsAttr = String(ns || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                         const safeSlotAttr = String(slot || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-                        html += `<tr class="editable-row" onclick="editBusyPat('${safeTenAttr}', '${safeNsAttr}', '${safeSlotAttr}', ${idx})" title="Báº¥m Ä‘á»ƒ sá»­a/xÃ³a">
+                        html += `<tr class="editable-row" onclick="editBusyPat('${safeTenAttr}', '${safeNsAttr}', '${safeSlotAttr}', ${idx})" title="Bấm để sửa/xóa">
                             <td align="center" style="font-weight: 600; color: #475569; width: 32px;">${stt++}</td>
                             <td style="white-space: nowrap; font-weight: 600; text-align: left;">${escapedTen}</td>
                             <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 65px;">${ns}</td>
@@ -6111,12 +6111,12 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const countBadge = document.getElementById('busy-pat-count-badge');
             if (countBadge) {
-                countBadge.innerText = `${count} bá»‡nh nhÃ¢n báº­n`;
+                countBadge.innerText = `${count} bệnh nhân bận`;
             }
 
             const emptyMsg = isHistory
-                ? `ðŸ“­ NgÃ y ${dmy || 'nÃ y'} khÃ´ng cÃ³ bá»‡nh nhÃ¢n bÃ¡o báº­n`
-                : 'ChÆ°a cÃ³ bá»‡nh nhÃ¢n báº­n';
+                ? `📭 Ngày ${dmy || 'này'} không có bệnh nhân báo bận`
+                : 'Chưa có bệnh nhân bận';
             tbody.innerHTML = html || `<tr><td colspan="5" align="center" style="color:#64748b; padding:${isHistory ? '24px' : '10px'} 10px; font-style:italic;">${emptyMsg}</td></tr>`;
         }
 
@@ -6157,11 +6157,11 @@ window.renderSttOrderControl = function (type, i, total) {
             if (checkUnclosedDay()) return;
 
             const idx = getBusyPatIdx();
-            if (idx === -1) return alert('Vui lÃ²ng chá»n Ä‘Ã­ch danh bá»‡nh nhÃ¢n tá»« danh sÃ¡ch xá»• xuá»‘ng!');
+            if (idx === -1) return alert('Vui lòng chọn đích danh bệnh nhân từ danh sách xổ xuống!');
             const fromObj = document.getElementById('busy-pat-from');
             const toObj = document.getElementById('busy-pat-to');
             const from = fromObj.value, to = toObj.value;
-            if (!from) return alert('Nháº­p thá»i gian!');
+            if (!from) return alert('Nhập thời gian!');
             const finalTo = to || from;
             const p = dataCache.pat[idx];
             const newSlot = from + '-' + finalTo;
@@ -6183,7 +6183,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     if (window.dataCacheTime) window.dataCacheTime['pat'] = Date.now();
                 })
                 .withFailureHandler(err => {
-                    alert("Lá»—i lÆ°u giá» báº­n: " + (err.message || err));
+                    alert("Lỗi lưu giờ bận: " + (err.message || err));
                     if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
                     loadEntity('getBenhNhan', 'pat', renderPatientsTable, [
                         () => { if (typeof renderBusyPat === 'function') renderBusyPat(); }
@@ -6196,16 +6196,16 @@ window.renderSttOrderControl = function (type, i, total) {
             if (checkUnclosedDay()) return;
 
             const idx = getBusyPatIdx();
-            if (idx === -1) return alert('Vui lÃ²ng chá»n Ä‘Ã­ch danh bá»‡nh nhÃ¢n!');
+            if (idx === -1) return alert('Vui lòng chọn đích danh bệnh nhân!');
             const from = document.getElementById('busy-pat-from').value;
             const to = document.getElementById('busy-pat-to').value;
-            if (!from) return alert('Vui lÃ²ng click vÃ o khoáº£ng giá» trÃªn báº£ng Ä‘á»ƒ xÃ³a!');
+            if (!from) return alert('Vui lòng click vào khoảng giờ trên bảng để xóa!');
             const finalTo = to || from;
             const p = dataCache.pat[idx];
             if (!p.gioBan) return;
             const slotToDelete = from + '-' + finalTo;
 
-            showCustomConfirm("XÃ³a giá» báº­n", "BÃ¡c sÄ© cÃ³ muá»‘n xÃ³a giá» báº­n [ " + slotToDelete + " ] cá»§a BN: " + p.ten + "?", function () {
+            showCustomConfirm("Xóa giờ bận", "Bác sĩ có muốn xóa giờ bận [ " + slotToDelete + " ] của BN: " + p.ten + "?", function () {
                 p.gioBan = p.gioBan.split(',').map(x => x.trim()).filter(x => x && x !== slotToDelete).join(', ');
                 renderPatientsTable();
                 if (typeof renderBusyPat === 'function') renderBusyPat();
@@ -6220,7 +6220,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         if (window.dataCacheTime) window.dataCacheTime['pat'] = Date.now();
                     })
                     .withFailureHandler(err => {
-                        alert("Lá»—i xÃ³a giá» báº­n: " + (err.message || err));
+                        alert("Lỗi xóa giờ bận: " + (err.message || err));
                         if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
                         loadEntity('getBenhNhan', 'pat', renderPatientsTable, [
                             () => { if (typeof renderBusyPat === 'function') renderBusyPat(); }
@@ -6234,9 +6234,9 @@ window.renderSttOrderControl = function (type, i, total) {
             if (checkUnclosedDay()) return;
 
             const idx = getBusyPatIdx();
-            if (idx === -1) return alert('Vui lÃ²ng chá»n Ä‘Ã­ch danh bá»‡nh nhÃ¢n!');
+            if (idx === -1) return alert('Vui lòng chọn đích danh bệnh nhân!');
             const p = dataCache.pat[idx];
-            if (!confirm("XÃ³a toÃ n bá»™ giá» báº­n cá»§a BN: " + p.ten + "?")) return;
+            if (!confirm("Xóa toàn bộ giờ bận của BN: " + p.ten + "?")) return;
 
             p.gioBan = ''; 
             renderPatientsTable();
@@ -6250,7 +6250,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     if (window.dataCacheTime) window.dataCacheTime['pat'] = Date.now();
                 })
                 .withFailureHandler(err => {
-                    alert("Lá»—i xÃ³a giá» báº­n: " + (err.message || err));
+                    alert("Lỗi xóa giờ bận: " + (err.message || err));
                     if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
                     loadEntity('getBenhNhan', 'pat', renderPatientsTable, [
                         () => { if (typeof renderBusyPat === 'function') renderBusyPat(); }
@@ -6263,7 +6263,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // ðŸšª TAB RA VIá»†N
+        // 🚪 TAB RA VIỆN
 
         // ============================================================
 
@@ -6290,14 +6290,14 @@ window.renderSttOrderControl = function (type, i, total) {
                         <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 65px;">${ns}</td>
                         <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 75px;">${phong}</td>
                         <td align="center" style="white-space: nowrap; width: 80px; min-width: 75px;">
-                            <span style="display:inline-block; padding:2px 7px; background:#faf5ff; color:#6b21a8; border:1px solid #f3e8ff; border-radius:12px; font-weight:700; font-size:11.5px; font-family:monospace;">ðŸšª ${p.gioRa}</span>
+                            <span style="display:inline-block; padding:2px 7px; background:#faf5ff; color:#6b21a8; border:1px solid #f3e8ff; border-radius:12px; font-weight:700; font-size:11.5px; font-family:monospace;">🚪 ${p.gioRa}</span>
                         </td>
                     </tr>`;
                 } else {
                     const safeTenAttr = String(p.ten || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                     const safeNsAttr = String(ns || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                     const safeGioRaAttr = String(p.gioRa || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-                    html += `<tr class="editable-row" onclick="editLeavePat('${safeTenAttr}', '${safeNsAttr}', '${safeGioRaAttr}', ${idx})" title="Báº¥m Ä‘á»ƒ sá»­a/xÃ³a">
+                    html += `<tr class="editable-row" onclick="editLeavePat('${safeTenAttr}', '${safeNsAttr}', '${safeGioRaAttr}', ${idx})" title="Bấm để sửa/xóa">
                         <td align="center" style="font-weight: 600; color: #475569; width: 32px;">${stt++}</td>
                         <td style="white-space: nowrap; font-weight: 600; text-align: left;">${escapedTen}</td>
                         <td align="center" style="color: #64748b; white-space: nowrap; font-size: 11.5px; width: 65px;">${ns}</td>
@@ -6309,12 +6309,12 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const countBadge = document.getElementById('busy-leave-count-badge');
             if (countBadge) {
-                countBadge.innerText = `${count} bá»‡nh nhÃ¢n ra viá»‡n`;
+                countBadge.innerText = `${count} bệnh nhân ra viện`;
             }
 
             const emptyMsg = isHistory
-                ? `ðŸ“­ NgÃ y ${dmy || 'nÃ y'} khÃ´ng cÃ³ bá»‡nh nhÃ¢n ra viá»‡n`
-                : 'ChÆ°a cÃ³ bá»‡nh nhÃ¢n ra viá»‡n';
+                ? `📭 Ngày ${dmy || 'này'} không có bệnh nhân ra viện`
+                : 'Chưa có bệnh nhân ra viện';
             tbody.innerHTML = html || `<tr><td colspan="5" align="center" style="color:#64748b; padding:${isHistory ? '24px' : '10px'} 10px; font-style:italic;">${emptyMsg}</td></tr>`;
         }
 
@@ -6336,14 +6336,14 @@ window.renderSttOrderControl = function (type, i, total) {
             if (checkUnclosedDay()) return;
 
             const idx = getLeavePatIdx();
-            if (idx === -1) return alert('Vui lÃ²ng chá»n Ä‘Ã­ch danh bá»‡nh nhÃ¢n tá»« danh sÃ¡ch xá»• xuá»‘ng!');
+            if (idx === -1) return alert('Vui lòng chọn đích danh bệnh nhân từ danh sách xổ xuống!');
             const leaveObj = document.getElementById('leave-pat-time');
             const leaveTime = leaveObj.value;
-            if (!leaveTime) return alert('Nháº­p giá» ra viá»‡n!');
+            if (!leaveTime) return alert('Nhập giờ ra viện!');
             const p = dataCache.pat[idx];
 
             p.gioRa = leaveTime;
-            // Cáº­p nháº­t ngay trÃªn currentScheduleData Ä‘á»ƒ In/Xuáº¥t Excel pháº£n Ã¡nh Ä‘Ãºng
+            // Cập nhật ngay trên currentScheduleData để In/Xuất Excel phản ánh đúng
             if (window.currentScheduleData) {
                 const patTenLower = String(p.ten || '').trim().toLowerCase();
                 const patNs = String(p.namSinh || '').trim();
@@ -6361,7 +6361,7 @@ window.renderSttOrderControl = function (type, i, total) {
             }
             renderPatientsTable();
             if (typeof renderLeavePat === 'function') renderLeavePat();
-            satCache = {}; // LÃ m má»›i bá»™ Ä‘á»‡m Thá»© 7 Ä‘á»ƒ pháº£n Ã¡nh danh sÃ¡ch má»›i nháº¥t
+            satCache = {}; // Làm mới bộ đệm Thứ 7 để phản ánh danh sách mới nhất
             leaveObj.value = ''; leaveObj.focus();
             const leaveInput = document.getElementById('leave-pat-input');
             if (leaveInput) leaveInput.value = '';
@@ -6372,7 +6372,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     if (window.dataCacheTime) window.dataCacheTime['pat'] = Date.now();
                 })
                 .withFailureHandler(err => {
-                    alert("Lá»—i cáº­p nháº­t giá» ra viá»‡n: " + (err.message || err));
+                    alert("Lỗi cập nhật giờ ra viện: " + (err.message || err));
                     if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
                     loadEntity('getBenhNhan', 'pat', renderPatientsTable, [
                         () => { if (typeof renderLeavePat === 'function') renderLeavePat(); }
@@ -6385,9 +6385,9 @@ window.renderSttOrderControl = function (type, i, total) {
             if (checkUnclosedDay()) return;
 
             const idx = getLeavePatIdx();
-            if (idx === -1) return alert('Vui lÃ²ng chá»n Ä‘Ã­ch danh bá»‡nh nhÃ¢n!');
+            if (idx === -1) return alert('Vui lòng chọn đích danh bệnh nhân!');
             const p = dataCache.pat[idx];
-            if (!confirm("Há»§y giá» ra viá»‡n cá»§a BN: " + p.ten + "?")) return;
+            if (!confirm("Hủy giờ ra viện của BN: " + p.ten + "?")) return;
 
             p.gioRa = '';
             if (window.currentScheduleData) {
@@ -6407,7 +6407,7 @@ window.renderSttOrderControl = function (type, i, total) {
             }
             renderPatientsTable();
             if (typeof renderLeavePat === 'function') renderLeavePat();
-            satCache = {}; // LÃ m má»›i bá»™ Ä‘á»‡m Thá»© 7 Ä‘á»ƒ pháº£n Ã¡nh danh sÃ¡ch má»›i nháº¥t
+            satCache = {}; // Làm mới bộ đệm Thứ 7 để phản ánh danh sách mới nhất
             document.getElementById('leave-pat-time').value = '';
             const leaveInput = document.getElementById('leave-pat-input');
             if (leaveInput) leaveInput.value = '';
@@ -6418,7 +6418,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     if (window.dataCacheTime) window.dataCacheTime['pat'] = Date.now();
                 })
                 .withFailureHandler(err => {
-                    alert("Lá»—i há»§y giá» ra viá»‡n: " + (err.message || err));
+                    alert("Lỗi hủy giờ ra viện: " + (err.message || err));
                     if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
                     loadEntity('getBenhNhan', 'pat', renderPatientsTable, [
                         () => { if (typeof renderLeavePat === 'function') renderLeavePat(); }
@@ -6431,7 +6431,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // ðŸ‘· TAB GIá»œ Báº¬N NHÃ‚N VIÃŠN
+        // 👷 TAB GIỜ BẬN NHÂN VIÊN
 
         // ============================================================
 
@@ -6451,46 +6451,46 @@ window.renderSttOrderControl = function (type, i, total) {
             const parts = (targetDate || '').split('-');
             const dmy = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : targetDate;
 
-            // Lá»c danh sÃ¡ch nhÃ¢n sá»± báº­n
+            // Lọc danh sách nhân sự bận
             const busyStaffList = (dataCache.staff || []).filter(s => s && s.gioBan && String(s.gioBan).trim());
 
-            // Cáº­p nháº­t badge trÃªn header lá»‹ch sá»­
+            // Cập nhật badge trên header lịch sử
             const countBadge = document.getElementById('busy-staff-count-badge');
             if (countBadge) {
-                countBadge.innerText = `${busyStaffList.length} nhÃ¢n sá»± báº­n`;
+                countBadge.innerText = `${busyStaffList.length} nhân sự bận`;
             }
 
             if (isHistory) {
-                // --- CHáº¾ Äá»˜ Lá»ŠCH Sá»¬ (READ-ONLY LIST VIEW Vá»šI PILLS CHUYÃŠN NGHIá»†P) ---
+                // --- CHẾ ĐỘ LỊCH SỬ (READ-ONLY LIST VIEW VỚI PILLS CHUYÊN NGHIỆP) ---
                 if (busyStaffList.length === 0) {
                     thead.innerHTML = `<tr>
                         <th style="width: 36px; text-align: center;">STT</th>
-                        <th style="text-align: left;">TÃªn NhÃ¢n ViÃªn</th>
-                        <th style="text-align: center; width: 105px;">Vai TrÃ²</th>
-                        <th style="text-align: center; width: 140px;">Khung Giá» Báº­n Lá»‹ch Sá»­</th>
+                        <th style="text-align: left;">Tên Nhân Viên</th>
+                        <th style="text-align: center; width: 105px;">Vai Trò</th>
+                        <th style="text-align: center; width: 140px;">Khung Giờ Bận Lịch Sử</th>
                     </tr>`;
-                    tbody.innerHTML = `<tr><td colspan="4" align="center" style="color:#64748b; padding:24px 10px; font-style:italic;">ðŸ“­ NgÃ y ${dmy || 'nÃ y'} khÃ´ng cÃ³ nhÃ¢n viÃªn nÃ o bÃ¡o báº­n</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="4" align="center" style="color:#64748b; padding:24px 10px; font-style:italic;">📭 Ngày ${dmy || 'này'} không có nhân viên nào báo bận</td></tr>`;
                     return;
                 }
 
                 thead.innerHTML = `<tr>
                     <th style="width: 36px; text-align: center;">STT</th>
-                    <th style="text-align: left;">TÃªn NhÃ¢n ViÃªn</th>
-                    <th style="text-align: center; width: 105px;">Vai TrÃ²</th>
-                    <th style="text-align: center; width: 150px;">Khung Giá» Báº­n</th>
+                    <th style="text-align: left;">Tên Nhân Viên</th>
+                    <th style="text-align: center; width: 105px;">Vai Trò</th>
+                    <th style="text-align: center; width: 150px;">Khung Giờ Bận</th>
                 </tr>`;
 
                 let tbHtml = '';
                 let stt = 1;
                 busyStaffList.forEach(s => {
                     const sName = escapeHtml(String(s.ten || '').toUpperCase());
-                    const vaiTro = escapeHtml(s.vaiTro || (s.ten.toLowerCase().includes('ktv') ? 'Ká»¹ thuáº­t viÃªn' : 'BÃ¡c sÄ©'));
+                    const vaiTro = escapeHtml(s.vaiTro || (s.ten.toLowerCase().includes('ktv') ? 'Kỹ thuật viên' : 'Bác sĩ'));
                     const slots = String(s.gioBan).split(',').map(x => x.trim()).filter(Boolean);
-                    const slotBadges = slots.map(sl => `<span style="display:inline-block; margin:2px; padding:2px 7px; background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; border-radius:12px; font-weight:700; font-size:11.5px; font-family:monospace;">â± ${formatSlotDisplay(sl)}</span>`).join(' ');
+                    const slotBadges = slots.map(sl => `<span style="display:inline-block; margin:2px; padding:2px 7px; background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; border-radius:12px; font-weight:700; font-size:11.5px; font-family:monospace;">⏱ ${formatSlotDisplay(sl)}</span>`).join(' ');
 
                     tbHtml += `<tr>
                         <td align="center" style="font-weight: 700; color: #475569;">${stt++}</td>
-                        <td style="text-align: left; font-weight: 700; color: #1e293b; white-space: nowrap;">ðŸ‘¨â€âš•ï¸ ${sName}</td>
+                        <td style="text-align: left; font-weight: 700; color: #1e293b; white-space: nowrap;">👨‍⚕️ ${sName}</td>
                         <td align="center"><span style="font-size: 11px; padding: 2px 6px; border-radius: 4px; background: #e0f2fe; color: #0369a1; font-weight: 600;">${vaiTro}</span></td>
                         <td align="center" style="white-space: normal;">${slotBadges}</td>
                     </tr>`;
@@ -6499,7 +6499,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 return;
             }
 
-            // --- CHáº¾ Äá»˜ LIVE (NHáº¬P LIá»†U/Sá»¬A) ---
+            // --- CHẾ ĐỘ LIVE (NHẬP LIỆU/SỬA) ---
             if (select) {
                 const prevVal = select.value;
                 select.innerHTML = (dataCache.staff || []).map((s, i) => `<option value="${i}">${escapeHtml(String(s.ten || '').toUpperCase())}</option>`).join('');
@@ -6512,7 +6512,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             if (!busyIndices.length) {
                 thead.innerHTML = '';
-                tbody.innerHTML = '<tr><td align="center" style="color:gray; padding:20px; font-style:italic;">âœ… Hiá»‡n táº¡i chÆ°a cÃ³ nhÃ¢n viÃªn nÃ o bÃ¡o báº­n</td></tr>';
+                tbody.innerHTML = '<tr><td align="center" style="color:gray; padding:20px; font-style:italic;">✅ Hiện tại chưa có nhân viên nào báo bận</td></tr>';
                 return;
             }
 
@@ -6535,7 +6535,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 busyIndices.forEach((origIdx, arrIdx) => {
                     const slot = slotArrays[arrIdx][i];
                     tbHtml += slot
-                        ? `<td align="center" style="font-size:11px; color:#c0392b; font-weight:bold;" class="editable-row" onclick="editBusyStaff(${origIdx}, '${slot}')" title="Báº¥m sá»­a (Delete Ä‘á»ƒ xÃ³a)">${formatSlotDisplay(slot)}</td>`
+                        ? `<td align="center" style="font-size:11px; color:#c0392b; font-weight:bold;" class="editable-row" onclick="editBusyStaff(${origIdx}, '${slot}')" title="Bấm sửa (Delete để xóa)">${formatSlotDisplay(slot)}</td>`
                         : `<td align="center" style="color:#bdc3c7;">-</td>`;
                 });
                 tbHtml += '</tr>';
@@ -6566,14 +6566,14 @@ window.renderSttOrderControl = function (type, i, total) {
             const select = document.getElementById('busy-staff-select');
             if (!select) return;
             const idx = select.value;
-            if (idx === "" || idx === null || isNaN(parseInt(idx))) return alert('Vui lÃ²ng chá»n nhÃ¢n viÃªn!');
+            if (idx === "" || idx === null || isNaN(parseInt(idx))) return alert('Vui lòng chọn nhân viên!');
             const fromObj = document.getElementById('busy-staff-from');
             const toObj = document.getElementById('busy-staff-to');
             const from = fromObj.value.trim(), to = toObj.value.trim();
-            if (!from) return alert('Vui lÃ²ng nháº­p thá»i gian!');
+            if (!from) return alert('Vui lòng nhập thời gian!');
             const finalTo = to || from;
             const s = dataCache.staff[parseInt(idx)];
-            if (!s) return alert('KhÃ´ng tÃ¬m tháº¥y nhÃ¢n viÃªn!');
+            if (!s) return alert('Không tìm thấy nhân viên!');
             const newSlot = from + '-' + finalTo;
             if (window.editingStaffSlot && String(window.editingStaffIdx) === String(idx)) {
                 const curSlots = s.gioBan ? (typeof s.gioBan === 'string' ? s.gioBan.split(',') : s.gioBan).map(x => x.trim()).filter(x => x && x !== window.editingStaffSlot) : [];
@@ -6591,16 +6591,16 @@ window.renderSttOrderControl = function (type, i, total) {
 
             google.script.run
                 .withSuccessHandler(() => {
-                    if (typeof window.showToast === 'function') window.showToast('ÄÃ£ cáº­p nháº­t giá» báº­n nhÃ¢n sá»±!', 'success');
+                    if (typeof window.showToast === 'function') window.showToast('Đã cập nhật giờ bận nhân sự!', 'success');
                 })
                 .withFailureHandler(err => {
-                    alert("Lá»—i lÆ°u giá» báº­n: " + (err.message || err));
+                    alert("Lỗi lưu giờ bận: " + (err.message || err));
                     if (window.dataCacheTime) window.dataCacheTime['staff'] = 0;
                     loadEntity('getNhanSu', 'staff', renderStaffTable, [
                         () => { if (typeof renderBusyStaff === 'function') renderBusyStaff(); }
                     ], true);
                 })
-                .editNhanSu(sheetIdx, s.ten, s.vaiTro || 'Ká»¹ thuáº­t viÃªn', s.trangThai || 'Äi lÃ m', s.thoiGianLam || '07:30-11:30, 13:00-16:30', kyNangStr, gioBanStr, s.nguoiThayThe || 'KhÃ´ng', s.quyen || 'Cáº£ hai', s.tenHis || '');
+                .editNhanSu(sheetIdx, s.ten, s.vaiTro || 'Kỹ thuật viên', s.trangThai || 'Đi làm', s.thoiGianLam || '07:30-11:30, 13:00-16:30', kyNangStr, gioBanStr, s.nguoiThayThe || 'Không', s.quyen || 'Cả hai', s.tenHis || '');
         });
 
         function deleteSingleStaffBusy() {
@@ -6609,16 +6609,16 @@ window.renderSttOrderControl = function (type, i, total) {
             const select = document.getElementById('busy-staff-select');
             if (!select) return;
             const idx = select.value;
-            if (idx === "" || idx === null || isNaN(parseInt(idx))) return alert('Vui lÃ²ng chá»n nhÃ¢n viÃªn!');
+            if (idx === "" || idx === null || isNaN(parseInt(idx))) return alert('Vui lòng chọn nhân viên!');
             const from = document.getElementById('busy-staff-from').value.trim();
             const to = document.getElementById('busy-staff-to').value.trim();
-            if (!from) return alert('Vui lÃ²ng click vÃ o má»™t khoáº£ng giá» trÃªn báº£ng Ä‘á»ƒ xÃ³a!');
+            if (!from) return alert('Vui lòng click vào một khoảng giờ trên bảng để xóa!');
             const finalTo = to || from;
             const s = dataCache.staff[parseInt(idx)];
             if (!s || !s.gioBan) return;
             const slotToDelete = from + '-' + finalTo;
 
-            showCustomConfirm("XÃ³a giá» báº­n", "BÃ¡c sÄ© cÃ³ muá»‘n xÃ³a giá» báº­n [ " + slotToDelete + " ] cá»§a NV: " + s.ten + "?", function () {
+            showCustomConfirm("Xóa giờ bận", "Bác sĩ có muốn xóa giờ bận [ " + slotToDelete + " ] của NV: " + s.ten + "?", function () {
                 const curSlots = (typeof s.gioBan === 'string' ? s.gioBan.split(',') : s.gioBan).map(x => x.trim()).filter(x => x && x !== slotToDelete);
                 s.gioBan = curSlots.join(', ');
                 renderStaffTable();
@@ -6632,16 +6632,16 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 google.script.run
                     .withSuccessHandler(() => {
-                        if (typeof window.showToast === 'function') window.showToast('ÄÃ£ xÃ³a giá» báº­n!', 'success');
+                        if (typeof window.showToast === 'function') window.showToast('Đã xóa giờ bận!', 'success');
                     })
                     .withFailureHandler(err => {
-                        alert("Lá»—i xÃ³a giá» báº­n: " + (err.message || err));
+                        alert("Lỗi xóa giờ bận: " + (err.message || err));
                         if (window.dataCacheTime) window.dataCacheTime['staff'] = 0;
                         loadEntity('getNhanSu', 'staff', renderStaffTable, [
                             () => { if (typeof renderBusyStaff === 'function') renderBusyStaff(); }
                         ], true);
                     })
-                    .editNhanSu(sheetIdx, s.ten, s.vaiTro || 'Ká»¹ thuáº­t viÃªn', s.trangThai || 'Äi lÃ m', s.thoiGianLam || '07:30-11:30, 13:00-16:30', kyNangStr, gioBanStr, s.nguoiThayThe || 'KhÃ´ng', s.quyen || 'Cáº£ hai', s.tenHis || '');
+                    .editNhanSu(sheetIdx, s.ten, s.vaiTro || 'Kỹ thuật viên', s.trangThai || 'Đi làm', s.thoiGianLam || '07:30-11:30, 13:00-16:30', kyNangStr, gioBanStr, s.nguoiThayThe || 'Không', s.quyen || 'Cả hai', s.tenHis || '');
             });
         }
 
@@ -6651,10 +6651,10 @@ window.renderSttOrderControl = function (type, i, total) {
             const select = document.getElementById('busy-staff-select');
             if (!select) return;
             const idx = select.value;
-            if (idx === "" || idx === null || isNaN(parseInt(idx))) return alert('Vui lÃ²ng chá»n nhÃ¢n viÃªn!');
+            if (idx === "" || idx === null || isNaN(parseInt(idx))) return alert('Vui lòng chọn nhân viên!');
             const s = dataCache.staff[parseInt(idx)];
             if (!s) return;
-            if (!confirm("XÃ³a toÃ n bá»™ giá» báº­n cá»§a NV: " + s.ten + "?")) return;
+            if (!confirm("Xóa toàn bộ giờ bận của NV: " + s.ten + "?")) return;
 
             s.gioBan = ''; 
             renderStaffTable();
@@ -6665,27 +6665,27 @@ window.renderSttOrderControl = function (type, i, total) {
 
             google.script.run
                 .withSuccessHandler(() => {
-                    if (typeof window.showToast === 'function') window.showToast('ÄÃ£ xÃ³a toÃ n bá»™ giá» báº­n!', 'success');
+                    if (typeof window.showToast === 'function') window.showToast('Đã xóa toàn bộ giờ bận!', 'success');
                 })
                 .withFailureHandler(err => {
-                    alert("Lá»—i xÃ³a giá» báº­n: " + (err.message || err));
+                    alert("Lỗi xóa giờ bận: " + (err.message || err));
                     if (window.dataCacheTime) window.dataCacheTime['staff'] = 0;
                     loadEntity('getNhanSu', 'staff', renderStaffTable, [
                         () => { if (typeof renderBusyStaff === 'function') renderBusyStaff(); }
                     ], true);
                 })
-                .editNhanSu(sheetIdx, s.ten, s.vaiTro || 'Ká»¹ thuáº­t viÃªn', s.trangThai || 'Äi lÃ m', s.thoiGianLam || '07:30-11:30, 13:00-16:30', kyNangStr, '', s.nguoiThayThe || 'KhÃ´ng', s.quyen || 'Cáº£ hai', s.tenHis || '');
+                .editNhanSu(sheetIdx, s.ten, s.vaiTro || 'Kỹ thuật viên', s.trangThai || 'Đi làm', s.thoiGianLam || '07:30-11:30, 13:00-16:30', kyNangStr, '', s.nguoiThayThe || 'Không', s.quyen || 'Cả hai', s.tenHis || '');
         }
 
 
 
         // ============================================================
 
-        // ðŸ“… TAB Xáº¾P Lá»ŠCH
+        // 📅 TAB XẾP LỊCH
 
         // ============================================================
 
-        // Helper: Ä‘Ã¡nh dáº¥u bá»‡nh nhÃ¢n Ä‘Ã£ ra viá»‡n vÃ o dá»¯ liá»‡u lá»‹ch & tá»± phá»¥c há»“i tÃªn bá»‹ lá»—i kÃ½ tá»± láº¡
+        // Helper: đánh dấu bệnh nhân đã ra viện vào dữ liệu lịch & tự phục hồi tên bị lỗi ký tự lạ
         function markDischargedInSchedule(schedData) {
             if (!Array.isArray(schedData)) return schedData;
             const patList = (typeof dataCache !== 'undefined' && dataCache.pat) ? dataCache.pat : [];
@@ -6705,7 +6705,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     schedData[idx] = row;
                 }
 
-                // ðŸ©¹ Tá»± phá»¥c há»“i tÃªn thá»§ thuáº­t náº¿u cÃ³ kÃ½ tá»± láº¡ (nhÆ° "Ä‘iá»‡n ch??m" -> "Äiá»‡n chÃ¢m")
+                // 🩹 Tự phục hồi tên thủ thuật nếu có ký tự lạ (như "điện ch??m" -> "Điện châm")
                 if (row.thuThuat) {
                     const rawTT = String(row.thuThuat || '');
                     const healedTT = cleanHealProcFn(rawTT, procList);
@@ -6721,7 +6721,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (!rawTen) { row.__isDischarged = false; return; }
 
                 let matched = null;
-                // Æ¯u tiÃªn khá»›p chÃ­nh xÃ¡c cáº£ TÃªn, NÄƒm sinh vÃ  PhÃ²ng
+                // Ưu tiên khớp chính xác cả Tên, Năm sinh và Phòng
                 if (namSinh && phong) {
                     matched = patList.find(p => 
                         String(p.ten || '').normalize('NFC').trim().toLowerCase() === rawTen.toLowerCase() && 
@@ -6729,14 +6729,14 @@ window.renderSttOrderControl = function (type, i, total) {
                         String(p.phong || '').trim().toLowerCase() === phong
                     );
                 }
-                // Khá»›p chÃ­nh xÃ¡c TÃªn vÃ  NÄƒm sinh
+                // Khớp chính xác Tên và Năm sinh
                 if (!matched && namSinh) {
                     matched = patList.find(p => 
                         String(p.ten || '').normalize('NFC').trim().toLowerCase() === rawTen.toLowerCase() && 
                         String(p.namSinh || '').trim() === namSinh
                     );
                 }
-                // Tá»± phá»¥c há»“i: náº¿u tÃªn cÃ³ kÃ½ tá»± láº¡ \uFFFD hoáº·c chuá»—i nuá»‘t chá»¯ (nhÆ° LNH)
+                // Tự phục hồi: nếu tên có ký tự lạ \uFFFD hoặc chuỗi nuốt chữ (như LNH)
                 if (!matched && (rawTen.includes('\ufffd') || /\bL\s*NH\b/i.test(rawTen))) {
                     matched = patList.find(p => {
                         const pNs = String(p.namSinh || '').trim();
@@ -6747,7 +6747,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         return cleanHealFn(rawTen, [cand]) === cand.toUpperCase();
                     });
                 }
-                // Fallback chá»‰ khá»›p TÃªn náº¿u khÃ´ng cÃ³ nÄƒm sinh
+                // Fallback chỉ khớp Tên nếu không có năm sinh
                 if (!matched) {
                     matched = patList.find(p => String(p.ten || '').normalize('NFC').trim().toLowerCase() === rawTen.toLowerCase());
                 }
@@ -6768,7 +6768,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 row.__isDischarged = !!(matched && matched.gioRa && String(matched.gioRa).trim() !== '');
             });
 
-            // Tá»± Ä‘á»™ng Ä‘á»“ng bá»™ láº¡i cache localStorage náº¿u dá»¯ liá»‡u cÅ© vá»«a Ä‘Æ°á»£c chá»¯a lÃ nh
+            // Tự động đồng bộ lại cache localStorage nếu dữ liệu cũ vừa được chữa lành
             if (hasHealedStorage) {
                 try {
                     const curKey = typeof getUnitStorageKey === 'function' ? getUnitStorageKey('meds_success') : 'meds_success';
@@ -6790,7 +6790,7 @@ window.renderSttOrderControl = function (type, i, total) {
             if (!data.length) {
                 try {
                     const savedUnit = (localStorage.getItem('meds_schedule_unit') || '').toLowerCase();
-                    // Chá»‰ dÃ¹ng cache local Náº¾U cÃ³ savedUnit VÃ€ Ä‘Ãºng Ä‘Æ¡n vá»‹ hiá»‡n hÃ nh!
+                    // Chỉ dùng cache local NẾU có savedUnit VÀ đúng đơn vị hiện hành!
                     if (savedUnit && savedUnit === curUnit) {
                         const localSched = JSON.parse(localStorage.getItem(getUnitStorageKey('meds_success')) || localStorage.getItem('meds_success') || '[]');
                         if (Array.isArray(localSched) && localSched.length) {
@@ -6801,7 +6801,7 @@ window.renderSttOrderControl = function (type, i, total) {
                             const rawDate = savedDate || (Array.isArray(localSched[0]) ? localSched[0][0] : (localSched[0]?.ngay || localSched[0]?.NGAY || localSched[0]?.date || ''));
                             const schedDate3 = toYMD3(rawDate);
                             
-                            // âš ï¸ CHá»ˆ dÃ¹ng cache local Náº¾U cÃ³ ngÃ y xÃ¡c Ä‘á»‹nh vÃ  ÄÃšNG ngÃ y hÃ´m nay!
+                            // ⚠️ CHỈ dùng cache local NẾU có ngày xác định và ĐÚNG ngày hôm nay!
                             if (schedDate3 && schedDate3 === todayYMD3) {
                                 data = localSched;
                                 if (typeof dataCache !== 'undefined') dataCache.schedule = localSched;
@@ -6848,13 +6848,13 @@ window.renderSttOrderControl = function (type, i, total) {
             if (typeof loadDashboard === 'function') loadDashboard();
         }
 
-        // --- QUáº¢N LÃ PHÃ‚N TRANG RIÃŠNG BIá»†T ---
+        // --- QUẢN LÝ PHÂN TRANG RIÊNG BIỆT ---
 
-        const PAGE_SIZE = 500; // Sá»‘ ca hiá»ƒn thá»‹ má»—i trang (Äá»ƒ sá»‘ cá»±c lá»›n Ä‘á»ƒ táº¯t phÃ¢n trang)
+        const PAGE_SIZE = 500; // Số ca hiển thị mỗi trang (Để số cực lớn để tắt phân trang)
 
 
 
-        // Bá»™ nhá»› cho Tab Xáº¿p Lá»‹ch
+        // Bộ nhớ cho Tab Xếp Lịch
 
         let schedCurrentPage = 1;
 
@@ -6862,7 +6862,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-        // Bá»™ nhá»› cho Tab Trang Chá»§
+        // Bộ nhớ cho Tab Trang Chủ
 
         let homeCurrentPage = 1;
 
@@ -6870,7 +6870,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-        // 1. HÃ m lá»c dá»¯ liá»‡u (ÄÃ£ tÃ­ch há»£p Fuse.js & TÃ¬m kiáº¿m tiáº¿ng Viá»‡t khÃ´ng dáº¥u chuáº©n xÃ¡c 100%)
+        // 1. Hàm lọc dữ liệu (Đã tích hợp Fuse.js & Tìm kiếm tiếng Việt không dấu chuẩn xác 100%)
         function filterSchedule() {
             const rawQ = document.getElementById('schedule-search-input')?.value || '';
             const q = rawQ.trim();
@@ -6888,7 +6888,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     namSinh: dropped.ns || '',
                     phong: dropped.room || dropped.phong || '',
                     thuThuat: dropped.tt || '',
-                    gioDienRa: 'âŒ Rá»›t',
+                    gioDienRa: '❌ Rớt',
                     gioKetThuc: '--',
                     nvChinh: dropped.staff || '',
                     nvPhu: '',
@@ -6917,7 +6917,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-        // 2. HÃ m váº½ báº£ng (Chá»‰ váº½ pháº§n dá»¯ liá»‡u cá»§a trang hiá»‡n táº¡i) - Báº¢N CHUáº¨N 12 Cá»˜T
+        // 2. Hàm vẽ bảng (Chỉ vẽ phần dữ liệu của trang hiện tại) - BẢN CHUẨN 12 CỘT
 
         function renderSchedPage() {
 
@@ -6955,7 +6955,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     let primaryDiff = 0;
 
-                    if (!isNaN(numA) && !isNaN(numB) && !String(valA).match(/[a-zA-ZÃ€-á»¹]/) && !String(valB).match(/[a-zA-ZÃ€-á»¹]/)) {
+                    if (!isNaN(numA) && !isNaN(numB) && !String(valA).match(/[a-zA-ZÀ-ỹ]/) && !String(valB).match(/[a-zA-ZÀ-ỹ]/)) {
 
                         primaryDiff = (numA - numB) * dir;
 
@@ -7003,9 +7003,9 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-                // ðŸ’¡ Sáº¯p xáº¿p máº·c Ä‘á»‹nh: TÃªn NV chÃ­nh (A-Z) -> Thá»i gian báº¯t Ä‘áº§u (Sá»›m - Muá»™n)
+                // 💡 Sắp xếp mặc định: Tên NV chính (A-Z) -> Thời gian bắt đầu (Sớm - Muộn)
 
-                // Æ¯u tiÃªn 1: TÃªn NhÃ¢n viÃªn chÃ­nh
+                // Ưu tiên 1: Tên Nhân viên chính
 
                 let nvA = String(a.nvChinh || '').trim().toLowerCase();
 
@@ -7015,7 +7015,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-                // Æ¯u tiÃªn 2: Thá»i gian báº¯t Ä‘áº§u
+                // Ưu tiên 2: Thời gian bắt đầu
 
                 let timeA = String(a.gioDienRa || '').replace(':', '');
 
@@ -7031,17 +7031,17 @@ window.renderSttOrderControl = function (type, i, total) {
 
             if (schedFilteredData.length === 0) {
                 if (window._todayIsFinalized) {
-                    const countTxt = window._finalizedTodayCount ? `${window._finalizedTodayCount.toLocaleString('vi-VN')} ca` : 'toÃ n bá»™ ca thá»§ thuáº­t';
+                    const countTxt = window._finalizedTodayCount ? `${window._finalizedTodayCount.toLocaleString('vi-VN')} ca` : 'toàn bộ ca thủ thuật';
                     tbody.innerHTML = `<tr>
                         <td colspan="12" style="text-align:center; padding: 45px 20px; background:#f8fafc;">
                             <div style="max-width:560px; margin:0 auto;">
-                                <div style="font-size:36px; margin-bottom:10px;">ðŸ“‹</div>
-                                <div style="font-size:16px; font-weight:700; color:#1e293b; margin-bottom:6px;">HÃ´m nay Ä‘Ã£ hoÃ n táº¥t chá»‘t sá»• ngÃ y</div>
+                                <div style="font-size:36px; margin-bottom:10px;">📋</div>
+                                <div style="font-size:16px; font-weight:700; color:#1e293b; margin-bottom:6px;">Hôm nay đã hoàn tất chốt sổ ngày</div>
                                 <div style="font-size:13px; color:#64748b; margin-bottom:18px; line-height:1.6;">
-                                    Lá»‹ch trÃ¬nh hÃ´m nay (${countTxt}) Ä‘Ã£ Ä‘Æ°á»£c lÆ°u trá»¯ an toÃ n vÃ o Lá»‹ch sá»­. Báº£ng lá»‹ch trÃ¬nh hiá»‡n táº¡i Ä‘Ã£ sáºµn sÃ ng cho ngÃ y má»›i hoáº·c láº§n xáº¿p lá»‹ch tiáº¿p theo.
+                                    Lịch trình hôm nay (${countTxt}) đã được lưu trữ an toàn vào Lịch sử. Bảng lịch trình hiện tại đã sẵn sàng cho ngày mới hoặc lần xếp lịch tiếp theo.
                                 </div>
                                 <button type="button" class="btn-primary" onclick="if(typeof switchTab==='function')switchTab('tab-lich-su')" style="padding:9px 20px; font-size:13px; border-radius:6px; background:#16a085; color:#fff; border:none; cursor:pointer; font-weight:700; box-shadow:0 2px 8px rgba(22,160,133,0.3); display:inline-flex; align-items:center; gap:6px;">
-                                    <span>ðŸ‘ï¸</span> Xem Dá»¯ Liá»‡u Trong Lá»‹ch Sá»­
+                                    <span>👁️</span> Xem Dữ Liệu Trong Lịch Sử
                                 </button>
                             </div>
                         </td>
@@ -7049,7 +7049,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 } else {
                     tbody.innerHTML = `<tr>
                         <td colspan="12" style="text-align:center; padding: 35px 20px; color:#94a3b8; font-style:italic;">
-                            ChÆ°a cÃ³ dá»¯ liá»‡u lá»‹ch trÃ¬nh. BÃ¡c sÄ© hÃ£y báº¥m "Xáº¿p Lá»‹ch Tá»± Äá»™ng" Ä‘á»ƒ báº¯t Ä‘áº§u.
+                            Chưa có dữ liệu lịch trình. Bác sĩ hãy bấm "Xếp Lịch Tự Động" để bắt đầu.
                         </td>
                     </tr>`;
                 }
@@ -7069,10 +7069,10 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 const rowClass = item.__dropped ? 'row-dropped' : 'row-scheduled';
 
-                const reasonTitle = item.__dropped ? ` title="${item.reason || item.may || 'KhÃ´ng xáº¿p Ä‘Æ°á»£c'}"` : '';
+                const reasonTitle = item.__dropped ? ` title="${item.reason || item.may || 'Không xếp được'}"` : '';
 
                 const isDischarged = !!item.__isDischarged;
-                const dischargeMark = isDischarged ? ' <span style="color:#27ae60; font-size:10.5px; font-style:italic; font-weight:700; white-space:nowrap; margin-left:4px;">(âœ” RV)</span>' : '';
+                const dischargeMark = isDischarged ? ' <span style="color:#27ae60; font-size:10.5px; font-style:italic; font-weight:700; white-space:nowrap; margin-left:4px;">(✔ RV)</span>' : '';
 
                 return `<tr class="${rowClass}"${reasonTitle}>
 
@@ -7106,7 +7106,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-            // Váº½ thanh Ä‘iá»u hÆ°á»›ng riÃªng cho Xáº¿p lá»‹ch
+            // Vẽ thanh điều hướng riêng cho Xếp lịch
 
             renderPaginationUI('sched-pagination-container', schedFilteredData.length, schedCurrentPage, totalPages, 'SCHED');
 
@@ -7114,7 +7114,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-        // 3. HÃ m táº¡o Thanh Ä‘iá»u hÆ°á»›ng (ÄÃƒ TÃCH Há»¢P NÃšT XUáº¤T PDF)
+        // 3. Hàm tạo Thanh điều hướng (ĐÃ TÍCH HỢP NÚT XUẤT PDF)
 
         function renderPaginationUI(containerId, totalItems, currentPage, totalPages, context) {
 
@@ -7124,7 +7124,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-            // áº¨n hoÃ n toÃ n khi chá»‰ cÃ³ 1 trang
+            // Ẩn hoàn toàn khi chỉ có 1 trang
 
             if (totalPages <= 1) {
 
@@ -7149,23 +7149,23 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-            // ÄÃ£ xÃ³a sáº¡ch biáº¿n pdfBtn gÃ¢y lá»—i sáº­p Web
+            // Đã xóa sạch biến pdfBtn gây lỗi sập Web
 
             container.innerHTML = `
 
         <div style="display:flex; align-items:center; gap:20px;">
 
-            <div style="color:#7f8c8d;">Hiá»ƒn thá»‹ <b style="color:#2c3e50">${startItem}</b> Ä‘áº¿n <b style="color:#2c3e50">${endItem}</b> trong <b>${totalItems}</b> ca</div>
+            <div style="color:#7f8c8d;">Hiển thị <b style="color:#2c3e50">${startItem}</b> đến <b style="color:#2c3e50">${endItem}</b> trong <b>${totalItems}</b> ca</div>
 
         </div>
 
         <div style="display:flex; gap:8px;">
 
-            <button onclick="appChangePage(-1, '${context}')" ${currentPage === 1 ? 'disabled' : ''} style="padding:6px 12px; border:1px solid #ccc; background:${currentPage === 1 ? '#eee' : '#fff'}; cursor:${currentPage === 1 ? 'not-allowed' : 'pointer'}; border-radius:4px; font-weight:bold; color:#333;">â¬…ï¸ TrÆ°á»›c</button>
+            <button onclick="appChangePage(-1, '${context}')" ${currentPage === 1 ? 'disabled' : ''} style="padding:6px 12px; border:1px solid #ccc; background:${currentPage === 1 ? '#eee' : '#fff'}; cursor:${currentPage === 1 ? 'not-allowed' : 'pointer'}; border-radius:4px; font-weight:bold; color:#333;">⬅️ Trước</button>
 
             <span style="padding:6px 12px; font-weight:bold; color:#27ae60; background:#e8f8f5; border-radius:4px;">Trang ${currentPage} / ${totalPages}</span>
 
-            <button onclick="appChangePage(1, '${context}')" ${currentPage === totalPages ? 'disabled' : ''} style="padding:6px 12px; border:1px solid #ccc; background:${currentPage === totalPages ? '#eee' : '#fff'}; cursor:${currentPage === totalPages ? 'not-allowed' : 'pointer'}; border-radius:4px; font-weight:bold; color:#333;">Tiáº¿p âž¡ï¸</button>
+            <button onclick="appChangePage(1, '${context}')" ${currentPage === totalPages ? 'disabled' : ''} style="padding:6px 12px; border:1px solid #ccc; background:${currentPage === totalPages ? '#eee' : '#fff'}; cursor:${currentPage === totalPages ? 'not-allowed' : 'pointer'}; border-radius:4px; font-weight:bold; color:#333;">Tiếp ➡️</button>
 
         </div>
 
@@ -7175,7 +7175,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-        // HÃ m Ä‘á»•i trang thÃ´ng minh
+        // Hàm đổi trang thông minh
 
         function appChangePage(dir, context) {
 
@@ -7199,7 +7199,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-        // 4. Lá»‡nh láº­t trang
+        // 4. Lệnh lật trang
 
         function changeSchedPage(dir) {
 
@@ -7213,14 +7213,14 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-            // ðŸ”¥ Ã‰p há»‡ thá»‘ng váº½ láº¡i báº£ng cá»§a tab Xáº¿p Lá»‹ch
+            // 🔥 Ép hệ thống vẽ lại bảng của tab Xếp Lịch
 
             renderSchedPage();
 
         }
 
         function runScheduling() {
-            if (!document.getElementById('schedule-date').value) return alert("Vui lÃ²ng chá»n ngÃ y xáº¿p lá»‹ch trÆ°á»›c!");
+            if (!document.getElementById('schedule-date').value) return alert("Vui lòng chọn ngày xếp lịch trước!");
             document.getElementById('strategyModal').style.display = 'flex';
             if (window._crowdedMode === null || window._crowdedMode === undefined) {
                 setCrowdedMode(true);
@@ -7234,13 +7234,13 @@ window.renderSttOrderControl = function (type, i, total) {
             const chk = document.getElementById('chk-use-minipc-solver');
             if (!dot || !label) return;
 
-            // 1. Kiá»ƒm tra bá»™ Ä‘á»‡m tá»©c thÃ¬ náº¿u tráº¡m Ä‘Ã£ sáºµn sÃ ng tá»« trÆ°á»›c (0ms, khÃ´ng flicker)
+            // 1. Kiểm tra bộ đệm tức thì nếu trạm đã sẵn sàng từ trước (0ms, không flicker)
             if (window.SchedulerEngine && typeof window.SchedulerEngine.getCachedSolverInfo === 'function') {
                 const cached = window.SchedulerEngine.getCachedSolverInfo();
                 if (cached && cached.online) {
                     dot.style.background = '#27ae60';
                     dot.style.boxShadow = '0 0 7px #2ecc71';
-                    label.innerHTML = `ðŸŸ¢ Tráº¡m Mini PC: <b style="color:#27ae60;">Sáºµn sÃ ng</b> (Google OR-Tools CP-SAT 4 Luá»“ng)`;
+                    label.innerHTML = `🟢 Trạm Mini PC: <b style="color:#27ae60;">Sẵn sàng</b> (Google OR-Tools CP-SAT 4 Luồng)`;
                     if (chk) { chk.disabled = false; }
                     return;
                 }
@@ -7248,7 +7248,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             dot.style.background = '#f39c12';
             dot.style.boxShadow = '0 0 5px #f39c12';
-            label.innerHTML = '<span style="color:#d35400;">Tráº¡m Mini PC: Äang kiá»ƒm tra...</span>';
+            label.innerHTML = '<span style="color:#d35400;">Trạm Mini PC: Đang kiểm tra...</span>';
 
             try {
                 if (window.SchedulerEngine && typeof window.SchedulerEngine.getMiniPCSolverInfo === 'function') {
@@ -7256,7 +7256,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     if (info && info.online) {
                         dot.style.background = '#27ae60';
                         dot.style.boxShadow = '0 0 7px #2ecc71';
-                        label.innerHTML = `ðŸŸ¢ Tráº¡m Mini PC: <b style="color:#27ae60;">Sáºµn sÃ ng</b> (Google OR-Tools CP-SAT 4 Luá»“ng)`;
+                        label.innerHTML = `🟢 Trạm Mini PC: <b style="color:#27ae60;">Sẵn sàng</b> (Google OR-Tools CP-SAT 4 Luồng)`;
                         if (chk) { chk.disabled = false; }
                         return;
                     }
@@ -7265,14 +7265,14 @@ window.renderSttOrderControl = function (type, i, total) {
 
             dot.style.background = '#95a5a6';
             dot.style.boxShadow = 'none';
-            label.innerHTML = `âšª Tráº¡m Mini PC: <span style="color:#7f8c8d;">Ngoáº¡i tuyáº¿n</span> (DÃ¹ng Turbo-Engine JS)`;
+            label.innerHTML = `⚪ Trạm Mini PC: <span style="color:#7f8c8d;">Ngoại tuyến</span> (Dùng Turbo-Engine JS)`;
             if (chk) { chk.disabled = true; chk.checked = false; }
         }
         window.updateMiniPCSolverStatusUI = updateMiniPCSolverStatusUI;
 
         function closeStrategyModal() { document.getElementById('strategyModal').style.display = 'none'; }
 
-        // Tráº¡ng thÃ¡i chá»n ngÃ y Ä‘Ã´ng/váº¯ng, máº·c Ä‘á»‹nh = null (tá»± Ä‘á»™ng tÃ­nh)
+        // Trạng thái chọn ngày đông/vắng, mặc định = null (tự động tính)
         window._crowdedMode = null;
 
         function setCrowdedMode(isCrowded) {
@@ -7295,18 +7295,18 @@ window.renderSttOrderControl = function (type, i, total) {
             closeStrategyModal();
             const dateVal = document.getElementById('schedule-date').value;
             const skipVal = document.getElementById('modal-skip-procs')?.value || "";
-            // Truyá»n lá»±a chá»n ngÃ y Ä‘Ã´ng/váº¯ng: 1 = Ä‘Ã´ng, 0 = váº¯ng, -1 = tá»± Ä‘á»™ng
+            // Truyền lựa chọn ngày đông/vắng: 1 = đông, 0 = vắng, -1 = tự động
             const crowdedVal = window._crowdedMode === true ? 1 : (window._crowdedMode === false ? 0 : -1);
             const res = document.getElementById('schedule-result');
             const list = document.getElementById('schedule-list');
             const btn = document.getElementById('btn-run-sched');
 
-            btn.innerText = 'â³ ÄANG Xáº¾P Lá»ŠCH (AI + CP-SAT)...'; btn.disabled = true; btn.style.background = '#f39c12';
+            btn.innerText = '⏳ ĐANG XẾP LỊCH (AI + CP-SAT)...'; btn.disabled = true; btn.style.background = '#f39c12';
             res.innerHTML = '';
             list.innerHTML = '<tr><td colspan="12" align="center"><div class="spinner"></div></td></tr>';
 
             const startTime = performance.now();
-            if (window.showGlobalLoading) window.showGlobalLoading("Äang cháº¡y thuáº­t toÃ¡n tá»‘i Æ°u xáº¿p lá»‹ch (AI + CP-SAT)...");
+            if (window.showGlobalLoading) window.showGlobalLoading("Đang chạy thuật toán tối ưu xếp lịch (AI + CP-SAT)...");
             await new Promise(r => setTimeout(r, 16)); // Yield 1 frame for silky-smooth UI paint
 
             try {
@@ -7331,7 +7331,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 if (window.hideGlobalLoading) window.hideGlobalLoading();
                 const timeTaken = (out && out.elapsedMs !== undefined) ? (out.elapsedMs / 1000).toFixed(2) : ((performance.now() - startTime) / 1000).toFixed(2);
-                btn.innerText = 'CHáº Y Xáº¾P Lá»ŠCH Tá»”NG'; btn.disabled = false; btn.style.background = '#008b02';
+                btn.innerText = 'CHẠY XẾP LỊCH TỔNG'; btn.disabled = false; btn.style.background = '#008b02';
 
                 const sched = (out && (out.schedule || out.sched)) ? (out.schedule || out.sched) : [];
                 const unsch = (out && (out.unscheduled || out.rot)) ? (out.unscheduled || out.rot) : [];
@@ -7364,27 +7364,27 @@ window.renderSttOrderControl = function (type, i, total) {
                     window.OfflineSyncEngine.broadcastLiveEvent('SCHEDULE_GENERATED', { date: dateVal, schedCount, unschCount });
                 }
 
-                res.innerHTML = '<div class="alert alert-success" style="margin-top:10px">Xáº¿p thÃ nh cÃ´ng: <b>' + schedCount + '</b> ca. Rá»›t: <b>' + unschCount + '</b> ca. <span style="margin-left:15px; color:#555; font-size:13px;">(ðŸš€ <b>' + engineInfo + '</b> | â± <b>' + timeTaken + 's</b>)</span></div>';
+                res.innerHTML = '<div class="alert alert-success" style="margin-top:10px">Xếp thành công: <b>' + schedCount + '</b> ca. Rớt: <b>' + unschCount + '</b> ca. <span style="margin-left:15px; color:#555; font-size:13px;">(🚀 <b>' + engineInfo + '</b> | ⏱ <b>' + timeTaken + 's</b>)</span></div>';
                 
-                // Hiá»ƒn thá»‹ Popup káº¿t quáº£ tá»©c thÃ¬
+                // Hiển thị Popup kết quả tức thì
                 const contentEl = document.getElementById('custom-popup-content');
                 if (contentEl) contentEl.innerHTML = `
-                <div>âœ… Xáº¿p thÃ nh cÃ´ng: <b style="color:#27ae60; font-size:18px;">${schedCount}</b> ca</div>
-                <div>âŒ KhÃ´ng xáº¿p Ä‘Æ°á»£c: <b style="color:#c0392b; font-size:18px;">${unschCount}</b> ca</div>
+                <div>✅ Xếp thành công: <b style="color:#27ae60; font-size:18px;">${schedCount}</b> ca</div>
+                <div>❌ Không xếp được: <b style="color:#c0392b; font-size:18px;">${unschCount}</b> ca</div>
                 <hr style="border:0; border-top:1px dashed #ccc; margin:10px 0;">
-                <div style="font-size:13px; color:#16a085;">ðŸš€ Äá»™ng cÆ¡: <b>${engineInfo}</b></div>
-                <div style="font-size:13px; color:#7f8c8d; margin-top:3px;">â± Thá»i gian: <b>${timeTaken}</b> giÃ¢y</div>
+                <div style="font-size:13px; color:#16a085;">🚀 Động cơ: <b>${engineInfo}</b></div>
+                <div style="font-size:13px; color:#7f8c8d; margin-top:3px;">⏱ Thời gian: <b>${timeTaken}</b> giây</div>
                 ${unschCount > 0 ? `
                 <button type="button" onclick="openUnscheduledAdvisorModal(); document.getElementById('custom-success-popup').style.display='none';" style="margin-top:12px; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color:#fff; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:700; width:100%; box-shadow:0 4px 10px rgba(59,130,246,0.3); font-size:13.5px; display:flex; align-items:center; justify-content:center; gap:8px;">
-                    ðŸ’¡ Cá»‘ Váº¥n Giáº£i Cá»©u (${unschCount} ca rá»›t)
+                    💡 Cố Vấn Giải Cứu (${unschCount} ca rớt)
                 </button>` : ''}`;
                 const popup = document.getElementById('custom-success-popup');
                 if (popup) popup.style.display = 'flex';
 
-                // Cáº­p nháº­t láº¡i lá»‹ch hiá»ƒn thá»‹
+                // Cập nhật lại lịch hiển thị
                 filterSchedule();
 
-                // TrÃ¬ hoÃ£n cÃ¡c tÃ¡c vá»¥ váº½ láº¡i Dashboard & lÆ°u cache náº·ng sang luá»“ng phá»¥
+                // Trì hoãn các tác vụ vẽ lại Dashboard & lưu cache nặng sang luồng phụ
                 setTimeout(() => {
                     if (typeof renderStats === 'function') renderStats(window.lastUnscheduledData);
                     if (typeof renderPatientsTable === 'function') renderPatientsTable();
@@ -7400,32 +7400,32 @@ window.renderSttOrderControl = function (type, i, total) {
                     } catch(e) {}
                 }, 50);
 
-                // Äá»“ng bá»™ lÆ°u lá»‹ch trÃ¬nh vÃ o D1 SQLite trong ná»n (15ms, khÃ´ng lÃ m Ä‘Æ¡ giao diá»‡n)
+                // Đồng bộ lưu lịch trình vào D1 SQLite trong nền (15ms, không làm đơ giao diện)
                 if (sched.length > 0) {
                     const backendSched = sched.map(x => scheduleRowToBackendArray(x, dateVal));
                     callApi('saveSchedule', [dateVal, backendSched], null, null);
                 }
             } catch(err) {
                 if (window.hideGlobalLoading) window.hideGlobalLoading();
-                btn.innerText = 'CHáº Y Xáº¾P Lá»ŠCH Tá»”NG'; btn.disabled = false; btn.style.background = '#008b02';
-                res.innerHTML = '<div class="alert alert-danger">Lá»—i xáº¿p lá»‹ch: ' + err.message + '</div>';
+                btn.innerText = 'CHẠY XẾP LỊCH TỔNG'; btn.disabled = false; btn.style.background = '#008b02';
+                res.innerHTML = '<div class="alert alert-danger">Lỗi xếp lịch: ' + err.message + '</div>';
             }
         }
 
         async function runExtraScheduling() {
             window.viewingImportedScheduleFile = false;
             const dateVal = document.getElementById('schedule-date').value;
-            if (!dateVal) return alert("Vui lÃ²ng chá»n ngÃ y Ä‘á»ƒ xáº¿p bá»• sung!");
+            if (!dateVal) return alert("Vui lòng chọn ngày để xếp bổ sung!");
             const btn = document.getElementById('btn-run-extra');
-            btn.innerText = 'â³ ÄANG TÃŒM CHá»– TRá»NG...'; btn.disabled = true;
+            btn.innerText = '⏳ ĐANG TÌM CHỖ TRỐNG...'; btn.disabled = true;
 
-            if (window.showGlobalLoading) window.showGlobalLoading("Äang xáº¿p lá»‹ch bá»• sung bá»‡nh nhÃ¢n má»›i (Äa Luá»“ng)...");
+            if (window.showGlobalLoading) window.showGlobalLoading("Đang xếp lịch bổ sung bệnh nhân mới (Đa Luồng)...");
 
             try {
                 const rawCurrent = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];
                 const currentSched = (Array.isArray(rawCurrent) ? rawCurrent : [])
                     .map(normalizeScheduleRow)
-                    .filter(r => r && !isDroppedScheduleRow(r) && r.gioDienRa && r.gioDienRa !== '--' && !String(r.gioDienRa).includes('Rá»›t'));
+                    .filter(r => r && !isDroppedScheduleRow(r) && r.gioDienRa && r.gioDienRa !== '--' && !String(r.gioDienRa).includes('Rớt'));
                 let out = null;
                 const yhctLunchExtraNum = (dataCache?.settings?.yhctLunch !== undefined && dataCache.settings.yhctLunch !== '') ? Math.max(0, parseInt(dataCache.settings.yhctLunch) || 0) : 0;
                 const yhctEndExtraNum = (dataCache?.settings?.yhctEnd !== undefined && dataCache.settings.yhctEnd !== '') ? Math.max(0, parseInt(dataCache.settings.yhctEnd) || 0) : 0;
@@ -7447,14 +7447,14 @@ window.renderSttOrderControl = function (type, i, total) {
                 }
 
                 if (window.hideGlobalLoading) window.hideGlobalLoading();
-                btn.innerText = 'âš¡ Xáº¾P Bá»” SUNG BN Má»šI'; btn.disabled = false;
+                btn.innerText = '⚡ XẾP BỔ SUNG BN MỚI'; btn.disabled = false;
 
                 const newSched = (out && (out.schedule || out.sched)) ? (out.schedule || out.sched) : [];
                 const newUnsch = (out && (out.unscheduled || out.rot)) ? (out.unscheduled || out.rot) : [];
                 const addedCount = newSched.length;
 
                 if (addedCount > 0) {
-                    // ðŸ›¡ï¸ Tá»± Ä‘á»™ng Ä‘á»‘i chiáº¿u vÃ  phá»¥c há»“i há» tÃªn bá»‡nh nhÃ¢n sáº¡ch tá»« currentSched vÃ  dataCache.pat
+                    // 🛡️ Tự động đối chiếu và phục hồi họ tên bệnh nhân sạch từ currentSched và dataCache.pat
                     const cleanHealFn = (window.SchedulerEngine && typeof window.SchedulerEngine.cleanAndHealPatientName === 'function')
                         ? window.SchedulerEngine.cleanAndHealPatientName
                         : (n) => String(n || '').normalize('NFC').replace(/[\ufffd\u0000]/g, '').trim();
@@ -7475,7 +7475,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         const rName = String(row.tenBN || row.HOTEN || '').normalize('NFC').trim();
                         const rNs = String(row.namSinh || '').trim();
 
-                        // Khá»›p Ä‘Ãºng há» tÃªn bá»‡nh nhÃ¢n, tuyá»‡t Ä‘á»‘i khÃ´ng gÃ¡n Ä‘Ã¨ sang bá»‡nh nhÃ¢n khÃ¡c
+                        // Khớp đúng họ tên bệnh nhân, tuyệt đối không gán đè sang bệnh nhân khác
                         const matchedPat = patList.find(p => {
                             const pName = String(p?.ten || p?.name || '').normalize('NFC').trim();
                             const pNs = String(p?.namSinh || '').trim();
@@ -7529,9 +7529,9 @@ window.renderSttOrderControl = function (type, i, total) {
                     callApi('saveSchedule', [dateVal, backendSched], null, null);
                 }
 
-                // ðŸ›¡ï¸ Lá»c ra cÃ¡c ca THá»°C Sá»° khÃ´ng xáº¿p Ä‘Æ°á»£c:
-                // Loáº¡i bá» cÃ¡c ca Ä‘Ã£ cÃ³ trong lá»‹ch hiá»‡n táº¡i khá»i danh sÃ¡ch rá»›t
-                // (TrÃ¡nh hiá»ƒn thá»‹ sai "Rá»›t" cho cÃ¡c ca Ä‘Ã£ Ä‘Æ°á»£c xáº¿p tá»« lÆ°á»£t trÆ°á»›c do engine re-process do name matching tháº¥t báº¡i)
+                // 🛡️ Lọc ra các ca THỰC SỰ không xếp được:
+                // Loại bỏ các ca đã có trong lịch hiện tại khỏi danh sách rớt
+                // (Tránh hiển thị sai "Rớt" cho các ca đã được xếp từ lượt trước do engine re-process do name matching thất bại)
                 const effectiveSchedule = (Array.isArray(window.currentScheduleData) ? window.currentScheduleData : currentSched);
                 const trulyUnsch = newUnsch.filter(rot => {
                     const rotName = String(rot.bn || rot.tenBN || '').normalize('NFC').trim().toUpperCase();
@@ -7556,23 +7556,23 @@ window.renderSttOrderControl = function (type, i, total) {
                 const totalFail = window.lastUnscheduledData ? window.lastUnscheduledData.length : 0;
                 const contentEl = document.getElementById('custom-popup-content');
                 if (contentEl) contentEl.innerHTML = `
-                <div>âœ… Xáº¿p bá»• sung thÃ nh cÃ´ng: <b style="color:#27ae60; font-size:18px;">${addedCount}</b> ca</div>
-                <div>âŒ KhÃ´ng xáº¿p Ä‘Æ°á»£c láº§n nÃ y: <b style="color:#c0392b; font-size:18px;">${trulyUnsch.length}</b> ca</div>
+                <div>✅ Xếp bổ sung thành công: <b style="color:#27ae60; font-size:18px;">${addedCount}</b> ca</div>
+                <div>❌ Không xếp được lần này: <b style="color:#c0392b; font-size:18px;">${trulyUnsch.length}</b> ca</div>
                 <hr style="border:0; border-top:1px dashed #ccc; margin:10px 0;">
-                <div style="font-size:14px; color:#7f8c8d;">Tá»•ng sá»‘ ca rá»›t hiá»‡n táº¡i: <b>${totalFail}</b> ca</div>
+                <div style="font-size:14px; color:#7f8c8d;">Tổng số ca rớt hiện tại: <b>${totalFail}</b> ca</div>
                 ${totalFail > 0 ? `
                 <button type="button" onclick="openUnscheduledAdvisorModal(); document.getElementById('custom-success-popup').style.display='none';" style="margin-top:12px; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color:#fff; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:700; width:100%; box-shadow:0 4px 10px rgba(59,130,246,0.3); font-size:13.5px; display:flex; align-items:center; justify-content:center; gap:8px;">
-                    ðŸ’¡ Cá»‘ Váº¥n Giáº£i Cá»©u (${totalFail} ca rá»›t)
+                    💡 Cố Vấn Giải Cứu (${totalFail} ca rớt)
                 </button>` : ''}`;
                 const popup = document.getElementById('custom-success-popup');
                 if (popup) popup.style.display = 'flex';
             } catch(err) {
                 if (window.hideGlobalLoading) window.hideGlobalLoading();
-                btn.innerText = 'âš¡ Xáº¾P Bá»” SUNG BN Má»šI'; btn.disabled = false;
+                btn.innerText = '⚡ XẾP BỔ SUNG BN MỚI'; btn.disabled = false;
                 console.error("Error in runExtraScheduling:", err);
                 const res = document.getElementById('schedule-result');
-                if (res) res.innerHTML = '<div class="alert alert-danger" style="margin-top:10px">âŒ Lá»—i há»‡ thá»‘ng: ' + err.message + '</div>';
-                alert("Lá»—i xáº¿p bá»• sung: " + err.message);
+                if (res) res.innerHTML = '<div class="alert alert-danger" style="margin-top:10px">❌ Lỗi hệ thống: ' + err.message + '</div>';
+                alert("Lỗi xếp bổ sung: " + err.message);
             }
         }
 
@@ -7580,7 +7580,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // ðŸ“Š THá»NG KÃŠ
+        // 📊 THỐNG KÊ
 
         // ============================================================
 
@@ -7590,7 +7590,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const unscheduled = (unscheduledData === undefined ? window.lastUnscheduledData : unscheduledData) || [];
 
-            const successData = rawData.filter(item => { const g = item.gioDienRa || ''; return g && g !== '--' && !g.includes('Rá»›t'); });
+            const successData = rawData.filter(item => { const g = item.gioDienRa || ''; return g && g !== '--' && !g.includes('Rớt'); });
 
             const success = successData.length, fail = unscheduled.length, total = success + fail;
 
@@ -7606,7 +7606,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             un_tbody.innerHTML = fail === 0
 
-                ? `<tr><td colspan="6" align="center" style="padding:20px;">KhÃ´ng cÃ³ ca rá»›t</td></tr>`
+                ? `<tr><td colspan="6" align="center" style="padding:20px;">Không có ca rớt</td></tr>`
 
                 : unscheduled.map((raw, i) => {
 
@@ -7614,7 +7614,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     const causeBadge = item.causeTitle 
                         ? `<span class="rescue-badge-cause cause-${item.causeCode || 'STAFF_UNAVAILABLE'}">${item.causeTitle}</span>` 
-                        : `<span class="rescue-badge-cause cause-STAFF_UNAVAILABLE">ðŸŸ¡ ChÆ°a xáº¿p Ä‘Æ°á»£c</span>`;
+                        : `<span class="rescue-badge-cause cause-STAFF_UNAVAILABLE">🟡 Chưa xếp được</span>`;
 
                     return `<tr class="row-dropped">
                         <td align="center">${i + 1}</td>
@@ -7627,7 +7627,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         </td>
                         <td align="center">
                             <button type="button" onclick="openUnscheduledAdvisorModal()" class="btn btn-sm btn-primary" style="padding:4px 10px; font-size:11px; font-weight:700; border-radius:6px; background:#3b82f6; border:none; color:#fff; cursor:pointer;">
-                                ðŸ’¡ Cá»‘ Váº¥n
+                                💡 Cố Vấn
                             </button>
                         </td>
                     </tr>`;
@@ -7636,7 +7636,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const st_tbody = document.getElementById('stats-staff-list');
 
-            if (!success) { st_tbody.innerHTML = '<tr><td colspan="4" align="center" style="padding:20px;">ChÆ°a cÃ³ dá»¯ liá»‡u</td></tr>'; return; }
+            if (!success) { st_tbody.innerHTML = '<tr><td colspan="4" align="center" style="padding:20px;">Chưa có dữ liệu</td></tr>'; return; }
 
             let staffStats = {}, totalInvolvements = 0;
 
@@ -7675,7 +7675,7 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         // ============================================================
-        // ðŸ’¡ Bá»˜ Cá» Váº¤N GIáº¢I Cá»¨U CA Rá»šT THÃ”NG MINH (SMART UNSCHEDULED ADVISOR)
+        // 💡 BỘ CỐ VẤN GIẢI CỨU CA RỚT THÔNG MINH (SMART UNSCHEDULED ADVISOR)
         // ============================================================
 
         function openUnscheduledAdvisorModal() {
@@ -7702,41 +7702,41 @@ window.renderSttOrderControl = function (type, i, total) {
             const count = unscheduled.length;
 
             if (badgeEl) {
-                badgeEl.innerText = `${count} ca rá»›t`;
+                badgeEl.innerText = `${count} ca rớt`;
                 badgeEl.style.background = count > 0 ? '#ef4444' : '#10b981';
             }
 
             if (count === 0) {
                 bodyEl.innerHTML = `
                 <div style="text-align: center; padding: 50px 20px;">
-                    <div style="font-size: 60px; margin-bottom: 16px;">ðŸŽ‰</div>
-                    <h4 style="color: #10b981; font-size: 20px; font-weight: 800; margin: 0 0 10px 0;">TUYá»†T Vá»œI! KHÃ”NG CÃ“ CA THá»¦ THUáº¬T NÃ€O Bá»Š Rá»šT</h4>
-                    <p style="color: #64748b; font-size: 14px; margin: 0;">Táº¥t cáº£ ca bá»‡nh trong ngÃ y Ä‘á»u Ä‘Ã£ Ä‘Æ°á»£c xáº¿p lá»‹ch thÃ nh cÃ´ng 100%.</p>
+                    <div style="font-size: 60px; margin-bottom: 16px;">🎉</div>
+                    <h4 style="color: #10b981; font-size: 20px; font-weight: 800; margin: 0 0 10px 0;">TUYỆT VỜI! KHÔNG CÓ CA THỦ THUẬT NÀO BỊ RỚT</h4>
+                    <p style="color: #64748b; font-size: 14px; margin: 0;">Tất cả ca bệnh trong ngày đều đã được xếp lịch thành công 100%.</p>
                 </div>`;
                 return;
             }
 
             let html = '';
             unscheduled.forEach((item, rotIndex) => {
-                const bnName = escapeHtml(item.bn || 'ChÆ°a rÃµ');
-                const procName = escapeHtml(item.tt || 'Thá»§ thuáº­t');
-                const roomName = escapeHtml(item.room || item.phong || 'ChÆ°a xáº¿p phÃ²ng');
+                const bnName = escapeHtml(item.bn || 'Chưa rõ');
+                const procName = escapeHtml(item.tt || 'Thủ thuật');
+                const roomName = escapeHtml(item.room || item.phong || 'Chưa xếp phòng');
                 const causeCode = item.causeCode || 'STAFF_UNAVAILABLE';
-                const causeTitle = item.causeTitle || 'ðŸŸ¡ ChÆ°a xáº¿p Ä‘Æ°á»£c';
-                const causeDetail = escapeHtml(item.causeDetail || item.reason || 'Thiáº¿u tÃ i nguyÃªn hoáº·c háº¿t khung giá» ráº£nh.');
+                const causeTitle = item.causeTitle || '🟡 Chưa xếp được';
+                const causeDetail = escapeHtml(item.causeDetail || item.reason || 'Thiếu tài nguyên hoặc hết khung giờ rảnh.');
 
                 const advices = (item.advices && item.advices.length > 0) ? item.advices : [
                     {
                         id: 1,
-                        title: `âš¡ Cho phÃ©p KTV lÃ m lá»‘ 10 phÃºt cuá»‘i ca sÃ¡ng (11:30 - 11:40)`,
-                        description: `Ná»›i lá»ng khung giá» lÃ m viá»‡c ca sÃ¡ng Ä‘á»ƒ hoÃ n táº¥t ca [${procName}] cho BN ${bnName}.`,
-                        patch: { gioDienRa: "11:30", gioKetThuc: "12:00", nvChinh: "KTV Phá»¥ TrÃ¡ch", nvPhu: "", may: "Thá»§ cÃ´ng", giuong: "", phong: roomName }
+                        title: `⚡ Cho phép KTV làm lố 10 phút cuối ca sáng (11:30 - 11:40)`,
+                        description: `Nới lỏng khung giờ làm việc ca sáng để hoàn tất ca [${procName}] cho BN ${bnName}.`,
+                        patch: { gioDienRa: "11:30", gioKetThuc: "12:00", nvChinh: "KTV Phụ Trách", nvPhu: "", may: "Thủ công", giuong: "", phong: roomName }
                     },
                     {
                         id: 2,
-                        title: `âš¡ Chuyá»ƒn ca sang buá»•i Chiá»u (13:30 - 14:00)`,
-                        description: `Xáº¿p ca [${procName}] vÃ o Ä‘áº§u giá» chiá»u khi cÃ³ mÃ¡y vÃ  nhÃ¢n sá»± ráº£nh rá»—i.`,
-                        patch: { gioDienRa: "13:30", gioKetThuc: "14:00", nvChinh: "KTV Phá»¥ TrÃ¡ch", nvPhu: "", may: "Thá»§ cÃ´ng", giuong: "", phong: roomName }
+                        title: `⚡ Chuyển ca sang buổi Chiều (13:30 - 14:00)`,
+                        description: `Xếp ca [${procName}] vào đầu giờ chiều khi có máy và nhân sự rảnh rỗi.`,
+                        patch: { gioDienRa: "13:30", gioKetThuc: "14:00", nvChinh: "KTV Phụ Trách", nvPhu: "", may: "Thủ công", giuong: "", phong: roomName }
                     }
                 ];
 
@@ -7744,18 +7744,18 @@ window.renderSttOrderControl = function (type, i, total) {
                 <div class="rescue-card">
                     <div class="rescue-card-header">
                         <div>
-                            <h4 class="rescue-pat-name">ðŸ¥ BN: ${bnName} ${item.ns ? `(${item.ns})` : ''} - PhÃ²ng ${roomName}</h4>
-                            <div class="rescue-proc-name">ðŸ“‹ Thá»§ thuáº­t bá»‹ rá»›t: <strong>${procName}</strong></div>
+                            <h4 class="rescue-pat-name">🏥 BN: ${bnName} ${item.ns ? `(${item.ns})` : ''} - Phòng ${roomName}</h4>
+                            <div class="rescue-proc-name">📋 Thủ thuật bị rớt: <strong>${procName}</strong></div>
                         </div>
                         <span class="rescue-badge-cause cause-${causeCode}">${causeTitle}</span>
                     </div>
 
                     <div class="rescue-cause-detail">
-                        ðŸ” <strong>Cháº©n Ä‘oÃ¡n nguyÃªn nhÃ¢n:</strong> ${causeDetail}
+                        🔍 <strong>Chẩn đoán nguyên nhân:</strong> ${causeDetail}
                     </div>
 
                     <div style="font-weight: 700; font-size: 13px; color: #334155; margin-bottom: 8px;">
-                        ðŸ’¡ Gá»£i Ã½ phÆ°Æ¡ng Ã¡n giáº£i cá»©u (1-Click Tá»± Ä‘á»™ng xáº¿p lá»‹ch):
+                        💡 Gợi ý phương án giải cứu (1-Click Tự động xếp lịch):
                     </div>
 
                     <div class="rescue-advices-list">
@@ -7766,7 +7766,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                     <div class="rescue-advice-desc">${escapeHtml(advice.description)}</div>
                                 </div>
                                 <button type="button" class="btn-rescue-apply" onclick="executeRescueAdvice(${rotIndex}, ${adviceIdx})">
-                                    âš¡ Ãp dá»¥ng giáº£i cá»©u ngay
+                                    ⚡ Áp dụng giải cứu ngay
                                 </button>
                             </div>
                         `).join('')}
@@ -7784,7 +7784,7 @@ window.renderSttOrderControl = function (type, i, total) {
             const rotItem = unscheduled[rotIndex];
             const advices = (rotItem.advices && rotItem.advices.length > 0) ? rotItem.advices : [];
             const advice = advices[adviceIndex] || {
-                patch: { gioDienRa: "11:30", gioKetThuc: "12:00", nvChinh: "KTV Phá»¥ TrÃ¡ch", nvPhu: "", may: "Thá»§ cÃ´ng", giuong: "", phong: rotItem.room || rotItem.phong || "" }
+                patch: { gioDienRa: "11:30", gioKetThuc: "12:00", nvChinh: "KTV Phụ Trách", nvPhu: "", may: "Thủ công", giuong: "", phong: rotItem.room || rotItem.phong || "" }
             };
             const patch = advice.patch || {};
 
@@ -7797,26 +7797,26 @@ window.renderSttOrderControl = function (type, i, total) {
 
             if (!window.currentScheduleData) window.currentScheduleData = [];
 
-            // ðŸ›ï¸ GIÆ¯á»œNG Cá»¨U CA: KhÃ´i phá»¥c giÆ°á»ng chuáº©n xÃ¡c
+            // 🛏️ GIƯỜNG CỨU CA: Khôi phục giường chuẩn xác
             let resolvedBed = patch.giuong || "";
             const bnClean = String(patName).trim().toUpperCase();
             const rmClean = String(targetRoom).trim().toLowerCase();
 
-            // Æ¯u tiÃªn 1: Tra cá»©u xem BN nÃ y Ä‘Ã£ cÃ³ giÆ°á»ng trong cÃ¹ng phÃ²ng trong ngÃ y chÆ°a (vÃ­ dá»¥ G33)
+            // Ưu tiên 1: Tra cứu xem BN này đã có giường trong cùng phòng trong ngày chưa (ví dụ G33)
             let existingBnBed = "";
             for (const item of window.currentScheduleData) {
                 const iBn = String(item.tenBN || item.HOTEN || '').trim().toUpperCase();
                 const iRoom = String(item.phong || item.PHONG || '').trim().toLowerCase();
                 const iBed = String(item.giuong || item.GIUONG || '').trim();
-                if (iBn === bnClean && iRoom === rmClean && iBed && iBed !== "GiÆ°á»ng 1") {
+                if (iBn === bnClean && iRoom === rmClean && iBed && iBed !== "Giường 1") {
                     existingBnBed = iBed;
                     break;
                 }
             }
             if (existingBnBed) {
                 resolvedBed = existingBnBed;
-            } else if (!resolvedBed || resolvedBed === "GiÆ°á»ng 1") {
-                // Náº¿u khÃ´ng cÃ³ giÆ°á»ng cá»§a BN vÃ  patch bá»‹ rÆ¡i vÃ o fallback "GiÆ°á»ng 1" hoáº·c rá»—ng
+            } else if (!resolvedBed || resolvedBed === "Giường 1") {
+                // Nếu không có giường của BN và patch bị rơi vào fallback "Giường 1" hoặc rỗng
                 let roomBeds = [];
                 if (typeof dataCache !== 'undefined' && dataCache.room) {
                     const rObj = dataCache.room.find(r => String(r.tenPhong || r.name || r[1] || '').trim().toLowerCase() === rmClean);
@@ -7844,11 +7844,11 @@ window.renderSttOrderControl = function (type, i, total) {
                     });
                     resolvedBed = freeBed || roomBeds[0];
                 } else {
-                    resolvedBed = (resolvedBed === "GiÆ°á»ng 1" && !rmClean.includes("phá»¥c há»“i")) ? "G1" : (resolvedBed || "G1");
+                    resolvedBed = (resolvedBed === "Giường 1" && !rmClean.includes("phục hồi")) ? "G1" : (resolvedBed || "G1");
                 }
             }
 
-            // ðŸ‘¥ NV PHá»¤: Tra cá»©u vÃ  Ä‘iá»n NV Phá»¥ náº¿u thá»§ thuáº­t yÃªu cáº§u ngÆ°á»i phá»¥
+            // 👥 NV PHỤ: Tra cứu và điền NV Phụ nếu thủ thuật yêu cầu người phụ
             let resolvedNvPhu = patch.nvPhu || "";
             let needSub = false;
             let procDsPhu = [];
@@ -7859,18 +7859,18 @@ window.renderSttOrderControl = function (type, i, total) {
                     return t === procNameLower || (vt && vt === procNameLower);
                 });
                 if (pObj) {
-                    needSub = (pObj.canNguoiPhu === 'CÃ³' || pObj.canNguoiPhu === 1 || pObj.canNguoiPhu === '1' || pObj.canNguoiPhu === true || pObj[10] === 'CÃ³' || pObj[10] === 1 || pObj[10] === '1');
+                    needSub = (pObj.canNguoiPhu === 'Có' || pObj.canNguoiPhu === 1 || pObj.canNguoiPhu === '1' || pObj.canNguoiPhu === true || pObj[10] === 'Có' || pObj[10] === 1 || pObj[10] === '1');
                     const dsStr = pObj.dsNguoiPhu || pObj[11] || "";
                     procDsPhu = Array.isArray(dsStr) ? dsStr : String(dsStr).split(',').map(x => x.trim()).filter(Boolean);
                 }
             }
 
             if (needSub && !resolvedNvPhu) {
-                // Æ¯u tiÃªn 1: Láº¥y ngÆ°á»i phá»¥ mÃ  BN Ä‘Ã£ cÃ³ á»Ÿ ca khÃ¡c trong ngÃ y (vÃ­ dá»¥ Phá»¥ 5)
+                // Ưu tiên 1: Lấy người phụ mà BN đã có ở ca khác trong ngày (ví dụ Phụ 5)
                 let existingSub = "";
                 for (const item of window.currentScheduleData) {
                     const iBn = String(item.tenBN || item.HOTEN || '').trim().toUpperCase();
-                    const iSub = String(item.nvPhu || item["NV PHá»¤"] || '').trim();
+                    const iSub = String(item.nvPhu || item["NV PHỤ"] || '').trim();
                     if (iBn === bnClean && iSub) {
                         existingSub = iSub;
                         break;
@@ -7884,7 +7884,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     const subStaff = dataCache.staff.find(s => {
                         const sName = String(s.ten || s.name || s[1] || '').trim();
                         const sRole = String(s.vaiTro || s.role || s[2] || '').trim();
-                        return /Ä‘iá»u dÆ°á»¡ng|dieu duong|^Ä‘d\b|^dd\b|y tÃ¡|y ta|há»™ lÃ½|ho ly|trá»£ lÃ½|tro ly/i.test(sRole) || /phá»¥/i.test(sName);
+                        return /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(sRole) || /phụ/i.test(sName);
                     });
                     if (subStaff) {
                         resolvedNvPhu = String(subStaff.ten || subStaff.name || subStaff[1] || '').trim();
@@ -7900,15 +7900,15 @@ window.renderSttOrderControl = function (type, i, total) {
                 thuThuat: procName,
                 gioDienRa: patch.gioDienRa || "11:30",
                 gioKetThuc: patch.gioKetThuc || "12:00",
-                nvChinh: patch.nvChinh || "KTV Phá»¥ TrÃ¡ch",
+                nvChinh: patch.nvChinh || "KTV Phụ Trách",
                 nvPhu: resolvedNvPhu,
-                may: patch.may || "Thá»§ cÃ´ng",
+                may: patch.may || "Thủ công",
                 giuong: resolvedBed
             };
 
             if (!window.currentScheduleData) window.currentScheduleData = [];
 
-            // ðŸ”’ DEDUP GUARD: Kiá»ƒm tra ca giáº£i cá»©u chÆ°a tá»“n táº¡i trong lá»‹ch (Ä‘á»ƒ trÃ¡nh trÃ¹ng láº·p)
+            // 🔒 DEDUP GUARD: Kiểm tra ca giải cứu chưa tồn tại trong lịch (để tránh trùng lặp)
             const _dupKey = [rescuedRow.tenBN, rescuedRow.thuThuat, rescuedRow.gioDienRa, rescuedRow.ngay]
                 .map(x => String(x || '').trim().toLowerCase()).join('|');
             const _alreadyExists = window.currentScheduleData.some(x =>
@@ -7917,15 +7917,15 @@ window.renderSttOrderControl = function (type, i, total) {
             );
             if (_alreadyExists) {
                 if (typeof showToast === 'function') {
-                    showToast(`âš ï¸ Ca [${rescuedRow.thuThuat}] cho BN ${rescuedRow.tenBN} lÃºc ${rescuedRow.gioDienRa} Ä‘Ã£ cÃ³ trong lá»‹ch, khÃ´ng thÃªm láº¡i!`, 'warning', 3500);
+                    showToast(`⚠️ Ca [${rescuedRow.thuThuat}] cho BN ${rescuedRow.tenBN} lúc ${rescuedRow.gioDienRa} đã có trong lịch, không thêm lại!`, 'warning', 3500);
                 }
                 return;
             }
 
-            // âœ… CHá»ˆ push vÃ o currentScheduleData (nguá»“n sá»± tháº­t duy nháº¥t)
+            // ✅ CHỈ push vào currentScheduleData (nguồn sự thật duy nhất)
             window.currentScheduleData.push(rescuedRow);
 
-            // ðŸ”„ Sync ngÆ°á»£c dataCache.schedule Ä‘á»ƒ filterSchedule() vÃ  loadDashboard() Ä‘á» cÃ¹ng source
+            // 🔄 Sync ngược dataCache.schedule để filterSchedule() và loadDashboard() đọ cùng source
             if (typeof dataCache !== 'undefined') {
                 dataCache.schedule = window.currentScheduleData;
             }
@@ -7958,9 +7958,9 @@ window.renderSttOrderControl = function (type, i, total) {
             callApi('saveSchedule', [targetDate, backendSched], null, null);
 
             if (typeof showToast === 'function') {
-                showToast(`âš¡ ÄÃ£ giáº£i cá»©u ca [${rescuedRow.thuThuat}] cho BN ${rescuedRow.tenBN} (${rescuedRow.gioDienRa}â€“${rescuedRow.gioKetThuc}, ${rescuedRow.nvChinh})!`, 'success');
+                showToast(`⚡ Đã giải cứu ca [${rescuedRow.thuThuat}] cho BN ${rescuedRow.tenBN} (${rescuedRow.gioDienRa}–${rescuedRow.gioKetThuc}, ${rescuedRow.nvChinh})!`, 'success');
             } else {
-                alert(`âš¡ ÄÃ£ giáº£i cá»©u thÃ nh cÃ´ng ca [${rescuedRow.thuThuat}] cho BN ${rescuedRow.tenBN}!`);
+                alert(`⚡ Đã giải cứu thành công ca [${rescuedRow.thuThuat}] cho BN ${rescuedRow.tenBN}!`);
             }
 
             renderUnscheduledAdvisor();
@@ -7974,11 +7974,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
         // ============================================================
-        // ðŸ“¤ XUáº¤T Lá»ŠCH Y Lá»†NH EXCEL (1 SHEET KÃˆM DROP-LIST Lá»ŒC PHÃ’NG, A-Z & RV Äáº¦U Báº¢NG)
+        // 📤 XUẤT LỊCH Y LỆNH EXCEL (1 SHEET KÈM DROP-LIST LỌC PHÒNG, A-Z & RV ĐẦU BẢNG)
         // ============================================================
         function exportSchedule() {
             if (typeof XLSX === 'undefined') {
-                return alert("ThÆ° viá»‡n xuáº¥t Excel Ä‘ang Ä‘Æ°á»£c náº¡p, vui lÃ²ng thá»­ láº¡i sau 1-2 giÃ¢y!");
+                return alert("Thư viện xuất Excel đang được nạp, vui lòng thử lại sau 1-2 giây!");
             }
 
             const safeSched = (window.currentScheduleData || []).map(normalizeScheduleRow).filter(r => !isDroppedScheduleRow(r));
@@ -7986,14 +7986,14 @@ window.renderSttOrderControl = function (type, i, total) {
             let displayDate = activeDateVal ? activeDateVal.split('-').reverse().join('/') : new Date().toLocaleDateString('vi-VN');
 
             if (!safeSched.length) {
-                return alert("ChÆ°a cÃ³ dá»¯ liá»‡u lá»‹ch trÃ¬nh Ä‘á»ƒ xuáº¥t file Excel!");
+                return alert("Chưa có dữ liệu lịch trình để xuất file Excel!");
             }
 
-            // Sáº¯p xáº¿p dá»¯ liá»‡u: ÄÆ°a bá»‡nh nhÃ¢n Ra viá»‡n (RV) lÃªn trÃªn cÃ¹ng, sau Ä‘Ã³ xáº¿p A-Z theo TÃªn Bá»‡nh NhÃ¢n
+            // Sắp xếp dữ liệu: Đưa bệnh nhân Ra viện (RV) lên trên cùng, sau đó xếp A-Z theo Tên Bệnh Nhân
             safeSched.sort((a, b) => {
                 const dA = !!a.__isDischarged;
                 const dB = !!b.__isDischarged;
-                if (dA !== dB) return dA ? -1 : 1; // ðŸƒ Ra viá»‡n lÃªn Ä‘áº§u báº£ng
+                if (dA !== dB) return dA ? -1 : 1; // 🏃 Ra viện lên đầu bảng
 
                 const nameA = String(a.tenBN || '').trim();
                 const nameB = String(b.tenBN || '').trim();
@@ -8010,13 +8010,13 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const wb = XLSX.utils.book_new();
 
-            // XÃ¢y dá»±ng ma tráº­n dá»¯ liá»‡u Excel (9 Cá»™t cÃ³ Cá»™t PhÃ²ng Äiá»u Trá»‹)
+            // Xây dựng ma trận dữ liệu Excel (9 Cột có Cột Phòng Điều Trị)
             const ws_data = [
-                [(localStorage.getItem('pm_unit_name') || 'Bá»‡nh viá»‡n Than - KhoÃ¡ng sáº£n CÆ¡ sá»Ÿ 2').toUpperCase() + " - KHOA YHCT & PHCN"],
-                ["Báº¢NG Lá»ŠCH TRÃŒNH ÄIá»€U TRá»Š THá»¦ THUáº¬T"],
-                [`NgÃ y thá»±c hiá»‡n: ${displayDate}`],
-                [""], // DÃ²ng trá»‘ng cÃ¡ch quÃ£ng
-                ["STT", "TÃªn Bá»‡nh NhÃ¢n", "NÄƒm Sinh", "PhÃ²ng Äiá»u Trá»‹", "Thá»§ Thuáº­t", "Báº¯t Äáº§u", "Káº¿t ThÃºc", "KTV / BÃ¡c SÄ©", "MÃ¡y MÃ³c"]
+                [(localStorage.getItem('pm_unit_name') || 'Bệnh viện Than - Khoáng sản Cơ sở 2').toUpperCase() + " - KHOA YHCT & PHCN"],
+                ["BẢNG LỊCH TRÌNH ĐIỀU TRỊ THỦ THUẬT"],
+                [`Ngày thực hiện: ${displayDate}`],
+                [""], // Dòng trống cách quãng
+                ["STT", "Tên Bệnh Nhân", "Năm Sinh", "Phòng Điều Trị", "Thủ Thuật", "Bắt Đầu", "Kết Thúc", "KTV / Bác Sĩ", "Máy Móc"]
             ];
 
             const dischargedCount = safeSched.filter(r => r.__isDischarged).length;
@@ -8024,13 +8024,13 @@ window.renderSttOrderControl = function (type, i, total) {
             safeSched.forEach((row, idx) => {
                 let tenBNText = String(row.tenBN || '').trim();
                 if (row.__isDischarged) tenBNText += ' (RV)';
-                if (row.__dropped) tenBNText += ' (âŒ Rá»›t)';
+                if (row.__dropped) tenBNText += ' (❌ Rớt)';
 
                 ws_data.push([
                     idx + 1,
                     tenBNText,
                     String(row.namSinh || '').trim(),
-                    String(row.phong || 'ChÆ°a phÃ¢n phÃ²ng').trim(),
+                    String(row.phong || 'Chưa phân phòng').trim(),
                     String(row.thuThuat || '').trim(),
                     String(row.gioDienRa || '').trim(),
                     String(row.gioKetThuc || '').trim(),
@@ -8039,17 +8039,17 @@ window.renderSttOrderControl = function (type, i, total) {
                 ]);
             });
 
-            const firstDataRow = 6; // DÃ²ng 6 trong Excel (index 1-based)
-            const lastDataRow = safeSched.length + 5; // DÃ²ng dá»¯ liá»‡u cuá»‘i cÃ¹ng
+            const firstDataRow = 6; // Dòng 6 trong Excel (index 1-based)
+            const lastDataRow = safeSched.length + 5; // Dòng dữ liệu cuối cùng
 
-            // DÃ²ng tá»•ng káº¿t tá»± Ä‘á»™ng co giÃ£n theo bá»™ lá»c phÃ²ng báº±ng hÃ m SUBTOTAL(103)
+            // Dòng tổng kết tự động co giãn theo bộ lọc phòng bằng hàm SUBTOTAL(103)
             ws_data.push([""]);
             ws_data.push([
-                "Tá»”NG Sá» THá»¦ THUáº¬T:",
+                "TỔNG SỐ THỦ THUẬT:",
                 "",
                 "",
                 { t: 'n', f: `SUBTOTAL(103, B${firstDataRow}:B${lastDataRow})`, v: safeSched.length },
-                "ca thá»§ thuáº­t (tá»± Ä‘á»™ng cáº­p nháº­t khi chá»n phÃ²ng)",
+                "ca thủ thuật (tự động cập nhật khi chọn phòng)",
                 "",
                 "",
                 "",
@@ -8058,47 +8058,47 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const ws = XLSX.utils.aoa_to_sheet(ws_data);
 
-            // ðŸŽ¯ KÃ­ch hoáº¡t Drop-list Filter (AutoFilter) táº¡i dÃ²ng Header (A5:I${lastDataRow})
+            // 🎯 Kích hoạt Drop-list Filter (AutoFilter) tại dòng Header (A5:I${lastDataRow})
             ws['!autofilter'] = { ref: `A5:I${lastDataRow}` };
 
-            // Merge cÃ¡c dÃ²ng tiÃªu Ä‘á» (Cá»™t A Ä‘áº¿n I: c=0 Ä‘áº¿n c=8)
+            // Merge các dòng tiêu đề (Cột A đến I: c=0 đến c=8)
             ws['!merges'] = [
-                { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }, // DÃ²ng 1: TÃªn bá»‡nh viá»‡n
-                { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } }, // DÃ²ng 2: TÃªn báº£ng
-                { s: { r: 2, c: 0 }, e: { r: 2, c: 8 } }, // DÃ²ng 3: NgÃ y thá»±c hiá»‡n
-                { s: { r: ws_data.length - 1, c: 0 }, e: { r: ws_data.length - 1, c: 2 } }, // DÃ²ng tá»•ng: Cá»™t A-C
-                { s: { r: ws_data.length - 1, c: 4 }, e: { r: ws_data.length - 1, c: 8 } }  // DÃ²ng tá»•ng: Cá»™t E-I
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }, // Dòng 1: Tên bệnh viện
+                { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } }, // Dòng 2: Tên bảng
+                { s: { r: 2, c: 0 }, e: { r: 2, c: 8 } }, // Dòng 3: Ngày thực hiện
+                { s: { r: ws_data.length - 1, c: 0 }, e: { r: ws_data.length - 1, c: 2 } }, // Dòng tổng: Cột A-C
+                { s: { r: ws_data.length - 1, c: 4 }, e: { r: ws_data.length - 1, c: 8 } }  // Dòng tổng: Cột E-I
             ];
 
-            // Äá»™ rá»™ng tá»‘i Æ°u 9 cá»™t
+            // Độ rộng tối ưu 9 cột
             ws['!cols'] = [
                 { wch: 6 },   // STT
-                { wch: 28 },  // TÃªn Bá»‡nh NhÃ¢n
-                { wch: 11 },  // NÄƒm Sinh
-                { wch: 20 },  // PhÃ²ng Äiá»u Trá»‹ (CÃ³ Drop-list)
-                { wch: 28 },  // Thá»§ Thuáº­t
-                { wch: 11 },  // Báº¯t Äáº§u
-                { wch: 11 },  // Káº¿t ThÃºc
-                { wch: 20 },  // KTV / BÃ¡c SÄ©
-                { wch: 18 }   // MÃ¡y MÃ³c
+                { wch: 28 },  // Tên Bệnh Nhân
+                { wch: 11 },  // Năm Sinh
+                { wch: 20 },  // Phòng Điều Trị (Có Drop-list)
+                { wch: 28 },  // Thủ Thuật
+                { wch: 11 },  // Bắt Đầu
+                { wch: 11 },  // Kết Thúc
+                { wch: 20 },  // KTV / Bác Sĩ
+                { wch: 18 }   // Máy Móc
             ];
 
-            // Chiá»u cao dÃ²ng
+            // Chiều cao dòng
             ws['!rows'] = [];
             ws['!rows'][0] = { hpt: 20 };
             ws['!rows'][1] = { hpt: 26 };
             ws['!rows'][2] = { hpt: 18 };
-            ws['!rows'][4] = { hpt: 26 }; // Header báº£ng
+            ws['!rows'][4] = { hpt: 26 }; // Header bảng
             for (let r = 5; r < ws_data.length - 2; r++) {
-                ws['!rows'][r] = { hpt: 22 }; // CÃ¡c dÃ²ng dá»¯ liá»‡u
+                ws['!rows'][r] = { hpt: 22 }; // Các dòng dữ liệu
             }
-            ws['!rows'][ws_data.length - 1] = { hpt: 24 }; // DÃ²ng tá»•ng káº¿t
+            ws['!rows'][ws_data.length - 1] = { hpt: 24 }; // Dòng tổng kết
 
-            // Äá»‹nh dáº¡ng Style chuyÃªn nghiá»‡p báº±ng xlsx-js-style
+            // Định dạng Style chuyên nghiệp bằng xlsx-js-style
             try {
                 const range = XLSX.utils.decode_range(ws['!ref']);
                 for (let R = range.s.r; R <= range.e.r; R++) {
-                    // TiÃªu Ä‘á» dÃ²ng 1 (TÃªn bá»‡nh viá»‡n)
+                    // Tiêu đề dòng 1 (Tên bệnh viện)
                     if (R === 0) {
                         const addr = XLSX.utils.encode_cell({ r: 0, c: 0 });
                         if (ws[addr]) {
@@ -8109,7 +8109,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         }
                         continue;
                     }
-                    // TiÃªu Ä‘á» dÃ²ng 2 (TÃªn báº£ng)
+                    // Tiêu đề dòng 2 (Tên bảng)
                     if (R === 1) {
                         const addr = XLSX.utils.encode_cell({ r: 1, c: 0 });
                         if (ws[addr]) {
@@ -8120,7 +8120,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         }
                         continue;
                     }
-                    // TiÃªu Ä‘á» dÃ²ng 3 (NgÃ y thá»±c hiá»‡n)
+                    // Tiêu đề dòng 3 (Ngày thực hiện)
                     if (R === 2) {
                         const addr = XLSX.utils.encode_cell({ r: 2, c: 0 });
                         if (ws[addr]) {
@@ -8131,10 +8131,10 @@ window.renderSttOrderControl = function (type, i, total) {
                         }
                         continue;
                     }
-                    // DÃ²ng trá»‘ng
+                    // Dòng trống
                     if (R === 3 || R === ws_data.length - 2) continue;
 
-                    // TiÃªu Ä‘á» cá»™t báº£ng (DÃ²ng 4, index r=4)
+                    // Tiêu đề cột bảng (Dòng 4, index r=4)
                     if (R === 4) {
                         for (let C = 0; C <= 8; C++) {
                             const addr = XLSX.utils.encode_cell({ r: 4, c: C });
@@ -8155,7 +8155,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         continue;
                     }
 
-                    // DÃ²ng tá»•ng káº¿t cuá»‘i báº£ng
+                    // Dòng tổng kết cuối bảng
                     if (R === ws_data.length - 1) {
                         for (let C = 0; C <= 8; C++) {
                             const addr = XLSX.utils.encode_cell({ r: R, c: C });
@@ -8176,7 +8176,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         continue;
                     }
 
-                    // CÃ¡c dÃ²ng dá»¯ liá»‡u bá»‡nh nhÃ¢n (R >= 5)
+                    // Các dòng dữ liệu bệnh nhân (R >= 5)
                     const dataIdx = R - 5;
                     const rowObj = safeSched[dataIdx];
                     const isRV = rowObj && !!rowObj.__isDischarged;
@@ -8200,7 +8200,7 @@ window.renderSttOrderControl = function (type, i, total) {
                             alignment: { horizontal: alignH, vertical: "center" },
                             border: {
                                 top: { style: "thin", color: { rgb: "CBD5E1" } },
-                                bottom: { style: "medium", color: { rgb: "000000" } }, // DÃ²ng káº» ngang Ä‘áº­m ngÄƒn cÃ¡ch rÃµ rÃ ng
+                                bottom: { style: "medium", color: { rgb: "000000" } }, // Dòng kẻ ngang đậm ngăn cách rõ ràng
                                 left: { style: "thin", color: { rgb: "CBD5E1" } },
                                 right: { style: "thin", color: { rgb: "CBD5E1" } }
                             }
@@ -8208,10 +8208,10 @@ window.renderSttOrderControl = function (type, i, total) {
                     }
                 }
             } catch (e) {
-                console.warn("Lá»—i style Excel:", e);
+                console.warn("Lỗi style Excel:", e);
             }
 
-            // Thiáº¿t láº­p trang in A4 ngang chuáº©n
+            // Thiết lập trang in A4 ngang chuẩn
             ws['!pageSetup'] = {
                 paperSize: 9,          // A4
                 orientation: 'landscape',
@@ -8221,12 +8221,12 @@ window.renderSttOrderControl = function (type, i, total) {
             };
             ws['!margins'] = { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 };
 
-            XLSX.utils.book_append_sheet(wb, ws, "Lá»‹ch TrÃ¬nh");
+            XLSX.utils.book_append_sheet(wb, ws, "Lịch Trình");
 
-            // Xuáº¥t vÃ  táº£i file Excel
+            // Xuất và tải file Excel
             const fileName = `Lich_ThuThuat_${displayDate.replace(/\//g, '-')}.xlsx`;
             XLSX.writeFile(wb, fileName);
-            if (typeof showToast === 'function') showToast("ðŸ“‚ ÄÃ£ xuáº¥t file Excel lá»‹ch trÃ¬nh cÃ³ bá»™ lá»c phÃ²ng!");
+            if (typeof showToast === 'function') showToast("📂 Đã xuất file Excel lịch trình có bộ lọc phòng!");
         }
 
 
@@ -8241,7 +8241,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             if (!filteredSchedData || filteredSchedData.length === 0) {
 
-                return alert("KhÃ´ng cÃ³ dá»¯ liá»‡u Ä‘á»ƒ in! BÃ¡c sÄ© hÃ£y kiá»ƒm tra láº¡i Ã´ tÃ¬m kiáº¿m.");
+                return alert("Không có dữ liệu để in! Bác sĩ hãy kiểm tra lại ô tìm kiếm.");
 
             }
 
@@ -8270,7 +8270,7 @@ window.renderSttOrderControl = function (type, i, total) {
             });
 
             const rows = printData.map((row, i) => {
-                const dischargeMark = row.__isDischarged ? ' <span style="font-size:10.5px; font-style:italic; font-weight:700; white-space:nowrap; margin-left:4px; color:#27ae60;">(âœ” RV)</span>' : '';
+                const dischargeMark = row.__isDischarged ? ' <span style="font-size:10.5px; font-style:italic; font-weight:700; white-space:nowrap; margin-left:4px; color:#27ae60;">(✔ RV)</span>' : '';
                 return `<tr class="${row.__dropped ? 'print-dropped' : ''}">
 
                 <td>${i + 1}</td>
@@ -8310,7 +8310,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             doc.open();
 
-            doc.write(`<html><head><title>In Lá»‹ch Y Lá»‡nh</title>
+            doc.write(`<html><head><title>In Lịch Y Lệnh</title>
 
                 <style>
 
@@ -8336,13 +8336,13 @@ window.renderSttOrderControl = function (type, i, total) {
 
 <style>.admin-nav-btn:hover { background: #e0e6ed !important; }</style></head><body>
 
-                <h2>Lá»ŠCH Y Lá»†NH NGÃ€Y ${displayDate}</h2>
+                <h2>LỊCH Y LỆNH NGÀY ${displayDate}</h2>
 
                 <table>
 
                     <thead><tr>
 
-                        ${["STT", "TÃªn Bá»‡nh NhÃ¢n", "NÄƒm Sinh", "Thá»§ Thuáº­t", "Báº¯t Äáº§u", "Káº¿t ThÃºc", "NV ChÃ­nh", "NV Phá»¥", "MÃ¡y"].map(h => `<th>${h}</th>`).join('')}
+                        ${["STT", "Tên Bệnh Nhân", "Năm Sinh", "Thủ Thuật", "Bắt Đầu", "Kết Thúc", "NV Chính", "NV Phụ", "Máy"].map(h => `<th>${h}</th>`).join('')}
 
                     </tr></thead>
 
@@ -8367,11 +8367,11 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         // ============================================================
-        // ðŸ“„ XUáº¤T PDF THEO Tá»ªNG PHÃ’NG Bá»†NH (PDFMAKE ENGINE - MULTI-PAGE)
+        // 📄 XUẤT PDF THEO TỪNG PHÒNG BỆNH (PDFMAKE ENGINE - MULTI-PAGE)
         // ============================================================
         function exportSchedulePDF() {
             if (typeof pdfMake === 'undefined') {
-                return alert("ThÆ° viá»‡n pdfmake Ä‘ang Ä‘Æ°á»£c náº¡p, vui lÃ²ng thá»­ láº¡i sau 1-2 giÃ¢y!");
+                return alert("Thư viện pdfmake đang được nạp, vui lòng thử lại sau 1-2 giây!");
             }
 
             const safeSched = (window.currentScheduleData || []).map(normalizeScheduleRow).filter(r => !isDroppedScheduleRow(r));
@@ -8379,25 +8379,25 @@ window.renderSttOrderControl = function (type, i, total) {
             let displayDate = activeDateVal ? activeDateVal.split('-').reverse().join('/') : new Date().toLocaleDateString('vi-VN');
 
             if (!safeSched.length) {
-                return alert("ChÆ°a cÃ³ dá»¯ liá»‡u lá»‹ch trÃ¬nh Ä‘á»ƒ xuáº¥t PDF!");
+                return alert("Chưa có dữ liệu lịch trình để xuất PDF!");
             }
 
-            // 1. PhÃ¢n nhÃ³m ca thá»§ thuáº­t theo tá»«ng PhÃ²ng bá»‡nh
+            // 1. Phân nhóm ca thủ thuật theo từng Phòng bệnh
             const roomMap = {};
             safeSched.forEach(row => {
-                const roomName = String(row.phong || 'ChÆ°a phÃ¢n phÃ²ng').trim();
+                const roomName = String(row.phong || 'Chưa phân phòng').trim();
                 if (!roomMap[roomName]) roomMap[roomName] = [];
                 roomMap[roomName].push(row);
             });
 
-            // 2. Sáº¯p xáº¿p danh sÃ¡ch trong tá»«ng phÃ²ng: Bá»†NH NHÃ‚N RA VIá»†N LÃŠN Äáº¦U TIÃŠN
+            // 2. Sắp xếp danh sách trong từng phòng: BỆNH NHÂN RA VIỆN LÊN ĐẦU TIÊN
             const roomNames = Object.keys(roomMap).sort((a, b) => a.localeCompare(b, 'vi', { numeric: true }));
 
             roomNames.forEach(rName => {
                 roomMap[rName].sort((a, b) => {
                     const dA = !!a.__isDischarged;
                     const dB = !!b.__isDischarged;
-                    if (dA !== dB) return dA ? -1 : 1; // ðŸƒ Ra viá»‡n luÃ´n luÃ´n lÃªn Ä‘áº§u tiÃªn
+                    if (dA !== dB) return dA ? -1 : 1; // 🏃 Ra viện luôn luôn lên đầu tiên
                     const tA = String(a.gioDienRa || '');
                     const tB = String(b.gioDienRa || '');
                     if (tA !== tB) return tA.localeCompare(tB);
@@ -8405,24 +8405,24 @@ window.renderSttOrderControl = function (type, i, total) {
                 });
             });
 
-            // 3. XÃ¢y dá»±ng ná»™i dung tÃ i liá»‡u PDF vá»›i má»—i phÃ²ng báº¯t Ä‘áº§u trÃªn trang má»›i
+            // 3. Xây dựng nội dung tài liệu PDF với mỗi phòng bắt đầu trên trang mới
             const content = [];
 
             roomNames.forEach((rName, rIdx) => {
                 const roomRows = roomMap[rName];
                 const dischargedCount = roomRows.filter(r => r.__isDischarged).length;
 
-                // Báº£ng dá»¯ liá»‡u cá»§a riÃªng phÃ²ng nÃ y (khÃ´ng cÃ³ cá»™t GiÆ°á»ng)
+                // Bảng dữ liệu của riêng phòng này (không có cột Giường)
                 const bodyTable = [
                     [
                         { text: 'STT', style: 'tableHeader', alignment: 'center' },
-                        { text: 'TÃªn Bá»‡nh NhÃ¢n', style: 'tableHeader' },
-                        { text: 'NÄƒm Sinh', style: 'tableHeader', alignment: 'center' },
-                        { text: 'Thá»§ Thuáº­t', style: 'tableHeader' },
-                        { text: 'Báº¯t Äáº§u', style: 'tableHeader', alignment: 'center' },
-                        { text: 'Káº¿t ThÃºc', style: 'tableHeader', alignment: 'center' },
-                        { text: 'KTV / BÃ¡c SÄ©', style: 'tableHeader' },
-                        { text: 'MÃ¡y MÃ³c', style: 'tableHeader' }
+                        { text: 'Tên Bệnh Nhân', style: 'tableHeader' },
+                        { text: 'Năm Sinh', style: 'tableHeader', alignment: 'center' },
+                        { text: 'Thủ Thuật', style: 'tableHeader' },
+                        { text: 'Bắt Đầu', style: 'tableHeader', alignment: 'center' },
+                        { text: 'Kết Thúc', style: 'tableHeader', alignment: 'center' },
+                        { text: 'KTV / Bác Sĩ', style: 'tableHeader' },
+                        { text: 'Máy Móc', style: 'tableHeader' }
                     ]
                 ];
 
@@ -8445,20 +8445,20 @@ window.renderSttOrderControl = function (type, i, total) {
                     ]);
                 });
 
-                // Má»—i phÃ²ng tá»« phÃ²ng thá»© 2 trá»Ÿ Ä‘i sáº½ tá»± Ä‘á»™ng sang trang má»›i
+                // Mỗi phòng từ phòng thứ 2 trở đi sẽ tự động sang trang mới
                 const roomSection = [
                     {
                         columns: [
                             {
                                 width: '*',
                                 text: [
-                                    { text: (localStorage.getItem('pm_unit_name') || 'Bá»‡nh viá»‡n Than - KhoÃ¡ng sáº£n CÆ¡ sá»Ÿ 2').toUpperCase() + '\n', bold: true, fontSize: 9.5 },
-                                    { text: 'KHOA YHCT - PHá»¤C Há»’I CHá»¨C NÄ‚NG', bold: true, fontSize: 10.5, color: '#1e3d2b' }
+                                    { text: (localStorage.getItem('pm_unit_name') || 'Bệnh viện Than - Khoáng sản Cơ sở 2').toUpperCase() + '\n', bold: true, fontSize: 9.5 },
+                                    { text: 'KHOA YHCT - PHỤC HỒI CHỨC NĂNG', bold: true, fontSize: 10.5, color: '#1e3d2b' }
                                 ]
                             },
                             {
                                 width: 'auto',
-                                text: `NgÃ y thá»±c hiá»‡n: ${displayDate}`,
+                                text: `Ngày thực hiện: ${displayDate}`,
                                 alignment: 'right',
                                 italics: true,
                                 fontSize: 9.5,
@@ -8467,7 +8467,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         ]
                     },
                     {
-                        text: `Báº¢NG Lá»ŠCH TRÃŒNH ÄIá»€U TRá»Š THá»¦ THUáº¬T - ${rName.toUpperCase()}`,
+                        text: `BẢNG LỊCH TRÌNH ĐIỀU TRỊ THỦ THUẬT - ${rName.toUpperCase()}`,
                         style: 'mainHeader',
                         alignment: 'center',
                         margin: [0, 4, 0, 8]
@@ -8482,7 +8482,7 @@ window.renderSttOrderControl = function (type, i, total) {
                             fillColor: function (rowIndex) {
                                 if (rowIndex === 0) return '#e8f8f5';
                                 const isDischargedRow = roomRows[rowIndex - 1] && roomRows[rowIndex - 1].__isDischarged;
-                                if (isDischargedRow) return '#f5eef8'; // Highlight tÃ­m nháº¡t cho BN ra viá»‡n
+                                if (isDischargedRow) return '#f5eef8'; // Highlight tím nhạt cho BN ra viện
                                 return rowIndex % 2 === 0 ? '#fcfcfc' : null;
                             },
                             hLineWidth: (i, node) => (i === 0 || i === 1 || i === node.table.body.length) ? 1.5 : 1,
@@ -8493,7 +8493,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     },
                     {
                         margin: [0, 6, 0, 0],
-                        text: `Tá»•ng sá»‘: ${roomRows.length} ca thá»§ thuáº­t ${dischargedCount > 0 ? '(' + dischargedCount + ' ca RV)' : ''}`,
+                        text: `Tổng số: ${roomRows.length} ca thủ thuật ${dischargedCount > 0 ? '(' + dischargedCount + ' ca RV)' : ''}`,
                         italic: true,
                         fontSize: 9,
                         color: '#64748b'
@@ -8523,16 +8523,16 @@ window.renderSttOrderControl = function (type, i, total) {
 
             try {
                 pdfMake.createPdf(docDefinition).download(`Lich_ThuThuat_TheoPhong_${displayDate.replace(/\//g, '-')}.pdf`);
-                if (typeof showToast === 'function') showToast("ðŸ“„ Äang táº£i file PDF lá»‹ch trÃ¬nh theo tá»«ng phÃ²ng...");
+                if (typeof showToast === 'function') showToast("📄 Đang tải file PDF lịch trình theo từng phòng...");
             } catch (e) {
-                console.error("Lá»—i xuáº¥t PDF:", e);
-                alert("Lá»—i xuáº¥t PDF: " + e.message);
+                console.error("Lỗi xuất PDF:", e);
+                alert("Lỗi xuất PDF: " + e.message);
             }
         }
         window.exportSchedulePDF = exportSchedulePDF;
 
         // ============================================================
-        // â±ï¸ CHáº¾ Äá»˜ XEM TIMELINE Y Táº¾ (MEDICAL RESOURCE TIMELINE)
+        // ⏱️ CHẾ ĐỘ XEM TIMELINE Y TẾ (MEDICAL RESOURCE TIMELINE)
         // ============================================================
         let timelineGroupBy = 'room'; // 'room' | 'staff'
         let timelineShift = 'all';    // 'all' | 'morning' | 'afternoon'
@@ -8581,7 +8581,7 @@ window.renderSttOrderControl = function (type, i, total) {
         window.toggleScheduleViewMode = toggleScheduleViewMode;
 
         // ============================================================
-        // âš¡ XUáº¤T Dá»® LIá»†U Äá»‚ Tá»° Äá»˜NG NHáº¬P HIS (AUTO-HIS IMPORTER)
+        // ⚡ XUẤT DỮ LIỆU ĐỂ TỰ ĐỘNG NHẬP HIS (AUTO-HIS IMPORTER)
         // ============================================================
         function exportDataForHisAuto() {
             const rawSched = (window.currentScheduleData && window.currentScheduleData.length) ? window.currentScheduleData : 
@@ -8590,9 +8590,9 @@ window.renderSttOrderControl = function (type, i, total) {
             
             if (!safeSched.length) {
                 if (typeof window.showToast === 'function') {
-                    window.showToast('âš ï¸ ChÆ°a cÃ³ dá»¯ liá»‡u lá»‹ch trÃ¬nh Ä‘á»ƒ xuáº¥t sang pháº§n má»m HIS!', 'warning');
+                    window.showToast('⚠️ Chưa có dữ liệu lịch trình để xuất sang phần mềm HIS!', 'warning');
                 } else {
-                    alert('ChÆ°a cÃ³ dá»¯ liá»‡u lá»‹ch trÃ¬nh Ä‘á»ƒ xuáº¥t sang pháº§n má»m HIS!');
+                    alert('Chưa có dữ liệu lịch trình để xuất sang phần mềm HIS!');
                 }
                 return;
             }
@@ -8611,14 +8611,14 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const jsonStr = JSON.stringify(exportObj, null, 2);
 
-            // 1. Tá»± Ä‘á»™ng Copy vÃ o Clipboard
+            // 1. Tự động Copy vào Clipboard
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(jsonStr).then(() => {
-                    console.log("ÄÃ£ copy dá»¯ liá»‡u lá»‹ch vÃ o Clipboard");
-                }).catch(e => console.warn("Lá»—i copy clipboard:", e));
+                    console.log("Đã copy dữ liệu lịch vào Clipboard");
+                }).catch(e => console.warn("Lỗi copy clipboard:", e));
             }
 
-            // 2. Táº£i file his_schedule.json
+            // 2. Tải file his_schedule.json
             try {
                 const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
                 const url = URL.createObjectURL(blob);
@@ -8630,12 +8630,12 @@ window.renderSttOrderControl = function (type, i, total) {
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
             } catch (err) {
-                console.error("Lá»—i táº£i file JSON:", err);
+                console.error("Lỗi tải file JSON:", err);
             }
 
-            const msg = `âœ… ÄÃƒ XUáº¤T ${safeSched.length} CA THá»¦ THUáº¬T!\n\n1. Dá»¯ liá»‡u Ä‘Ã£ Ä‘Æ°á»£c tá»± Ä‘á»™ng sao chÃ©p vÃ o Clipboard (Báº¡n chá»‰ cáº§n má»Ÿ tool Auto-HIS vÃ  báº¥m 'ðŸ“‹ DÃ¡n tá»« Clipboard').\n2. Äá»“ng thá»i Ä‘Ã£ táº£i file 'his_schedule_${activeDateVal || 'today'}.json' vá» mÃ¡y.`;
+            const msg = `✅ ĐÃ XUẤT ${safeSched.length} CA THỦ THUẬT!\n\n1. Dữ liệu đã được tự động sao chép vào Clipboard (Bạn chỉ cần mở tool Auto-HIS và bấm '📋 Dán từ Clipboard').\n2. Đồng thời đã tải file 'his_schedule_${activeDateVal || 'today'}.json' về máy.`;
             if (typeof window.showToast === 'function') {
-                window.showToast(`âœ… ÄÃ£ xuáº¥t ${safeSched.length} ca sang Auto-HIS (Ä‘Ã£ copy & táº£i file)!`, 'success');
+                window.showToast(`✅ Đã xuất ${safeSched.length} ca sang Auto-HIS (đã copy & tải file)!`, 'success');
             }
             alert(msg);
         }
@@ -8652,26 +8652,26 @@ window.renderSttOrderControl = function (type, i, total) {
             if (!safeSched.length) {
                 target.innerHTML = `
                     <div style="padding: 50px 20px; text-align: center; color: #94a3b8;">
-                        <div style="font-size: 40px; margin-bottom: 10px;">ðŸ“…</div>
-                        <h4 style="margin: 0; color: #475569; font-size: 16px;">ChÆ°a cÃ³ dá»¯ liá»‡u lá»‹ch trÃ¬nh hÃ´m nay</h4>
-                        <p style="margin: 6px 0 0 0; font-size: 13px;">Vui lÃ²ng báº¥m nÃºt <b>"CHáº Y Xáº¾P Lá»ŠCH Tá»”NG"</b> Ä‘á»ƒ khá»Ÿi táº¡o dÃ²ng thá»i gian.</p>
+                        <div style="font-size: 40px; margin-bottom: 10px;">📅</div>
+                        <h4 style="margin: 0; color: #475569; font-size: 16px;">Chưa có dữ liệu lịch trình hôm nay</h4>
+                        <p style="margin: 6px 0 0 0; font-size: 13px;">Vui lòng bấm nút <b>"CHẠY XẾP LỊCH TỔNG"</b> để khởi tạo dòng thời gian.</p>
                     </div>
                 `;
                 return;
             }
 
-            // Bá»™ lá»c tÃ¬m kiáº¿m má» thÃ´ng minh tiáº¿ng Viá»‡t (Fuse.js)
+            // Bộ lọc tìm kiếm mờ thông minh tiếng Việt (Fuse.js)
             const searchQuery = String(document.getElementById('schedule-search-input')?.value || '').trim();
             let schedData = safeSched;
             if (searchQuery) {
                 schedData = fuzzySearchList(safeSched, searchQuery, ['tenBN', 'phong', 'nvChinh', 'nvPhu', 'thuThuat', 'may', 'giuong']);
             }
 
-            // Cáº¥u hÃ¬nh khung giá» vÃ  Ä‘á»™ rá»™ng má»—i slot (30 phÃºt)
+            // Cấu hình khung giờ và độ rộng mỗi slot (30 phút)
             let slotTicks = [];
-            let slotWidth = 95; // px má»—i 30 phÃºt
-            let morningSlotCount = 8; // 07:30, 08:00, 08:30, 09:00, 09:30, 10:00, 10:30, 11:00 (káº¿t thÃºc 11:30)
-            let afternoonSlotCount = 7; // 13:00, 13:30, 14:00, 14:30, 15:00, 15:30, 16:00 (káº¿t thÃºc 16:30)
+            let slotWidth = 95; // px mỗi 30 phút
+            let morningSlotCount = 8; // 07:30, 08:00, 08:30, 09:00, 09:30, 10:00, 10:30, 11:00 (kết thúc 11:30)
+            let afternoonSlotCount = 7; // 13:00, 13:30, 14:00, 14:30, 15:00, 15:30, 16:00 (kết thúc 16:30)
             let totalCanvasWidth = 0;
 
             if (timelineShift === 'morning') {
@@ -8688,14 +8688,14 @@ window.renderSttOrderControl = function (type, i, total) {
                 totalCanvasWidth = slotTicks.length * slotWidth;
             }
 
-            // HÃ m chuyá»ƒn Ä‘á»•i giá» HH:MM sang phÃºt
+            // Hàm chuyển đổi giờ HH:MM sang phút
             function timeToMinutes(tStr) {
                 if (!tStr || !tStr.includes(':')) return 0;
                 const p = tStr.split(':');
                 return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0);
             }
 
-            // HÃ m tÃ­nh toÃ¡n pixel Left vÃ  Width chÃ­nh xÃ¡c
+            // Hàm tính toán pixel Left và Width chính xác
             function calcCardPixel(startMin, endMin) {
                 if (timelineShift === 'morning') {
                     if (startMin >= 690 || endMin <= 450) return null;
@@ -8712,7 +8712,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     const width = Math.max(65, ((e - s) / 30) * slotWidth - 3);
                     return { left, width };
                 } else {
-                    // Cáº£ ngÃ y
+                    // Cả ngày
                     if (startMin < 690) {
                         const s = Math.max(450, startMin);
                         const e = Math.min(690, endMin);
@@ -8731,14 +8731,14 @@ window.renderSttOrderControl = function (type, i, total) {
                 }
             }
 
-            // Gom nhÃ³m theo PhÃ²ng hoáº·c NhÃ¢n ViÃªn
+            // Gom nhóm theo Phòng hoặc Nhân Viên
             const groups = {};
             schedData.forEach(row => {
                 let key = '';
                 if (timelineGroupBy === 'staff') {
-                    key = String(row.nvChinh || 'ChÆ°a gÃ¡n KTV').trim();
+                    key = String(row.nvChinh || 'Chưa gán KTV').trim();
                 } else {
-                    key = String(row.phong || 'ChÆ°a phÃ¢n phÃ²ng').trim();
+                    key = String(row.phong || 'Chưa phân phòng').trim();
                 }
                 if (!groups[key]) groups[key] = [];
                 groups[key].push(row);
@@ -8746,12 +8746,12 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const groupKeys = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'vi', { numeric: true }));
 
-            // XÃ¢y dá»±ng Header Báº£ng
+            // Xây dựng Header Bảng
             let html = `
                 <div class="timeline-board">
                     <div class="timeline-board-header">
                         <div class="timeline-res-col-hdr">
-                            ${timelineGroupBy === 'room' ? 'ðŸ¥ PHÃ’NG / GIÆ¯á»œNG' : 'ðŸ‘¨â€âš•ï¸ NHÃ‚N Sá»° / KTV'}
+                            ${timelineGroupBy === 'room' ? '🏥 PHÒNG / GIƯỜNG' : '👨‍⚕️ NHÂN SỰ / KTV'}
                         </div>
                         <div class="timeline-slots-hdr" style="width: ${totalCanvasWidth}px;">
             `;
@@ -8760,17 +8760,17 @@ window.renderSttOrderControl = function (type, i, total) {
                 html += `<div class="timeline-slot-tick" style="width: ${slotWidth}px; min-width: ${slotWidth}px;">${tick}</div>`;
             });
 
-            html += `</div></div>`; // ÄÃ³ng timeline-slots-hdr vÃ  timeline-board-header
+            html += `</div></div>`; // Đóng timeline-slots-hdr và timeline-board-header
 
-            // XÃ¢y dá»±ng tá»«ng hÃ ng dá»¯ liá»‡u vá»›i thuáº­t toÃ¡n xáº¿p Lane
+            // Xây dựng từng hàng dữ liệu với thuật toán xếp Lane
             groupKeys.forEach(gKey => {
                 const rows = groups[gKey];
                 const rvCount = rows.filter(r => r.__isDischarged).length;
 
-                // Sáº¯p xáº¿p cÃ¡c ca theo giá» báº¯t Ä‘áº§u tÄƒng dáº§n
+                // Sắp xếp các ca theo giờ bắt đầu tăng dần
                 rows.sort((a, b) => timeToMinutes(a.gioDienRa) - timeToMinutes(b.gioDienRa));
 
-                // Thuáº­t toÃ¡n Lane Packing chá»‘ng Ä‘Ã¨ tháº»
+                // Thuật toán Lane Packing chống đè thẻ
                 const lanes = [];
                 const packedCards = [];
 
@@ -8810,7 +8810,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 html += `
                     <div class="timeline-board-row">
                         <div class="timeline-res-side">
-                            <div class="timeline-resource-name" title="${safeGKey}">${timelineGroupBy === 'room' ? 'ðŸ¥ ' : 'ðŸ‘¨â€âš•ï¸ '}${safeGKey}</div>
+                            <div class="timeline-resource-name" title="${safeGKey}">${timelineGroupBy === 'room' ? '🏥 ' : '👨‍⚕️ '}${safeGKey}</div>
                             <div style="display:flex; gap:4px; flex-wrap:wrap;">
                                 <span class="timeline-resource-badge">${packedCards.length} ca</span>
                                 ${rvCount > 0 ? `<span class="timeline-resource-badge" style="background:#f5eef8; color:#7c3aed; font-weight:700;">${rvCount} RV</span>` : ''}
@@ -8820,25 +8820,25 @@ window.renderSttOrderControl = function (type, i, total) {
                             <div class="timeline-grid-lines">
                 `;
 
-                // Váº¡ch káº» dá»c má»—i 30 phÃºt
+                // Vạch kẻ dọc mỗi 30 phút
                 slotTicks.forEach(() => {
                     html += `<div class="timeline-grid-tick-line" style="width: ${slotWidth}px; min-width: ${slotWidth}px;"></div>`;
                 });
 
-                html += `</div>`; // ÄÃ³ng timeline-grid-lines
+                html += `</div>`; // Đóng timeline-grid-lines
 
-                // ÄÆ°á»ng phÃ¢n cÃ¡ch giá» nghá»‰ trÆ°a (náº¿u xem cáº£ ngÃ y)
+                // Đường phân cách giờ nghỉ trưa (nếu xem cả ngày)
                 if (timelineShift === 'all') {
                     const morningBoundary = morningSlotCount * slotWidth;
-                    html += `<div class="timeline-lunch-divider" style="left: ${morningBoundary}px;" title="Nghá»‰ trÆ°a (11:30 - 13:00)"></div>`;
+                    html += `<div class="timeline-lunch-divider" style="left: ${morningBoundary}px;" title="Nghỉ trưa (11:30 - 13:00)"></div>`;
                 }
 
-                // Render tá»«ng Card vá»›i tá»a Ä‘á»™ Left, Width vÃ  Top (theo Lane)
+                // Render từng Card với tọa độ Left, Width và Top (theo Lane)
                 packedCards.forEach(item => {
                     const r = item.row;
                     const topPx = 4 + item.lane * 40;
                     const isRV = !!r.__isDischarged;
-                    const isYHCT = String(r.thuThuat || '').toLowerCase().includes('chÃ¢m') || String(r.thuThuat || '').toLowerCase().includes('xoa bÃ³p') || String(r.thuThuat || '').toLowerCase().includes('cáº¥y chá»‰') || String(r.thuThuat || '').toLowerCase().includes('giÃ¡c');
+                    const isYHCT = String(r.thuThuat || '').toLowerCase().includes('châm') || String(r.thuThuat || '').toLowerCase().includes('xoa bóp') || String(r.thuThuat || '').toLowerCase().includes('cấy chỉ') || String(r.thuThuat || '').toLowerCase().includes('giác');
                     
                     let cardClass = isRV ? 'timeline-card-rv' : (isYHCT ? 'timeline-card-yhct' : 'timeline-card-phcn');
 
@@ -8850,7 +8850,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     const safeNVPhu = sanitizeInput(r.nvPhu || '');
                     const safeMay = sanitizeInput(r.may || '');
 
-                    const tooltipText = `Bá»‡nh nhÃ¢n: ${safeTenBN} (${r.namSinh || ''})&#10;Thá»§ thuáº­t: ${safeThuThuat}&#10;Thá»i gian: ${r.gioDienRa} - ${r.gioKetThuc}&#10;PhÃ²ng: ${safePhong} | GiÆ°á»ng: ${safeGiuong}&#10;KTV: ${safeNV} ${safeNVPhu ? '(Phá»¥: ' + safeNVPhu + ')' : ''}&#10;MÃ¡y: ${safeMay}`;
+                    const tooltipText = `Bệnh nhân: ${safeTenBN} (${r.namSinh || ''})&#10;Thủ thuật: ${safeThuThuat}&#10;Thời gian: ${r.gioDienRa} - ${r.gioKetThuc}&#10;Phòng: ${safePhong} | Giường: ${safeGiuong}&#10;KTV: ${safeNV} ${safeNVPhu ? '(Phụ: ' + safeNVPhu + ')' : ''}&#10;Máy: ${safeMay}`;
 
                     html += `
                         <div class="timeline-card ${cardClass}" 
@@ -8861,16 +8861,16 @@ window.renderSttOrderControl = function (type, i, total) {
                                 ${isRV ? '<span class="rv-badge">RV</span>' : ''}
                             </div>
                             <div class="timeline-card-sub">
-                                <span>${safeThuThuat} â€¢ ${r.gioDienRa}-${r.gioKetThuc}${safeGiuong ? ' â€¢ G.' + safeGiuong : ''}</span>
+                                <span>${safeThuThuat} • ${r.gioDienRa}-${r.gioKetThuc}${safeGiuong ? ' • G.' + safeGiuong : ''}</span>
                             </div>
                         </div>
                     `;
                 });
 
-                html += `</div></div>`; // ÄÃ³ng timeline-track-canvas vÃ  timeline-board-row
+                html += `</div></div>`; // Đóng timeline-track-canvas và timeline-board-row
             });
 
-            html += `</div>`; // ÄÃ³ng timeline-board
+            html += `</div>`; // Đóng timeline-board
             target.innerHTML = html;
         }
         window.renderScheduleGanttTimeline = renderScheduleGanttTimeline;
@@ -8903,9 +8903,9 @@ window.renderSttOrderControl = function (type, i, total) {
 
                         const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
 
-                        const headerIndex = rows.findIndex(r => r.some(c => String(c).toLowerCase().includes('bá»‡nh nhÃ¢n') || String(c).toLowerCase().includes('benh nhan')));
+                        const headerIndex = rows.findIndex(r => r.some(c => String(c).toLowerCase().includes('bệnh nhân') || String(c).toLowerCase().includes('benh nhan')));
 
-                        if (headerIndex < 0) throw new Error('KhÃ´ng tÃ¬m tháº¥y dÃ²ng tiÃªu Ä‘á» trong file lá»‹ch.');
+                        if (headerIndex < 0) throw new Error('Không tìm thấy dòng tiêu đề trong file lịch.');
 
 
 
@@ -8947,7 +8947,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                         };
 
-                        if (idx.ten < 0 || idx.tt < 0) throw new Error('File khÃ´ng Ä‘Ãºng cáº¥u trÃºc lá»‹ch Ä‘Ã£ xuáº¥t.');
+                        if (idx.ten < 0 || idx.tt < 0) throw new Error('File không đúng cấu trúc lịch đã xuất.');
 
 
 
@@ -8961,7 +8961,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                                 ngay: idx.ngay >= 0 ? r[idx.ngay] : "",
 
-                                tenBN: idx.ten >= 0 ? String(r[idx.ten] || "").replace(/\s*\((?:âœ” RV|âŒ Rá»›t|RV|Rá»›t)\)/gi, "").trim() : "",
+                                tenBN: idx.ten >= 0 ? String(r[idx.ten] || "").replace(/\s*\((?:✔ RV|❌ Rớt|RV|Rớt)\)/gi, "").trim() : "",
 
                                 namSinh: idx.ns >= 0 ? r[idx.ns] : "",
 
@@ -8987,13 +8987,13 @@ window.renderSttOrderControl = function (type, i, total) {
 
                             const statusLower = statusText.toLowerCase();
 
-                            const isDropped = String(row.gioDienRa || "").includes("Rá»›t") || statusLower.includes("khÃ´ng xáº¿p") || statusLower.includes("rá»›t");
+                            const isDropped = String(row.gioDienRa || "").includes("Rớt") || statusLower.includes("không xếp") || statusLower.includes("rớt");
 
                             if (isDropped) {
 
-                                // Sá»­ dá»¥ng chuá»—i Ä‘á»ƒ trÃ¡nh lÃ m parser ngoáº·c nháº§m láº«n
+                                // Sử dụng chuỗi để tránh làm parser ngoặc nhầm lẫn
 
-                                const regLydo = new RegExp("^.*LÃ½ do:\\s*", "i");
+                                const regLydo = new RegExp("^.*Lý do:\\s*", "i");
 
                                 const regEnd = new RegExp("[)]+$", "");
 
@@ -9001,7 +9001,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                                     ngay: row.ngay, bn: row.tenBN, ns: row.namSinh, room: row.phong,
 
-                                    tt: row.thuThuat, staff: row.nvChinh, reason: statusText.replace(regLydo, "").replace(regEnd, "") || row.may || "Ca rá»›t trong file cÅ©"
+                                    tt: row.thuThuat, staff: row.nvChinh, reason: statusText.replace(regLydo, "").replace(regEnd, "") || row.may || "Ca rớt trong file cũ"
 
                                 }));
 
@@ -9027,7 +9027,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     } catch (err) {
 
-                        alert('Lá»—i: ' + err.message);
+                        alert('Lỗi: ' + err.message);
 
                     }
 
@@ -9046,15 +9046,15 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
         function callChotSo() {
-            showCustomConfirm("Chá»‘t sá»•?", "Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n chá»‘t sá»• ngÃ y hÃ´m nay?", function () {
+            showCustomConfirm("Chốt sổ?", "Bạn có chắc chắn muốn chốt sổ ngày hôm nay?", function () {
                 const btn = document.getElementById('btn-chot-so');
-                btn.innerText = 'â³ Äang xá»­ lÃ½...'; btn.disabled = true;
+                btn.innerText = '⏳ Đang xử lý...'; btn.disabled = true;
                 window._chotSoDone = false;
 
-                if (window.showGlobalLoading) window.showGlobalLoading("Äang thá»±c hiá»‡n chá»‘t sá»• ngÃ y cÅ© vÃ  má»Ÿ sá»• ngÃ y má»›i...");
+                if (window.showGlobalLoading) window.showGlobalLoading("Đang thực hiện chốt sổ ngày cũ và mở sổ ngày mới...");
 
                 callApi('chuyenNgayMoi', [], res => {
-                    // XÃ³a toÃ n bá»™ cache phÃ­a client Ä‘á»ƒ má»Ÿ ngÃ y má»›i sáº¡ch sáº½
+                    // Xóa toàn bộ cache phía client để mở ngày mới sạch sẽ
                     window.currentScheduleData = [];
                     window.lastUnscheduledData = [];
                     window.currentRotData = [];
@@ -9067,7 +9067,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     const curUnit = (typeof getCurrentUnitCode === 'function') ? getCurrentUnitCode() : (localStorage.getItem('pm_unit_code') || '');
                     const uKey = (base) => (typeof getUnitStorageKey === 'function') ? getUnitStorageKey(base) : (curUnit ? `${curUnit}_${base}` : base);
 
-                    // XÃ³a toÃ n bá»™ key local chá»©a lá»‹ch cÅ©
+                    // Xóa toàn bộ key local chứa lịch cũ
                     localStorage.removeItem(uKey('meds_success'));
                     localStorage.removeItem(uKey('meds_schedule_date'));
                     localStorage.removeItem(uKey('meds_unscheduled'));
@@ -9076,7 +9076,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     localStorage.removeItem('meds_unscheduled');
                     localStorage.removeItem('meds_schedule_unit');
 
-                    // Cáº­p nháº­t hoáº·c dá»n sáº¡ch lá»‹ch trong bootstrap cache
+                    // Cập nhật hoặc dọn sạch lịch trong bootstrap cache
                     const bKey = (typeof window.getBootstrapCacheKey === 'function') ? window.getBootstrapCacheKey() : `times_bootstrap_cache_${curUnit}`;
                     try {
                         const bStr = localStorage.getItem(bKey) || localStorage.getItem('times_bootstrap_cache');
@@ -9088,7 +9088,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         }
                     } catch(e) {}
 
-                    // XÃ³a cache Dexie IndexedDB
+                    // Xóa cache Dexie IndexedDB
                     if (window.OfflineSyncEngine && typeof window.OfflineSyncEngine.saveCache === 'function') {
                         window.OfflineSyncEngine.saveCache('meds_success', []);
                     }
@@ -9098,8 +9098,8 @@ window.renderSttOrderControl = function (type, i, total) {
                     location.reload();
                 }, err => {
                     if (window.hideGlobalLoading) window.hideGlobalLoading();
-                    alert("Lá»—i chá»‘t sá»•: " + (typeof err === 'string' ? err : (err && err.message) || JSON.stringify(err)));
-                    btn.innerText = 'ðŸ“‹ Chá»‘t sá»•';
+                    alert("Lỗi chốt sổ: " + (typeof err === 'string' ? err : (err && err.message) || JSON.stringify(err)));
+                    btn.innerText = '📋 Chốt sổ';
                     btn.disabled = false;
                 });
             });
@@ -9107,11 +9107,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
         window._historyCache = window._historyCache || {};
-        // Backup/restore dataCache khi chuyá»ƒn sang cháº¿ Ä‘á»™ xem lá»‹ch cÅ©
+        // Backup/restore dataCache khi chuyển sang chế độ xem lịch cũ
         window._liveDataCacheBackup = null;
 
         function applyHistoryDataToTabs(fullData, dateStr) {
-            // Backup cache hiá»‡n táº¡i náº¿u chÆ°a backup
+            // Backup cache hiện tại nếu chưa backup
             if (!window._liveDataCacheBackup) {
                 window._liveDataCacheBackup = {
                     pat: JSON.parse(JSON.stringify(dataCache.pat || [])),
@@ -9119,8 +9119,8 @@ window.renderSttOrderControl = function (type, i, total) {
                 };
             }
 
-            // Build dataCache.pat tá»« dá»¯ liá»‡u lá»‹ch sá»­ (unique patients)
-            // gioBan chá»‰ láº¥y tá»« fullData.patBusy thá»±c táº¿ (bÃ¡o báº­n tháº­t sá»±, khÃ´ng láº¥y tá»« ca thá»§ thuáº­t)
+            // Build dataCache.pat từ dữ liệu lịch sử (unique patients)
+            // gioBan chỉ lấy từ fullData.patBusy thực tế (báo bận thật sự, không lấy từ ca thủ thuật)
             const histPat = (fullData.patients || []).map(p => {
                 const foundBusy = (fullData.patBusy || []).find(pb => {
                     const pbName = String(pb.tenBN || '').trim().toLowerCase();
@@ -9140,7 +9140,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 };
             });
 
-            // Bá»• sung cÃ¡c bá»‡nh nhÃ¢n cÃ³ trong fullData.patBusy (tá»« báº£ng gio_ban_chung_cu / gio_ban_cu) nhÆ°ng chÆ°a cÃ³ trong danh sÃ¡ch ca
+            // Bổ sung các bệnh nhân có trong fullData.patBusy (từ bảng gio_ban_chung_cu / gio_ban_cu) nhưng chưa có trong danh sách ca
             (fullData.patBusy || []).forEach(pb => {
                 const pbName = String(pb.tenBN || '').trim().toLowerCase();
                 const pbNs = String(pb.namSinh || '').trim();
@@ -9163,7 +9163,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 }
             });
 
-            // Bá»• sung giá» ra viá»‡n (náº¿u cÃ³ trong fullData.leavePat)
+            // Bổ sung giờ ra viện (nếu có trong fullData.leavePat)
             (fullData.leavePat || []).forEach(lp => {
                 const lpName = String(lp.tenBN || '').trim().toLowerCase();
                 const lpNs = String(lp.namSinh || '').trim();
@@ -9189,12 +9189,12 @@ window.renderSttOrderControl = function (type, i, total) {
             });
             dataCache.pat = histPat;
 
-            // Build dataCache.staff: Báº£o toÃ n vai trÃ² BÃ¡c sÄ©/KTV, thá»i gian lÃ m viá»‡c, ká»¹ nÄƒng tá»« base live staff
+            // Build dataCache.staff: Bảo toàn vai trò Bác sĩ/KTV, thời gian làm việc, kỹ năng từ base live staff
             const baseStaff = JSON.parse(JSON.stringify(window._liveDataCacheBackup.staff || []));
             baseStaff.forEach(s => {
-                const sNameClean = String(s.ten || '').trim().toLowerCase().replace(/^(bs\.|bs|ktv\.|ktv|Ä‘d\.|Ä‘d)\s+/i, '');
+                const sNameClean = String(s.ten || '').trim().toLowerCase().replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd)\s+/i, '');
                 const foundBusy = (fullData.staffBusy || []).find(sb => {
-                    const sbClean = String(sb.ten || '').trim().toLowerCase().replace(/^(bs\.|bs|ktv\.|ktv|Ä‘d\.|Ä‘d)\s+/i, '');
+                    const sbClean = String(sb.ten || '').trim().toLowerCase().replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd)\s+/i, '');
                     return sbClean === sNameClean;
                 });
                 if (foundBusy && foundBusy.slots && foundBusy.slots.length > 0) {
@@ -9204,18 +9204,18 @@ window.renderSttOrderControl = function (type, i, total) {
                 }
             });
 
-            // Bá»• sung cÃ¡c nhÃ¢n sá»± cÃ³ trong fullData.staffBusy (tá»« gio_ban_chung_cu) nhÆ°ng chÆ°a cÃ³ trong baseStaff
+            // Bổ sung các nhân sự có trong fullData.staffBusy (từ gio_ban_chung_cu) nhưng chưa có trong baseStaff
             (fullData.staffBusy || []).forEach(sb => {
-                const sbClean = String(sb.ten || '').trim().toLowerCase().replace(/^(bs\.|bs|ktv\.|ktv|Ä‘d\.|Ä‘d)\s+/i, '');
+                const sbClean = String(sb.ten || '').trim().toLowerCase().replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd)\s+/i, '');
                 const exists = baseStaff.some(s => {
-                    const sNameClean = String(s.ten || '').trim().toLowerCase().replace(/^(bs\.|bs|ktv\.|ktv|Ä‘d\.|Ä‘d)\s+/i, '');
+                    const sNameClean = String(s.ten || '').trim().toLowerCase().replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd)\s+/i, '');
                     return sNameClean === sbClean;
                 });
                 if (!exists && sb.ten) {
                     const busyStr = sb.slots?.length ? [...new Set(sb.slots.map(sl => sl.from + '-' + sl.to).filter(Boolean))].join(', ') : '';
                     baseStaff.push({
                         ten: sb.ten,
-                        vaiTro: sb.ten.toLowerCase().includes('ktv') ? 'Ká»¹ thuáº­t viÃªn' : 'BÃ¡c sÄ©',
+                        vaiTro: sb.ten.toLowerCase().includes('ktv') ? 'Kỹ thuật viên' : 'Bác sĩ',
                         gioBan: busyStr,
                         thoiGianLamViec: '07:30-16:30'
                     });
@@ -9223,12 +9223,12 @@ window.renderSttOrderControl = function (type, i, total) {
             });
             dataCache.staff = baseStaff;
 
-            // Cáº­p nháº­t header tráº¡ng thÃ¡i lá»‹ch cÅ©
+            // Cập nhật header trạng thái lịch cũ
             const parts = dateStr.split('-');
             const ngayHT = parts.length === 3 ? parts[2] + '/' + parts[1] + '/' + parts[0] : dateStr;
-            document.title = 'Lá»‹ch CÅ© â€“ ' + ngayHT;
+            document.title = 'Lịch Cũ – ' + ngayHT;
 
-            // Render láº¡i cÃ¡c tab
+            // Render lại các tab
             if (typeof renderPatientsTable === 'function') renderPatientsTable(true);
             if (typeof renderBusyPat === 'function') renderBusyPat();
             if (typeof renderBusyStaff === 'function') renderBusyStaff();
@@ -9240,19 +9240,19 @@ window.renderSttOrderControl = function (type, i, total) {
             dataCache.pat = window._liveDataCacheBackup.pat;
             dataCache.staff = window._liveDataCacheBackup.staff;
             window._liveDataCacheBackup = null;
-            document.title = 'T.I.M.E.S System - Pháº§n má»m xáº¿p lá»‹ch thá»§ thuáº­t thÃ´ng minh';
+            document.title = 'T.I.M.E.S System - Phần mềm xếp lịch thủ thuật thông minh';
             if (typeof renderPatientsTable === 'function') renderPatientsTable(true);
             if (typeof renderBusyPat === 'function') renderBusyPat();
             if (typeof renderBusyStaff === 'function') renderBusyStaff();
             if (typeof renderLeavePat === 'function') renderLeavePat();
-            // XÃ³a panel cÅ© náº¿u cÃ²n
+            // Xóa panel cũ nếu còn
             const old = document.getElementById('history-detail-panel');
             if (old) old.remove();
         }
 
         function xemLichSu() {
             const d = document.getElementById('history-date')?.value || '';
-            if (!d) return window.showToast ? window.showToast("Vui lÃ²ng chá»n ngÃ y!", "error") : alert("Chá»n ngÃ y!");
+            if (!d) return window.showToast ? window.showToast("Vui lòng chọn ngày!", "error") : alert("Chọn ngày!");
             if (typeof window.onAppDateChange === 'function') {
                 window.onAppDateChange(d, 'schedule');
             } else {
@@ -9267,7 +9267,7 @@ window.renderSttOrderControl = function (type, i, total) {
             }
         }
 
-        // --- Tiá»‡n Ã­ch TÃ¬m ráº£nh ---
+        // --- Tiện ích Tìm rảnh ---
 
         window.externalUtilsData = null;
 
@@ -9293,9 +9293,9 @@ window.renderSttOrderControl = function (type, i, total) {
         window.togglePatSessionSelect = function() {
             const sessionGroup = document.getElementById('pat-session-group');
             if (sessionGroup) {
-                sessionGroup.style.display = 'none'; // áº¨n hoÃ n toÃ n theo yÃªu cáº§u cá»§a bÃ¡c sÄ©
+                sessionGroup.style.display = 'none'; // Ẩn hoàn toàn theo yêu cầu của bác sĩ
                 const buoiSelect = document.getElementById('pat-buoi-dieu-tri');
-                if (buoiSelect) buoiSelect.value = 'TuDong'; // LuÃ´n luÃ´n lÃ  Tá»± Ä‘á»™ng
+                if (buoiSelect) buoiSelect.value = 'TuDong'; // Luôn luôn là Tự động
             }
         };
 
@@ -9317,9 +9317,9 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     window.externalUtilsData = jsonData.slice(1).map(r => ({ thuThuat: r[0], gioDienRa: r[1], gioKetThuc: r[2], nvChinh: r[3], nvPhu: '', may: r[4] }));
 
-                    alert("ÄÃ£ náº¡p file thÃ nh cÃ´ng!");
+                    alert("Đã nạp file thành công!");
 
-                } catch (err) { alert("Lá»—i Ä‘á»c file: " + err.message); }
+                } catch (err) { alert("Lỗi đọc file: " + err.message); }
 
             };
 
@@ -9335,7 +9335,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             if (statusEl) {
 
-                statusEl.innerText = "â³ Äang káº¿t ná»‘i mÃ¡y chá»§ Ä‘á»ƒ láº¥y dá»¯ liá»‡u TÃ¬m Ráº£nh chung...";
+                statusEl.innerText = "⏳ Đang kết nối máy chủ để lấy dữ liệu Tìm Rảnh chung...";
 
                 statusEl.style.color = "#f39c12";
 
@@ -9351,7 +9351,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     if (statusEl) {
 
-                        statusEl.innerText = `âœ… ÄÃ£ táº£i ${data.length} ca dÃ¹ng chung tá»« mÃ¡y chá»§ (Sheet TimRanh)!`;
+                        statusEl.innerText = `✅ Đã tải ${data.length} ca dùng chung từ máy chủ (Sheet TimRanh)!`;
 
                         statusEl.style.color = "#27ae60";
 
@@ -9359,7 +9359,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 } else if (statusEl) {
 
-                    statusEl.innerText = "(ChÆ°a cÃ³ dá»¯ liá»‡u chung. Äang dÃ¹ng: Lá»‹ch pháº§n má»m xáº¿p)";
+                    statusEl.innerText = "(Chưa có dữ liệu chung. Đang dùng: Lịch phần mềm xếp)";
 
                     statusEl.style.color = "#e67e22";
 
@@ -9374,7 +9374,7 @@ window.renderSttOrderControl = function (type, i, total) {
             var date = dateEl ? dateEl.value : '';
             if (!date) {
                 if (typeof callback === 'function') callback([]);
-                return alert('Vui lÃ²ng chá»n ngÃ y!');
+                return alert('Vui lòng chọn ngày!');
             }
             var statusEl = document.getElementById('utils-lich-status');
             var btn = document.getElementById('btn-tai-lich-utils');
@@ -9386,26 +9386,26 @@ window.renderSttOrderControl = function (type, i, total) {
                 var dd = date.split('-').reverse().join('/');
                 if (statusEl) {
                     if (window.utilsScheduleData.length > 0) {
-                        statusEl.innerText = 'âœ… NgÃ y ' + dd + ': ' + window.utilsScheduleData.length + ' ca. Sáºµn sÃ ng tÃ¬m ráº£nh!';
+                        statusEl.innerText = '✅ Ngày ' + dd + ': ' + window.utilsScheduleData.length + ' ca. Sẵn sàng tìm rảnh!';
                         statusEl.style.color = '#27ae60';
                     } else {
-                        statusEl.innerText = 'â„¹ï¸ NgÃ y ' + dd + ': 0 ca (NhÃ¢n sá»± ráº£nh cáº£ ngÃ y).';
+                        statusEl.innerText = 'ℹ️ Ngày ' + dd + ': 0 ca (Nhân sự rảnh cả ngày).';
                         statusEl.style.color = '#2980b9';
                     }
                 }
-                if (btn) { btn.disabled = false; btn.innerText = 'ðŸ“Š Xem Lá»‹ch'; }
+                if (btn) { btn.disabled = false; btn.innerText = '📊 Xem Lịch'; }
                 if (typeof callback === 'function') callback(window.utilsScheduleData);
             };
 
             const isToday = (window._systemActiveYMD && date === window._systemActiveYMD) || (date === new Date().toISOString().slice(0, 10));
             if (isToday && window.currentScheduleData && window.currentScheduleData.length > 0) {
-                if (statusEl) { statusEl.innerText = 'â³ Äang náº¡p lá»‹ch hiá»‡n táº¡i...'; statusEl.style.color = '#3498db'; }
+                if (statusEl) { statusEl.innerText = '⏳ Đang nạp lịch hiện tại...'; statusEl.style.color = '#3498db'; }
                 setTimeout(() => handleSuccess(window.currentScheduleData || [], []), 50);
                 return;
             }
 
-            if (statusEl) { statusEl.innerText = 'â³ Äang táº£i...'; statusEl.style.color = '#f39c12'; }
-            if (btn) { btn.disabled = true; btn.innerText = 'â³ Äang táº£i...'; }
+            if (statusEl) { statusEl.innerText = '⏳ Đang tải...'; statusEl.style.color = '#f39c12'; }
+            if (btn) { btn.disabled = true; btn.innerText = '⏳ Đang tải...'; }
             google.script.run
                 .withSuccessHandler(function (data) {
                     var sched = (data && data.schedule) ? data.schedule : (Array.isArray(data) ? data : []);
@@ -9413,8 +9413,8 @@ window.renderSttOrderControl = function (type, i, total) {
                     handleSuccess(sched, sb);
                 })
                 .withFailureHandler(function (err) {
-                    if (statusEl) { statusEl.innerText = 'âŒ Lá»—i táº£i dá»¯ liá»‡u!'; statusEl.style.color = '#c0392b'; }
-                    if (btn) { btn.disabled = false; btn.innerText = 'ðŸ“Š Xem Lá»‹ch'; }
+                    if (statusEl) { statusEl.innerText = '❌ Lỗi tải dữ liệu!'; statusEl.style.color = '#c0392b'; }
+                    if (btn) { btn.disabled = false; btn.innerText = '📊 Xem Lịch'; }
                     console.error('taiLichTheoNgay error:', err);
                     if (typeof callback === 'function') callback([]);
                 })
@@ -9425,7 +9425,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-        // Cháº¡y luÃ´n hÃ m táº£i dá»¯ liá»‡u ngay khi má»Ÿ web
+        // Chạy luôn hàm tải dữ liệu ngay khi mở web
 
         document.addEventListener('DOMContentLoaded', window.loadTimRanhDataFromServer);
 
@@ -9455,9 +9455,9 @@ window.renderSttOrderControl = function (type, i, total) {
             }
 
             const searchDate = document.getElementById('utils-search-date')?.value || '';
-            if (!searchDate) return alert("Vui lÃ²ng chá»n NgÃ y cáº§n tÃ¬m á»Ÿ trÃªn trÆ°á»›c!");
+            if (!searchDate) return alert("Vui lòng chọn Ngày cần tìm ở trên trước!");
 
-            // Tá»± Ä‘á»™ng táº£i lá»‹ch náº¿u chÆ°a táº£i hoáº·c ngÃ y tÃ¬m khÃ¡c ngÃ y trong cache
+            // Tự động tải lịch nếu chưa tải hoặc ngày tìm khác ngày trong cache
             if (!window.utilsScheduleData || window.utilsScheduleDate !== searchDate) {
                 taiLichTheoNgay(function () {
                     timBacSiRanh();
@@ -9478,7 +9478,7 @@ window.renderSttOrderControl = function (type, i, total) {
             tbody.innerHTML = '';
             let found = false;
 
-            // Äáº£m báº£o láº¥y danh sÃ¡ch nhÃ¢n sá»± chuáº©n (báº£o toÃ n vai trÃ², ká»¹ nÄƒng)
+            // Đảm bảo lấy danh sách nhân sự chuẩn (bảo toàn vai trò, kỹ năng)
             const staffList = (window._liveDataCacheBackup && window._liveDataCacheBackup.staff && window._liveDataCacheBackup.staff.length > 0)
                 ? window._liveDataCacheBackup.staff
                 : (dataCache.staff || []);
@@ -9486,23 +9486,23 @@ window.renderSttOrderControl = function (type, i, total) {
             const docs = staffList.filter(s => {
                 if (!s || !s.ten) return false;
                 const vt = String(s.vaiTro || s.role || '').toLowerCase();
-                const isNurse = /Ä‘iá»u dÆ°á»¡ng|dieu duong|^Ä‘d\b|^dd\b|y tÃ¡|y ta|há»™ lÃ½|ho ly|trá»£ lÃ½|tro ly/i.test(vt);
+                const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(vt);
                 if (isNurse) return false;
-                const isDocOrKtv = vt.includes('bÃ¡c sÄ©') || vt.includes('ká»¹ thuáº­t viÃªn') || vt.includes('ktv') || !vt;
-                return isDocOrKtv && s.trangThai !== 'Nghá»‰ cáº£ ngÃ y';
+                const isDocOrKtv = vt.includes('bác sĩ') || vt.includes('kỹ thuật viên') || vt.includes('ktv') || !vt;
+                return isDocOrKtv && s.trangThai !== 'Nghỉ cả ngày';
             });
 
             const isToday = (!searchDate || searchDate === new Date().toISOString().slice(0, 10) || searchDate === window._systemActiveYMD);
 
             docs.forEach(doc => {
                 let busy = [];
-                const dNameClean = String(doc.ten).trim().toLowerCase().replace(/^(bs\.|bs|ktv\.|ktv|Ä‘d\.|Ä‘d)\s+/i, '');
+                const dNameClean = String(doc.ten).trim().toLowerCase().replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd)\s+/i, '');
 
                 sourceData.forEach(row => {
                     const nvChinh = String(row.nvChinh || row[7] || '').trim().toLowerCase();
                     const nvPhu = String(row.nvPhu || row[8] || '').trim().toLowerCase();
-                    const cleanNvChinh = nvChinh.replace(/^(bs\.|bs|ktv\.|ktv|Ä‘d\.|Ä‘d)\s+/i, '');
-                    const cleanNvPhu = nvPhu.replace(/^(bs\.|bs|ktv\.|ktv|Ä‘d\.|Ä‘d)\s+/i, '');
+                    const cleanNvChinh = nvChinh.replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd)\s+/i, '');
+                    const cleanNvPhu = nvPhu.replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd)\s+/i, '');
 
                     if (cleanNvChinh !== dNameClean && cleanNvPhu !== dNameClean) return;
 
@@ -9525,7 +9525,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     }
                 });
 
-                // Chá»‰ Ã¡p dá»¥ng giá» báº­n táº¡m thá»i náº¿u Ä‘ang tÃ¬m lá»‹ch hÃ´m nay
+                // Chỉ áp dụng giờ bận tạm thời nếu đang tìm lịch hôm nay
                 if (isToday && doc.gioBan) {
                     String(doc.gioBan).split(',').forEach(b => {
                         const pts = b.split('-');
@@ -9534,9 +9534,9 @@ window.renderSttOrderControl = function (type, i, total) {
                         }
                     });
                 } else if (!isToday && window.utilsStaffBusy && window.utilsStaffBusy.length > 0) {
-                    // Náº¿u tÃ¬m ngÃ y cÅ©, láº¥y giá» báº­n thá»±c táº¿ lÆ°u trong utilsStaffBusy (tá»« gio_ban_cu)
+                    // Nếu tìm ngày cũ, lấy giờ bận thực tế lưu trong utilsStaffBusy (từ gio_ban_cu)
                     const foundSb = window.utilsStaffBusy.find(sb => {
-                        const sbClean = String(sb.ten || '').trim().toLowerCase().replace(/^(bs\.|bs|ktv\.|ktv|Ä‘d\.|Ä‘d)\s+/i, '');
+                        const sbClean = String(sb.ten || '').trim().toLowerCase().replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd)\s+/i, '');
                         return sbClean === dNameClean;
                     });
                     if (foundSb && Array.isArray(foundSb.slots)) {
@@ -9583,7 +9583,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                 const mins = b[0] - valid_start; 
                                 if (mins >= 1) {
                                     tbody.innerHTML += `<tr>
-                                        <td>ðŸ‘¨â€âš•ï¸ <b>${doc.ten}</b></td>
+                                        <td>👨‍⚕️ <b>${doc.ten}</b></td>
                                         <td>${m2t(valid_start)} - ${m2t(b[0] - 1)}</td>
                                         <td><strong style="color:#27ae60">${mins}</strong></td>
                                     </tr>`; 
@@ -9599,9 +9599,9 @@ window.renderSttOrderControl = function (type, i, total) {
                         if (valid_start < shEndExtended) {
                             const mins = shEndExtended - valid_start; 
                             if (mins >= 1) {
-                                const noteOvertime = extraMins > 0 ? ` <span style="font-size:11px; color:#e67e22; font-weight:normal;">(+${extraMins}p lá»‘)</span>` : '';
+                                const noteOvertime = extraMins > 0 ? ` <span style="font-size:11px; color:#e67e22; font-weight:normal;">(+${extraMins}p lố)</span>` : '';
                                 tbody.innerHTML += `<tr>
-                                    <td>ðŸ‘¨â€âš•ï¸ <b>${doc.ten}</b></td>
+                                    <td>👨‍⚕️ <b>${doc.ten}</b></td>
                                     <td>${m2t(valid_start)} - ${m2t(shEndExtended - 1)}${noteOvertime}</td>
                                     <td><strong style="color:#27ae60">${mins}</strong></td>
                                 </tr>`; 
@@ -9613,14 +9613,14 @@ window.renderSttOrderControl = function (type, i, total) {
             });
 
             if (!found) {
-                tbody.innerHTML = `<tr> <td colspan="3" align="center" style="color:#c0392b; font-weight:bold;">KhÃ´ng cÃ³ NhÃ¢n sá»± ráº£nh lÃºc nÃ y</td></tr>`;
+                tbody.innerHTML = `<tr> <td colspan="3" align="center" style="color:#c0392b; font-weight:bold;">Không có Nhân sự rảnh lúc này</td></tr>`;
             }
 
-            // Äá»“ng bá»™ dropdown lá»c tÃªn bÃ¡c sÄ©
+            // Đồng bộ dropdown lọc tên bác sĩ
             const filterSelect = document.getElementById('filter-doc-name');
             if (filterSelect) {
                 const uniqueDocs = [...new Set(docs.map(d => d.ten))].sort();
-                filterSelect.innerHTML = '<option value="">ðŸ” Lá»c tÃªn bÃ¡c sÄ©...</option>' + uniqueDocs.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+                filterSelect.innerHTML = '<option value="">🔍 Lọc tên bác sĩ...</option>' + uniqueDocs.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
                 if (previousSelection && uniqueDocs.includes(previousSelection)) {
                     filterSelect.value = previousSelection;
                 }
@@ -9630,9 +9630,9 @@ window.renderSttOrderControl = function (type, i, total) {
 
         function timMayRanh() {
             const searchDate = document.getElementById('utils-search-date')?.value || '';
-            if (!searchDate) return alert("Vui lÃ²ng chá»n NgÃ y cáº§n tÃ¬m á»Ÿ trÃªn trÆ°á»›c!");
+            if (!searchDate) return alert("Vui lòng chọn Ngày cần tìm ở trên trước!");
 
-            // Tá»± Ä‘á»™ng táº£i lá»‹ch náº¿u chÆ°a táº£i hoáº·c ngÃ y tÃ¬m khÃ¡c ngÃ y trong cache
+            // Tự động tải lịch nếu chưa tải hoặc ngày tìm khác ngày trong cache
             if (!window.utilsScheduleData || window.utilsScheduleDate !== searchDate) {
                 taiLichTheoNgay(function () {
                     timMayRanh();
@@ -9650,7 +9650,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             let sourceData = window.utilsScheduleData || [];
 
-            if (!loai || loai.includes("Chá»n loáº¡i")) return alert("Vui lÃ²ng chá»n Loáº¡i mÃ¡y cáº§n tÃ¬m!");
+            if (!loai || loai.includes("Chọn loại")) return alert("Vui lòng chọn Loại máy cần tìm!");
 
             const t_vao = t2m(gio_str);
             const tbody = document.getElementById('free-machine-list');
@@ -9659,12 +9659,12 @@ window.renderSttOrderControl = function (type, i, total) {
             const may_thuoc_loai = (dataCache.machine || []).filter(m => {
                 if (!m) return false;
                 const t = String(m.tenLoai || m.ten_loai || (Array.isArray(m) ? m[1] : '') || '').trim();
-                const s = m.trangThai || m.trang_thai || (Array.isArray(m) ? m[3] : '') || 'Sáºµn sÃ ng';
-                return t === loai.trim() && s === 'Sáºµn sÃ ng';
+                const s = m.trangThai || m.trang_thai || (Array.isArray(m) ? m[3] : '') || 'Sẵn sàng';
+                return t === loai.trim() && s === 'Sẵn sàng';
             }).map(m => String(m.maMay || m.ma_may || (Array.isArray(m) ? m[2] : '') || '').trim()).filter(Boolean);
 
             if (!may_thuoc_loai.length) {
-                tbody.innerHTML = `<tr> <td colspan="2" align="center" style="color:#c0392b; font-weight:bold;">MÃ¡y Ä‘ang há»ng/báº£o trÃ¬ háº¿t</td></tr>`;
+                tbody.innerHTML = `<tr> <td colspan="2" align="center" style="color:#c0392b; font-weight:bold;">Máy đang hỏng/bảo trì hết</td></tr>`;
                 return;
             }
 
@@ -9702,14 +9702,14 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (is_free) {
                     tbody.innerHTML += `<tr>
                         <td><strong>${m}</strong></td>
-                        <td style="color:#27ae60; font-weight:bold;">${free_until === 1440 ? "Háº¿t ngÃ y" : `Äáº¿n ${m2t(free_until - 1)}`}</td>
+                        <td style="color:#27ae60; font-weight:bold;">${free_until === 1440 ? "Hết ngày" : `Đến ${m2t(free_until - 1)}`}</td>
                     </tr>`;
                     found = true;
                 }
             });
 
             if (!found) {
-                tbody.innerHTML = `<tr> <td colspan="2" align="center" style="color:#c0392b; font-weight:bold;">Háº¿t mÃ¡y ráº£nh</td></tr>`;
+                tbody.innerHTML = `<tr> <td colspan="2" align="center" style="color:#c0392b; font-weight:bold;">Hết máy rảnh</td></tr>`;
             }
         }
 
@@ -9717,7 +9717,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // ðŸ“… TAB 7 - THá»¨ 7
+        // 📅 TAB 7 - THỨ 7
 
         // ============================================================
 
@@ -9745,7 +9745,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-                // ðŸ›¡ï¸ Láº¥y toÃ n bá»™ nhÃ¢n sá»± tá»« backend getSatData káº¿t há»£p vá»›i dataCache.staff (tá»« tab-staff)
+                // 🛡️ Lấy toàn bộ nhân sự từ backend getSatData kết hợp với dataCache.staff (từ tab-staff)
                 let allStaff = (data && Array.isArray(data.staff) && data.staff.length > 0) ? [...data.staff] : [];
                 if (window.dataCache && Array.isArray(window.dataCache.staff) && window.dataCache.staff.length > 0) {
                     window.dataCache.staff.forEach(s => {
@@ -9757,8 +9757,8 @@ window.renderSttOrderControl = function (type, i, total) {
                                 name: sTen,
                                 vaiTro: s.vaiTro || s.role || 'KTV',
                                 role: s.vaiTro || s.role || 'KTV',
-                                quyen: s.quyen || s.system || 'Cáº£ hai',
-                                system: s.quyen || s.system || 'Cáº£ hai',
+                                quyen: s.quyen || s.system || 'Cả hai',
+                                system: s.quyen || s.system || 'Cả hai',
                                 kyNang: s.kyNang || s.skills || '',
                                 skills: s.kyNang || s.skills || ''
                             });
@@ -9783,7 +9783,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 allStaff.forEach((s, idx) => {
                     const ten = s.ten || s.name;
-                    const isDoc = /bÃ¡c sÄ©|bac si|^bs\b/i.test(s.vaiTro || s.role || '') || /^bs\b/i.test(ten);
+                    const isDoc = /bác sĩ|bac si|^bs\b/i.test(s.vaiTro || s.role || '') || /^bs\b/i.test(ten);
                     t8_ns_vars[ten] = false; satStaffIndices[ten] = idx;
 
                     const fItem = document.createElement('div');
@@ -9809,10 +9809,10 @@ window.renderSttOrderControl = function (type, i, total) {
                     const roleBadge = document.createElement('span');
                     if (isDoc) {
                         roleBadge.style.cssText = 'background:#eff6ff; color:#1d4ed8; font-size:11px; padding:1px 6px; border-radius:3px; font-weight:700; border:1px solid #bfdbfe; margin-left:2px;';
-                        roleBadge.innerText = 'ðŸ©º BÃ¡c sÄ©';
-                    } else if (/Ä‘iá»u dÆ°á»¡ng|dieu duong|^Ä‘d\b|^dd\b/i.test(s.vaiTro || s.role || '')) {
+                        roleBadge.innerText = '🩺 Bác sĩ';
+                    } else if (/điều dưỡng|dieu duong|^đd\b|^dd\b/i.test(s.vaiTro || s.role || '')) {
                         roleBadge.style.cssText = 'background:#fef3c7; color:#b45309; font-size:11px; padding:1px 6px; border-radius:3px; font-weight:600; border:1px solid #fde68a; margin-left:2px;';
-                        roleBadge.innerText = 'ÄD';
+                        roleBadge.innerText = 'ĐD';
                     } else {
                         roleBadge.style.cssText = 'background:#f0fdf4; color:#15803d; font-size:11px; padding:1px 6px; border-radius:3px; font-weight:600; border:1px solid #bbf7d0; margin-left:2px;';
                         roleBadge.innerText = 'KTV';
@@ -9833,7 +9833,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                             <div style="display:flex; align-items:center; gap:5px; margin-bottom:5px; font-size:12px;">
 
-                                SÃ¡ng: <input type="text" id="sat-s1-${idx}" value="${s1_val}" class="time-input"
+                                Sáng: <input type="text" id="sat-s1-${idx}" value="${s1_val}" class="time-input"
 
                                     style="width:50px; padding:2px; text-align:center"> - <input type="text"
 
@@ -9841,7 +9841,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                                     style="width:50px; padding:2px; text-align:center"></div>
 
-                            <div style="display:flex; align-items:center; gap:5px; font-size:12px;">Chiá»u: <input
+                            <div style="display:flex; align-items:center; gap:5px; font-size:12px;">Chiều: <input
 
                                     type="text" id="sat-c1-${idx}" value="${c1_val}" class="time-input"
 
@@ -9865,7 +9865,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 frDsRight.innerHTML = '';
                 satCache = {};
 
-                // ðŸ›¡ï¸ Lá»ŒC Bá»Ž Bá»†NH NHÃ‚N ÄÃƒ CÃ“ GIá»œ RA VIá»†N (KHI CHÆ¯A CHá»T Sá»”)
+                // 🛡️ LỌC BỎ BỆNH NHÂN ĐÃ CÓ GIỜ RA VIỆN (KHI CHƯA CHỐT SỔ)
                 const dischargedSet = new Set();
                 if (window.dataCache && Array.isArray(window.dataCache.pat)) {
                     window.dataCache.pat.forEach(p => {
@@ -9891,10 +9891,10 @@ window.renderSttOrderControl = function (type, i, total) {
                 const countBadge = document.getElementById('sat-patient-count-badge');
                 if (countBadge) {
                     countBadge.innerText = `${filteredPatients.length} BN`;
-                    countBadge.title = `Tá»•ng cá»™ng ${filteredPatients.length} bá»‡nh nhÃ¢n Ä‘iá»u trá»‹ Thá»© 7 (ÄÃ£ loáº¡i bá» bá»‡nh nhÃ¢n ra viá»‡n)`;
+                    countBadge.title = `Tổng cộng ${filteredPatients.length} bệnh nhân điều trị Thứ 7 (Đã loại bỏ bệnh nhân ra viện)`;
                 }
 
-                // Sáº¯p xáº¿p A-Z theo tÃªn bá»‡nh nhÃ¢n
+                // Sắp xếp A-Z theo tên bệnh nhân
                 filteredPatients.sort((a, b) => (a.ten || '').localeCompare(b.ten || '', 'vi'));
                 const midPoint = Math.ceil(filteredPatients.length / 2);
 
@@ -9952,7 +9952,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     const readyLabel = document.createElement('label');
                     readyLabel.className = 'sat-ready-label';
-                    readyLabel.innerText = 'â± Giá» SS:';
+                    readyLabel.innerText = '⏱ Giờ SS:';
                     readyLabel.style.cssText = 'font-size:11px; font-weight:bold; margin:0;';
 
                     const readyInput = document.createElement('input');
@@ -9990,11 +9990,11 @@ window.renderSttOrderControl = function (type, i, total) {
             if (container.style.display === 'none') {
                 container.style.display = 'flex';
                 btn.style.background = '#e74c3c';
-                btn.innerText = 'ðŸ“ áº¨n nhÃ¢n sá»±';
+                btn.innerText = '📁 Ẩn nhân sự';
             } else {
                 container.style.display = 'none';
                 btn.style.background = '';
-                btn.innerText = 'ðŸ‘¥ Chá»n nhÃ¢n sá»±';
+                btn.innerText = '👥 Chọn nhân sự';
             }
         }
 
@@ -10009,7 +10009,7 @@ window.renderSttOrderControl = function (type, i, total) {
             const total = Object.values(counts).reduce((a, b) => a + b, 0);
             if (!total) {
                 if (sumContainer) sumContainer.style.display = 'none';
-                sumDiv.innerHTML = '<div style="color:gray; text-align:center; margin-top:20px;">ChÆ°a chá»n thá»§ thuáº­t nÃ o.</div>';
+                sumDiv.innerHTML = '<div style="color:gray; text-align:center; margin-top:20px;">Chưa chọn thủ thuật nào.</div>';
                 return;
             }
             if (sumContainer) sumContainer.style.display = 'flex';
@@ -10018,7 +10018,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                                 style="background:#2c3e50; color:white; padding:8px; border-radius:4px; margin-bottom:10px; display:flex; justify-content:space-between;">
 
-                                <b>Tá»”NG Cá»˜NG:</b> <b style="color:#f1c40f">${total} ca</b>
+                                <b>TỔNG CỘNG:</b> <b style="color:#f1c40f">${total} ca</b>
 
                             </div>`;
 
@@ -10028,7 +10028,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                                 style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #ecf0f1;">
 
-                                <span>â€¢ ${tt}:</span> <b style="color:#e67e22">${qty} ca</b>
+                                <span>• ${tt}:</span> <b style="color:#e67e22">${qty} ca</b>
 
                             </div>`;
 
@@ -10134,7 +10134,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     const r = satCache[bid].info;
 
-                    // Láº¥y giá» sáºµn sÃ ng hiá»‡n táº¡i trÃªn giao diá»‡n
+                    // Lấy giờ sẵn sàng hiện tại trên giao diện
 
                     const readyInput = document.querySelector(`#${satCache[bid].frameId} .input-ready-time`);
 
@@ -10142,7 +10142,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-                    // ThÃªm readyTime lÃ m cá»™t thá»© 4
+                    // Thêm readyTime làm cột thứ 4
 
                     data.push([bid, r.ten, chosen.join(", "), readyTime]);
 
@@ -10150,17 +10150,17 @@ window.renderSttOrderControl = function (type, i, total) {
 
             }
 
-            if (!data.length) return alert("ChÆ°a cÃ³ thá»§ thuáº­t nÃ o Ä‘Æ°á»£c tick Ä‘á»ƒ lÆ°u!");
+            if (!data.length) return alert("Chưa có thủ thuật nào được tick để lưu!");
 
 
 
             const wb = XLSX.utils.book_new();
 
-            // Khai bÃ¡o tiÃªu Ä‘á» cá»™t thá»© 4
+            // Khai báo tiêu đề cột thứ 4
 
-            const ws = XLSX.utils.aoa_to_sheet([["MÃ£ Truy Xuáº¥t", "TÃªn Bá»‡nh NhÃ¢n", "Thá»§ Thuáº­t ÄÃ£ Chá»n",
+            const ws = XLSX.utils.aoa_to_sheet([["Mã Truy Xuất", "Tên Bệnh Nhân", "Thủ Thuật Đã Chọn",
 
-                "Giá» Sáºµn SÃ ng"], ...data]);
+                "Giờ Sẵn Sàng"], ...data]);
 
             ws['!cols'] = [{ wch: 20 }, { wch: 25 }, { wch: 50 }, { wch: 15 }];
 
@@ -10172,124 +10172,121 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         // ============================================================
-        // ðŸ¥ Bá»˜ Tá»ª ÄIá»‚N & THUáº¬T TOÃN ÃNH Xáº  CHá»ˆ Äá»ŠNH Tá»ª FILE HIS
-        // Ãp dá»¥ng Ä‘á»“ng bá»™ cho cáº£ Tab Bá»‡nh NhÃ¢n & Tab Thá»© 7
+        // 🏥 BỘ TỪ ĐIỂN & THUẬT TOÁN ÁNH XẠ CHỈ ĐỊNH TỪ FILE HIS
+        // Áp dụng đồng bộ cho cả Tab Bệnh Nhân & Tab Thứ 7
         // ============================================================
         const HIS_MAPPING = [
-            // 1. Äiá»‡n chÃ¢m
-            { keywords: ['Ä‘iá»‡n chÃ¢m', 'dien cham', 'dc ', ' dc,', ',dc,', ',dc', 'Ä‘c ', ' Ä‘c,', ',Ä‘c,', ',Ä‘c', 'diencham', 'chÃ¢m Ä‘iá»‡n', 'cham dien'], excludes: ['chÃ¢m liá»‡t', 'liá»‡t'], target: 'Äiá»‡n chÃ¢m' },
-            // 2. Äiá»‡n chÃ¢m liá»‡t
-            { keywords: ['Ä‘iá»‡n chÃ¢m liá»‡t', 'dien cham liet', 'chÃ¢m liá»‡t', 'cham liet', 'Ä‘cl', 'dcl', 'dctb'], target: 'Äiá»‡n chÃ¢m liá»‡t' },
-            // 3. Thá»§y chÃ¢m
-            { keywords: ['thá»§y chÃ¢m', 'thuy cham', 'tc ', ' tc,', ',tc,', ',tc', 'thuycham'], target: 'Thá»§y chÃ¢m' },
-            // 4. Xoa bÃ³p báº¥m huyá»‡t
-            { keywords: ['xoa bÃ³p báº¥m huyá»‡t', 'xoa bop bam huyet', 'xbbh', 'xbb', 'báº¥m huyá»‡t', 'bam huyet', 'xoa bop bam'], target: 'Xoa bÃ³p báº¥m huyá»‡t' },
-            // 5. Xoa bÃ³p vÃ¹ng
-            { keywords: ['ká»¹ thuáº­t xoa bÃ³p vÃ¹ng', 'xoa bÃ³p vÃ¹ng', 'xbv', 'xoa bop vung', 'xoa bÃ³p cá»¥c bá»™', 'xoa bop'], target: 'Xoa bÃ³p vÃ¹ng' },
-            // 6. HÃ o chÃ¢m / ChÃ¢m cá»©u
-            // excludes 'kim' Ä‘á»ƒ trÃ¡nh nháº§m "Kim ChÃ¢m cá»©u cÃ¡c sá»‘" (váº­t tÆ° y táº¿) thÃ nh thá»§ thuáº­t HÃ o chÃ¢m
-            { keywords: ['hÃ o chÃ¢m', 'hao cham', ' hc,', ',hc,', ',hc', ' hc ', 'chÃ¢m cá»©u', 'cham cuu', 'Ã´n chÃ¢m', 'on cham', 'nhÄ© chÃ¢m', 'nhi cham'], excludes: ['kim cháº­m', 'kim cham', 'kim chau'], target: 'HÃ o chÃ¢m' },
-            // 7. Cáº¥y chá»‰
-            { keywords: ['cáº¥y chá»‰', 'cay chi', ' cc,', ',cc,', ',cc', ' cc ', 'caychi'], target: 'Cáº¥y chá»‰' },
-            // 8. Cá»©u ngáº£i / Cá»©u áº¥m
-            { keywords: ['cá»©u ngáº£i', 'cuu ngai', 'ngáº£i cá»©u', 'ngai cuu', 'cá»©u áº¥m', 'cuu am', ' cn,', ',cn,', ',cn', ' cn '], target: 'Cá»©u ngáº£i' },
-            // 9. Äiá»‡n xung
-            { keywords: ['Ä‘iá»‡n xung', 'dien xung', 'dÃ²ng Ä‘iá»‡n xung', 'dong dien xung', ' dx,', ',dx,', ',dx', ' dx '], target: 'Äiá»‡n xung' },
-            // 10. Äiá»‡n phÃ¢n / Dáº«n thuá»‘c
-            { keywords: ['Ä‘iá»‡n phÃ¢n', 'dien phan', 'dáº«n thuá»‘c', 'dan thuoc', 'Ä‘iá»‡n di', 'dien di', ' dp,', ',dp,', ',dp', ' dp '], target: 'Äiá»‡n phÃ¢n dáº«n thuá»‘c' },
-            // 11. Chiáº¿u Ä‘Ã¨n há»“ng ngoáº¡i
-            { keywords: ['há»“ng ngoáº¡i', 'hong ngoai', 'tia há»“ng', 'tia hong', 'Ä‘Ã¨n há»“ng', 'den hong', ' hn,', ',hn,', ',hn', ' hn '], target: 'Chiáº¿u Ä‘Ã¨n há»“ng ngoáº¡i' },
-            // 12. Laser / Laser Ä‘iá»u trá»‹
+            // 1. Điện châm
+            { keywords: ['điện châm', 'dien cham', 'dc ', ' dc,', ',dc,', ',dc', 'đc ', ' đc,', ',đc,', ',đc', 'diencham', 'châm điện', 'cham dien'], excludes: ['châm liệt', 'liệt'], target: 'Điện châm' },
+            // 2. Điện châm liệt
+            { keywords: ['điện châm liệt', 'dien cham liet', 'châm liệt', 'cham liet', 'đcl', 'dcl', 'dctb'], target: 'Điện châm liệt' },
+            // 3. Thủy châm
+            { keywords: ['thủy châm', 'thuy cham', 'tc ', ' tc,', ',tc,', ',tc', 'thuycham'], target: 'Thủy châm' },
+            // 4. Xoa bóp bấm huyệt
+            { keywords: ['xoa bóp bấm huyệt', 'xoa bop bam huyet', 'xbbh', 'xbb', 'bấm huyệt', 'bam huyet', 'xoa bop bam'], target: 'Xoa bóp bấm huyệt' },
+            // 5. Xoa bóp vùng
+            { keywords: ['kỹ thuật xoa bóp vùng', 'xoa bóp vùng', 'xbv', 'xoa bop vung', 'xoa bóp cục bộ', 'xoa bop'], target: 'Xoa bóp vùng' },
+            // 6. Hào châm / Châm cứu
+            { keywords: ['hào châm', 'hao cham', ' hc,', ',hc,', ',hc', ' hc ', 'châm cứu', 'cham cuu', 'ôn châm', 'on cham', 'nhĩ châm', 'nhi cham'], excludes: ['kim châm', 'kim cham', 'kim chau'], target: 'Hào châm' },
+            // 7. Cấy chỉ
+            { keywords: ['cấy chỉ', 'cay chi', ' cc,', ',cc,', ',cc', ' cc ', 'caychi'], target: 'Cấy chỉ' },
+            // 8. Cứu ngải / Cứu ấm
+            { keywords: ['cứu ngải', 'cuu ngai', 'ngải cứu', 'ngai cuu', 'cứu ấm', 'cuu am', ' cn,', ',cn,', ',cn', ' cn '], target: 'Cứu ngải' },
+            // 9. Điện xung
+            { keywords: ['điện xung', 'dien xung', 'dòng điện xung', 'dong dien xung', ' dx,', ',dx,', ',dx', ' dx '], target: 'Điện xung' },
+            // 10. Điện phân / Dẫn thuốc
+            { keywords: ['điện phân', 'dien phan', 'dẫn thuốc', 'dan thuoc', 'điện di', 'dien di', ' dp,', ',dp,', ',dp', ' dp '], target: 'Điện phân dẫn thuốc' },
+            // 11. Chiếu đèn hồng ngoại
+            { keywords: ['hồng ngoại', 'hong ngoai', 'tia hồng', 'tia hong', 'đèn hồng', 'den hong', ' hn,', ',hn,', ',hn', ' hn '], target: 'Chiếu đèn hồng ngoại' },
+            // 12. Laser / Laser điều trị
             { 
-                keywords: ['laser chÃ¢m', 'laser noi mach', 'laser ná»™i máº¡ch', 'laser dieu tri', 'laser Ä‘iá»u trá»‹', 'chÃ¢m laser', 'la-de', 'lade', 'chiáº¿u laser', 'ls ', ' ls,', ',ls,', ',ls', 'laser'], 
-                excludes: ['mÃ¡y Ä‘áº¿m', 'may dem', 'táº¿ bÃ o mÃ¡u', 'te bao mau', 'huyáº¿t há»c', 'huyet hoc', 'xÃ©t nghiá»‡m', 'xet nghiem', 'phÃ¢n tÃ­ch', 'phan tich', 'mÃ¡u', 'mau', 'nÆ°á»›c tiá»ƒu', 'nuoc tieu'], 
-                target: 'Laser Ä‘iá»u trá»‹' 
+                keywords: ['laser châm', 'laser noi mach', 'laser nội mạch', 'laser dieu tri', 'laser điều trị', 'châm laser', 'la-de', 'lade', 'chiếu laser', 'ls ', ' ls,', ',ls,', ',ls', 'laser'], 
+                excludes: ['máy đếm', 'may dem', 'tế bào máu', 'te bao mau', 'huyết học', 'huyet hoc', 'xét nghiệm', 'xet nghiem', 'phân tích', 'phan tich', 'máu', 'mau', 'nước tiểu', 'nuoc tieu'], 
+                target: 'Laser điều trị' 
             },
-            // 13. SÃ³ng ngáº¯n
-            { keywords: ['sÃ³ng ngáº¯n', 'song ngan', 'tháº¥u nhiá»‡t sÃ³ng ngáº¯n', ' sn,', ',sn,', ',sn', ' sn '], target: 'SÃ³ng ngáº¯n' },
-            // 14. SiÃªu Ã¢m Ä‘iá»u trá»‹
-            { keywords: ['siÃªu Ã¢m', 'sieu am', ' sa,', ',sa,', ',sa', ' sa '], excludes: ['á»• bá»¥ng', 'o bung', 'tuyáº¿n giÃ¡p', 'tuyen giap', 'doppler', 'pháº§n phá»¥', 'phan phu', 'tá»•ng quÃ¡t', 'tong quat', 'tuyáº¿n vÃº', 'tuyen vu', 'thai', 'tim', 'máº¡ch', 'mach', 'mÃ ng phá»•i', 'mang phoi', 'khá»›p', 'khop', 'pháº§n má»m', 'phan mem', '4d', '3d', 'ná»™i soi', 'noi soi'], target: 'SiÃªu Ã¢m' },
-            // 15. KÃ©o giÃ£n cá»™t sá»‘ng
-            { keywords: ['kÃ©o giÃ£n', 'keo gian', 'kÃ©o cá»™t sá»‘ng', 'keo cot song', 'cot song', 'kÃ©o cá»•', 'keo co', 'kÃ©o lÆ°ng', 'keo lung', ' kg,', ',kg,', ',kg', ' kg '], target: 'KÃ©o giÃ£n' },
-            // 16. Táº­p váº­n Ä‘á»™ng cÃ³ trá»£ giÃºp
-            { keywords: ['táº­p váº­n Ä‘á»™ng cÃ³ trá»£ giÃºp', 'tap van dong co tro giup', 'táº­p váº­n Ä‘á»™ng trá»£ giÃºp', 'tap van dong tro giup', 'váº­n Ä‘á»™ng cÃ³ trá»£ giÃºp', 'van dong co tro giup', 'váº­n Ä‘á»™ng trá»£ giÃºp', 'van dong tro giup', 'táº­p trá»£ giÃºp', 'tap tro giup', 'trá»£ giÃºp', 'tro giup', 'ttg', 'vÄ‘-tg', 'vdtg', ' ttg,', ',ttg,', ',ttg'], target: 'táº­p trá»£ giÃºp' },
-            // 17. Táº­p váº­n Ä‘á»™ng thá»¥ Ä‘á»™ng
-            { keywords: ['táº­p váº­n Ä‘á»™ng thá»¥ Ä‘á»™ng', 'van dong thu dong', 'táº­p thá»¥ Ä‘á»™ng', 'tap thu dong', 'thá»¥ Ä‘á»™ng', 'thu dong', 'vÄ‘-td', 'vdtd', 'ttd'], target: 'táº­p thá»¥ Ä‘á»™ng' },
-            // 18. Táº­p váº­n Ä‘á»™ng cÃ³ khÃ¡ng trá»Ÿ
-            { keywords: ['táº­p váº­n Ä‘á»™ng cÃ³ khÃ¡ng trá»Ÿ', 'van dong co khang tro', 'táº­p váº­n Ä‘á»™ng khÃ¡ng trá»Ÿ', 'tap van dong khang tro', 'váº­n Ä‘á»™ng cÃ³ khÃ¡ng trá»Ÿ', 'van dong co khang tro', 'váº­n Ä‘á»™ng khÃ¡ng trá»Ÿ', 'van dong khang tro', 'táº­p khÃ¡ng trá»Ÿ', 'tap khang tro', 'khÃ¡ng trá»Ÿ', 'khang tro', 'cÃ³ khÃ¡ng trá»Ÿ', 'tkt', 'ttk', 'vÄ‘-kt', 'vdkt', ' tkt,', ',tkt,', ',tkt', ' ttk,', ',ttk,', ',ttk', ' tk,', ',tk,', ',tk', ' tk '], target: 'táº­p khÃ¡ng trá»Ÿ' },
-            // 19. Táº­p cÃ¡c kiá»ƒu thá»Ÿ
-            { keywords: ['táº­p cÃ¡c kiá»ƒu thá»Ÿ', 'kiá»ƒu thá»Ÿ', 'kieu tho', 'táº­p thá»Ÿ', 'tap tho'], target: 'Táº­p thá»Ÿ' },
-            // 20. Váº­n Ä‘á»™ng trá»‹ liá»‡u
-            { keywords: ['váº­n Ä‘á»™ng trá»‹ liá»‡u', 'van dong tri lieu', 'vÄ‘tl', 'vdtl'], target: 'Váº­n Ä‘á»™ng trá»‹ liá»‡u' },
+            // 13. Sóng ngắn
+            { keywords: ['sóng ngắn', 'song ngan', 'thấu nhiệt sóng ngắn', ' sn,', ',sn,', ',sn', ' sn '], target: 'Sóng ngắn' },
+            // 14. Siêu âm điều trị
+            { keywords: ['siêu âm', 'sieu am', ' sa,', ',sa,', ',sa', ' sa '], excludes: ['ổ bụng', 'o bung', 'tuyến giáp', 'tuyen giap', 'doppler', 'phần phụ', 'phan phu', 'tổng quát', 'tong quat', 'tuyến vú', 'tuyen vu', 'thai', 'tim', 'mạch', 'mach', 'màng phổi', 'mang phoi', 'khớp', 'khop', 'phần mềm', 'phan mem', '4d', '3d', 'nội soi', 'noi soi'], target: 'Siêu âm' },
+            // 15. Kéo giãn cột sống
+            { keywords: ['kéo giãn', 'keo gian', 'kéo cột sống', 'keo cot song', 'cot song', 'kéo cổ', 'keo co', 'kéo lưng', 'keo lung', ' kg,', ',kg,', ',kg', ' kg '], target: 'Kéo giãn' },
+            // 16. Tập vận động có trợ giúp
+            { keywords: ['tập vận động có trợ giúp', 'tap van dong co tro giup', 'tập vận động trợ giúp', 'tap van dong tro giup', 'vận động có trợ giúp', 'van dong co tro giup', 'vận động trợ giúp', 'van dong tro giup', 'tập trợ giúp', 'tap tro giup', 'trợ giúp', 'tro giup', 'ttg', 'vđ-tg', 'vdtg', ' ttg,', ',ttg,', ',ttg'], target: 'tập trợ giúp' },
+            // 17. Tập vận động thụ động
+            { keywords: ['tập vận động thụ động', 'van dong thu dong', 'tập thụ động', 'tap thu dong', 'thụ động', 'thu dong', 'vđ-td', 'vdtd', 'ttd'], target: 'tập thụ động' },
+            // 18. Tập vận động có kháng trở
+            { keywords: ['tập vận động có kháng trở', 'van dong co khang tro', 'tập vận động kháng trở', 'tap van dong khang tro', 'vận động có kháng trở', 'van dong co khang tro', 'vận động kháng trở', 'van dong khang tro', 'tập kháng trở', 'tap khang tro', 'kháng trở', 'khang tro', 'có kháng trở', 'tkt', 'ttk', 'vđ-kt', 'vdkt', ' tkt,', ',tkt,', ',tkt', ' ttk,', ',ttk,', ',ttk', ' tk,', ',tk,', ',tk', ' tk '], target: 'tập kháng trở' },
+            // 19. Tập các kiểu thở
+            { keywords: ['tập các kiểu thở', 'kiểu thở', 'kieu tho', 'tập thở', 'tap tho'], target: 'Tập thở' },
+            // 20. Vận động trị liệu
+            { keywords: ['vận động trị liệu', 'van dong tri lieu', 'vđtl', 'vdtl'], target: 'Vận động trị liệu' },
             // 21. Parafin
-            { keywords: ['parafin', 'paraffine', 'paraffin', 'sÃ¡p parafin', 'Ä‘áº¯p parafin', ' pa,', ',pa,', ',pa', ' pa '], target: 'Parafin' },
-            // 22. Tá»« trÆ°á»ng
-            { keywords: ['tá»« trÆ°á»ng', 'tu truong', 'tá»« trÆ°á»ng Ä‘iá»u trá»‹'], target: 'Tá»« trÆ°á»ng' },
-            // 23. Táº¯m thuá»‘c / NgÃ¢m thuá»‘c
-            { keywords: ['táº¯m thuá»‘c', 'tam thuoc', 'ngÃ¢m thuá»‘c', 'ngam thuoc', 'ngÃ¢m chÃ¢n'], target: 'Táº¯m thuá»‘c' },
-            // 24. ChÆ°á»m nÃ³ng / Äáº¯p nÃ³ng
-            { keywords: ['chÆ°á»m nÃ³ng', 'chuom nong', 'Ä‘áº¯p nÃ³ng', 'dap nong', 'chÆ°á»m ngáº£i', 'chuom ngai'], target: 'ChÆ°á»m nÃ³ng' },
-            // 25. GiÃ¡c hÆ¡i
-            { keywords: ['giÃ¡c hÆ¡i', 'giac hoi', 'hÃºt giÃ¡c', 'hut giac', 'giÃ¡c'], target: 'GiÃ¡c hÆ¡i' },
-            // 26. XÃ´ng hÆ¡i / XÃ´ng thuá»‘c
-            { keywords: ['xÃ´ng hÆ¡i', 'xong hoi', 'xÃ´ng thuá»‘c', 'xong thuoc'], target: 'XÃ´ng thuá»‘c' },
-            // 27. NÃ©n Ã©p Ã¡p lá»±c hÆ¡i
-            { keywords: ['Ã¡p lá»±c hÆ¡i', 'ap luc hoi', 'nÃ©n Ã©p Ã¡p lá»±c hÆ¡i', 'bÆ¡m nÃ©n khÃ­', 'nÃ©n khÃ­'], target: 'NÃ©n Ã©p Ã¡p lá»±c hÆ¡i' },
-            // 28. NgÃ´n ngá»¯ trá»‹ liá»‡u / Táº­p nuá»‘t / Táº­p nÃ³i
-            { keywords: ['táº­p nuá»‘t', 'tap nuot', 'ngÃ´n ngá»¯ trá»‹ liá»‡u', 'ngon ngu tri lieu', 'táº­p nÃ³i', 'tap noi'], target: 'NgÃ´n ngá»¯ trá»‹ liá»‡u' },
-            // 29. Hoáº¡t Ä‘á»™ng trá»‹ liá»‡u
-            { keywords: ['hoáº¡t Ä‘á»™ng trá»‹ liá»‡u', 'hoat dong tri lieu', 'hÄ‘tl', 'hdtl'], target: 'Hoáº¡t Ä‘á»™ng trá»‹ liá»‡u' },
-            // 30. Táº­p thÄƒng báº±ng / Táº­p Ä‘i
-            { keywords: ['thÄƒng báº±ng', 'thang bang', 'táº­p Ä‘i', 'tap di', 'táº­p Ä‘á»©ng', 'thanh song song'], target: 'Táº­p thÄƒng báº±ng' }
+            { keywords: ['parafin', 'paraffine', 'paraffin', 'sáp parafin', 'đắp parafin', ' pa,', ',pa,', ',pa', ' pa '], target: 'Parafin' },
+            // 22. Từ trường
+            { keywords: ['từ trường', 'tu truong', 'từ trường điều trị'], target: 'Từ trường' },
+            // 23. Tắm thuốc / Ngâm thuốc
+            { keywords: ['tắm thuốc', 'tam thuoc', 'ngâm thuốc', 'ngam thuoc', 'ngâm chân'], target: 'Tắm thuốc' },
+            // 24. Chườm nóng / Đắp nóng
+            { keywords: ['chườm nóng', 'chuom nong', 'đắp nóng', 'dap nong', 'chườm ngải', 'chuom ngai'], target: 'Chườm nóng' },
+            // 25. Giác hơi
+            { keywords: ['giác hơi', 'giac hoi', 'hút giác', 'hut giac', 'giác'], target: 'Giác hơi' },
+            // 26. Xông hơi / Xông thuốc
+            { keywords: ['xông hơi', 'xong hoi', 'xông thuốc', 'xong thuoc'], target: 'Xông thuốc' },
+            // 27. Nén ép áp lực hơi
+            { keywords: ['áp lực hơi', 'ap luc hoi', 'nén ép áp lực hơi', 'bơm nén khí', 'nén khí'], target: 'Nén ép áp lực hơi' },
+            // 28. Ngôn ngữ trị liệu / Tập nuốt / Tập nói
+            { keywords: ['tập nuốt', 'tap nuot', 'ngôn ngữ trị liệu', 'ngon ngu tri lieu', 'tập nói', 'tap noi'], target: 'Ngôn ngữ trị liệu' },
+            // 29. Hoạt động trị liệu
+            { keywords: ['hoạt động trị liệu', 'hoat dong tri lieu', 'hđtl', 'hdtl'], target: 'Hoạt động trị liệu' },
+            // 30. Tập thăng bằng / Tập đi
+            { keywords: ['thăng bằng', 'thang bang', 'tập đi', 'tap di', 'tập đứng', 'thanh song song'], target: 'Tập thăng bằng' }
         ];
 
-        // Chuáº©n hÃ³a chuá»—i (bá» dáº¥u, viáº¿t thÆ°á»ng, KHÃ”NG trim)
+        // Chuẩn hóa chuỗi (bỏ dấu, viết thường, KHÔNG trim)
         function normalizeStrNoTrim(str) {
             const decodeFn = (typeof window !== 'undefined' && typeof window.decodeVietnameseEncoding === 'function')
                 ? window.decodeVietnameseEncoding
                 : (s => String(s || '').normalize('NFC').trim());
             return decodeFn(str).toLowerCase()
                 .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-                .replace(/Ä‘/g, 'd').replace(/Ä/g, 'd');
+                .replace(/đ/g, 'd').replace(/Đ/g, 'd');
         }
 
-        // Chuáº©n hÃ³a chuá»—i (bá» dáº¥u, viáº¿t thÆ°á»ng, cÃ³ trim)
+        // Chuẩn hóa chuỗi (bỏ dấu, viết thường, có trim)
         function normalizeStr(str) {
             return normalizeStrNoTrim(str).trim();
         }
 
-        // LÃ m sáº¡ch chuá»—i dá»‹ch vá»¥ thÃ´ tá»« dÃ²ng HIS
+        // Làm sạch chuỗi dịch vụ thô từ dòng HIS
         function cleanHISLine(line) {
             if (!line) return '';
             const decodeFn = (typeof window !== 'undefined' && typeof window.decodeVietnameseEncoding === 'function')
                 ? window.decodeVietnameseEncoding
                 : (s => String(s || '').normalize('NFC').trim());
             return decodeFn(line)
-                .replace(/^\s*(?:\d+[\.\/\-:\)]\s*|[+\-â€¢*]\s*)+/, '') // Bá» STT Ä‘áº§u dÃ²ng
-                .replace(/\s*-\s*\d+\s*(?:láº§n|lan)?(?:\s*\/\s*(?:ngÃ y|ngay))?/gi, '') // Bá» - 1 láº§n/ngÃ y
-                .replace(/\s*\(\s*\d+\s*(?:láº§n|lan)?\s*\)/gi, '') // Bá» (1 láº§n)
-                .replace(/\s*x\s*\d+\s*(?:láº§n|lan)?/gi, '') // Bá» x 1 láº§n
-                .replace(/\s*\([^)]*phÃ²ng[^)]*\)/gi, '') // Bá» (phÃ²ng ...)
-                .replace(/\s*\([^)]*khoa[^)]*\)/gi, '') // Bá» (khoa ...)
-                .replace(/\s*\([^)]*bÃ¡c sÄ©[^)]*\)/gi, '')
+                .replace(/^\s*(?:\d+[\.\/\-:\)]\s*|[+\-•*]\s*)+/, '') // Bỏ STT đầu dòng
+                .replace(/\s*-\s*\d+\s*(?:lần|lan)?(?:\s*\/\s*(?:ngày|ngay))?/gi, '') // Bỏ - 1 lần/ngày
+                .replace(/\s*\(\s*\d+\s*(?:lần|lan)?\s*\)/gi, '') // Bỏ (1 lần)
+                .replace(/\s*x\s*\d+\s*(?:lần|lan)?/gi, '') // Bỏ x 1 lần
+                .replace(/\s*\([^)]*phòng[^)]*\)/gi, '') // Bỏ (phòng ...)
+                .replace(/\s*\([^)]*khoa[^)]*\)/gi, '') // Bỏ (khoa ...)
+                .replace(/\s*\([^)]*bác sĩ[^)]*\)/gi, '')
                 .replace(/\s*\([^)]*bs[^)]*\)/gi, '')
-                .replace(/\s*\(\s*(?:láº§n|lan|ngÃ y|ngay)\s*\)/gi, '') // Bá» Ä‘uÃ´i (Láº§n) hoáº·c (NgÃ y) cÃ²n sÃ³t
-                // ðŸ”§ Fix: Bá» Ä‘uÃ´i Ä‘Æ¡n vá»‹ váº­t tÆ° y táº¿ nhÆ° (CÃ¡i), (Chiáº¿c), (á»ng), (GÃ³i), (Há»™p), (TuÃ½p)
-                // Ä‘á»ƒ trÃ¡nh "Kim ChÃ¢m cá»©u cÃ¡c sá»‘ (CÃ¡i)" bá»‹ nháº­n diá»‡n nháº§m lÃ  thá»§ thuáº­t
-                .replace(/\s*\(\s*(?:CÃ¡i|cÃ¡i|Chiáº¿c|chiáº¿c|á»ng|á»‘ng|GÃ³i|gÃ³i|Há»™p|há»™p|TuÃ½p|tuÃ½p|Lá»|lá»|ViÃªn|viÃªn|Chai|chai|Tá»|tá»|Cáº·p|cáº·p|ÄÃ´i|Ä‘Ã´i|Miáº¿ng|miáº¿ng)\s*\)/g, '') // Bá» Ä‘Æ¡n vá»‹ váº­t tÆ° y táº¿
+                .replace(/\s*\(\s*(?:lần|lan|ngày|ngay)\s*\)/gi, '') // Bỏ đuôi (Lần) hoặc (Ngày) còn sót
+                .replace(/\s*\(\s*(?:Cái|cái|Chiếc|chiếc|Ống|ống|Hộp|hộp|Gói|gói|Lọ|lọ|Viên|viên|Chai|chai|Túi|túi|Bịch|bịch)\s*\)/g, '') // Bỏ đơn vị tính vật tư y tế trong ngoặc đơn
                 .trim();
         }
 
-        // TÃ¡ch Ä‘a thá»§ thuáº­t trong 1 Ã´ y lá»‡nh HIS (há»— trá»£ \n, ;, 1. 2., +, -, pháº©y)
+        // Tách đa thủ thuật trong 1 ô y lệnh HIS (hỗ trợ \n, ;, 1. 2., +, -, phẩy)
         function extractProceduresFromHISCell(dichVuStr) {
             if (!dichVuStr) return [];
             const text = String(dichVuStr).trim();
             if (!text) return [];
 
-            // 1. TÃ¡ch theo ngáº¯t dÃ²ng (newline)
+            // 1. Tách theo ngắt dòng (newline)
             let rawParts = text.split(/[\r\n]+/).map(s => s.trim()).filter(Boolean);
 
-            // 2. TÃ¡ch tiáº¿p theo dáº¥u cháº¥m pháº©y ; hoáº·c Ä‘Ã¡nh sá»‘ 1. 2. 3. hoáº·c dáº¥u gáº¡ch Ä‘áº§u dÃ²ng
+            // 2. Tách tiếp theo dấu chấm phẩy ; hoặc đánh số 1. 2. 3. hoặc dấu gạch đầu dòng
             let subParts = [];
             rawParts.forEach(part => {
                 if (part.includes(';')) {
@@ -10301,14 +10298,14 @@ window.renderSttOrderControl = function (type, i, total) {
                     } else {
                         subParts.push(part);
                     }
-                } else if (/(?:^|\s+)[+\-â€¢*]\s+/.test(part) && part.split(/(?:^|\s+)[+\-â€¢*]\s+/).filter(Boolean).length > 1) {
-                    subParts.push(...part.split(/(?:^|\s+)[+\-â€¢*]\s+/).map(s => s.trim()).filter(Boolean));
+                } else if (/(?:^|\s+)[+\-•*]\s+/.test(part) && part.split(/(?:^|\s+)[+\-•*]\s+/).filter(Boolean).length > 1) {
+                    subParts.push(...part.split(/(?:^|\s+)[+\-•*]\s+/).map(s => s.trim()).filter(Boolean));
                 } else {
                     subParts.push(part);
                 }
             });
 
-            // 3. Náº¿u váº«n cÃ²n chuá»—i cÃ³ chá»©a dáº¥u pháº©y mÃ  tÃ¡ch dáº¥u pháº©y ra cÃ³ thá»§ thuáº­t há»£p lá»‡
+            // 3. Nếu vẫn còn chuỗi có chứa dấu phẩy mà tách dấu phẩy ra có thủ thuật hợp lệ
             let result = [];
             subParts.forEach(item => {
                 if (item.includes(',')) {
@@ -10325,7 +10322,7 @@ window.renderSttOrderControl = function (type, i, total) {
             return result.map(s => cleanHISLine(s)).filter(Boolean);
         }
 
-        // TÃ¬m tÃªn thá»§ thuáº­t chuáº©n (canonical name) tá»« danh má»¥c Ä‘ang cÃ³ trong há»‡ thá»‘ng dataCache.proc
+        // Tìm tên thủ thuật chuẩn (canonical name) từ danh mục đang có trong hệ thống dataCache.proc
         function getCanonicalProcedureName(targetOrName) {
             if (!targetOrName) return null;
             const procs = (window.dataCache && (window.dataCache.proc || window.dataCache.procedures)) || [];
@@ -10334,7 +10331,7 @@ window.renderSttOrderControl = function (type, i, total) {
             const nTarget = normalizeStr(targetOrName);
             const cleanTarget = cleanMedicalProc(targetOrName);
 
-            // 1. Khá»›p chÃ­nh xÃ¡c tÃªn hoáº·c viáº¿t táº¯t
+            // 1. Khớp chính xác tên hoặc viết tắt
             const exact = procs.find(p => {
                 if (!p) return false;
                 const pNorm = normalizeStr(p.ten);
@@ -10344,7 +10341,7 @@ window.renderSttOrderControl = function (type, i, total) {
             });
             if (exact) return exact.ten;
 
-            // 2. Khá»›p alias nhÃ³m thá»§ thuáº­t (Trá»£ giÃºp, KhÃ¡ng trá»Ÿ, Thá»¥ Ä‘á»™ng)
+            // 2. Khớp alias nhóm thủ thuật (Trợ giúp, Kháng trở, Thụ động)
             if (cleanTarget.includes('tro giup') || nTarget === 'ttg' || nTarget === 'vd-tg' || nTarget === 'vdtg') {
                 const pTG = procs.find(p => cleanMedicalProc(p.ten).includes('tro giup') || (p.vietTat && normalizeStr(p.vietTat) === 'ttg'));
                 if (pTG) return pTG.ten;
@@ -10358,7 +10355,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (pTD) return pTD.ten;
             }
 
-            // 3. Khá»›p chá»©a trá»n váº¹n
+            // 3. Khớp chứa trọn vẹn
             const partial = procs.find(p => {
                 if (!p) return false;
                 const pNorm = normalizeStr(p.ten);
@@ -10373,7 +10370,7 @@ window.renderSttOrderControl = function (type, i, total) {
             return targetOrName;
         }
 
-        // Ãnh xáº¡ tÃªn dá»‹ch vá»¥ HIS â†’ tÃªn thá»§ thuáº­t chuáº©n trong pháº§n má»m
+        // Ánh xạ tên dịch vụ HIS → tên thủ thuật chuẩn trong phần mềm
         function mapHISToProcedure(hisServiceName) {
             if (!hisServiceName) return null;
             const clean = cleanHISLine(hisServiceName);
@@ -10382,7 +10379,7 @@ window.renderSttOrderControl = function (type, i, total) {
             const procs = (window.dataCache && (window.dataCache.proc || window.dataCache.procedures)) || [];
             const cleanNorm = normalizeStr(clean);
 
-            // Æ¯u tiÃªn 1: Khá»›p trá»±c tiáº¿p vá»›i danh má»¥c thá»§ thuáº­t Ä‘ang cÃ³ trong pháº§n má»m (dataCache.proc)
+            // Ưu tiên 1: Khớp trực tiếp với danh mục thủ thuật đang có trong phần mềm (dataCache.proc)
             if (procs.length > 0) {
                 const direct = procs.find(p => normalizeStr(p.ten) === cleanNorm || (p.vietTat && normalizeStr(p.vietTat) === cleanNorm));
                 if (direct) return direct.ten;
@@ -10391,7 +10388,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (canonical && procs.some(p => p.ten === canonical)) return canonical;
             }
 
-            // Æ¯u tiÃªn 2: Khá»›p qua báº£ng tá»« khÃ³a HIS_MAPPING
+            // Ưu tiên 2: Khớp qua bảng từ khóa HIS_MAPPING
             const normalized = ' ' + normalizeStrNoTrim(clean) + ' ';
             for (const mapping of HIS_MAPPING) {
                 let isExcluded = false;
@@ -10412,10 +10409,10 @@ window.renderSttOrderControl = function (type, i, total) {
                 }
             }
 
-            return null; // KhÃ´ng nháº­n diá»‡n Ä‘Æ°á»£c
+            return null; // Không nhận diện được
         }
 
-        // So khá»›p thá»§ thuáº­t thÃ´ng minh cho Tab Thá»© 7
+        // So khớp thủ thuật thông minh cho Tab Thứ 7
         function matchProcedureInTab7(itemProcName, hisProcName) {
             if (!itemProcName || !hisProcName) return false;
             return matchProc(itemProcName, hisProcName);
@@ -10442,7 +10439,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     const properFn = (typeof window !== 'undefined' && typeof window.toVietnameseProperCase === 'function')
                         ? window.toVietnameseProperCase
                         : (s => String(s || '').toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase()));
-                    const norm = s => decodeFn(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\u0111\u0110]/g, 'd').replace(/Ä‘/g, 'd').trim();
+                    const norm = s => decodeFn(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\u0111\u0110]/g, 'd').replace(/đ/g, 'd').trim();
                     const healFn = (typeof window !== 'undefined' && typeof window.cleanAndHealPatientName === 'function')
                         ? window.cleanAndHealPatientName
                         : (typeof SchedulerEngine !== 'undefined' && typeof SchedulerEngine.cleanAndHealPatientName === 'function')
@@ -10452,7 +10449,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     let isHIS = false;
                     let colTen = 6, colNamSinh = 7, colDichVu = 13, startRow = 1, colLoaiDieuTri = -1;
 
-                    // Kiá»ƒm tra file HIS hay file T7 ná»™i bá»™
+                    // Kiểm tra file HIS hay file T7 nội bộ
                     for (let i = 0; i < Math.min(15, roa.length); i++) {
                         const rowStr = roa[i].map(c => norm(c)).join('|');
                         if (rowStr.includes('ma truy xuat') && rowStr.includes('gio san sang')) {
@@ -10501,7 +10498,7 @@ window.renderSttOrderControl = function (type, i, total) {
                             if (!hisMap[properTen]) hisMap[properTen] = new Set();
                             if (loaiBn) hisLoaiMap[properTen] = loaiBn;
 
-                            // TÃ¡ch nhiá»u thá»§ thuáº­t trong 1 Ã´ y lá»‡nh HIS
+                            // Tách nhiều thủ thuật trong 1 ô y lệnh HIS
                             const items = extractProceduresFromHISCell(dichVu);
                             items.forEach(line => {
                                 const mapped = mapHISToProcedure(line);
@@ -10570,7 +10567,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     }
 
                     updateSummarySat();
-                    alert(`ÄÃ£ náº¡p thÃ nh cÃ´ng ${count} thá»§ thuáº­t ${isHIS ? 'tá»« file HIS' : 'tá»« file Excel Thá»© 7'}!`);
+                    alert(`Đã nạp thành công ${count} thủ thuật ${isHIS ? 'từ file HIS' : 'từ file Excel Thứ 7'}!`);
                 };
                 reader.readAsArrayBuffer(e.target.files[0]);
             };
@@ -10623,7 +10620,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-                // ðŸ”¥ ÄÃ£ sá»­a: GÃ¡n giá» sáºµn sÃ ng vÃ o biáº¿n gioVao Ä‘á»ƒ thuáº­t toÃ¡n Code.gs Ä‘á»c Ä‘Æ°á»£c
+                // 🔥 Đã sửa: Gán giờ sẵn sàng vào biến gioVao để thuật toán Code.gs đọc được
 
                 const timeToRun = readyInput ? readyInput.value : "07:30";
 
@@ -10657,14 +10654,14 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const btn = document.getElementById('btn-xep-sat');
 
-            btn.innerText = 'â³ ÄANG Xáº¾P...'; btn.disabled = true;
+            btn.innerText = '⏳ ĐANG XẾP...'; btn.disabled = true;
 
             const startTime = performance.now();
             setTimeout(() => {
                 try {
                     const res = window.SchedulerEngine.runSaturdayScheduling(payload, dateVal);
                     const timeTaken = ((performance.now() - startTime) / 1000).toFixed(2);
-                    btn.innerText = 'â–¶ Xáº¾P Lá»ŠCH THá»¨ 7'; btn.disabled = false;
+                    btn.innerText = '▶ XẾP LỊCH THỨ 7'; btn.disabled = false;
 
                     const sched = (res && (Array.isArray(res.sched) ? res.sched : (Array.isArray(res.schedule) ? res.schedule : []))) || [];
                     let rot = [];
@@ -10692,7 +10689,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     localStorage.setItem(getUnitStorageKey('meds_unscheduled'), JSON.stringify(window.lastUnscheduledData));
                     localStorage.setItem('meds_unscheduled', JSON.stringify(window.lastUnscheduledData));
                     
-                    // Äá»“ng bá»™ ngay vÃ o offline cache Ä‘á»ƒ F5 khÃ´ng bá»‹ máº¥t dá»¯ liá»‡u
+                    // Đồng bộ ngay vào offline cache để F5 không bị mất dữ liệu
                     try {
                         const cachedStr = localStorage.getItem(getBootstrapCacheKey());
                         if (cachedStr) {
@@ -10716,7 +10713,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     const resEl = document.getElementById('schedule-result');
                     if (resEl) {
-                        resEl.innerHTML = `<div class="alert alert-success" style="margin-top:10px">Xáº¿p thÃ nh cÃ´ng: <b>${window.currentScheduleData.length}</b> ca. Rá»›t: <b>${window.lastUnscheduledData.length}</b> ca. <span style="color:#555; font-size:13px;">(â± <b>${timeTaken} giÃ¢y</b>)</span></div>`;
+                        resEl.innerHTML = `<div class="alert alert-success" style="margin-top:10px">Xếp thành công: <b>${window.currentScheduleData.length}</b> ca. Rớt: <b>${window.lastUnscheduledData.length}</b> ca. <span style="color:#555; font-size:13px;">(⏱ <b>${timeTaken} giây</b>)</span></div>`;
                     }
 
                     filterSchedule(); 
@@ -10724,14 +10721,14 @@ window.renderSttOrderControl = function (type, i, total) {
                     if (typeof renderPatientsTable === 'function') renderPatientsTable();
                     if (typeof loadDashboard === 'function') loadDashboard();
 
-                    // Äá»“ng bá»™ lÆ°u lá»‹ch trÃ¬nh thá»© 7 vÃ o D1 SQLite trong ná»n
+                    // Đồng bộ lưu lịch trình thứ 7 vào D1 SQLite trong nền
                     if (sched.length > 0) {
                         const backendSched = sched.map(x => scheduleRowToBackendArray(x, dateVal));
                         callApi('saveSchedule', [dateVal, backendSched], null, null);
                     }
                 } catch(err) {
-                    btn.innerText = 'â–¶ Xáº¾P Lá»ŠCH THá»¨ 7'; btn.disabled = false;
-                    alert("Lá»—i: " + err.message);
+                    btn.innerText = '▶ XẾP LỊCH THỨ 7'; btn.disabled = false;
+                    alert("Lỗi: " + err.message);
                 }
             }, 30);
 
@@ -10766,15 +10763,15 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // ðŸ“¤ XUáº¤T / NHáº¬P Bá»†NH NHÃ‚N
+        // 📤 XUẤT / NHẬP BỆNH NHÂN
 
         // ============================================================
 
         function exportPatients() {
 
-            if (!dataCache.pat.length) return alert("KhÃ´ng cÃ³ dá»¯ liá»‡u bá»‡nh nhÃ¢n Ä‘á»ƒ xuáº¥t!");
+            if (!dataCache.pat.length) return alert("Không có dữ liệu bệnh nhân để xuất!");
 
-            const ws_data = [["STT", "TÃªn BN", "NÄƒm Sinh", "NgÃ y VÃ o", "Giá» VÃ o", "Giá» Báº­n", "Giá» Ra", "PhÃ²ng", "Thá»§ Thuáº­t"],
+            const ws_data = [["STT", "Tên BN", "Năm Sinh", "Ngày Vào", "Giờ Vào", "Giờ Bận", "Giờ Ra", "Phòng", "Thủ Thuật"],
 
             ...dataCache.pat.map((p, i) => [i + 1, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan,
 
@@ -10801,14 +10798,14 @@ window.renderSttOrderControl = function (type, i, total) {
                     console.warn("[bulkUpdatePatients API fallback to sequential]:", err);
                     const total = cleanList.length;
                     if (total === 0) {
-                        if (onSuccess) onSuccess({ message: "Danh sÃ¡ch trá»‘ng" });
+                        if (onSuccess) onSuccess({ message: "Danh sách trống" });
                         return;
                     }
 
                     let current = 0;
                     function saveNext() {
                         if (current >= total) {
-                            if (onSuccess) onSuccess({ message: `ÄÃ£ lÆ°u thÃ nh cÃ´ng ${total} bá»‡nh nhÃ¢n!` });
+                            if (onSuccess) onSuccess({ message: `Đã lưu thành công ${total} bệnh nhân!` });
                             return;
                         }
                         const p = cleanList[current];
@@ -10819,7 +10816,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                 saveNext();
                             })
                             .withFailureHandler(subErr => {
-                                console.warn(`[Lá»—i lÆ°u BN ${p.ten}]:`, subErr);
+                                console.warn(`[Lỗi lưu BN ${p.ten}]:`, subErr);
                                 current++;
                                 saveNext();
                             })
@@ -10843,8 +10840,8 @@ window.renderSttOrderControl = function (type, i, total) {
                         const cleanTen = String(t || '')
                             .normalize('NFD')
                             .replace(/[\u0300-\u036f]/g, '')
-                            .replace(/Ä‘/g, 'd')
-                            .replace(/Ä/g, 'd')
+                            .replace(/đ/g, 'd')
+                            .replace(/Đ/g, 'd')
                             .toLowerCase()
                             .replace(/[^a-z0-9]/g, '');
                         const cleanNS = String(ns || '').trim();
@@ -10878,7 +10875,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     const activeRooms = (dataCache && Array.isArray(dataCache.room)) ? dataCache.room : [];
                     const validRoomNames = activeRooms.map(r => String(r.tenPhong || r.ten || (Array.isArray(r) ? r[1] : '') || '').trim()).filter(Boolean);
-                    const defaultFallbackRoom = validRoomNames.length > 0 ? validRoomNames[0] : 'PhÃ²ng 1';
+                    const defaultFallbackRoom = validRoomNames.length > 0 ? validRoomNames[0] : 'Phòng 1';
 
                     const existingMap = {};
                     existingPats.forEach(p => {
@@ -10904,16 +10901,16 @@ window.renderSttOrderControl = function (type, i, total) {
                             thuThuat: decodeFn(r[8]),
                             loai_bn: r[9] ? decodeFn(r[9]) : (existing ? (existing.loai_bn || existing.loaiBN || 'NoiTru') : 'NoiTru'),
                             buoi_dieu_tri: r[10] ? decodeFn(r[10]) : (existing ? (existing.buoi_dieu_tri || existing.buoiDieuTri || 'TuDong') : 'TuDong'),
-                            status: existing ? (existing.status || existing.trangThai || 'ChÆ°a xáº¿p') : 'ChÆ°a xáº¿p',
+                            status: existing ? (existing.status || existing.trangThai || 'Chưa xếp') : 'Chưa xếp',
                             gender: existing ? (existing.gender || existing.gioiTinh || 'Nam') : 'Nam',
                             bed: existing ? (existing.bed || existing.giuong || '') : '',
                             order_idx: existing ? (existing.order_idx !== undefined ? Number(existing.order_idx) : 0) : 0
                         };
                     }).filter(p => p.ten);
 
-                    const replaceAll = confirm("BÃ¡c sÄ© cÃ³ muá»‘n THAY THáº¾ TOÃ€N Bá»˜ danh sÃ¡ch hiá»‡n táº¡i khÃ´ng?\n\n- OK: XÃ³a sáº¡ch, náº¡p má»›i.\n- Cancel: Bá»• sung thÃªm.");
+                    const replaceAll = confirm("Bác sĩ có muốn THAY THẾ TOÀN BỘ danh sách hiện tại không?\n\n- OK: Xóa sạch, nạp mới.\n- Cancel: Bổ sung thêm.");
 
-                    // ðŸ›¡ï¸ Há»£p nháº¥t thÃ´ng minh: Náº¿u bá»• sung thÃªm, cáº­p nháº­t bá»‡nh nhÃ¢n Ä‘Ã£ cÃ³ vÃ  thÃªm bá»‡nh nhÃ¢n má»›i
+                    // 🛡️ Hợp nhất thông minh: Nếu bổ sung thêm, cập nhật bệnh nhân đã có và thêm bệnh nhân mới
                     let finalImportList = patientList;
                     if (!replaceAll && existingPats.length > 0) {
                         const mergedMap = new Map();
@@ -10934,25 +10931,25 @@ window.renderSttOrderControl = function (type, i, total) {
                     }
 
                     const btn = document.getElementById('btn-import-pat');
-                    btn.innerText = "â³ Äang xá»­ lÃ½..."; btn.disabled = true;
+                    btn.innerText = "⏳ Đang xử lý..."; btn.disabled = true;
 
                     savePatientsWithFallback(
                         finalImportList,
                         replaceAll,
                         res => {
-                            const msg = typeof res === 'object' && res.message ? res.message : (typeof res === 'string' ? res : "Nháº­p dá»¯ liá»‡u thÃ nh cÃ´ng!");
+                            const msg = typeof res === 'object' && res.message ? res.message : (typeof res === 'string' ? res : "Nhập dữ liệu thành công!");
                             showToast(msg, 'success', 5000);
-                            btn.innerText = "â¬‡ï¸ Excel"; btn.disabled = false;
+                            btn.innerText = "⬇️ Excel"; btn.disabled = false;
                             if (window.dataCacheTime) delete window.dataCacheTime['pat'];
                             loadEntity('getBenhNhan', 'pat', renderPatientsTable, [], true);
                         },
                         err => {
-                            const msg = (err && typeof err === 'object') ? (err.message || err.error || JSON.stringify(err)) : String(err || 'Lá»—i khÃ´ng xÃ¡c Ä‘á»‹nh');
-                            showToast('Lá»—i nháº­p Excel: ' + msg, 'error', 6000);
-                            btn.innerText = "â¬‡ï¸ Excel"; btn.disabled = false;
+                            const msg = (err && typeof err === 'object') ? (err.message || err.error || JSON.stringify(err)) : String(err || 'Lỗi không xác định');
+                            showToast('Lỗi nhập Excel: ' + msg, 'error', 6000);
+                            btn.innerText = "⬇️ Excel"; btn.disabled = false;
                         },
                         (cur, tot) => {
-                            btn.innerText = `â³ ${cur}/${tot}...`;
+                            btn.innerText = `⏳ ${cur}/${tot}...`;
                         }
                     );
                 };
@@ -10968,10 +10965,10 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
         // ============================================================
-        // ðŸ¥ NHáº¬P Tá»ª HIS (Y Lá»†NH) - Äá»ŒC FILE EXCEL Cá»¦A Bá»†NH VIá»†N
-        // Cá»™t G (index 6) = TÃªn BN, Cá»™t H (index 7) = NÄƒm sinh, Cá»™t N (index 13) = Dá»‹ch vá»¥
-        // Báº¯t Ä‘áº§u tá»« dÃ²ng 11 (index 10)
-        // (Bá»™ tá»« Ä‘iá»ƒn HIS_MAPPING & hÃ m mapHISToProcedure Ä‘Ã£ khai bÃ¡o á»Ÿ trÃªn)
+        // 🏥 NHẬP TỪ HIS (Y LỆNH) - ĐỌC FILE EXCEL CỦA BỆNH VIỆN
+        // Cột G (index 6) = Tên BN, Cột H (index 7) = Năm sinh, Cột N (index 13) = Dịch vụ
+        // Bắt đầu từ dòng 11 (index 10)
+        // (Bộ từ điển HIS_MAPPING & hàm mapHISToProcedure đã khai báo ở trên)
         // ============================================================
 
         function importFromHIS() {
@@ -10988,9 +10985,9 @@ window.renderSttOrderControl = function (type, i, total) {
                         const sheet = workbook.Sheets[workbook.SheetNames[0]];
                         const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
 
-                        if (!rows.length) return showCustomAlert('File trá»‘ng', 'File Excel khÃ´ng cÃ³ dá»¯ liá»‡u!', 'âŒ', '#e74c3c');
+                        if (!rows.length) return showCustomAlert('File trống', 'File Excel không có dữ liệu!', '❌', '#e74c3c');
 
-                        // --- BÆ°á»›c 1: Tá»± Ä‘á»™ng dÃ² hÃ ng tiÃªu Ä‘á» vÃ  cá»™t ---
+                        // --- Bước 1: Tự động dò hàng tiêu đề và cột ---
                         let colTen = 6, colNamSinh = 7, colDichVu = 13, startRow = 10, colLoaiDieuTri = -1, colPhong = -1;
                         const decodeFn = (typeof window !== 'undefined' && typeof window.decodeVietnameseEncoding === 'function')
                             ? window.decodeVietnameseEncoding
@@ -10998,9 +10995,9 @@ window.renderSttOrderControl = function (type, i, total) {
                         const properFn = (typeof window !== 'undefined' && typeof window.toVietnameseProperCase === 'function')
                             ? window.toVietnameseProperCase
                             : (s => String(s || '').toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase()));
-                        const norm = s => decodeFn(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\u0111\u0110]/g, 'd').replace(/Ä‘/g, 'd').trim();
+                        const norm = s => decodeFn(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\u0111\u0110]/g, 'd').replace(/đ/g, 'd').trim();
 
-                        // ðŸ›¡ï¸ Thu tháº­p danh sÃ¡ch há» tÃªn bá»‡nh nhÃ¢n sáº¡ch hiá»‡n cÃ³ Ä‘á»ƒ lÃ m á»©ng viÃªn Ä‘á»‘i chiáº¿u chá»¯a lÃ nh
+                        // 🛡️ Thu thập danh sách họ tên bệnh nhân sạch hiện có để làm ứng viên đối chiếu chữa lành
                         const candNames = [];
                         const existingPats = (dataCache && dataCache.pat) ? dataCache.pat : [];
                         existingPats.forEach(p => {
@@ -11019,7 +11016,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                 ? SchedulerEngine.cleanAndHealPatientName
                                 : properFn;
 
-                        // QuÃ©t 15 hÃ ng Ä‘áº§u - khá»›p tiáº¿ng Viá»‡t láº«n mÃ£ HIS (TEN_BN, NAM_SINH, PHONG...)
+                        // Quét 15 hàng đầu - khớp tiếng Việt lẫn mã HIS (TEN_BN, NAM_SINH, PHONG...)
                         for (let i = 0; i < Math.min(15, rows.length); i++) {
                             const rowStr = rows[i].map(c => norm(c)).join('|');
                             const isHeader = rowStr.includes('ho ten') || rowStr.includes('ten benh') ||
@@ -11038,7 +11035,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                         cn === 'dichvu' || cn === 'dich_vu' || cn.includes('service') || cn.includes('procedure')) colDichVu = idx;
                                     else if (cn.includes('doi tuong') || cn.includes('loai dt') || cn.includes('loai dieu tri') ||
                                         cn.includes('hinh thuc') || cn.includes('noi/ngoai') || cn === 'loai_bn') colLoaiDieuTri = idx;
-                                    // Bá» qua tuyá»‡t Ä‘á»‘i cá»™t D (idx 3) vÃ  cÃ¡c cá»™t Buá»“ng bá»‡nh ná»™i trÃº HIS
+                                    // Bỏ qua tuyệt đối cột D (idx 3) và các cột Buồng bệnh nội trú HIS
                                     else if (idx !== 3 && !cn.includes('buong') && !cn.includes('khoa') &&
                                         (cn === 'phong' || cn === 'ten_phong' || cn === 'phong_ban' || cn.includes('phong dieu tri') || cn.includes('phong thu thuat'))) colPhong = idx;
                                 });
@@ -11046,17 +11043,17 @@ window.renderSttOrderControl = function (type, i, total) {
                             }
                         }
 
-                        // --- BÆ°á»›c 2: Äá»c danh sÃ¡ch dá»‹ch vá»¥ tá»« file HIS ---
+                        // --- Bước 2: Đọc danh sách dịch vụ từ file HIS ---
                         const dataRows = rows.slice(startRow);
-                        if (!dataRows.length) return showCustomAlert('KhÃ´ng cÃ³ dá»¯ liá»‡u', 'File khÃ´ng cÃ³ dá»¯ liá»‡u tá»« dÃ²ng ' + (startRow + 1) + ' trá»Ÿ Ä‘i!', 'âŒ', '#e74c3c');
+                        if (!dataRows.length) return showCustomAlert('Không có dữ liệu', 'File không có dữ liệu từ dòng ' + (startRow + 1) + ' trở đi!', '❌', '#e74c3c');
 
-                        // HÃ m sinh khÃ³a chuáº©n hÃ³a Ä‘á»ƒ so khá»›p bá»‡nh nhÃ¢n (bá» dáº¥u, viáº¿t thÆ°á»ng, bá» táº¥t cáº£ khoáº£ng tráº¯ng)
+                        // Hàm sinh khóa chuẩn hóa để so khớp bệnh nhân (bỏ dấu, viết thường, bỏ tất cả khoảng trắng)
                         function buildMatchKey(ten, namSinh) {
                             const cleanTen = String(ten || '')
                                 .normalize('NFD')
                                 .replace(/[\u0300-\u036f]/g, '')
-                                .replace(/Ä‘/g, 'd')
-                                .replace(/Ä/g, 'd')
+                                .replace(/đ/g, 'd')
+                                .replace(/Đ/g, 'd')
                                 .toLowerCase()
                                 .replace(/[^a-z0-9]/g, '');
                             const cleanNS = String(namSinh || '').trim();
@@ -11077,11 +11074,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
                         dataRows.forEach(row => {
                             const rawTen = decodeFn(row[colTen]);
-                            // Giá»¯ nguyÃªn há» tÃªn thá»±c táº¿ tá»« file Excel, khÃ´ng Ä‘oÃ¡n mÃ² gÃ¡n nháº§m sang BN khÃ¡c
+                            // Giữ nguyên họ tên thực tế từ file Excel, không đoán mò gán nhầm sang BN khác
                             const ten = (rawTen.includes('\ufffd') || rawTen.includes('?')) ? healFn(rawTen, [], false) : properFn(rawTen);
                             const namSinh = decodeFn(row[colNamSinh]);
                             const dichVu = decodeFn(row[colDichVu]);
-                            // Bá» qua cá»™t D (idx 3 - Buá»“ng bá»‡nh ná»™i trÃº HIS), máº·c Ä‘á»‹nh Ä‘á»ƒ phÃ²ng trá»‘ng
+                            // Bỏ qua cột D (idx 3 - Buồng bệnh nội trú HIS), mặc định để phòng trống
                             const rawPhong = (colPhong >= 0 && colPhong !== 3 && row[colPhong] !== undefined) ? decodeFn(row[colPhong]).trim() : '';
 
                             let loaiBn = 'NoiTru';
@@ -11093,7 +11090,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                 }
                             }
 
-                            // Bá» qua hÃ ng tiÃªu Ä‘á» lá»t vÃ o (TEN_BN, HO_TEN...)
+                            // Bỏ qua hàng tiêu đề lọt vào (TEN_BN, HO_TEN...)
                             const tenNorm = norm(ten);
                             if (!ten || tenNorm === 'ten_bn' || tenNorm === 'ho ten' || tenNorm === 'ten benh nhan' || tenNorm === 'hoten') return;
                             if (!dichVu) return;
@@ -11104,7 +11101,7 @@ window.renderSttOrderControl = function (type, i, total) {
                             if (!hisMap[key]) hisMap[key] = { ten: properTen, namSinh, loaiBn, buoiDieuTri, phong: rawPhong, procs: new Set() };
                             else if (rawPhong && !hisMap[key].phong) hisMap[key].phong = rawPhong;
 
-                            // TÃ¡ch nhiá»u thá»§ thuáº­t trong 1 Ã´ y lá»‡nh HIS (há»— trá»£ \n, ;, 1. 2., +, -, pháº©y)
+                            // Tách nhiều thủ thuật trong 1 ô y lệnh HIS (hỗ trợ \n, ;, 1. 2., +, -, phẩy)
                             const items = extractProceduresFromHISCell(dichVu);
                             items.forEach(line => {
                                 const mapped = mapHISToProcedure(line);
@@ -11116,16 +11113,16 @@ window.renderSttOrderControl = function (type, i, total) {
                             });
                         });
 
-                        // --- BÆ°á»›c 3: Merge vá»›i danh sÃ¡ch bá»‡nh nhÃ¢n hiá»‡n táº¡i ---
-                        // Bá»‡nh nhÃ¢n Ä‘Ã£ cÃ³ â†’ chá»‰ cáº­p nháº­t thuThuat, giá»¯ nguyÃªn ngayVao/phong/giá»
-                        // Bá»‡nh nhÃ¢n má»›i  â†’ thÃªm má»›i vá»›i ngÃ y hÃ´m nay, máº·c Ä‘á»‹nh phÃ²ng trá»‘ng
+                        // --- Bước 3: Merge với danh sách bệnh nhân hiện tại ---
+                        // Bệnh nhân đã có → chỉ cập nhật thuThuat, giữ nguyên ngayVao/phong/giờ
+                        // Bệnh nhân mới  → thêm mới với ngày hôm nay, mặc định phòng trống
                         const existingMap = {};
                         existingPats.forEach(p => {
                             const k = buildMatchKey(p.ten, p.namSinh);
                             existingMap[k] = p;
                         });
 
-                        // Danh sÃ¡ch phÃ²ng thá»±c táº¿ tá»« cáº¥u hÃ¬nh
+                        // Danh sách phòng thực tế từ cấu hình
                         const activeRooms = (dataCache && Array.isArray(dataCache.room)) ? dataCache.room : [];
                         const validRoomNames = activeRooms.map(r => String(r.tenPhong || r.ten || (Array.isArray(r) ? r[1] : '') || '').trim()).filter(Boolean);
 
@@ -11167,47 +11164,47 @@ window.renderSttOrderControl = function (type, i, total) {
                             }
                         });
 
-                        // --- BÆ°á»›c 4: Popup xÃ¡c nháº­n ---
+                        // --- Bước 4: Popup xác nhận ---
                         const totalHIS = Object.keys(hisMap).length;
                         let previewHTML = `<div style="font-size:13px;line-height:1.7;color:#2c3e50">`;
                         previewHTML += `<div style="background:#eaf6ff;border-radius:8px;padding:10px 14px;margin-bottom:10px;border-left:4px solid #3498db">`;
-                        previewHTML += `<b>ðŸ“Œ ThÃ´ng tin Ä‘á»c file:</b><br>HÃ ng: <b>${startRow + 1}</b> | Cá»™t TÃªn: <b>${String.fromCharCode(65 + colTen)}</b> | Cá»™t NÄƒm: <b>${String.fromCharCode(65 + colNamSinh)}</b> | Cá»™t DV: <b>${String.fromCharCode(65 + colDichVu)}</b> | Cá»™t PhÃ²ng: <b>Trá»‘ng (máº·c Ä‘á»‹nh)</b></div>`;
+                        previewHTML += `<b>📌 Thông tin đọc file:</b><br>Hàng: <b>${startRow + 1}</b> | Cột Tên: <b>${String.fromCharCode(65 + colTen)}</b> | Cột Năm: <b>${String.fromCharCode(65 + colNamSinh)}</b> | Cột DV: <b>${String.fromCharCode(65 + colDichVu)}</b> | Cột Phòng: <b>Trống (mặc định)</b></div>`;
                         previewHTML += `<div style="background:#eafaf1;border-radius:8px;padding:10px 14px;margin-bottom:10px;border-left:4px solid #27ae60">`;
-                        previewHTML += `ðŸ“‹ HIS: <b>${totalHIS}</b> BN &nbsp;|&nbsp; ðŸ”„ Cáº­p nháº­t TT: <b>${updatedCount}</b> BN &nbsp;|&nbsp; âž• ThÃªm má»›i: <b>${newCount}</b> BN</div>`;
+                        previewHTML += `📋 HIS: <b>${totalHIS}</b> BN &nbsp;|&nbsp; 🔄 Cập nhật TT: <b>${updatedCount}</b> BN &nbsp;|&nbsp; ➕ Thêm mới: <b>${newCount}</b> BN</div>`;
 
                         if (updatedCount > 0) {
-                            previewHTML += `<b>ðŸ”„ BN Ä‘Ã£ cÃ³ (giá»¯ ngÃ y/phÃ²ng, cáº­p nháº­t thá»§ thuáº­t):</b><ul style="margin:4px 0 8px 16px;padding:0">`;
+                            previewHTML += `<b>🔄 BN đã có (giữ ngày/phòng, cập nhật thủ thuật):</b><ul style="margin:4px 0 8px 16px;padding:0">`;
                             mergedList.filter(p => {
                                 const k = buildMatchKey(p.ten, p.namSinh);
                                 return !!hisMap[k];
                             }).slice(0, 4).forEach(p => {
                                 previewHTML += `<li><b>${escapeHtml(p.ten)}</b> (${escapeHtml(p.namSinh)}): <span style="color:#8e44ad">${escapeHtml(p.thuThuat)}</span></li>`;
                             });
-                            if (updatedCount > 4) previewHTML += `<li style="color:#7f8c8d">...vÃ  ${updatedCount - 4} BN khÃ¡c</li>`;
+                            if (updatedCount > 4) previewHTML += `<li style="color:#7f8c8d">...và ${updatedCount - 4} BN khác</li>`;
                             previewHTML += `</ul>`;
                         }
                         if (newCount > 0) {
-                            previewHTML += `<b>âž• BN má»›i thÃªm vÃ o (PhÃ²ng Ä‘á»ƒ trá»‘ng):</b><ul style="margin:4px 0 8px 16px;padding:0">`;
+                            previewHTML += `<b>➕ BN mới thêm vào (Phòng để trống):</b><ul style="margin:4px 0 8px 16px;padding:0">`;
                             mergedList.slice(-newCount).slice(0, 4).forEach(p => {
                                 previewHTML += `<li><b>${escapeHtml(p.ten)}</b> (${escapeHtml(p.namSinh)}): <span style="color:#27ae60">${escapeHtml(p.thuThuat)}</span></li>`;
                             });
-                            if (newCount > 4) previewHTML += `<li style="color:#7f8c8d">...vÃ  ${newCount - 4} BN khÃ¡c</li>`;
+                            if (newCount > 4) previewHTML += `<li style="color:#7f8c8d">...và ${newCount - 4} BN khác</li>`;
                             previewHTML += `</ul>`;
                         }
                         if (unrecognized.size > 0) {
                             previewHTML += `<div style="background:#fef9e7;border-radius:8px;padding:10px 14px;border-left:4px solid #f39c12">`;
-                            previewHTML += `âš ï¸ <b>${unrecognized.size} dá»‹ch vá»¥ chÆ°a nháº­n diá»‡n:</b><ul style="margin:4px 0 0 16px;padding:0">`;
+                            previewHTML += `⚠️ <b>${unrecognized.size} dịch vụ chưa nhận diện:</b><ul style="margin:4px 0 0 16px;padding:0">`;
                             [...unrecognized].slice(0, 5).forEach(s => { previewHTML += `<li style="color:#c0392b">${escapeHtml(s)}</li>`; });
-                            if (unrecognized.size > 5) previewHTML += `<li style="color:#7f8c8d">...vÃ  ${unrecognized.size - 5} dá»‹ch vá»¥ khÃ¡c</li>`;
+                            if (unrecognized.size > 5) previewHTML += `<li style="color:#7f8c8d">...và ${unrecognized.size - 5} dịch vụ khác</li>`;
                             previewHTML += `</ul></div>`;
                         }
                         previewHTML += `</div>`;
 
-                        if (!totalHIS) return showCustomAlert('KhÃ´ng Ä‘á»c Ä‘Æ°á»£c dá»¯ liá»‡u', previewHTML, 'âŒ', '#e74c3c');
+                        if (!totalHIS) return showCustomAlert('Không đọc được dữ liệu', previewHTML, '❌', '#e74c3c');
 
-                        showCustomConfirm('ðŸ¥ XÃ¡c nháº­n nháº­p tá»« HIS', previewHTML, function () {
+                        showCustomConfirm('🏥 Xác nhận nhập từ HIS', previewHTML, function () {
                             const btn = document.getElementById('btn-import-his');
-                            btn.innerText = 'â³ Äang xá»­ lÃ½...'; btn.disabled = true;
+                            btn.innerText = '⏳ Đang xử lý...'; btn.disabled = true;
 
                             const cleanMergedList = mergedList.map(p => ({
                                 ten: String(p.ten || p.name || '').trim(),
@@ -11220,7 +11217,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                 thuThuat: String(p.thuThuat || '').trim(),
                                 loai_bn: String(p.loai_bn || p.loaiBN || 'NoiTru').trim(),
                                 buoi_dieu_tri: String(p.buoi_dieu_tri || p.buoiDieuTri || 'TuDong').trim(),
-                                status: String(p.status || p.trangThai || 'ChÆ°a xáº¿p').trim(),
+                                status: String(p.status || p.trangThai || 'Chưa xếp').trim(),
                                 gender: String(p.gender || p.gioiTinh || 'Nam').trim(),
                                 bed: String(p.bed || p.giuong || '').trim(),
                                 order_idx: p.order_idx !== undefined ? Number(p.order_idx) : 0
@@ -11230,25 +11227,25 @@ window.renderSttOrderControl = function (type, i, total) {
                                 cleanMergedList,
                                 true,
                                 res => {
-                                    btn.innerText = 'ðŸ¥ HIS'; btn.disabled = false;
-                                    showToast(`Nháº­p HIS thÃ nh cÃ´ng: cáº­p nháº­t ${updatedCount} BN, thÃªm má»›i ${newCount} BN`, 'success', 5000);
+                                    btn.innerText = '🏥 HIS'; btn.disabled = false;
+                                    showToast(`Nhập HIS thành công: cập nhật ${updatedCount} BN, thêm mới ${newCount} BN`, 'success', 5000);
                                     if (window.dataCacheTime) delete window.dataCacheTime['pat'];
 
                                     loadEntity('getBenhNhan', 'pat', renderPatientsTable, [], true);
                                 },
                                 err => {
-                                    const msg = (err && typeof err === 'object') ? (err.message || err.error || JSON.stringify(err)) : String(err || 'Lá»—i khÃ´ng xÃ¡c Ä‘á»‹nh');
-                                    showToast('Lá»—i lÆ°u dá»¯ liá»‡u: ' + msg, 'error', 6000);
-                                    btn.innerText = 'ðŸ¥ HIS'; btn.disabled = false;
+                                    const msg = (err && typeof err === 'object') ? (err.message || err.error || JSON.stringify(err)) : String(err || 'Lỗi không xác định');
+                                    showToast('Lỗi lưu dữ liệu: ' + msg, 'error', 6000);
+                                    btn.innerText = '🏥 HIS'; btn.disabled = false;
                                 },
                                 (cur, tot) => {
-                                    btn.innerText = `â³ ${cur}/${tot}...`;
+                                    btn.innerText = `⏳ ${cur}/${tot}...`;
                                 }
                             );
                         });
 
                     } catch (err) {
-                        showCustomAlert('Lá»—i Ä‘á»c file', 'âŒ ' + err.message, 'âŒ', '#e74c3c');
+                        showCustomAlert('Lỗi đọc file', '❌ ' + err.message, '❌', '#e74c3c');
                     }
                 };
                 reader.readAsArrayBuffer(e.target.files[0]);
@@ -11261,13 +11258,13 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // ðŸ” ÄÄ‚NG NHáº¬P / PHÃ‚N QUYá»€N
+        // 🔐 ĐĂNG NHẬP / PHÂN QUYỀN
 
         function updateLogoutButton(username) {
             const container = document.getElementById('user-menu-container');
             const displayName = document.getElementById('user-display-name');
             if (container) container.style.display = 'flex';
-            if (displayName) displayName.innerText = `ðŸ‘¤ ${username}`;
+            if (displayName) displayName.innerText = `👤 ${username}`;
         }
 
         function doLogout() {
@@ -11275,7 +11272,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 try { window.stopAutoSync(); } catch(e) {}
             }
 
-            // 0. Há»§y hÃ ng Ä‘á»£i API dá»Ÿ dang & táº¯t loading Ä‘á»ƒ trÃ¡nh request 401 sau khi Ä‘Äƒng xuáº¥t
+            // 0. Hủy hàng đợi API dở dang & tắt loading để tránh request 401 sau khi đăng xuất
             apiQueue = [];
             inFlightRequests.clear();
             activeApiRequests = 0;
@@ -11287,7 +11284,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 loginErr.style.display = 'none';
             }
 
-            // 1. QuÃ©t sáº¡ch táº¥t cáº£ key cá»§a phiÃªn & Ä‘Æ¡n vá»‹ trong localStorage, chá»‰ giá»¯ láº¡i cáº¥u hÃ¬nh giao diá»‡n & backup URL
+            // 1. Quét sạch tất cả key của phiên & đơn vị trong localStorage, chỉ giữ lại cấu hình giao diện & backup URL
             const preserveKeys = ['pm_app_theme', 'doc_theme', 'times_backup_api_url'];
             try {
                 const keysToRemove = [];
@@ -11300,7 +11297,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 keysToRemove.forEach(k => localStorage.removeItem(k));
             } catch(e) {}
 
-            // 2. XÃ³a sáº¡ch dá»¯ liá»‡u trong RAM
+            // 2. Xóa sạch dữ liệu trong RAM
             window.currentScheduleData = null;
             window.chamCongData = {};
             window.thongKeData = {};
@@ -11326,12 +11323,12 @@ window.renderSttOrderControl = function (type, i, total) {
             }
             if (window.dataCacheTime) window.dataCacheTime = {};
 
-            // 3. XÃ³a sáº¡ch cÃ¡c báº£ng dá»¯ liá»‡u trÃªn DOM ngay láº­p tá»©c
+            // 3. Xóa sạch các bảng dữ liệu trên DOM ngay lập tức
             if (typeof clearAllDomTables === 'function') {
                 clearAllDomTables(false);
             }
 
-            // 4. Reload trang vá» URL gá»‘c Ä‘á»ƒ Ä‘áº£m báº£o 100% khÃ´ng cÃ²n biáº¿n / bá»™ nhá»› / closure rÃ² rá»‰ giá»¯a 2 Ä‘Æ¡n vá»‹
+            // 4. Reload trang về URL gốc để đảm bảo 100% không còn biến / bộ nhớ / closure rò rỉ giữa 2 đơn vị
             try {
                 window.location.href = window.location.origin + window.location.pathname;
             } catch(e) {
@@ -11365,7 +11362,7 @@ window.renderSttOrderControl = function (type, i, total) {
             }
 
             if (isSuper) {
-                // ðŸ‘‘ SUPER ADMIN:
+                // 👑 SUPER ADMIN:
                 allTabs.forEach(t => {
                     const tabId = t.getAttribute('data-tab');
                     if (tabId === 'tab-tenants' || tabId === 'tab-admin') {
@@ -11392,7 +11389,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 return;
             }
 
-            // ðŸ¢ HOSPITAL ADMIN / REGULAR USERS:
+            // 🏢 HOSPITAL ADMIN / REGULAR USERS:
             if (superTab) superTab.style.display = 'none';
 
             if (role === 'Admin' || role === 'admin') {
@@ -11443,7 +11440,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // QUáº¢N LÃ TÃ€I KHOáº¢N (TÆ¯Æ NG THÃCH Máº¬T KHáº¨U MÃƒ HÃ“A)
+        // QUẢN LÝ TÀI KHOẢN (TƯƠNG THÍCH MẬT KHẨU MÃ HÓA)
 
         // ============================================================
 
@@ -11457,34 +11454,34 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (!tbody) return;
 
                 if (list.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" align="center" style="color:gray; padding:20px;">ChÆ°a cÃ³ tÃ i khoáº£n nÃ o trong há»‡ thá»‘ng</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" align="center" style="color:gray; padding:20px;">Chưa có tài khoản nào trong hệ thống</td></tr>';
                     return;
                 }
 
-                const PERM_MAP = { 'tab-patients': 'ðŸ›Œ Bá»‡nh NhÃ¢n', 'tab-schedule': 'âš¡ Xáº¿p Lá»‹ch', 'tab-sat': 'ðŸ“… Thá»© 7', 'tab-busy': 'â± Giá» Báº­n', 'tab-stats': 'ðŸ“Š Thá»‘ng KÃª', 'tab-utils': 'ðŸ›  Tiá»‡n Ãch', 'tab-kiemtra': 'âœ… Kiá»ƒm Tra Lá»—i', 'tab-machines': 'âš™ï¸ MÃ¡y MÃ³c', 'tab-procedures': 'ðŸ’‰ Thá»§ Thuáº­t', 'tab-rooms': 'ðŸ¥ PhÃ²ng', 'tab-staff': 'ðŸ‘¨â€âš•ï¸ NhÃ¢n Sá»±', 'tab-chamcong': 'â±ï¸ Cháº¥m CÃ´ng', 'tab-thongke': 'ðŸ“ˆ Thá»‘ng KÃª' }; 
+                const PERM_MAP = { 'tab-patients': '🛌 Bệnh Nhân', 'tab-schedule': '⚡ Xếp Lịch', 'tab-sat': '📅 Thứ 7', 'tab-busy': '⏱ Giờ Bận', 'tab-stats': '📊 Thống Kê', 'tab-utils': '🛠 Tiện Ích', 'tab-kiemtra': '✅ Kiểm Tra Lỗi', 'tab-machines': '⚙️ Máy Móc', 'tab-procedures': '💉 Thủ Thuật', 'tab-rooms': '🏥 Phòng', 'tab-staff': '👨‍⚕️ Nhân Sự', 'tab-chamcong': '⏱️ Chấm Công', 'tab-thongke': '📈 Thống Kê' }; 
                 
                 tbody.innerHTML = list.map((acc, i) => {
                     const uName = acc.user || acc.username || '';
                     const rRole = (acc.role && String(acc.role).toLowerCase() === 'admin') ? 'Admin' : 'User';
                     const pPerms = acc.perms || acc.permissions || 'ALL';
 
-                    let tenQuyen = "ðŸ‘‘ ToÃ n quyá»n (Admin)";
+                    let tenQuyen = "👑 Toàn quyền (Admin)";
                     if (rRole !== 'Admin' && pPerms !== 'ALL') {
                         tenQuyen = pPerms.split(',').map(p => PERM_MAP[p.trim()] || p.trim()).join(', ');
                     }
 
-                    return `<tr class="editable-row" onclick="editAccount(${i})" title="Báº¥m Ä‘á»ƒ sá»­a tÃ i khoáº£n">
+                    return `<tr class="editable-row" onclick="editAccount(${i})" title="Bấm để sửa tài khoản">
                                     <td align="center">${acc.id || (i + 1)}</td>
                                     <td style="font-size:14px; color:#2c3e50;"><strong>${escapeHtml(uName)}</strong></td>
-                                    <td align="center">${acc.hasPassword !== false ? '<span style="color:#27ae60; font-weight:600; font-size:12px;">ðŸ”’ ÄÃ£ báº£o máº­t</span>' : '<span style="color:#e74c3c; font-weight:bold; font-size:12px;">âš ï¸ ChÆ°a cÃ³ MK</span>'}</td>
+                                    <td align="center">${acc.hasPassword !== false ? '<span style="color:#27ae60; font-weight:600; font-size:12px;">🔒 Đã bảo mật</span>' : '<span style="color:#e74c3c; font-weight:bold; font-size:12px;">⚠️ Chưa có MK</span>'}</td>
                                     <td align="center"><span style="color:${rRole === 'Admin' ? '#c0392b' : '#2980b9'}; font-weight:bold; background:${rRole === 'Admin' ? '#fadbd8' : '#d6eaf8'}; padding:4px 8px; border-radius:5px;">${rRole}</span></td>
                                     <td style="font-size:12px; line-height:1.6; color:#27ae60; font-weight:500;">${tenQuyen}</td>
-                                    <td align="center"><button class="btn-danger" style="border-radius:5px; padding:4px 10px; font-weight:bold; cursor:pointer;" onclick="event.stopPropagation(); deleteAccount('${acc.id || ''}', '${escapeHtml(uName)}')">ðŸ—‘ï¸ XÃ³a</button></td>
+                                    <td align="center"><button class="btn-danger" style="border-radius:5px; padding:4px 10px; font-weight:bold; cursor:pointer;" onclick="event.stopPropagation(); deleteAccount('${acc.id || ''}', '${escapeHtml(uName)}')">🗑️ Xóa</button></td>
                                 </tr>`;
                 }).join('');
 
             }, err => {
-                console.error('[loadAccounts] Lá»—i táº£i tÃ i khoáº£n:', err);
+                console.error('[loadAccounts] Lỗi tải tài khoản:', err);
             });
 
         }
@@ -11500,7 +11497,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const passInput = document.getElementById('acc-pass');
             passInput.value = '';
-            passInput.placeholder = "(Äá»ƒ trá»‘ng náº¿u khÃ´ng Ä‘á»•i MK)";
+            passInput.placeholder = "(Để trống nếu không đổi MK)";
 
             const rRole = (acc.role && String(acc.role).toLowerCase() === 'admin') ? 'Admin' : 'User';
             document.getElementById('acc-role').value = rRole;
@@ -11511,7 +11508,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 cb.checked = rRole === 'User' && pPerms ? pPerms.split(',').map(s => s.trim()).includes(cb.value) : false;
             });
 
-            document.getElementById('btn-save-acc').innerText = "Cáº­p nháº­t MK / Quyá»n";
+            document.getElementById('btn-save-acc').innerText = "Cập nhật MK / Quyền";
         }
 
 
@@ -11528,11 +11525,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-            if (!user) return showCustomAlert("LÆ°u Ã½", "Vui lÃ²ng nháº­p tÃªn tÃ i khoáº£n!");
+            if (!user) return showCustomAlert("Lưu ý", "Vui lòng nhập tên tài khoản!");
 
-            // Chá»‰ báº¯t buá»™c nháº­p máº­t kháº©u náº¿u lÃ  tÃ i khoáº£n táº¡o má»›i (khÃ´ng cÃ³ ID)
+            // Chỉ bắt buộc nhập mật khẩu nếu là tài khoản tạo mới (không có ID)
 
-            if (!id && !pass) return showCustomAlert("LÆ°u Ã½", "Vui lÃ²ng nháº­p máº­t kháº©u cho tÃ i khoáº£n má»›i!");
+            if (!id && !pass) return showCustomAlert("Lưu ý", "Vui lòng nhập mật khẩu cho tài khoản mới!");
 
 
 
@@ -11544,17 +11541,17 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const btn = document.getElementById('btn-save-acc');
 
-            btn.innerText = "Äang lÆ°u..."; btn.disabled = true;
+            btn.innerText = "Đang lưu..."; btn.disabled = true;
 
             callApi('saveAccount', [id, user, pass, role, perms], msg => {
-                showCustomAlert("ThÃ nh cÃ´ng", typeof msg === 'string' ? msg : "ÄÃ£ lÆ°u tÃ i khoáº£n thÃ nh cÃ´ng!");
+                showCustomAlert("Thành công", typeof msg === 'string' ? msg : "Đã lưu tài khoản thành công!");
                 huySuaTaiKhoan();
                 loadAccounts();
-                btn.innerText = "LÆ°u TÃ i Khoáº£n";
+                btn.innerText = "Lưu Tài Khoản";
                 btn.disabled = false;
             }, err => {
-                showCustomAlert("Lá»—i", "KhÃ´ng thá»ƒ lÆ°u tÃ i khoáº£n: " + (typeof err === 'string' ? err : JSON.stringify(err)));
-                btn.innerText = "LÆ°u TÃ i Khoáº£n";
+                showCustomAlert("Lỗi", "Không thể lưu tài khoản: " + (typeof err === 'string' ? err : JSON.stringify(err)));
+                btn.innerText = "Lưu Tài Khoản";
                 btn.disabled = false;
             });
 
@@ -11570,7 +11567,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (el) el.value = '';
             });
 
-            document.getElementById('acc-pass').placeholder = "Nháº­p máº­t kháº©u...";
+            document.getElementById('acc-pass').placeholder = "Nhập mật khẩu...";
 
             document.getElementById('acc-role').value = 'User';
 
@@ -11578,20 +11575,20 @@ window.renderSttOrderControl = function (type, i, total) {
 
             togglePermissionsBox();
 
-            document.getElementById('btn-save-acc').innerText = "LÆ°u TÃ i Khoáº£n";
+            document.getElementById('btn-save-acc').innerText = "Lưu Tài Khoản";
 
         }
 
         function deleteAccount(id, user) {
 
-            if (user.toLowerCase() === 'admin') return showCustomAlert("Cáº£nh bÃ¡o báº£o máº­t", "KhÃ´ng Ä‘Æ°á»£c phÃ©p xÃ³a tÃ i khoáº£n Admin gá»‘c!");
+            if (user.toLowerCase() === 'admin') return showCustomAlert("Cảnh báo bảo mật", "Không được phép xóa tài khoản Admin gốc!");
 
-            showCustomConfirm("XÃ³a tÃ i khoáº£n", `BÃ¡c sÄ© cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a vÄ©nh viá»…n tÃ i khoáº£n [ ${user} ] khÃ´ng?`, function () {
+            showCustomConfirm("Xóa tài khoản", `Bác sĩ có chắc chắn muốn xóa vĩnh viễn tài khoản [ ${user} ] không?`, function () {
                 callApi('deleteAccount', [id], () => {
                     loadAccounts();
-                    showCustomAlert("ThÃ nh cÃ´ng", `ÄÃ£ xÃ³a tÃ i khoáº£n "${user}" thÃ nh cÃ´ng!`);
+                    showCustomAlert("Thành công", `Đã xóa tài khoản "${user}" thành công!`);
                 }, err => {
-                    showCustomAlert("Lá»—i", "KhÃ´ng thá»ƒ xÃ³a tÃ i khoáº£n: " + (typeof err === 'string' ? err : JSON.stringify(err)));
+                    showCustomAlert("Lỗi", "Không thể xóa tài khoản: " + (typeof err === 'string' ? err : JSON.stringify(err)));
                 });
             });
 
@@ -11601,7 +11598,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // ðŸ”„ AUTO SYNC
+        // 🔄 AUTO SYNC
 
         // ============================================================
 
@@ -11622,13 +11619,13 @@ window.renderSttOrderControl = function (type, i, total) {
             const tabPat = document.getElementById('tab-patients');
             if (!tabPat) return false;
 
-            // 1. Kiá»ƒm tra náº¿u tiÃªu Ä‘iá»ƒm (focus) náº±m trong form cá»§a tab-patients
+            // 1. Kiểm tra nếu tiêu điểm (focus) nằm trong form của tab-patients
             if (activeEl && tabPat.contains(activeEl) &&
                 (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT' || activeEl.tagName === 'TEXTAREA')) {
                 return true;
             }
 
-            // 2. Kiá»ƒm tra náº¿u cÃ¡c Ã´ nháº­p liá»‡u cÃ³ chá»©a dá»¯ liá»‡u dá»Ÿ dang
+            // 2. Kiểm tra nếu các ô nhập liệu có chứa dữ liệu dở dang
             const patName = document.getElementById('pat-name')?.value || '';
             if (patName.trim() !== '') return true;
 
@@ -11647,7 +11644,7 @@ window.renderSttOrderControl = function (type, i, total) {
             const patLeave = document.getElementById('pat-leave')?.value || '';
             if (patLeave.trim() !== '') return true;
 
-            // Kiá»ƒm tra xem cÃ³ thá»§ thuáº­t nÃ o Ä‘ang Ä‘Æ°á»£c chá»n khÃ´ng
+            // Kiểm tra xem có thủ thuật nào đang được chọn không
             const checkedProcs = document.querySelectorAll('.pat-proc-cb:checked');
             if (checkedProcs.length > 0) return true;
 
@@ -11660,13 +11657,13 @@ window.renderSttOrderControl = function (type, i, total) {
             const tabBusy = document.getElementById('tab-busy');
             if (!tabBusy) return false;
 
-            // 1. Kiá»ƒm tra náº¿u tiÃªu Ä‘iá»ƒm (focus) náº±m trong form cá»§a tab-busy
+            // 1. Kiểm tra nếu tiêu điểm (focus) nằm trong form của tab-busy
             if (activeEl && tabBusy.contains(activeEl) &&
                 (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT' || activeEl.tagName === 'TEXTAREA')) {
                 return true;
             }
 
-            // 2. Kiá»ƒm tra náº¿u cÃ¡c Ã´ nháº­p liá»‡u cá»§a tab-busy cÃ³ chá»©a dá»¯ liá»‡u dá»Ÿ dang
+            // 2. Kiểm tra nếu các ô nhập liệu của tab-busy có chứa dữ liệu dở dang
             const staffFrom = document.getElementById('busy-staff-from')?.value || '';
             if (staffFrom.trim() !== '') return true;
 
@@ -11709,14 +11706,14 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (window.viewingImportedScheduleFile) return;
                 const activeTab = document.querySelector('.nav-tab.active')?.getAttribute('data-tab');
 
-                // Äá»“ng bá»™ Xáº¿p lá»‹ch
+                // Đồng bộ Xếp lịch
                 if (activeTab === 'tab-schedule' || activeTab === 'tab-home') {
                     loadScheduleList();
                 }
 
-                // Äá»“ng bá»™ Bá»‡nh NhÃ¢n (Bá»‡nh nhÃ¢n vÃ  nhÃ¢n sá»± táº£i tá»± Ä‘á»™ng khi tab active)
-                // Äá»“ng bá»™ Giá» Báº­n/Ra Viá»‡n (Bá»‡nh nhÃ¢n vÃ  nhÃ¢n sá»± táº£i tá»± Ä‘á»™ng khi tab active)
-            }, 15000); // Tá»± Ä‘á»™ng cáº­p nháº­t lá»‹ch má»—i 15 giÃ¢y
+                // Đồng bộ Bệnh Nhân (Bệnh nhân và nhân sự tải tự động khi tab active)
+                // Đồng bộ Giờ Bận/Ra Viện (Bệnh nhân và nhân sự tải tự động khi tab active)
+            }, 15000); // Tự động cập nhật lịch mỗi 15 giây
         }
 
 
@@ -11769,7 +11766,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
         // ============================================================
-        // UI - CHUYá»‚N TAB ADMIN
+        // UI - CHUYỂN TAB ADMIN
         // ============================================================
         window.switchAdminSection = function switchAdminSection(sectionId, btn) {
             document.querySelectorAll('.admin-section').forEach(sec => sec.style.display = 'none');
@@ -11798,7 +11795,7 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         // ============================================================
-        // âš™ï¸ CÃ€I Äáº¶T Há»† THá»NG
+        // ⚙️ CÀI ĐẶT HỆ THỐNG
         // ============================================================
         function normalizeTimeHHMM(str) {
             if (!str) return "16:20";
@@ -11841,7 +11838,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 imbalanceWeight: imbalanceW
             };
 
-            // 1. Cáº­p nháº­t ngay vÃ o RAM Cache Ä‘á»ƒ cÃ¡c giáº£i thuáº­t (CP Solver, Scheduler Engine) nháº­n giÃ¡ trá»‹ tá»©c thÃ¬
+            // 1. Cập nhật ngay vào RAM Cache để các giải thuật (CP Solver, Scheduler Engine) nhận giá trị tức thì
             if (typeof dataCache !== 'undefined') {
                 dataCache.settings = Object.assign(dataCache.settings || {}, newSettings);
             }
@@ -11849,7 +11846,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 window.dataCache.settings = Object.assign(window.dataCache.settings || {}, newSettings);
             }
 
-            // 2. Cáº­p nháº­t ngay vÃ o LocalStorage Offline Cache
+            // 2. Cập nhật ngay vào LocalStorage Offline Cache
             const cacheKey = window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache";
             try {
                 const b = JSON.parse(localStorage.getItem(cacheKey) || '{}');
@@ -11860,22 +11857,22 @@ window.renderSttOrderControl = function (type, i, total) {
             let oldText = "";
             if (btn && !isAutoSave) {
                 oldText = btn.innerHTML;
-                btn.innerHTML = "<span>â³</span> Äang lÆ°u...";
+                btn.innerHTML = "<span>⏳</span> Đang lưu...";
                 btn.disabled = true;
             }
 
-            // 3. LÆ°u trá»±c tiáº¿p vÃ o CSDL mÃ¡y chá»§ (MiniPC + Turso Cloud)
+            // 3. Lưu trực tiếp vào CSDL máy chủ (MiniPC + Turso Cloud)
             google.script.run.withSuccessHandler(function (res) {
                 if (btn && !isAutoSave) {
                     btn.innerHTML = oldText;
                     btn.disabled = false;
-                    showCustomAlert("CÃ i Ä‘áº·t há»‡ thá»‘ng", "ÄÃ£ lÆ°u thÃ nh cÃ´ng cÃ i Ä‘áº·t thá»i gian váº­n hÃ nh vÃ  trá»ng sá»‘ thuáº­t toÃ¡n!", "âœ…", "#16a085");
+                    showCustomAlert("Cài đặt hệ thống", "Đã lưu thành công cài đặt thời gian vận hành và trọng số thuật toán!", "✅", "#16a085");
                 }
             }).withFailureHandler(function (err) {
                 if (btn && !isAutoSave) {
                     btn.innerHTML = oldText;
                     btn.disabled = false;
-                    alert("Lá»—i lÆ°u cÃ i Ä‘áº·t: " + err);
+                    alert("Lỗi lưu cài đặt: " + err);
                 }
             }).saveSystemSettings(newSettings);
         }
@@ -11912,7 +11909,7 @@ window.renderSttOrderControl = function (type, i, total) {
         window.attachSystemSettingsAutoSave = attachSystemSettingsAutoSave;
 
         function loadSystemSettings() {
-            // 1. KhÃ´i phá»¥c tá»« Cache LocalStorage / RAM ngay láº­p tá»©c
+            // 1. Khôi phục từ Cache LocalStorage / RAM ngay lập tức
             const cachedStr = localStorage.getItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache");
             if (cachedStr) {
                 try {
@@ -11923,7 +11920,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 applySystemSettings(window.dataCache.settings);
             }
 
-            // 2. Äá»“ng thá»i gá»i API láº¥y báº£n má»›i nháº¥t tá»« Server CSDL (MiniPC + Turso)
+            // 2. Đồng thời gọi API lấy bản mới nhất từ Server CSDL (MiniPC + Turso)
             if (typeof callApi === 'function') {
                 callApi('getSystemSettings', [], function(serverSettings) {
                     if (serverSettings && typeof serverSettings === 'object') {
@@ -11942,18 +11939,18 @@ window.renderSttOrderControl = function (type, i, total) {
                         applySystemSettings(serverSettings);
                     }
                 }, function(err) {
-                    console.warn('[SystemSettings] KhÃ´ng thá»ƒ náº¡p cÃ i Ä‘áº·t tá»« mÃ¡y chá»§, dÃ¹ng báº£n cache cá»¥c bá»™:', err);
+                    console.warn('[SystemSettings] Không thể nạp cài đặt từ máy chủ, dùng bản cache cục bộ:', err);
                 });
             }
 
-            // 3. Gáº¯n bá»™ tá»± Ä‘á»™ng lÆ°u onchange/onblur
+            // 3. Gắn bộ tự động lưu onchange/onblur
             attachSystemSettingsAutoSave();
         }
         window.loadSystemSettings = loadSystemSettings;
 
         // ============================================================
 
-        // ðŸ“¢ MARQUEE
+        // 📢 MARQUEE
 
         // ============================================================
 
@@ -11961,11 +11958,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const noiDungMoi = document.getElementById('admin-marquee-input').value;
 
-            if (!noiDungMoi) return alert("âš ï¸ Vui lÃ²ng nháº­p ná»™i dung thÃ´ng bÃ¡o trÆ°á»›c khi lÆ°u!");
+            if (!noiDungMoi) return alert("⚠️ Vui lòng nhập nội dung thông báo trước khi lưu!");
 
             const textGoc = btn.innerText;
 
-            btn.innerText = "â³ Äang lÆ°u..."; btn.disabled = true;
+            btn.innerText = "⏳ Đang lưu..."; btn.disabled = true;
 
             const marqueeTag = document.getElementById('thong-bao-chay');
 
@@ -11973,9 +11970,9 @@ window.renderSttOrderControl = function (type, i, total) {
 
             google.script.run
 
-                .withSuccessHandler(() => { btn.innerText = textGoc; btn.disabled = false; alert("âœ… ÄÃ£ lÆ°u thÃ´ng bÃ¡o má»›i thÃ nh cÃ´ng!"); })
+                .withSuccessHandler(() => { btn.innerText = textGoc; btn.disabled = false; alert("✅ Đã lưu thông báo mới thành công!"); })
 
-                .withFailureHandler(err => { btn.innerText = textGoc; btn.disabled = false; alert("âŒ Lá»—i khi lÆ°u: " + err.message); })
+                .withFailureHandler(err => { btn.innerText = textGoc; btn.disabled = false; alert("❌ Lỗi khi lưu: " + err.message); })
 
                 .luuThongBaoDongChuChay(noiDungMoi);
 
@@ -11985,7 +11982,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // ðŸ¤– KHO HUáº¤N LUYá»†N AI
+        // 🤖 KHO HUẤN LUYỆN AI
 
         // ============================================================
 
@@ -12013,7 +12010,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             if (!file) return;
 
-            logHL("â³ Äang phÃ¢n tÃ­ch file: " + file.name);
+            logHL("⏳ Đang phân tích file: " + file.name);
 
             const reader = new FileReader();
 
@@ -12025,9 +12022,9 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     try { workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' }); }
 
-                    catch (err) { throw new Error("Cáº¥u trÃºc file bá»‹ há»ng hoáº·c khÃ´ng Ä‘Ãºng chuáº©n."); }
+                    catch (err) { throw new Error("Cấu trúc file bị hỏng hoặc không đúng chuẩn."); }
 
-                    if (!workbook?.SheetNames?.length) { logHL("âŒ Lá»–I Äá»ŠNH Dáº NG: File bá»‹ há»ng. HÃ£y má»Ÿ báº±ng Excel vÃ  Save As láº¡i nhÃ©."); event.target.value = ""; return; }
+                    if (!workbook?.SheetNames?.length) { logHL("❌ LỖI ĐỊNH DẠNG: File bị hỏng. Hãy mở bằng Excel và Save As lại nhé."); event.target.value = ""; return; }
 
 
 
@@ -12066,22 +12063,22 @@ window.renderSttOrderControl = function (type, i, total) {
 
                                 !rowString.includes('GIODIENRA')) { headerRow = i; formatType = 'MATRIX'; break; } else
 
-                                if ((rowString.includes('NHANVIEN') || rowString.includes('NHÃ‚N VIÃŠN')) &&
+                                if ((rowString.includes('NHANVIEN') || rowString.includes('NHÂN VIÊN')) &&
 
-                                    (rowString.includes('GIODIENRA') || rowString.includes('Báº®T Äáº¦U'))) {
+                                    (rowString.includes('GIODIENRA') || rowString.includes('BẮT ĐẦU'))) {
                                         headerRow = i;
 
                                     formatType = 'FLAT'; rowArr.forEach((cell, j) => {
 
                                         const v = String(cell || '').trim().toUpperCase().replace(/\r?\n|\r/g, '');
 
-                                        if (v.includes('NHANVIEN') || v === 'HOTEN' || v.includes('NHÃ‚N VIÃŠN')) colIdx.nv = j;
+                                        if (v.includes('NHANVIEN') || v === 'HOTEN' || v.includes('NHÂN VIÊN')) colIdx.nv = j;
 
-                                        if (v.includes('DICHVU') || v.includes('THá»¦ THUáº¬T')) colIdx.tt = j;
+                                        if (v.includes('DICHVU') || v.includes('THỦ THUẬT')) colIdx.tt = j;
 
-                                        if (v.includes('GIODIENRA') || v.includes('Báº®T Äáº¦U')) colIdx.bd = j;
+                                        if (v.includes('GIODIENRA') || v.includes('BẮT ĐẦU')) colIdx.bd = j;
 
-                                        if (v.includes('GIOKETTHUC') || v.includes('Káº¾T THÃšC')) colIdx.kt = j;
+                                        if (v.includes('GIOKETTHUC') || v.includes('KẾT THÚC')) colIdx.kt = j;
 
                                     });
 
@@ -12160,21 +12157,21 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     if (records.length > 0) {
 
-                        logHL(`ðŸš€ ÄÃ£ bÃ³c tÃ¡ch thÃ nh cÃ´ng ${records.length} ca (Dáº¡ng
+                        logHL(`🚀 Đã bóc tách thành công ${records.length} ca (Dạng
 
-                                                ${formatTypeUsed}). Äang lÆ°u...`);
+                                                ${formatTypeUsed}). Đang lưu...`);
 
                         google.script.run.withSuccessHandler(res => {
-                            logHL("âœ… " + res);
+                            logHL("✅ " + res);
 
                             loadHLData();
-                        }).withFailureHandler(err => logHL("âŒ Lá»—i lÆ°u: " +
+                        }).withFailureHandler(err => logHL("❌ Lỗi lưu: " +
 
                             err.message)).saveAITrainingData(records);
 
-                    } else logHL("âŒ KhÃ´ng tÃ¬m tháº¥y dá»¯ liá»‡u giá» giáº¥c há»£p lá»‡ trong báº¥t ká»³ Sheet nÃ o cá»§a file!");
+                    } else logHL("❌ Không tìm thấy dữ liệu giờ giấc hợp lệ trong bất kỳ Sheet nào của file!");
 
-                } catch (err) { logHL("âŒ Lá»—i ká»¹ thuáº­t: " + err.message); }
+                } catch (err) { logHL("❌ Lỗi kỹ thuật: " + err.message); }
 
                 event.target.value = "";
 
@@ -12190,16 +12187,16 @@ window.renderSttOrderControl = function (type, i, total) {
 
             if (!tbody) return;
 
-            tbody.innerHTML = `<tr> <td colspan="5" style="text-align:center;">â³ Äang táº£i dá»¯ liá»‡u...
+            tbody.innerHTML = `<tr> <td colspan="5" style="text-align:center;">⏳ Đang tải dữ liệu...
 
                                                     </td>
 
                                                 </tr>`; google.script.run.withSuccessHandler(data => {
 
                 if (!data?.length) {
-                    tbody.innerHTML = `<tr> <td colspan="5" style="text-align:center; color:gray">Kho dá»¯ liá»‡u
+                    tbody.innerHTML = `<tr> <td colspan="5" style="text-align:center; color:gray">Kho dữ liệu
 
-                                                        hiá»‡n Ä‘ang trá»‘ng.</td>
+                                                        hiện đang trống.</td>
 
                                                 </tr>`; return;
                 } tbody.innerHTML = data.slice(0, 100).map(row => `<tr>
@@ -12224,12 +12221,12 @@ window.renderSttOrderControl = function (type, i, total) {
 
         function clearHLData() {
 
-            if (!confirm("âš ï¸ BÃ¡c sÄ© cÃ³ cháº¯c cháº¯n muá»‘n xÃ³a TOÃ€N Bá»˜ dá»¯ liá»‡u huáº¥n luyá»‡n AI? HÃ nh Ä‘á»™ng nÃ y khÃ´ng thá»ƒ hoÃ n tÃ¡c!")) return;
+            if (!confirm("⚠️ Bác sĩ có chắc chắn muốn xóa TOÀN BỘ dữ liệu huấn luyện AI? Hành động này không thể hoàn tác!")) return;
 
-            logHL("ðŸ—‘ Äang tiáº¿n hÃ nh xÃ³a kho dá»¯ liá»‡u...");
+            logHL("🗑 Đang tiến hành xóa kho dữ liệu...");
 
             google.script.run.withSuccessHandler(res => {
-                logHL("âœ… " + res);
+                logHL("✅ " + res);
 
                 loadHLData();
             }).clearAITrainingData();
@@ -12238,25 +12235,25 @@ window.renderSttOrderControl = function (type, i, total) {
 
         function exportAIPrompt() {
 
-            logHL("â³ Äang táº¡o SiÃªu lá»‡nh (Mega-Prompt)...");
+            logHL("⏳ Đang tạo Siêu lệnh (Mega-Prompt)...");
 
             google.script.run.withSuccessHandler(data => {
 
-                if (!data?.length) return alert("ChÆ°a cÃ³ dá»¯ liá»‡u huáº¥n luyá»‡n nÃ o!");
+                if (!data?.length) return alert("Chưa có dữ liệu huấn luyện nào!");
 
-                let promptText = "Báº¡n lÃ  ChuyÃªn gia Khoa há»c Dá»¯ liá»‡u vÃ  Quáº£n lÃ½ Y táº¿.\n";
+                let promptText = "Bạn là Chuyên gia Khoa học Dữ liệu và Quản lý Y tế.\n";
 
-                promptText += "Nhiá»‡m vá»¥ cá»§a báº¡n lÃ  tá»‘i Æ°u hÃ³a thuáº­t toÃ¡n xáº¿p lá»‹ch thá»§ thuáº­t cho Khoa Y há»c Cá»• truyá»n - Phá»¥c há»“i Chá»©c nÄƒng.\n\n";
+                promptText += "Nhiệm vụ của bạn là tối ưu hóa thuật toán xếp lịch thủ thuật cho Khoa Y học Cổ truyền - Phục hồi Chức năng.\n\n";
 
-                promptText += "BÆ¯á»šC 1: PhÃ¢n tÃ­ch dá»¯ liá»‡u ca y lá»‡nh dÆ°á»›i Ä‘Ã¢y Ä‘á»ƒ tÃ¬m quy luáº­t (Nhá»‹p Ä‘iá»‡u, thá»i gian thá»±c táº¿, transition time...).\n";
+                promptText += "BƯỚC 1: Phân tích dữ liệu ca y lệnh dưới đây để tìm quy luật (Nhịp điệu, thời gian thực tế, transition time...).\n";
 
-                promptText += "BÆ¯á»šC 2: TÃ´i sáº½ cung cáº¥p code Javascript á»Ÿ tin nháº¯n tiáº¿p theo.\n";
+                promptText += "BƯỚC 2: Tôi sẽ cung cấp code Javascript ở tin nhắn tiếp theo.\n";
 
-                promptText += "BÆ¯á»šC 3: Viáº¿t láº¡i thuáº­t toÃ¡n xáº¿p lá»‹ch Ä‘á»ƒ cÃ¢n báº±ng táº£i.\n\n";
+                promptText += "BƯỚC 3: Viết lại thuật toán xếp lịch để cân bằng tải.\n\n";
 
-                promptText += "=== KHO Dá»® LIá»†U HUáº¤N LUYá»†N ===\n";
+                promptText += "=== KHO DỮ LIỆU HUẤN LUYỆN ===\n";
 
-                promptText += "NgÃ y | File Nguá»“n | NhÃ¢n ViÃªn | Thá»§ Thuáº­t | PhÃºt Báº¯t Äáº§u | PhÃºt Káº¿t ThÃºc | Thá»±c Táº¿ (phÃºt) | Khoáº£ng CÃ¡ch 7h (phÃºt)\n";
+                promptText += "Ngày | File Nguồn | Nhân Viên | Thủ Thuật | Phút Bắt Đầu | Phút Kết Thúc | Thực Tế (phút) | Khoảng Cách 7h (phút)\n";
 
                 data.forEach(row => { promptText += `${row.join(' | ')}\n`; });
 
@@ -12274,7 +12271,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 URL.revokeObjectURL(url);
 
-                logHL("âœ… ÄÃ£ xuáº¥t file thÃ nh cÃ´ng!");
+                logHL("✅ Đã xuất file thành công!");
 
             }).getAITrainingData();
 
@@ -12284,7 +12281,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // ðŸ“… DATE FORMAT
+        // 📅 DATE FORMAT
 
         // ============================================================
 
@@ -12310,7 +12307,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // ðŸ  DASHBOARD
+        // 🏠 DASHBOARD
 
         // ============================================================
 
@@ -12338,19 +12335,19 @@ window.renderSttOrderControl = function (type, i, total) {
                 const d = new Date();
                 const safeTodayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-                // TÃ­nh ngÃ y hÃ´m qua
+                // Tính ngày hôm qua
                 const yesterday = new Date(d);
                 yesterday.setDate(yesterday.getDate() - 1);
                 const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
 
                 if (activeYMD && activeYMD !== safeTodayStr) {
-                    // Chá»‰ cáº£nh bÃ¡o náº¿u ngÃ y cÅ© lÃ  ngÃ y HÃ”M QUA (cáº§n chá»‘t sá»•)
-                    // Náº¿u cÅ© hÆ¡n 1 ngÃ y â†’ Ä‘Ã³ lÃ  cache offline lá»—i thá»i, im láº·ng reset vá» hÃ´m nay
+                    // Chỉ cảnh báo nếu ngày cũ là ngày HÔM QUA (cần chốt sổ)
+                    // Nếu cũ hơn 1 ngày → đó là cache offline lỗi thời, im lặng reset về hôm nay
                     if (activeYMD === yesterdayStr) {
-                        alert(`âš ï¸ Há»† THá»NG PHÃT HIá»†N:\nDá»¯ liá»‡u cá»§a ngÃ y ${activeDateStr} chÆ°a Ä‘Æ°á»£c chá»‘t sá»•!\nMáº·c Ä‘á»‹nh sáº½ hiá»ƒn thá»‹ dá»¯ liá»‡u cá»§a ngÃ y nÃ y Ä‘á»ƒ báº¡n tiáº¿p tá»¥c xá»­ lÃ½.`);
+                        alert(`⚠️ HỆ THỐNG PHÁT HIỆN:\nDữ liệu của ngày ${activeDateStr} chưa được chốt sổ!\nMặc định sẽ hiển thị dữ liệu của ngày này để bạn tiếp tục xử lý.`);
                         datePicker.value = activeYMD;
                     } else {
-                        // Cache cÅ© (>1 ngÃ y), bá» qua vÃ  dÃ¹ng ngÃ y hÃ´m nay
+                        // Cache cũ (>1 ngày), bỏ qua và dùng ngày hôm nay
                         datePicker.value = safeTodayStr;
                         activeYMD = null;
                     }
@@ -12397,7 +12394,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 const working = staffData.filter(s => {
                     const st = s.trangThai || '';
                     const r = s.vaiTro || '';
-                    return st === 'Äi lÃ m' && r !== 'Äiá»u dÆ°á»¡ng';
+                    return st === 'Đi làm' && r !== 'Điều dưỡng';
                 }).length;
                 const elStaff = document.getElementById('statStaff');
                 if (elStaff) elStaff.textContent = working;
@@ -12410,11 +12407,11 @@ window.renderSttOrderControl = function (type, i, total) {
                     try {
                         const curUnit = getCurrentUnitCode();
                         const savedUnit = (localStorage.getItem('meds_schedule_unit') || '').toLowerCase();
-                        // Chá»‰ dÃ¹ng cache local Náº¾U cÃ³ savedUnit VÃ€ Ä‘Ãºng Ä‘Æ¡n vá»‹ hiá»‡n hÃ nh!
+                        // Chỉ dùng cache local NẾU có savedUnit VÀ đúng đơn vị hiện hành!
                         if (savedUnit && savedUnit === curUnit) {
                             const localSched = JSON.parse(localStorage.getItem(getUnitStorageKey('meds_success')) || localStorage.getItem('meds_success') || '[]');
                             if (Array.isArray(localSched) && localSched.length) {
-                                // âœ… Kiá»ƒm tra ngÃ y cá»§a lá»‹ch cÅ© trÆ°á»›c khi dÃ¹ng
+                                // ✅ Kiểm tra ngày của lịch cũ trước khi dùng
                                 const savedDate = localStorage.getItem(getUnitStorageKey('meds_schedule_date')) || localStorage.getItem('meds_schedule_date') || '';
                                 const nowVN2 = new Date(Date.now() + 7 * 60 * 60 * 1000);
                                 const todayYMD2 = `${nowVN2.getUTCFullYear()}-${String(nowVN2.getUTCMonth() + 1).padStart(2, '0')}-${String(nowVN2.getUTCDate()).padStart(2, '0')}`;
@@ -12426,7 +12423,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                 const rawDate2 = savedDate || (Array.isArray(localSched[0]) ? localSched[0][0] : (localSched[0]?.ngay || localSched[0]?.NGAY || localSched[0]?.date || ''));
                                 const schedDate = toYMD2(rawDate2);
                                 if (schedDate && schedDate === todayYMD2) {
-                                    // Lá»‹ch Ä‘Ãºng ngÃ y hÃ´m nay â†’ dÃ¹ng bÃ¬nh thÆ°á»ng
+                                    // Lịch đúng ngày hôm nay → dùng bình thường
                                     rawSched = localSched;
                                     if (typeof dataCache !== 'undefined') dataCache.schedule = localSched;
                                     if (window.dataCache) window.dataCache.schedule = localSched;
@@ -12468,7 +12465,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 const dayData = validData.filter(item => {
                     const g = String(item.gioDienRa || item.GIODIENRA || item[5] || '');
-                    return g && g !== '--' && !g.includes('Rá»›t');
+                    return g && g !== '--' && !g.includes('Rớt');
                 }).map(item => [
                     item.ngay || item.NGAY || item[0] || selectedDate,
                     item.tenBN || item.HOTEN || item[1] || '',
@@ -12477,22 +12474,22 @@ window.renderSttOrderControl = function (type, i, total) {
                     item.thuThuat || item.DICHVU || item[4] || '',
                     item.gioDienRa || item.GIODIENRA || item[5] || '',
                     item.gioKetThuc || item.GIOKETTHUC || item[6] || '',
-                    item.nvChinh || item['NV CHÃNH'] || item[7] || '',
-                    item.nvPhu || item['NV PHá»¤'] || item[8] || '',
+                    item.nvChinh || item['NV CHÍNH'] || item[7] || '',
+                    item.nvPhu || item['NV PHỤ'] || item[8] || '',
                     item.may || item.MAY || item[9] || '',
                     item.giuong || item.GIUONG || item[10] || ''
                 ]);
 
                 const rotDataSheets = validData.filter(item => {
                     const g = String(item.gioDienRa || item.GIODIENRA || item[5] || '');
-                    return g === '--' || g.includes('Rá»›t');
+                    return g === '--' || g.includes('Rớt');
                 }).map(item => [
                     item.ngay || item.NGAY || item[0] || selectedDate,
                     item.tenBN || item.HOTEN || item[1] || '',
                     item.namSinh || item.NAMSINH || item[2] || '',
                     item.phong || item.PHONG || item[3] || '',
                     item.thuThuat || item.DICHVU || item[4] || '',
-                    'âŒ Rá»›t', '--', '--', '--', '--', '--', 'Thiáº¿u nhÃ¢n sá»±/MÃ¡y'
+                    '❌ Rớt', '--', '--', '--', '--', '--', 'Thiếu nhân sự/Máy'
                 ]);
 
                 let rotDataLocal = [];
@@ -12505,7 +12502,7 @@ window.renderSttOrderControl = function (type, i, total) {
                             rotDataLocal = (JSON.parse(localStorage.getItem(getUnitStorageKey('meds_unscheduled')) || localStorage.getItem('meds_unscheduled') || '[]')).map(u => [
                                 selectedDate, u.bn || u.tenBN || '', u.ns || u.namSinh || '',
                                 u.room || u.phong || '', u.tt || u.thuThuat || '',
-                                'âŒ Rá»›t', '--', '--', '--', '--', '--', u.reason || 'QuÃ¡ táº£i/Háº¿t giá»'
+                                '❌ Rớt', '--', '--', '--', '--', '--', u.reason || 'Quá tải/Hết giờ'
                             ]);
                         }
                     }
@@ -12523,7 +12520,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (typeof renderCharts === 'function') renderCharts(dayData);
                 if (typeof renderDashboardMonthlyCharts === 'function') renderDashboardMonthlyCharts(selectedDate);
             } else {
-                // --- CHáº¾ Äá»˜ Lá»ŠCH Sá»¬ ---
+                // --- CHẾ ĐỘ LỊCH SỬ ---
                 const statScheduledEl = document.getElementById('statScheduled');
                 const statDroppedEl = document.getElementById('statDropped');
                 const statBN = document.getElementById('statBN');
@@ -12551,8 +12548,8 @@ window.renderSttOrderControl = function (type, i, total) {
                     if (statStaff) statStaff.textContent = (fullData.staffBusy || []).length;
 
                     const sched = fullData.schedule || [];
-                    const dayData = sched.filter(item => { const g = item.gioDienRa || ''; return g && g !== '--' && !g.includes('Rá»›t'); }).map(item => [item.ngay, item.tenBN, item.namSinh, item.phong, item.thuThuat, item.gioDienRa, item.gioKetThuc, item.nvChinh, item.nvPhu, item.may, item.giuong]);
-                    const rotData = sched.filter(item => { const g = item.gioDienRa || ''; return g === '--' || g.includes('Rá»›t'); }).map(item => [item.ngay, item.tenBN, item.namSinh, item.phong, item.thuThuat, 'âŒ Rá»›t', '--', '--', '--', '--', '--', 'Thiáº¿u nhÃ¢n sá»±/MÃ¡y']);
+                    const dayData = sched.filter(item => { const g = item.gioDienRa || ''; return g && g !== '--' && !g.includes('Rớt'); }).map(item => [item.ngay, item.tenBN, item.namSinh, item.phong, item.thuThuat, item.gioDienRa, item.gioKetThuc, item.nvChinh, item.nvPhu, item.may, item.giuong]);
+                    const rotData = sched.filter(item => { const g = item.gioDienRa || ''; return g === '--' || g.includes('Rớt'); }).map(item => [item.ngay, item.tenBN, item.namSinh, item.phong, item.thuThuat, '❌ Rớt', '--', '--', '--', '--', '--', 'Thiếu nhân sự/Máy']);
 
                     if (statScheduledEl) statScheduledEl.textContent = dayData.length;
                     if (statDroppedEl) statDroppedEl.textContent = rotData.length;
@@ -12563,22 +12560,22 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 if (window._historyCache && window._historyCache[selectedDate]) {
                     processHistoryData(window._historyCache[selectedDate]);
-                    if (window.showToast) window.showToast("ÄÃ£ táº£i dá»¯ liá»‡u lá»‹ch sá»­ tá»« bá»™ nhá»›", "info", 2000);
+                    if (window.showToast) window.showToast("Đã tải dữ liệu lịch sử từ bộ nhớ", "info", 2000);
                 } else {
-                    if (window.showGlobalLoading) window.showGlobalLoading("Äang táº£i dá»¯ liá»‡u lá»‹ch sá»­...");
+                    if (window.showGlobalLoading) window.showGlobalLoading("Đang tải dữ liệu lịch sử...");
                     google.script.run.withSuccessHandler(data => {
                         processHistoryData(data);
                         if (window.hideGlobalLoading) window.hideGlobalLoading();
-                        if (window.showToast) window.showToast("ÄÃ£ táº£i xong dá»¯ liá»‡u lá»‹ch sá»­!", "success");
+                        if (window.showToast) window.showToast("Đã tải xong dữ liệu lịch sử!", "success");
                     }).withFailureHandler(err => {
                         if (window.hideGlobalLoading) window.hideGlobalLoading();
-                        console.error("Lá»—i táº£i lá»‹ch sá»­ Dashboard: " + err);
+                        console.error("Lỗi tải lịch sử Dashboard: " + err);
                         if (statScheduledEl) statScheduledEl.textContent = "0";
                         if (statDroppedEl) statDroppedEl.textContent = "0";
                         if (statBN) statBN.textContent = "0";
                         if (statStaff) statStaff.textContent = "0";
                         if (statTotalProcsEl) statTotalProcsEl.textContent = "0";
-                        if (window.showToast) window.showToast("Lá»—i táº£i dá»¯ liá»‡u lá»‹ch sá»­: " + err, "error");
+                        if (window.showToast) window.showToast("Lỗi tải dữ liệu lịch sử: " + err, "error");
                     }).getHistoryFullData(selectedDate);
                 }
             }
@@ -12595,7 +12592,7 @@ window.renderSttOrderControl = function (type, i, total) {
             const y = targetDate.getFullYear() || new Date().getFullYear();
             const m = String(targetDate.getMonth() + 1).padStart(2, '0');
             const monthYear = `${y}-${m}`;
-            const subTitle = `(ThÃ¡ng ${m}/${y})`;
+            const subTitle = `(Tháng ${m}/${y})`;
 
             const elSub1 = document.getElementById('dash-chart-workdays-subtitle');
             if (elSub1) elSub1.innerText = subTitle;
@@ -12650,11 +12647,11 @@ window.renderSttOrderControl = function (type, i, total) {
                 } else {
                     empList = empList.filter(e => {
                         const s = String(e).trim();
-                        return s && !/^(phá»¥|phu)\s*\d+/i.test(s);
+                        return s && !/^(phụ|phu)\s*\d+/i.test(s);
                     });
                 }
 
-                // 1. Dá»¯ liá»‡u ngÃ y cÃ´ng
+                // 1. Dữ liệu ngày công
                 const workdaysArr = empList.map(emp => {
                     let totalCong = 0;
                     const empRecord = cc[emp] || (typeof findStaffDataByKey === 'function' ? findStaffDataByKey(cc, emp) : null);
@@ -12672,7 +12669,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     return { name: emp, val: totalCong };
                 }).filter(x => x.val > 0).sort((a, b) => b.val - a.val);
 
-                // 2. Dá»¯ liá»‡u thá»§ thuáº­t
+                // 2. Dữ liệu thủ thuật
                 const procsArr = empList.map(emp => {
                     let totalTT = 0;
                     const empTT = tt[emp] || (typeof findStaffDataByKey === 'function' ? findStaffDataByKey(tt, emp) : null);
@@ -12687,7 +12684,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 const chartSubColor = isDarkTheme ? '#94a3b8' : '#64748b';
                 const chartGridColor = isDarkTheme ? '#334155' : '#f1f5f9';
 
-                // Biá»ƒu Ä‘á»“ 1: NgÃ y cÃ´ng
+                // Biểu đồ 1: Ngày công
                 const canvas1 = document.getElementById('canvas-dash-workdays');
                 if (canvas1) {
                     const ctx1 = canvas1.getContext('2d');
@@ -12698,7 +12695,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         data: {
                             labels: workdaysArr.map(d => d.name),
                             datasets: [{
-                                label: 'NgÃ y cÃ´ng',
+                                label: 'Ngày công',
                                 data: workdaysArr.map(d => d.val),
                                 backgroundColor: '#38bdf8',
                                 borderColor: '#0284c7',
@@ -12725,7 +12722,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                 },
                                 tooltip: {
                                     callbacks: {
-                                        label: (ctx) => ` NgÃ y cÃ´ng: ${String(ctx.raw).replace('.', ',')}`
+                                        label: (ctx) => ` Ngày công: ${String(ctx.raw).replace('.', ',')}`
                                     }
                                 }
                             },
@@ -12755,7 +12752,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     });
                 }
 
-                // Biá»ƒu Ä‘á»“ 2: Thá»§ thuáº­t
+                // Biểu đồ 2: Thủ thuật
                 const canvas2 = document.getElementById('canvas-dash-procs');
                 if (canvas2) {
                     const ctx2 = canvas2.getContext('2d');
@@ -12766,7 +12763,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         data: {
                             labels: procsArr.map(d => d.name),
                             datasets: [{
-                                label: 'Thá»§ thuáº­t',
+                                label: 'Thủ thuật',
                                 data: procsArr.map(d => d.val),
                                 backgroundColor: '#e11d48',
                                 borderColor: '#be123c',
@@ -12793,7 +12790,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                 },
                                 tooltip: {
                                     callbacks: {
-                                        label: (ctx) => ` Thá»§ thuáº­t: ${ctx.raw}`
+                                        label: (ctx) => ` Thủ thuật: ${ctx.raw}`
                                     }
                                 }
                             },
@@ -12855,16 +12852,16 @@ window.renderSttOrderControl = function (type, i, total) {
                     const nvChinh = (r[7] || '').trim();
                     const thuThuat = (r[4] || '').trim();
 
-                    // LuÃ´n Ä‘áº¿m thá»§ thuáº­t vÃ o YHCT/PHCN trÆ°á»›c (báº¥t ká»ƒ cÃ³ NV hay khÃ´ng)
-                    // â†’ Ä‘áº£m báº£o tá»•ng "PhÃ¢n Bá»• Thá»§ Thuáº­t" = tá»•ng "Táº£i Trá»ng NhÃ¢n ViÃªn"
+                    // Luôn đếm thủ thuật vào YHCT/PHCN trước (bất kể có NV hay không)
+                    // → đảm bảo tổng "Phân Bổ Thủ Thuật" = tổng "Tải Trọng Nhân Viên"
                     const cat = procCategoryMap[thuThuat.toLowerCase()] || 'PHCN';
                     if (cat === 'YHCT') procCountYHCT[thuThuat] = (procCountYHCT[thuThuat] || 0) + 1;
                     else procCountPHCN[thuThuat] = (procCountPHCN[thuThuat] || 0) + 1;
 
-                    // Bá» qua cÃ¡c tÃªn slot áº£o cá»§a engine xáº¿p lá»‹ch (Phá»¥ 1, Phá»¥ 2, Phá»¥ 3, ChÃ­nh 1...)
-                    // Ghi vÃ o nhÃ³m "(ChÆ°a phÃ¢n cÃ´ng)" Ä‘á»ƒ tá»•ng BS+KTV khá»›p vá»›i tá»•ng thá»§ thuáº­t
-                    if (!nvChinh || /^(ph[uá»¥]|chinh|chÃ­nh)\s*\d*$/i.test(nvChinh)) {
-                        staffLoadKTV['(ChÆ°a phÃ¢n cÃ´ng)'] = (staffLoadKTV['(ChÆ°a phÃ¢n cÃ´ng)'] || 0) + 1;
+                    // Bỏ qua các tên slot ảo của engine xếp lịch (Phụ 1, Phụ 2, Phụ 3, Chính 1...)
+                    // Ghi vào nhóm "(Chưa phân công)" để tổng BS+KTV khớp với tổng thủ thuật
+                    if (!nvChinh || /^(ph[uụ]|chinh|chính)\s*\d*$/i.test(nvChinh)) {
+                        staffLoadKTV['(Chưa phân công)'] = (staffLoadKTV['(Chưa phân công)'] || 0) + 1;
                         return;
                     }
 
@@ -12882,7 +12879,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     else staffLoadKTV[nvChinh] = (staffLoadKTV[nvChinh] || 0) + 1;
                 });
             } else {
-                // Fallback: Khi chÆ°a xáº¿p lá»‹ch, tÃ­nh phÃ¢n bá»• thá»§ thuáº­t tá»« danh sÃ¡ch bá»‡nh nhÃ¢n hiá»‡n táº¡i (realtime)
+                // Fallback: Khi chưa xếp lịch, tính phân bổ thủ thuật từ danh sách bệnh nhân hiện tại (realtime)
                 (dataCache.pat || []).forEach(p => {
                     if (p.thuThuat) {
                         const procs = String(p.thuThuat).split(',').map(x => x.trim()).filter(x => x);
@@ -12913,7 +12910,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 const el = document.getElementById(containerId);
                 if (!el) return;
                 if (!entries.length) {
-                    el.innerHTML = '<div style="padding:20px;text-align:center;color:#bbb;font-size:0.78rem;">KhÃ´ng cÃ³ dá»¯ liá»‡u</div>';
+                    el.innerHTML = '<div style="padding:20px;text-align:center;color:#bbb;font-size:0.78rem;">Không có dữ liệu</div>';
                     return;
                 }
                 const max = entries[0][1] || 1;
@@ -12946,7 +12943,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // â° Äá»’NG Há»’
+        // ⏰ ĐỒNG HỒ
 
         // ============================================================
 
@@ -12954,7 +12951,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const now = new Date();
 
-            const days = ['Chá»§ Nháº­t', 'Thá»© Hai', 'Thá»© Ba', 'Thá»© TÆ°', 'Thá»© NÄƒm', 'Thá»© SÃ¡u', 'Thá»© Báº£y'];
+            const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
 
             const pad = n => String(n).padStart(2, '0');
 
@@ -12976,7 +12973,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-        // ðŸ’¬ POPUP XÃCNHáº¬N / Cáº¢NH BÃO
+        // 💬 POPUP XÁCNHẬN / CẢNH BÁO
 
         // ============================================================
 
@@ -12994,25 +12991,25 @@ window.renderSttOrderControl = function (type, i, total) {
 
         }
 
-        function showCustomAlert(title, message, icon = 'ðŸ’¡', btnColor = '#3498db') {
+        function showCustomAlert(title, message, icon = '💡', btnColor = '#3498db') {
 
             const iconEl = document.getElementById('gca-icon');
             const titleEl = document.getElementById('gca-title');
             const msgEl = document.getElementById('gca-message');
             const btn = document.querySelector("#global-custom-alert button");
 
-            // XÃ³a badge phá»¥ cÅ© náº¿u cÃ³
+            // Xóa badge phụ cũ nếu có
             const oldBadge = document.getElementById('gca-success-badge');
             if (oldBadge) oldBadge.remove();
 
             const isSucc = (btnColor === '#27ae60' || btnColor === '#2ecc71' || btnColor === '#00b894')
-                || (typeof title === 'string' && title.toLowerCase().includes('thÃ nh cÃ´ng'))
-                || (typeof message === 'string' && message.toLowerCase().includes('thÃ nh cÃ´ng') && !title.toLowerCase().includes('lá»—i'));
+                || (typeof title === 'string' && title.toLowerCase().includes('thành công'))
+                || (typeof message === 'string' && message.toLowerCase().includes('thành công') && !title.toLowerCase().includes('lỗi'));
 
             if (isSucc) {
-                if (iconEl) iconEl.innerText = 'âœ…';
+                if (iconEl) iconEl.innerText = '✅';
                 if (titleEl) {
-                    titleEl.innerText = 'ThÃ nh cÃ´ng';
+                    titleEl.innerText = 'Thành công';
                     titleEl.style.fontSize = '24px';
                     titleEl.style.color = '#27ae60';
                     titleEl.style.fontWeight = 'bold';
@@ -13095,15 +13092,15 @@ window.renderSttOrderControl = function (type, i, total) {
                     event.preventDefault(); successModal.style.display = 'none';
                 }
 
-                return; // Náº¿u popup thÃ nh cÃ´ng Ä‘ang má»Ÿ thÃ¬ chá»‰ Ä‘Ã³ng popup, khÃ´ng lÆ°u form
+                return; // Nếu popup thành công đang mở thì chỉ đóng popup, không lưu form
 
             }
 
 
 
-            // âš ï¸ ÄÃƒ XÃ“A: Xá»­ lÃ½ Enter tá»± Ä‘á»™ng click nÃºt LÆ°u/ThÃªm Ä‘Æ°á»£c
-            // xá»­ lÃ½ táº­p trung táº¡i listener á»Ÿ trÃªn (~dÃ²ng 7261)
-            // Ä‘á»ƒ trÃ¡nh savePatient() bá»‹ gá»i 2 láº§n gÃ¢y trÃ¹ng dá»¯ liá»‡u.
+            // ⚠️ ĐÃ XÓA: Xử lý Enter tự động click nút Lưu/Thêm được
+            // xử lý tập trung tại listener ở trên (~dòng 7261)
+            // để tránh savePatient() bị gọi 2 lần gây trùng dữ liệu.
 
         });
 
@@ -13113,11 +13110,11 @@ window.renderSttOrderControl = function (type, i, total) {
         function checkUnclosedDay() {
             if (window._forceHistoryMode || window.viewingImportedScheduleFile) {
                 if (typeof showCustomAlert === 'function') {
-                    showCustomAlert("ðŸ“œ ÄANG á»ž CHáº¾ Äá»˜ XEM Lá»ŠCH Sá»¬",
-                        "Báº¡n Ä‘ang xem dá»¯ liá»‡u lá»‹ch sá»­ cá»§a ngÃ y cÅ©.<br><br>CÃ¡c thao tÃ¡c chá»‰nh sá»­a, thÃªm má»›i hoáº·c xÃ³a bá»‹ khÃ³a Ä‘á»ƒ báº£o toÃ n dá»¯ liá»‡u gá»‘c.<br><br>Vui lÃ²ng báº¥m nÃºt <b>'Vá» HÃ´m Nay'</b> Ä‘á»ƒ quay vá» cháº¿ Ä‘á»™ lÃ m viá»‡c thá»i gian thá»±c.",
-                        "â„¹ï¸", "#3b82f6");
+                    showCustomAlert("📜 ĐANG Ở CHẾ ĐỘ XEM LỊCH SỬ",
+                        "Bạn đang xem dữ liệu lịch sử của ngày cũ.<br><br>Các thao tác chỉnh sửa, thêm mới hoặc xóa bị khóa để bảo toàn dữ liệu gốc.<br><br>Vui lòng bấm nút <b>'Về Hôm Nay'</b> để quay về chế độ làm việc thời gian thực.",
+                        "ℹ️", "#3b82f6");
                 } else {
-                    alert("ðŸ“œ Báº N ÄANG XEM Lá»ŠCH Sá»¬ NGÃ€Y CÅ¨\n\nKhÃ´ng thá»ƒ chá»‰nh sá»­a dá»¯ liá»‡u á»Ÿ cháº¿ Ä‘á»™ xem láº¡i. Vui lÃ²ng báº¥m 'Vá» HÃ´m Nay' Ä‘á»ƒ chá»‰nh sá»­a.");
+                    alert("📜 BẠN ĐANG XEM LỊCH SỬ NGÀY CŨ\n\nKhông thể chỉnh sửa dữ liệu ở chế độ xem lại. Vui lòng bấm 'Về Hôm Nay' để chỉnh sửa.");
                 }
                 return true;
             }
@@ -13127,13 +13124,13 @@ window.renderSttOrderControl = function (type, i, total) {
             if (window._systemActiveYMD && window._systemActiveYMD < safeTodayStr) {
                 const displayOldDate = window._systemActiveYMD.split('-').reverse().join('/');
                 if (typeof showCustomAlert === 'function') {
-                    showCustomAlert("âš ï¸ CHÆ¯A CHá»T Sá»” NGÃ€Y CÅ¨",
-                        "Há»‡ thá»‘ng phÃ¡t hiá»‡n dá»¯ liá»‡u ngÃ y cÅ© (<b>" + displayOldDate + "</b>) chÆ°a Ä‘Æ°á»£c chá»‘t sá»•!<br><br>" +
-                        "Äá»ƒ trÃ¡nh máº¥t mÃ¡t vÃ  xung Ä‘á»™t dá»¯ liá»‡u, toÃ n bá»™ thao tÃ¡c chá»‰nh sá»­a bá»‡nh nhÃ¢n, giá» báº­n, vÃ  giá» ra viá»‡n Ä‘Ã£ bá»‹ khÃ³a.<br><br>" +
-                        "Vui lÃ²ng thá»±c hiá»‡n <b>Chá»‘t sá»•</b> ngÃ y cÅ© trÆ°á»›c khi tiáº¿p tá»¥c thao tÃ¡c dá»¯ liá»‡u.",
-                        "âš ï¸", "#e74c3c");
+                    showCustomAlert("⚠️ CHƯA CHỐT SỔ NGÀY CŨ",
+                        "Hệ thống phát hiện dữ liệu ngày cũ (<b>" + displayOldDate + "</b>) chưa được chốt sổ!<br><br>" +
+                        "Để tránh mất mát và xung đột dữ liệu, toàn bộ thao tác chỉnh sửa bệnh nhân, giờ bận, và giờ ra viện đã bị khóa.<br><br>" +
+                        "Vui lòng thực hiện <b>Chốt sổ</b> ngày cũ trước khi tiếp tục thao tác dữ liệu.",
+                        "⚠️", "#e74c3c");
                 } else {
-                    alert("âš ï¸ CHÆ¯A CHá»T Sá»” NGÃ€Y CÅ¨\n\nHá»‡ thá»‘ng phÃ¡t hiá»‡n ngÃ y cÅ© (" + displayOldDate + ") chÆ°a Ä‘Æ°á»£c chá»‘t sá»•!\n\nVui lÃ²ng thá»±c hiá»‡n Chá»‘t sá»• trÆ°á»›c khi tiáº¿p tá»¥c.");
+                    alert("⚠️ CHƯA CHỐT SỔ NGÀY CŨ\n\nHệ thống phát hiện ngày cũ (" + displayOldDate + ") chưa được chốt sổ!\n\nVui lòng thực hiện Chốt sổ trước khi tiếp tục.");
                 }
                 return true;
             }
@@ -13141,7 +13138,7 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
 
-        // Tá»I Æ¯U UX 2: Tá»± Ä‘á»™ng Ä‘á»‹nh dáº¡ng Giá» vÃ  NgÃ y khi gÃµ táº¯t (0830 -> 08:30)
+        // TỐI ƯU UX 2: Tự động định dạng Giờ và Ngày khi gõ tắt (0830 -> 08:30)
 
         document.addEventListener('focusout', function (e) {
 
@@ -13153,7 +13150,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-                // Tá»± Ä‘á»™ng Ä‘á»‹nh dáº¡ng giá» (gÃµ 830 hoáº·c 0830 -> 08:30)
+                // Tự động định dạng giờ (gõ 830 hoặc 0830 -> 08:30)
 
                 if (e.target.id.includes('-time') || e.target.id.includes('-gio') || e.target.id.includes('gio-') || e.target.id.includes('-leave') || e.target.classList.contains('time-input')) {
 
@@ -13169,7 +13166,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-                // Tá»± Ä‘á»™ng Ä‘á»‹nh dáº¡ng ngÃ y (gÃµ 120526 hoáº·c 12052026 -> 12/05/2026)
+                // Tự động định dạng ngày (gõ 120526 hoặc 12052026 -> 12/05/2026)
 
                 if (e.target.id.includes('-date') || e.target.id.includes('-ngay') || e.target.id.includes('ngay-') || e.target.classList.contains('date-input')) {
 
@@ -13191,7 +13188,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-        // Tá»I Æ¯U UX 3: Click Ä‘Ãºp vÃ o Ã´ Thá»i gian (Giá» vÃ o, Giá» ra, Giá» báº­n) Ä‘á»ƒ tá»± Ä‘á»™ng Ä‘iá»n GIá»œ HIá»†N Táº I
+        // TỐI ƯU UX 3: Click đúp vào ô Thời gian (Giờ vào, Giờ ra, Giờ bận) để tự động điền GIỜ HIỆN TẠI
 
         document.addEventListener('dblclick', function (e) {
 
@@ -13207,7 +13204,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     e.target.value = `${hh}:${mm}`;
 
-                    // BÃ´i Ä‘en Ä‘á»ƒ ngÆ°á»i dÃ¹ng dá»… nhÃ¬n tháº¥y dá»¯ liá»‡u vá»«a Ä‘Æ°á»£c Ä‘iá»n
+                    // Bôi đen để người dùng dễ nhìn thấy dữ liệu vừa được điền
 
                     e.target.select();
 
@@ -13225,25 +13222,25 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // -----------------------------------------------------------
 
-        // ðŸ“Œ HASH ROUTING LOGIC
+        // 📌 HASH ROUTING LOGIC
 
         // -----------------------------------------------------------
 
         document.addEventListener('DOMContentLoaded', function () {
 
-            // Override logic chuyá»ƒn tab cÅ©
+            // Override logic chuyển tab cũ
 
             const tabs = document.querySelectorAll('.nav-tab, .nav-item');
 
 
 
-            // 1. Láº¯ng nghe Hash Change
+            // 1. Lắng nghe Hash Change
 
             window.addEventListener('hashchange', handleHashChange);
 
 
 
-            // 2. Cháº¡y láº§n Ä‘áº§u khi load trang
+            // 2. Chạy lần đầu khi load trang
 
             if (window.location.hash) {
 
@@ -13251,7 +13248,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             } else {
 
-                // Máº·c Ä‘á»‹nh má»Ÿ tab-home
+                // Mặc định mở tab-home
 
                 window.location.hash = '#tab-home';
 
@@ -13259,11 +13256,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-            // 3. Sá»­a láº¡i event click cá»§a cÃ¡c tab Ä‘á»ƒ chá»‰ Ä‘á»•i hash
+            // 3. Sửa lại event click của các tab để chỉ đổi hash
 
             tabs.forEach(tab => {
 
-                // Bá» event click cÅ© báº±ng cÃ¡ch clone node náº¿u cáº§n, nhÆ°ng tá»‘t nháº¥t lÃ  ngÄƒn cháº·n hÃ nh vi máº·c Ä‘á»‹nh
+                // Bỏ event click cũ bằng cách clone node nếu cần, nhưng tốt nhất là ngăn chặn hành vi mặc định
 
                 tab.addEventListener('click', function (e) {
 
@@ -13273,7 +13270,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     e.preventDefault();
 
-                    e.stopPropagation(); // NgÄƒn event cÅ© (Ä‘Ã£ gÃ¡n trÆ°á»›c Ä‘Ã³) cháº¡y
+                    e.stopPropagation(); // Ngăn event cũ (đã gán trước đó) chạy
 
                     const targetTab = tab.getAttribute('data-tab');
 
@@ -13297,11 +13294,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-                let targetTab = hash.substring(1); // XÃ³a dáº¥u #
+                let targetTab = hash.substring(1); // Xóa dấu #
 
 
 
-                // Cáº­p nháº­t giao diá»‡n
+                // Cập nhật giao diện
 
                 tabs.forEach(t => t.classList.remove('active'));
 
@@ -13319,7 +13316,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-                // Äiá»u chá»‰nh class body nhÆ° logic cÅ©
+                // Điều chỉnh class body như logic cũ
 
                 document.body.classList.toggle('tab-sat-active', targetTab === 'tab-sat');
 
@@ -13327,7 +13324,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-                // KÃ­ch hoáº¡t load dá»¯ liá»‡u riÃªng
+                // Kích hoạt load dữ liệu riêng
 
                 if (targetTab === 'tab-sat' && typeof satCache !== 'undefined' && Object.keys(satCache).length === 0) {
 
@@ -13424,8 +13421,8 @@ window.renderSttOrderControl = function (type, i, total) {
             if (arrow) arrow.style.transform = 'rotate(0deg)';
 
             if (typeof showCustomConfirm === 'function') {
-                showCustomConfirm('ÄÄƒng xuáº¥t tÃ i khoáº£n', 'Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n Ä‘Äƒng xuáº¥t khá»i há»‡ thá»‘ng khÃ´ng?', doLogout);
-            } else if (confirm('Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n Ä‘Äƒng xuáº¥t khá»i há»‡ thá»‘ng khÃ´ng?')) {
+                showCustomConfirm('Đăng xuất tài khoản', 'Bạn có chắc chắn muốn đăng xuất khỏi hệ thống không?', doLogout);
+            } else if (confirm('Bạn có chắc chắn muốn đăng xuất khỏi hệ thống không?')) {
                 doLogout();
             }
         };
@@ -13449,7 +13446,7 @@ window.renderSttOrderControl = function (type, i, total) {
         });
 
         // ============================================================
-        // âœ… KIá»‚M TRA Lá»–I HIS
+        // ✅ KIỂM TRA LỖI HIS
         // ============================================================
 
         function initErrorChecker() {
@@ -13460,33 +13457,33 @@ window.renderSttOrderControl = function (type, i, total) {
                 btnCheckCurrent.addEventListener('click', () => {
                     const currentSched = (window.currentScheduleData && window.currentScheduleData.length) ? window.currentScheduleData : ((typeof dataCache !== 'undefined' && dataCache.schedule) ? dataCache.schedule : []);
                     if (!currentSched || currentSched.length === 0) {
-                        alert('Hiá»‡n chÆ°a cÃ³ dá»¯ liá»‡u trÃªn báº£ng xáº¿p lá»‹ch. Vui lÃ²ng báº¥m "Xáº¿p lá»‹ch" hoáº·c chá»n file Excel/HIS Ä‘á»ƒ kiá»ƒm tra.');
+                        alert('Hiện chưa có dữ liệu trên bảng xếp lịch. Vui lòng bấm "Xếp lịch" hoặc chọn file Excel/HIS để kiểm tra.');
                         return;
                     }
-                    const rows = currentSched.filter(r => r && r.gioDienRa && r.gioDienRa !== '--' && !String(r.gioDienRa).includes('Rá»›t') && !r.__dropped).map(r => {
-                        const bd = r.gioDienRa || r['GIá»œ DIá»„N RA'] || r.batDau || '';
-                        const kt = r.gioKetThuc || r['GIá»œ Káº¾T THÃšC'] || r.ketThuc || '';
-                        const ngay = r.ngay || r.NGAY || r['NGÃ€Y'] || '';
+                    const rows = currentSched.filter(r => r && r.gioDienRa && r.gioDienRa !== '--' && !String(r.gioDienRa).includes('Rớt') && !r.__dropped).map(r => {
+                        const bd = r.gioDienRa || r['GIỜ DIỄN RA'] || r.batDau || '';
+                        const kt = r.gioKetThuc || r['GIỜ KẾT THÚC'] || r.ketThuc || '';
+                        const ngay = r.ngay || r.NGAY || r['NGÀY'] || '';
                         const datePart = ngay.includes('-') ? ngay.split('-').reverse().join('/') : ngay;
                         const startFull = datePart ? `${bd} ${datePart}` : bd;
                         const endFull = datePart ? `${kt} ${datePart}` : kt;
-                        const pName = (r.tenBN || r.hoTen || r['Há»Œ TÃŠN'] || '').replace(/\s*\((?:âœ” RV|âŒ Rá»›t|RV|Rá»›t)\)/gi, '').trim();
-                        const proc = r.thuThuat || r.dichVu || r['Dá»ŠCH Vá»¤'] || '';
+                        const pName = (r.tenBN || r.hoTen || r['HỌ TÊN'] || '').replace(/\s*\((?:✔ RV|❌ Rớt|RV|Rớt)\)/gi, '').trim();
+                        const proc = r.thuThuat || r.dichVu || r['DỊCH VỤ'] || '';
                         const procInfo = mapProcedureJS(proc);
                         return {
-                            'AT': r.nvChinh || r['NV CHÃNH'] || '',
-                            'AU': r.nvPhu || r['NV PHá»¤'] || '',
+                            'AT': r.nvChinh || r['NV CHÍNH'] || '',
+                            'AU': r.nvPhu || r['NV PHỤ'] || '',
                             'C': pName,
                             'AE': proc,
                             'AG': proc,
-                            'AF': 'Chá»§ Ä‘á»™ng',
-                            'AS': 'KhÃ¡c',
+                            'AF': 'Chủ động',
+                            'AS': 'Khác',
                             'AN': procInfo ? (procInfo.phanLoai || procInfo.loai || '') : '',
                             'AH': startFull,
                             'L': endFull,
-                            'phong': r.phong || r['PHÃ’NG'] || r['phong'] || '',
-                            'giuong': r.giuong || r['GIÆ¯á»œNG'] || r['giuong'] || '',
-                            'may': r.may || r['MÃY'] || r['may'] || ''
+                            'phong': r.phong || r['PHÒNG'] || r['phong'] || '',
+                            'giuong': r.giuong || r['GIƯỜNG'] || r['giuong'] || '',
+                            'may': r.may || r['MÁY'] || r['may'] || ''
                         };
                     });
                     processErrorChecking(rows);
@@ -13500,7 +13497,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         return;
                     }
 
-                    if (window.showGlobalLoading) window.showGlobalLoading('Äang phÃ¢n tÃ­ch file HIS...');
+                    if (window.showGlobalLoading) window.showGlobalLoading('Đang phân tích file HIS...');
 
                     const reader = new FileReader();
                     reader.onload = function (ev) {
@@ -13516,7 +13513,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                             function stripVietnamese(str) {
                                 if (!str) return '';
-                                return String(str).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/Ä‘/g, "d").replace(/Ä/g, "D").toLowerCase().trim();
+                                return String(str).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().trim();
                             }
 
                             for (let i = 0; i < Math.min(rawData.length, 50); i++) {
@@ -13535,7 +13532,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                             let dataRows = [];
                             if (isInternalSchedule) {
-                                // TrÃ­ch xuáº¥t ngÃ y tá»« dÃ²ng tiÃªu Ä‘á» trÃªn cÃ¹ng (vÃ­ dá»¥: 'NgÃ y thá»±c hiá»‡n: 19/09/2026') náº¿u khÃ´ng cÃ³ cá»™t NgÃ y
+                                // Trích xuất ngày từ dòng tiêu đề trên cùng (ví dụ: 'Ngày thực hiện: 19/09/2026') nếu không có cột Ngày
                                 let extractedFileDate = '';
                                 for (let i = 0; i < headerRowIndex; i++) {
                                     const rowCells = rawData[i] || [];
@@ -13557,7 +13554,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                     tt: headerRow.findIndex(h => h.includes('thu thuat') || h.includes('dich vu') || h.includes('dichvu')),
                                     bd: headerRow.findIndex(h => h.includes('bat dau') || h.includes('gio dien ra') || h.includes('giodienra')),
                                     kt: headerRow.findIndex(h => h.includes('ket thuc') || h.includes('gioketthuc')),
-                                    nv: headerRow.findIndex(h => h.includes('nv chinh') || h.includes('nhan vien chinh') || h.includes('ktv') || h.includes('bac si') || h.includes('bÃ¡c sÄ©')),
+                                    nv: headerRow.findIndex(h => h.includes('nv chinh') || h.includes('nhan vien chinh') || h.includes('ktv') || h.includes('bac si') || h.includes('bác sĩ')),
                                     nvPhu: headerRow.findIndex(h => h.includes('nv phu') || h.includes('nhan vien phu') || h.includes('phu ta') || h.includes('dieu duong phu')),
                                     phong: headerRow.findIndex(h => h.includes('phong dieu tri') || h.includes('phong')),
                                     giuong: headerRow.findIndex(h => h.includes('giuong benh') || h.includes('giuong')),
@@ -13569,13 +13566,13 @@ window.renderSttOrderControl = function (type, i, total) {
                                     const bdStr = colIdx.bd >= 0 ? String(r[colIdx.bd] || '').trim() : '';
                                     const ktStr = colIdx.kt >= 0 ? String(r[colIdx.kt] || '').trim() : '';
 
-                                    if (bdStr.includes('Rá»›t') || bdStr === '--' || !bdStr) return null;
+                                    if (bdStr.includes('Rớt') || bdStr === '--' || !bdStr) return null;
 
                                     const datePart = ngayStr.includes('-') ? ngayStr.split('-').reverse().join('/') : ngayStr;
                                     const startFull = datePart ? `${bdStr} ${datePart}` : bdStr;
                                     const endFull = datePart ? `${ktStr} ${datePart}` : ktStr;
 
-                                    const cleanBN = (colIdx.ten >= 0 ? String(r[colIdx.ten] || '') : '').replace(/\s*\((?:âœ” RV|âŒ Rá»›t|RV|Rá»›t)\)/gi, '').trim();
+                                    const cleanBN = (colIdx.ten >= 0 ? String(r[colIdx.ten] || '') : '').replace(/\s*\((?:✔ RV|❌ Rớt|RV|Rớt)\)/gi, '').trim();
                                     const procName = colIdx.tt >= 0 ? String(r[colIdx.tt] || '').trim() : '';
                                     const procInfo = mapProcedureJS(procName);
                                     const procLoai = procInfo ? (procInfo.phanLoai || procInfo.loai || procInfo.he || '') : '';
@@ -13586,8 +13583,8 @@ window.renderSttOrderControl = function (type, i, total) {
                                         'C': cleanBN,
                                         'AE': procName,
                                         'AG': procName,
-                                        'AF': 'Chá»§ Ä‘á»™ng',
-                                        'AS': 'KhÃ¡c',
+                                        'AF': 'Chủ động',
+                                        'AS': 'Khác',
                                         'AN': procLoai,
                                         'AH': startFull,
                                         'L': endFull,
@@ -13605,9 +13602,9 @@ window.renderSttOrderControl = function (type, i, total) {
                         } catch (err) {
                             if (window.hideGlobalLoading) window.hideGlobalLoading();
                             console.error(err);
-                            alert("Lá»—i khi Ä‘á»c file. Vui lÃ²ng kiá»ƒm tra láº¡i cáº¥u trÃºc form.");
-                            timeTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">ChÆ°a táº£i dá»¯ liá»‡u</td></tr>';
-                            otherTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">ChÆ°a táº£i dá»¯ liá»‡u</td></tr>';
+                            alert("Lỗi khi đọc file. Vui lòng kiểm tra lại cấu trúc form.");
+                            timeTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Chưa tải dữ liệu</td></tr>';
+                            otherTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Chưa tải dữ liệu</td></tr>';
                         }
                     };
                     reader.readAsArrayBuffer(file);
@@ -13713,8 +13710,8 @@ window.renderSttOrderControl = function (type, i, total) {
             if (!staff) return true;
             if (!procInfo) return true;
             
-            const staffQuyen = staff.quyen || 'Cáº£ hai';
-            if (staffQuyen === 'Cáº£ hai') return true;
+            const staffQuyen = staff.quyen || 'Cả hai';
+            if (staffQuyen === 'Cả hai') return true;
             
             const procSystem = procInfo.he || 'PHCN';
             return staffQuyen === procSystem;
@@ -13801,14 +13798,14 @@ window.renderSttOrderControl = function (type, i, total) {
         function isDieuDuong(staffName) {
             if (!staffName) return false;
             const sNorm = String(staffName).trim().toLowerCase();
-            if (sNorm.startsWith('phá»¥') || sNorm.startsWith('phu') || sNorm.startsWith('Ä‘d') || sNorm.startsWith('dd') || sNorm.startsWith('Ä‘iá»u dÆ°á»¡ng') || sNorm.startsWith('dieu duong')) {
+            if (sNorm.startsWith('phụ') || sNorm.startsWith('phu') || sNorm.startsWith('đd') || sNorm.startsWith('dd') || sNorm.startsWith('điều dưỡng') || sNorm.startsWith('dieu duong')) {
                 return true;
             }
             const staffList = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff)) ? dataCache.staff : [];
             const found = staffList.find(s => (s.ten && s.ten.toLowerCase() === sNorm) || (s.name && s.name.toLowerCase() === sNorm));
             if (found) {
                 const r = String(found.chucVu || found.role || '').toLowerCase();
-                if (r.includes('Ä‘iá»u dÆ°á»¡ng') || r.includes('dieu duong') || r.includes('phá»¥')) {
+                if (r.includes('điều dưỡng') || r.includes('dieu duong') || r.includes('phụ')) {
                     return true;
                 }
             }
@@ -13833,9 +13830,9 @@ window.renderSttOrderControl = function (type, i, total) {
             let sttOther = 1;
 
             const validStaffNames = staffList.map(s => s.ten);
-            const GAP_MS = 60 * 1000; // Khoáº£ng Ä‘á»‡m tá»‘i thiá»ƒu 1 phÃºt chuyá»ƒn ca giá»¯a cÃ¡c giÆ°á»ng
+            const GAP_MS = 60 * 1000; // Khoảng đệm tối thiểu 1 phút chuyển ca giữa các giường
 
-            // Cáº¥u trÃºc gom nhÃ³m theo NhÃ¢n viÃªn (ChÃ­nh), Bá»‡nh nhÃ¢n, GiÆ°á»ng bá»‡nh vÃ  MÃ¡y mÃ³c
+            // Cấu trúc gom nhóm theo Nhân viên (Chính), Bệnh nhân, Giường bệnh và Máy móc
             const groupedStaff = {};
             const groupedPatients = {};
             const groupedBeds = {};
@@ -13845,28 +13842,28 @@ window.renderSttOrderControl = function (type, i, total) {
                 let techMainRaw = String(row['AT'] || '').trim();
                 let techMainNorm = getShortNameJS(techMainRaw);
 
-                let techPhuRaw = String(row['AU'] || row['nvPhu'] || row['NV PHá»¤'] || '').trim();
+                let techPhuRaw = String(row['AU'] || row['nvPhu'] || row['NV PHỤ'] || '').trim();
                 let techPhuNorm = getShortNameJS(techPhuRaw);
 
-                const patientName = String(row['C'] || 'KhÃ´ng rÃµ').replace(/\s*\((?:âœ” RV|âŒ Rá»›t|RV|Rá»›t)\)/gi, '').trim();
+                const patientName = String(row['C'] || 'Không rõ').replace(/\s*\((?:✔ RV|❌ Rớt|RV|Rớt)\)/gi, '').trim();
                 const procName = String(row['AE'] || '').trim();
 
                 let start = row['AH'] ? convertExcelDateToJSDate(row['AH']) : null;
                 let end = row['L'] ? convertExcelDateToJSDate(row['L']) : null;
                 const procInfo = mapProcedureJS(procName, start);
-                const phongRaw = String(row.phong || row['PHÃ’NG'] || row['phong'] || '').trim();
-                const giuongRaw = String(row.giuong || row['GIÆ¯á»œNG'] || row['giuong'] || '').trim();
-                const mayRaw = String(row.may || row['MÃY'] || row['may'] || '').trim();
+                const phongRaw = String(row.phong || row['PHÒNG'] || row['phong'] || '').trim();
+                const giuongRaw = String(row.giuong || row['GIƯỜNG'] || row['giuong'] || '').trim();
+                const mayRaw = String(row.may || row['MÁY'] || row['may'] || '').trim();
 
-                // 1. Thá»‘ng kÃª thá»§ thuáº­t cho KTV chÃ­nh (váº«n Ä‘áº¿m Ä‘á»ƒ ghi nháº­n sá»‘ liá»‡u ngÃ y 18/09/2026)
+                // 1. Thống kê thủ thuật cho KTV chính (vẫn đếm để ghi nhận số liệu ngày 18/09/2026)
                 if (techMainNorm && counts[techMainNorm]) {
                     const loaiVal = String(row['AN'] || (procInfo ? (procInfo.phanLoai || procInfo.loai || procInfo.phan_loai || '') : '')).normalize('NFC').toLowerCase().trim();
 
-                    if (/\bloáº¡i\s*3\b|\bloai\s*3\b|\b3\b|\bloáº¡i\s*iii\b|\bloai\s*iii\b/.test(loaiVal)) {
+                    if (/\bloại\s*3\b|\bloai\s*3\b|\b3\b|\bloại\s*iii\b|\bloai\s*iii\b/.test(loaiVal)) {
                         counts[techMainNorm].l3++;
-                    } else if (/\bloáº¡i\s*2\b|\bloai\s*2\b|\b2\b|\bloáº¡i\s*ii\b|\bloai\s*ii\b/.test(loaiVal)) {
+                    } else if (/\bloại\s*2\b|\bloai\s*2\b|\b2\b|\bloại\s*ii\b|\bloai\s*ii\b/.test(loaiVal)) {
                         counts[techMainNorm].l2++;
-                    } else if (/\bloáº¡i\s*1\b|\bloai\s*1\b|\b1\b|\bloáº¡i\s*i\b|\bloai\s*i\b/.test(loaiVal)) {
+                    } else if (/\bloại\s*1\b|\bloai\s*1\b|\b1\b|\bloại\s*i\b|\bloai\s*i\b/.test(loaiVal)) {
                         counts[techMainNorm].l1++;
                     } else {
                         counts[techMainNorm].other++;
@@ -13875,7 +13872,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 if (!start || isNaN(start.getTime()) || !end || isNaN(end.getTime())) continue;
 
-                // TÃ­nh toÃ¡n cÃ¡c má»‘c thá»i gian cá»§a thá»§ thuáº­t
+                // Tính toán các mốc thời gian của thủ thuật
                 const tgThMin = procInfo ? (parseInt(procInfo.thoiGianThucHienMin || procInfo.thoiGianThucHien || procInfo[6]) || 5) : 5;
                 let tgThMax = procInfo ? (parseInt(procInfo.thoiGianThucHienMax || procInfo[13]) || tgThMin) : tgThMin;
                 if (tgThMax < tgThMin) tgThMax = tgThMin;
@@ -13884,27 +13881,27 @@ window.renderSttOrderControl = function (type, i, total) {
                 let tgTtMax = procInfo ? (parseInt(procInfo.thoiGianThuThuatMax || procInfo[12]) || tgTtMin) : tgTtMin;
                 if (tgTtMax < tgTtMin) tgTtMax = tgTtMin;
 
-                const isCont = procInfo ? (procInfo.lienTuc === 'CÃ³' || procInfo.lienTuc === 1 || procInfo.lienTuc === '1' || procInfo.lienTuc === true || procInfo[14] === 'CÃ³' || procInfo[14] === 1 || (tgThMin === tgTtMin && tgThMax === tgTtMax && tgThMin >= 10)) : false;
-                const canRutMay = procInfo ? (procInfo.canRutMay === 'CÃ³' || procInfo.canRutMay === 1 || procInfo.canRutMay === '1' || procInfo.canRutMay === true || procInfo[9] === 'CÃ³' || procInfo[9] === 1) : false;
-                const canNguoiPhu = procInfo ? (procInfo.canNguoiPhu === 'CÃ³' || procInfo.nguoiPhu === 'CÃ³' || procInfo[10] === 'CÃ³' || procInfo.canNguoiPhu === 1 || procInfo.canNguoiPhu === '1' || procInfo.canNguoiPhu === true) : false;
+                const isCont = procInfo ? (procInfo.lienTuc === 'Có' || procInfo.lienTuc === 1 || procInfo.lienTuc === '1' || procInfo.lienTuc === true || procInfo[14] === 'Có' || procInfo[14] === 1 || (tgThMin === tgTtMin && tgThMax === tgTtMax && tgThMin >= 10)) : false;
+                const canRutMay = procInfo ? (procInfo.canRutMay === 'Có' || procInfo.canRutMay === 1 || procInfo.canRutMay === '1' || procInfo.canRutMay === true || procInfo[9] === 'Có' || procInfo[9] === 1) : false;
+                const canNguoiPhu = procInfo ? (procInfo.canNguoiPhu === 'Có' || procInfo.nguoiPhu === 'Có' || procInfo[10] === 'Có' || procInfo.canNguoiPhu === 1 || procInfo.canNguoiPhu === '1' || procInfo.canNguoiPhu === true) : false;
 
                 const procTenLower = procInfo ? String(procInfo.ten || '').toLowerCase() : procName.toLowerCase();
-                const isDienCham = procTenLower.includes('Ä‘iá»‡n chÃ¢m') || procTenLower === 'Ä‘c' || procTenLower === 'dctb';
-                const isHaoCham = procTenLower.includes('hÃ o chÃ¢m') || procTenLower === 'hc';
-                const isThuyCham = procTenLower.includes('thá»§y chÃ¢m') || procTenLower === 'tc';
+                const isDienCham = procTenLower.includes('điện châm') || procTenLower === 'đc' || procTenLower === 'dctb';
+                const isHaoCham = procTenLower.includes('hào châm') || procTenLower === 'hc';
+                const isThuyCham = procTenLower.includes('thủy châm') || procTenLower === 'tc';
 
-                // KhÃ³a giá» káº¿t thÃºc Ä‘á»‘i vá»›i TTV chÃ­nh:
-                // Äiá»‡n chÃ¢m, HÃ o chÃ¢m (ká»ƒ cáº£ cÃ³ Äiá»u dÆ°á»¡ng phá»¥) vÃ  thá»§ thuáº­t PHCN cÃ³ rÃºt mÃ¡y -> TTV chÃ­nh bá»‹ khÃ³a giá» káº¿t thÃºc ca.
-                // RiÃªng Thá»§y chÃ¢m: TTV chÃ­nh chá»‰ tiÃªm/thao tÃ¡c Ä‘áº§u ca, khÃ´ng bá»‹ khÃ³a giá» káº¿t thÃºc.
+                // Khóa giờ kết thúc đối với TTV chính:
+                // Điện châm, Hào châm (kể cả có Điều dưỡng phụ) và thủ thuật PHCN có rút máy -> TTV chính bị khóa giờ kết thúc ca.
+                // Riêng Thủy châm: TTV chính chỉ tiêm/thao tác đầu ca, không bị khóa giờ kết thúc.
                 const mainHasTeardown = !isCont && !isThuyCham && (isDienCham || isHaoCham || canRutMay);
 
                 const durMinutes = Math.round((end.getTime() - start.getTime()) / 60000);
 
-                // XÃ¢y dá»±ng cÃ¡c khoáº£ng thá»i gian báº­n thá»±c táº¿ (Busy Intervals) cá»§a nhÃ¢n viÃªn chÃ­nh cho ca nÃ y:
+                // Xây dựng các khoảng thời gian bận thực tế (Busy Intervals) của nhân viên chính cho ca này:
                 const busyIntervals = [];
                 if (isCont) {
                     busyIntervals.push({
-                        name: `Thao tÃ¡c liÃªn tá»¥c (${durMinutes}p)`,
+                        name: `Thao tác liên tục (${durMinutes}p)`,
                         start: start.getTime(),
                         end: end.getTime(),
                         isTear: false
@@ -13912,14 +13909,14 @@ window.renderSttOrderControl = function (type, i, total) {
                 } else {
                     const setupEndMs = Math.min(end.getTime(), start.getTime() + tgThMin * 60000);
                     busyIntervals.push({
-                        name: `Thao tÃ¡c Ä‘áº§u ca (${tgThMin}p)`,
+                        name: `Thao tác đầu ca (${tgThMin}p)`,
                         start: start.getTime(),
                         end: setupEndMs,
                         isTear: false
                     });
                     if (mainHasTeardown) {
                         busyIntervals.push({
-                            name: (isDienCham || isHaoCham) ? `RÃºt kim káº¿t thÃºc ca` : `ThÃ¡o mÃ¡y/táº¯t mÃ¡y káº¿t thÃºc ca`,
+                            name: (isDienCham || isHaoCham) ? `Rút kim kết thúc ca` : `Tháo máy/tắt máy kết thúc ca`,
                             start: end.getTime(),
                             end: end.getTime(),
                             isTear: true
@@ -13948,87 +13945,87 @@ window.renderSttOrderControl = function (type, i, total) {
                     may: mayRaw
                 };
 
-                // Kiá»ƒm tra lá»—i hÃ nh chÃ­nh / phÃ¢n quyá»n / thá»i gian cho ca nÃ y (Bá» qua riÃªng ngÃ y 18/09/2026 Ä‘Ã£ xáº¿p Ä‘Ãºng thá»±c táº¿)
+                // Kiểm tra lỗi hành chính / phân quyền / thời gian cho ca này (Bỏ qua riêng ngày 18/09/2026 đã xếp đúng thực tế)
                 const isDate18 = isDate18Sep2026(start, row);
                 if (!isDate18) {
                     const timeAStr = `${formatDate(start)} -> ${formatDate(end)}`;
                     if (techMainRaw && !validStaffNames.includes(techMainNorm)) {
-                        addOtherRow(otherTbody, sttOther++, techMainRaw, `${patientName}<br/>${procName}`, timeAStr, "Sai tÃªn NV ChÃ­nh (KhÃ´ng cÃ³ trong CSDL)");
+                        addOtherRow(otherTbody, sttOther++, techMainRaw, `${patientName}<br/>${procName}`, timeAStr, "Sai tên NV Chính (Không có trong CSDL)");
                     }
                     if (techPhuRaw && !validStaffNames.includes(techPhuNorm)) {
-                        addOtherRow(otherTbody, sttOther++, techPhuRaw, `${patientName}<br/>${procName}`, timeAStr, "Sai tÃªn NV Phá»¥ (KhÃ´ng cÃ³ trong CSDL)");
+                        addOtherRow(otherTbody, sttOther++, techPhuRaw, `${patientName}<br/>${procName}`, timeAStr, "Sai tên NV Phụ (Không có trong CSDL)");
                     }
 
                     const status = String(row['AF'] || '').trim().toLowerCase();
-                    if (status && status !== "chá»§ Ä‘á»™ng" && status !== "nan") {
-                        addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Sai TÃ¬nh hÃ¬nh PTTT: '${row['AF']}' (Pháº£i lÃ  Chá»§ Ä‘á»™ng)`);
+                    if (status && status !== "chủ động" && status !== "nan") {
+                        addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Sai Tình hình PTTT: '${row['AF']}' (Phải là Chủ động)`);
                     }
 
                     const anes = String(row['AS'] || '').trim().toLowerCase();
-                    if (anes && anes !== "khÃ¡c" && anes !== "nan") {
-                        addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Sai VÃ´ cáº£m: '${row['AS']}' (Báº¯t buá»™c KhÃ¡c)`);
+                    if (anes && anes !== "khác" && anes !== "nan") {
+                        addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Sai Vô cảm: '${row['AS']}' (Bắt buộc Khác)`);
                     }
 
                     if (row['AG'] && normalizeTextJS(row['AE']) !== normalizeTextJS(row['AG'])) {
-                        addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Sai PP tiáº¿n hÃ nh: '${row['AG']}' (Pháº£i giá»‘ng tÃªn thá»§ thuáº­t)`);
+                        addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Sai PP tiến hành: '${row['AG']}' (Phải giống tên thủ thuật)`);
                     }
 
                     if (procInfo && techMainNorm && !checkPermissionJS(techMainNorm, procInfo)) {
-                        addOtherRow(otherTbody, sttOther++, techMainNorm, `${patientName}<br/>${procInfo.ten}`, timeAStr, "LÃ m thá»§ thuáº­t ngoÃ i pháº¡m vi phÃ¢n quyá»n YHCT/PHCN");
+                        addOtherRow(otherTbody, sttOther++, techMainNorm, `${patientName}<br/>${procInfo.ten}`, timeAStr, "Làm thủ thuật ngoài phạm vi phân quyền YHCT/PHCN");
                     }
 
-                    // 1. Kiá»ƒm tra thá»i gian thá»§ thuáº­t cá»§a ca so vá»›i Ä‘á»‹nh má»©c TG TT (MIN) vÃ  TG TT (MAX)
+                    // 1. Kiểm tra thời gian thủ thuật của ca so với định mức TG TT (MIN) và TG TT (MAX)
                     if (procInfo) {
                         if (durMinutes < tgTtMin) {
-                            addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thá»i gian thá»§ thuáº­t ngáº¯n hÆ¡n quy Ä‘á»‹nh (${durMinutes} phÃºt < ${tgTtMin} phÃºt)`);
+                            addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thời gian thủ thuật ngắn hơn quy định (${durMinutes} phút < ${tgTtMin} phút)`);
                         } else if (durMinutes > tgTtMax) {
-                            addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thá»i gian thá»§ thuáº­t vÆ°á»£t quÃ¡ quy Ä‘á»‹nh (${durMinutes} phÃºt > ${tgTtMax} phÃºt)`);
+                            addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thời gian thủ thuật vượt quá quy định (${durMinutes} phút > ${tgTtMax} phút)`);
                         }
 
-                        // 2. Náº¿u lÃ  thá»§ thuáº­t lÃ m liÃªn tá»¥c: thá»i gian thao tÃ¡c liÃªn tá»¥c cá»§a KTV pháº£i tuÃ¢n thá»§ TG TH
+                        // 2. Nếu là thủ thuật làm liên tục: thời gian thao tác liên tục của KTV phải tuân thủ TG TH
                         if (isCont) {
                             if (durMinutes < tgThMin) {
-                                addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thá»i gian thao tÃ¡c liÃªn tá»¥c ngáº¯n hÆ¡n Ä‘á»‹nh má»©c (${durMinutes} phÃºt < ${tgThMin} phÃºt)`);
+                                addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thời gian thao tác liên tục ngắn hơn định mức (${durMinutes} phút < ${tgThMin} phút)`);
                             } else if (durMinutes > tgThMax) {
-                                addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thá»i gian thao tÃ¡c liÃªn tá»¥c vÆ°á»£t quÃ¡ Ä‘á»‹nh má»©c (${durMinutes} phÃºt > ${tgThMax} phÃºt)`);
+                                addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thời gian thao tác liên tục vượt quá định mức (${durMinutes} phút > ${tgThMax} phút)`);
                             }
                         }
 
-                        // 3. Kiá»ƒm tra NgÆ°á»i phá»¥
-                        // âš ï¸ Táº M THá»œI VÃ” HIá»†U HÃ“A: File HIS hiá»‡n chÆ°a nháº­p dá»¯ liá»‡u ngÆ°á»i phá»¥.
-                        // Chá»‰ file lá»‹ch trÃ¬nh do pháº§n má»m xáº¿p má»›i cÃ³ trÆ°á»ng ngÆ°á»i phá»¥.
-                        // Báº­t láº¡i kiá»ƒm tra nÃ y khi cáº§n báº±ng cÃ¡ch bá» comment dÆ°á»›i Ä‘Ã¢y.
-                        // if (canNguoiPhu && (!techPhuRaw || techPhuRaw === '--' || techPhuRaw === 'KhÃ´ng' || techPhuRaw === 'nan')) {
-                        //     addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thá»§ thuáº­t yÃªu cáº§u cÃ³ NgÆ°á»i phá»¥ nhÆ°ng chÆ°a phÃ¢n cÃ´ng`);
+                        // 3. Kiểm tra Người phụ
+                        // ⚠️ TẠM THỜI VÔ HIỆU HÓA: File HIS hiện chưa nhập dữ liệu người phụ.
+                        // Chỉ file lịch trình do phần mềm xếp mới có trường người phụ.
+                        // Bật lại kiểm tra này khi cần bằng cách bỏ comment dưới đây.
+                        // if (canNguoiPhu && (!techPhuRaw || techPhuRaw === '--' || techPhuRaw === 'Không' || techPhuRaw === 'nan')) {
+                        //     addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thủ thuật yêu cầu có Người phụ nhưng chưa phân công`);
                         // }
                     }
                 }
 
-                // Gom nhÃ³m KTV ChÃ­nh
+                // Gom nhóm KTV Chính
                 if (techMainNorm) {
                     if (!groupedStaff[techMainNorm]) groupedStaff[techMainNorm] = [];
                     groupedStaff[techMainNorm].push({
                         ...itemBase,
-                        role: 'ChÃ­nh',
+                        role: 'Chính',
                         techRaw: techMainRaw
                     });
                 }
 
-                // Gom nhÃ³m Äiá»u DÆ°á»¡ng Phá»¥: Táº M THá»œI CHÆ¯A KIá»‚M TRA Lá»–I TRÃ™NG ÄIá»€U DÆ¯á» NG (sau nÃ y bá»• sung sau)
+                // Gom nhóm Điều Dưỡng Phụ: TẠM THỜI CHƯA KIỂM TRA LỖI TRÙNG ĐIỀU DƯỠNG (sau này bổ sung sau)
                 /*
                 if (techPhuNorm) {
                     if (!groupedStaff[techPhuNorm]) groupedStaff[techPhuNorm] = [];
                     groupedStaff[techPhuNorm].push({
                         ...itemBase,
-                        role: 'Phá»¥',
+                        role: 'Phụ',
                         techRaw: techPhuRaw,
                         mainTech: techMainNorm
                     });
                 }
                 */
 
-                // Gom nhÃ³m Bá»‡nh NhÃ¢n (Má»¤C 2)
-                if (patientName && patientName !== 'KhÃ´ng rÃµ') {
+                // Gom nhóm Bệnh Nhân (MỤC 2)
+                if (patientName && patientName !== 'Không rõ') {
                     if (!groupedPatients[patientName]) groupedPatients[patientName] = [];
                     groupedPatients[patientName].push({
                         ...itemBase,
@@ -14037,16 +14034,16 @@ window.renderSttOrderControl = function (type, i, total) {
                     });
                 }
 
-                // Gom nhÃ³m GiÆ°á»ng bá»‡nh (Náº¿u cÃ³ dá»¯ liá»‡u giÆ°á»ng bá»‡nh)
+                // Gom nhóm Giường bệnh (Nếu có dữ liệu giường bệnh)
                 if (giuongRaw) {
                     const gLower = giuongRaw.toLowerCase();
-                    const isExcludedBed = gLower.includes('thá»§ cÃ´ng') || gLower.includes('thu cong') || 
-                                          gLower.includes('gháº¿') || gLower.includes('ghe') || 
-                                          gLower.includes('phá»¥') || gLower.includes('phu') || 
-                                          gLower.includes('kÃ©o giÃ£n') || gLower.includes('keo gian') || 
+                    const isExcludedBed = gLower.includes('thủ công') || gLower.includes('thu cong') || 
+                                          gLower.includes('ghế') || gLower.includes('ghe') || 
+                                          gLower.includes('phụ') || gLower.includes('phu') || 
+                                          gLower.includes('kéo giãn') || gLower.includes('keo gian') || 
                                           giuongRaw === '--' || giuongRaw === '';
                     if (!isExcludedBed) {
-                        const bedKey = (phongRaw ? `${phongRaw} - ` : '') + (giuongRaw.toLowerCase().startsWith('giÆ°á»ng') ? giuongRaw : `GiÆ°á»ng ${giuongRaw}`);
+                        const bedKey = (phongRaw ? `${phongRaw} - ` : '') + (giuongRaw.toLowerCase().startsWith('giường') ? giuongRaw : `Giường ${giuongRaw}`);
                         if (!groupedBeds[bedKey]) groupedBeds[bedKey] = [];
                         groupedBeds[bedKey].push({
                             ...itemBase,
@@ -14055,10 +14052,10 @@ window.renderSttOrderControl = function (type, i, total) {
                     }
                 }
 
-                // Gom nhÃ³m MÃ¡y mÃ³c (Náº¿u cÃ³ dá»¯ liá»‡u mÃ¡y mÃ³c)
+                // Gom nhóm Máy móc (Nếu có dữ liệu máy móc)
                 if (mayRaw) {
                     const mLower = mayRaw.toLowerCase();
-                    const isExcludedMachine = mLower.includes('thá»§ cÃ´ng') || mLower.includes('thu cong') || mayRaw === '--' || mayRaw === '';
+                    const isExcludedMachine = mLower.includes('thủ công') || mLower.includes('thu cong') || mayRaw === '--' || mayRaw === '';
                     if (!isExcludedMachine) {
                         if (!groupedMachines[mayRaw]) groupedMachines[mayRaw] = [];
                         groupedMachines[mayRaw].push({
@@ -14070,10 +14067,10 @@ window.renderSttOrderControl = function (type, i, total) {
             }
 
             // ============================================================
-            // ðŸš¨ 1. QUÃ‰T Lá»–I TRÃ™NG GIá»œ NHÃ‚N Sá»°
+            // 🚨 1. QUÉT LỖI TRÙNG GIỜ NHÂN SỰ
             // ============================================================
             for (const [tech, groupRows] of Object.entries(groupedStaff)) {
-                // Táº¡m thá»i chÆ°a kiá»ƒm tra lá»—i trÃ¹ng cá»§a Ä‘iá»u dÆ°á»¡ng
+                // Tạm thời chưa kiểm tra lỗi trùng của điều dưỡng
                 if (isDieuDuong(tech)) continue;
 
                 groupRows.sort((a, b) => a.start.getTime() - b.start.getTime());
@@ -14083,10 +14080,10 @@ window.renderSttOrderControl = function (type, i, total) {
                     const A = groupRows[i];
                     for (let j = i + 1; j < n; j++) {
                         const B = groupRows[j];
-                        // Bá» qua lá»—i cá»§a riÃªng ngÃ y 18/09/2026 Ä‘Ã£ xáº¿p Ä‘Ãºng thá»±c táº¿
+                        // Bỏ qua lỗi của riêng ngày 18/09/2026 đã xếp đúng thực tế
                         if (isDate18Sep2026(A.start, A.raw) || isDate18Sep2026(B.start, B.raw)) continue;
 
-                        // Náº¿u ca B báº¯t Ä‘áº§u sau khi ca A káº¿t thÃºc hoÃ n toÃ n (kÃ¨m Ä‘á»‡m 1p), khÃ´ng thá»ƒ va cháº¡m tiáº¿p
+                        // Nếu ca B bắt đầu sau khi ca A kết thúc hoàn toàn (kèm đệm 1p), không thể va chạm tiếp
                         if (B.start.getTime() >= A.end.getTime() + GAP_MS) break;
 
                         let conflictFound = null;
@@ -14095,29 +14092,29 @@ window.renderSttOrderControl = function (type, i, total) {
                                 const first = intA.start <= intB.start ? intA : intB;
                                 const second = intA.start <= intB.start ? intB : intA;
 
-                                // 1. CÃ¹ng káº¿t thÃºc ca lÃºc cÃ¹ng má»™t phÃºt
+                                // 1. Cùng kết thúc ca lúc cùng một phút
                                 if (first.start === second.start && intA.isTear && intB.isTear) {
                                     conflictFound = {
                                         type: 'OVERLAP',
-                                        reason: `TrÃ¹ng giá» káº¿t thÃºc ca (cáº£ 2 ca cÃ¹ng káº¿t thÃºc lÃºc ${formatDate(new Date(first.start))})`
+                                        reason: `Trùng giờ kết thúc ca (cả 2 ca cùng kết thúc lúc ${formatDate(new Date(first.start))})`
                                     };
                                     break;
                                 }
-                                // 2. TrÃ¹ng / Ä‘Ã¨ giá» trá»±c tiáº¿p
+                                // 2. Trùng / đè giờ trực tiếp
                                 else if (second.start < first.end) {
                                     const ovStart = Math.max(intA.start, intB.start);
                                     const ovEnd = Math.min(intA.end, intB.end);
                                     conflictFound = {
                                         type: 'OVERLAP',
-                                        reason: `${intA.name} (Ca 1) vÃ  ${intB.name} (Ca 2) Ä‘Ã¨ giá» nhau (${formatDate(new Date(ovStart))} -> ${formatDate(new Date(ovEnd))})`
+                                        reason: `${intA.name} (Ca 1) và ${intB.name} (Ca 2) đè giờ nhau (${formatDate(new Date(ovStart))} -> ${formatDate(new Date(ovEnd))})`
                                     };
                                     break;
                                 }
-                                // 3. Thiáº¿u khoáº£ng Ä‘á»‡m 1 phÃºt chuyá»ƒn giÆ°á»ng giá»¯a 2 bá»‡nh nhÃ¢n khÃ¡c nhau (Má»¤C 1)
+                                // 3. Thiếu khoảng đệm 1 phút chuyển giường giữa 2 bệnh nhân khác nhau (MỤC 1)
                                 else if (A.patientName !== B.patientName && second.start < first.end + GAP_MS) {
                                     conflictFound = {
                                         type: 'GAP',
-                                        reason: `Thiáº¿u khoáº£ng Ä‘á»‡m 1p chuyá»ƒn giÆ°á»ng giá»¯a ${first.name} (káº¿t thÃºc ${formatDate(new Date(first.end))}) vÃ  ${second.name} (báº¯t Ä‘áº§u ${formatDate(new Date(second.start))})`
+                                        reason: `Thiếu khoảng đệm 1p chuyển giường giữa ${first.name} (kết thúc ${formatDate(new Date(first.end))}) và ${second.name} (bắt đầu ${formatDate(new Date(second.start))})`
                                     };
                                     break;
                                 }
@@ -14127,17 +14124,17 @@ window.renderSttOrderControl = function (type, i, total) {
 
                         if (conflictFound) {
                             let roleTag = "";
-                            if (A.role === 'Phá»¥' && B.role === 'Phá»¥') {
-                                roleTag = " [ÄD Phá»¥]";
+                            if (A.role === 'Phụ' && B.role === 'Phụ') {
+                                roleTag = " [ĐD Phụ]";
                             } else if (A.role !== B.role) {
-                                roleTag = " [Vá»«a lÃ m ChÃ­nh vá»«a lÃ m Phá»¥]";
+                                roleTag = " [Vừa làm Chính vừa làm Phụ]";
                             }
 
                             const timeAStr = `${formatDate(A.start)} -> ${formatDate(A.end)}`;
                             const timeBStr = `${formatDate(B.start)} -> ${formatDate(B.end)}`;
-                            const ca1Info = `<b>${A.patientName}</b><br/>${A.procName}<br/><span style="color:#2c3e50;">â± ${timeAStr}</span>`;
-                            const ca2Info = `<b>${B.patientName}</b><br/>${B.procName}<br/><span style="color:#2c3e50;">â± ${timeBStr}</span>`;
-                            const techDisplay = (A.role === 'Phá»¥' || B.role === 'Phá»¥') ? `${tech} <small style="color:#e67e22;">(${A.role === B.role ? 'Há»— trá»£ phá»¥' : 'ChÃ­nh & Phá»¥'})</small>` : tech;
+                            const ca1Info = `<b>${A.patientName}</b><br/>${A.procName}<br/><span style="color:#2c3e50;">⏱ ${timeAStr}</span>`;
+                            const ca2Info = `<b>${B.patientName}</b><br/>${B.procName}<br/><span style="color:#2c3e50;">⏱ ${timeBStr}</span>`;
+                            const techDisplay = (A.role === 'Phụ' || B.role === 'Phụ') ? `${tech} <small style="color:#e67e22;">(${A.role === B.role ? 'Hỗ trợ phụ' : 'Chính & Phụ'})</small>` : tech;
                             
                             addTimeRow(timeTbody, sttTime++, techDisplay, ca1Info, ca2Info, conflictFound.reason + roleTag);
                         }
@@ -14146,7 +14143,7 @@ window.renderSttOrderControl = function (type, i, total) {
             }
 
             // ============================================================
-            // ðŸš¨ 2. QUÃ‰T Lá»–I TRÃ™NG Bá»†NH NHÃ‚N (1 BN LÃ€M 2 THá»¦ THUáº¬T CÃ™NG LÃšC)
+            // 🚨 2. QUÉT LỖI TRÙNG BỆNH NHÂN (1 BN LÀM 2 THỦ THUẬT CÙNG LÚC)
             // ============================================================
             for (const [pName, pRows] of Object.entries(groupedPatients)) {
                 pRows.sort((a, b) => a.start.getTime() - b.start.getTime());
@@ -14156,26 +14153,26 @@ window.renderSttOrderControl = function (type, i, total) {
                     const P1 = pRows[i];
                     for (let j = i + 1; j < m; j++) {
                         const P2 = pRows[j];
-                        // Bá» qua lá»—i cá»§a riÃªng ngÃ y 18/09/2026 Ä‘Ã£ xáº¿p Ä‘Ãºng thá»±c táº¿
+                        // Bỏ qua lỗi của riêng ngày 18/09/2026 đã xếp đúng thực tế
                         if (isDate18Sep2026(P1.start, P1.raw) || isDate18Sep2026(P2.start, P2.raw)) continue;
 
-                        // Náº¿u P2 báº¯t Ä‘áº§u khi hoáº·c sau khi P1 káº¿t thÃºc hoÃ n toÃ n, khÃ´ng va cháº¡m tiáº¿p
+                        // Nếu P2 bắt đầu khi hoặc sau khi P1 kết thúc hoàn toàn, không va chạm tiếp
                         if (P2.start.getTime() >= P1.end.getTime()) break;
 
-                        // TrÃ¹ng giá»: P2 báº¯t Ä‘áº§u trÆ°á»›c khi P1 káº¿t thÃºc!
+                        // Trùng giờ: P2 bắt đầu trước khi P1 kết thúc!
                         const timeP1Str = `${formatDate(P1.start)} -> ${formatDate(P1.end)}`;
                         const timeP2Str = `${formatDate(P2.start)} -> ${formatDate(P2.end)}`;
-                        const p1Info = `<b>${P1.procName}</b><br/><span style="color:#2c3e50;">â± ${timeP1Str}</span><br/><small>KTV: ${P1.techMainNorm || 'ChÆ°a rÃµ'}${P1.techPhuNorm ? ` | Phá»¥: ${P1.techPhuNorm}` : ''}</small>`;
-                        const p2Info = `<b>${P2.procName}</b><br/><span style="color:#2c3e50;">â± ${timeP2Str}</span><br/><small>KTV: ${P2.techMainNorm || 'ChÆ°a rÃµ'}${P2.techPhuNorm ? ` | Phá»¥: ${P2.techPhuNorm}` : ''}</small>`;
-                        const bnTag = `<span style="color:#2980b9; font-weight:bold;">ðŸ‘¤ ${pName}</span><br/><small style="color:#7f8c8d;">(TrÃ¹ng BN)</small>`;
+                        const p1Info = `<b>${P1.procName}</b><br/><span style="color:#2c3e50;">⏱ ${timeP1Str}</span><br/><small>KTV: ${P1.techMainNorm || 'Chưa rõ'}${P1.techPhuNorm ? ` | Phụ: ${P1.techPhuNorm}` : ''}</small>`;
+                        const p2Info = `<b>${P2.procName}</b><br/><span style="color:#2c3e50;">⏱ ${timeP2Str}</span><br/><small>KTV: ${P2.techMainNorm || 'Chưa rõ'}${P2.techPhuNorm ? ` | Phụ: ${P2.techPhuNorm}` : ''}</small>`;
+                        const bnTag = `<span style="color:#2980b9; font-weight:bold;">👤 ${pName}</span><br/><small style="color:#7f8c8d;">(Trùng BN)</small>`;
                         
-                        addTimeRow(timeTbody, sttTime++, bnTag, p1Info, p2Info, `Bá»‡nh nhÃ¢n bá»‹ xáº¿p 2 thá»§ thuáº­t cÃ¹ng lÃºc (${formatDate(P2.start)} Ä‘Ã¨ lÃªn ca trÆ°á»›c káº¿t thÃºc lÃºc ${formatDate(P1.end)})`);
+                        addTimeRow(timeTbody, sttTime++, bnTag, p1Info, p2Info, `Bệnh nhân bị xếp 2 thủ thuật cùng lúc (${formatDate(P2.start)} đè lên ca trước kết thúc lúc ${formatDate(P1.end)})`);
                     }
                 }
             }
 
             // ============================================================
-            // ðŸš¨ 3. QUÃ‰T Lá»–I TRÃ™NG GIÆ¯á»œNG Bá»†NH (2 BN Náº°M CÃ™NG 1 GIÆ¯á»œNG CÃ™NG LÃšC)
+            // 🚨 3. QUÉT LỖI TRÙNG GIƯỜNG BỆNH (2 BN NẰM CÙNG 1 GIƯỜNG CÙNG LÚC)
             // ============================================================
             for (const [bedKey, bRows] of Object.entries(groupedBeds)) {
                 bRows.sort((a, b) => a.start.getTime() - b.start.getTime());
@@ -14185,26 +14182,26 @@ window.renderSttOrderControl = function (type, i, total) {
                     const G1 = bRows[i];
                     for (let j = i + 1; j < len; j++) {
                         const G2 = bRows[j];
-                        // Bá» qua lá»—i cá»§a riÃªng ngÃ y 18/09/2026 Ä‘Ã£ xáº¿p Ä‘Ãºng thá»±c táº¿
+                        // Bỏ qua lỗi của riêng ngày 18/09/2026 đã xếp đúng thực tế
                         if (isDate18Sep2026(G1.start, G1.raw) || isDate18Sep2026(G2.start, G2.raw)) continue;
 
-                        // Náº¿u G2 báº¯t Ä‘áº§u táº¡i hoáº·c sau khi G1 káº¿t thÃºc hoÃ n toÃ n, khÃ´ng va cháº¡m tiáº¿p
+                        // Nếu G2 bắt đầu tại hoặc sau khi G1 kết thúc hoàn toàn, không va chạm tiếp
                         if (G2.start.getTime() >= G1.end.getTime()) break;
 
-                        // TrÃ¹ng giÆ°á»ng: G2 báº¯t Ä‘áº§u trÆ°á»›c khi G1 káº¿t thÃºc!
+                        // Trùng giường: G2 bắt đầu trước khi G1 kết thúc!
                         const timeG1Str = `${formatDate(G1.start)} -> ${formatDate(G1.end)}`;
                         const timeG2Str = `${formatDate(G2.start)} -> ${formatDate(G2.end)}`;
-                        const g1Info = `<b>${G1.patientName}</b><br/>${G1.procName}<br/><span style="color:#2c3e50;">â± ${timeG1Str}</span><br/><small>KTV: ${G1.techMainNorm || 'ChÆ°a rÃµ'}</small>`;
-                        const g2Info = `<b>${G2.patientName}</b><br/>${G2.procName}<br/><span style="color:#2c3e50;">â± ${timeG2Str}</span><br/><small>KTV: ${G2.techMainNorm || 'ChÆ°a rÃµ'}</small>`;
-                        const bedTag = `<span style="color:#8e44ad; font-weight:bold;">ðŸ›ï¸ ${bedKey}</span><br/><small style="color:#7f8c8d;">(TrÃ¹ng GiÆ°á»ng)</small>`;
+                        const g1Info = `<b>${G1.patientName}</b><br/>${G1.procName}<br/><span style="color:#2c3e50;">⏱ ${timeG1Str}</span><br/><small>KTV: ${G1.techMainNorm || 'Chưa rõ'}</small>`;
+                        const g2Info = `<b>${G2.patientName}</b><br/>${G2.procName}<br/><span style="color:#2c3e50;">⏱ ${timeG2Str}</span><br/><small>KTV: ${G2.techMainNorm || 'Chưa rõ'}</small>`;
+                        const bedTag = `<span style="color:#8e44ad; font-weight:bold;">🛏️ ${bedKey}</span><br/><small style="color:#7f8c8d;">(Trùng Giường)</small>`;
 
-                        addTimeRow(timeTbody, sttTime++, bedTag, g1Info, g2Info, `2 ca náº±m trÃ¹ng giÆ°á»ng bá»‡nh (${formatDate(G2.start)} Ä‘Ã¨ lÃªn ca trÆ°á»›c káº¿t thÃºc lÃºc ${formatDate(G1.end)})`);
+                        addTimeRow(timeTbody, sttTime++, bedTag, g1Info, g2Info, `2 ca nằm trùng giường bệnh (${formatDate(G2.start)} đè lên ca trước kết thúc lúc ${formatDate(G1.end)})`);
                     }
                 }
             }
 
             // ============================================================
-            // ðŸš¨ 4. QUÃ‰T Lá»–I TRÃ™NG MÃY MÃ“C (2 CA DÃ™NG CHUNG 1 MÃY CÃ™NG LÃšC)
+            // 🚨 4. QUÉT LỖI TRÙNG MÁY MÓC (2 CA DÙNG CHUNG 1 MÁY CÙNG LÚC)
             // ============================================================
             for (const [mName, mRows] of Object.entries(groupedMachines)) {
                 mRows.sort((a, b) => a.start.getTime() - b.start.getTime());
@@ -14214,26 +14211,26 @@ window.renderSttOrderControl = function (type, i, total) {
                     const M1 = mRows[i];
                     for (let j = i + 1; j < mLen; j++) {
                         const M2 = mRows[j];
-                        // Bá» qua lá»—i cá»§a riÃªng ngÃ y 18/09/2026 Ä‘Ã£ xáº¿p Ä‘Ãºng thá»±c táº¿
+                        // Bỏ qua lỗi của riêng ngày 18/09/2026 đã xếp đúng thực tế
                         if (isDate18Sep2026(M1.start, M1.raw) || isDate18Sep2026(M2.start, M2.raw)) continue;
 
-                        // Náº¿u M2 báº¯t Ä‘áº§u táº¡i hoáº·c sau khi M1 káº¿t thÃºc hoÃ n toÃ n, khÃ´ng va cháº¡m tiáº¿p
+                        // Nếu M2 bắt đầu tại hoặc sau khi M1 kết thúc hoàn toàn, không va chạm tiếp
                         if (M2.start.getTime() >= M1.end.getTime()) break;
 
-                        // TrÃ¹ng mÃ¡y: M2 báº¯t Ä‘áº§u trÆ°á»›c khi M1 káº¿t thÃºc!
+                        // Trùng máy: M2 bắt đầu trước khi M1 kết thúc!
                         const timeM1Str = `${formatDate(M1.start)} -> ${formatDate(M1.end)}`;
                         const timeM2Str = `${formatDate(M2.start)} -> ${formatDate(M2.end)}`;
-                        const m1Info = `<b>${M1.patientName}</b><br/>${M1.procName}<br/><span style="color:#2c3e50;">â± ${timeM1Str}</span><br/><small>KTV: ${M1.techMainNorm || 'ChÆ°a rÃµ'}</small>`;
-                        const m2Info = `<b>${M2.patientName}</b><br/>${M2.procName}<br/><span style="color:#2c3e50;">â± ${timeM2Str}</span><br/><small>KTV: ${M2.techMainNorm || 'ChÆ°a rÃµ'}</small>`;
-                        const machineTag = `<span style="color:#d35400; font-weight:bold;">âš¡ ${mName}</span><br/><small style="color:#7f8c8d;">(TrÃ¹ng MÃ¡y)</small>`;
+                        const m1Info = `<b>${M1.patientName}</b><br/>${M1.procName}<br/><span style="color:#2c3e50;">⏱ ${timeM1Str}</span><br/><small>KTV: ${M1.techMainNorm || 'Chưa rõ'}</small>`;
+                        const m2Info = `<b>${M2.patientName}</b><br/>${M2.procName}<br/><span style="color:#2c3e50;">⏱ ${timeM2Str}</span><br/><small>KTV: ${M2.techMainNorm || 'Chưa rõ'}</small>`;
+                        const machineTag = `<span style="color:#d35400; font-weight:bold;">⚡ ${mName}</span><br/><small style="color:#7f8c8d;">(Trùng Máy)</small>`;
 
-                        addTimeRow(timeTbody, sttTime++, machineTag, m1Info, m2Info, `2 ca sá»­ dá»¥ng cÃ¹ng 1 mÃ¡y mÃ³c (${formatDate(M2.start)} Ä‘Ã¨ lÃªn ca trÆ°á»›c káº¿t thÃºc lÃºc ${formatDate(M1.end)})`);
+                        addTimeRow(timeTbody, sttTime++, machineTag, m1Info, m2Info, `2 ca sử dụng cùng 1 máy móc (${formatDate(M2.start)} đè lên ca trước kết thúc lúc ${formatDate(M1.end)})`);
                     }
                 }
             }
 
-            if (timeTbody.children.length === 0) timeTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">KhÃ´ng cÃ³ lá»—i trÃ¹ng giá»! ðŸŽ‰</td></tr>';
-            if (otherTbody.children.length === 0) otherTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">KhÃ´ng cÃ³ lá»—i phÃ¢n quyá»n/quy trÃ¬nh! ðŸŽ‰</td></tr>';
+            if (timeTbody.children.length === 0) timeTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Không có lỗi trùng giờ! 🎉</td></tr>';
+            if (otherTbody.children.length === 0) otherTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Không có lỗi phân quyền/quy trình! 🎉</td></tr>';
 
             if (countBody) {
                 let countHtml = '';
@@ -14252,13 +14249,13 @@ window.renderSttOrderControl = function (type, i, total) {
                     </tr>`;
                 });
                 countHtml += `<tr style="font-weight:bold; background:#eafaf1;">
-                    <td>Tá»”NG Cá»˜NG</td>
+                    <td>TỔNG CỘNG</td>
                     <td style="text-align:center">${t1}</td>
                     <td style="text-align:center">${t2}</td>
                     <td style="text-align:center">${t3}</td>
                     <td style="text-align:center">${to}</td>
                 </tr>`;
-                countBody.innerHTML = countHtml || '<tr><td colspan="5" style="text-align:center;">ChÆ°a cÃ³ dá»¯ liá»‡u thá»§ thuáº­t</td></tr>';
+                countBody.innerHTML = countHtml || '<tr><td colspan="5" style="text-align:center;">Chưa có dữ liệu thủ thuật</td></tr>';
             }
         }
 
@@ -14275,15 +14272,15 @@ window.renderSttOrderControl = function (type, i, total) {
         });
 
 // ============================================================
-// ðŸ“¦ SAO LÆ¯U & KHÃ”I PHá»¤C Dá»® LIá»†U CLOUDFLARE D1 (BACKUP & RESTORE)
+// 📦 SAO LƯU & KHÔI PHỤC DỮ LIỆU CLOUDFLARE D1 (BACKUP & RESTORE)
 // ============================================================
 
 window.exportFullDatabaseBackup = function() {
-    if (window.showGlobalLoading) window.showGlobalLoading("Äang xuáº¥t báº£n sao lÆ°u toÃ n bá»™ Cloudflare D1...");
+    if (window.showGlobalLoading) window.showGlobalLoading("Đang xuất bản sao lưu toàn bộ Cloudflare D1...");
     callApi('exportDatabase', [], async data => {
         if (window.hideGlobalLoading) window.hideGlobalLoading();
         if (!data || !data.tables) {
-            return showCustomAlert("Lá»—i", "KhÃ´ng thá»ƒ láº¥y dá»¯ liá»‡u sao lÆ°u tá»« mÃ¡y chá»§!");
+            return showCustomAlert("Lỗi", "Không thể lấy dữ liệu sao lưu từ máy chủ!");
         }
 
         const jsonStr = JSON.stringify(data, null, 2);
@@ -14299,15 +14296,15 @@ window.exportFullDatabaseBackup = function() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
-        // Tá»± Ä‘á»™ng ghi vÃ o thÆ° má»¥c mÃ¡y tÃ­nh Ä‘Ã£ káº¿t ná»‘i (náº¿u cÃ³)
+        // Tự động ghi vào thư mục máy tính đã kết nối (nếu có)
         const savedToLocalFolder = await window.autoSaveToLocalDir(data);
 
         localStorage.setItem('last_backup_timestamp', Date.now().toString());
-        const extraMsg = savedToLocalFolder ? " (ÄÃ£ tá»± Ä‘á»™ng lÆ°u 1 báº£n vÃ o thÆ° má»¥c mÃ¡y tÃ­nh cá»§a bÃ¡c sÄ©)" : "";
-        showCustomAlert("ThÃ nh cÃ´ng", `ÄÃ£ táº£i vá» báº£n sao lÆ°u dá»¯ liá»‡u toÃ n diá»‡n (phiÃªn báº£n ${data.version || 'v3.6'})${extraMsg}!`);
+        const extraMsg = savedToLocalFolder ? " (Đã tự động lưu 1 bản vào thư mục máy tính của bác sĩ)" : "";
+        showCustomAlert("Thành công", `Đã tải về bản sao lưu dữ liệu toàn diện (phiên bản ${data.version || 'v3.6'})${extraMsg}!`);
     }, err => {
         if (window.hideGlobalLoading) window.hideGlobalLoading();
-        showCustomAlert("Lá»—i sao lÆ°u", "Lá»—i: " + (typeof err === 'string' ? err : JSON.stringify(err)));
+        showCustomAlert("Lỗi sao lưu", "Lỗi: " + (typeof err === 'string' ? err : JSON.stringify(err)));
     });
 };
 
@@ -14320,36 +14317,36 @@ window.importFullDatabaseBackup = function(event) {
         try {
             const backupData = JSON.parse(e.target.result);
             if (!backupData || !backupData.tables) {
-                return showCustomAlert("Lá»—i khÃ´i phá»¥c", "File chá»n khÃ´ng Ä‘Ãºng Ä‘á»‹nh dáº¡ng sao lÆ°u PM-XepLich!");
+                return showCustomAlert("Lỗi khôi phục", "File chọn không đúng định dạng sao lưu PM-XepLich!");
             }
 
             const tableNames = Object.keys(backupData.tables);
             let totalRows = 0;
             tableNames.forEach(t => { totalRows += (backupData.tables[t] || []).length; });
 
-            const dateStr = backupData.exportDate ? new Date(backupData.exportDate).toLocaleString('vi-VN') : 'KhÃ´ng rÃµ';
+            const dateStr = backupData.exportDate ? new Date(backupData.exportDate).toLocaleString('vi-VN') : 'Không rõ';
 
             showCustomConfirm(
-                "XÃ¡c Nháº­n KhÃ´i Phá»¥c Dá»¯ Liá»‡u",
-                `âš ï¸ Báº N CÃ“ CHáº®C CHáº®N Má»N KHÃ”I PHá»¤C Dá»® LIá»†U D1?\n\n` +
-                `ðŸ“… NgÃ y sao lÆ°u: ${dateStr}\n` +
-                `ðŸ“Š Tá»•ng sá»‘ báº£ng: ${tableNames.length} báº£ng\n` +
-                `ðŸ“‹ Tá»•ng sá»‘ báº£n ghi: ${totalRows} dÃ²ng\n\n` +
-                `LÆ¯U Ã: Thao tÃ¡c nÃ y sáº½ ghi Ä‘Ã¨ toÃ n bá»™ dá»¯ liá»‡u hiá»‡n táº¡i báº±ng dá»¯ liá»‡u trong file sao lÆ°u!`,
+                "Xác Nhận Khôi Phục Dữ Liệu",
+                `⚠️ BẠN CÓ CHẮC CHẮN MỐN KHÔI PHỤC DỮ LIỆU D1?\n\n` +
+                `📅 Ngày sao lưu: ${dateStr}\n` +
+                `📊 Tổng số bảng: ${tableNames.length} bảng\n` +
+                `📋 Tổng số bản ghi: ${totalRows} dòng\n\n` +
+                `LƯU Ý: Thao tác này sẽ ghi đè toàn bộ dữ liệu hiện tại bằng dữ liệu trong file sao lưu!`,
                 function() {
-                    if (window.showGlobalLoading) window.showGlobalLoading("Äang khÃ´i phá»¥c cÆ¡ sá»Ÿ dá»¯ liá»‡u Cloudflare D1...");
+                    if (window.showGlobalLoading) window.showGlobalLoading("Đang khôi phục cơ sở dữ liệu Cloudflare D1...");
                     callApi('importDatabase', [backupData], res => {
                         if (window.hideGlobalLoading) window.hideGlobalLoading();
-                        showCustomAlert("ThÃ nh cÃ´ng", res.message || "KhÃ´i phá»¥c dá»¯ liá»‡u thÃ nh cÃ´ng!");
+                        showCustomAlert("Thành công", res.message || "Khôi phục dữ liệu thành công!");
                         setTimeout(() => { location.reload(); }, 1500);
                     }, err => {
                         if (window.hideGlobalLoading) window.hideGlobalLoading();
-                        showCustomAlert("Lá»—i khÃ´i phá»¥c", "KhÃ´ng thá»ƒ khÃ´i phá»¥c dá»¯ liá»‡u: " + (typeof err === 'string' ? err : JSON.stringify(err)));
+                        showCustomAlert("Lỗi khôi phục", "Không thể khôi phục dữ liệu: " + (typeof err === 'string' ? err : JSON.stringify(err)));
                     });
                 }
             );
         } catch(err) {
-            showCustomAlert("Lá»—i Ä‘á»c file", "File sao lÆ°u bá»‹ há»ng hoáº·c khÃ´ng Ä‘Ãºng chuáº©n JSON: " + err.message);
+            showCustomAlert("Lỗi đọc file", "File sao lưu bị hỏng hoặc không đúng chuẩn JSON: " + err.message);
         }
         event.target.value = '';
     };
@@ -14396,7 +14393,7 @@ window.saveBackupScheduleSettings = function() {
     const configObj = { period, time, dow, dom };
     callApi('saveSystemSettings', ['backup_schedule_config', JSON.stringify(configObj)], null, null);
 
-    showCustomAlert("ThÃ nh cÃ´ng", "ÄÃ£ lÆ°u cáº¥u hÃ¬nh lá»‹ch tá»± Ä‘á»™ng sao lÆ°u & nháº¯c nhá»Ÿ thÃ nh cÃ´ng!");
+    showCustomAlert("Thành công", "Đã lưu cấu hình lịch tự động sao lưu & nhắc nhở thành công!");
 };
 
 window.renderAISettingsUI = function() {
@@ -14410,7 +14407,7 @@ window.renderAISettingsUI = function() {
 
         if (model) {
             const rowsCount = model.trainedRows || 0;
-            if (trainedRowsEl) trainedRowsEl.innerText = `${rowsCount.toLocaleString('vi-VN')} dÃ²ng`;
+            if (trainedRowsEl) trainedRowsEl.innerText = `${rowsCount.toLocaleString('vi-VN')} dòng`;
             
             if (lastTrainedEl) {
                 if (model.lastTrained) {
@@ -14423,11 +14420,11 @@ window.renderAISettingsUI = function() {
                     const yyyy = d.getFullYear();
                     lastTrainedEl.innerText = `${hh}:${mm}:${ss} - ${dd}/${MM}/${yyyy}`;
                 } else {
-                    lastTrainedEl.innerText = "ChÆ°a huáº¥n luyá»‡n";
+                    lastTrainedEl.innerText = "Chưa huấn luyện";
                 }
             }
             const countAffinity = model.staffAffinity ? Object.keys(model.staffAffinity).length : 0;
-            if (affinityEl) affinityEl.innerText = `${countAffinity.toLocaleString('vi-VN')} cáº·p thÃ³i quen`;
+            if (affinityEl) affinityEl.innerText = `${countAffinity.toLocaleString('vi-VN')} cặp thói quen`;
         }
 
         const autoEnable = localStorage.getItem('ai_auto_train_enable') !== '0';
@@ -14441,7 +14438,7 @@ window.renderAISettingsUI = function() {
             }
         }
     } catch(e) {
-        console.warn('[renderAISettingsUI] Lá»—i hiá»ƒn thá»‹ thÃ´ng sá»‘ AI:', e);
+        console.warn('[renderAISettingsUI] Lỗi hiển thị thông số AI:', e);
     }
 };
 
@@ -14457,8 +14454,8 @@ window.saveAIAutoTrainConfig = function() {
         ai_auto_train_enable: enable
     }], null, null);
 
-    const statusText = enable === '1' ? 'Báº¬T (Tá»± Ä‘á»™ng há»c ngay sau khi chá»‘t sá»• hÃ ng ngÃ y)' : 'Táº®T';
-    showCustomAlert("ThÃ nh cÃ´ng", `ÄÃ£ lÆ°u cáº¥u hÃ¬nh tá»± Ä‘á»™ng huáº¥n luyá»‡n AI: ${statusText}!`);
+    const statusText = enable === '1' ? 'BẬT (Tự động học ngay sau khi chốt sổ hàng ngày)' : 'TẮT';
+    showCustomAlert("Thành công", `Đã lưu cấu hình tự động huấn luyện AI: ${statusText}!`);
 };
 
 window.calibrateAIFromHistory = async function(options = {}) {
@@ -14466,15 +14463,15 @@ window.calibrateAIFromHistory = async function(options = {}) {
     const reason = (typeof options === 'object' && options !== null && options.reason) ? options.reason : 'manual';
 
     if (!isSilent && window.showGlobalLoading) {
-        window.showGlobalLoading("Äang náº¡p dá»¯ liá»‡u lá»‹ch sá»­ vÃ  lá»‹ch trÃ¬nh thá»±c táº¿ Ä‘á»ƒ huáº¥n luyá»‡n AI...");
+        window.showGlobalLoading("Đang nạp dữ liệu lịch sử và lịch trình thực tế để huấn luyện AI...");
     }
 
     const executeTraining = (historyRows) => {
         try {
-            // Gom táº¥t cáº£ nguá»“n dá»¯ liá»‡u kháº£ dá»¥ng:
+            // Gom tất cả nguồn dữ liệu khả dụng:
             let combinedRows = Array.isArray(historyRows) ? [...historyRows] : [];
             
-            // Bá»• sung lá»‹ch trÃ¬nh hiá»‡n táº¡i & bá»™ Ä‘á»‡m
+            // Bổ sung lịch trình hiện tại & bộ đệm
             if (typeof dataCache !== 'undefined') {
                 if (Array.isArray(dataCache.schedule)) combinedRows = combinedRows.concat(dataCache.schedule);
                 if (Array.isArray(dataCache.lich_trinh)) combinedRows = combinedRows.concat(dataCache.lich_trinh);
@@ -14484,7 +14481,7 @@ window.calibrateAIFromHistory = async function(options = {}) {
                 combinedRows = combinedRows.concat(window.currentScheduleData);
             }
 
-            // Äá»c thÃªm tá»« bootstrap cache náº¿u cÃ³
+            // Đọc thêm từ bootstrap cache nếu có
             try {
                 const cacheKey = typeof window.getBootstrapCacheKey === 'function' ? window.getBootstrapCacheKey() : 'times_bootstrap_cache';
                 const bStr = localStorage.getItem(cacheKey);
@@ -14497,7 +14494,7 @@ window.calibrateAIFromHistory = async function(options = {}) {
 
             if (combinedRows.length === 0) {
                 if (!isSilent && window.hideGlobalLoading) window.hideGlobalLoading();
-                if (!isSilent) showCustomAlert("ThÃ´ng bÃ¡o", "ChÆ°a cÃ³ dá»¯ liá»‡u lá»‹ch trÃ¬nh hoáº·c lá»‹ch sá»­ Ä‘iá»u trá»‹ Ä‘á»ƒ huáº¥n luyá»‡n AI. BÃ¡c sÄ© hÃ£y xáº¿p lá»‹ch hoáº·c nháº­p dá»¯ liá»‡u trÆ°á»›c nhÃ©!");
+                if (!isSilent) showCustomAlert("Thông báo", "Chưa có dữ liệu lịch trình hoặc lịch sử điều trị để huấn luyện AI. Bác sĩ hãy xếp lịch hoặc nhập dữ liệu trước nhé!");
                 return;
             }
 
@@ -14506,12 +14503,12 @@ window.calibrateAIFromHistory = async function(options = {}) {
                 model = window.AIScheduler.trainFromHistory(combinedRows);
             }
 
-            // â˜ï¸ LÆ°u trá»±c tiáº¿p mÃ´ hÃ¬nh AI lÃªn CSDL Ä‘Ã¡m mÃ¢y (cai_dat)
+            // ☁️ Lưu trực tiếp mô hình AI lên CSDL đám mây (cai_dat)
             if (model && typeof callApi === 'function') {
                 callApi('saveSystemSettings', [{ ai_learned_model: JSON.stringify(model) }], null, null);
             }
 
-            // Ghi nháº­n ngÃ y tá»± Ä‘á»™ng há»c gáº§n nháº¥t
+            // Ghi nhận ngày tự động học gần nhất
             const todayStr = new Date().toISOString().slice(0, 10);
             localStorage.setItem('ai_last_auto_train_date', todayStr);
 
@@ -14532,19 +14529,19 @@ window.calibrateAIFromHistory = async function(options = {}) {
 
             if (!isSilent) {
                 showCustomAlert(
-                    "Huáº¥n luyá»‡n AI thÃ nh cÃ´ng",
-                    `ÄÃ£ cáº­p nháº­t mÃ´ hÃ¬nh AI lÃºc ${timeStr}!\n\nðŸ“Š Dá»¯ liá»‡u thá»±c táº¿: ${trainedCount.toLocaleString('vi-VN')} dÃ²ng (ÄÃ£ Ä‘á»“ng bá»™ lÃªn CSDL mÃ¡y chá»§)\nðŸ‘¥ Cáº·p thÃ³i quen nhÃ¢n sá»±: ${affinityCount.toLocaleString('vi-VN')} máº«u thÃ³i quen\nðŸš¦ Táº¯c ngháº½n mÃ¡y mÃ³c & khung giá» vÃ ng Ä‘Ã£ Ä‘Æ°á»£c tá»‘i Æ°u.`
+                    "Huấn luyện AI thành công",
+                    `Đã cập nhật mô hình AI lúc ${timeStr}!\n\n📊 Dữ liệu thực tế: ${trainedCount.toLocaleString('vi-VN')} dòng (Đã đồng bộ lên CSDL máy chủ)\n👥 Cặp thói quen nhân sự: ${affinityCount.toLocaleString('vi-VN')} mẫu thói quen\n🚦 Tắc nghẽn máy móc & khung giờ vàng đã được tối ưu.`
                 );
             } else {
-                console.log(`[AIScheduler] âœ… [Auto-Train ${reason}] ÄÃ£ tá»± Ä‘á»™ng cáº­p nháº­t mÃ´ hÃ¬nh AI (${trainedCount.toLocaleString('vi-VN')} dÃ²ng, ${affinityCount} thÃ³i quen) lÃºc ${timeStr}`);
+                console.log(`[AIScheduler] ✅ [Auto-Train ${reason}] Đã tự động cập nhật mô hình AI (${trainedCount.toLocaleString('vi-VN')} dòng, ${affinityCount} thói quen) lúc ${timeStr}`);
                 if (typeof window.showToast === 'function') {
-                    window.showToast(`ðŸ¤– AI Ä‘Ã£ tá»± Ä‘á»™ng há»c tá»« ${trainedCount.toLocaleString('vi-VN')} dÃ²ng dá»¯ liá»‡u lÃ¢m sÃ ng!`, 'success', 3500);
+                    window.showToast(`🤖 AI đã tự động học từ ${trainedCount.toLocaleString('vi-VN')} dòng dữ liệu lâm sàng!`, 'success', 3500);
                 }
             }
         } catch(err) {
             if (!isSilent && window.hideGlobalLoading) window.hideGlobalLoading();
-            if (!isSilent) showCustomAlert("ThÃ´ng bÃ¡o", "Lá»—i huáº¥n luyá»‡n AI: " + err.message);
-            else console.warn('[AIScheduler] Lá»—i tá»± Ä‘á»™ng huáº¥n luyá»‡n AI ngáº§m:', err);
+            if (!isSilent) showCustomAlert("Thông báo", "Lỗi huấn luyện AI: " + err.message);
+            else console.warn('[AIScheduler] Lỗi tự động huấn luyện AI ngầm:', err);
         }
     };
 
@@ -14566,7 +14563,7 @@ window.calibrateAIFromHistory = async function(options = {}) {
             }
             executeTraining(rows);
         } catch (e) {
-            console.error('[AI] Lá»—i fetch trá»±c tiáº¿p:', e);
+            console.error('[AI] Lỗi fetch trực tiếp:', e);
             executeTraining([]);
         }
     }
@@ -14618,7 +14615,7 @@ const BK_STORE_NAME = 'handles';
 
 function getBackupIDB() {
     return new Promise((resolve, reject) => {
-        if (!window.indexedDB) return reject(new Error("IndexedDB khÃ´ng Ä‘Æ°á»£c há»— trá»£ trÃªn trÃ¬nh duyá»‡t nÃ y"));
+        if (!window.indexedDB) return reject(new Error("IndexedDB không được hỗ trợ trên trình duyệt này"));
         const req = indexedDB.open(BK_DB_NAME, 1);
         req.onupgradeneeded = e => {
             const db = e.target.result;
@@ -14655,16 +14652,16 @@ async function getSavedDirHandle() {
 
 window.selectLocalBackupDirectory = async function() {
     if (!('showDirectoryPicker' in window)) {
-        return showCustomAlert("TrÃ¬nh duyá»‡t khÃ´ng há»— trá»£", "TrÃ¬nh duyá»‡t cá»§a bÃ¡c sÄ© chÆ°a há»— trá»£ chá»n thÆ° má»¥c lÆ°u tá»± Ä‘á»™ng. Vui lÃ²ng dÃ¹ng Chrome, Edge hoáº·c Brave má»›i nháº¥t!");
+        return showCustomAlert("Trình duyệt không hỗ trợ", "Trình duyệt của bác sĩ chưa hỗ trợ chọn thư mục lưu tự động. Vui lòng dùng Chrome, Edge hoặc Brave mới nhất!");
     }
     try {
         const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
         await setSavedDirHandle(handle);
         const displayEl = document.getElementById('local-dir-path-display');
-        if (displayEl) displayEl.innerText = "ðŸ“ ÄÃ£ chá»n: " + handle.name;
-        showCustomAlert("ThÃ nh cÃ´ng", `ÄÃ£ káº¿t ná»‘i thÆ° má»¥c [${handle.name}]! Tá»« giá» khi báº¥m sao lÆ°u, há»‡ thá»‘ng sáº½ tá»± ghi file tháº³ng vÃ o thÆ° má»¥c nÃ y mÃ  khÃ´ng cáº§n há»i 'Save As'.`);
+        if (displayEl) displayEl.innerText = "📁 Đã chọn: " + handle.name;
+        showCustomAlert("Thành công", `Đã kết nối thư mục [${handle.name}]! Từ giờ khi bấm sao lưu, hệ thống sẽ tự ghi file thẳng vào thư mục này mà không cần hỏi 'Save As'.`);
     } catch(err) {
-        if (err.name !== 'AbortError') showCustomAlert("Lá»—i", "KhÃ´ng thá»ƒ chá»n thÆ° má»¥c: " + err.message);
+        if (err.name !== 'AbortError') showCustomAlert("Lỗi", "Không thể chọn thư mục: " + err.message);
     }
 };
 
@@ -14689,7 +14686,7 @@ window.autoSaveToLocalDir = async function(backupData) {
         await writable.close();
         return true;
     } catch(e) {
-        console.warn("[AutoSaveLocal] Lá»—i lÆ°u file vÃ o thÆ° má»¥c:", e);
+        console.warn("[AutoSaveLocal] Lỗi lưu file vào thư mục:", e);
         return false;
     }
 };
@@ -14698,12 +14695,12 @@ window.saveGoogleDriveSettingsUI = function() {
     const urlInput = document.getElementById('gdrive-webhook-url');
     const url = urlInput ? urlInput.value.trim() : "";
     if (url && !url.startsWith('http')) {
-        return showCustomAlert("Lá»—i", "URL Google Drive Webhook pháº£i báº¯t Ä‘áº§u báº±ng http:// hoáº·c https://");
+        return showCustomAlert("Lỗi", "URL Google Drive Webhook phải bắt đầu bằng http:// hoặc https://");
     }
     callApi('saveGoogleDriveSettings', [url], res => {
-        showCustomAlert("ThÃ nh cÃ´ng", res.message || "ÄÃ£ lÆ°u cÃ i Ä‘áº·t Google Drive Webhook!");
+        showCustomAlert("Thành công", res.message || "Đã lưu cài đặt Google Drive Webhook!");
     }, err => {
-        showCustomAlert("Lá»—i", "KhÃ´ng thá»ƒ lÆ°u cÃ i Ä‘áº·t: " + err);
+        showCustomAlert("Lỗi", "Không thể lưu cài đặt: " + err);
     });
 };
 
@@ -14711,15 +14708,15 @@ window.testGoogleDriveUploadUI = function() {
     const urlInput = document.getElementById('gdrive-webhook-url');
     const url = urlInput ? urlInput.value.trim() : "";
     if (!url || !url.startsWith('http')) {
-        return showCustomAlert("Lá»—i", "Vui lÃ²ng nháº­p URL Google Drive Webhook trÆ°á»›c khi thá»­ nghiá»‡m!");
+        return showCustomAlert("Lỗi", "Vui lòng nhập URL Google Drive Webhook trước khi thử nghiệm!");
     }
-    if (window.showGlobalLoading) window.showGlobalLoading("Äang Ä‘áº©y file sao lÆ°u thá»­ nghiá»‡m lÃªn Google Drive...");
+    if (window.showGlobalLoading) window.showGlobalLoading("Đang đẩy file sao lưu thử nghiệm lên Google Drive...");
     callApi('testGoogleDriveUpload', [url], res => {
         if (window.hideGlobalLoading) window.hideGlobalLoading();
-        showCustomAlert("ThÃ nh cÃ´ng", res.message || "ÄÃ£ táº£i file sao lÆ°u lÃªn Google Drive thÃ nh cÃ´ng!");
+        showCustomAlert("Thành công", res.message || "Đã tải file sao lưu lên Google Drive thành công!");
     }, err => {
         if (window.hideGlobalLoading) window.hideGlobalLoading();
-        showCustomAlert("Lá»—i Google Drive", "KhÃ´ng thá»ƒ táº£i lÃªn Google Drive: " + err);
+        showCustomAlert("Lỗi Google Drive", "Không thể tải lên Google Drive: " + err);
     });
 };
 
@@ -14732,21 +14729,21 @@ window.loadGoogleDriveSettingsUI = function() {
     getSavedDirHandle().then(handle => {
         if (handle) {
             const displayEl = document.getElementById('local-dir-path-display');
-            if (displayEl) displayEl.innerText = "ðŸ“ ÄÃ£ chá»n: " + handle.name;
+            if (displayEl) displayEl.innerText = "📁 Đã chọn: " + handle.name;
         }
     });
 };
 
 // ============================================================
-// ðŸ”— QUáº¢N LÃ LIÃŠN Káº¾T NHANH (FOOTER QUICK LINKS)
+// 🔗 QUẢN LÝ LIÊN KẾT NHANH (FOOTER QUICK LINKS)
 // ============================================================
 
 window.loadQuickLinks = function() {
     const uls = document.querySelectorAll('.khu-vuc-lien-ket');
     const defaultList = [
-        { icon: "ðŸ“œ", ten: "Tra cá»©u VÄƒn báº£n & BHXH", url: "javascript:openDocLookupModal()" },
-        { icon: "ðŸ“–", ten: "HÆ°á»›ng dáº«n sá»­ dá»¥ng pháº§n má»m", url: "javascript:openHdsdModal()" },
-        { icon: "ðŸ“‹", ten: "Quy trÃ¬nh Ká»¹ thuáº­t PHCN", url: "https://kcb.vn/" }
+        { icon: "📜", ten: "Tra cứu Văn bản & BHXH", url: "javascript:openDocLookupModal()" },
+        { icon: "📖", ten: "Hướng dẫn sử dụng phần mềm", url: "javascript:openHdsdModal()" },
+        { icon: "📋", ten: "Quy trình Kỹ thuật PHCN", url: "https://kcb.vn/" }
     ];
 
     const renderLinks = (list) => {
@@ -14754,16 +14751,16 @@ window.loadQuickLinks = function() {
         const htmlContent = list.map(item => {
             const itemTen = String(item.ten || item.name || '');
             const itemUrl = String(item.url || '');
-            const isDocLookup = itemUrl.includes('tracuu') || itemUrl.includes('openDocLookupModal') || itemTen.includes('Tra cá»©u') || itemTen.includes('VÄƒn báº£n');
-            const isHdsd = itemUrl.includes('hdsd') || itemUrl.includes('huong-dan') || itemUrl.includes('openHdsdModal') || itemTen.includes('HÆ°á»›ng dáº«n') || itemTen.includes('HDSD');
+            const isDocLookup = itemUrl.includes('tracuu') || itemUrl.includes('openDocLookupModal') || itemTen.includes('Tra cứu') || itemTen.includes('Văn bản');
+            const isHdsd = itemUrl.includes('hdsd') || itemUrl.includes('huong-dan') || itemUrl.includes('openHdsdModal') || itemTen.includes('Hướng dẫn') || itemTen.includes('HDSD');
 
             if (isDocLookup) {
-                return `<li><a href="javascript:void(0)" onclick="openDocLookupModal()"><span class="f-icon">${item.icon || 'ðŸ“œ'}</span> <span>${itemTen}</span></a></li>`;
+                return `<li><a href="javascript:void(0)" onclick="openDocLookupModal()"><span class="f-icon">${item.icon || '📜'}</span> <span>${itemTen}</span></a></li>`;
             }
             if (isHdsd) {
-                return `<li><a href="javascript:void(0)" onclick="openHdsdModal()"><span class="f-icon">${item.icon || 'ðŸ“–'}</span> <span>${itemTen}</span></a></li>`;
+                return `<li><a href="javascript:void(0)" onclick="openHdsdModal()"><span class="f-icon">${item.icon || '📖'}</span> <span>${itemTen}</span></a></li>`;
             }
-            return `<li><a href="${itemUrl || '#'}" target="_blank" rel="noopener"><span class="f-icon">${item.icon || 'ðŸ”—'}</span> <span>${itemTen}</span></a></li>`;
+            return `<li><a href="${itemUrl || '#'}" target="_blank" rel="noopener"><span class="f-icon">${item.icon || '🔗'}</span> <span>${itemTen}</span></a></li>`;
         }).join('');
         uls.forEach(ul => { ul.innerHTML = htmlContent; });
     };
@@ -14775,7 +14772,7 @@ window.loadQuickLinks = function() {
         if (sess && (sess.username || sess.role)) hasValidSession = true;
     } catch(e) {}
 
-    // ChÆ°a Ä‘Äƒng nháº­p: render liÃªn káº¿t máº·c Ä‘á»‹nh mÃ  khÃ´ng gá»i API
+    // Chưa đăng nhập: render liên kết mặc định mà không gọi API
     if (!token || !hasValidSession) {
         renderLinks(defaultList);
         return;
@@ -14796,9 +14793,9 @@ window.renderAdminQuickLinksUI = function(links) {
     container.innerHTML = '';
 
     const list = (links && Array.isArray(links) && links.length) ? links : [
-        { icon: "ðŸ“–", ten: "HÆ°á»›ng dáº«n sá»­ dá»¥ng pháº§n má»m", url: "#" },
-        { icon: "ðŸ“‹", ten: "Quy trÃ¬nh Ká»¹ thuáº­t PHCN", url: "#" },
-        { icon: "ðŸ’°", ten: "Báº£ng giÃ¡ Dá»‹ch vá»¥ KCB", url: "#" }
+        { icon: "📖", ten: "Hướng dẫn sử dụng phần mềm", url: "#" },
+        { icon: "📋", ten: "Quy trình Kỹ thuật PHCN", url: "#" },
+        { icon: "💰", ten: "Bảng giá Dịch vụ KCB", url: "#" }
     ];
 
     list.forEach(item => {
@@ -14806,10 +14803,10 @@ window.renderAdminQuickLinksUI = function(links) {
         div.className = 'quicklink-admin-item';
         div.style.cssText = 'display: flex; gap: 8px; align-items: center; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;';
         div.innerHTML = `
-            <input type="text" value="${item.icon || 'ðŸ”—'}" class="ql-icon" placeholder="Icon" style="width: 45px; text-align: center; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
-            <input type="text" value="${item.ten || item.name || ''}" class="ql-ten" placeholder="TÃªn hiá»ƒn thá»‹" style="flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
-            <input type="text" value="${item.url || '#'}" class="ql-url" placeholder="URL liÃªn káº¿t (http://...)" style="flex: 2; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
-            <button type="button" onclick="this.parentElement.remove()" style="background: #ef4444; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; font-weight: bold; cursor: pointer;">âœ•</button>
+            <input type="text" value="${item.icon || '🔗'}" class="ql-icon" placeholder="Icon" style="width: 45px; text-align: center; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
+            <input type="text" value="${item.ten || item.name || ''}" class="ql-ten" placeholder="Tên hiển thị" style="flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
+            <input type="text" value="${item.url || '#'}" class="ql-url" placeholder="URL liên kết (http://...)" style="flex: 2; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
+            <button type="button" onclick="this.parentElement.remove()" style="background: #ef4444; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; font-weight: bold; cursor: pointer;">✕</button>
         `;
         container.appendChild(div);
     });
@@ -14822,10 +14819,10 @@ window.addAdminQuickLinkRow = function() {
     div.className = 'quicklink-admin-item';
     div.style.cssText = 'display: flex; gap: 8px; align-items: center; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1;';
     div.innerHTML = `
-        <input type="text" value="ðŸ”—" class="ql-icon" placeholder="Icon" style="width: 45px; text-align: center; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
-        <input type="text" value="" class="ql-ten" placeholder="TÃªn hiá»ƒn thá»‹" style="flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
-        <input type="text" value="#" class="ql-url" placeholder="URL liÃªn káº¿t (http://...)" style="flex: 2; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
-        <button type="button" onclick="this.parentElement.remove()" style="background: #ef4444; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; font-weight: bold; cursor: pointer;">âœ•</button>
+        <input type="text" value="🔗" class="ql-icon" placeholder="Icon" style="width: 45px; text-align: center; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
+        <input type="text" value="" class="ql-ten" placeholder="Tên hiển thị" style="flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
+        <input type="text" value="#" class="ql-url" placeholder="URL liên kết (http://...)" style="flex: 2; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
+        <button type="button" onclick="this.parentElement.remove()" style="background: #ef4444; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; font-weight: bold; cursor: pointer;">✕</button>
     `;
     container.appendChild(div);
 };
@@ -14834,7 +14831,7 @@ window.saveAdminQuickLinks = function(btn) {
     const items = document.querySelectorAll('.quicklink-admin-item');
     const links = [];
     items.forEach(el => {
-        const icon = el.querySelector('.ql-icon').value.trim() || 'ðŸ”—';
+        const icon = el.querySelector('.ql-icon').value.trim() || '🔗';
         const ten = el.querySelector('.ql-ten').value.trim();
         const url = el.querySelector('.ql-url').value.trim() || '#';
         if (ten) {
@@ -14843,15 +14840,15 @@ window.saveAdminQuickLinks = function(btn) {
     });
 
     callApi('saveQuickLinks', [links], res => {
-        showCustomAlert("ThÃ nh cÃ´ng", res.message || "ÄÃ£ lÆ°u danh sÃ¡ch LiÃªn Káº¿t Nhanh!");
+        showCustomAlert("Thành công", res.message || "Đã lưu danh sách Liên Kết Nhanh!");
         loadQuickLinks();
     }, err => {
-        showCustomAlert("Lá»—i", "KhÃ´ng thá»ƒ lÆ°u danh sÃ¡ch liÃªn káº¿t: " + err);
+        showCustomAlert("Lỗi", "Không thể lưu danh sách liên kết: " + err);
     });
 };
 
 // ============================================================
-// ðŸ·ï¸ Xá»¬ LÃ Cáº¤U HÃŒNH THÆ¯Æ NG HIá»†U Báº¢N TRáº®NG (WHITE LABEL)
+// 🏷️ XỬ LÝ CẤU HÌNH THƯƠNG HIỆU BẢN TRẮNG (WHITE LABEL)
 // ============================================================
 window.saveWhiteLabelBranding = function() {
     const hosp = document.getElementById('wl-hospital-name')?.value?.trim();
@@ -14870,7 +14867,7 @@ window.saveWhiteLabelBranding = function() {
         }));
 
         if (typeof window.applyAppConfig === 'function') window.applyAppConfig();
-        showCustomAlert("ThÃ nh cÃ´ng", "ÄÃ£ cáº­p nháº­t cáº¥u hÃ¬nh thÆ°Æ¡ng hiá»‡u Ä‘Æ¡n vá»‹!");
+        showCustomAlert("Thành công", "Đã cập nhật cấu hình thương hiệu đơn vị!");
     }
 };
 
@@ -14897,8 +14894,8 @@ window.loadSavedWhiteLabelBranding = function() {
 
 window.wipeAllDataForNewClient = function() {
     showCustomConfirm(
-        "âš ï¸ Xáº®C NHáº¬N XÃ“A TRáº®NG Dá»® LIá»†U Lá»ŠCH",
-        "Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n XÃ“A TRáº®NG toÃ n bá»™ lá»‹ch trÃ¬nh vÃ  dá»¯ liá»‡u bá»‡nh nhÃ¢n thá»­ nghiá»‡m Ä‘á»ƒ bÃ n giao cho Khoa/Bá»‡nh viá»‡n má»›i khÃ´ng?\n\nLÆ¯U Ã: Thao tÃ¡c nÃ y sáº½ xÃ³a sáº¡ch dá»¯ liá»‡u bá»‡nh nhÃ¢n Ä‘ang lÆ°u táº¡m trong mÃ¡y!",
+        "⚠️ XẮC NHẬN XÓA TRẮNG DỮ LIỆU LỊCH",
+        "Bạn có chắc chắn muốn XÓA TRẮNG toàn bộ lịch trình và dữ liệu bệnh nhân thử nghiệm để bàn giao cho Khoa/Bệnh viện mới không?\n\nLƯU Ý: Thao tác này sẽ xóa sạch dữ liệu bệnh nhân đang lưu tạm trong máy!",
         function() {
             window.currentScheduleData = [];
             window.lastUnscheduledData = [];
@@ -14909,13 +14906,13 @@ window.wipeAllDataForNewClient = function() {
             if (typeof renderSchedPage === 'function') renderSchedPage();
             if (typeof updateUnscheduledStats === 'function') updateUnscheduledStats([]);
             if (typeof renderStats === 'function') renderStats([]);
-            showCustomAlert("ÄÃ£ xÃ³a tráº¯ng", "ÄÃ£ dá»n dáº¹p sáº¡ch toÃ n bá»™ lá»‹ch trÃ¬nh. Há»‡ thá»‘ng Ä‘Ã£ sáºµn sÃ ng náº¡p dá»¯ liá»‡u Ä‘Æ¡n vá»‹ má»›i!");
+            showCustomAlert("Đã xóa trắng", "Đã dọn dẹp sạch toàn bộ lịch trình. Hệ thống đã sẵn sàng nạp dữ liệu đơn vị mới!");
         }
     );
 };
 
 window.loadDemoSetupData = function() {
-    showCustomAlert("Náº¡p dá»¯ liá»‡u máº«u", "ÄÃ£ kÃ­ch hoáº¡t cháº¿ Ä‘á»™ náº¡p dá»¯ liá»‡u máº«u thÆ°Æ¡ng máº¡i. Báº¡n cÃ³ thá»ƒ sá»­ dá»¥ng nÃºt ðŸ“‚ Táº¢I FILE Lá»ŠCH CÅ¨ hoáº·c nháº­p Excel danh má»¥c!");
+    showCustomAlert("Nạp dữ liệu mẫu", "Đã kích hoạt chế độ nạp dữ liệu mẫu thương mại. Bạn có thể sử dụng nút 📂 TẢI FILE LỊCH CŨ hoặc nhập Excel danh mục!");
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -14946,7 +14943,7 @@ function populateMonthYearDropdown() {
             const val = `${mm}/${y}`;
             const option = document.createElement('option');
             option.value = val;
-            option.textContent = `ThÃ¡ng ${mm}/${y}`;
+            option.textContent = `Tháng ${mm}/${y}`;
             if (y === currentYear && m === currentMonth) {
                 option.selected = true;
             }
@@ -14957,9 +14954,9 @@ function populateMonthYearDropdown() {
 window.populateMonthYearDropdown = populateMonthYearDropdown;
 
 // ============================================================
-// ðŸ“œ QUáº¢N LÃ & TRA Cá»¨U VÄ‚N Báº¢N & BHXH (DOCUMENT LOOKUP SYSTEM)
+// 📜 QUẢN LÝ & TRA CỨU VĂN BẢN & BHXH (DOCUMENT LOOKUP SYSTEM)
 // ============================================================
-// ðŸ“– HÆ¯á»šNG DáºªN Sá»¬ Dá»¤NG (HDSD MODAL VIEWER)
+// 📖 HƯỚNG DẪN SỬ DỤNG (HDSD MODAL VIEWER)
 // ============================================================
 window.openHdsdModal = function() {
     const modal = document.getElementById('modal-hdsd-viewer');
@@ -14994,7 +14991,7 @@ window.closeHdsdModal = function() {
 };
 
 // ============================================================
-// ðŸ“œ TRA Cá»¨U VÄ‚N Báº¢N & QUY Äá»ŠNH BHXH / Y Táº¾ (D1 DATABASE)
+// 📜 TRA CỨU VĂN BẢN & QUY ĐỊNH BHXH / Y TẾ (D1 DATABASE)
 // ============================================================
 window.cachedDocuments = [];
 window.isDocAdminEditing = false;
@@ -15002,49 +14999,49 @@ window.editingDocIndex = -1;
 
 const STANDARD_DEFAULT_DOCS = [
     {
-        doc_number: "QÄ 3981/QÄ-BYT",
-        title: "HÆ°á»›ng dáº«n Quy trÃ¬nh Ká»¹ thuáº­t KhÃ¡m chá»¯a bá»‡nh ChuyÃªn ngÃ nh Phá»¥c há»“i chá»©c nÄƒng (Táº­p 1, 2, 3)",
-        agency: "Bá»™ Y táº¿",
+        doc_number: "QĐ 3981/QĐ-BYT",
+        title: "Hướng dẫn Quy trình Kỹ thuật Khám chữa bệnh Chuyên ngành Phục hồi chức năng (Tập 1, 2, 3)",
+        agency: "Bộ Y tế",
         signed_date: "01/10/2014",
         view_link: "https://kcb.vn/",
         download_link: "https://kcb.vn/"
     },
     {
         doc_number: "TT 46/2013/TT-BYT",
-        title: "HÆ°á»›ng dáº«n Quy trÃ¬nh Ká»¹ thuáº­t KhÃ¡m chá»¯a bá»‡nh ChuyÃªn ngÃ nh Y há»c cá»• truyá»n (Má»›i nháº¥t)",
-        agency: "Bá»™ Y táº¿",
+        title: "Hướng dẫn Quy trình Kỹ thuật Khám chữa bệnh Chuyên ngành Y học cổ truyền (Mới nhất)",
+        agency: "Bộ Y tế",
         signed_date: "31/12/2013",
         view_link: "https://kcb.vn/",
         download_link: "https://kcb.vn/"
     },
     {
         doc_number: "CV 1085/BYT-BH",
-        title: "HÆ°á»›ng dáº«n vÆ°á»›ng máº¯c thanh toÃ¡n chi phÃ­ KCB (NhÃ³m dá»‹ch vá»¥ YHCT - PHCN cÃ¹ng cÆ¡ cháº¿)",
-        agency: "Bá»™ Y táº¿",
+        title: "Hướng dẫn vướng mắc thanh toán chi phí KCB (Nhóm dịch vụ YHCT - PHCN cùng cơ chế)",
+        agency: "Bộ Y tế",
         signed_date: "08/03/2024",
         view_link: "https://baohiemxahoi.gov.vn/",
         download_link: "https://baohiemxahoi.gov.vn/"
     },
     {
         doc_number: "TT 32/2023/TT-BYT",
-        title: "Phá»¥ lá»¥c danh má»¥c chuyÃªn mÃ´n & Ä‘á»‹nh má»©c ká»¹ thuáº­t BÃ¡c sÄ© Y há»c cá»• truyá»n",
-        agency: "Bá»™ Y táº¿",
+        title: "Phụ lục danh mục chuyên môn & định mức kỹ thuật Bác sĩ Y học cổ truyền",
+        agency: "Bộ Y tế",
         signed_date: "31/12/2023",
         view_link: "https://kcb.vn/",
         download_link: "https://kcb.vn/"
     },
     {
         doc_number: "TT 22/2023/TT-BYT",
-        title: "Quy Ä‘á»‹nh thá»‘ng nháº¥t giÃ¡ dá»‹ch vá»¥ khÃ¡m bá»‡nh, chá»¯a bá»‡nh BHYT giá»¯a cÃ¡c bá»‡nh viá»‡n",
-        agency: "Bá»™ Y táº¿",
+        title: "Quy định thống nhất giá dịch vụ khám bệnh, chữa bệnh BHYT giữa các bệnh viện",
+        agency: "Bộ Y tế",
         signed_date: "17/11/2023",
         view_link: "https://kcb.vn/",
         download_link: "https://kcb.vn/"
     },
     {
-        doc_number: "QÄ 130/QÄ-BYT",
-        title: "Chuáº©n vÃ  Ä‘á»‹nh dáº¡ng dá»¯ liá»‡u Ä‘áº§u ra phá»¥c vá»¥ quáº£n lÃ½ vÃ  giÃ¡m Ä‘á»‹nh, thanh toÃ¡n BHYT",
-        agency: "Bá»™ Y táº¿",
+        doc_number: "QĐ 130/QĐ-BYT",
+        title: "Chuẩn và định dạng dữ liệu đầu ra phục vụ quản lý và giám định, thanh toán BHYT",
+        agency: "Bộ Y tế",
         signed_date: "18/01/2023",
         view_link: "https://kcb.vn/",
         download_link: "https://kcb.vn/"
@@ -15077,7 +15074,7 @@ window.loadDocumentListFromServer = function() {
     }
 
     if (tbody) {
-        tbody.innerHTML = '<tr><td colspan="6" align="center" style="padding: 30px; color: #64748b;">â³ Äang náº¡p danh sÃ¡ch vÄƒn báº£n tá»« Cloudflare D1...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" align="center" style="padding: 30px; color: #64748b;">⏳ Đang nạp danh sách văn bản từ Cloudflare D1...</td></tr>';
     }
 
     const handleSuccess = (res) => {
@@ -15096,7 +15093,7 @@ window.loadDocumentListFromServer = function() {
     };
 
     const handleFailure = (err) => {
-        console.warn("[DocLookup] Lá»—i káº¿t ná»‘i D1, dÃ¹ng danh má»¥c chuáº©n:", err);
+        console.warn("[DocLookup] Lỗi kết nối D1, dùng danh mục chuẩn:", err);
         window.cachedDocuments = [...STANDARD_DEFAULT_DOCS];
         window.renderDocLookupTableUI(window.cachedDocuments);
     };
@@ -15121,21 +15118,21 @@ window.renderDocLookupTableUI = function(docs) {
     if (badge) badge.innerText = docs.length;
 
     if (!docs || docs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" align="center" style="padding: 30px; color: #94a3b8;">KhÃ´ng tÃ¬m tháº¥y vÄƒn báº£n nÃ o thá»a Ä‘iá»u kiá»‡n.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" align="center" style="padding: 30px; color: #94a3b8;">Không tìm thấy văn bản nào thỏa điều kiện.</td></tr>';
         return;
     }
 
     const htmlContent = docs.map((doc, idx) => {
-        const docNum = doc.doc_number || doc.soHieu || '<i style="color:#94a3b8;">ChÆ°a cÃ³</i>';
+        const docNum = doc.doc_number || doc.soHieu || '<i style="color:#94a3b8;">Chưa có</i>';
         const title = doc.title || doc.tenVanBan || '';
-        const agency = doc.agency || doc.coQuan || 'Bá»™ Y táº¿';
+        const agency = doc.agency || doc.coQuan || 'Bộ Y tế';
         const date = doc.signed_date || doc.ngayKy || '--/--/----';
         const viewLink = doc.view_link || doc.linkXem || 'https://kcb.vn/';
         const downLink = doc.download_link || doc.linkTai || 'https://baohiemxahoi.gov.vn/';
 
         const adminBtns = window.isDocAdminEditing ? 
-            `<button type="button" onclick="editDocItemUI(${idx})" style="padding: 4px 8px; background: #0284c7; color: #fff; border: none; border-radius: 4px; font-size: 11px; font-weight:600; cursor: pointer; margin-left: 3px;" title="Chá»‰nh sá»­a">âœï¸ Sá»­a</button>
-             <button type="button" onclick="removeDocItemUI(${idx})" style="padding: 4px 8px; background: #ef4444; color: #fff; border: none; border-radius: 4px; font-size: 11px; font-weight:600; cursor: pointer; margin-left: 3px;" title="XÃ³a">ðŸ—‘ï¸ XÃ³a</button>` : '';
+            `<button type="button" onclick="editDocItemUI(${idx})" style="padding: 4px 8px; background: #0284c7; color: #fff; border: none; border-radius: 4px; font-size: 11px; font-weight:600; cursor: pointer; margin-left: 3px;" title="Chỉnh sửa">✏️ Sửa</button>
+             <button type="button" onclick="removeDocItemUI(${idx})" style="padding: 4px 8px; background: #ef4444; color: #fff; border: none; border-radius: 4px; font-size: 11px; font-weight:600; cursor: pointer; margin-left: 3px;" title="Xóa">🗑️ Xóa</button>` : '';
 
         return `
             <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
@@ -15145,11 +15142,11 @@ window.renderDocLookupTableUI = function(docs) {
                 <td style="padding: 10px; color: #475569;"><span style="background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 600; white-space: nowrap;">${escapeHtml(agency)}</span></td>
                 <td style="padding: 10px; text-align: center; color: #64748b; font-size: 12px;">${date}</td>
                 <td style="padding: 10px; text-align: center; white-space: nowrap;">
-                    <a href="${viewLink}" target="_blank" style="padding: 4px 9px; background: #2563eb; color: #fff; border-radius: 4px; text-decoration: none; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 3px;" title="Xem trá»±c tiáº¿p">
-                        <span>ðŸ‘ï¸</span> Xem
+                    <a href="${viewLink}" target="_blank" style="padding: 4px 9px; background: #2563eb; color: #fff; border-radius: 4px; text-decoration: none; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 3px;" title="Xem trực tiếp">
+                        <span>👁️</span> Xem
                     </a>
-                    <a href="${downLink}" target="_blank" style="padding: 4px 9px; background: #059669; color: #fff; border-radius: 4px; text-decoration: none; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 3px; margin-left: 3px;" title="Táº£i file PDF">
-                        <span>ðŸ“¥</span> Táº£i
+                    <a href="${downLink}" target="_blank" style="padding: 4px 9px; background: #059669; color: #fff; border-radius: 4px; text-decoration: none; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 3px; margin-left: 3px;" title="Tải file PDF">
+                        <span>📥</span> Tải
                     </a>
                     ${adminBtns}
                 </td>
@@ -15190,15 +15187,15 @@ window.showDocAddPanel = function() {
     const btnSubmit = document.getElementById('btn-submit-doc');
     const btnSave = document.getElementById('btn-save-doc-admin');
 
-    if (titleEl) titleEl.innerText = 'âž• THÃŠM VÄ‚N Báº¢N QUY Äá»ŠNH Má»šI';
-    if (btnSubmit) btnSubmit.innerText = 'ThÃªm VÃ o Danh SÃ¡ch';
+    if (titleEl) titleEl.innerText = '➕ THÊM VĂN BẢN QUY ĐỊNH MỚI';
+    if (btnSubmit) btnSubmit.innerText = 'Thêm Vào Danh Sách';
 
     // Clear inputs
     ['new-doc-number', 'new-doc-title', 'new-doc-agency', 'new-doc-date', 'new-doc-viewlink', 'new-doc-downlink'].forEach(id => {
         const el = document.getElementById(id); if (el) el.value = '';
     });
     const agencyInput = document.getElementById('new-doc-agency');
-    if (agencyInput) agencyInput.value = 'Bá»™ Y táº¿';
+    if (agencyInput) agencyInput.value = 'Bộ Y tế';
 
     if (panel) panel.style.display = 'block';
     if (btnSave) btnSave.style.display = 'inline-block';
@@ -15219,7 +15216,7 @@ window.toggleDocAdminMode = function() {
     if (btnSave) btnSave.style.display = window.isDocAdminEditing ? 'inline-block' : 'none';
     if (btnToggle) {
         btnToggle.style.background = window.isDocAdminEditing ? '#dc2626' : '#0284c7';
-        btnToggle.innerHTML = window.isDocAdminEditing ? '<span>âœ–</span> ThoÃ¡t Sá»­a' : '<span>âš™ï¸</span> Quáº£n LÃ½ / Sá»­a';
+        btnToggle.innerHTML = window.isDocAdminEditing ? '<span>✖</span> Thoát Sửa' : '<span>⚙️</span> Quản Lý / Sửa';
     }
 
     if (!window.isDocAdminEditing && panel) panel.style.display = 'none';
@@ -15237,8 +15234,8 @@ window.editDocItemUI = function(idx) {
     const btnSubmit = document.getElementById('btn-submit-doc');
     const btnSave = document.getElementById('btn-save-doc-admin');
 
-    if (titleEl) titleEl.innerText = 'âœï¸ CHá»ˆNH Sá»¬A VÄ‚N Báº¢N: ' + (doc.doc_number || doc.title);
-    if (btnSubmit) btnSubmit.innerText = 'Cáº­p Nháº­t Thay Äá»•i';
+    if (titleEl) titleEl.innerText = '✏️ CHỈNH SỬA VĂN BẢN: ' + (doc.doc_number || doc.title);
+    if (btnSubmit) btnSubmit.innerText = 'Cập Nhật Thay Đổi';
 
     document.getElementById('new-doc-number').value = doc.doc_number || doc.soHieu || '';
     document.getElementById('new-doc-title').value = doc.title || doc.tenVanBan || '';
@@ -15260,13 +15257,13 @@ window.cancelEditDoc = function() {
 window.addNewDocToListUI = function() {
     const num = document.getElementById('new-doc-number')?.value?.trim();
     const title = document.getElementById('new-doc-title')?.value?.trim();
-    const agency = document.getElementById('new-doc-agency')?.value?.trim() || "Bá»™ Y táº¿";
+    const agency = document.getElementById('new-doc-agency')?.value?.trim() || "Bộ Y tế";
     const date = document.getElementById('new-doc-date')?.value?.trim() || "--/--/----";
     const viewLink = document.getElementById('new-doc-viewlink')?.value?.trim() || "https://kcb.vn/";
     const downLink = document.getElementById('new-doc-downlink')?.value?.trim() || "https://baohiemxahoi.gov.vn/";
 
     if (!title) {
-        alert("Vui lÃ²ng nháº­p TÃªn vÄƒn báº£n / TrÃ­ch yáº¿u ná»™i dung!");
+        alert("Vui lòng nhập Tên văn bản / Trích yếu nội dung!");
         return;
     }
 
@@ -15290,13 +15287,13 @@ window.addNewDocToListUI = function() {
     window.renderDocLookupTableUI(window.cachedDocuments);
     const btnSave = document.getElementById('btn-save-doc-admin');
     if (btnSave) btnSave.style.display = 'inline-block';
-    alert("ÄÃ£ cáº­p nháº­t danh sÃ¡ch! Vui lÃ²ng báº¥m 'ðŸ’¾ LÆ°u Thay Äá»•i VÃ o D1' á»Ÿ gÃ³c dÆ°á»›i Ä‘á»ƒ lÆ°u vÄ©nh viá»…n.");
+    alert("Đã cập nhật danh sách! Vui lòng bấm '💾 Lưu Thay Đổi Vào D1' ở góc dưới để lưu vĩnh viễn.");
 };
 
 window.removeDocItemUI = function(index) {
     if (index < 0 || index >= window.cachedDocuments.length) return;
     const doc = window.cachedDocuments[index];
-    if (!confirm("BÃ¡c sÄ© cÃ³ cháº¯c muá»‘n xÃ³a vÄƒn báº£n: " + (doc.title || doc.doc_number) + "?")) return;
+    if (!confirm("Bác sĩ có chắc muốn xóa văn bản: " + (doc.title || doc.doc_number) + "?")) return;
 
     window.cachedDocuments.splice(index, 1);
     window.renderDocLookupTableUI(window.cachedDocuments);
@@ -15305,26 +15302,26 @@ window.removeDocItemUI = function(index) {
 };
 
 window.restoreDefaultStandardDocs = function() {
-    if (!confirm("KhÃ´i phá»¥c láº¡i danh sÃ¡ch 6 vÄƒn báº£n quy Ä‘á»‹nh YHCT - PHCN chuáº©n 2026?")) return;
+    if (!confirm("Khôi phục lại danh sách 6 văn bản quy định YHCT - PHCN chuẩn 2026?")) return;
     window.cachedDocuments = [...STANDARD_DEFAULT_DOCS];
     window.renderDocLookupTableUI(window.cachedDocuments);
     const btnSave = document.getElementById('btn-save-doc-admin');
     if (btnSave) btnSave.style.display = 'inline-block';
-    alert("ÄÃ£ táº£i láº¡i máº«u chuáº©n! BÃ¡c sÄ© báº¥m 'ðŸ’¾ LÆ°u Thay Äá»•i VÃ o D1' Ä‘á»ƒ ghi nháº­n vÃ o há»‡ thá»‘ng.");
+    alert("Đã tải lại mẫu chuẩn! Bác sĩ bấm '💾 Lưu Thay Đổi Vào D1' để ghi nhận vào hệ thống.");
 };
 
 window.saveDocListToServer = function() {
     const btn = document.getElementById('btn-save-doc-admin');
-    if (btn) { btn.innerText = "â³ Äang lÆ°u..."; btn.disabled = true; }
+    if (btn) { btn.innerText = "⏳ Đang lưu..."; btn.disabled = true; }
 
     const handleSuccess = () => {
-        if (btn) { btn.innerText = "ðŸ’¾ LÆ°u Thay Äá»•i VÃ o D1"; btn.disabled = false; }
-        alert("âœ… ÄÃ£ lÆ°u toÃ n bá»™ danh sÃ¡ch vÄƒn báº£n thÃ nh cÃ´ng vÃ o Cloudflare D1 Database!");
+        if (btn) { btn.innerText = "💾 Lưu Thay Đổi Vào D1"; btn.disabled = false; }
+        alert("✅ Đã lưu toàn bộ danh sách văn bản thành công vào Cloudflare D1 Database!");
     };
 
     const handleFailure = (err) => {
-        if (btn) { btn.innerText = "ðŸ’¾ LÆ°u Thay Äá»•i VÃ o D1"; btn.disabled = false; }
-        alert("âŒ Lá»—i khi lÆ°u vÄƒn báº£n lÃªn mÃ¡y chá»§: " + (err.message || err));
+        if (btn) { btn.innerText = "💾 Lưu Thay Đổi Vào D1"; btn.disabled = false; }
+        alert("❌ Lỗi khi lưu văn bản lên máy chủ: " + (err.message || err));
     };
 
     if (typeof callApi === 'function') {
@@ -15339,7 +15336,7 @@ window.saveDocListToServer = function() {
 
 
 // ============================================================
-// ðŸ“± MOBILE & TABLET NAVIGATION CONTROLLER (v3.2.0)
+// 📱 MOBILE & TABLET NAVIGATION CONTROLLER (v3.2.0)
 // ============================================================
 
 window.switchMobileNav = function(tabId, el) {
@@ -15440,7 +15437,7 @@ window.addEventListener('hashchange', () => {
 
 
 // ============================================================
-// ðŸ“± MOBILE FORM TOGGLE & EDIT EXPANSION HELPERS
+// 📱 MOBILE FORM TOGGLE & EDIT EXPANSION HELPERS
 // ============================================================
 
 window.toggleMobileForm = function(btn) {
@@ -15453,11 +15450,11 @@ window.toggleMobileForm = function(btn) {
     const isShowing = form.classList.contains('show-mobile-form');
     if (isShowing) {
         form.classList.remove('show-mobile-form');
-        btn.innerHTML = 'âž• ThÃªm Má»›i / Nháº­p Liá»‡u';
+        btn.innerHTML = '➕ Thêm Mới / Nhập Liệu';
         btn.classList.remove('active');
     } else {
         form.classList.add('show-mobile-form');
-        btn.innerHTML = 'âœ– ÄÃ³ng Khung Nháº­p Liá»‡u';
+        btn.innerHTML = '✖ Đóng Khung Nhập Liệu';
         btn.classList.add('active');
         form.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -15485,7 +15482,7 @@ window.openMobileFormForEdit = function(type) {
         if (form) {
             form.classList.add('show-mobile-form');
             if (toggleBtn) {
-                toggleBtn.innerHTML = 'âœ– ÄÃ³ng Khung Nháº­p Liá»‡u';
+                toggleBtn.innerHTML = '✖ Đóng Khung Nhập Liệu';
                 toggleBtn.classList.add('active');
             }
             form.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -15496,22 +15493,22 @@ window.openMobileFormForEdit = function(type) {
 
 
 // ============================================================
-// ðŸ¢ QUáº¢N TRá»Š ÄÆ N Vá»Š & Báº¢N QUYá»€N SAAS (SUPER ADMIN)
+// 🏢 QUẢN TRỊ ĐƠN VỊ & BẢN QUYỀN SAAS (SUPER ADMIN)
 // ============================================================
 window.loadTenantsList = function () {
     const tbody = document.getElementById('tenants-table-body');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#64748b;">â³ Äang táº£i danh sÃ¡ch Ä‘Æ¡n vá»‹ tá»« mÃ¡y chá»§ Cloudflare D1...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#64748b;">⏳ Đang tải danh sách đơn vị từ máy chủ Cloudflare D1...</td></tr>';
 
     if (typeof callApi === 'function') {
         callApi('getTenantsList', [], res => {
             const list = Array.isArray(res) ? res : (res?.data || []);
             if (!list || list.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#94a3b8;">ChÆ°a cÃ³ Ä‘Æ¡n vá»‹ nÃ o Ä‘Æ°á»£c táº¡o.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#94a3b8;">Chưa có đơn vị nào được tạo.</td></tr>';
                 return;
             }
 
-            // Thá»‘ng kÃª
+            // Thống kê
             let activeCount = 0, enterpriseCount = 0;
             list.forEach(t => {
                 if (t.is_active) activeCount++;
@@ -15521,21 +15518,21 @@ window.loadTenantsList = function () {
             document.getElementById('stat-active-tenants').innerText = activeCount;
             document.getElementById('stat-enterprise-tenants').innerText = enterpriseCount;
 
-            // Render báº£ng
+            // Render bảng
             tbody.innerHTML = list.map(t => {
                 const isActive = t.is_active === 1 || t.is_active === '1' || t.is_active === true;
                 const statusBadge = isActive
-                    ? '<span style="background:#dcfce7; color:#15803d; padding:4px 8px; border-radius:6px; font-weight:700; font-size:11px;">ðŸŸ¢ Hoáº¡t Äá»™ng</span>'
-                    : '<span style="background:#fee2e2; color:#b91c1c; padding:4px 8px; border-radius:6px; font-weight:700; font-size:11px;">ðŸ”´ Táº¡m KhÃ³a</span>';
+                    ? '<span style="background:#dcfce7; color:#15803d; padding:4px 8px; border-radius:6px; font-weight:700; font-size:11px;">🟢 Hoạt Động</span>'
+                    : '<span style="background:#fee2e2; color:#b91c1c; padding:4px 8px; border-radius:6px; font-weight:700; font-size:11px;">🔴 Tạm Khóa</span>';
 
                 const isLifetime = t.unit_code === 'bvtks-cs2' || t.unit_code === 'bvtks_cs2' || t.plan_tier === 'ENTERPRISE';
                 const planBadge = isLifetime
-                    ? '<span style="background:#dcfce7; color:#15803d; padding:3px 8px; border-radius:6px; font-weight:700; font-size:11px;">ðŸ’Ž VÄ¨NH VIá»„N</span>'
+                    ? '<span style="background:#dcfce7; color:#15803d; padding:3px 8px; border-radius:6px; font-weight:700; font-size:11px;">💎 VĨNH VIỄN</span>'
                     : `<span style="background:#e0e7ff; color:#3730a3; padding:3px 8px; border-radius:6px; font-weight:700; font-size:11px;">${t.plan_tier || 'PRO'}</span>`;
 
                 const expiresDisplay = isLifetime
-                    ? '<span style="color:#059669; font-weight:700;">ðŸ’Ž VÄ©nh viá»…n</span>'
-                    : (t.expires_at || 'VÄ©nh viá»…n');
+                    ? '<span style="color:#059669; font-weight:700;">💎 Vĩnh viễn</span>'
+                    : (t.expires_at || 'Vĩnh viễn');
 
                 return `
                     <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
@@ -15548,30 +15545,30 @@ window.loadTenantsList = function () {
                         <td style="padding:12px 14px; text-align:center;">${statusBadge}</td>
                         <td style="padding:12px 14px; text-align:center;">
                             <div style="display:flex; justify-content:center; gap:6px;">
-                                <button class="btn btn-sm btn-secondary" onclick="openEditTenantModal('${t.unit_code}', '${encodeURIComponent(t.unit_name)}', '${t.plan_tier}', '${t.expires_at}', ${t.max_staff}, ${t.max_patients}, '${t.phone || ''}')" title="Chá»‰nh sá»­a / Gia háº¡n">âœï¸ Sá»­a</button>
-                                <button class="btn btn-sm" style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; font-weight:700;" onclick="window.openContractPartyAModal('${t.plan_tier}', '${t.unit_code}', '${encodeURIComponent(t.unit_name)}', '${t.expires_at || ''}')" title="Äiá»n thÃ´ng tin & Táº£i Há»£p Äá»“ng (PDF) cho Ä‘Æ¡n vá»‹ nÃ y">ðŸ“œ HÄ</button>
-                                <button class="btn btn-sm btn-info" onclick="exportTenantDataPrompt('${t.unit_code}', '${encodeURIComponent(t.unit_name)}')" title="Xuáº¥t dá»¯ liá»‡u sao lÆ°u (JSON) riÃªng cho Ä‘Æ¡n vá»‹ nÃ y">ðŸ“¥ Xuáº¥t</button>
-                                <button class="btn btn-sm btn-warning" onclick="resetTenantPasswordPrompt('${t.unit_code}')" title="Äáº·t láº¡i máº­t kháº©u Admin">ðŸ”‘ Pass</button>
-                                <button class="btn btn-sm ${isActive ? 'btn-danger' : 'btn-success'}" onclick="toggleTenantStatus('${t.unit_code}', ${isActive ? 0 : 1})" title="${isActive ? 'KhÃ³a Ä‘Æ¡n vá»‹' : 'Má»Ÿ khÃ³a Ä‘Æ¡n vá»‹'}">${isActive ? 'ðŸ”’ KhÃ³a' : 'ðŸ”“ Má»Ÿ'}</button>
-                                ${t.unit_code !== 'bvtks-cs2' && t.unit_code !== 'bvtks_cs2' ? `<button class="btn btn-sm btn-danger" onclick="deleteTenantPrompt('${t.unit_code}', '${encodeURIComponent(t.unit_name)}')" title="XÃ³a vÄ©nh viá»…n">ðŸ—‘ï¸ XÃ³a</button>` : ''}
+                                <button class="btn btn-sm btn-secondary" onclick="openEditTenantModal('${t.unit_code}', '${encodeURIComponent(t.unit_name)}', '${t.plan_tier}', '${t.expires_at}', ${t.max_staff}, ${t.max_patients}, '${t.phone || ''}')" title="Chỉnh sửa / Gia hạn">✏️ Sửa</button>
+                                <button class="btn btn-sm" style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; font-weight:700;" onclick="window.openContractPartyAModal('${t.plan_tier}', '${t.unit_code}', '${encodeURIComponent(t.unit_name)}', '${t.expires_at || ''}')" title="Điền thông tin & Tải Hợp Đồng (PDF) cho đơn vị này">📜 HĐ</button>
+                                <button class="btn btn-sm btn-info" onclick="exportTenantDataPrompt('${t.unit_code}', '${encodeURIComponent(t.unit_name)}')" title="Xuất dữ liệu sao lưu (JSON) riêng cho đơn vị này">📥 Xuất</button>
+                                <button class="btn btn-sm btn-warning" onclick="resetTenantPasswordPrompt('${t.unit_code}')" title="Đặt lại mật khẩu Admin">🔑 Pass</button>
+                                <button class="btn btn-sm ${isActive ? 'btn-danger' : 'btn-success'}" onclick="toggleTenantStatus('${t.unit_code}', ${isActive ? 0 : 1})" title="${isActive ? 'Khóa đơn vị' : 'Mở khóa đơn vị'}">${isActive ? '🔒 Khóa' : '🔓 Mở'}</button>
+                                ${t.unit_code !== 'bvtks-cs2' && t.unit_code !== 'bvtks_cs2' ? `<button class="btn btn-sm btn-danger" onclick="deleteTenantPrompt('${t.unit_code}', '${encodeURIComponent(t.unit_name)}')" title="Xóa vĩnh viễn">🗑️ Xóa</button>` : ''}
                             </div>
                         </td>
                     </tr>
                 `;
             }).join('');
 
-            // Tá»± Ä‘á»™ng táº£i luÃ´n danh sÃ¡ch giao dá»‹ch thanh toÃ¡n VietQR
+            // Tự động tải luôn danh sách giao dịch thanh toán VietQR
             if (typeof window.loadPaymentTransactionsList === 'function') {
                 window.loadPaymentTransactionsList();
             }
         }, err => {
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:#e11d48;">Lá»—i khi táº£i danh sÃ¡ch: ${escapeHtml(err && err.message ? err.message : 'KhÃ´ng xÃ¡c Ä‘á»‹nh')}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:30px; color:#e11d48;">Lỗi khi tải danh sách: ${escapeHtml(err && err.message ? err.message : 'Không xác định')}</td></tr>`;
         });
     }
 };
 
 window.openAddTenantModal = function () {
-    document.getElementById('modal-tenant-title').innerText = 'âž• ThÃªm Bá»‡nh Viá»‡n / ÄÆ¡n Vá»‹ Má»›i';
+    document.getElementById('modal-tenant-title').innerText = '➕ Thêm Bệnh Viện / Đơn Vị Mới';
     if (document.getElementById('tenant-form-old-code')) document.getElementById('tenant-form-old-code').value = '';
     document.getElementById('tenant-form-code').value = '';
     document.getElementById('tenant-form-code').disabled = false;
@@ -15596,7 +15593,7 @@ window.openAddTenantModal = function () {
 };
 
 window.openEditTenantModal = function (code, encName, plan, expires, maxStaff, maxPatients, phone) {
-    document.getElementById('modal-tenant-title').innerText = 'âœï¸ Chá»‰nh Sá»­a & Gia Háº¡n ÄÆ¡n Vá»‹: ' + code;
+    document.getElementById('modal-tenant-title').innerText = '✏️ Chỉnh Sửa & Gia Hạn Đơn Vị: ' + code;
     if (document.getElementById('tenant-form-old-code')) document.getElementById('tenant-form-old-code').value = code;
     document.getElementById('tenant-form-code').value = code;
     document.getElementById('tenant-form-code').disabled = false;
@@ -15631,12 +15628,12 @@ window.saveTenantData = function () {
     const seedSample = document.getElementById('tenant-form-seed-sample')?.checked !== false;
 
     if (!code || !name) {
-        alert('Vui lÃ²ng nháº­p Ä‘áº§y Ä‘á»§ MÃ£ Ä‘Æ¡n vá»‹ vÃ  TÃªn Ä‘Æ¡n vá»‹!');
+        alert('Vui lòng nhập đầy đủ Mã đơn vị và Tên đơn vị!');
         return;
     }
 
     if (isEdit && oldCode && code !== oldCode) {
-        const confirmMsg = `âš ï¸ Báº N ÄANG Äá»”I MÃƒ ÄÆ N Vá»Š:\n\nTá»« mÃ£ cÅ©: "${oldCode}" âž” Sang mÃ£ má»›i: "${code}"\n\nToÃ n bá»™ dá»¯ liá»‡u (Bá»‡nh nhÃ¢n, NhÃ¢n sá»±, Lá»‹ch trÃ¬nh, TÃ i khoáº£n, CÃ i Ä‘áº·t...) sáº½ tá»± Ä‘á»™ng Ä‘Æ°á»£c chuyá»ƒn sang mÃ£ má»›i.\n\nBáº¡n cÃ³ cháº¯c cháº¯n muá»‘n tiáº¿p tá»¥c khÃ´ng?`;
+        const confirmMsg = `⚠️ BẠN ĐANG ĐỔI MÃ ĐƠN VỊ:\n\nTừ mã cũ: "${oldCode}" ➔ Sang mã mới: "${code}"\n\nToàn bộ dữ liệu (Bệnh nhân, Nhân sự, Lịch trình, Tài khoản, Cài đặt...) sẽ tự động được chuyển sang mã mới.\n\nBạn có chắc chắn muốn tiếp tục không?`;
         if (!confirm(confirmMsg)) return;
     }
 
@@ -15656,10 +15653,10 @@ window.saveTenantData = function () {
 
     const action = isEdit ? 'updateTenant' : 'addTenant';
     const btn = document.getElementById('btn-save-tenant');
-    if (btn) { btn.innerText = 'â³ Äang lÆ°u...'; btn.disabled = true; }
+    if (btn) { btn.innerText = '⏳ Đang lưu...'; btn.disabled = true; }
 
     callApi(action, [payload], res => {
-        if (btn) { btn.innerText = 'ðŸ’¾ LÆ°u ÄÆ¡n Vá»‹'; btn.disabled = false; }
+        if (btn) { btn.innerText = '💾 Lưu Đơn Vị'; btn.disabled = false; }
         closeTenantModal();
 
         if (isEdit && oldCode && code !== oldCode) {
@@ -15670,45 +15667,45 @@ window.saveTenantData = function () {
             }
         }
 
-        alert(isEdit ? 'ÄÃ£ cáº­p nháº­t thÃ´ng tin Ä‘Æ¡n vá»‹ thÃ nh cÃ´ng!' : 'ÄÃ£ táº¡o má»›i Ä‘Æ¡n vá»‹ thÃ nh cÃ´ng!');
+        alert(isEdit ? 'Đã cập nhật thông tin đơn vị thành công!' : 'Đã tạo mới đơn vị thành công!');
         loadTenantsList();
     }, err => {
-        if (btn) { btn.innerText = 'ðŸ’¾ LÆ°u ÄÆ¡n Vá»‹'; btn.disabled = false; }
-        alert('Lá»—i: ' + (err && err.message ? err.message : 'KhÃ´ng thá»ƒ lÆ°u Ä‘Æ¡n vá»‹'));
+        if (btn) { btn.innerText = '💾 Lưu Đơn Vị'; btn.disabled = false; }
+        alert('Lỗi: ' + (err && err.message ? err.message : 'Không thể lưu đơn vị'));
     });
 };
 
 window.toggleTenantStatus = function (code, newStatus) {
-    const actionText = newStatus === 1 ? 'Má»ž KHÃ“A' : 'Táº M KHÃ“A';
-    if (!confirm(`Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n ${actionText} Ä‘Æ¡n vá»‹ '${code}' khÃ´ng?`)) return;
+    const actionText = newStatus === 1 ? 'MỞ KHÓA' : 'TẠM KHÓA';
+    if (!confirm(`Bạn có chắc chắn muốn ${actionText} đơn vị '${code}' không?`)) return;
 
     callApi('toggleTenantStatus', [code, newStatus], res => {
         loadTenantsList();
     }, err => {
-        alert('Lá»—i: ' + (err && err.message ? err.message : 'KhÃ´ng thá»ƒ thay Ä‘á»•i tráº¡ng thÃ¡i'));
+        alert('Lỗi: ' + (err && err.message ? err.message : 'Không thể thay đổi trạng thái'));
     });
 };
 
 window.resetTenantPasswordPrompt = function (code) {
-    const newPass = prompt(`Nháº­p máº­t kháº©u Admin má»›i cho Ä‘Æ¡n vá»‹ '${code}':`, 'admin123');
+    const newPass = prompt(`Nhập mật khẩu Admin mới cho đơn vị '${code}':`, 'admin123');
     if (!newPass) return;
 
     callApi('resetTenantAdminPassword', [code, newPass], res => {
-        alert(`ÄÃ£ Ä‘áº·t láº¡i máº­t kháº©u Admin cho Ä‘Æ¡n vá»‹ '${code}' thÃ nh cÃ´ng!`);
+        alert(`Đã đặt lại mật khẩu Admin cho đơn vị '${code}' thành công!`);
     }, err => {
-        alert('Lá»—i: ' + (err && err.message ? err.message : 'KhÃ´ng thá»ƒ Ä‘áº·t láº¡i máº­t kháº©u'));
+        alert('Lỗi: ' + (err && err.message ? err.message : 'Không thể đặt lại mật khẩu'));
     });
 };
 
 window.deleteTenantPrompt = function (code, encName) {
     const name = decodeURIComponent(encName);
-    if (!confirm(`âš ï¸ Cáº¢NH BÃO NGUY HIá»‚M: Báº¡n cÃ³ cháº¯c cháº¯n muá»‘n XÃ“A VÄ¨NH VIá»„N Ä‘Æ¡n vá»‹ '${name}' (${code}) vÃ  toÃ n bá»™ dá»¯ liá»‡u xáº¿p lá»‹ch, bá»‡nh nhÃ¢n, nhÃ¢n sá»± cá»§a Ä‘Æ¡n vá»‹ nÃ y khÃ´ng?`)) return;
+    if (!confirm(`⚠️ CẢNH BÁO NGUY HIỂM: Bạn có chắc chắn muốn XÓA VĨNH VIỄN đơn vị '${name}' (${code}) và toàn bộ dữ liệu xếp lịch, bệnh nhân, nhân sự của đơn vị này không?`)) return;
 
     callApi('deleteTenant', [code], res => {
-        alert(`ÄÃ£ xÃ³a thÃ nh cÃ´ng Ä‘Æ¡n vá»‹ '${code}'!`);
+        alert(`Đã xóa thành công đơn vị '${code}'!`);
         loadTenantsList();
     }, err => {
-        alert('Lá»—i: ' + (err && err.message ? err.message : 'KhÃ´ng thá»ƒ xÃ³a Ä‘Æ¡n vá»‹'));
+        alert('Lỗi: ' + (err && err.message ? err.message : 'Không thể xóa đơn vị'));
     });
 };
 
@@ -15717,13 +15714,13 @@ window.exportTenantDataPrompt = function (code, encName) {
     const loadingToast = document.createElement('div');
     loadingToast.style.cssText = 'position:fixed; bottom:20px; right:20px; background:#1e293b; color:#fff; padding:12px 20px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:99999; font-size:13px; font-weight:600;';
     const safeName = (window.escapeHtml || escapeHtml)(name);
-    loadingToast.innerHTML = `â³ Äang Ä‘Ã³ng gÃ³i dá»¯ liá»‡u Ä‘Æ¡n vá»‹ <b>${safeName}</b>...`;
+    loadingToast.innerHTML = `⏳ Đang đóng gói dữ liệu đơn vị <b>${safeName}</b>...`;
     document.body.appendChild(loadingToast);
 
     callApi('exportTenantData', [code], res => {
         if (loadingToast) loadingToast.remove();
         if (!res || !res.tables) {
-            alert('KhÃ´ng nháº­n Ä‘Æ°á»£c dá»¯ liá»‡u há»£p lá»‡ tá»« mÃ¡y chá»§!');
+            alert('Không nhận được dữ liệu hợp lệ từ máy chủ!');
             return;
         }
 
@@ -15740,10 +15737,10 @@ window.exportTenantDataPrompt = function (code, encName) {
         link.click();
         document.body.removeChild(link);
 
-        alert(`âœ… ÄÃ£ xuáº¥t dá»¯ liá»‡u sao lÆ°u thÃ nh cÃ´ng!\n\nâ€¢ ÄÆ¡n vá»‹: ${name} (${code})\nâ€¢ TÃªn tá»‡p: ${fileName}\nâ€¢ Tá»•ng sá»‘ báº£ng: ${Object.keys(res.tables).length} báº£ng dá»¯ liá»‡u.`);
+        alert(`✅ Đã xuất dữ liệu sao lưu thành công!\n\n• Đơn vị: ${name} (${code})\n• Tên tệp: ${fileName}\n• Tổng số bảng: ${Object.keys(res.tables).length} bảng dữ liệu.`);
     }, err => {
         if (loadingToast) loadingToast.remove();
-        alert('Lá»—i xuáº¥t dá»¯ liá»‡u: ' + (err && err.message ? err.message : 'KhÃ´ng xÃ¡c Ä‘á»‹nh'));
+        alert('Lỗi xuất dữ liệu: ' + (err && err.message ? err.message : 'Không xác định'));
     });
 };
 
@@ -15760,20 +15757,20 @@ window.importTenantDataPrompt = function (code) {
             try {
                 const backupJson = JSON.parse(evt.target.result);
                 if (!backupJson.tables) {
-                    alert('Tá»‡p JSON nÃ y khÃ´ng pháº£i lÃ  tá»‡p sao lÆ°u dá»¯ liá»‡u há»£p lá»‡ cá»§a há»‡ thá»‘ng!');
+                    alert('Tệp JSON này không phải là tệp sao lưu dữ liệu hợp lệ của hệ thống!');
                     return;
                 }
 
-                if (!confirm(`âš ï¸ Báº N CÃ“ CHáº®C CHáº®N MUá»N KHÃ”I PHá»¤C Dá»® LIá»†U CHO ÄÆ N Vá»Š '${code}'?\n\nToÃ n bá»™ dá»¯ liá»‡u hiá»‡n táº¡i cá»§a Ä‘Æ¡n vá»‹ nÃ y sáº½ Ä‘Æ°á»£c thay tháº¿ báº±ng dá»¯ liá»‡u trong tá»‡p sao lÆ°u: "${file.name}".`)) return;
+                if (!confirm(`⚠️ BẠN CÓ CHẮC CHẮN MUỐN KHÔI PHỤC DỮ LIỆU CHO ĐƠN VỊ '${code}'?\n\nToàn bộ dữ liệu hiện tại của đơn vị này sẽ được thay thế bằng dữ liệu trong tệp sao lưu: "${file.name}".`)) return;
 
                 callApi('importTenantData', [{ unit_code: code, data: backupJson }], res => {
-                    alert(`âœ… KhÃ´i phá»¥c dá»¯ liá»‡u thÃ nh cÃ´ng cho Ä‘Æ¡n vá»‹ '${code}'!`);
+                    alert(`✅ Khôi phục dữ liệu thành công cho đơn vị '${code}'!`);
                     loadTenantsList();
                 }, err => {
-                    alert('Lá»—i khÃ´i phá»¥c: ' + (err && err.message ? err.message : 'KhÃ´ng xÃ¡c Ä‘á»‹nh'));
+                    alert('Lỗi khôi phục: ' + (err && err.message ? err.message : 'Không xác định'));
                 });
             } catch(err) {
-                alert('Tá»‡p JSON bá»‹ lá»—i Ä‘á»‹nh dáº¡ng: ' + err.message);
+                alert('Tệp JSON bị lỗi định dạng: ' + err.message);
             }
         };
         reader.readAsText(file);
@@ -15783,7 +15780,7 @@ window.importTenantDataPrompt = function (code) {
 
 
 // ============================================================
-// ðŸ”‘ Äá»”I Máº¬T KHáº¨U TÃ€I KHOáº¢N (SUPER ADMIN & ALL USERS)
+// 🔑 ĐỔI MẬT KHẨU TÀI KHOẢN (SUPER ADMIN & ALL USERS)
 // ============================================================
 
 
@@ -15796,22 +15793,22 @@ window.submitChangePassword = function() {
     const confPass = (document.getElementById('cpw-confirm-password')?.value || '').trim();
 
     if (!oldPass) {
-        alert('âš ï¸ Vui lÃ²ng nháº­p máº­t kháº©u hiá»‡n táº¡i!');
+        alert('⚠️ Vui lòng nhập mật khẩu hiện tại!');
         return;
     }
     if (!newPass || newPass.length < 6) {
-        alert('âš ï¸ Máº­t kháº©u má»›i pháº£i cÃ³ tá»‘i thiá»ƒu 6 kÃ½ tá»±!');
+        alert('⚠️ Mật khẩu mới phải có tối thiểu 6 ký tự!');
         return;
     }
     if (newPass !== confPass) {
-        alert('âš ï¸ Máº­t kháº©u xÃ¡c nháº­n khÃ´ng khá»›p vá»›i máº­t kháº©u má»›i!');
+        alert('⚠️ Mật khẩu xác nhận không khớp với mật khẩu mới!');
         return;
     }
 
     const btn = document.getElementById('btn-save-change-password');
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<span>â³</span> Äang lÆ°u...';
+        btn.innerHTML = '<span>⏳</span> Đang lưu...';
     }
 
     const currentUnit = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
@@ -15823,26 +15820,26 @@ window.submitChangePassword = function() {
     }], res => {
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = '<span>ðŸ’¾</span> LÆ°u Máº­t Kháº©u';
+            btn.innerHTML = '<span>💾</span> Lưu Mật Khẩu';
         }
         if (res && (res.status === 'success' || res.message || res.success)) {
-            alert('ðŸŽ‰ ' + (res.data?.message || res.message || 'ÄÃ£ Ä‘á»•i máº­t kháº©u thÃ nh cÃ´ng!'));
+            alert('🎉 ' + (res.data?.message || res.message || 'Đã đổi mật khẩu thành công!'));
             closeChangePasswordModal();
         } else {
-            alert('âŒ ' + (res?.error || res?.message || 'KhÃ´ng thá»ƒ Ä‘á»•i máº­t kháº©u. Vui lÃ²ng kiá»ƒm tra láº¡i máº­t kháº©u hiá»‡n táº¡i!'));
+            alert('❌ ' + (res?.error || res?.message || 'Không thể đổi mật khẩu. Vui lòng kiểm tra lại mật khẩu hiện tại!'));
         }
     }, err => {
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = '<span>ðŸ’¾</span> LÆ°u Máº­t Kháº©u';
+            btn.innerHTML = '<span>💾</span> Lưu Mật Khẩu';
         }
         console.error('Change password error:', err);
-        alert('âŒ Lá»—i káº¿t ná»‘i mÃ¡y chá»§: ' + (err.message || String(err)));
+        alert('❌ Lỗi kết nối máy chủ: ' + (err.message || String(err)));
     });
 };
 
 // ============================================================
-// ðŸ“… Há»† THá»NG Äá»’NG Bá»˜ CHá»ŒN NGÃ€Y & XEM Lá»ŠCH Sá»¬ ÄA TAB
+// 📅 HỆ THỐNG ĐỒNG BỘ CHỌN NGÀY & XEM LỊCH SỬ ĐA TAB
 // (tab-home, tab-busy, tab-schedule, tab-utils)
 // ============================================================
 window.onAppDateChange = function(dateStr, sourceTab) {
@@ -15851,7 +15848,7 @@ window.onAppDateChange = function(dateStr, sourceTab) {
     const todayYMD = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const targetDate = rawDate || todayYMD;
 
-    // 1. Äá»“ng bá»™ giÃ¡ trá»‹ Ã´ chá»n ngÃ y trÃªn táº¥t cáº£ cÃ¡c tab
+    // 1. Đồng bộ giá trị ô chọn ngày trên tất cả các tab
     const dateInputIds = [
         'dashboard-date-filter',
         'busy-date-filter',
@@ -15871,21 +15868,21 @@ window.onAppDateChange = function(dateStr, sourceTab) {
     const displayEl = document.getElementById('display-date');
     if (displayEl) displayEl.textContent = dmy;
 
-    // 2. XÃ¡c Ä‘á»‹nh cháº¿ Ä‘á»™: HÃ´m nay (Live) hay Lá»‹ch sá»­ (History)
+    // 2. Xác định chế độ: Hôm nay (Live) hay Lịch sử (History)
     const isToday = (targetDate === todayYMD) || (window._systemActiveYMD && targetDate === window._systemActiveYMD);
     const forceHistoryRequest = (sourceTab === 'history_input' || sourceTab === 'history' || sourceTab === 'history_date');
 
-    // Cáº­p nháº­t huy hiá»‡u tráº¡ng thÃ¡i trÃªn Tab Giá» Báº­n (tab-busy)
+    // Cập nhật huy hiệu trạng thái trên Tab Giờ Bận (tab-busy)
     const busyBadge = document.getElementById('busy-date-badge');
     const busyNotice = document.getElementById('busy-history-notice');
     if (busyBadge) {
         if (isToday && !forceHistoryRequest) {
-            busyBadge.innerHTML = 'ðŸŸ¢ Äang xem: HÃ´m nay (Thá»i gian thá»±c)';
+            busyBadge.innerHTML = '🟢 Đang xem: Hôm nay (Thời gian thực)';
             busyBadge.style.background = '#dcfce7';
             busyBadge.style.color = '#15803d';
             busyBadge.style.borderColor = '#bbf7d0';
         } else {
-            busyBadge.innerHTML = `ðŸ“œ Äang xem lá»‹ch sá»­: ${dmy}` + (isToday ? ' (ÄÃ£ chá»‘t sá»•)' : '');
+            busyBadge.innerHTML = `📜 Đang xem lịch sử: ${dmy}` + (isToday ? ' (Đã chốt sổ)' : '');
             busyBadge.style.background = '#fef3c7';
             busyBadge.style.color = '#b45309';
             busyBadge.style.borderColor = '#fde68a';
@@ -15895,7 +15892,7 @@ window.onAppDateChange = function(dateStr, sourceTab) {
         busyNotice.style.display = (isToday && !forceHistoryRequest) ? 'none' : 'inline-flex';
     }
 
-    // Toggle khá»‘i nháº­p liá»‡u (Live) vs tiÃªu Ä‘á» thÃ´ng tin (History) trÃªn cáº£ 3 cá»™t cá»§a tab-busy
+    // Toggle khối nhập liệu (Live) vs tiêu đề thông tin (History) trên cả 3 cột của tab-busy
     const liveFormIds = ['busy-staff-live-form', 'busy-pat-live-form', 'busy-leave-live-form'];
     const histHeaderIds = ['busy-staff-hist-header', 'busy-pat-hist-header', 'busy-leave-hist-header'];
 
@@ -15919,14 +15916,14 @@ window.onAppDateChange = function(dateStr, sourceTab) {
         });
     }
 
-    // Äá»“ng bá»™ giÃ¡ trá»‹ dropdown chá»n nhanh ngÃ y cÃ³ lá»‹ch sá»­ báº­n
+    // Đồng bộ giá trị dropdown chọn nhanh ngày có lịch sử bận
     const quickSelect = document.getElementById('busy-quick-date-select');
     if (quickSelect) {
         quickSelect.value = (isToday && !forceHistoryRequest) ? '' : targetDate;
     }
 
     if (isToday && !forceHistoryRequest) {
-        // --- CHáº¾ Äá»˜ HÃ”M NAY (LIVE) ---
+        // --- CHẾ ĐỘ HÔM NAY (LIVE) ---
         window._forceHistoryMode = false;
         window.viewingImportedScheduleFile = false;
         if (typeof restoreHistoryTabs === 'function') {
@@ -15945,14 +15942,14 @@ window.onAppDateChange = function(dateStr, sourceTab) {
 
         const statusEl = document.getElementById('utils-lich-status');
         if (statusEl) {
-            statusEl.innerText = window._todayIsFinalized ? 'ðŸ“‹ HÃ´m nay (ÄÃ£ chá»‘t sá»•)' : 'ðŸŸ¢ HÃ´m nay (Live)';
+            statusEl.innerText = window._todayIsFinalized ? '📋 Hôm nay (Đã chốt sổ)' : '🟢 Hôm nay (Live)';
             statusEl.style.color = window._todayIsFinalized ? '#b45309' : '#15803d';
         }
-        if (window.showToast) window.showToast(`ÄÃ£ chuyá»ƒn vá» ngÃ y hÃ´m nay (${dmy})`, 'success', 1800);
+        if (window.showToast) window.showToast(`Đã chuyển về ngày hôm nay (${dmy})`, 'success', 1800);
         return;
     }
 
-    // --- CHáº¾ Äá»˜ Lá»ŠCH Sá»¬ (HISTORY) ---
+    // --- CHẾ ĐỘ LỊCH SỬ (HISTORY) ---
     window._forceHistoryMode = true;
 
     const handleLoadedHistory = function(data) {
@@ -15968,7 +15965,7 @@ window.onAppDateChange = function(dateStr, sourceTab) {
             window.currentScheduleData = fullData.schedule || [];
         }
 
-        // Ãp dá»¥ng dá»¯ liá»‡u lá»‹ch sá»­ vÃ o dataCache Ä‘á»ƒ cáº­p nháº­t tab-busy, tab-schedule, tab-patients
+        // Áp dụng dữ liệu lịch sử vào dataCache để cập nhật tab-busy, tab-schedule, tab-patients
         if (typeof applyHistoryDataToTabs === 'function') {
             applyHistoryDataToTabs(fullData, targetDate);
         } else {
@@ -15977,43 +15974,43 @@ window.onAppDateChange = function(dateStr, sourceTab) {
             if (typeof renderLeavePat === 'function') renderLeavePat();
         }
 
-        // Cáº­p nháº­t tab-schedule
+        // Cập nhật tab-schedule
         if (typeof filterSchedule === 'function') {
             filterSchedule();
         }
 
-        // Cáº­p nháº­t tab-home (Dashboard)
+        // Cập nhật tab-home (Dashboard)
         if (typeof loadDashboard === 'function') {
             loadDashboard();
         }
 
-        // Cáº­p nháº­t tab-utils (Tiá»‡n Ã­ch tÃ¬m ráº£nh)
+        // Cập nhật tab-utils (Tiện ích tìm rảnh)
         window.utilsScheduleData = fullData.schedule || [];
         window.utilsScheduleDate = targetDate;
         window.utilsStaffBusy = fullData.staffBusy || [];
         const statusEl = document.getElementById('utils-lich-status');
         if (statusEl) {
             const count = (fullData.schedule || []).length;
-            statusEl.innerText = isToday ? `ðŸ“‹ Lá»‹ch HÃ´m Nay (ÄÃ£ chá»‘t): ${count} ca` : `âœ… NgÃ y ${dmy}: ${count} ca`;
+            statusEl.innerText = isToday ? `📋 Lịch Hôm Nay (Đã chốt): ${count} ca` : `✅ Ngày ${dmy}: ${count} ca`;
             statusEl.style.color = isToday ? '#b45309' : '#27ae60';
         }
 
         if (displayEl) {
-            displayEl.innerHTML = isToday ? `<span style="color:#b45309; background:#fef3c7; padding:2px 8px; border-radius:6px; font-weight:700;">ðŸ“‹ Lá»‹ch HÃ´m Nay (ÄÃ£ chá»‘t sá»•)</span>` : dmy;
+            displayEl.innerHTML = isToday ? `<span style="color:#b45309; background:#fef3c7; padding:2px 8px; border-radius:6px; font-weight:700;">📋 Lịch Hôm Nay (Đã chốt sổ)</span>` : dmy;
         }
 
         if (window.showToast) {
-            window.showToast(isToday ? `ÄÃ£ táº£i lá»‹ch sá»­ Ä‘Ã£ chá»‘t sá»• cá»§a ngÃ y hÃ´m nay (${dmy})!` : `ÄÃ£ táº£i dá»¯ liá»‡u lá»‹ch sá»­ ngÃ y ${dmy}!`, 'info', 2500);
+            window.showToast(isToday ? `Đã tải lịch sử đã chốt sổ của ngày hôm nay (${dmy})!` : `Đã tải dữ liệu lịch sử ngày ${dmy}!`, 'info', 2500);
         }
     };
 
-    // Kiá»ƒm tra cache trÆ°á»›c
+    // Kiểm tra cache trước
     if (window._historyCache && window._historyCache[targetDate]) {
         handleLoadedHistory(window._historyCache[targetDate]);
         return;
     }
 
-    if (window.showGlobalLoading) window.showGlobalLoading(`Äang táº£i lá»‹ch sá»­ ngÃ y ${dmy}...`);
+    if (window.showGlobalLoading) window.showGlobalLoading(`Đang tải lịch sử ngày ${dmy}...`);
 
     const onSuccess = function(res) {
         if (window.hideGlobalLoading) window.hideGlobalLoading();
@@ -16023,12 +16020,12 @@ window.onAppDateChange = function(dateStr, sourceTab) {
 
     const onError = function(err) {
         if (window.hideGlobalLoading) window.hideGlobalLoading();
-        console.error(`Lá»—i táº£i lá»‹ch sá»­ ngÃ y ${targetDate}:`, err);
+        console.error(`Lỗi tải lịch sử ngày ${targetDate}:`, err);
         const errMsg = (err && err.message) ? err.message : String(err);
         if (window.showToast) {
-            window.showToast(`KhÃ´ng thá»ƒ táº£i dá»¯ liá»‡u ngÃ y ${dmy}: ${errMsg}`, 'error', 4000);
+            window.showToast(`Không thể tải dữ liệu ngày ${dmy}: ${errMsg}`, 'error', 4000);
         } else {
-            alert(`âŒ KhÃ´ng thá»ƒ táº£i dá»¯ liá»‡u lá»‹ch sá»­ ngÃ y ${dmy}: ${errMsg}`);
+            alert(`❌ Không thể tải dữ liệu lịch sử ngày ${dmy}: ${errMsg}`);
         }
     };
 
@@ -16051,7 +16048,7 @@ window.setAppDateToToday = function(sourceTab) {
 };
 
 // ============================================================
-// ðŸ“œ Táº¢I DANH SÃCH CÃC NGÃ€Y CÃ“ Lá»ŠCH Sá»¬ Báº¬N Tá»ª CSDL ÄÃM MÃ‚Y TURSO / MINIPC
+// 📜 TẢI DANH SÁCH CÁC NGÀY CÓ LỊCH SỬ BẬN TỪ CSDL ĐÁM MÂY TURSO / MINIPC
 // ============================================================
 window.loadBusyHistoryDates = function(forceReload) {
     const quickSelect = document.getElementById('busy-quick-date-select');
@@ -16062,11 +16059,11 @@ window.loadBusyHistoryDates = function(forceReload) {
         if (!dates || !Array.isArray(dates) || dates.length === 0) return;
         window._cachedBusyHistoryDates = dates;
         quickSelect._loaded = true;
-        let html = '<option value="">-- Chá»n ngÃ y cÃ³ lá»‹ch sá»­ báº­n --</option>';
+        let html = '<option value="">-- Chọn ngày có lịch sử bận --</option>';
         dates.forEach(d => {
             const parts = d.split('-');
             const dmy = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : d;
-            html += `<option value="${d}">ðŸ“… NgÃ y ${dmy}</option>`;
+            html += `<option value="${d}">📅 Ngày ${dmy}</option>`;
         });
         quickSelect.innerHTML = html;
         const currentTarget = window._viewingHistoryDate || (document.getElementById('busy-date-filter') ? document.getElementById('busy-date-filter').value : '');
@@ -16075,7 +16072,7 @@ window.loadBusyHistoryDates = function(forceReload) {
         }
     };
 
-    // Náº¿u Ä‘Ã£ cÃ³ cache trong bá»™ nhá»› vÃ  khÃ´ng báº¯t buá»™c táº£i láº¡i
+    // Nếu đã có cache trong bộ nhớ và không bắt buộc tải lại
     if (window._cachedBusyHistoryDates && Array.isArray(window._cachedBusyHistoryDates) && window._cachedBusyHistoryDates.length > 0 && !forceReload) {
         populateDates(window._cachedBusyHistoryDates);
         return;
@@ -16095,7 +16092,7 @@ window.loadBusyHistoryDates = function(forceReload) {
                 populateDates(dates);
             }
         }, err => {
-            console.warn('[loadBusyHistoryDates] KhÃ´ng thá»ƒ táº£i danh má»¥c ngÃ y báº­n:', err);
+            console.warn('[loadBusyHistoryDates] Không thể tải danh mục ngày bận:', err);
         });
     } else if (window.google && window.google.script && window.google.script.run && window.google.script.run.getGioBanChungCu) {
         window.google.script.run
@@ -16107,14 +16104,14 @@ window.loadBusyHistoryDates = function(forceReload) {
     }
 };
 
-// Tá»± Ä‘á»™ng gá»i náº¡p danh sÃ¡ch ngÃ y ngay khi khá»Ÿi Ä‘á»™ng
+// Tự động gọi nạp danh sách ngày ngay khi khởi động
 setTimeout(() => {
     if (typeof window.loadBusyHistoryDates === 'function') {
         window.loadBusyHistoryDates();
     }
 }, 500);
 
-// Khá»Ÿi táº¡o vÃ  tÆ°Æ¡ng thÃ­ch ngÆ°á»£c
+// Khởi tạo và tương thích ngược
 window.switchBusySubTab = function(mode) {};
 window.onBusyHistFilterChange = function() {};
 window.onAdminBusyHistFilterChange = function() {};
@@ -16123,7 +16120,7 @@ window.renderGioBanChungCuTable = function() {};
 window.filterGioBanChungCuClient = function() {};
 
 // ============================================================
-// â° Tá»° Äá»˜NG THEO DÃ•I & Äá»’NG Bá»˜ CHá»T Sá»” ÄÃM MÃ‚Y (CLIENT-SIDE LISTENER)
+// ⏰ TỰ ĐỘNG THEO DÕI & ĐỒNG BỘ CHỐT SỔ ĐÁM MÂY (CLIENT-SIDE LISTENER)
 // ============================================================
 (function() {
     let lastCheckedMinute = -1;
@@ -16142,15 +16139,15 @@ window.filterGioBanChungCuClient = function() {};
             const targetMinutes = (timeParts[0] || 0) * 60 + (timeParts[1] || 0);
             const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-            // Khi Ä‘áº¿n hoáº·c qua giá» chá»‘t sá»•, kiá»ƒm tra vá»›i server
+            // Khi đến hoặc qua giờ chốt sổ, kiểm tra với server
             if (currentMinutes >= targetMinutes && !window._chotSoDone) {
                 if (typeof callApi === 'function') {
                     callApi('autoChotSo', [], res => {
                         if (res && res.closed) {
                             window._chotSoDone = true;
-                            console.log(`[Client Auto-ChotSo]: MÃ¡y chá»§ Ä‘Ã£ tá»± Ä‘á»™ng chá»‘t sá»• ngÃ y ${res.closedDate || ''}.`);
+                            console.log(`[Client Auto-ChotSo]: Máy chủ đã tự động chốt sổ ngày ${res.closedDate || ''}.`);
 
-                            // Dá»n dáº¹p bá»™ nhá»› client vÃ  lÃ m má»›i giao diá»‡n
+                            // Dọn dẹp bộ nhớ client và làm mới giao diện
                             window.currentScheduleData = [];
                             window.lastUnscheduledData = [];
                             window.currentRotData = [];
@@ -16188,11 +16185,11 @@ window.filterGioBanChungCuClient = function() {};
                             const countInfo = window._finalizedTodayCount ? ` (${window._finalizedTodayCount} ca)` : '';
                             const displayEl = document.getElementById('display-date');
                             if (displayEl) {
-                                displayEl.innerHTML = `<span style="color:#b45309; background:#fef3c7; padding:2px 8px; border-radius:6px; font-weight:700;">ðŸ“‹ HÃ´m nay (ÄÃ£ chá»‘t sá»•${countInfo})</span>`;
+                                displayEl.innerHTML = `<span style="color:#b45309; background:#fef3c7; padding:2px 8px; border-radius:6px; font-weight:700;">📋 Hôm nay (Đã chốt sổ${countInfo})</span>`;
                             }
                             const statusEl = document.getElementById('utils-lich-status');
                             if (statusEl) {
-                                statusEl.innerText = `ðŸ“‹ HÃ´m nay (ÄÃ£ chá»‘t sá»•${countInfo})`;
+                                statusEl.innerText = `📋 Hôm nay (Đã chốt sổ${countInfo})`;
                                 statusEl.style.color = '#b45309';
                             }
 
@@ -16201,7 +16198,7 @@ window.filterGioBanChungCuClient = function() {};
                             if (typeof updateStats === 'function') updateStats();
                             if (typeof loadDashboard === 'function') loadDashboard();
 
-                            // Tá»± Ä‘á»™ng kÃ­ch hoáº¡t huáº¥n luyá»‡n mÃ´ hÃ¬nh AI trÃªn client náº¿u Ä‘ang báº­t
+                            // Tự động kích hoạt huấn luyện mô hình AI trên client nếu đang bật
                             if (localStorage.getItem('ai_auto_train_enable') !== '0') {
                                 if (typeof window.calibrateAIFromHistory === 'function') {
                                     window.calibrateAIFromHistory({ silent: true, reason: 'auto_after_chot_so' });
@@ -16210,14 +16207,14 @@ window.filterGioBanChungCuClient = function() {};
 
                             if (typeof showCustomAlert === 'function') {
                                 showCustomAlert(
-                                    "Chá»‘t sá»• tá»± Ä‘á»™ng",
-                                    `ÄÃ£ Ä‘áº¿n giá» chá»‘t sá»• (${targetTime}). Há»‡ thá»‘ng Ä‘Ã£ tá»± Ä‘á»™ng chá»‘t sá»• vÃ  lÆ°u trá»¯ dá»¯ liá»‡u ngÃ y ${res.closedDate || ''} vÃ o Lá»‹ch sá»­. Báº£ng lá»‹ch trÃ¬nh Ä‘Ã£ sáºµn sÃ ng cho ngÃ y má»›i!`,
-                                    "â°",
+                                    "Chốt sổ tự động",
+                                    `Đã đến giờ chốt sổ (${targetTime}). Hệ thống đã tự động chốt sổ và lưu trữ dữ liệu ngày ${res.closedDate || ''} vào Lịch sử. Bảng lịch trình đã sẵn sàng cho ngày mới!`,
+                                    "⏰",
                                     "#10b981"
                                 );
                             }
                         } else if (res && res.status === 'success') {
-                            console.log("[Client Auto-ChotSo]: Äá»“ng bá»™ kiá»ƒm tra chá»‘t sá»• tá»± Ä‘á»™ng vá»›i mÃ¡y chá»§ thÃ nh cÃ´ng.");
+                            console.log("[Client Auto-ChotSo]: Đồng bộ kiểm tra chốt sổ tự động với máy chủ thành công.");
                         }
                     }, () => {});
                 }
@@ -16227,7 +16224,7 @@ window.filterGioBanChungCuClient = function() {};
 })();
 
 /* ============================================================
-   ðŸ’Ž Há»† THá»NG GÃ“I Báº¢N QUYá»€N, DÃ™NG THá»¬ & GIA Háº N (SAAS LICENSING)
+   💎 HỆ THỐNG GÓI BẢN QUYỀN, DÙNG THỬ & GIA HẠN (SAAS LICENSING)
    ============================================================ */
 
 window.openPricingModal = function () {
@@ -16267,10 +16264,10 @@ window.autoSuggestTrialCode = function (name) {
     if (!name) return;
     const codeInput = document.getElementById('trial-reg-code');
     if (!codeInput) return;
-    // Bá» dáº¥u tiáº¿ng Viá»‡t vÃ  kÃ½ tá»± Ä‘áº·c biá»‡t
+    // Bỏ dấu tiếng Việt và ký tự đặc biệt
     let slug = name.toLowerCase().trim()
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        .replace(/[Ä‘Ä]/g, 'd')
+        .replace(/[đĐ]/g, 'd')
         .replace(/[^a-z0-9\s]/g, '')
         .replace(/\s+/g, '-');
     if (slug.length > 20) slug = slug.substring(0, 20);
@@ -16287,7 +16284,7 @@ window.submitTrialRegistration = function () {
 
     if (!name || !code) {
         if (errDiv) {
-            errDiv.innerText = 'Vui lÃ²ng nháº­p TÃªn bá»‡nh viá»‡n/phÃ²ng khÃ¡m vÃ  MÃ£ Ä‘Æ¡n vá»‹!';
+            errDiv.innerText = 'Vui lòng nhập Tên bệnh viện/phòng khám và Mã đơn vị!';
             errDiv.style.display = 'block';
         }
         return;
@@ -16295,7 +16292,7 @@ window.submitTrialRegistration = function () {
 
     if (!/^[a-z0-9_-]{3,30}$/.test(code)) {
         if (errDiv) {
-            errDiv.innerText = 'MÃ£ Ä‘Æ¡n vá»‹ chá»‰ chá»©a chá»¯ thÆ°á»ng khÃ´ng dáº¥u, sá»‘, dáº¥u gáº¡ch ná»‘i (3-30 kÃ½ tá»±)!';
+            errDiv.innerText = 'Mã đơn vị chỉ chứa chữ thường không dấu, số, dấu gạch nối (3-30 ký tự)!';
             errDiv.style.display = 'block';
         }
         return;
@@ -16303,7 +16300,7 @@ window.submitTrialRegistration = function () {
 
     if (!password || password.length < 4) {
         if (errDiv) {
-            errDiv.innerText = 'Máº­t kháº©u quáº£n trá»‹ pháº£i cÃ³ Ã­t nháº¥t 4 kÃ½ tá»±!';
+            errDiv.innerText = 'Mật khẩu quản trị phải có ít nhất 4 ký tự!';
             errDiv.style.display = 'block';
         }
         return;
@@ -16311,7 +16308,7 @@ window.submitTrialRegistration = function () {
 
     if (errDiv) errDiv.style.display = 'none';
     if (btn) {
-        btn.innerText = 'â³ Äang khá»Ÿi táº¡o Ä‘Æ¡n vá»‹...';
+        btn.innerText = '⏳ Đang khởi tạo đơn vị...';
         btn.disabled = true;
     }
 
@@ -16325,25 +16322,25 @@ window.submitTrialRegistration = function () {
     if (typeof callApi === 'function') {
         callApi('registerTrialTenant', [payload], res => {
             if (btn) {
-                btn.innerText = 'ðŸš€ KÃ­ch Hoáº¡t DÃ¹ng Thá»­ 15 NgÃ y';
+                btn.innerText = '🚀 Kích Hoạt Dùng Thử 15 Ngày';
                 btn.disabled = false;
             }
             if (!res || !res.success) {
                 if (errDiv) {
-                    errDiv.innerText = res && res.error ? res.error : 'ÄÄƒng kÃ½ khÃ´ng thÃ nh cÃ´ng. Vui lÃ²ng thá»­ láº¡i!';
+                    errDiv.innerText = res && res.error ? res.error : 'Đăng ký không thành công. Vui lòng thử lại!';
                     errDiv.style.display = 'block';
                 }
                 return;
             }
 
-            // ÄÄƒng kÃ½ thÃ nh cÃ´ng -> Tá»± Ä‘á»™ng Ä‘Äƒng nháº­p
+            // Đăng ký thành công -> Tự động đăng nhập
             window.closeTrialRegisterModal();
             const token = res.token;
             if (token) localStorage.setItem('pm_jwt_token', token);
             localStorage.setItem('pm_unit_code', code);
             localStorage.setItem('pm_unit_name', name);
             localStorage.setItem('pm_plan_tier', 'TRIAL_15D');
-            localStorage.setItem('pm_plan_name', 'DÃ¹ng thá»­ 15 ngÃ y');
+            localStorage.setItem('pm_plan_name', 'Dùng thử 15 ngày');
             localStorage.setItem('pm_expires_at', res.tenant?.expires_at || '');
             localStorage.setItem('pm_days_left', '15');
 
@@ -16363,44 +16360,44 @@ window.submitTrialRegistration = function () {
             window.thongKeData = {};
             window.adminChamCongEmployees = [];
 
-            // ÄÃ³ng login overlay
+            // Đóng login overlay
             const overlay = document.getElementById('login-overlay');
             if (overlay) overlay.style.display = 'none';
             const userMenu = document.getElementById('user-menu-container');
             const displayName = document.getElementById('user-display-name');
             if (userMenu) userMenu.style.display = 'flex';
-            if (displayName) displayName.innerText = 'ðŸ‘¤ admin';
+            if (displayName) displayName.innerText = '👤 admin';
 
             if (typeof window.applyPermissions === 'function') window.applyPermissions('Admin', 'all');
             if (typeof window.updateAppHeader === 'function') window.updateAppHeader(code, 'Admin');
             if (typeof window.updateSubscriptionHeaderBadge === 'function') {
-                window.updateSubscriptionHeaderBadge('TRIAL_15D', res.tenant?.expires_at, 'DÃ¹ng thá»­ 15 ngÃ y', 15);
+                window.updateSubscriptionHeaderBadge('TRIAL_15D', res.tenant?.expires_at, 'Dùng thử 15 ngày', 15);
             }
 
-            // Táº£i dá»¯ liá»‡u máº«u
+            // Tải dữ liệu mẫu
             if (typeof window.loadBootstrapData === 'function') {
                 window.loadBootstrapData(true);
             }
 
-            alert(`ðŸŽ‰ CHÃšC Má»ªNG!\n\nÄÆ¡n vá»‹ "${name}" Ä‘Ã£ Ä‘Æ°á»£c kÃ­ch hoáº¡t gÃ³i DÃ¹ng Thá»­ 15 NgÃ y Miá»…n PhÃ­ (Full 100% Chá»©c NÄƒng)!\n\nâ€¢ MÃ£ Ä‘Æ¡n vá»‹: ${code}\nâ€¢ TÃªn Ä‘Äƒng nháº­p: admin\nâ€¢ Máº­t kháº©u: ${password}\n\nHá»‡ thá»‘ng Ä‘Ã£ táº¡o sáºµn danh má»¥c thá»§ thuáº­t vÃ  phÃ²ng Ä‘iá»u trá»‹ chuáº©n Bá»™ Y Táº¿. Báº¡n cÃ³ thá»ƒ báº¯t Ä‘áº§u xáº¿p lá»‹ch ngay!`);
+            alert(`🎉 CHÚC MỪNG!\n\nĐơn vị "${name}" đã được kích hoạt gói Dùng Thử 15 Ngày Miễn Phí (Full 100% Chức Năng)!\n\n• Mã đơn vị: ${code}\n• Tên đăng nhập: admin\n• Mật khẩu: ${password}\n\nHệ thống đã tạo sẵn danh mục thủ thuật và phòng điều trị chuẩn Bộ Y Tế. Bạn có thể bắt đầu xếp lịch ngay!`);
         }, err => {
             if (btn) {
-                btn.innerText = 'ðŸš€ KÃ­ch Hoáº¡t DÃ¹ng Thá»­ 15 NgÃ y';
+                btn.innerText = '🚀 Kích Hoạt Dùng Thử 15 Ngày';
                 btn.disabled = false;
             }
             if (errDiv) {
-                errDiv.innerText = 'Lá»—i káº¿t ná»‘i mÃ¡y chá»§: ' + (err && err.message ? err.message : String(err));
+                errDiv.innerText = 'Lỗi kết nối máy chủ: ' + (err && err.message ? err.message : String(err));
                 errDiv.style.display = 'block';
             }
         });
     } else {
-        alert('Lá»—i: Há»‡ thá»‘ng chÆ°a sáºµn sÃ ng káº¿t ná»‘i API.');
-        if (btn) { btn.innerText = 'ðŸš€ KÃ­ch Hoáº¡t DÃ¹ng Thá»­ 15 NgÃ y'; btn.disabled = false; }
+        alert('Lỗi: Hệ thống chưa sẵn sàng kết nối API.');
+        if (btn) { btn.innerText = '🚀 Kích Hoạt Dùng Thử 15 Ngày'; btn.disabled = false; }
     }
 };
 
 // ============================================================
-// ðŸ’³ Há»† THá»NG THANH TOÃN VIETQR & Tá»° Äá»˜NG NÃ‚NG Cáº¤P GÃ“I SAAS
+// 💳 HỆ THỐNG THANH TOÁN VIETQR & TỰ ĐỘNG NÂNG CẤP GÓI SAAS
 // ============================================================
 
 window.copyPaymentText = function (text, label) {
@@ -16409,9 +16406,9 @@ window.copyPaymentText = function (text, label) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(str).then(() => {
             if (typeof showToast === 'function') {
-                showToast(`ÄÃ£ sao chÃ©p ${label || 'thÃ´ng tin'}: ${str}`, 'success');
+                showToast(`Đã sao chép ${label || 'thông tin'}: ${str}`, 'success');
             } else {
-                alert(`ÄÃ£ sao chÃ©p ${label || 'thÃ´ng tin'}: ${str}`);
+                alert(`Đã sao chép ${label || 'thông tin'}: ${str}`);
             }
         }).catch(() => fallbackCopy(str, label));
     } else {
@@ -16429,25 +16426,25 @@ window.copyPaymentText = function (text, label) {
             document.execCommand('copy');
             document.body.removeChild(ta);
             if (typeof showToast === 'function') {
-                showToast(`ÄÃ£ sao chÃ©p ${lbl || 'thÃ´ng tin'}: ${val}`, 'success');
+                showToast(`Đã sao chép ${lbl || 'thông tin'}: ${val}`, 'success');
             } else {
-                alert(`ÄÃ£ sao chÃ©p: ${val}`);
+                alert(`Đã sao chép: ${val}`);
             }
         } catch (e) {
-            prompt(`Vui lÃ²ng sao chÃ©p ${lbl || 'thÃ´ng tin'} thá»§ cÃ´ng:`, val);
+            prompt(`Vui lòng sao chép ${lbl || 'thông tin'} thủ công:`, val);
         }
     }
 };
 
 // ============================================================
-// ðŸ“„ MODAL ÄIá»€N THÃ”NG TIN BÃŠN A CHO Há»¢P Äá»’NG & GIáº¤Y CHá»¨NG NHáº¬N
+// 📄 MODAL ĐIỀN THÔNG TIN BÊN A CHO HỢP ĐỒNG & GIẤY CHỨNG NHẬN
 // ============================================================
 window.openContractPartyAModal = function (optPlanCode, optUnitCode, optUnitName, optExpiresAt) {
     const unitCode = String(optUnitCode || localStorage.getItem('pm_unit_code') || 'bvtks-cs2').trim().toLowerCase();
     let sess = {};
     try { sess = JSON.parse(localStorage.getItem('meds_session') || '{}'); } catch (e) {}
 
-    const unitName = optUnitName ? decodeURIComponent(optUnitName) : (sess.unit_name || localStorage.getItem('pm_unit_name') || `Bá»‡nh viá»‡n / PhÃ²ng khÃ¡m ${unitCode.toUpperCase()}`);
+    const unitName = optUnitName ? decodeURIComponent(optUnitName) : (sess.unit_name || localStorage.getItem('pm_unit_name') || `Bệnh viện / Phòng khám ${unitCode.toUpperCase()}`);
     const planCode = String(optPlanCode || window._currentSelectedPlan || localStorage.getItem('pm_plan_tier') || sess.plan_tier || 'PLAN_1Y').toUpperCase();
 
     window._contractTargetPlan = planCode;
@@ -16455,7 +16452,7 @@ window.openContractPartyAModal = function (optPlanCode, optUnitCode, optUnitName
     window._contractTargetUnitName = unitName;
     window._contractTargetExpires = optExpiresAt || '';
 
-    // Äá»c thÃ´ng tin BÃªn A Ä‘Ã£ lÆ°u trÆ°á»›c Ä‘Ã³ náº¿u cÃ³
+    // Đọc thông tin Bên A đã lưu trước đó nếu có
     let saved = null;
     try {
         const raw = localStorage.getItem('pm_contract_party_a_' + unitCode);
@@ -16487,7 +16484,7 @@ window.closeContractPartyAModal = function () {
 
 window.submitAndDownloadContractPDF = function () {
     const unitCode = window._contractTargetUnit || (localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
-    const fallbackName = window._contractTargetUnitName || `Bá»‡nh viá»‡n / PhÃ²ng khÃ¡m ${unitCode.toUpperCase()}`;
+    const fallbackName = window._contractTargetUnitName || `Bệnh viện / Phòng khám ${unitCode.toUpperCase()}`;
     const unitName = (document.getElementById('c-pa-unit-name')?.value || '').trim() || fallbackName;
     const representative = (document.getElementById('c-pa-rep')?.value || '').trim();
     const position = (document.getElementById('c-pa-pos')?.value || '').trim();
@@ -16497,14 +16494,14 @@ window.submitAndDownloadContractPDF = function () {
 
     const partyAInfo = {
         unitName,
-        representative: representative || 'Ban GiÃ¡m Äá»‘c / TrÆ°á»Ÿng Ä‘Æ¡n vá»‹',
-        position: position || 'Äáº¡i diá»‡n theo phÃ¡p luáº­t',
-        address: address || 'Trá»¥ sá»Ÿ Ä‘Æ¡n vá»‹ y táº¿',
+        representative: representative || 'Ban Giám Đốc / Trưởng đơn vị',
+        position: position || 'Đại diện theo pháp luật',
+        address: address || 'Trụ sở đơn vị y tế',
         taxCode,
         phone
     };
 
-    // LÆ°u vÃ o localStorage
+    // Lưu vào localStorage
     try {
         localStorage.setItem('pm_contract_party_a_' + unitCode, JSON.stringify(partyAInfo));
         localStorage.setItem('pm_unit_name', unitName);
@@ -16512,7 +16509,7 @@ window.submitAndDownloadContractPDF = function () {
 
     window.closeContractPartyAModal();
 
-    // Táº£i file PDF
+    // Tải file PDF
     window.downloadLicenseContractPDF(
         unitCode,
         window._contractTargetPlan,
@@ -16523,21 +16520,21 @@ window.submitAndDownloadContractPDF = function () {
 };
 
 // ============================================================
-// ðŸ“„ XUáº¤T Há»¢P Äá»’NG & GIáº¤Y CHá»¨NG NHáº¬N Báº¢N QUYá»€N PDF (CHUáº¨N MáºªU MEDS DOCX)
+// 📄 XUẤT HỢP ĐỒNG & GIẤY CHỨNG NHẬN BẢN QUYỀN PDF (CHUẨN MẪU MEDS DOCX)
 // ============================================================
 window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitName, optExpiresAt, optPartyAInfo) {
     if (typeof pdfMake === 'undefined') {
-        return alert("ThÆ° viá»‡n pdfmake Ä‘ang Ä‘Æ°á»£c khá»Ÿi táº¡o, vui lÃ²ng báº¥m láº¡i sau 1-2 giÃ¢y!");
+        return alert("Thư viện pdfmake đang được khởi tạo, vui lòng bấm lại sau 1-2 giây!");
     }
 
     const unitCode = String(optUnitCode || localStorage.getItem('pm_unit_code') || 'bvtks-cs2').trim().toLowerCase();
     let sess = {};
     try { sess = JSON.parse(localStorage.getItem('meds_session') || '{}'); } catch (e) {}
 
-    const rawUnitName = optUnitName ? decodeURIComponent(optUnitName) : (sess.unit_name || localStorage.getItem('pm_unit_name') || `Bá»‡nh viá»‡n / PhÃ²ng khÃ¡m ${unitCode.toUpperCase()}`);
+    const rawUnitName = optUnitName ? decodeURIComponent(optUnitName) : (sess.unit_name || localStorage.getItem('pm_unit_name') || `Bệnh viện / Phòng khám ${unitCode.toUpperCase()}`);
     const planCode = String(optPlanCode || window._currentSelectedPlan || localStorage.getItem('pm_plan_tier') || sess.plan_tier || 'PLAN_1Y').toUpperCase();
 
-    // Láº¥y thÃ´ng tin BÃªn A Ä‘Ã£ nháº­p hoáº·c láº¥y tá»« cache
+    // Lấy thông tin Bên A đã nhập hoặc lấy từ cache
     let partyA = optPartyAInfo;
     if (!partyA) {
         try {
@@ -16548,9 +16545,9 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
     if (!partyA) {
         partyA = {
             unitName: rawUnitName,
-            representative: 'Ban GiÃ¡m Äá»‘c / TrÆ°á»Ÿng Ä‘Æ¡n vá»‹',
-            position: 'Äáº¡i diá»‡n theo phÃ¡p luáº­t',
-            address: 'Trá»¥ sá»Ÿ Ä‘Æ¡n vá»‹ y táº¿',
+            representative: 'Ban Giám Đốc / Trưởng đơn vị',
+            position: 'Đại diện theo pháp luật',
+            address: 'Trụ sở đơn vị y tế',
             taxCode: '',
             phone: localStorage.getItem('pm_phone') || ''
         };
@@ -16558,12 +16555,12 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
     const unitName = partyA.unitName || rawUnitName;
 
     const planCatalog = {
-        'TRIAL_15D': { name: 'GÃ³i DÃ¹ng Thá»­ 15 NgÃ y', duration: '15 ngÃ y', days: 15, price: '0 VNÄ', priceText: 'KhÃ´ng Ä‘á»“ng (Tráº£i nghiá»‡m miá»…n phÃ­)' },
-        'PLAN_1M': { name: 'GÃ³i 1 ThÃ¡ng', duration: '01 thÃ¡ng (30 ngÃ y)', days: 30, price: '400.000 VNÄ', priceText: 'Bá»‘n trÄƒm nghÃ¬n Ä‘á»“ng' },
-        'PLAN_3M': { name: 'GÃ³i 3 ThÃ¡ng', duration: '03 thÃ¡ng (90 ngÃ y)', days: 90, price: '1.125.000 VNÄ', priceText: 'Má»™t triá»‡u má»™t trÄƒm hai mÆ°Æ¡i lÄƒm nghÃ¬n Ä‘á»“ng' },
-        'PLAN_6M': { name: 'GÃ³i 6 ThÃ¡ng', duration: '06 thÃ¡ng (180 ngÃ y)', days: 180, price: '2.100.000 VNÄ', priceText: 'Hai triá»‡u má»™t trÄƒm nghÃ¬n Ä‘á»“ng' },
-        'PLAN_1Y': { name: 'GÃ³i 1 NÄƒm', duration: '01 nÄƒm (365 ngÃ y)', days: 365, price: '3.900.000 VNÄ', priceText: 'Ba triá»‡u chÃ­n trÄƒm nghÃ¬n Ä‘á»“ng' },
-        'ENTERPRISE': { name: 'GÃ³i Doanh Nghiá»‡p Äáº·c Biá»‡t (VÄ©nh Viá»…n)', duration: 'VÄ©nh viá»…n trá»n Ä‘á»i', days: 99999, price: 'Sá»Ÿ Há»¯u Trá»n Äá»i', priceText: 'Sá»Ÿ há»¯u trá»n Ä‘á»i' }
+        'TRIAL_15D': { name: 'Gói Dùng Thử 15 Ngày', duration: '15 ngày', days: 15, price: '0 VNĐ', priceText: 'Không đồng (Trải nghiệm miễn phí)' },
+        'PLAN_1M': { name: 'Gói 1 Tháng', duration: '01 tháng (30 ngày)', days: 30, price: '400.000 VNĐ', priceText: 'Bốn trăm nghìn đồng' },
+        'PLAN_3M': { name: 'Gói 3 Tháng', duration: '03 tháng (90 ngày)', days: 90, price: '1.125.000 VNĐ', priceText: 'Một triệu một trăm hai mươi lăm nghìn đồng' },
+        'PLAN_6M': { name: 'Gói 6 Tháng', duration: '06 tháng (180 ngày)', days: 180, price: '2.100.000 VNĐ', priceText: 'Hai triệu một trăm nghìn đồng' },
+        'PLAN_1Y': { name: 'Gói 1 Năm', duration: '01 năm (365 ngày)', days: 365, price: '3.900.000 VNĐ', priceText: 'Ba triệu chín trăm nghìn đồng' },
+        'ENTERPRISE': { name: 'Gói Doanh Nghiệp Đặc Biệt (Vĩnh Viễn)', duration: 'Vĩnh viễn trọn đời', days: 99999, price: 'Sở Hữu Trọn Đời', priceText: 'Sở hữu trọn đời' }
     };
 
     const targetPlan = planCatalog[planCode] || planCatalog['PLAN_1Y'];
@@ -16573,29 +16570,29 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
     const curYear = now.getFullYear();
     const startDateVN = `${curDay}/${curMonth}/${curYear}`;
 
-    // TÃ­nh toÃ¡n thá»i háº¡n há»£p Ä‘á»“ng vÃ  chá»©ng nháº­n chÃ­nh xÃ¡c cho gÃ³i cÆ°á»›c Ä‘Æ°á»£c cáº¥p
+    // Tính toán thời hạn hợp đồng và chứng nhận chính xác cho gói cước được cấp
     let endDateVN = '';
     let certDurationDisplay = '';
     let contractDurationDisplay = '';
 
     if (unitCode === 'bvtks-cs2' || planCode === 'ENTERPRISE') {
         endDateVN = '31/12/2099';
-        certDurationDisplay = 'ðŸ’Ž VÄ©nh Viá»…n Trá»n Äá»i (Äáº¿n 31/12/2099)';
-        contractDurationDisplay = `Hiá»‡u lá»±c vÄ©nh viá»…n trá»n Ä‘á»i ká»ƒ tá»« ngÃ y kÃ½/kÃ­ch hoáº¡t (ngÃ y ${startDateVN}).`;
+        certDurationDisplay = '💎 Vĩnh Viễn Trọn Đời (Đến 31/12/2099)';
+        contractDurationDisplay = `Hiệu lực vĩnh viễn trọn đời kể từ ngày ký/kích hoạt (ngày ${startDateVN}).`;
     } else {
         const storedPlan = localStorage.getItem('pm_plan_tier') || sess.plan_tier || '';
         const storedExp = localStorage.getItem('pm_expires_at') || sess.expires_at || '';
 
         let targetEndObj = new Date(now.getTime());
 
-        // Æ¯u tiÃªn ngÃ y chá»‰ Ä‘á»‹nh trá»±c tiáº¿p tá»« Super Admin náº¿u cÃ³
+        // Ưu tiên ngày chỉ định trực tiếp từ Super Admin nếu có
         if (optExpiresAt) {
             const optExpParsed = new Date(optExpiresAt);
             if (!isNaN(optExpParsed.getTime())) {
                 targetEndObj = optExpParsed;
             }
         } else if (storedPlan === planCode && storedExp) {
-            // ÄÆ¡n vá»‹ Ä‘Ã£ thanh toÃ¡n vÃ  Ä‘ang á»Ÿ Ä‘Ãºng gÃ³i cÆ°á»›c nÃ y
+            // Đơn vị đã thanh toán và đang ở đúng gói cước này
             const expParsed = new Date(storedExp);
             if (!isNaN(expParsed.getTime()) && expParsed > now) {
                 targetEndObj = expParsed;
@@ -16608,8 +16605,8 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                 else targetEndObj.setDate(targetEndObj.getDate() + (targetPlan.days || 30));
             }
         } else {
-            // Äang láº­p há»£p Ä‘á»“ng Ä‘Äƒng kÃ½ má»›i hoáº·c nÃ¢ng cáº¥p tá»« DÃ¹ng thá»­ sang gÃ³i tráº£ phÃ­:
-            // TÃ­nh chuáº©n xÃ¡c thá»i háº¡n báº¯t Ä‘áº§u tá»« hÃ´m nay (hoáº·c ná»‘i tiáº¿p gÃ³i tráº£ phÃ­ cÅ© náº¿u cÃ²n háº¡n)
+            // Đang lập hợp đồng đăng ký mới hoặc nâng cấp từ Dùng thử sang gói trả phí:
+            // Tính chuẩn xác thời hạn bắt đầu từ hôm nay (hoặc nối tiếp gói trả phí cũ nếu còn hạn)
             let baseDate = new Date(now.getTime());
             if (storedPlan && storedPlan !== 'TRIAL_15D' && storedExp) {
                 const prevExp = new Date(storedExp);
@@ -16630,21 +16627,21 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
         const eM = String(targetEndObj.getMonth() + 1).padStart(2, '0');
         const eY = targetEndObj.getFullYear();
         endDateVN = `${eD}/${eM}/${eY}`;
-        certDurationDisplay = `Äáº¿n ngÃ y: ${endDateVN}`;
-        contractDurationDisplay = `Há»£p Ä‘á»“ng cÃ³ hiá»‡u lá»±c ká»ƒ tá»« ngÃ y kÃ­ch hoáº¡t/thanh toÃ¡n (ngÃ y ${startDateVN}) Ä‘áº¿n háº¿t ngÃ y ${endDateVN} (Tá»•ng thá»i gian: ${targetPlan.duration}).`;
+        certDurationDisplay = `Đến ngày: ${endDateVN}`;
+        contractDurationDisplay = `Hợp đồng có hiệu lực kể từ ngày kích hoạt/thanh toán (ngày ${startDateVN}) đến hết ngày ${endDateVN} (Tổng thời gian: ${targetPlan.duration}).`;
     }
 
     const certNumber = `TIMS-LIC/${curYear}/${unitCode.toUpperCase()}`;
-    const contractNumber = `${now.getMonth() + 1}${now.getDate()}/HÄDV/${curYear}`;
+    const contractNumber = `${now.getMonth() + 1}${now.getDate()}/HĐDV/${curYear}`;
 
-    // XÃ¢y dá»±ng tÃ i liá»‡u PDF gá»“m 4 trang chuyÃªn nghiá»‡p theo máº«u hop-dong-dich-vu-meds.docx
+    // Xây dựng tài liệu PDF gồm 4 trang chuyên nghiệp theo mẫu hop-dong-dich-vu-meds.docx
     const docDefinition = {
         pageSize: 'A4',
         pageOrientation: 'portrait',
         pageMargins: [35, 25, 35, 25],
         content: [
             // ==========================================
-            // TRANG 1: GIáº¤Y CHá»¨NG NHáº¬N Cáº¤P QUYá»€N Sá»¬ Dá»¤NG Báº¢N QUYá»€N
+            // TRANG 1: GIẤY CHỨNG NHẬN CẤP QUYỀN SỬ DỤNG BẢN QUYỀN
             // ==========================================
             {
                 table: {
@@ -16661,25 +16658,25 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                                         {
                                             width: '*',
                                             stack: [
-                                                { text: 'Cá»˜NG HÃ’A XÃƒ Há»˜I CHá»¦ NGHÄ¨A VIá»†T NAM', fontSize: 10, bold: true, alignment: 'center' },
-                                                { text: 'Äá»™c láº­p - Tá»± do - Háº¡nh phÃºc', fontSize: 10, italic: true, alignment: 'center', margin: [0, 2, 0, 2] },
+                                                { text: 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', fontSize: 10, bold: true, alignment: 'center' },
+                                                { text: 'Độc lập - Tự do - Hạnh phúc', fontSize: 10, italic: true, alignment: 'center', margin: [0, 2, 0, 2] },
                                                 { canvas: [{ type: 'line', x1: 165, y1: 0, x2: 295, y2: 0, lineWidth: 0.8, lineColor: '#334155' }] }
                                             ]
                                         }
                                     ],
                                     margin: [0, 0, 0, 8]
                                 },
-                                { text: 'Há»† THá»NG PHáº¦N Má»€M Xáº¾P Lá»ŠCH ÄIá»€U TRá»Š YHCT - PHCN (T.I.M.E.S SYSTEM)', fontSize: 9.5, bold: true, color: '#1e40af', alignment: 'center', margin: [0, 0, 0, 2] },
-                                { text: 'Ná»n Táº£ng Quáº£n LÃ½ & Tá»‘i Æ¯u HÃ³a Lá»‹ch KhÃ¡m Chá»¯a Bá»‡nh ThÃ´ng Minh (Multi-Tenant SaaS Cloud)', fontSize: 8.5, italic: true, color: '#64748b', alignment: 'center', margin: [0, 0, 0, 8] },
+                                { text: 'HỆ THỐNG PHẦN MỀM XẾP LỊCH ĐIỀU TRỊ YHCT - PHCN (T.I.M.E.S SYSTEM)', fontSize: 9.5, bold: true, color: '#1e40af', alignment: 'center', margin: [0, 0, 0, 2] },
+                                { text: 'Nền Tảng Quản Lý & Tối Ưu Hóa Lịch Khám Chữa Bệnh Thông Minh (Multi-Tenant SaaS Cloud)', fontSize: 8.5, italic: true, color: '#64748b', alignment: 'center', margin: [0, 0, 0, 8] },
 
-                                { text: 'GIáº¤Y XÃC NHáº¬N Cáº¤P QUYá»€N Sá»¬ Dá»¤NG Báº¢N QUYá»€N PHáº¦N Má»€M', fontSize: 13.5, bold: true, color: '#0f172a', alignment: 'center', margin: [0, 4, 0, 2] },
+                                { text: 'GIẤY XÁC NHẬN CẤP QUYỀN SỬ DỤNG BẢN QUYỀN PHẦN MỀM', fontSize: 13.5, bold: true, color: '#0f172a', alignment: 'center', margin: [0, 4, 0, 2] },
                                 { text: 'CERTIFICATE OF SOFTWARE LICENSE & SAAS SERVICE', fontSize: 8.5, bold: true, color: '#2563eb', alignment: 'center', margin: [0, 0, 0, 4] },
-                                { text: `Sá»‘ chá»©ng nháº­n: ${certNumber}`, fontSize: 9, italic: true, alignment: 'center', color: '#475569', margin: [0, 0, 0, 8] },
+                                { text: `Số chứng nhận: ${certNumber}`, fontSize: 9, italic: true, alignment: 'center', color: '#475569', margin: [0, 0, 0, 8] },
 
                                 {
                                     text: [
-                                        { text: 'CÄƒn cá»© phÃ¡p lÃ½: ', bold: true },
-                                        'CÄƒn cá»© Bá»™ luáº­t DÃ¢n sá»± sá»‘ 91/2015/QH13; Luáº­t ThÆ°Æ¡ng máº¡i sá»‘ 36/2005/QH11; Luáº­t CÃ´ng nghá»‡ thÃ´ng tin sá»‘ 67/2006/QH11; Luáº­t Sá»Ÿ há»¯u trÃ­ tuá»‡ sá»‘ 50/2005/QH11 (sá»­a Ä‘á»•i, bá»• sung nÄƒm 2022); Nghá»‹ Ä‘á»‹nh sá»‘ 123/2020/NÄ-CP vÃ  ThÃ´ng tÆ° sá»‘ 219/2013/TT-BTC cá»§a Bá»™ TÃ i chÃ­nh quy Ä‘á»‹nh dá»‹ch vá»¥ pháº§n má»m khÃ´ng chá»‹u thuáº¿ GTGT.'
+                                        { text: 'Căn cứ pháp lý: ', bold: true },
+                                        'Căn cứ Bộ luật Dân sự số 91/2015/QH13; Luật Thương mại số 36/2005/QH11; Luật Công nghệ thông tin số 67/2006/QH11; Luật Sở hữu trí tuệ số 50/2005/QH11 (sửa đổi, bổ sung năm 2022); Nghị định số 123/2020/NĐ-CP và Thông tư số 219/2013/TT-BTC của Bộ Tài chính quy định dịch vụ phần mềm không chịu thuế GTGT.'
                                     ],
                                     fontSize: 8.5,
                                     color: '#475569',
@@ -16687,38 +16684,38 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                                     margin: [0, 0, 0, 8]
                                 },
 
-                                // Báº£ng thÃ´ng tin báº£n quyá»n
+                                // Bảng thông tin bản quyền
                                 {
                                     table: {
                                         widths: [130, '*'],
                                         body: [
                                             [
-                                                { text: 'ÄÆ¡n Vá»‹ Thá»¥ HÆ°á»Ÿng:', bold: true, fontSize: 9.5, fillColor: '#f1f5f9' },
+                                                { text: 'Đơn Vị Thụ Hưởng:', bold: true, fontSize: 9.5, fillColor: '#f1f5f9' },
                                                 { text: unitName, bold: true, fontSize: 10, color: '#1e3a8a' }
                                             ],
                                             [
-                                                { text: 'MÃ£ Äá»‹nh Danh (Slug):', bold: true, fontSize: 9.5, fillColor: '#f1f5f9' },
+                                                { text: 'Mã Định Danh (Slug):', bold: true, fontSize: 9.5, fillColor: '#f1f5f9' },
                                                 { text: unitCode.toUpperCase(), fontSize: 9.5, bold: true, color: '#2563eb' }
                                             ],
                                             [
-                                                { text: 'GÃ³i Báº£n Quyá»n Cáº¥p:', bold: true, fontSize: 9.5, fillColor: '#f1f5f9' },
+                                                { text: 'Gói Bản Quyền Cấp:', bold: true, fontSize: 9.5, fillColor: '#f1f5f9' },
                                                 { text: `${targetPlan.name} (${targetPlan.duration})`, fontSize: 9.5, bold: true, color: '#15803d' }
                                             ],
                                             [
-                                                { text: 'Thá»i Háº¡n Sá»­ Dá»¥ng:', bold: true, fontSize: 9.5, fillColor: '#f1f5f9' },
+                                                { text: 'Thời Hạn Sử Dụng:', bold: true, fontSize: 9.5, fillColor: '#f1f5f9' },
                                                 { text: certDurationDisplay, fontSize: 9.5, bold: true, color: '#0f172a' }
                                             ],
                                             [
-                                                { text: 'Pháº¡m Vi Cáº¥p Quyá»n:', bold: true, fontSize: 9.5, fillColor: '#f1f5f9' },
-                                                { text: 'ToÃ n quyá»n sá»­ dá»¥ng Full 100% tÃ­nh nÄƒng trá»±c tuyáº¿n qua Web SaaS (khÃ´ng giá»›i háº¡n sá»‘ lÆ°á»£ng Bá»‡nh nhÃ¢n, Ká»¹ thuáº­t viÃªn, MÃ¡y mÃ³c, PhÃ²ng bá»‡nh). Bao gá»“m thuáº­t toÃ¡n AI & CP-SAT Solver tá»‘i Æ°u giá» thá»§ thuáº­t, sao lÆ°u tá»± Ä‘á»™ng vÃ  phÃ¢n tÃ­ch thá»‘ng kÃª.', fontSize: 8.5, color: '#334155' }
+                                                { text: 'Phạm Vi Cấp Quyền:', bold: true, fontSize: 9.5, fillColor: '#f1f5f9' },
+                                                { text: 'Toàn quyền sử dụng Full 100% tính năng trực tuyến qua Web SaaS (không giới hạn số lượng Bệnh nhân, Kỹ thuật viên, Máy móc, Phòng bệnh). Bao gồm thuật toán AI & CP-SAT Solver tối ưu giờ thủ thuật, sao lưu tự động và phân tích thống kê.', fontSize: 8.5, color: '#334155' }
                                             ],
                                             [
-                                                { text: 'ÄÆ¡n Vá»‹ Cáº¥p Báº£n Quyá»n:', bold: true, fontSize: 9.5, fillColor: '#f1f5f9' },
-                                                { text: 'BS. Äáº·ng Phong ThÃ¡i (TÃ¡c giáº£ & Ká»¹ sÆ° trÆ°á»Ÿng phÃ¡t triá»ƒn há»‡ thá»‘ng pháº§n má»m T.I.M.E.S)', fontSize: 9.5, bold: true }
+                                                { text: 'Đơn Vị Cấp Bản Quyền:', bold: true, fontSize: 9.5, fillColor: '#f1f5f9' },
+                                                { text: 'BS. Đặng Phong Thái (Tác giả & Kỹ sư trưởng phát triển hệ thống phần mềm T.I.M.E.S)', fontSize: 9.5, bold: true }
                                             ],
                                             [
-                                                { text: 'ThÃ´ng Tin TÃ i Khoáº£n MB:', bold: true, fontSize: 9.5, fillColor: '#f1f5f9' },
-                                                { text: 'NgÃ¢n hÃ ng TMCP QuÃ¢n Äá»™i (MB Bank) - STK: 0392283473 - Chá»§ TK: Äáº¶NG PHONG THÃI', fontSize: 9, bold: true, color: '#1d4ed8' }
+                                                { text: 'Thông Tin Tài Khoản MB:', bold: true, fontSize: 9.5, fillColor: '#f1f5f9' },
+                                                { text: 'Ngân hàng TMCP Quân Đội (MB Bank) - STK: 0392283473 - Chủ TK: ĐẶNG PHONG THÁI', fontSize: 9, bold: true, color: '#1d4ed8' }
                                             ]
                                         ]
                                     },
@@ -16734,22 +16731,22 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                                 },
 
                                 {
-                                    text: 'XÃC NHáº¬N: Pháº§n má»m T.I.M.E.S Ä‘Æ°á»£c cáº¥p phÃ©p sá»­ dá»¥ng trá»±c tuyáº¿n Ä‘á»™c láº­p theo tá»«ng Ä‘Æ¡n vá»‹ y táº¿, mÃ£ hÃ³a vÃ  báº£o máº­t dá»¯ liá»‡u tuyá»‡t Ä‘á»‘i. Giáº¥y xÃ¡c nháº­n nÃ y lÃ  chá»©ng tá»« cÄƒn cá»© phá»¥c vá»¥ Ä‘á»‘i soÃ¡t, kÃ­ch hoáº¡t báº£n quyá»n vÃ  káº¹p chá»©ng tá»« thanh toÃ¡n ngÃ¢n hÃ ng háº¡ch toÃ¡n chi phÃ­ ná»™i bá»™ há»£p lá»‡ cá»§a ÄÆ¡n vá»‹.',
+                                    text: 'XÁC NHẬN: Phần mềm T.I.M.E.S được cấp phép sử dụng trực tuyến độc lập theo từng đơn vị y tế, mã hóa và bảo mật dữ liệu tuyệt đối. Giấy xác nhận này là chứng từ căn cứ phục vụ đối soát, kích hoạt bản quyền và kẹp chứng từ thanh toán ngân hàng hạch toán chi phí nội bộ hợp lệ của Đơn vị.',
                                     fontSize: 8,
                                     italic: true,
                                     color: '#475569',
                                     margin: [0, 0, 0, 10]
                                 },
 
-                                // KÃ½ tÃªn hai bÃªn
+                                // Ký tên hai bên
                                 {
                                     columns: [
                                         {
                                             width: '*',
                                             alignment: 'center',
                                             stack: [
-                                                { text: 'Äáº I DIá»†N ÄÆ N Vá»Š THá»¤ HÆ¯á»žNG', fontSize: 9.5, bold: true, color: '#0f172a' },
-                                                { text: '(KÃ½, ghi rÃµ há» tÃªn & Ä‘Ã³ng dáº¥u)', fontSize: 8, italic: true, color: '#64748b' },
+                                                { text: 'ĐẠI DIỆN ĐƠN VỊ THỤ HƯỞNG', fontSize: 9.5, bold: true, color: '#0f172a' },
+                                                { text: '(Ký, ghi rõ họ tên & đóng dấu)', fontSize: 8, italic: true, color: '#64748b' },
                                                 { text: '\n\n\n' },
                                                 { text: partyA.representative || unitName, fontSize: 9.5, bold: true }
                                             ]
@@ -16758,13 +16755,13 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                                             width: '*',
                                             alignment: 'center',
                                             stack: [
-                                                { text: `NgÃ y ${curDay} thÃ¡ng ${curMonth} nÄƒm ${curYear}`, fontSize: 8.5, italic: true, color: '#475569', margin: [0, 0, 0, 2] },
-                                                { text: 'TÃC GIáº¢ & Äáº I DIá»†N Há»† THá»NG T.I.M.E.S', fontSize: 9.5, bold: true, color: '#1e40af' },
-                                                { text: '(ÄÃ£ xÃ¡c thá»±c chá»¯ kÃ½ sá»‘ Ä‘iá»‡n tá»­)', fontSize: 8, italic: true, color: '#16a34a' },
-                                                { text: 'â˜… VALID CERTIFIED LICENSE â˜…', fontSize: 8.5, bold: true, color: '#15803d', margin: [0, 4, 0, 4] },
+                                                { text: `Ngày ${curDay} tháng ${curMonth} năm ${curYear}`, fontSize: 8.5, italic: true, color: '#475569', margin: [0, 0, 0, 2] },
+                                                { text: 'TÁC GIẢ & ĐẠI DIỆN HỆ THỐNG T.I.M.E.S', fontSize: 9.5, bold: true, color: '#1e40af' },
+                                                { text: '(Đã xác thực chữ ký số điện tử)', fontSize: 8, italic: true, color: '#16a34a' },
+                                                { text: '★ VALID CERTIFIED LICENSE ★', fontSize: 8.5, bold: true, color: '#15803d', margin: [0, 4, 0, 4] },
                                                 { text: '\n' },
-                                                { text: 'BS. Äáº¶NG PHONG THÃI', fontSize: 9.5, bold: true, color: '#0f172a' },
-                                                { text: 'SÄT / Zalo: 0392.283.473', fontSize: 8, color: '#64748b' }
+                                                { text: 'BS. ĐẶNG PHONG THÁI', fontSize: 9.5, bold: true, color: '#0f172a' },
+                                                { text: 'SĐT / Zalo: 0392.283.473', fontSize: 8, color: '#64748b' }
                                             ]
                                         }
                                     ]
@@ -16776,7 +16773,7 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
             },
 
             // ==========================================
-            // TRANG 2 & 3: Há»¢P Äá»’NG Dá»ŠCH Vá»¤ (THEO MáºªU MEDS)
+            // TRANG 2 & 3: HỢP ĐỒNG DỊCH VỤ (THEO MẪU MEDS)
             // ==========================================
             {
                 pageBreak: 'before',
@@ -16786,35 +16783,35 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                             {
                                 width: '*',
                                 stack: [
-                                    { text: 'Cá»˜NG HÃ’A XÃƒ Há»˜I CHá»¦ NGHÄ¨A VIá»†T NAM', fontSize: 10.5, bold: true, alignment: 'center' },
-                                    { text: 'Äá»™c láº­p - Tá»± do - Háº¡nh phÃºc', fontSize: 10, italic: true, alignment: 'center', margin: [0, 2, 0, 2] },
+                                    { text: 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM', fontSize: 10.5, bold: true, alignment: 'center' },
+                                    { text: 'Độc lập - Tự do - Hạnh phúc', fontSize: 10, italic: true, alignment: 'center', margin: [0, 2, 0, 2] },
                                     { canvas: [{ type: 'line', x1: 170, y1: 0, x2: 290, y2: 0, lineWidth: 0.8, lineColor: '#334155' }] }
                                 ]
                             }
                         ],
                         margin: [0, 0, 0, 10]
                     },
-                    { text: 'Há»¢P Äá»’NG Dá»ŠCH Vá»¤ PHáº¦N Má»€M', fontSize: 13, bold: true, color: '#0f172a', alignment: 'center', margin: [0, 4, 0, 2] },
-                    { text: `Sá»‘: ${contractNumber}`, fontSize: 9.5, italic: true, alignment: 'center', color: '#475569', margin: [0, 0, 0, 6] },
+                    { text: 'HỢP ĐỒNG DỊCH VỤ PHẦN MỀM', fontSize: 13, bold: true, color: '#0f172a', alignment: 'center', margin: [0, 4, 0, 2] },
+                    { text: `Số: ${contractNumber}`, fontSize: 9.5, italic: true, alignment: 'center', color: '#475569', margin: [0, 0, 0, 6] },
 
                     {
                         text: [
-                            { text: 'CÄƒn cá»© phÃ¡p lÃ½:\n', bold: true },
-                            '- Bá»™ luáº­t DÃ¢n sá»± sá»‘ 91/2015/QH13 ngÃ y 24/11/2015;\n',
-                            '- Luáº­t ThÆ°Æ¡ng máº¡i sá»‘ 36/2005/QH11 ngÃ y 14/06/2005;\n',
-                            '- Luáº­t CÃ´ng nghá»‡ thÃ´ng tin sá»‘ 67/2006/QH11 ngÃ y 29/06/2006;\n',
-                            '- Luáº­t Sá»Ÿ há»¯u trÃ­ tuá»‡ sá»‘ 50/2005/QH11 (sá»­a Ä‘á»•i, bá»• sung 2022);\n',
-                            '- Nhu cáº§u sá»­ dá»¥ng dá»‹ch vá»¥ cá»§a BÃªn A vÃ  nÄƒng lá»±c cung cáº¥p cá»§a BÃªn B;'
+                            { text: 'Căn cứ pháp lý:\n', bold: true },
+                            '- Bộ luật Dân sự số 91/2015/QH13 ngày 24/11/2015;\n',
+                            '- Luật Thương mại số 36/2005/QH11 ngày 14/06/2005;\n',
+                            '- Luật Công nghệ thông tin số 67/2006/QH11 ngày 29/06/2006;\n',
+                            '- Luật Sở hữu trí tuệ số 50/2005/QH11 (sửa đổi, bổ sung 2022);\n',
+                            '- Nhu cầu sử dụng dịch vụ của Bên A và năng lực cung cấp của Bên B;'
                         ],
                         fontSize: 8.5,
                         color: '#475569',
                         lineHeight: 1.25,
                         margin: [0, 0, 0, 8]
                     },
-                    { text: 'CÃ¡c bÃªn thá»‘ng nháº¥t kÃ½ káº¿t Há»£p Ä‘á»“ng vá»›i cÃ¡c Ä‘iá»u khoáº£n sau:', fontSize: 9, italic: true, margin: [0, 0, 0, 6] },
+                    { text: 'Các bên thống nhất ký kết Hợp đồng với các điều khoản sau:', fontSize: 9, italic: true, margin: [0, 0, 0, 6] },
 
-                    // Äiá»u 1. CÃ¡c bÃªn trong há»£p Ä‘á»“ng
-                    { text: 'Äiá»u 1. CÃ¡c bÃªn trong há»£p Ä‘á»“ng', fontSize: 9.5, bold: true, color: '#1e3a8a', margin: [0, 0, 0, 4] },
+                    // Điều 1. Các bên trong hợp đồng
+                    { text: 'Điều 1. Các bên trong hợp đồng', fontSize: 9.5, bold: true, color: '#1e3a8a', margin: [0, 0, 0, 4] },
                     {
                         table: {
                             widths: ['50%', '50%'],
@@ -16823,26 +16820,26 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                                     {
                                         fillColor: '#f8fafc',
                                         stack: [
-                                            { text: '1. BÃŠN A (BÃªn sá»­ dá»¥ng dá»‹ch vá»¥):', bold: true, fontSize: 9, color: '#0f172a', margin: [0, 0, 0, 2] },
-                                            { text: `â€¢ TÃªn Ä‘Æ¡n vá»‹: ${unitName}`, fontSize: 8.5, bold: true },
-                                            { text: `â€¢ MÃ£ Ä‘Æ¡n vá»‹ (Slug): ${unitCode.toUpperCase()}`, fontSize: 8.5 },
-                                            { text: `â€¢ Äáº¡i diá»‡n: ${partyA.representative || 'Ban GiÃ¡m Äá»‘c / TrÆ°á»Ÿng Ä‘Æ¡n vá»‹'}`, fontSize: 8.5 },
-                                            { text: `â€¢ Chá»©c vá»¥: ${partyA.position || 'Äáº¡i diá»‡n theo phÃ¡p luáº­t'}`, fontSize: 8.5 },
-                                            { text: `â€¢ Äá»‹a chá»‰: ${partyA.address || 'Trá»¥ sá»Ÿ Ä‘Æ¡n vá»‹ y táº¿'}`, fontSize: 8.5 },
-                                            ...(partyA.taxCode ? [{ text: `â€¢ MÃ£ sá»‘ thuáº¿: ${partyA.taxCode}`, fontSize: 8.5 }] : []),
-                                            ...(partyA.phone ? [{ text: `â€¢ Äiá»‡n thoáº¡i: ${partyA.phone}`, fontSize: 8.5 }] : [])
+                                            { text: '1. BÊN A (Bên sử dụng dịch vụ):', bold: true, fontSize: 9, color: '#0f172a', margin: [0, 0, 0, 2] },
+                                            { text: `• Tên đơn vị: ${unitName}`, fontSize: 8.5, bold: true },
+                                            { text: `• Mã đơn vị (Slug): ${unitCode.toUpperCase()}`, fontSize: 8.5 },
+                                            { text: `• Đại diện: ${partyA.representative || 'Ban Giám Đốc / Trưởng đơn vị'}`, fontSize: 8.5 },
+                                            { text: `• Chức vụ: ${partyA.position || 'Đại diện theo pháp luật'}`, fontSize: 8.5 },
+                                            { text: `• Địa chỉ: ${partyA.address || 'Trụ sở đơn vị y tế'}`, fontSize: 8.5 },
+                                            ...(partyA.taxCode ? [{ text: `• Mã số thuế: ${partyA.taxCode}`, fontSize: 8.5 }] : []),
+                                            ...(partyA.phone ? [{ text: `• Điện thoại: ${partyA.phone}`, fontSize: 8.5 }] : [])
                                         ]
                                     },
                                     {
                                         fillColor: '#f8fafc',
                                         stack: [
-                                            { text: '2. BÃŠN B (BÃªn cung cáº¥p dá»‹ch vá»¥):', bold: true, fontSize: 9, color: '#15803d', margin: [0, 0, 0, 2] },
-                                            { text: 'â€¢ TÃªn Ä‘Æ¡n vá»‹: Há»† THá»NG Xáº¾P Lá»ŠCH T.I.M.E.S', fontSize: 8.5, bold: true },
-                                            { text: 'â€¢ Äáº¡i diá»‡n: BS. Äáº¶NG PHONG THÃI', fontSize: 8.5, bold: true },
-                                            { text: 'â€¢ Chá»©c vá»¥: TÃ¡c giáº£ & Ká»¹ sÆ° phÃ¡t triá»ƒn', fontSize: 8.5 },
-                                            { text: 'â€¢ Äiá»‡n thoáº¡i / Zalo: 0392.283.473', fontSize: 8.5 },
-                                            { text: 'â€¢ Email: dpthai.ttytmk@gmail.com', fontSize: 8.5 },
-                                            { text: 'â€¢ STK MB Bank: 0392283473 (NgÃ¢n hÃ ng TMCP QuÃ¢n Äá»™i)', fontSize: 8.5, bold: true }
+                                            { text: '2. BÊN B (Bên cung cấp dịch vụ):', bold: true, fontSize: 9, color: '#15803d', margin: [0, 0, 0, 2] },
+                                            { text: '• Tên đơn vị: HỆ THỐNG XẾP LỊCH T.I.M.E.S', fontSize: 8.5, bold: true },
+                                            { text: '• Đại diện: BS. ĐẶNG PHONG THÁI', fontSize: 8.5, bold: true },
+                                            { text: '• Chức vụ: Tác giả & Kỹ sư phát triển', fontSize: 8.5 },
+                                            { text: '• Điện thoại / Zalo: 0392.283.473', fontSize: 8.5 },
+                                            { text: '• Email: dpthai.ttytmk@gmail.com', fontSize: 8.5 },
+                                            { text: '• STK MB Bank: 0392283473 (Ngân hàng TMCP Quân Đội)', fontSize: 8.5, bold: true }
                                         ]
                                     }
                                 ]
@@ -16852,55 +16849,55 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                         margin: [0, 0, 0, 8]
                     },
 
-                    // Äiá»u 2 & 3
-                    { text: 'Äiá»u 2. Äá»‘i tÆ°á»£ng há»£p Ä‘á»“ng', fontSize: 9.5, bold: true, color: '#0f172a' },
-                    { text: 'BÃªn B cung cáº¥p cho BÃªn A quyá»n sá»­ dá»¥ng Dá»‹ch vá»¥ pháº§n má»m quáº£n lÃ½ vÃ  xáº¿p lá»‹ch Ä‘iá»u trá»‹ YHCT - PHCN (T.I.M.E.S System v4 SaaS) theo mÃ´ hÃ¬nh Ä‘iá»‡n toÃ¡n Ä‘Ã¡m mÃ¢y SaaS (Software as a Service) qua Internet táº¡i Ä‘á»‹a chá»‰ https://xeplichthuthuat.io.vn. Pháº¡m vi bao gá»“m: Quyá»n truy cáº­p theo tÃ i khoáº£n do BÃªn B cáº¥p; Cáº­p nháº­t, nÃ¢ng cáº¥p, vÃ¡ lá»—i trong thá»i háº¡n há»£p Ä‘á»“ng; Há»— trá»£ ká»¹ thuáº­t trá»±c tuyáº¿n theo Äiá»u 3.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
+                    // Điều 2 & 3
+                    { text: 'Điều 2. Đối tượng hợp đồng', fontSize: 9.5, bold: true, color: '#0f172a' },
+                    { text: 'Bên B cung cấp cho Bên A quyền sử dụng Dịch vụ phần mềm quản lý và xếp lịch điều trị YHCT - PHCN (T.I.M.E.S System v4 SaaS) theo mô hình điện toán đám mây SaaS (Software as a Service) qua Internet tại địa chỉ https://xeplichthuthuat.io.vn. Phạm vi bao gồm: Quyền truy cập theo tài khoản do Bên B cấp; Cập nhật, nâng cấp, vá lỗi trong thời hạn hợp đồng; Hỗ trợ kỹ thuật trực tuyến theo Điều 3.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
 
-                    { text: 'Äiá»u 3. Pháº¡m vi dá»‹ch vá»¥', fontSize: 9.5, bold: true, color: '#0f172a' },
-                    { text: '- BÃªn B Ä‘áº£m báº£o dá»‹ch vá»¥ váº­n hÃ nh Ä‘Ãºng chá»©c nÄƒng mÃ´ táº£ táº¡i Phá»¥ lá»¥c II;\n- BÃªn B cung cáº¥p tÃ i liá»‡u Ä‘Ã o táº¡o/hÆ°á»›ng dáº«n sá»­ dá»¥ng cho nhÃ¢n sá»± Ä‘Æ°á»£c chá»‰ Ä‘á»‹nh cá»§a BÃªn A;\n- Há»— trá»£ ká»¹ thuáº­t trá»±c tiáº¿p qua Äiá»‡n thoáº¡i/Zalo/Ultraview 24/7;\n- BÃªn A sá»­ dá»¥ng dá»‹ch vá»¥ cho má»¥c Ä‘Ã­ch chuyÃªn mÃ´n ná»™i bá»™, khÃ´ng chuyá»ƒn giao cho bÃªn thá»© ba khi chÆ°a cÃ³ cháº¥p thuáº­n báº±ng vÄƒn báº£n cá»§a BÃªn B.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
+                    { text: 'Điều 3. Phạm vi dịch vụ', fontSize: 9.5, bold: true, color: '#0f172a' },
+                    { text: '- Bên B đảm bảo dịch vụ vận hành đúng chức năng mô tả tại Phụ lục II;\n- Bên B cung cấp tài liệu đào tạo/hướng dẫn sử dụng cho nhân sự được chỉ định của Bên A;\n- Hỗ trợ kỹ thuật trực tiếp qua Điện thoại/Zalo/Ultraview 24/7;\n- Bên A sử dụng dịch vụ cho mục đích chuyên môn nội bộ, không chuyển giao cho bên thứ ba khi chưa có chấp thuận bằng văn bản của Bên B.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
 
-                    { text: 'Äiá»u 4. Thá»i háº¡n há»£p Ä‘á»“ng', fontSize: 9.5, bold: true, color: '#0f172a' },
-                    { text: `- ${contractDurationDisplay}\n- Há»£p Ä‘á»“ng Ä‘Æ°á»£c tá»± Ä‘á»™ng gia háº¡n hoáº·c kÃ½ phá»¥ lá»¥c/há»£p Ä‘á»“ng má»›i khi háº¿t háº¡n.`, fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
+                    { text: 'Điều 4. Thời hạn hợp đồng', fontSize: 9.5, bold: true, color: '#0f172a' },
+                    { text: `- ${contractDurationDisplay}\n- Hợp đồng được tự động gia hạn hoặc ký phụ lục/hợp đồng mới khi hết hạn.`, fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
 
-                    { text: 'Äiá»u 5. GiÃ¡ trá»‹ vÃ  phÆ°Æ¡ng thá»©c thanh toÃ¡n', fontSize: 9.5, bold: true, color: '#0f172a' },
-                    { text: `1. GiÃ¡ trá»‹ dá»‹ch vá»¥: ${targetPlan.price} (Báº±ng chá»¯: ${targetPlan.priceText}) theo Biá»ƒu giÃ¡ táº¡i Phá»¥ lá»¥c I.\n2. Thuáº¿ GTGT: Thuáº¿ suáº¥t 0% (Theo ThÃ´ng tÆ° sá»‘ 219/2013/TT-BTC, sáº£n pháº©m vÃ  dá»‹ch vá»¥ pháº§n má»m thuá»™c Ä‘á»‘i tÆ°á»£ng khÃ´ng chá»‹u thuáº¿ GTGT).\n3. HÃ¬nh thá»©c thanh toÃ¡n: Chuyá»ƒn khoáº£n ngÃ¢n hÃ ng vÃ o tÃ i khoáº£n cá»§a BÃªn B:\n   â€¢ TÃªn tÃ i khoáº£n: Äáº¶NG PHONG THÃI | Sá»‘ tÃ i khoáº£n: 0392283473 | NgÃ¢n hÃ ng: MB Bank (NgÃ¢n hÃ ng TMCP QuÃ¢n Äá»™i).\n4. Thá»i háº¡n thanh toÃ¡n: Thanh toÃ¡n khi Ä‘Äƒng kÃ½/kÃ­ch hoáº¡t hoáº·c theo thá»a thuáº­n cá»¥ thá»ƒ.`, fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
+                    { text: 'Điều 5. Giá trị và phương thức thanh toán', fontSize: 9.5, bold: true, color: '#0f172a' },
+                    { text: `1. Giá trị dịch vụ: ${targetPlan.price} (Bằng chữ: ${targetPlan.priceText}) theo Biểu giá tại Phụ lục I.\n2. Thuế GTGT: Thuế suất 0% (Theo Thông tư số 219/2013/TT-BTC, sản phẩm và dịch vụ phần mềm thuộc đối tượng không chịu thuế GTGT).\n3. Hình thức thanh toán: Chuyển khoản ngân hàng vào tài khoản của Bên B:\n   • Tên tài khoản: ĐẶNG PHONG THÁI | Số tài khoản: 0392283473 | Ngân hàng: MB Bank (Ngân hàng TMCP Quân Đội).\n4. Thời hạn thanh toán: Thanh toán khi đăng ký/kích hoạt hoặc theo thỏa thuận cụ thể.`, fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
 
-                    { text: 'Äiá»u 6. Quyá»n vÃ  nghÄ©a vá»¥ cá»§a BÃªn A', fontSize: 9.5, bold: true, color: '#0f172a' },
-                    { text: '- Thanh toÃ¡n Ä‘áº§y Ä‘á»§ vÃ  Ä‘Ãºng háº¡n theo Äiá»u 5;\n- Cung cáº¥p danh má»¥c thá»§ thuáº­t, nhÃ¢n sá»±, mÃ¡y mÃ³c cáº§n thiáº¿t Ä‘á»ƒ triá»ƒn khai dá»‹ch vá»¥;\n- Quáº£n lÃ½ vÃ  báº£o máº­t tÃ i khoáº£n quáº£n trá»‹ Ä‘Æ°á»£c bÃ n giao;\n- KhÃ´ng sao chÃ©p, chá»‰nh sá»­a mÃ£ nguá»“n hoáº·c bÃ¡n láº¡i dá»‹ch vá»¥ khi chÆ°a cÃ³ sá»± cháº¥p thuáº­n cá»§a BÃªn B.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
+                    { text: 'Điều 6. Quyền và nghĩa vụ của Bên A', fontSize: 9.5, bold: true, color: '#0f172a' },
+                    { text: '- Thanh toán đầy đủ và đúng hạn theo Điều 5;\n- Cung cấp danh mục thủ thuật, nhân sự, máy móc cần thiết để triển khai dịch vụ;\n- Quản lý và bảo mật tài khoản quản trị được bàn giao;\n- Không sao chép, chỉnh sửa mã nguồn hoặc bán lại dịch vụ khi chưa có sự chấp thuận của Bên B.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
 
-                    { text: 'Äiá»u 7. Quyá»n vÃ  nghÄ©a vá»¥ cá»§a BÃªn B', fontSize: 9.5, bold: true, color: '#0f172a' },
-                    { text: '- Cung cáº¥p dá»‹ch vá»¥ Ä‘Ãºng thá»a thuáº­n, há»— trá»£ ká»¹ thuáº­t liÃªn tá»¥c trong thá»i háº¡n há»£p Ä‘á»“ng;\n- Báº£o máº­t tuyá»‡t Ä‘á»‘i dá»¯ liá»‡u cá»§a BÃªn A, khÃ´ng tiáº¿t lá»™ cho bÃªn thá»© ba trá»« khi cÃ³ yÃªu cáº§u báº±ng vÄƒn báº£n cá»§a cÆ¡ quan phÃ¡p luáº­t cÃ³ tháº©m quyá»n;\n- Cung cáº¥p giáº¥y xÃ¡c nháº­n báº£n quyá»n vÃ  chá»©ng tá»« thanh toÃ¡n há»£p lá»‡;\n- ThÃ´ng bÃ¡o trÆ°á»›c cho BÃªn A khi cÃ³ nÃ¢ng cáº¥p lá»›n hoáº·c báº£o trÃ¬ há»‡ thá»‘ng.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
+                    { text: 'Điều 7. Quyền và nghĩa vụ của Bên B', fontSize: 9.5, bold: true, color: '#0f172a' },
+                    { text: '- Cung cấp dịch vụ đúng thỏa thuận, hỗ trợ kỹ thuật liên tục trong thời hạn hợp đồng;\n- Bảo mật tuyệt đối dữ liệu của Bên A, không tiết lộ cho bên thứ ba trừ khi có yêu cầu bằng văn bản của cơ quan pháp luật có thẩm quyền;\n- Cung cấp giấy xác nhận bản quyền và chứng từ thanh toán hợp lệ;\n- Thông báo trước cho Bên A khi có nâng cấp lớn hoặc bảo trì hệ thống.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
 
-                    { text: 'Äiá»u 8. Báº£o máº­t thÃ´ng tin vÃ  dá»¯ liá»‡u', fontSize: 9.5, bold: true, color: '#0f172a' },
-                    { text: '- CÃ¡c BÃªn cam káº¿t báº£o máº­t thÃ´ng tin há»£p Ä‘á»“ng vÃ  dá»¯ liá»‡u bá»‡nh Ã¡n/Ä‘iá»u trá»‹ phÃ¡t sinh;\n- Dá»¯ liá»‡u thuá»™c quyá»n sá»Ÿ há»¯u riÃªng cá»§a BÃªn A. Khi cháº¥m dá»©t há»£p Ä‘á»“ng, BÃªn B sáº½ xuáº¥t báº£n sao dá»¯ liá»‡u (JSON/Excel) giao láº¡i cho BÃªn A náº¿u cÃ³ yÃªu cáº§u.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
+                    { text: 'Điều 8. Bảo mật thông tin và dữ liệu', fontSize: 9.5, bold: true, color: '#0f172a' },
+                    { text: '- Các Bên cam kết bảo mật thông tin hợp đồng và dữ liệu bệnh án/điều trị phát sinh;\n- Dữ liệu thuộc quyền sở hữu riêng của Bên A. Khi chấm dứt hợp đồng, Bên B sẽ xuất bản sao dữ liệu (JSON/Excel) giao lại cho Bên A nếu có yêu cầu.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
 
-                    { text: 'Äiá»u 9. Cháº¥m dá»©t há»£p Ä‘á»“ng & Äiá»u 10. Giáº£i quyáº¿t tranh cháº¥p', fontSize: 9.5, bold: true, color: '#0f172a' },
-                    { text: '- Há»£p Ä‘á»“ng cháº¥m dá»©t khi háº¿t thá»i háº¡n mÃ  khÃ´ng gia háº¡n, hoáº·c hai bÃªn cÃ¹ng thá»a thuáº­n cháº¥m dá»©t trÆ°á»›c háº¡n.\n- Má»i tranh cháº¥p phÃ¡t sinh Ä‘Æ°á»£c Æ°u tiÃªn giáº£i quyáº¿t qua thÆ°Æ¡ng lÆ°á»£ng, hÃ²a giáº£i trÃªn tinh tháº§n há»£p tÃ¡c thiá»‡n chÃ­ y táº¿. Náº¿u khÃ´ng Ä‘áº¡t thá»a thuáº­n, tranh cháº¥p sáº½ Ä‘Æ°á»£c giáº£i quyáº¿t táº¡i TÃ²a Ã¡n nhÃ¢n dÃ¢n cÃ³ tháº©m quyá»n theo phÃ¡p luáº­t Viá»‡t Nam.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
+                    { text: 'Điều 9. Chấm dứt hợp đồng & Điều 10. Giải quyết tranh chấp', fontSize: 9.5, bold: true, color: '#0f172a' },
+                    { text: '- Hợp đồng chấm dứt khi hết thời hạn mà không gia hạn, hoặc hai bên cùng thỏa thuận chấm dứt trước hạn.\n- Mọi tranh chấp phát sinh được ưu tiên giải quyết qua thương lượng, hòa giải trên tinh thần hợp tác thiện chí y tế. Nếu không đạt thỏa thuận, tranh chấp sẽ được giải quyết tại Tòa án nhân dân có thẩm quyền theo pháp luật Việt Nam.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 5] },
 
-                    { text: 'Äiá»u 11. Äiá»u khoáº£n chung', fontSize: 9.5, bold: true, color: '#0f172a' },
-                    { text: '- Há»£p Ä‘á»“ng cÃ³ hiá»‡u lá»±c ká»ƒ tá»« ngÃ y kÃ½/kÃ­ch hoáº¡t thanh toÃ¡n.\n- Há»£p Ä‘á»“ng gá»“m Ä‘áº§y Ä‘á»§ cÃ¡c trang vÃ  cÃ¡c Phá»¥ lá»¥c I, Phá»¥ lá»¥c II lÃ  pháº§n khÃ´ng thá»ƒ tÃ¡ch rá»i cá»§a Há»£p Ä‘á»“ng nÃ y. Báº£n Ä‘iá»‡n tá»­ cÃ³ giÃ¡ trá»‹ phÃ¡p lÃ½ tÆ°Æ¡ng Ä‘Æ°Æ¡ng báº£n gá»‘c.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 10] },
+                    { text: 'Điều 11. Điều khoản chung', fontSize: 9.5, bold: true, color: '#0f172a' },
+                    { text: '- Hợp đồng có hiệu lực kể từ ngày ký/kích hoạt thanh toán.\n- Hợp đồng gồm đầy đủ các trang và các Phụ lục I, Phụ lục II là phần không thể tách rời của Hợp đồng này. Bản điện tử có giá trị pháp lý tương đương bản gốc.', fontSize: 8.5, color: '#334155', margin: [0, 2, 0, 10] },
 
-                    // KÃ½ tÃªn há»£p Ä‘á»“ng
+                    // Ký tên hợp đồng
                     {
                         columns: [
                             {
                                 width: '*',
                                 alignment: 'center',
                                 stack: [
-                                    { text: 'Äáº I DIá»†N BÃŠN A', fontSize: 9.5, bold: true },
-                                    { text: '(KÃ½, Ä‘Ã³ng dáº¥u vÃ  ghi rÃµ há» tÃªn)', fontSize: 8, italic: true, color: '#64748b' },
+                                    { text: 'ĐẠI DIỆN BÊN A', fontSize: 9.5, bold: true },
+                                    { text: '(Ký, đóng dấu và ghi rõ họ tên)', fontSize: 8, italic: true, color: '#64748b' },
                                     { text: '\n\n\n' },
-                                    { text: (partyA.representative && partyA.representative !== 'Ban GiÃ¡m Äá»‘c / TrÆ°á»Ÿng Ä‘Æ¡n vá»‹') ? `${partyA.representative}\n(${unitName})` : unitName, fontSize: 9.5, bold: true }
+                                    { text: (partyA.representative && partyA.representative !== 'Ban Giám Đốc / Trưởng đơn vị') ? `${partyA.representative}\n(${unitName})` : unitName, fontSize: 9.5, bold: true }
                                 ]
                             },
                             {
                                 width: '*',
                                 alignment: 'center',
                                 stack: [
-                                    { text: 'Äáº I DIá»†N BÃŠN B', fontSize: 9.5, bold: true, color: '#1e40af' },
-                                    { text: '(KÃ½, ghi rÃµ há» tÃªn)', fontSize: 8, italic: true, color: '#64748b' },
+                                    { text: 'ĐẠI DIỆN BÊN B', fontSize: 9.5, bold: true, color: '#1e40af' },
+                                    { text: '(Ký, ghi rõ họ tên)', fontSize: 8, italic: true, color: '#64748b' },
                                     { text: '\n\n\n' },
-                                    { text: 'BS. Äáº¶NG PHONG THÃI', fontSize: 10, bold: true }
+                                    { text: 'BS. ĐẶNG PHONG THÁI', fontSize: 10, bold: true }
                                 ]
                             }
                         ]
@@ -16909,60 +16906,60 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
             },
 
             // ==========================================
-            // TRANG 4: PHá»¤ Lá»¤C I (Báº¢NG GIÃ) & PHá»¤ Lá»¤C II (MÃ” Táº¢ TÃNH NÄ‚NG)
+            // TRANG 4: PHỤ LỤC I (BẢNG GIÁ) & PHỤ LỤC II (MÔ TẢ TÍNH NĂNG)
             // ==========================================
             {
                 pageBreak: 'before',
                 stack: [
-                    { text: 'PHá»¤ Lá»¤C I: Báº¢NG GIÃ Dá»ŠCH Vá»¤ PHáº¦N Má»€M T.I.M.E.S NÄ‚M 2026', fontSize: 11, bold: true, color: '#1e3a8a', alignment: 'center', margin: [0, 0, 0, 4] },
-                    { text: `(KÃ¨m theo Há»£p Ä‘á»“ng dá»‹ch vá»¥ sá»‘ ${contractNumber} giá»¯a ${unitName} vÃ  Há»‡ thá»‘ng T.I.M.E.S)`, fontSize: 8.5, italic: true, alignment: 'center', color: '#64748b', margin: [0, 0, 0, 8] },
+                    { text: 'PHỤ LỤC I: BẢNG GIÁ DỊCH VỤ PHẦN MỀM T.I.M.E.S NĂM 2026', fontSize: 11, bold: true, color: '#1e3a8a', alignment: 'center', margin: [0, 0, 0, 4] },
+                    { text: `(Kèm theo Hợp đồng dịch vụ số ${contractNumber} giữa ${unitName} và Hệ thống T.I.M.E.S)`, fontSize: 8.5, italic: true, alignment: 'center', color: '#64748b', margin: [0, 0, 0, 8] },
 
-                    // Báº£ng biá»ƒu phÃ­ chuáº©n
+                    // Bảng biểu phí chuẩn
                     {
                         table: {
                             widths: [30, 160, 100, 70, '*'],
                             body: [
                                 [
                                     { text: 'STT', bold: true, fontSize: 8.5, alignment: 'center', fillColor: '#f1f5f9' },
-                                    { text: 'TÃªn GÃ³i Dá»‹ch Vá»¥', bold: true, fontSize: 8.5, fillColor: '#f1f5f9' },
-                                    { text: 'Thá»i Háº¡n', bold: true, fontSize: 8.5, alignment: 'center', fillColor: '#f1f5f9' },
-                                    { text: 'ÄÆ¡n GiÃ¡ (VNÄ)', bold: true, fontSize: 8.5, alignment: 'right', fillColor: '#f1f5f9' },
-                                    { text: 'Chá»n ÄÄƒng KÃ½', bold: true, fontSize: 8.5, alignment: 'center', fillColor: '#f1f5f9' }
+                                    { text: 'Tên Gói Dịch Vụ', bold: true, fontSize: 8.5, fillColor: '#f1f5f9' },
+                                    { text: 'Thời Hạn', bold: true, fontSize: 8.5, alignment: 'center', fillColor: '#f1f5f9' },
+                                    { text: 'Đơn Giá (VNĐ)', bold: true, fontSize: 8.5, alignment: 'right', fillColor: '#f1f5f9' },
+                                    { text: 'Chọn Đăng Ký', bold: true, fontSize: 8.5, alignment: 'center', fillColor: '#f1f5f9' }
                                 ],
                                 [
                                     { text: '1', fontSize: 8.5, alignment: 'center' },
-                                    { text: 'GÃ³i DÃ¹ng Thá»­ 15 NgÃ y', fontSize: 8.5 },
-                                    { text: '15 ngÃ y tráº£i nghiá»‡m', fontSize: 8.5, alignment: 'center' },
-                                    { text: '0 VNÄ', fontSize: 8.5, alignment: 'right', bold: true },
-                                    { text: planCode === 'TRIAL_15D' ? 'â˜‘ ÄÃƒ CHá»ŒN' : 'â˜', fontSize: 8.5, alignment: 'center', bold: planCode === 'TRIAL_15D', color: planCode === 'TRIAL_15D' ? '#15803d' : '#94a3b8' }
+                                    { text: 'Gói Dùng Thử 15 Ngày', fontSize: 8.5 },
+                                    { text: '15 ngày trải nghiệm', fontSize: 8.5, alignment: 'center' },
+                                    { text: '0 VNĐ', fontSize: 8.5, alignment: 'right', bold: true },
+                                    { text: planCode === 'TRIAL_15D' ? '☑ ĐÃ CHỌN' : '☐', fontSize: 8.5, alignment: 'center', bold: planCode === 'TRIAL_15D', color: planCode === 'TRIAL_15D' ? '#15803d' : '#94a3b8' }
                                 ],
                                 [
                                     { text: '2', fontSize: 8.5, alignment: 'center' },
-                                    { text: 'GÃ³i 1 ThÃ¡ng', fontSize: 8.5 },
-                                    { text: '01 thÃ¡ng (30 ngÃ y)', fontSize: 8.5, alignment: 'center' },
-                                    { text: '400.000 VNÄ', fontSize: 8.5, alignment: 'right', bold: true },
-                                    { text: planCode === 'PLAN_1M' ? 'â˜‘ ÄÃƒ CHá»ŒN' : 'â˜', fontSize: 8.5, alignment: 'center', bold: planCode === 'PLAN_1M', color: planCode === 'PLAN_1M' ? '#15803d' : '#94a3b8' }
+                                    { text: 'Gói 1 Tháng', fontSize: 8.5 },
+                                    { text: '01 tháng (30 ngày)', fontSize: 8.5, alignment: 'center' },
+                                    { text: '400.000 VNĐ', fontSize: 8.5, alignment: 'right', bold: true },
+                                    { text: planCode === 'PLAN_1M' ? '☑ ĐÃ CHỌN' : '☐', fontSize: 8.5, alignment: 'center', bold: planCode === 'PLAN_1M', color: planCode === 'PLAN_1M' ? '#15803d' : '#94a3b8' }
                                 ],
                                 [
                                     { text: '3', fontSize: 8.5, alignment: 'center' },
-                                    { text: 'GÃ³i 3 ThÃ¡ng (~375k/thÃ¡ng)', fontSize: 8.5 },
-                                    { text: '03 thÃ¡ng (90 ngÃ y)', fontSize: 8.5, alignment: 'center' },
-                                    { text: '1.125.000 VNÄ', fontSize: 8.5, alignment: 'right', bold: true },
-                                    { text: planCode === 'PLAN_3M' ? 'â˜‘ ÄÃƒ CHá»ŒN' : 'â˜', fontSize: 8.5, alignment: 'center', bold: planCode === 'PLAN_3M', color: planCode === 'PLAN_3M' ? '#15803d' : '#94a3b8' }
+                                    { text: 'Gói 3 Tháng (~375k/tháng)', fontSize: 8.5 },
+                                    { text: '03 tháng (90 ngày)', fontSize: 8.5, alignment: 'center' },
+                                    { text: '1.125.000 VNĐ', fontSize: 8.5, alignment: 'right', bold: true },
+                                    { text: planCode === 'PLAN_3M' ? '☑ ĐÃ CHỌN' : '☐', fontSize: 8.5, alignment: 'center', bold: planCode === 'PLAN_3M', color: planCode === 'PLAN_3M' ? '#15803d' : '#94a3b8' }
                                 ],
                                 [
                                     { text: '4', fontSize: 8.5, alignment: 'center' },
-                                    { text: 'GÃ³i 6 ThÃ¡ng (~350k/thÃ¡ng)', fontSize: 8.5 },
-                                    { text: '06 thÃ¡ng (180 ngÃ y)', fontSize: 8.5, alignment: 'center' },
-                                    { text: '2.100.000 VNÄ', fontSize: 8.5, alignment: 'right', bold: true },
-                                    { text: planCode === 'PLAN_6M' ? 'â˜‘ ÄÃƒ CHá»ŒN' : 'â˜', fontSize: 8.5, alignment: 'center', bold: planCode === 'PLAN_6M', color: planCode === 'PLAN_6M' ? '#15803d' : '#94a3b8' }
+                                    { text: 'Gói 6 Tháng (~350k/tháng)', fontSize: 8.5 },
+                                    { text: '06 tháng (180 ngày)', fontSize: 8.5, alignment: 'center' },
+                                    { text: '2.100.000 VNĐ', fontSize: 8.5, alignment: 'right', bold: true },
+                                    { text: planCode === 'PLAN_6M' ? '☑ ĐÃ CHỌN' : '☐', fontSize: 8.5, alignment: 'center', bold: planCode === 'PLAN_6M', color: planCode === 'PLAN_6M' ? '#15803d' : '#94a3b8' }
                                 ],
                                 [
                                     { text: '5', fontSize: 8.5, alignment: 'center' },
-                                    { text: 'GÃ³i 1 NÄƒm (~325k/thÃ¡ng - Tiáº¿t kiá»‡m)', fontSize: 8.5, bold: true },
-                                    { text: '01 nÄƒm (365 ngÃ y)', fontSize: 8.5, alignment: 'center' },
-                                    { text: '3.900.000 VNÄ', fontSize: 8.5, alignment: 'right', bold: true },
-                                    { text: planCode === 'PLAN_1Y' ? 'â˜‘ ÄÃƒ CHá»ŒN' : 'â˜', fontSize: 8.5, alignment: 'center', bold: planCode === 'PLAN_1Y', color: planCode === 'PLAN_1Y' ? '#15803d' : '#94a3b8' }
+                                    { text: 'Gói 1 Năm (~325k/tháng - Tiết kiệm)', fontSize: 8.5, bold: true },
+                                    { text: '01 năm (365 ngày)', fontSize: 8.5, alignment: 'center' },
+                                    { text: '3.900.000 VNĐ', fontSize: 8.5, alignment: 'right', bold: true },
+                                    { text: planCode === 'PLAN_1Y' ? '☑ ĐÃ CHỌN' : '☐', fontSize: 8.5, alignment: 'center', bold: planCode === 'PLAN_1Y', color: planCode === 'PLAN_1Y' ? '#15803d' : '#94a3b8' }
                                 ]
                             ]
                         },
@@ -16976,60 +16973,60 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
                         },
                         margin: [0, 0, 0, 6]
                     },
-                    { text: 'LÆ°u Ã½: Báº£ng giÃ¡ trÃªn lÃ  dá»‹ch vá»¥ pháº§n má»m khÃ´ng chá»‹u thuáº¿ GTGT (VAT 0%) theo ThÃ´ng tÆ° 219/2013/TT-BTC. Táº¥t cáº£ cÃ¡c gÃ³i Ä‘á»u há»— trá»£ Full 100% chá»©c nÄƒng khÃ´ng giá»›i háº¡n.', fontSize: 7.5, italic: true, color: '#64748b', margin: [0, 0, 0, 10] },
+                    { text: 'Lưu ý: Bảng giá trên là dịch vụ phần mềm không chịu thuế GTGT (VAT 0%) theo Thông tư 219/2013/TT-BTC. Tất cả các gói đều hỗ trợ Full 100% chức năng không giới hạn.', fontSize: 7.5, italic: true, color: '#64748b', margin: [0, 0, 0, 10] },
 
-                    // PHá»¤ Lá»¤C II
-                    { text: 'PHá»¤ Lá»¤C II: MÃ” Táº¢ CHá»¨C NÄ‚NG Dá»ŠCH Vá»¤ PHáº¦N Má»€M T.I.M.E.S', fontSize: 11, bold: true, color: '#1e3a8a', alignment: 'center', margin: [0, 0, 0, 4] },
-                    { text: 'CÃ¡c chá»©c nÄƒng nghiá»‡p vá»¥ chÃ­nh cá»§a Há»‡ thá»‘ng T.I.M.E.S bao gá»“m:', fontSize: 8.5, bold: true, color: '#0f172a', margin: [0, 0, 0, 4] },
+                    // PHỤ LỤC II
+                    { text: 'PHỤ LỤC II: MÔ TẢ CHỨC NĂNG DỊCH VỤ PHẦN MỀM T.I.M.E.S', fontSize: 11, bold: true, color: '#1e3a8a', alignment: 'center', margin: [0, 0, 0, 4] },
+                    { text: 'Các chức năng nghiệp vụ chính của Hệ thống T.I.M.E.S bao gồm:', fontSize: 8.5, bold: true, color: '#0f172a', margin: [0, 0, 0, 4] },
 
                     {
                         columns: [
                             {
                                 width: '50%',
                                 stack: [
-                                    { text: '1. Quáº£n lÃ½ danh má»¥c ká»¹ thuáº­t: Thiáº¿t láº­p thá»i lÆ°á»£ng, mÃ¡y mÃ³c gáº¯n kÃ¨m, khoáº£ng cÃ¡ch nghá»‰, nhÃ³m thá»§ thuáº­t YHCT - PHCN chuáº©n Bá»™ Y Táº¿.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
-                                    { text: '2. Quáº£n lÃ½ KTV & BÃ¡c sÄ©: PhÃ¢n cÃ´ng ca sÃ¡ng/chiá»u, phÃ²ng chá»‰ Ä‘á»‹nh, chuyÃªn mÃ´n ká»¹ thuáº­t thá»±c hiá»‡n.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
-                                    { text: '3. Quáº£n lÃ½ mÃ¡y mÃ³c: Äá»‹nh danh mÃ£ mÃ¡y, phÃ²ng Ä‘áº·t mÃ¡y, chá»‘ng trÃ¹ng láº·p thiáº¿t bá»‹ tuyá»‡t Ä‘á»‘i.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
-                                    { text: '4. Quáº£n lÃ½ bá»‡nh nhÃ¢n: Nháº­p há»“ sÆ¡, buá»“ng giÆ°á»ng, chá»‰ Ä‘á»‹nh y lá»‡nh Ä‘a dá»‹ch vá»¥ ná»™i trÃº & ngoáº¡i trÃº.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
-                                    { text: '5. Äá»™ng cÆ¡ AI & CP-SAT Solver: Tá»± Ä‘á»™ng chia giá» thá»§ thuáº­t thÃ´ng minh, khÃ´ng trÃ¹ng nhÃ¢n viÃªn, mÃ¡y mÃ³c, bá»‡nh nhÃ¢n.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
-                                    { text: '6. Xáº¿p lá»‹ch cuá»‘i tuáº§n / trá»±c: Tá»± Ä‘á»™ng chia ca trá»±c Thá»© 7, Chá»§ Nháº­t vÃ  ngÃ y nghá»‰ lá»… chuyÃªn biá»‡t.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] }
+                                    { text: '1. Quản lý danh mục kỹ thuật: Thiết lập thời lượng, máy móc gắn kèm, khoảng cách nghỉ, nhóm thủ thuật YHCT - PHCN chuẩn Bộ Y Tế.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
+                                    { text: '2. Quản lý KTV & Bác sĩ: Phân công ca sáng/chiều, phòng chỉ định, chuyên môn kỹ thuật thực hiện.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
+                                    { text: '3. Quản lý máy móc: Định danh mã máy, phòng đặt máy, chống trùng lặp thiết bị tuyệt đối.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
+                                    { text: '4. Quản lý bệnh nhân: Nhập hồ sơ, buồng giường, chỉ định y lệnh đa dịch vụ nội trú & ngoại trú.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
+                                    { text: '5. Động cơ AI & CP-SAT Solver: Tự động chia giờ thủ thuật thông minh, không trùng nhân viên, máy móc, bệnh nhân.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
+                                    { text: '6. Xếp lịch cuối tuần / trực: Tự động chia ca trực Thứ 7, Chủ Nhật và ngày nghỉ lễ chuyên biệt.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] }
                                 ]
                             },
                             {
                                 width: '50%',
                                 stack: [
-                                    { text: '7. Quáº£n lÃ½ y lá»‡nh: Tá»•ng há»£p chá»‰ Ä‘á»‹nh, phÃ¢n luá»“ng theo khoa phÃ²ng, Ä‘á»“ng bá»™ tráº¡ng thÃ¡i bá»‡nh Ã¡n.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
-                                    { text: '8. Xuáº¥t báº£ng KETQUA: Báº£ng káº¿t quáº£ xáº¿p lá»‹ch trá»±c quan Ä‘áº§y Ä‘á»§ ngÃ y, giá», bá»‡nh nhÃ¢n, KTV, mÃ¡y mÃ³c.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
-                                    { text: '9. Xuáº¥t bÃ¡o cÃ¡o Ä‘a dáº¡ng: Xuáº¥t PDF lá»‹ch theo tá»«ng buá»“ng phÃ²ng bá»‡nh viá»‡n, xuáº¥t Excel phÃ¢n cÃ´ng KTV.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
-                                    { text: '10. ÄÃ¡m mÃ¢y & Báº£o máº­t: Ná»n táº£ng Cloudflare Worker + D1 Database, mÃ£ hÃ³a JWT, sao lÆ°u Google Drive tá»± Ä‘á»™ng.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
-                                    { text: '11. Äá»‹a chá»‰ truy cáº­p trá»±c tuyáº¿n: https://xeplichthuthuat.io.vn (Sá»­ dá»¥ng trá»±c tiáº¿p trÃªn Web/Mobile/Tablet).', fontSize: 8, color: '#1d4ed8', bold: true, margin: [0, 0, 0, 3] }
+                                    { text: '7. Quản lý y lệnh: Tổng hợp chỉ định, phân luồng theo khoa phòng, đồng bộ trạng thái bệnh án.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
+                                    { text: '8. Xuất bảng KETQUA: Bảng kết quả xếp lịch trực quan đầy đủ ngày, giờ, bệnh nhân, KTV, máy móc.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
+                                    { text: '9. Xuất báo cáo đa dạng: Xuất PDF lịch theo từng buồng phòng bệnh viện, xuất Excel phân công KTV.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
+                                    { text: '10. Đám mây & Bảo mật: Nền tảng Cloudflare Worker + D1 Database, mã hóa JWT, sao lưu Google Drive tự động.', fontSize: 8, color: '#334155', margin: [0, 0, 0, 3] },
+                                    { text: '11. Địa chỉ truy cập trực tuyến: https://xeplichthuthuat.io.vn (Sử dụng trực tiếp trên Web/Mobile/Tablet).', fontSize: 8, color: '#1d4ed8', bold: true, margin: [0, 0, 0, 3] }
                                 ]
                             }
                         ],
                         margin: [0, 0, 0, 10]
                     },
 
-                    // KÃ½ xÃ¡c nháº­n phá»¥ lá»¥c
+                    // Ký xác nhận phụ lục
                     {
                         columns: [
                             {
                                 width: '*',
                                 alignment: 'center',
                                 stack: [
-                                    { text: 'XÃC NHáº¬N BÃŠN A', fontSize: 9, bold: true },
-                                    { text: '(KÃ½, Ä‘Ã³ng dáº¥u)', fontSize: 7.5, italic: true, color: '#64748b' },
+                                    { text: 'XÁC NHẬN BÊN A', fontSize: 9, bold: true },
+                                    { text: '(Ký, đóng dấu)', fontSize: 7.5, italic: true, color: '#64748b' },
                                     { text: '\n\n' },
-                                    { text: (partyA.representative && partyA.representative !== 'Ban GiÃ¡m Äá»‘c / TrÆ°á»Ÿng Ä‘Æ¡n vá»‹') ? `${partyA.representative}\n(${unitName})` : unitName, fontSize: 9, bold: true }
+                                    { text: (partyA.representative && partyA.representative !== 'Ban Giám Đốc / Trưởng đơn vị') ? `${partyA.representative}\n(${unitName})` : unitName, fontSize: 9, bold: true }
                                 ]
                             },
                             {
                                 width: '*',
                                 alignment: 'center',
                                 stack: [
-                                    { text: 'XÃC NHáº¬N BÃŠN B', fontSize: 9, bold: true, color: '#1e40af' },
-                                    { text: '(KÃ½, ghi rÃµ há» tÃªn)', fontSize: 7.5, italic: true, color: '#64748b' },
+                                    { text: 'XÁC NHẬN BÊN B', fontSize: 9, bold: true, color: '#1e40af' },
+                                    { text: '(Ký, ghi rõ họ tên)', fontSize: 7.5, italic: true, color: '#64748b' },
                                     { text: '\n\n' },
-                                    { text: 'BS. Äáº¶NG PHONG THÃI', fontSize: 9, bold: true }
+                                    { text: 'BS. ĐẶNG PHONG THÁI', fontSize: 9, bold: true }
                                 ]
                             }
                         ]
@@ -17050,11 +17047,11 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
         const fileName = `HopDong_ChungNhan_BanQuyen_${safeUnitSlug}_${curYear}.pdf`;
         pdfMake.createPdf(docDefinition).download(fileName);
         if (typeof showToast === 'function') {
-            showToast(`ðŸ“„ Äang táº£i file PDF: ${fileName}`, 'success');
+            showToast(`📄 Đang tải file PDF: ${fileName}`, 'success');
         }
     } catch (e) {
-        console.error('Lá»—i táº¡o PDF há»£p Ä‘á»“ng:', e);
-        alert('Lá»—i táº¡o PDF: ' + (e?.message || e));
+        console.error('Lỗi tạo PDF hợp đồng:', e);
+        alert('Lỗi tạo PDF: ' + (e?.message || e));
     }
 };
 
@@ -17063,7 +17060,7 @@ window.openRenewModal = function (planCode) {
     const m = document.getElementById('modal-renew-info');
     if (!m) return;
 
-    // Reset láº¡i tráº¡ng thÃ¡i cÃ¡c mÃ n hÃ¬nh trong modal
+    // Reset lại trạng thái các màn hình trong modal
     const payingView = document.getElementById('renew-paying-view');
     const succView = document.getElementById('renew-success-view');
     if (payingView) payingView.style.display = 'block';
@@ -17074,10 +17071,10 @@ window.openRenewModal = function (planCode) {
     window._currentSelectedPlan = selectedPlan;
 
     const planData = {
-        'PLAN_1M': { name: 'GÃ³i 1 ThÃ¡ng', amount: 400000, price: '400.000 Ä‘', equiv: '400.000 Ä‘ / thÃ¡ng', code: '1T' },
-        'PLAN_3M': { name: 'GÃ³i 3 ThÃ¡ng', amount: 1125000, price: '1.125.000 Ä‘', equiv: '~375.000 Ä‘ / thÃ¡ng (Tiáº¿t kiá»‡m 6%)', code: '3T' },
-        'PLAN_6M': { name: 'GÃ³i 6 ThÃ¡ng', amount: 2100000, price: '2.100.000 Ä‘', equiv: '~350.000 Ä‘ / thÃ¡ng (Tiáº¿t kiá»‡m 12.5%)', code: '6T' },
-        'PLAN_1Y': { name: 'GÃ³i 1 NÄƒm', amount: 3900000, price: '3.900.000 Ä‘', equiv: '~325.000 Ä‘ / thÃ¡ng (Tiáº¿t kiá»‡m 18.75%)', code: '1N' }
+        'PLAN_1M': { name: 'Gói 1 Tháng', amount: 400000, price: '400.000 đ', equiv: '400.000 đ / tháng', code: '1T' },
+        'PLAN_3M': { name: 'Gói 3 Tháng', amount: 1125000, price: '1.125.000 đ', equiv: '~375.000 đ / tháng (Tiết kiệm 6%)', code: '3T' },
+        'PLAN_6M': { name: 'Gói 6 Tháng', amount: 2100000, price: '2.100.000 đ', equiv: '~350.000 đ / tháng (Tiết kiệm 12.5%)', code: '6T' },
+        'PLAN_1Y': { name: 'Gói 1 Năm', amount: 3900000, price: '3.900.000 đ', equiv: '~325.000 đ / tháng (Tiết kiệm 18.75%)', code: '1N' }
     };
 
     const target = planData[selectedPlan] || planData['PLAN_1Y'];
@@ -17094,19 +17091,19 @@ window.openRenewModal = function (planCode) {
     if (priceEl) priceEl.innerText = target.price;
     if (amountEl) amountEl.innerText = target.price;
     if (equivEl) equivEl.innerText = target.equiv;
-    if (unitEl) unitEl.innerText = 'ÄÆ¡n vá»‹: ' + currentUnit;
+    if (unitEl) unitEl.innerText = 'Đơn vị: ' + currentUnit;
 
     window._currentOrderAmount = target.amount;
     const defaultMemo = `PMCG ${currentUnit.toUpperCase()} ${target.code}`;
     if (memoEl) memoEl.innerText = defaultMemo;
 
-    // áº¢nh QR ban Ä‘áº§u
+    // Ảnh QR ban đầu
     const defaultQrUrl = `https://img.vietqr.io/image/MB-0392283473-compact2.png?amount=${target.amount}&addInfo=${encodeURIComponent(defaultMemo)}&accountName=DANG%20PHONG%20THAI`;
     if (qrImg) qrImg.src = defaultQrUrl;
 
     m.style.display = 'flex';
 
-    // Táº¡o Ä‘Æ¡n hÃ ng trÃªn backend Worker
+    // Tạo đơn hàng trên backend Worker
     if (typeof callApi === 'function') {
         callApi('createPaymentOrder', [{ unit_code: currentUnit, plan_tier: selectedPlan }], res => {
             const data = (res && res.order_code) ? res : (res?.data || {});
@@ -17117,7 +17114,7 @@ window.openRenewModal = function (planCode) {
                 const bankAccEl = document.getElementById('renew-bank-acc');
                 if (bankAccEl && data.bank_account) bankAccEl.innerText = data.bank_account;
 
-                // Báº¯t Ä‘áº§u láº¯ng nghe tá»± Ä‘á»™ng chuyá»ƒn tráº¡ng thÃ¡i gÃ³i
+                // Bắt đầu lắng nghe tự động chuyển trạng thái gói
                 window._startPaymentPolling(data.order_code, currentUnit, selectedPlan);
             }
         }, err => {
@@ -17134,7 +17131,7 @@ window._startPaymentPolling = function (orderCode, unitCode, planTier) {
     }
 
     let pollCount = 0;
-    const maxPolls = 600; // ThÄƒm dÃ² tá»‘i Ä‘a 30 phÃºt (má»—i 3 giÃ¢y)
+    const maxPolls = 600; // Thăm dò tối đa 30 phút (mỗi 3 giây)
 
     window._paymentPollInterval = setInterval(() => {
         pollCount++;
@@ -17148,7 +17145,7 @@ window._startPaymentPolling = function (orderCode, unitCode, planTier) {
             callApi('checkPaymentStatus', [{ order_code: orderCode || '', unit_code: unitCode }], res => {
                 const data = (res && res.payment_status) ? res : (res?.data || {});
                 if (data && data.payment_status === 'SUCCESS') {
-                    // Chá»§ tÃ i khoáº£n Ä‘Ã£ nháº­n Ä‘Æ°á»£c tiá»n! Tá»± Ä‘á»™ng nÃ¢ng cáº¥p gÃ³i cÆ°á»›c
+                    // Chủ tài khoản đã nhận được tiền! Tự động nâng cấp gói cước
                     clearInterval(window._paymentPollInterval);
                     window._paymentPollInterval = null;
                     window._handlePaymentSuccess(data, planTier);
@@ -17160,17 +17157,17 @@ window._startPaymentPolling = function (orderCode, unitCode, planTier) {
 
 window._handlePaymentSuccess = function (data, fallbackPlan) {
     const planTier = data.plan_tier || fallbackPlan || 'PLAN_1Y';
-    const planName = data.plan_name || 'Báº£n Quyá»n ÄÃ£ NÃ¢ng Cáº¥p';
+    const planName = data.plan_name || 'Bản Quyền Đã Nâng Cấp';
     const expiresAt = data.expires_at || '';
     const daysLeft = data.days_left !== undefined ? data.days_left : 365;
 
-    // 1. Cáº­p nháº­t localStorage
+    // 1. Cập nhật localStorage
     localStorage.setItem('pm_plan_tier', planTier);
     localStorage.setItem('pm_plan_name', planName);
     localStorage.setItem('pm_expires_at', expiresAt);
     localStorage.setItem('pm_days_left', daysLeft);
 
-    // 2. Cáº­p nháº­t meds_session
+    // 2. Cập nhật meds_session
     try {
         const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
         sess.plan_tier = planTier;
@@ -17180,12 +17177,12 @@ window._handlePaymentSuccess = function (data, fallbackPlan) {
         localStorage.setItem('meds_session', JSON.stringify(sess));
     } catch (e) {}
 
-    // 3. Cáº­p nháº­t Badge trÃªn Header
+    // 3. Cập nhật Badge trên Header
     if (typeof window.updateSubscriptionHeaderBadge === 'function') {
         window.updateSubscriptionHeaderBadge(planTier, expiresAt, planName, daysLeft);
     }
 
-    // 4. Chuyá»ƒn sang mÃ n hÃ¬nh chÃºc má»«ng thÃ nh cÃ´ng
+    // 4. Chuyển sang màn hình chúc mừng thành công
     const payingView = document.getElementById('renew-paying-view');
     const succView = document.getElementById('renew-success-view');
     if (payingView) payingView.style.display = 'none';
@@ -17196,12 +17193,12 @@ window._handlePaymentSuccess = function (data, fallbackPlan) {
         const succDays = document.getElementById('renew-succ-days');
         if (succPlan) succPlan.innerText = planName;
         if (succExp) succExp.innerText = expiresAt;
-        if (succDays) succDays.innerText = `${daysLeft} ngÃ y`;
+        if (succDays) succDays.innerText = `${daysLeft} ngày`;
     }
 
-    // 5. Báº¯n thÃ´ng bÃ¡o Toast
+    // 5. Bắn thông báo Toast
     if (typeof showToast === 'function') {
-        showToast(`ðŸŽ‰ ChÃºc má»«ng! ÄÆ¡n vá»‹ cá»§a báº¡n Ä‘Ã£ Ä‘Æ°á»£c nÃ¢ng cáº¥p lÃªn ${planName}!`, 'success');
+        showToast(`🎉 Chúc mừng! Đơn vị của bạn đã được nâng cấp lên ${planName}!`, 'success');
     }
 };
 
@@ -17215,33 +17212,33 @@ window.closeRenewModal = function () {
 };
 
 // ============================================================
-// ðŸ’³ QUáº¢N LÃ GIAO Dá»ŠCH THANH TOÃN VIETQR (SUPER ADMIN)
+// 💳 QUẢN LÝ GIAO DỊCH THANH TOÁN VIETQR (SUPER ADMIN)
 // ============================================================
 window.loadPaymentTransactionsList = function () {
     const tbody = document.getElementById('payment-transactions-body');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:#64748b;">â³ Äang táº£i lá»‹ch sá»­ giao dá»‹ch thanh toÃ¡n...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:#64748b;">⏳ Đang tải lịch sử giao dịch thanh toán...</td></tr>';
 
     if (typeof callApi === 'function') {
         callApi('getPaymentTransactions', [{ limit: 50 }], res => {
             const list = Array.isArray(res) ? res : (res?.data || []);
             if (!list || list.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:#94a3b8;">ChÆ°a cÃ³ giao dá»‹ch thanh toÃ¡n nÃ o Ä‘Æ°á»£c táº¡o.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:#94a3b8;">Chưa có giao dịch thanh toán nào được tạo.</td></tr>';
                 return;
             }
 
             tbody.innerHTML = list.map(t => {
                 const isSuccess = t.status === 'SUCCESS';
                 const statusBadge = isSuccess
-                    ? '<span style="background:#dcfce7; color:#15803d; padding:3px 8px; border-radius:6px; font-weight:700; font-size:11px;">âœ… ThÃ nh CÃ´ng</span>'
-                    : '<span style="background:#fef3c7; color:#b45309; padding:3px 8px; border-radius:6px; font-weight:700; font-size:11px;">â³ Chá» Thanh ToÃ¡n</span>';
+                    ? '<span style="background:#dcfce7; color:#15803d; padding:3px 8px; border-radius:6px; font-weight:700; font-size:11px;">✅ Thành Công</span>'
+                    : '<span style="background:#fef3c7; color:#b45309; padding:3px 8px; border-radius:6px; font-weight:700; font-size:11px;">⏳ Chờ Thanh Toán</span>';
 
-                const formattedAmount = (parseInt(t.amount || 0, 10)).toLocaleString('vi-VN') + ' Ä‘';
+                const formattedAmount = (parseInt(t.amount || 0, 10)).toLocaleString('vi-VN') + ' đ';
                 const timeDisplay = t.created_at || '-';
 
                 const actionBtn = isSuccess
-                    ? '<span style="color:#15803d; font-size:12px; font-weight:600;">ÄÃ£ kÃ­ch hoáº¡t</span>'
-                    : `<button class="btn btn-sm btn-success" onclick="window.manualApprovePaymentPrompt('${t.order_code}', '${t.unit_code}', '${t.plan_tier}')" style="padding:3px 8px; font-size:11px; font-weight:700;" title="Duyá»‡t nhanh vÃ  nÃ¢ng cáº¥p gÃ³i cho Ä‘Æ¡n vá»‹ ngay láº­p tá»©c">âš¡ Duyá»‡t 1-Click</button>`;
+                    ? '<span style="color:#15803d; font-size:12px; font-weight:600;">Đã kích hoạt</span>'
+                    : `<button class="btn btn-sm btn-success" onclick="window.manualApprovePaymentPrompt('${t.order_code}', '${t.unit_code}', '${t.plan_tier}')" style="padding:3px 8px; font-size:11px; font-weight:700;" title="Duyệt nhanh và nâng cấp gói cho đơn vị ngay lập tức">⚡ Duyệt 1-Click</button>`;
 
                 return `
                     <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
@@ -17257,29 +17254,29 @@ window.loadPaymentTransactionsList = function () {
                 `;
             }).join('');
         }, err => {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:#ef4444;">âŒ Lá»—i táº£i lá»‹ch sá»­ giao dá»‹ch: ' + (err?.message || err) + '</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px; color:#ef4444;">❌ Lỗi tải lịch sử giao dịch: ' + (err?.message || err) + '</td></tr>';
         });
     }
 };
 
 window.manualApprovePaymentPrompt = function (orderCode, unitCode, planTier) {
-    if (!confirm(`XÃ¡c nháº­n duyá»‡t thanh toÃ¡n cho mÃ£ Ä‘Æ¡n: ${orderCode}?\n\nÄÆ¡n vá»‹: ${unitCode}\nGÃ³i cÆ°á»›c: ${planTier}\n\nHá»‡ thá»‘ng sáº½ gia háº¡n tÃ i khoáº£n Ä‘Æ¡n vá»‹ ngay láº­p tá»©c!`)) {
+    if (!confirm(`Xác nhận duyệt thanh toán cho mã đơn: ${orderCode}?\n\nĐơn vị: ${unitCode}\nGói cước: ${planTier}\n\nHệ thống sẽ gia hạn tài khoản đơn vị ngay lập tức!`)) {
         return;
     }
 
     if (typeof callApi === 'function') {
         callApi('manualApprovePayment', [{ order_code: orderCode, unit_code: unitCode, plan_tier: planTier }], res => {
             if (typeof showToast === 'function') {
-                showToast(`ÄÃ£ duyá»‡t thÃ nh cÃ´ng giao dá»‹ch ${orderCode}!`, 'success');
+                showToast(`Đã duyệt thành công giao dịch ${orderCode}!`, 'success');
             } else {
-                alert(`ÄÃ£ duyá»‡t thÃ nh cÃ´ng giao dá»‹ch ${orderCode}!`);
+                alert(`Đã duyệt thành công giao dịch ${orderCode}!`);
             }
             window.loadPaymentTransactionsList();
             if (typeof window.loadTenantsList === 'function') {
                 window.loadTenantsList();
             }
         }, err => {
-            alert('Lá»—i duyá»‡t thanh toÃ¡n: ' + (err?.message || err));
+            alert('Lỗi duyệt thanh toán: ' + (err?.message || err));
         });
     }
 };
@@ -17339,7 +17336,7 @@ window.updateSubscriptionHeaderBadge = function (planTier, expiresAt, planName, 
     const isSuper = role === 'SUPER_ADMIN' || role === 'SUPERADMIN';
 
     const pTier = planTier || localStorage.getItem('pm_plan_tier') || sess.plan_tier || 'PLAN_1Y';
-    const pName = planName || localStorage.getItem('pm_plan_name') || 'Báº£n Quyá»n';
+    const pName = planName || localStorage.getItem('pm_plan_name') || 'Bản Quyền';
     const pDays = daysLeft !== undefined ? parseInt(daysLeft, 10) : parseInt(localStorage.getItem('pm_days_left') || '999', 10);
 
     const iconEl = document.getElementById('header-sub-icon');
@@ -17349,52 +17346,51 @@ window.updateSubscriptionHeaderBadge = function (planTier, expiresAt, planName, 
 
     if (isSuper) {
         badge.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
-        badge.title = 'TÃ i khoáº£n Quáº£n trá»‹ Tá»‘i cao (Super Admin) - ToÃ n quyá»n quáº£n trá»‹ há»‡ thá»‘ng';
-        if (iconEl) iconEl.innerText = 'ðŸ‘‘';
-        if (textEl) textEl.innerText = 'Há»‡ Thá»‘ng T.I.M.E.S';
+        badge.title = 'Tài khoản Quản trị Tối cao (Super Admin) - Toàn quyền quản trị hệ thống';
+        if (iconEl) iconEl.innerText = '👑';
+        if (textEl) textEl.innerText = 'Hệ Thống T.I.M.E.S';
         return;
     }
 
     const currentUnit = (sess.unit_code || localStorage.getItem('pm_unit_code') || '').toLowerCase();
-    // ÄÆ¡n vá»‹ bvtks-cs2 hoáº·c gÃ³i ENTERPRISE: LuÃ´n lÃ  Báº£n quyá»n VÄ©nh viá»…n
-    if (currentUnit === 'bvtks-cs2' || currentUnit === 'bvtks_cs2' || pTier === 'ENTERPRISE' || pName.toLowerCase().includes('vÄ©nh viá»…n')) {
+    // Đơn vị bvtks-cs2 hoặc gói ENTERPRISE: Luôn là Bản quyền Vĩnh viễn
+    if (currentUnit === 'bvtks-cs2' || currentUnit === 'bvtks_cs2' || pTier === 'ENTERPRISE' || pName.toLowerCase().includes('vĩnh viễn')) {
         badge.style.background = 'linear-gradient(135deg, #059669, #10b981)';
-        badge.title = 'Bá»‡nh viá»‡n Than - KhoÃ¡ng sáº£n CÆ¡ sá»Ÿ 2 - Báº£n quyá»n VÄ©nh viá»…n trá»n Ä‘á»i';
-        if (iconEl) iconEl.innerText = 'ðŸ’Ž';
-        if (textEl) textEl.innerText = 'Báº£n Quyá»n VÄ©nh Viá»…n';
+        badge.title = 'Bệnh viện Than - Khoáng sản Cơ sở 2 - Bản quyền Vĩnh viễn trọn đời';
+        if (iconEl) iconEl.innerText = '💎';
+        if (textEl) textEl.innerText = 'Bản Quyền Vĩnh Viễn';
         return;
     }
 
     if (pTier === 'TRIAL_15D') {
         if (pDays <= 0) {
             badge.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
-            badge.title = 'GÃ³i dÃ¹ng thá»­ Ä‘Ã£ háº¿t háº¡n. Báº¥m Ä‘á»ƒ gia háº¡n gÃ³i cÆ°á»›c!';
-            if (iconEl) iconEl.innerText = 'âš ï¸';
-            if (textEl) textEl.innerText = 'DÃ¹ng thá»­: Háº¿t háº¡n';
+            badge.title = 'Gói dùng thử đã hết hạn. Bấm để gia hạn gói cước!';
+            if (iconEl) iconEl.innerText = '⚠️';
+            if (textEl) textEl.innerText = 'Dùng thử: Hết hạn';
         } else {
             badge.style.background = 'linear-gradient(135deg, #f59e0b, #ea580c)';
-            badge.title = `GÃ³i dÃ¹ng thá»­ 15 ngÃ y miá»…n phÃ­ - CÃ²n láº¡i ${pDays} ngÃ y. Báº¥m Ä‘á»ƒ nÃ¢ng cáº¥p!`;
-            if (iconEl) iconEl.innerText = 'ðŸŽ';
-            if (textEl) textEl.innerText = `DÃ¹ng thá»­: CÃ²n ${pDays} ngÃ y`;
+            badge.title = `Gói dùng thử 15 ngày miễn phí - Còn lại ${pDays} ngày. Bấm để nâng cấp!`;
+            if (iconEl) iconEl.innerText = '🎁';
+            if (textEl) textEl.innerText = `Dùng thử: Còn ${pDays} ngày`;
         }
     } else {
         if (pDays <= 7 && pDays > 0) {
             badge.style.background = 'linear-gradient(135deg, #f97316, #ea580c)';
-            badge.title = `${pName} - Sáº¯p háº¿t háº¡n (cÃ²n ${pDays} ngÃ y). Báº¥m Ä‘á»ƒ gia háº¡n!`;
-            if (iconEl) iconEl.innerText = 'â³';
-            if (textEl) textEl.innerText = `${pName} (CÃ²n ${pDays} ngÃ y)`;
+            badge.title = `${pName} - Sắp hết hạn (còn ${pDays} ngày). Bấm để gia hạn!`;
+            if (iconEl) iconEl.innerText = '⏳';
+            if (textEl) textEl.innerText = `${pName} (Còn ${pDays} ngày)`;
         } else if (pDays <= 0) {
             badge.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
-            badge.title = `${pName} Ä‘Ã£ háº¿t háº¡n sá»­ dá»¥ng. Báº¥m Ä‘á»ƒ gia háº¡n!`;
-            if (iconEl) iconEl.innerText = 'ðŸ”’';
-            if (textEl) textEl.innerText = `${pName} (Háº¿t háº¡n)`;
+            badge.title = `${pName} đã hết hạn sử dụng. Bấm để gia hạn!`;
+            if (iconEl) iconEl.innerText = '🔒';
+            if (textEl) textEl.innerText = `${pName} (Hết hạn)`;
         } else {
             badge.style.background = 'linear-gradient(135deg, #4f46e5, #7c3aed)';
-            badge.title = `${pName} - Háº¡n dÃ¹ng Ä‘áº¿n ${expiresAt || 'vÃ´ thá»i háº¡n'}. Báº¥m Ä‘á»ƒ xem thÃ´ng tin!`;
-            if (iconEl) iconEl.innerText = 'ðŸ’Ž';
-            if (textEl) textEl.innerText = `${pName} (CÃ²n ${pDays} ngÃ y)`;
+            badge.title = `${pName} - Hạn dùng đến ${expiresAt || 'vô thời hạn'}. Bấm để xem thông tin!`;
+            if (iconEl) iconEl.innerText = '💎';
+            if (textEl) textEl.innerText = `${pName} (Còn ${pDays} ngày)`;
         }
     }
 };
-
 

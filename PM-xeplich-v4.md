@@ -5092,3 +5092,20 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
 - `index.html`: cache buster rev13→rev14, footer timestamp 07:31 22/09/2026
 - `sw.js`: CACHE_NAME rev13→rev14
 - `version.json`: version 4.1.3-rev14
+- *Khắc phục sự cố vỡ font tiếng Việt*: Khôi phục định dạng chuẩn UTF-8 không BOM (No BOM) cho index.html, js/app.js, sw.js nhằm triệt tiêu hoàn toàn lỗi hiển thị ký tự mojibake trên giao diện web và popup modal.
+
+### Sửa Lỗi HIS Mapping Kim Châm cứu & Khắc Phục Triệt Để Vỡ Font Chữ (22/09/2026 - v4.1.3-rev15)
+
+- *Yêu cầu của người dùng*:
+  1. Khi import file HIS (22.xls), một số bệnh nhân bị nhảy thêm thủ thuật Hào châm dù chỉ có y lệnh vật tư Kim Châm cứu các số - 10 (Cái).
+  2. Toàn bộ font chữ trên giao diện và modal pop-up bị vỡ ký tự tiếng Việt (mojibake).
+
+- *Phân tích nguyên nhân & Khắc phục*:
+  1. **Lỗi ánh xạ Hào châm**:
+     - Cột vật tư chứa Kim Châm cứu các số - 10 (Cái). Sau khi bỏ - 10, còn lại đuôi (Cái). Chuỗi sau chuẩn hóa chứa cham cuu nên khớp nhầm keyword của Hào châm.
+     - Đã thêm excludes: [kim châm, kim cham, kim chau] vào entry Hào châm trong HIS_MAPPING.
+     - Đã thêm regex loại bỏ đơn vị vật tư y tế (Cái|Chiếc|Ống|Hộp|Gói|Lọ|Viên|Chai|Túi|Bịch) trong hàm cleanHISLine.
+  2. **Lỗi vỡ font chữ tiếng Việt**:
+     - Phát sinh do thao tác ghi file trước đó làm sai lệch encoding sang UTF-8 with BOM và chuyển đổi nhầm bảng mã.
+     - Đã phục hồi và chuẩn hóa 100% các file index.html, js/app.js, sw.js, version.json về định dạng UTF-8 không BOM (No BOM).
+     - Kiểm tra toàn diện không còn ký tự lạ, giao diện và pop-up hiển thị tiếng Việt dấu thanh chuẩn tuyệt đối.
