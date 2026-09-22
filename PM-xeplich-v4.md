@@ -5146,3 +5146,27 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   1. **Khôi phục chuẩn `normalizeStrNoTrim(str)`**: Giống hệt bản v3, không gọi `decodeFn` mà chỉ bỏ dấu và chuyển chữ thường, bảo toàn nguyên vẹn khoảng trắng đầu/cuối của các từ khóa viết tắt như `' hc '`, `' dc '`, `' tc '`...
   2. **Bổ sung lọc dòng tiền giường trong `cleanHISLine`**: Tự động bỏ qua các dòng tiền giường / buồng bệnh HIS (bắt đầu bằng `giường` / `giuong`) vì tiền giường không phải là dịch vụ thủ thuật cần xếp lịch.
   3. **Nâng phiên bản v4.1.3-rev18**: Nâng cache Service Worker và cache buster để client làm mới ngay lập tức.
+
+### Khắc Phục Triệt Để Lỗi Nhảy Sai Tên Bệnh Nhân & Nhân Sự (22/09/2026 - v4.1.3-rev19)
+
+- *Vấn đề người dùng phản ánh*:
+  1. Xóa shortcut `khung_pm` có biểu tượng mũi tên.
+  2. Đọc lại bản `v3-Cloudflare` xem vì sao cứ bị nhảy sai tên bệnh nhân và nhân sự.
+
+- *Kết quả điều tra & đối chiếu sâu với bản v3-Cloudflare*:
+  1. **Nhân sự bị nhảy sai (`nvChinh` bị hoán đổi sang người khác)**:
+     - Trong `js/scheduler-engine.js`, hàm `compactTimelineGaps(scheduleList, db)` có bước 2: `runCrossStaffGapFillerPass()`.
+     - Bước này quét khoảng rảnh của từng nhân viên và thực thi lệnh: `chosen.nvChinh = targetStaff;` để cướp ca của nhân viên khác lấp vào khoảng trống của mình!
+     - Trong `v3-Cloudflare`, hàm `compactTimelineGaps` trả về nguyên vẹn `return [...scheduleList];` — tuyệt đối không bao giờ tráo đổi nhân sự đã được thuật toán tối ưu phân công.
+  2. **Tên bệnh nhân bị nhảy sai (bị tráo sang bệnh nhân khác)**:
+     - Trong `js/scheduler-engine.js`, hàm `cleanAndHealPatientName` có khối kiểm tra `candidates` với điều kiện `diffCount === 1` giữa các âm tiết. Nếu 2 bệnh nhân có cùng tên gọi chính (âm tiết cuối) và cùng họ (ví dụ "Nguyễn Văn Tuấn" và "Nguyễn Anh Tuấn", diffCount=1), hệ thống đã tráo tên người này thành người kia!
+     - Khi xuất kết quả `formattedSched` ở cả 3 thuật toán (`runClientScheduling`, `solveWithMiniPC`, `runSaturdayScheduling`), hệ thống gọi `cleanAndHealPatientName(x.HOTEN, (db.rawPatients || []).map(p => p.name))` làm sai lệch tên bệnh nhân sau khi xếp xong. Trong `v3-Cloudflare`, kết quả luôn giữ nguyên bản `tenBN: x.HOTEN || x.tenBN`.
+     - Trong `js/app.js` (Tab Thứ 7 import HIS), hàm `healFn(rawTen, candNames, false)` cũng truyền danh sách `candNames` dẫn tới việc gán nhầm y lệnh của bệnh nhân này sang bệnh nhân khác khi import file HIS.
+
+- *Khắc phục triệt để*:
+  1. **Xóa junction shortcut `khung_pm`**: Đã xóa an toàn bằng `rmdir` trên Windows, giữ nguyên vẹn thư mục gốc `PM-chinh`.
+  2. **Tắt hoàn toàn `runCrossStaffGapFillerPass`**: Đặt `crossStaffMoved = 0` trong `compactTimelineGaps`, bảo toàn 100% nhân sự do thuật toán chỉ định.
+  3. **Loại bỏ khối `diffCount === 1` trong `cleanAndHealPatientName`**: Chỉ cho phép chữa lành khi toàn bộ âm tiết không dấu trùng khớp 100% (`noToneName === noToneCand`), tuyệt đối cấm hoán đổi sang người khác.
+  4. **Giữ nguyên họ tên thực tế trong `formattedSched`**: Giữ trực tiếp `x.HOTEN || x.tenBN` như `v3-Cloudflare`.
+  5. **Bảo vệ tên bệnh nhân khi import HIS**: Sử dụng `properFn(rawTen)` chuẩn hóa viết hoa chữ cái đầu, không fuzzy-swap qua candidate.
+  6. **Nâng phiên bản v4.1.3-rev19**: Cập nhật `version.json`, `sw.js` (`pmcg-v4-cache-4.1.3-rev19`) và `index.html` cache busters.

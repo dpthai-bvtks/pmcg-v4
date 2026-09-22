@@ -1803,8 +1803,9 @@ function getPatientSignature(pat) {
       return filledCount;
     }
 
-    // Thực hiện lấp khoảng rảnh liên nhân sự
-    const crossStaffMoved = runCrossStaffGapFillerPass();
+    // ⚡ BƯỚC 2: CROSS-STAFF GAP FILLER (ĐÃ TẮT ĐỂ TRÁNH NHẢY SAI NHÂN SỰ ĐƯỢC PHÂN CÔNG)
+    // Giữ nguyên vẹn 100% nhân sự do thuật toán xếp lịch chỉ định (giống kiến trúc v3-Cloudflare)
+    const crossStaffMoved = 0;
 
     // ⚡ BƯỚC 3: Nếu có ca được chuyển giao, chạy lại Left-shift Compaction để dồn tiếp khép kín
     if (crossStaffMoved > 0) {
@@ -2027,7 +2028,8 @@ function getSafeCache() {
       return String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'd').trim().toLowerCase();
     };
 
-    // 1. Đối chiếu danh sách ứng viên (candidates) nếu có - CHỈ chấp nhận khi tên gọi chính (từ cuối) trùng khớp hoàn toàn
+    // 1. Đối chiếu danh sách ứng viên (candidates) nếu có - CHỈ chấp nhận khi toàn bộ âm tiết không dấu khớp 100% (cùng 1 người nhưng bị mất dấu)
+    // Tuyệt đối không tráo tên người này thành người khác khi có âm tiết khác nhau!
     const candList = Array.isArray(candidates) ? candidates : [];
     for (const cand of candList) {
       if (!cand) continue;
@@ -2040,23 +2042,6 @@ function getSafeCache() {
       if (noToneName && noToneCand) {
         if (noToneName === noToneCand) {
           return shouldUpper ? cleanCand.toUpperCase() : toVietnameseProperCase(cleanCand);
-        }
-        const nameTokens = noToneName.split(/\s+/).filter(Boolean);
-        const candTokens = noToneCand.split(/\s+/).filter(Boolean);
-        // Bắt buộc cùng số âm tiết và Tên gọi chính (từ cuối cùng) phải giống nhau 100%!
-        // Tuyệt đối không tráo tên người này thành người khác vì trùng họ đệm ("Nguyễn Thị...")
-        if (nameTokens.length === candTokens.length && nameTokens.length >= 2) {
-          const lastN = nameTokens[nameTokens.length - 1];
-          const lastC = candTokens[candTokens.length - 1];
-          if (lastN === lastC) {
-            let diffCount = 0;
-            for (let i = 0; i < nameTokens.length; i++) {
-              if (nameTokens[i] !== candTokens[i]) diffCount++;
-            }
-            if (diffCount === 1) {
-              return shouldUpper ? cleanCand.toUpperCase() : toVietnameseProperCase(cleanCand);
-            }
-          }
         }
       }
     }
@@ -2427,7 +2412,7 @@ function getSafeCache() {
           .filter(r => {
             if (!r) return false;
             let rawRName = String(r.tenBN || '').normalize('NFC').trim();
-            let rNameUpper = cleanAndHealPatientName(rawRName, [pName, ...validPatientCandidates], true);
+            let rNameUpper = cleanAndHealPatientName(rawRName, [pName], true);
             const rNs = String(r.namSinh || '').trim();
             const rGio = String(r.gioDienRa || '');
 
@@ -2656,7 +2641,7 @@ function getSafeCache() {
     const finalDropList = (best ? best.rot : []).concat(forcedDrops).map(r => ({ ...r, ngay: r.ngay || dateVal }));
     const formattedSched = (best ? best.sched : []).map(x => ({
       ngay: x.NGAY,
-      tenBN: cleanAndHealPatientName(x.HOTEN, (db.rawPatients || []).map(p => p.name)),
+      tenBN: x.HOTEN || x.tenBN,
       namSinh: x.NAMSINH,
       phong: x.PHONG,
       thuThuat: cleanAndHealProcedureName(x.DICHVU, (db.rawProcedures || [])),
@@ -2786,7 +2771,7 @@ function getSafeCache() {
 
               const formattedSched = localRes.schedule.map(x => ({
                 ngay: x.NGAY || dateVal,
-                tenBN: cleanAndHealPatientName(x.HOTEN || x.tenBN, (db.rawPatients || []).map(p => p.name)),
+                tenBN: x.HOTEN || x.tenBN,
                 namSinh: x.NAMSINH || x.namSinh,
                 phong: x.PHONG || x.phong,
                 thuThuat: cleanAndHealProcedureName(x.DICHVU || x.thuThuat, (db.rawProcedures || [])),
@@ -2885,7 +2870,7 @@ function getSafeCache() {
       const finalDropList = (best ? best.rot : []).concat(forcedDrops).map(r => ({ ...r, ngay: r.ngay || dateVal }));
       const formattedSched = (best ? best.sched : []).map(x => ({
         ngay: x.NGAY,
-        tenBN: cleanAndHealPatientName(x.HOTEN, (db.rawPatients || []).map(p => p.name)),
+        tenBN: x.HOTEN || x.tenBN,
         namSinh: x.NAMSINH,
         phong: x.PHONG,
         thuThuat: cleanAndHealProcedureName(x.DICHVU, (db.rawProcedures || [])),

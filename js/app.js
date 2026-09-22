@@ -10478,7 +10478,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         const dataRows = roa.slice(startRow);
                         dataRows.forEach(row => {
                             const rawTen = row[colTen];
-                            const ten = healFn(rawTen, candNames, false);
+                            const ten = (rawTen && (String(rawTen).includes('\ufffd') || String(rawTen).includes('?'))) ? healFn(rawTen, [], false) : properFn(rawTen);
                             const dichVu = decodeFn(row[colDichVu]);
 
                             let loaiBn = 'NoiTru';

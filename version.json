@@ -1,6 +1,6 @@
 {
-    "version": "4.1.3-rev18",
+    "version": "4.1.3-rev19",
     "releaseDate": "22/09/2026",
-    "releaseTime": "13:35 22/09/2026",
-    "notes": "fix: Sửa triệt để lỗi HIS mapping nhầm 'Giường YHCT' thành 'Hào châm' do hàm normalizeStrNoTrim bị trim khoảng trắng làm khớp từ khóa 'hc'."
+    "releaseTime": "14:15 22/09/2026",
+    "notes": "fix: Sửa triệt để lỗi nhảy sai tên bệnh nhân và nhân sự: tắt cross-staff gap filler và loại bỏ fuzzy-swap âm tiết khi đối chiếu ứng viên họ tên."
 }
