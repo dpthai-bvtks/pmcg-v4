@@ -9584,6 +9584,21 @@ window.renderSttOrderControl = function (type, i, total) {
                             if (dateInput) dateInput.value = chosenDate;
                         }
 
+                        // Đồng bộ giờ bận nhân sự từ cơ sở dữ liệu nếu có (hỗ trợ cả ngày hôm nay và ngày đã chốt sổ)
+                        if (chosenDate) {
+                            if (window._historyCache && window._historyCache[chosenDate] && Array.isArray(window._historyCache[chosenDate].staffBusy)) {
+                                window.utilsStaffBusy = window._historyCache[chosenDate].staffBusy;
+                            } else if (typeof callApi === 'function') {
+                                callApi('getHistoryFullData', [chosenDate], res => {
+                                    const data = (res && res.data) ? res.data : res;
+                                    if (data && Array.isArray(data.staffBusy) && data.staffBusy.length > 0) {
+                                        window.utilsStaffBusy = data.staffBusy;
+                                        timBacSiRanh();
+                                    }
+                                });
+                            }
+                        }
+
                         updateUtilsSourceUI();
 
                         if (window.hideGlobalLoading) window.hideGlobalLoading();
@@ -9779,16 +9794,18 @@ window.renderSttOrderControl = function (type, i, total) {
                     }
                 });
 
-                // Chỉ áp dụng giờ bận tạm thời nếu đang tìm lịch hôm nay
-                if (isToday && doc.gioBan) {
+                // 1. Áp dụng giờ bận hiện hành từ Tab-busy (doc.gioBan)
+                if (doc.gioBan) {
                     String(doc.gioBan).split(',').forEach(b => {
                         const pts = b.split('-');
                         if (pts.length === 2) {
                             busy.push([t2m(pts[0].trim()), t2m(pts[1].trim()) + 1]);
                         }
                     });
-                } else if (!isToday && window.utilsStaffBusy && window.utilsStaffBusy.length > 0) {
-                    // Nếu tìm ngày cũ, lấy giờ bận thực tế lưu trong utilsStaffBusy (từ gio_ban_cu)
+                }
+
+                // 2. Đồng thời áp dụng giờ bận lịch sử đã chốt sổ trong CSDL (window.utilsStaffBusy từ gio_ban_chung_cu)
+                if (window.utilsStaffBusy && window.utilsStaffBusy.length > 0) {
                     const foundSb = window.utilsStaffBusy.find(sb => {
                         const sbClean = String(sb.ten || '').trim().toLowerCase().replace(/^(bs\.|bs|ktv\.|ktv|đd\.|đd)\s+/i, '');
                         return sbClean === dNameClean;
