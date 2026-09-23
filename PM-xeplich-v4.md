@@ -5208,3 +5208,51 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `version.json`: Cập nhật phiên bản và ghi chú bản phát hành.
   - `PM-xeplich-v4.md`: Ghi nhật ký phát triển tính năng.
 
+### Phân Kỳ 1: Khắc Phục Triệt Để Lỗi Font Tên Nhân Sự, Hợp Nhất Làm Sạch & Chuẩn Hóa Đọc HIS (23/09/2026 - v4.1.4-rev1)
+
+- *Yêu cầu của người dùng*:
+  - Lập kế hoạch tổng thể 4 phân kỳ tối ưu hóa và giản lược kiến trúc, lưu thành tài liệu trong thư mục `v4-thuongmai` để dễ tra cứu sau này (`KE_HOACH_TOI_UU_KIEN_TRUC_V4.md`).
+  - Triển khai ngay Phân kỳ 1: Khắc phục triệt để lỗi font Tên nhân sự (`nvChinh`, `nvPhu`), loại bỏ tình trạng copy-paste hàm `cleanStaffStr` ở nhiều nơi và chuẩn hóa giải mã khi đọc file HIS.
+
+- *Phân tích nguyên nhân & Giải pháp*:
+  1. **Tạo tài liệu Kế hoạch tổng thể 4 Phân kỳ (`KE_HOACH_TOI_UU_KIEN_TRUC_V4.md`)**:
+     - *Phân kỳ 1*: Khắc phục triệt để lỗi font & Hợp nhất làm sạch Nhân sự.
+     - *Phân kỳ 2*: Tách module tiện ích dùng chung `js/schedule-utils.js` (loại bỏ code trùng lặp `t2m`, `m2t`, `is_overlap`, `decodeVietnameseEncoding` giữa 3 engine và UI).
+     - *Phân kỳ 3*: Tái cấu trúc Backend Worker (`backend/src/index.js` 6.340 dòng) thành các Sub-routes module (`routes/staff.js`, `routes/patients.js`, `routes/schedules.js`, `routes/tenants.js`...), bảo đảm 100% ràng buộc Tenant Clamping theo Rule 2.
+     - *Phân kỳ 4*: Chuẩn hóa Interface theo Pluggable Strategy cho 3 Engine Xếp lịch & Chia nhỏ domain Frontend `app.js` (17.700 dòng).
+  2. **Xây dựng hàm `cleanAndHealStaffName(rawStaff, candidates)` trong `js/scheduler-engine.js`**:
+     - Giải mã triệt để TCVN3/VNI/Unicode tổ hợp NFD/mojibake qua `decodeVietnameseEncoding()`.
+     - Nhận diện và chuẩn hóa tiền tố chức danh (`BS. `, `KTV. `, `ĐD. `).
+     - Đối chiếu thông minh không phân biệt hoa thường và bỏ dấu với danh mục nhân sự chuẩn (`candidates` hoặc `window.dataCache.staff`). Nếu khớp tên không dấu, tự động phục hồi đúng 100% họ tên có dấu chuẩn từ danh mục khoa/phòng mà không làm tráo đổi nhân sự.
+     - Xuất bản ra `SchedulerEngine.cleanAndHealStaffName` và `window.cleanAndHealStaffName`.
+  3. **Hợp nhất `cleanStaffStr` về một nơi duy nhất**:
+     - Định nghĩa chuẩn một bản duy nhất tại `SchedulerEngine.cleanStaffStr` và `window.cleanStaffStr`.
+     - Xóa bỏ 2 định nghĩa copy-paste trùng lặp trong `scheduler-engine.js` (dòng 522 và 1833).
+     - Cập nhật `js/cp-solver.js` (dòng 242) sử dụng trực tiếp hàm từ `SchedulerEngine.cleanStaffStr` có fallback an toàn.
+  4. **Áp dụng vào Pipeline Xếp lịch & Render Bảng lịch**:
+     - `normalizeScheduleItem` trong `js/scheduler-engine.js`: Chuẩn hóa cả `nvChinh` và `nvPhu` qua `cleanAndHealStaffName()`.
+     - `normalizeScheduleRow` trong `js/app.js`: Tích hợp `cleanHealStaffFn` cho cả 2 nhánh Array và Object.
+     - Giao diện bảng lịch (`app.js` dòng 7095, 7097), in ấn (dòng 8288, 8290) và xuất PDF (dòng 8443) đều được bọc hiển thị an toàn qua `cleanAndHealStaffName()`.
+  5. **Chuẩn hóa đọc File HIS trong `importFromHIS()`**:
+     - Ngay tại bước đọc `XLSX.utils.sheet_to_json`, ép toàn bộ các ô text qua `decodeVietnameseEncoding`, ngăn chặn triệt để rác mã TCVN3/VNI/mojibake lọt sâu vào bộ nhớ.
+  6. **Sửa lỗi bắt sớm từ TCVN3 đặc thù trong `decodeVietnameseEncoding`**:
+     - Xử lý thay thế `hasTcvn3Word` (`NguyÔn` -> `Nguyễn`, `Thñy` -> `Thủy`, `huyÖt` -> `huyệt`...) trước khi kiểm tra return early Unicode chuẩn, khắc phục trường hợp chuỗi hỗn hợp chứa cả TCVN3 và ký tự tiếng Việt Unicode (ví dụ: `NguyÔn Văn A`).
+  7. **Đồng bộ Phiên bản ngày mới & Cache Buster theo Rule 3**:
+     - Bước sang ngày mới 23/09/2026: Phiên bản tăng lên `4.1.4`, revision `4.1.4-rev1`.
+     - Footer `#app-footer-version` hiển thị chuẩn: `Phiên bản: 4.1.4` (không kèm `rev`).
+     - `#sys-last-update` cập nhật: `⏱ Cập nhật lần cuối: 07:55 23/09/2026`.
+     - Cache busters: `?v=4.1.4-rev1` trên toàn bộ link CSS và script trong `index.html`.
+     - Service Worker `CACHE_NAME = 'pmcg-v4-cache-4.1.4-rev1'`.
+     - Cập nhật `version.json` và modal `modal-force-update`.
+
+- *File sửa đổi*:
+  - `KE_HOACH_TOI_UU_KIEN_TRUC_V4.md`: Tạo mới tài liệu kế hoạch tổng thể 4 phân kỳ.
+  - `js/scheduler-engine.js`: Bổ sung `cleanAndHealStaffName`, hợp nhất `cleanStaffStr`, cập nhật `normalizeScheduleItem` và sửa `decodeVietnameseEncoding`.
+  - `js/cp-solver.js`: Tái sử dụng `SchedulerEngine.cleanStaffStr`.
+  - `js/app.js`: Tích hợp `cleanHealStaffFn` trong `normalizeScheduleRow`, render bảng lịch, in ấn, PDF và decode mọi cell khi đọc HIS.
+  - `index.html`: Cập nhật footer version, timestamp, cache busters `?v=4.1.4-rev1`, `APP_VERSION` và popup modal.
+  - `sw.js`: Cập nhật `CACHE_NAME = 'pmcg-v4-cache-4.1.4-rev1'`.
+  - `version.json`: Nâng phiên bản `4.1.4-rev1`.
+  - `PM-xeplich-v4.md`: Ghi nhật ký chi tiết Phân kỳ 1.
+
+

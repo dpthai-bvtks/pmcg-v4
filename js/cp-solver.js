@@ -239,7 +239,11 @@
     const machineIntervals = new Map();
     const bedIntervals = new Map();
 
-    const cleanStaffStr = s => String(s || '').normalize('NFC').replace(/^(bs|bac si|ktv|dd|đd)\s*\.?\s*/i, '').trim().toLowerCase();
+    const cleanStaffStr = (typeof window !== 'undefined' && window.SchedulerEngine && typeof window.SchedulerEngine.cleanStaffStr === 'function')
+      ? window.SchedulerEngine.cleanStaffStr
+      : (typeof window !== 'undefined' && typeof window.cleanStaffStr === 'function')
+        ? window.cleanStaffStr
+        : (s => String(s || '').normalize('NFC').replace(/^(bs|bac si|bác sĩ|ktv|dd|đd)\s*\.?\s*/i, '').trim().toLowerCase());
 
     // 🔒 KHÓA CỨNG TOÀN BỘ LỊCH TRÌNH ĐÃ XẾP TRƯỚC ĐÓ (existingSched) TRÁNH XẾP BỔ SUNG TRÙNG GIỜ
     const normalizeFn = (typeof window !== 'undefined' && window.SchedulerEngine && typeof window.SchedulerEngine.normalizeScheduleItem === 'function')

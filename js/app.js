@@ -2092,12 +2092,15 @@ window.renderSttOrderControl = function (type, i, total) {
             const cleanHealProcFn = (window.SchedulerEngine && typeof window.SchedulerEngine.cleanAndHealProcedureName === 'function')
                 ? window.SchedulerEngine.cleanAndHealProcedureName
                 : (typeof window.cleanAndHealProcedureName === 'function' ? window.cleanAndHealProcedureName : (s => String(s || '').trim()));
+            const cleanHealStaffFn = (window.SchedulerEngine && typeof window.SchedulerEngine.cleanAndHealStaffName === 'function')
+                ? window.SchedulerEngine.cleanAndHealStaffName
+                : (typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName : (s => String(s || '').trim()));
             if (Array.isArray(row)) {
                 const gioDienRa = String(row[5] || '').trim();
                 const isDrop = gioDienRa === '❌ Rớt' || gioDienRa === '--' || gioDienRa.includes('Rớt');
                 return {
                     ngay: row[0] || '', tenBN: row[1] || '', namSinh: row[2] || '', phong: row[3] || '', thuThuat: cleanHealProcFn(row[4] || ''),
-                    gioDienRa: gioDienRa, gioKetThuc: row[6] || '', nvChinh: row[7] || '', nvPhu: row[8] || '', may: row[9] || '', giuong: row[10] || '',
+                    gioDienRa: gioDienRa, gioKetThuc: row[6] || '', nvChinh: cleanHealStaffFn(row[7] || ''), nvPhu: cleanHealStaffFn(row[8] || ''), may: row[9] || '', giuong: row[10] || '',
                     __isDischarged: false,
                     __dropped: isDrop
                 };
@@ -2112,8 +2115,8 @@ window.renderSttOrderControl = function (type, i, total) {
                 thuThuat: cleanHealProcFn(row.thuThuat || row.DICHVU || row.procedure_name || row.tt || ''),
                 gioDienRa: rawGio,
                 gioKetThuc: row.gioKetThuc || row.GIOKETTHUC || row.end_time || row.end || '',
-                nvChinh: row.nvChinh || row['NV CHÍNH'] || row.staff_name || row.staff || row.nv1 || '',
-                nvPhu: row.nvPhu || row['NV PHỤ'] || row.sub_staff_name || row.sub_staff || row.nv2 || '',
+                nvChinh: cleanHealStaffFn(row.nvChinh || row['NV CHÍNH'] || row.staff_name || row.staff || row.nv1 || ''),
+                nvPhu: cleanHealStaffFn(row.nvPhu || row['NV PHỤ'] || row.sub_staff_name || row.sub_staff || row.nv2 || ''),
                 may: row.may || row.MAY || row.machine_name || row.machine || '',
                 giuong: row.giuong || row.GIUONG || row.bed || '',
                 __isDischarged: !!row.__isDischarged,
@@ -7092,9 +7095,9 @@ window.renderSttOrderControl = function (type, i, total) {
 
             <td style="font-weight:bold; text-align:center;">${item.gioKetThuc || ''}</td>
 
-            <td>${item.nvChinh || ''}</td>
+            <td>${(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(item.nvChinh) : (item.nvChinh || ''))}</td>
 
-            <td>${item.nvPhu || ''}</td>
+            <td>${(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(item.nvPhu) : (item.nvPhu || ''))}</td>
 
             <td>${item.may || ''}</td>
 
@@ -8285,9 +8288,9 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 <td class="nowrap"><strong>${row.gioKetThuc}</strong></td>
 
-                <td class="nowrap">${row.nvChinh}</td>
+                <td class="nowrap">${typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvChinh) : (row.nvChinh || '')}</td>
 
-                <td class="nowrap">${row.nvPhu}</td>
+                <td class="nowrap">${typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvPhu) : (row.nvPhu || '')}</td>
 
                 <td class="nowrap">${row.may}</td>
 
@@ -8440,7 +8443,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         { text: String(row.thuThuat || ''), fontSize: 9 },
                         { text: String(row.gioDienRa || ''), alignment: 'center', bold: true, color: '#059669', fontSize: 9 },
                         { text: String(row.gioKetThuc || ''), alignment: 'center', fontSize: 9 },
-                        { text: String(row.nvChinh || ''), bold: true, fontSize: 9 },
+                        { text: String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvChinh) : (row.nvChinh || '')), bold: true, fontSize: 9 },
                         { text: String(row.may || '--'), fontSize: 8.5 }
                     ]);
                 });
@@ -11281,7 +11284,9 @@ window.renderSttOrderControl = function (type, i, total) {
                     try {
                         const workbook = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
                         const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+                        const rawSheetRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+                        const decodeCell = (val) => (typeof val === 'string' && val ? (typeof window.decodeVietnameseEncoding === 'function' ? window.decodeVietnameseEncoding(val) : (window.SchedulerEngine && window.SchedulerEngine.decodeVietnameseEncoding ? window.SchedulerEngine.decodeVietnameseEncoding(val) : String(val).normalize('NFC'))) : val);
+                        const rows = rawSheetRows.map(r => Array.isArray(r) ? r.map(decodeCell) : r);
 
                         if (!rows.length) return showCustomAlert('File trống', 'File Excel không có dữ liệu!', '❌', '#e74c3c');
 

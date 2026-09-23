@@ -1,6 +1,6 @@
 {
-    "version": "4.1.3-rev20",
-    "releaseDate": "22/09/2026",
-    "releaseTime": "16:30 22/09/2026",
-    "notes": "feat: Bổ sung chức năng tìm giờ rảnh dựa trên File HIS (Excel) cho Tab Tìm Giờ Rảnh đồng bộ quy chuẩn cột với Tab Kiểm Tra Lỗi và Thống Kê."
+    "version": "4.1.4-rev1",
+    "releaseDate": "23/09/2026",
+    "releaseTime": "07:55 23/09/2026",
+    "notes": "feat(phase-1): Khắc phục triệt để lỗi font Tên nhân sự (nvChinh/nvPhu), hợp nhất cleanStaffStr và chuẩn hóa decode khi đọc file HIS."
 }

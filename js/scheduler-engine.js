@@ -68,6 +68,14 @@ var SchedulerEngine = (typeof window !== 'undefined' ? window : (typeof global !
     // Nếu chuỗi chứa bất kỳ ký tự tiếng Việt Unicode đặc trưng (Ă, ă, Đ, đ, Ĩ, ĩ, Ũ, ũ, Ơ, ơ, Ư, ư hoặc \u1EA0-\u1EF9)
     // và KHÔNG chứa các ký tự chữ ký TCVN3 đặc trưng (\u00A7 - \u00AE), thì chuỗi này 100% đã là Unicode chuẩn!
     const hasStrongTcvn3Char = /[\u00A7\u00A8\u00A9\u00AA\u00AB\u00AC\u00AD\u00AE]/.test(str);
+    const hasTcvn3Word = /\b(NguyÔn|Thñy|bãp|huyÖt)\b/i.test(str);
+    if (hasTcvn3Word) {
+      str = str.replace(/\bNguyÔn\b/g, 'Nguyễn').replace(/\bnguyÔn\b/g, 'nguyễn')
+               .replace(/Thñy/gi, 'Thủy').replace(/thñy/gi, 'thủy')
+               .replace(/bãp\s*b[Êê]m/gi, 'bóp bấm')
+               .replace(/huyÖt/gi, 'huyệt');
+    }
+
     const hasPureUnicodeVN = /[\u0102\u0103\u0110\u0111\u0128\u0129\u0168\u0169\u01A0\u01A1\u01AF\u01B0\u1EA0-\u1EF9]/.test(str);
 
     if (hasPureUnicodeVN && !hasStrongTcvn3Char) {
@@ -89,13 +97,8 @@ var SchedulerEngine = (typeof window !== 'undefined' ? window : (typeof global !
     }
 
     // 4. Kiểm tra và giải mã TCVN3 (.VnTime, .VnArial)
-    // Chỉ kích hoạt nếu có chữ ký TCVN3 mạnh HOẶC các mẫu từ lỗi đặc thù của TCVN3
-    const hasTcvn3Word = /\b(NguyÔn|Thñy|bãp|huyÖt)\b/i.test(str);
-    if ((hasStrongTcvn3Char || hasTcvn3Word) && !hasPureUnicodeVN) {
-      str = str.replace(/\bNguyÔn\b/g, 'Nguyễn').replace(/\bnguyÔn\b/g, 'nguyễn')
-               .replace(/Thñy/gi, 'Thủy').replace(/thñy/gi, 'thủy')
-               .replace(/bãp\s*b[Êê]m/gi, 'bóp bấm')
-               .replace(/huyÖt/gi, 'huyệt');
+    // Chỉ kích hoạt nếu có chữ ký TCVN3 mạnh
+    if (hasStrongTcvn3Char && !hasPureUnicodeVN) {
       let tcvnDecoded = '';
       for (let i = 0; i < str.length; i++) {
         const ch = str[i];
@@ -114,6 +117,68 @@ var SchedulerEngine = (typeof window !== 'undefined' ? window : (typeof global !
     const decoded = decodeVietnameseEncoding(raw);
     if (!decoded) return '';
     return decoded.toLowerCase().replace(/(?:^|[\s\-\_\/])\S/g, a => a.toUpperCase());
+  }
+
+  function cleanStaffStr(s) {
+    return String(s || '').normalize('NFC').replace(/^(bs|bac si|bác sĩ|ktv|dd|đd)\s*\.?\s*/i, '').trim().toLowerCase();
+  }
+
+  function cleanAndHealStaffName(rawStaff, candidates = []) {
+    if (!rawStaff && rawStaff !== 0) return '';
+    let str = decodeVietnameseEncoding(rawStaff);
+    if (!str) return '';
+
+    // Lấy tiền tố chuẩn nếu có (BS., KTV., ĐD.)
+    let prefix = '';
+    const prefixMatch = str.match(/^(bs|bac si|bác sĩ|ktv|dd|đd)\s*\.?\s*/i);
+    if (prefixMatch) {
+      const p = prefixMatch[0].trim().toLowerCase();
+      if (p.startsWith('bs') || p.startsWith('bac')) prefix = 'BS. ';
+      else if (p.startsWith('ktv')) prefix = 'KTV. ';
+      else if (p.startsWith('dd') || p.startsWith('đd')) prefix = 'ĐD. ';
+    }
+
+    const stripTones = (s) => {
+      if (!s) return '';
+      return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'd').trim().toLowerCase();
+    };
+
+    let candList = Array.isArray(candidates) ? candidates : [];
+    if (!candList.length && typeof window !== 'undefined' && window.dataCache) {
+      candList = window.dataCache.staff || [];
+    }
+
+    const coreClean = cleanStaffStr(str);
+    const coreCleanNoTone = stripTones(coreClean);
+
+    if (candList.length > 0) {
+      // 1. So khớp chính xác sau khi chuẩn hóa cleanStaffStr
+      for (const c of candList) {
+        if (!c) continue;
+        const cRaw = String(c.ten || c.name || c[1] || c || '').normalize('NFC').trim();
+        if (!cRaw || /[\ufffd\u0000\?]/.test(cRaw)) continue;
+        if (cleanStaffStr(cRaw) === coreClean) {
+          return cRaw;
+        }
+      }
+
+      // 2. So khớp không dấu (phục hồi dấu hoặc chữ bị lỗi mã UTF-8)
+      if (coreCleanNoTone.length >= 3) {
+        for (const c of candList) {
+          if (!c) continue;
+          const cRaw = String(c.ten || c.name || c[1] || c || '').normalize('NFC').trim();
+          if (!cRaw || /[\ufffd\u0000\?]/.test(cRaw)) continue;
+          const candClean = cleanStaffStr(cRaw);
+          if (stripTones(candClean) === coreCleanNoTone) {
+            return cRaw;
+          }
+        }
+      }
+    }
+
+    // 3. Fallback: Proper-case chuỗi đã decode
+    const proper = toVietnameseProperCase(str.replace(/^(bs|bac si|bác sĩ|ktv|dd|đd)\s*\.?\s*/i, ''));
+    return prefix ? (prefix + proper) : proper;
   }
 
 // ============================================================
@@ -160,8 +225,8 @@ function normalizeScheduleItem(row) {
       thuThuat: cleanAndHealProcedureName(String(row[4] || '').trim()),
       gioDienRa: gioDienRa,
       gioKetThuc: String(row[6] || '').trim(),
-      nvChinh: String(row[7] || '').trim(),
-      nvPhu: String(row[8] || '').trim(),
+      nvChinh: cleanAndHealStaffName(String(row[7] || '').trim()),
+      nvPhu: cleanAndHealStaffName(String(row[8] || '').trim()),
       may: String(row[9] || '').trim(),
       giuong: String(row[10] || '').trim(),
       __isDischarged: false,
@@ -178,8 +243,8 @@ function normalizeScheduleItem(row) {
     thuThuat: cleanAndHealProcedureName(String(row.thuThuat || row.DICHVU || row.procedure_name || row.tt || '').trim()),
     gioDienRa: rawGio,
     gioKetThuc: String(row.gioKetThuc || row.GIOKETTHUC || row.end_time || row.end || '').trim(),
-    nvChinh: String(row.nvChinh || row['NV CHÍNH'] || row.staff_name || row.staff || row.nv1 || '').trim(),
-    nvPhu: String(row.nvPhu || row['NV PHỤ'] || row.sub_staff_name || row.sub_staff || row.nv2 || '').trim(),
+    nvChinh: cleanAndHealStaffName(String(row.nvChinh || row['NV CHÍNH'] || row.staff_name || row.staff || row.nv1 || '').trim()),
+    nvPhu: cleanAndHealStaffName(String(row.nvPhu || row['NV PHỤ'] || row.sub_staff_name || row.sub_staff || row.nv2 || '').trim()),
     may: String(row.may || row.MAY || row.machine_name || row.machine || '').trim(),
     giuong: String(row.giuong || row.GIUONG || row.bed || '').trim(),
     __isDischarged: !!row.__isDischarged,
@@ -518,8 +583,6 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
   }
 
   let patients = db.rawPatients.map(p => ({ ...p, pId: p.pId, pending: [...p.pending], failed: false, busy: p.busy ? p.busy.map(b => [...b]) : [], loaiBN: p.loaiBN, buoiDieuTri: p.buoiDieuTri }));
-
-  const cleanStaffStr = s => String(s || '').normalize('NFC').replace(/^(bs|bac si|ktv|dd|đd)\s*\.?\s*/i, '').trim().toLowerCase();
 
   const resolveStaffKey = rawName => {
     if (!rawName) return null;
@@ -1830,7 +1893,6 @@ function getPatientSignature(pat) {
       return { cleanSched: schedCandidate || [], collisionDrops: [] };
     }
 
-    const cleanStaffStr = s => String(s || '').normalize('NFC').replace(/^(bs|bac si|ktv|dd|đd)\s*\.?\s*/i, '').trim().toLowerCase();
     const cleanSched = [];
     const collisionDrops = [];
 
@@ -3147,6 +3209,9 @@ function getSafeCache() {
     hasStaffIntervalOverlap,
     decodeVietnameseEncoding,
     toVietnameseProperCase,
+    cleanStaffStr,
+    cleanAndHealStaffName,
+    healStaffName: cleanAndHealStaffName,
     compactTimelineGaps,
     cleanAndHealPatientName,
     cleanAndHealProcedureName,
@@ -3169,6 +3234,9 @@ function getSafeCache() {
   if (gScope) {
     gScope.decodeVietnameseEncoding = SchedulerEngine.decodeVietnameseEncoding;
     gScope.toVietnameseProperCase = SchedulerEngine.toVietnameseProperCase;
+    gScope.cleanStaffStr = SchedulerEngine.cleanStaffStr;
+    gScope.cleanAndHealStaffName = SchedulerEngine.cleanAndHealStaffName;
+    gScope.healStaffName = SchedulerEngine.cleanAndHealStaffName;
     gScope.compactTimelineGaps = SchedulerEngine.compactTimelineGaps;
     gScope.getStaffBusyIntervals = SchedulerEngine.getStaffBusyIntervals;
     gScope.hasStaffIntervalOverlap = SchedulerEngine.hasStaffIntervalOverlap;
