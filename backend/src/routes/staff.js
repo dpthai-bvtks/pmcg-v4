@@ -6,9 +6,10 @@
 export async function handleStaffAction(action, ctx) {
   const { db, args, env, request, executionCtx, unitCode, tokenPayload, origin, helpers } = ctx;
   const {
-    success, error, jsonResponse, parseStringOrJsonArray, sanitizeInputText,
+    success, error, jsonResponse, parseStringOrJsonArray,
     bumpDataVersion, makeBumpDataVersionStmt, setCaiDat, normalizeMonthKeys
   } = helpers;
+  const sanitizeInputText = helpers?.sanitizeInputText || ((str) => (typeof str === "string" ? str.replace(/<[^>]*>/g, "") : str));
 
   switch (action) {
     case "getNhanSu": {

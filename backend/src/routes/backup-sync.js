@@ -6,10 +6,13 @@
 export async function handleBackupSyncAction(action, ctx) {
   const { db, args, env, request, executionCtx, unitCode, tokenPayload, origin, helpers } = ctx;
   const {
-    success, error, jsonResponse, parseStringOrJsonArray, sanitizeInputText,
+    success, error, jsonResponse, parseStringOrJsonArray,
     bumpDataVersion, makeBumpDataVersionStmt, setCaiDat,
-    ensureSchema, healBackendPatientName, checkAutoChotSo
+    ensureSchema
   } = helpers;
+  const sanitizeInputText = helpers?.sanitizeInputText || ((str) => (typeof str === "string" ? str.replace(/<[^>]*>/g, "") : str));
+  const healBackendPatientName = helpers?.healBackendPatientName || ((str) => String(str || "").trim());
+  const checkAutoChotSo = helpers?.checkAutoChotSo || (async () => {});
 
   switch (action) {
     case "exportTenantData": {

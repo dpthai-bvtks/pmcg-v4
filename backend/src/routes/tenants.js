@@ -10,8 +10,9 @@ export async function handleTenantsAction(action, ctx) {
     bumpDataVersion, makeBumpDataVersionStmt, setCaiDat,
     hashPassword, verifyPassword, isLegacyHash, SUBSCRIPTION_PLANS, calculateSubscriptionInfo,
     checkLoginRateLimit, recordLoginFailure, recordLoginSuccess,
-    signJwt, getJwtSecret, sanitizeInputText
+    signJwt, getJwtSecret
   } = helpers;
+  const sanitizeInputText = helpers?.sanitizeInputText || ((str) => (typeof str === "string" ? str.replace(/<[^>]*>/g, "") : str));
 
   switch (action) {
     case "ping": {

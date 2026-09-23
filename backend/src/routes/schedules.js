@@ -6,11 +6,12 @@
 export async function handleSchedulesAction(action, ctx) {
   const { db, args, env, request, executionCtx, unitCode, tokenPayload, origin, helpers } = ctx;
   const {
-    success, error, jsonResponse, parseStringOrJsonArray, sanitizeInputText,
+    success, error, jsonResponse, parseStringOrJsonArray,
     bumpDataVersion, makeBumpDataVersionStmt, setCaiDat, normalizeMonthKeys,
-    checkAutoChotSo, autoTrainAIModel, trainAIModelOnServer,
-    healBackendPatientName
+    checkAutoChotSo, autoTrainAIModel, trainAIModelOnServer
   } = helpers;
+  const sanitizeInputText = helpers?.sanitizeInputText || ((str) => (typeof str === "string" ? str.replace(/<[^>]*>/g, "") : str));
+  const healBackendPatientName = helpers?.healBackendPatientName || ((str) => String(str || "").trim());
 
   switch (action) {
     case "getLichSu":

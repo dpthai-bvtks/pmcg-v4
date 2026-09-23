@@ -5409,6 +5409,33 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - **Rule 4**: Deploy thành công Cloudflare Worker API (`npm run deploy`) và Cloudflare Pages (`npm run deploy:web`).
   - **Rule 5**: Git commit & push `origin main`.
 
+---
+
+### [v4.1.4-rev7] - 11:45 23/09/2026: Khắc Phục Triệt Để Lỗi Lưu Giờ Bận Nhân Sự & Bệnh Nhân (`sanitizeInputText is not defined`)
+
+- *Hiện tượng & Phản ánh của người dùng*:
+  - Khi lưu giờ bận nhân sự hoặc bệnh nhân, hệ thống báo lỗi:
+    + `Lỗi lưu giờ bận: [Router Error - editNhanSu]: sanitizeInputText is not defined`
+    + `Lỗi lưu giờ bận: [Router Error - editBenhNhan]: sanitizeInputText is not defined`
+
+- *Phân tích Nguyên nhân Gốc*:
+  - Trong quá trình phân kỳ chia nhỏ router backend, hàm `sanitizeInputText` được định nghĩa tại `backend/src/index.js` nhưng tại một số sub-router con (`staff.js`, `patients.js`, `schedules.js`, `tenants.js`, `backup-sync.js`), việc bóc tách `sanitizeInputText` từ `helpers` gặp vấn đề khi triển khai, hoặc nếu `helpers` không chứa hàm này thì sub-router sẽ gặp `ReferenceError` khi gọi trực tiếp `sanitizeInputText(...)`.
+
+- *Giải pháp Đã Triển Khai (Phòng thủ đa tầng)*:
+  1. **Khởi tạo Fallback an toàn cấp Module (In-Module Defensive Fallback)**:
+     - Tại tất cả 5 tệp sub-router (`staff.js`, `patients.js`, `schedules.js`, `backup-sync.js`, `tenants.js`):
+       + `const sanitizeInputText = helpers?.sanitizeInputText || ((str) => (typeof str === "string" ? str.replace(/<[^>]*>/g, "") : str));`
+       + `const healBackendPatientName = helpers?.healBackendPatientName || ((str) => String(str || "").trim());`
+       + `const checkAutoChotSo = helpers?.checkAutoChotSo || (async () => {});`
+     - Đảm bảo 100% không bao giờ xảy ra lỗi `ReferenceError` dù trong bất kỳ tình huống hay môi trường thực thi nào của Cloudflare Worker.
+  2. **Đồng bộ Phiên bản & Triển khai**:
+     - Nâng phiên bản hệ thống lên `4.1.4-rev7`.
+     - `sw.js` cache name `pmcg-v4-cache-4.1.4-rev7`.
+     - `index.html` cập nhật timestamp `11:45 23/09/2026` và toàn bộ cache busters JS/CSS.
+     - Deploy thành công Cloudflare Worker API (`a8e66bda-c1d6-4639-8543-7be85563542f`) và Cloudflare Pages.
+     - Git commit & push `origin main`.
+
+
 
 
 

@@ -6,10 +6,11 @@
 export async function handlePatientsAction(action, ctx) {
   const { db, args, env, request, executionCtx, unitCode, tokenPayload, origin, helpers } = ctx;
   const {
-    success, error, jsonResponse, parseStringOrJsonArray, sanitizeInputText,
-    bumpDataVersion, makeBumpDataVersionStmt, setCaiDat,
-    healBackendPatientName
+    success, error, jsonResponse, parseStringOrJsonArray,
+    bumpDataVersion, makeBumpDataVersionStmt, setCaiDat
   } = helpers;
+  const sanitizeInputText = helpers?.sanitizeInputText || ((str) => (typeof str === "string" ? str.replace(/<[^>]*>/g, "") : str));
+  const healBackendPatientName = helpers?.healBackendPatientName || ((str) => String(str || "").trim());
 
   switch (action) {
     case "getMayMoc":

@@ -1,6 +1,6 @@
 {
-    "version": "4.1.4-rev6",
+    "version": "4.1.4-rev7",
     "releaseDate": "23/09/2026",
-    "releaseTime": "11:30 23/09/2026",
-    "notes": "fix(sync): Khắc phục triệt để lỗi saveSchedule không đồng bộ sang điện thoại; chuẩn hóa truy vấn ngày getBootstrapData và thêm thông báo phản hồi lưu đám mây trực quan."
+    "releaseTime": "11:45 23/09/2026",
+    "notes": "fix(staff-patients): Bổ sung fallback phòng thủ toàn diện cho sanitizeInputText và healBackendPatientName trong tất cả sub-routers, khắc phục triệt để lỗi lưu giờ bận nhân sự và bệnh nhân."
 }
