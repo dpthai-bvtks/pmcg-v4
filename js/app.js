@@ -16448,8 +16448,12 @@ window.filterGioBanChungCuClient = function() {};
             const targetMinutes = (timeParts[0] || 0) * 60 + (timeParts[1] || 0);
             const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-            // Khi đến hoặc qua giờ chốt sổ, kiểm tra với server
-            if (currentMinutes >= targetMinutes && !window._chotSoDone) {
+            // Khi đến hoặc qua giờ chốt sổ, kiểm tra với server (ủy quyền qua HistoryManager nếu có)
+            const shouldTrigger = (window.HistoryManager && typeof window.HistoryManager.shouldTriggerAutoChotSo === 'function')
+                ? window.HistoryManager.shouldTriggerAutoChotSo(targetTime, window._chotSoDone)
+                : (currentMinutes >= targetMinutes && !window._chotSoDone);
+
+            if (shouldTrigger) {
                 if (typeof callApi === 'function') {
                     callApi('autoChotSo', [], res => {
                         if (res && res.closed) {

@@ -5290,5 +5290,47 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `version.json`: Nâng phiên bản `4.1.4-rev2`.
   - `PM-xeplich-v4.md`: Ghi nhật ký kỹ thuật chi tiết Phân kỳ 2.
 
+---
+
+### [v4.1.4-rev3] - 10:15 23/09/2026: Triển Khai Toàn Diện Phân Kỳ 3 & Phân Kỳ 4 (Module Hóa Backend Router & Pluggable Engine Strategies)
+
+- *Yêu cầu của người dùng*:
+  - Triển khai đồng thời Phân kỳ 3 (Module hóa Backend API Router thành các sub-routers có cách ly Multi-Tenant tuyệt đối theo Rule 2) và Phân kỳ 4 (Chuẩn hóa Pluggable Strategy cho 3 Engine Xếp lịch và chia nhỏ Domain Frontend `app.js`).
+
+- *Chi tiết kỹ thuật Phân kỳ 3 (Module hóa Backend Router)*:
+  1. **Phân rã đơn khối `backend/src/index.js` (từ 6.341 dòng xuống còn 2.339 dòng)**:
+     - Tạo 5 router module chuyên trách trong `backend/src/routes/`:
+       - `staff.js`: Quản lý nhân sự, danh mục kỹ năng, chấm công, giờ bận (`getNhanSu`, `addNhanSu`, `editNhanSu`, `deleteNhanSu`, `getEmployees`, `saveEmployees`, `getChamCongSymbols`, `saveChamCongSymbols`, `getGioBanChungCu`, `deleteGioBanChungCu`...).
+       - `patients.js`: Quản lý bệnh nhân, chỉ định thủ thuật, máy móc, phòng khám, phác đồ lâm sàng (`getBenhNhan`, `addBenhNhan`, `editBenhNhan`, `deleteBenhNhan`, `getThuThuat`, `getMayMoc`, `getPhong`, `getPhacDo`...).
+       - `schedules.js`: Quản lý lịch trình, lịch sử điều trị, chốt sổ ngày, huấn luyện AI (`getSchedule`, `saveSchedule`, `chuyenNgayMoi`, `chotSo`, `getLichSu`, `getAllHistory`, `trainAI`...).
+       - `tenants.js`: Quản trị đa đơn vị SaaS, thanh toán, gói cước, tài khoản & xác thực JWT (`getPublicUnits`, `registerTrialTenant`, `createPaymentOrder`, `getTenantsList`, `changePassword`...).
+       - `backup-sync.js`: Cài đặt hệ thống, marquee text, tài liệu, xuất/nhập sao lưu (`getSystemSettings`, `saveSystemSettings`, `exportTenantData`, `importTenantData`, `getBootstrapData`...).
+  2. **Bảo toàn 100% Rule 2 (Multi-Tenant Isolation)**:
+     - Toàn bộ các truy vấn CRUD trong cả 5 module sub-router đều có bộ lọc `WHERE unit_code = ?`.
+     - Xác thực JWT, phân quyền RBAC và kiểm soát `effectiveUnitCode` được xử lý tập trung tại `processApiRequest()` trước khi ủy quyền.
+  3. **Kiến trúc Dispatcher linh hoạt**:
+     - `handleApiAction()` trong `index.js` hoạt động như một orchestrator sạch sẽ, ủy quyền tuần tự qua các sub-router với object context an toàn.
+
+- *Chi tiết kỹ thuật Phân kỳ 4 (Pluggable Strategy & Domain Frontend)*:
+  1. **Tạo Registry chiến lược [js/schedule-strategies.js](file:///c:/PRIVATE-DPT/PM-DPT/PM-xeplich/PM-chinh/ban_web/v4-thuongmai/js/schedule-strategies.js)**:
+     - Đóng gói 4 chiến lược xếp lịch chuẩn hóa: `HeuristicStrategy` (`opt_rare`), `CPSatStrategy` (`cp_sat`), `AIHybridStrategy` (`ai_hybrid`), `SaturdayStrategy` (`saturday`).
+     - Tích hợp hook phòng thủ vào `SchedulerEngine.runSchedulingAsync()`: ủy quyền tự động nếu Registry có sẵn và fallback về thuật toán nguyên thủy nếu không có.
+  2. **Module hóa Domain Frontend**:
+     - Tạo `js/modules/export-service.js`: Phục vụ trích xuất báo cáo Excel (XLSX), in ấn và tạo tài liệu lịch trình.
+     - Tạo `js/modules/history-manager.js`: Phục vụ quản lý dữ liệu lịch sử, khử trùng lặp và kích hoạt chốt sổ tự động.
+     - Tích hợp phòng thủ trong `js/app.js` cho việc kiểm tra chốt sổ qua `HistoryManager.shouldTriggerAutoChotSo()`.
+  3. **Đồng bộ Phiên bản & Cache Busters (Rule 3)**:
+     - Nâng phiên bản: `4.1.4-rev3`.
+     - `index.html`: Bổ sung nạp các script mới theo đúng thứ tự phụ thuộc, cập nhật cache buster `?v=4.1.4-rev3`, `#sys-last-update` = `10:15 23/09/2026`. Chân trang `#app-footer-version` giữ đúng chuẩn `Phiên bản: 4.1.4`.
+     - `sw.js`: Nâng `CACHE_NAME = 'pmcg-v4-cache-4.1.4-rev3'`, bổ sung `schedule-strategies.js`, `export-service.js`, `history-manager.js` vào `STATIC_ASSETS`.
+     - `version.json`: Nâng lên `4.1.4-rev3`.
+
+- *Kiểm thử & Triển khai*:
+  - **Rule 1**: Kiểm tra cú pháp `node -c` trên toàn bộ 15 file: PASS 100% (0 lỗi).
+  - **Rule 2**: Quét tự động 208 câu SQL: đảm bảo 100% cách ly Multi-Tenant.
+  - **Rule 4**: Deploy thành công Cloudflare Worker (`pmcg-api`) và Cloudflare Pages (`pmcg-v3`).
+  - Kiểm tra API thực tế: `ping`, `getPublicUnits`, `getSubscriptionPlans`, `getDataVersion` đều phản hồi HTTP 200 OK.
+
+
 
 

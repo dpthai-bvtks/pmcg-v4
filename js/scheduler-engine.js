@@ -2414,6 +2414,19 @@ function getSafeCache() {
   }
 
   async function runSchedulingAsync(dateVal, strategyKey = 'opt_rare', skipProcsStr = '', crowdedOverride = -1, existingSched = [], options = {}) {
+    // 🧩 Pluggable Strategy Registry Delegation (Phase 4 Defensive Hook)
+    if (!options._fromStrategy && typeof window !== 'undefined' && window.ScheduleStrategyRegistry) {
+      const strat = window.ScheduleStrategyRegistry.get(strategyKey);
+      if (strat && typeof strat.execute === 'function') {
+        const stratOpts = Object.assign({}, options, { _fromStrategy: true });
+        const res = await strat.execute({
+          engineRef: (typeof SchedulerEngine !== 'undefined' ? SchedulerEngine : null),
+          dateVal, strategyKey, skipProcsStr, crowdedOverride, existingSched, options: stratOpts
+        });
+        if (res) return res;
+      }
+    }
+
     const startTime = performance.now();
     const cleanExistingSched = (Array.isArray(existingSched) ? existingSched : [])
       .map(normalizeScheduleItem)
@@ -2887,6 +2900,7 @@ function getSafeCache() {
     solveWithMiniPC,
     runScheduling: runClientScheduling,
     runSchedulingAsync: runSchedulingAsync,
+    _internalRunHeuristic: runSchedulingAsync,
     runExtraScheduling: runExtraScheduling,
     runSaturdayScheduling: runSaturdayScheduling
   };
