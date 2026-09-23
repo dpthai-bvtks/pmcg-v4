@@ -1,6 +1,6 @@
 {
-    "version": "4.1.4-rev8",
+    "version": "4.1.4-rev9",
     "releaseDate": "23/09/2026",
-    "releaseTime": "16:35 23/09/2026",
-    "notes": "fix(schedule-sync): Khắc phục lỗi điện thoại và máy tính khác không xem được bảng lịch trình; tự động nạp lịch từ lịch sử hôm nay vào getBootstrapData; sửa logic auto-chotSo không xóa nhầm lịch ngày mới/tương lai."
+    "releaseTime": "17:55 23/09/2026",
+    "notes": "fix(schedule-display): Sau khi chot so tu dong (16:20), bang lich trinh hien thi thong bao Da hoan tat chot so (X ca) thay vi hien day du cac ca."
 }

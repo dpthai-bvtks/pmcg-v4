@@ -387,28 +387,18 @@ export async function handleBackupSyncAction(action, ctx) {
       let isFinalizedToday = false;
       let finalizedTodayCount = 0;
       // 🛡️ Nếu lich_trinh chưa có dữ liệu ngày hôm nay, kiểm tra xem đã chốt sổ vào lich_su chưa
+      // Nếu đã chốt sổ: trả về schedule RỖNG + cờ is_finalized_today=true + số lượng ca
+      // → Frontend sẽ hiện thông báo "Đã hoàn tất chốt sổ ngày (X ca)" thay vì bảng lịch trình
+      // Điều này giúp nhân viên không nhầm lẫn giữa "lịch đang live" và "lịch đã lưu trữ"
       if (scheduleRows.length === 0) {
         try {
           const histTodayRes = await db.prepare(
-            "SELECT date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_su WHERE unit_code = ? AND (date = ? OR date = ?) ORDER BY start_time ASC"
-          ).bind(unitCode, ymd, dmy).all();
-          if (histTodayRes && histTodayRes.results && histTodayRes.results.length > 0) {
+            "SELECT COUNT(*) as cnt FROM lich_su WHERE unit_code = ? AND (date = ? OR date = ?)"
+          ).bind(unitCode, ymd, dmy).first();
+          if (histTodayRes && histTodayRes.cnt > 0) {
             isFinalizedToday = true;
-            finalizedTodayCount = histTodayRes.results.length;
-            // 🚀 Bơm dữ liệu lịch sử hôm nay vào schedule để tất cả máy tính & điện thoại khác đều xem được bảng lịch trình!
-            scheduleRows = histTodayRes.results.map(s => ([
-              s.date,
-              healBackendPatientName(s.patient_name, true),
-              s.dob || "",
-              s.room || "",
-              s.procedure_name,
-              s.start_time,
-              s.end_time,
-              s.staff_name || "",
-              s.sub_staff_name || "",
-              s.machine_name || "",
-              s.bed || ""
-            ]));
+            finalizedTodayCount = Number(histTodayRes.cnt);
+            // scheduleRows giữ nguyên RỖNG [] — Frontend tự hiện thông báo "Đã chốt sổ"
           }
         } catch(e) {
           console.warn("Lỗi kiểm tra lich_su hôm nay:", e);
