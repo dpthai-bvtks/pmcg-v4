@@ -1,6 +1,6 @@
-﻿/**
- * SERVICE WORKER CHO PHáº¦N Má»€M Xáº¾P Lá»ŠCH YHCT - PHCN (T.I.M.E.S System v4.0.2 Multi-Tenant SaaS)
- * Quáº£n lÃ½ Cache Ä‘á»‡m tÄ©nh, cho phÃ©p má»Ÿ App ngoáº¡i tuyáº¿n (Offline-first) vÃ  táº£i tá»©c thÃ¬.
+/**
+ * SERVICE WORKER CHO PHẦN MỀM XẾP LỊCH YHCT - PHCN (T.I.M.E.S System v4.0.2 Multi-Tenant SaaS)
+ * Quản lý Cache đệm tĩnh, cho phép mở App ngoại tuyến (Offline-first) và tải tức thì.
  */
 
 const CACHE_NAME = 'pmcg-v4-cache-4.1.4-rev9';
@@ -38,26 +38,26 @@ const STATIC_ASSETS = [
   './apple-touch-icon.png'
 ];
 
-// 1. CÃ i Ä‘áº·t Service Worker vÃ  náº¡p trÆ°á»›c cÃ¡c tá»‡p tÄ©nh
+// 1. Cài đặt Service Worker và nạp trước các tệp tĩnh
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('[Service Worker] Lá»—i náº¡p cache tÄ©nh:', err);
+        console.warn('[Service Worker] Lỗi nạp cache tĩnh:', err);
       });
     })
   );
 });
 
-// 2. KÃ­ch hoáº¡t vÃ  dá»n dáº¹p cÃ¡c phiÃªn báº£n cache cÅ©
+// 2. Kích hoạt và dọn dẹp các phiên bản cache cũ
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cache) => {
           if (cache !== CACHE_NAME) {
-            console.log('[Service Worker] Äang dá»n dáº¹p cache cÅ©:', cache);
+            console.log('[Service Worker] Đang dọn dẹp cache cũ:', cache);
             return caches.delete(cache);
           }
         })
@@ -66,11 +66,11 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// 3. Xá»­ lÃ½ yÃªu cáº§u náº¡p tÃ i nguyÃªn (Fetch Strategy: Network-First cho HTML & JS/CSS Ä‘á»ƒ luÃ´n náº¡p báº£n má»›i nháº¥t)
+// 3. Xử lý yêu cầu nạp tài nguyên (Fetch Strategy: Network-First cho HTML & JS/CSS để luôn nạp bản mới nhất)
 self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
 
-  // VÃ´ hiá»‡u hÃ³a triá»‡t Ä‘á»ƒ Cloudflare Analytics Beacon vÃ  Web Vitals ngoáº¡i vi
+  // Vô hiệu hóa triệt để Cloudflare Analytics Beacon và Web Vitals ngoại vi
   if (
     requestUrl.hostname.includes('cloudflareinsights.com') ||
     requestUrl.pathname.includes('beacon.min.js')
@@ -84,13 +84,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // LuÃ´n náº¡p trá»±c tiáº¿p version.json tá»« máº¡ng Ä‘á»ƒ kiá»ƒm tra phiÃªn báº£n má»›i tá»©c thÃ¬
+  // Luôn nạp trực tiếp version.json từ mạng để kiểm tra phiên bản mới tức thì
   if (requestUrl.pathname.endsWith('version.json')) {
     event.respondWith(fetch(event.request, { cache: 'no-store' }).catch(() => caches.match(event.request)));
     return;
   }
 
-  // Bá» qua cÃ¡c yÃªu cáº§u API gá»­i tá»›i Cloudflare Workers hoáº·c Google Apps Script (Ä‘Ã£ cÃ³ offline-sync-engine xá»­ lÃ½)
+  // Bỏ qua các yêu cầu API gửi tới Cloudflare Workers hoặc Google Apps Script (đã có offline-sync-engine xử lý)
   if (
     requestUrl.origin !== self.location.origin ||
     event.request.method !== 'GET' ||
@@ -101,7 +101,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-First: LuÃ´n táº£i tá»« mÃ¡y chá»§ Ä‘á»ƒ láº¥y báº£n má»›i nháº¥t, náº¿u máº¥t máº¡ng má»›i tráº£ vá» Cache
+  // Network-First: Luôn tải từ máy chủ để lấy bản mới nhất, nếu mất mạng mới trả về Cache
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
@@ -124,10 +124,10 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Láº¯ng nghe lá»‡nh SKIP_WAITING tá»« trang chá»§ Ä‘á»ƒ cáº­p nháº­t SW ngay láº­p tá»©c
+// Lắng nghe lệnh SKIP_WAITING từ trang chủ để cập nhật SW ngay lập tức
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
-    console.log('[Service Worker] Nháº­n SKIP_WAITING, kÃ­ch hoáº¡t ngay...');
+    console.log('[Service Worker] Nhận SKIP_WAITING, kích hoạt ngay...');
     self.skipWaiting();
   }
 });
