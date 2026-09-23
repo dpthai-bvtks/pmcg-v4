@@ -5490,6 +5490,7 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - `index.html` cập nhật timestamp `17:55 23/09/2026` và toàn bộ cache busters.
      - Deploy Cloudflare Worker API (`29e8c57f`) và Cloudflare Pages (`85db609e.pmcg-v3.pages.dev`).
      - Git commit & push `origin main` (`7199019`).
+     - Sửa triệt để lỗi mã hóa UTF-8: Phục hồi nguyên bản cấu trúc 4.928 dòng của [index.html](file:///c:/PRIVATE-DPT/PM-DPT/PM-xeplich/PM-chinh/ban_web/v4-thuongmai/index.html) và [sw.js](file:///c:/PRIVATE-DPT/PM-DPT/PM-xeplich/PM-chinh/ban_web/v4-thuongmai/sw.js) chuẩn UTF-8 sạch (không BOM, không nén 1 dòng). Deploy lại Cloudflare Pages.
 
 
 
