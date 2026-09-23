@@ -10456,21 +10456,17 @@ window.renderSttOrderControl = function (type, i, total) {
 
 
 
-            const wb = XLSX.utils.book_new();
-
-            // Khai báo tiêu đề cột thứ 4
-
-            const ws = XLSX.utils.aoa_to_sheet([["Mã Truy Xuất", "Tên Bệnh Nhân", "Thủ Thuật Đã Chọn",
-
-                "Giờ Sẵn Sàng"], ...data]);
-
-            ws['!cols'] = [{ wch: 20 }, { wch: 25 }, { wch: 50 }, { wch: 15 }];
-
-
-
-            XLSX.utils.book_append_sheet(wb, ws, "ThuThuatT7");
-
-            XLSX.writeFile(wb, `DS_ThuThuat_T7_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            const t7ExportData = [["Mã Truy Xuất", "Tên Bệnh Nhân", "Thủ Thuật Đã Chọn", "Giờ Sẵn Sàng"], ...data];
+            const t7FileName = `DS_ThuThuat_T7_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            if (window.ExportService && typeof window.ExportService.exportToExcel === 'function') {
+                window.ExportService.exportToExcel(t7ExportData, t7FileName, "ThuThuatT7");
+            } else {
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.aoa_to_sheet(t7ExportData);
+                ws['!cols'] = [{ wch: 20 }, { wch: 25 }, { wch: 50 }, { wch: 15 }];
+                XLSX.utils.book_append_sheet(wb, ws, "ThuThuatT7");
+                XLSX.writeFile(wb, t7FileName);
+            }
         }
 
         // ============================================================
@@ -11078,16 +11074,15 @@ window.renderSttOrderControl = function (type, i, total) {
 
             p.gioRa, p.phong, p.thuThuat])];
 
-            const wb = XLSX.utils.book_new();
-
-            const ws = XLSX.utils.aoa_to_sheet(ws_data);
-
-            XLSX.utils.book_append_sheet(wb, ws, "DanhSachBenhNhan");
-
-            XLSX.writeFile(wb, `DS_BenhNhan_${new
-
-                Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`);
-
+            const bnFileName = `DS_BenhNhan_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`;
+            if (window.ExportService && typeof window.ExportService.exportToExcel === 'function') {
+                window.ExportService.exportToExcel(ws_data, bnFileName, "DanhSachBenhNhan");
+            } else {
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.aoa_to_sheet(ws_data);
+                XLSX.utils.book_append_sheet(wb, ws, "DanhSachBenhNhan");
+                XLSX.writeFile(wb, bnFileName);
+            }
         }
 
         function savePatientsWithFallback(cleanList, replaceAll, onSuccess, onError, onProgress) {

@@ -5331,6 +5331,23 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - **Rule 4**: Deploy thành công Cloudflare Worker (`pmcg-api`) và Cloudflare Pages (`pmcg-v3`).
   - Kiểm tra API thực tế: `ping`, `getPublicUnits`, `getSubscriptionPlans`, `getDataVersion` đều phản hồi HTTP 200 OK.
 
+---
+
+### [v4.1.4-rev4] - 10:30 23/09/2026: Hoàn Thiện Tối Ưu Toàn Diện Kiến Trúc (Perfection Pass)
+
+- *Yêu cầu & Nội dung rà soát*:
+  - Khắc phục 2 điểm còn sót được ghi nhận trong đợt đánh giá kiến trúc:
+    1. `UnscheduledDiagnosticEngine` trong `js/scheduler-engine.js` (dòng 2936–2965): Đồng bộ ủy quyền `t2m`, `m2t`, `is_overlap` sang `ScheduleUtils` với fallback nội bộ an toàn, triệt tiêu hoàn toàn sự trùng lặp ở engine thứ 4 (module cố vấn cứu ca rớt).
+    2. `CPSatStrategy` trong `js/schedule-strategies.js`: Sửa lỗi gọi hàm không tồn tại `solveAsync` thành kích hoạt cờ `options.useCPSat = true` và chuyển giao chính xác vào thuật toán Branch-and-Bound / CP-SAT solver của `SchedulerEngine`. Đồng thời tinh chỉnh `AIHybridStrategy` kích hoạt cờ `options.useAIRanking = true`.
+    3. `ExportService` trong `js/modules/export-service.js`: Nối dây thực tế vào `js/app.js` tại các luồng xuất dữ liệu Excel (`DS_ThuThuat_T7` và `DS_BenhNhan`) với cơ chế fallback nguyên thủy nếu thiếu module.
+
+- *Kiểm thử & Triển khai*:
+  - **Rule 1**: Kiểm tra cú pháp `node -c` toàn bộ 15 tệp: PASS 100% (0 lỗi).
+  - **Rule 3**: Nâng phiên bản `4.1.4-rev4`, `sw.js` cache name `pmcg-v4-cache-4.1.4-rev4`, `index.html` cập nhật timestamp `10:30 23/09/2026`.
+  - **Rule 4**: Deploy thành công Cloudflare Pages.
+  - **Rule 5**: Git commit & push `origin main`.
+
+
 
 
 

@@ -58,13 +58,10 @@
 
     async execute(context) {
       const { engineRef, dateVal, strategyKey, skipProcsStr, crowdedOverride, existingSched, options } = context;
-      const solver = (typeof window !== 'undefined' && window.MedicalCPSolver) ? window.MedicalCPSolver : null;
-      if (solver && typeof solver.solveAsync === 'function') {
-        return solver.solveAsync(dateVal, existingSched, options);
-      }
-      // Fallback về Heuristic nếu không tìm thấy solver
+      // Kích hoạt cờ tối ưu hóa CP-SAT trong options cho Engine
+      options.useCPSat = true;
       if (engineRef && typeof engineRef._internalRunHeuristic === 'function') {
-        return engineRef._internalRunHeuristic(dateVal, 'opt_rare', skipProcsStr, crowdedOverride, existingSched, options);
+        return engineRef._internalRunHeuristic(dateVal, 'cp_sat', skipProcsStr, crowdedOverride, existingSched, options);
       }
       return null;
     }
@@ -87,9 +84,8 @@
         options.useAIRanking = true;
       }
       if (engineRef && typeof engineRef._internalRunHeuristic === 'function') {
-        return engineRef._internalRunHeuristic(dateVal, 'opt_rare', skipProcsStr, crowdedOverride, existingSched, options);
+        return engineRef._internalRunHeuristic(dateVal, 'ai_hybrid', skipProcsStr, crowdedOverride, existingSched, options);
       }
-      return null;
     }
   }
 

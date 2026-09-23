@@ -2936,7 +2936,10 @@ function getSafeCache() {
 const UnscheduledDiagnosticEngine = (function () {
   'use strict';
 
+  const _U = (typeof window !== 'undefined' && window.ScheduleUtils) ? window.ScheduleUtils : null;
+
   function t2m(thoiGian) {
+    if (_U && _U.t2m) return _U.t2m(thoiGian);
     if (!thoiGian && thoiGian !== 0) return 0;
     if (thoiGian instanceof Date) {
       if (isNaN(thoiGian.getTime())) return 0;
@@ -2953,10 +2956,12 @@ const UnscheduledDiagnosticEngine = (function () {
   }
 
   function m2t(totalMinutes) {
+    if (_U && _U.m2t) return _U.m2t(totalMinutes);
     return `${String(Math.floor(totalMinutes / 60)).padStart(2, '0')}:${String(totalMinutes % 60).padStart(2, '0')}`;
   }
 
   function is_overlap(start1, end1, start2, end2) {
+    if (_U && _U.is_overlap) return _U.is_overlap(start1, end1, start2, end2);
     return Math.max(start1, start2) < Math.min(end1, end2);
   }
 
