@@ -6,7 +6,7 @@
 export async function handlePatientsAction(action, ctx) {
   const { db, args, env, request, executionCtx, unitCode, tokenPayload, origin, helpers } = ctx;
   const {
-    success, error, jsonResponse, parseStringOrJsonArray,
+    success, error, jsonResponse, parseStringOrJsonArray, sanitizeInputText,
     bumpDataVersion, makeBumpDataVersionStmt, setCaiDat,
     healBackendPatientName
   } = helpers;
@@ -771,7 +771,7 @@ export async function handlePatientsAction(action, ctx) {
             loai_bn = CASE WHEN ? != '' THEN ? ELSE loai_bn END, 
             buoi_dieu_tri = CASE WHEN ? != '' THEN ? ELSE buoi_dieu_tri END, 
             updated_at = CURRENT_TIMESTAMP 
-          WHERE id = ?
+          WHERE unit_code = ? AND id = ?
         `).bind(
           patName,
           patAge,
@@ -786,6 +786,7 @@ export async function handlePatientsAction(action, ctx) {
           String(p.gioBan || ""),
           loaiBnVal, loaiBnVal,
           buoiVal, buoiVal,
+          unitCode,
           existing.id
         ).run();
       } else {

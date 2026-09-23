@@ -3724,7 +3724,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     console.warn('[Bootstrap API] Máy chủ bận, đang sử dụng dữ liệu đã lưu trong máy:', err);
                     [loadMachines, loadRooms, loadScheduleList, loadProcedures, loadPatients, loadStaff].forEach(fn => fn());
                 })
-                .getBootstrapData();
+                .getBootstrapData(document.getElementById('schedule-date')?.value || '');
         }
 
         function loadAllData() {
@@ -7410,7 +7410,20 @@ window.renderSttOrderControl = function (type, i, total) {
                 // Đồng bộ lưu lịch trình vào D1 SQLite trong nền (15ms, không làm đơ giao diện)
                 if (sched.length > 0) {
                     const backendSched = sched.map(x => scheduleRowToBackendArray(x, dateVal));
-                    callApi('saveSchedule', [dateVal, backendSched], null, null);
+                    callApi('saveSchedule', [dateVal, backendSched], 
+                        (res) => {
+                            console.log('[saveSchedule] Đã lưu lịch trình lên đám mây thành công!');
+                            if (typeof showToast === 'function') {
+                                showToast('☁️ Đã đồng bộ lịch trình lên đám mây thành công!', 'success');
+                            }
+                        },
+                        (err) => {
+                            console.error('[saveSchedule] Lỗi lưu lịch trình lên đám mây:', err);
+                            if (typeof showToast === 'function') {
+                                showToast('⚠️ Chưa đồng bộ được lịch lên máy chủ: ' + (err?.message || err), 'danger');
+                            }
+                        }
+                    );
                 }
             } catch(err) {
                 if (window.hideGlobalLoading) window.hideGlobalLoading();
@@ -7533,7 +7546,10 @@ window.renderSttOrderControl = function (type, i, total) {
                     }
 
                     const backendSched = mergedSched.map(x => scheduleRowToBackendArray(x, dateVal));
-                    callApi('saveSchedule', [dateVal, backendSched], null, null);
+                    callApi('saveSchedule', [dateVal, backendSched], 
+                        () => { if (typeof showToast === 'function') showToast('☁️ Đã đồng bộ lịch bổ sung lên đám mây!', 'success'); },
+                        (err) => { if (typeof showToast === 'function') showToast('⚠️ Lỗi lưu lịch bổ sung: ' + (err?.message || err), 'danger'); }
+                    );
                 }
 
                 // 🛡️ Lọc ra các ca THỰC SỰ không xếp được:
@@ -11025,7 +11041,10 @@ window.renderSttOrderControl = function (type, i, total) {
                     // Đồng bộ lưu lịch trình thứ 7 vào D1 SQLite trong nền
                     if (sched.length > 0) {
                         const backendSched = sched.map(x => scheduleRowToBackendArray(x, dateVal));
-                        callApi('saveSchedule', [dateVal, backendSched], null, null);
+                        callApi('saveSchedule', [dateVal, backendSched], 
+                            () => { if (typeof showToast === 'function') showToast('☁️ Đã đồng bộ lịch thứ 7 lên đám mây!', 'success'); },
+                            (err) => { if (typeof showToast === 'function') showToast('⚠️ Lỗi lưu lịch thứ 7: ' + (err?.message || err), 'danger'); }
+                        );
                     }
                 } catch(err) {
                     btn.innerText = '▶ XẾP LỊCH THỨ 7'; btn.disabled = false;

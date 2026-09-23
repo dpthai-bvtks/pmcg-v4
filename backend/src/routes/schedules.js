@@ -6,9 +6,10 @@
 export async function handleSchedulesAction(action, ctx) {
   const { db, args, env, request, executionCtx, unitCode, tokenPayload, origin, helpers } = ctx;
   const {
-    success, error, jsonResponse, parseStringOrJsonArray,
+    success, error, jsonResponse, parseStringOrJsonArray, sanitizeInputText,
     bumpDataVersion, makeBumpDataVersionStmt, setCaiDat, normalizeMonthKeys,
-    checkAutoChotSo, autoTrainAIModel, trainAIModelOnServer
+    checkAutoChotSo, autoTrainAIModel, trainAIModelOnServer,
+    healBackendPatientName
   } = helpers;
 
   switch (action) {
@@ -89,6 +90,16 @@ export async function handleSchedulesAction(action, ctx) {
       const date = args[0] || new Date().toISOString().slice(0, 10);
       const rows = args[1] || [];
 
+      let ymd = date;
+      let dmy = date;
+      if (date.includes("-")) {
+        const parts = date.split("-");
+        if (parts.length === 3) dmy = `${parts[2]}/${parts[1]}/${parts[0]}`;
+      } else if (date.includes("/")) {
+        const parts = date.split("/");
+        if (parts.length === 3) ymd = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+
       // 🛡️ Tự động đối chiếu và phục hồi tên bệnh nhân sạch từ bảng benh_nhan
       let candidateNames = [];
       try {
@@ -101,7 +112,7 @@ export async function handleSchedulesAction(action, ctx) {
       }
 
       const statements = [
-        db.prepare("DELETE FROM lich_trinh WHERE unit_code = ? AND date = ?").bind(unitCode, date)
+        db.prepare("DELETE FROM lich_trinh WHERE unit_code = ? AND (date = ? OR date = ?)").bind(unitCode, ymd, dmy)
       ];
 
       rows.forEach((r, idx) => {
@@ -110,7 +121,7 @@ export async function handleSchedulesAction(action, ctx) {
           db.prepare("INSERT INTO lich_trinh (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed, order_idx) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
           .bind(
             unitCode,
-            r[0] || date,
+            r[0] || ymd,
             cleanPatientName,
             r[2] || "",
             r[3] || "",

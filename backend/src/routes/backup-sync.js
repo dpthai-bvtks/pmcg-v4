@@ -6,9 +6,9 @@
 export async function handleBackupSyncAction(action, ctx) {
   const { db, args, env, request, executionCtx, unitCode, tokenPayload, origin, helpers } = ctx;
   const {
-    success, error, jsonResponse, parseStringOrJsonArray,
+    success, error, jsonResponse, parseStringOrJsonArray, sanitizeInputText,
     bumpDataVersion, makeBumpDataVersionStmt, setCaiDat,
-    ensureSchema
+    ensureSchema, healBackendPatientName, checkAutoChotSo
   } = helpers;
 
   switch (action) {
@@ -380,6 +380,28 @@ export async function handleBackupSyncAction(action, ctx) {
           }
         } catch(e) {
           console.warn("Lỗi kiểm tra lich_su hôm nay:", e);
+        }
+
+        // 🛡️ Nếu hôm nay chưa chốt sổ và chưa tìm thấy theo ngày cụ thể, nạp lịch đang có trong lich_trinh (tránh lệch định dạng ngày)
+        if (!isFinalizedToday) {
+          try {
+            const anySchedRes = await db.prepare("SELECT * FROM lich_trinh WHERE unit_code = ? ORDER BY order_idx ASC, start_time ASC").bind(unitCode).all();
+            if (anySchedRes && anySchedRes.results && anySchedRes.results.length > 0) {
+              scheduleRows = anySchedRes.results.map(s => ([
+                s.date,
+                healBackendPatientName(s.patient_name, true),
+                s.dob || "",
+                s.room || "",
+                s.procedure_name,
+                s.start_time,
+                s.end_time,
+                s.staff_name || "",
+                s.sub_staff_name || "",
+                s.machine_name || "",
+                s.bed || ""
+              ]));
+            }
+          } catch(eAny) {}
         }
       }
 

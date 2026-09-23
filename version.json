@@ -1,6 +1,6 @@
 {
-    "version": "4.1.4-rev5",
+    "version": "4.1.4-rev6",
     "releaseDate": "23/09/2026",
-    "releaseTime": "10:45 23/09/2026",
-    "notes": "feat(mobile-ux): Tối ưu toàn diện trải nghiệm người dùng trên Điện thoại và Máy tính bảng: chống WebKit auto-zoom iOS, vùng chạm chuẩn Apple HIG, tối ưu bảng lịch màn hình hẹp và thông báo solver trực quan."
+    "releaseTime": "11:30 23/09/2026",
+    "notes": "fix(sync): Khắc phục triệt để lỗi saveSchedule không đồng bộ sang điện thoại; chuẩn hóa truy vấn ngày getBootstrapData và thêm thông báo phản hồi lưu đám mây trực quan."
 }

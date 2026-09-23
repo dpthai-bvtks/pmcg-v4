@@ -5373,6 +5373,43 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - **Rule 4**: Deploy thành công Cloudflare Pages (`deploy:web`).
   - **Rule 5**: Git commit & push `origin main`.
 
+---
+
+### [v4.1.4-rev6] - 11:30 23/09/2026: Khắc Phục Triệt Để Lỗi Không Đồng Bộ Lịch Trình Từ Máy Tính Sang Điện Thoại
+
+- *Hiện tượng & Yêu cầu của người dùng*:
+  - Trên máy tính đã ấn "Chạy xếp lịch tổng" và hiển thị bảng lịch thành công, nhưng mở trên điện thoại (hoặc máy khác) thì không thấy lịch (bảng lịch trống / hiển thị "Chưa có lịch").
+
+- *Phân tích Nguyên nhân Gốc (Root Cause Analysis)*:
+  1. **Lỗi `ReferenceError` ngầm trên Cloudflare Worker API**:
+     - Khi thực hiện phân kỳ chia tách Router backend, trong `backend/src/routes/schedules.js` (tại case `saveSchedule`, dòng 108) có gọi `healBackendPatientName(r[1] || "", true)`.
+     - Tuy nhiên `healBackendPatientName` lại chưa được bóc tách (destructure) từ `helpers` ở đầu tệp `schedules.js`.
+     - Vì vậy, mỗi khi client máy tính gửi request `saveSchedule` lưu lịch vào CSDL đám mây, Worker bị ném lỗi 500 (`healBackendPatientName is not defined`). Lệnh xóa/chèn vào bảng `lich_trinh` và `bumpDataVersion` không được thực thi.
+  2. **Giao diện máy tính hiển thị lịch do lưu tại bộ nhớ Client (RAM & LocalStorage)**:
+     - Trên máy tính chạy xếp lịch, engine giải toán xong lập tức hiển thị ra màn hình từ biến RAM `window.currentScheduleData`, đồng thời lệnh gọi `callApi('saveSchedule', ...)` chạy nền với callback `null, null` nên lỗi 500 của server bị nuốt im lặng, người dùng không nhận được cảnh báo.
+  3. **Điện thoại truy vấn dữ liệu từ CSDL Đám Mây**:
+     - Khi điện thoại mở app hoặc tải dữ liệu, hàm `getBootstrapData` truy vấn bảng `lich_trinh` từ CSDL đám mây. Do `saveSchedule` trước đó đã bị lỗi trên máy chủ, database chưa hề lưu ca nào, dẫn tới trả về mảng `schedule: []` rỗng.
+
+- *Giải pháp Đã Triển Khai*:
+  1. **Vá triệt để lỗi Helper Destructuring trên Backend**:
+     - Trong `backend/src/routes/schedules.js`: bổ sung `healBackendPatientName` vào `helpers`.
+     - Trong `backend/src/routes/backup-sync.js`: bổ sung `checkAutoChotSo` vào `helpers`.
+     - Trong `backend/src/routes/patients.js`: thêm ràng buộc `WHERE unit_code = ? AND id = ?` (tuân thủ tuyệt đối Rule 2) cho câu lệnh `UPDATE benh_nhan`.
+  2. **Tối ưu hóa Truy vấn `saveSchedule` và `getBootstrapData`**:
+     - `schedules.js`: chuẩn hóa việc xóa lịch cũ `DELETE FROM lich_trinh WHERE unit_code = ? AND (date = ? OR date = ?)` hỗ trợ cả định dạng `YYYY-MM-DD` và `DD/MM/YYYY`, chống sót bản ghi do khác biệt định dạng ngày.
+     - `backup-sync.js`: bổ sung cơ chế fallback thông minh trong `getBootstrapData`: nếu hôm nay chưa chốt sổ và chưa có lịch theo ngày chỉ định, tự động nạp lịch hiện hành trong `lich_trinh` của đơn vị để thiết bị di động luôn nhận được lịch đang hiển thị trên máy tính.
+  3. **Nâng cao Trải nghiệm Người dùng & Minh bạch Trạng thái Đồng bộ (`js/app.js`)**:
+     - Thêm callback thông báo Toast trực quan khi gọi `saveSchedule` (`CHẠY XẾP LỊCH TỔNG`, `XẾP LỊCH BỔ SUNG`, `XẾP LỊCH THỨ 7`). Nếu lưu đám mây thành công: hiện `☁️ Đã đồng bộ lịch trình lên đám mây thành công!`. Nếu máy chủ gặp sự cố: hiển thị Toast màu đỏ báo lỗi ngay lập tức thay vì âm thầm bỏ qua.
+     - Trong `loadBootstrapData`: truyền trực tiếp ngày đang chọn vào `getBootstrapData(dateVal)`.
+
+- *Kiểm thử & Triển khai*:
+  - **Rule 1**: Kiểm tra cú pháp `node --check` và `new Function` toàn bộ 15 tệp: PASS 100% (0 lỗi).
+  - **Rule 2**: Rà soát 100% câu lệnh SQL có `unit_code = ?`: PASS 100%.
+  - **Rule 3**: Nâng phiên bản `4.1.4-rev6`, `sw.js` cache name `pmcg-v4-cache-4.1.4-rev6`, `index.html` cập nhật timestamp `11:30 23/09/2026`.
+  - **Rule 4**: Deploy thành công Cloudflare Worker API (`npm run deploy`) và Cloudflare Pages (`npm run deploy:web`).
+  - **Rule 5**: Git commit & push `origin main`.
+
+
 
 
 
