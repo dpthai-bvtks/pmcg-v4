@@ -10,21 +10,24 @@
   const globalScope = typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this);
 
   globalScope.MedicalCPSolver = (function () {
+  const _U = typeof ScheduleUtils !== 'undefined' ? ScheduleUtils : (typeof window !== 'undefined' && window.ScheduleUtils ? window.ScheduleUtils : null);
 
   function t2m(t) {
+    if (_U && typeof _U.t2m === 'function') return _U.t2m(t);
     if (!t && t !== 0) return 0;
-    if (t instanceof Date) return isNaN(t.getTime()) ? 0 : t.getUTCHours() * 60 + t.getUTCMinutes();
     const str = String(t).trim();
-    if (!str || str === '0' || !str.includes(':')) return 0;
+    if (!str.includes(':')) return 0;
     const parts = str.split(':');
     return (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
   }
 
   function m2t(m) {
+    if (_U && typeof _U.m2t === 'function') return _U.m2t(m);
     return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
   }
 
   function isOverlap(s1, e1, s2, e2) {
+    if (_U && typeof _U.is_overlap === 'function') return _U.is_overlap(s1, e1, s2, e2);
     return Math.max(s1, s2) < Math.min(e1, e2);
   }
 
@@ -239,11 +242,11 @@
     const machineIntervals = new Map();
     const bedIntervals = new Map();
 
-    const cleanStaffStr = (typeof window !== 'undefined' && window.SchedulerEngine && typeof window.SchedulerEngine.cleanStaffStr === 'function')
-      ? window.SchedulerEngine.cleanStaffStr
-      : (typeof window !== 'undefined' && typeof window.cleanStaffStr === 'function')
+    const cleanStaffStr = (_U && typeof _U.cleanStaffStr === 'function')
+      ? _U.cleanStaffStr
+      : (typeof window !== 'undefined' && window.cleanStaffStr
         ? window.cleanStaffStr
-        : (s => String(s || '').normalize('NFC').replace(/^(bs|bac si|bác sĩ|ktv|dd|đd)\s*\.?\s*/i, '').trim().toLowerCase());
+        : (s => String(s || '').normalize('NFC').replace(/^(bs|bac si|bác sĩ|ktv|dd|đd)\s*\.?\s*/i, '').trim().toLowerCase()));
 
     // 🔒 KHÓA CỨNG TOÀN BỘ LỊCH TRÌNH ĐÃ XẾP TRƯỚC ĐÓ (existingSched) TRÁNH XẾP BỔ SUNG TRÙNG GIỜ
     const normalizeFn = (typeof window !== 'undefined' && window.SchedulerEngine && typeof window.SchedulerEngine.normalizeScheduleItem === 'function')

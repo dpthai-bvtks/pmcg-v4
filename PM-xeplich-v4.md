@@ -5255,4 +5255,40 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - `version.json`: Nâng phiên bản `4.1.4-rev1`.
   - `PM-xeplich-v4.md`: Ghi nhật ký chi tiết Phân kỳ 1.
 
+### Phân Kỳ 2: Tách Module Tiện Ích Dùng Chung `js/schedule-utils.js` (23/09/2026 - v4.1.4-rev2)
+
+- *Yêu cầu của người dùng*:
+  - Triển khai ngay Phân kỳ 2 theo phương pháp phòng thủ an toàn tuyệt đối, triệt tiêu mã nguồn trùng lặp giữa 3 engine xếp lịch và `app.js`.
+
+- *Phân tích nguyên nhân & Giải pháp*:
+  1. **Khởi tạo module dùng chung [js/schedule-utils.js](file:///c:/PRIVATE-DPT/PM-DPT/PM-xeplich/PM-chinh/ban_web/v4-thuongmai/js/schedule-utils.js)**:
+     - Tập hợp các tiện ích thời gian: `t2m()`, `m2t()`, `isEmptyTime()`, `is_overlap()`.
+     - Tập hợp các bộ giải mã bảng mã: `TCVN3_MAP`, `VNI_PAIRS`, `decodeVietnameseEncoding()`, `toVietnameseProperCase()`.
+     - Tập hợp các hàm làm sạch & chữa lành: `stripTones()`, `cleanStaffStr()`, `cleanAndHealPatientName()`, `cleanAndHealProcedureName()`, `cleanAndHealStaffName()`.
+     - Tối ưu hóa điều kiện giải mã TCVN3: `if (hasStrongTcvn3Char)` cho phép giải mã triệt để các ký tự TCVN3 ngay cả khi chuỗi đã chứa âm tiết Unicode chuẩn.
+     - Xuất bản ra `window.ScheduleUtils` và gán an toàn ra phạm vi toàn cục (`window.t2m`, `window.decodeVietnameseEncoding`...).
+  2. **Áp dụng kiến trúc phòng thủ kép (Defensive Delegation)**:
+     - Trong `js/scheduler-engine.js`: thay vì xóa cứng hoặc dùng destructuring dễ xung đột biến, toàn bộ các hàm `t2m`, `m2t`, `isEmptyTime`, `is_overlap`, `decodeVietnameseEncoding`, `toVietnameseProperCase`, `cleanStaffStr`, `cleanAndHealStaffName`, `cleanAndHealPatientName`, `cleanAndHealProcedureName` đều sử dụng cơ chế ủy quyền: nếu có `_U = ScheduleUtils` thì gọi qua `_U`, nếu chưa nạp thì chạy hàm dự phòng nội bộ.
+     - Rút gọn gần 350 dòng code trùng lặp của bảng mã TCVN3/VNI và các khối healer lặp lại trong `scheduler-engine.js`.
+     - `SchedulerEngine` tiếp tục xuất bản đầy đủ 100% các bí danh (alias) ra `window` để không ảnh hưởng đến bất kỳ lệnh gọi cũ nào từ `app.js`.
+  3. **Tích hợp trong `js/cp-solver.js`**:
+     - Ủy quyền `t2m`, `m2t`, `isOverlap` và `cleanStaffStr` sang `ScheduleUtils` với fallback phòng thủ.
+  4. **Quy tắc nạp Script & Cache Buster theo Rule 3**:
+     - Trong `index.html`: nạp thẻ `<script src="js/schedule-utils.js?v=4.1.4-rev2"></script>` ngay trước `offline-sync-engine.js`.
+     - Cập nhật toàn bộ cache busters: `?v=4.1.4-rev2` trên tất cả link CSS và script.
+     - `#sys-last-update` cập nhật: `⏱ Cập nhật lần cuối: 09:50 23/09/2026`.
+     - Chân trang `#app-footer-version` giữ đúng `Phiên bản: 4.1.4` (không kèm rev).
+     - Service Worker `sw.js`: thêm `'./js/schedule-utils.js'` vào `STATIC_ASSETS`, nâng `CACHE_NAME = 'pmcg-v4-cache-4.1.4-rev2'`.
+     - Cập nhật `version.json` và modal `modal-force-update`.
+
+- *File sửa đổi*:
+  - `js/schedule-utils.js`: Tạo mới module tiện ích dùng chung.
+  - `js/scheduler-engine.js`: Tích hợp phòng thủ kép ủy quyền qua `ScheduleUtils`, loại bỏ ~350 dòng code trùng lặp.
+  - `js/cp-solver.js`: Tích hợp dùng chung `ScheduleUtils`.
+  - `index.html`: Nạp thẻ script `schedule-utils.js` đầu danh sách, cập nhật cache buster `4.1.4-rev2`, timestamp.
+  - `sw.js`: Thêm `schedule-utils.js` vào cache, đổi cache name `pmcg-v4-cache-4.1.4-rev2`.
+  - `version.json`: Nâng phiên bản `4.1.4-rev2`.
+  - `PM-xeplich-v4.md`: Ghi nhật ký kỹ thuật chi tiết Phân kỳ 2.
+
+
 

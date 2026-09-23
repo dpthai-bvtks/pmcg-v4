@@ -1,6 +1,6 @@
 {
-    "version": "4.1.4-rev1",
+    "version": "4.1.4-rev2",
     "releaseDate": "23/09/2026",
-    "releaseTime": "07:55 23/09/2026",
-    "notes": "feat(phase-1): Khắc phục triệt để lỗi font Tên nhân sự (nvChinh/nvPhu), hợp nhất cleanStaffStr và chuẩn hóa decode khi đọc file HIS."
+    "releaseTime": "09:50 23/09/2026",
+    "notes": "feat(phase-2): Tách module tiện ích dùng chung schedule-utils.js theo phương pháp phòng thủ kép, triệt tiêu code trùng lặp giữa các engine."
 }
