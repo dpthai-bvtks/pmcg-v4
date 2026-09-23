@@ -4542,7 +4542,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     return `<span class="badge" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:11px; padding:2px 7px; border-radius:10px; margin:2px 3px; display:inline-block;">${escapeHtml(pName)}</span>`;
                 }).join('');
                 const sttHtml = (typeof window.renderSttOrderControl === 'function') ? window.renderSttOrderControl("protocols", i, list.length) : `<span style="font-weight:700;">${i + 1}</span>`;
-                return `<tr class="draggable-row editable-row" data-drag-idx="${i}" ondblclick="editProtocol(${i})" title="Nhấp đúp chuột để chỉnh sửa phác đồ này">
+                return `<tr class="draggable-row editable-row" data-drag-idx="${i}" onclick="editProtocol(${i})" style="cursor:pointer;" title="Chạm hoặc nhấp chuột để chỉnh sửa phác đồ này">
                     <td align="center">${sttHtml}</td>
                     <td>
                         <strong style="color:#1e3a8a; font-size:13px;">${escapeHtml(item.name || `Phác đồ ${i + 1}`)}</strong>
@@ -7081,11 +7081,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
             <td style="text-align:center">${start + i + 1}</td>
 
-            <td style="text-align:center">${ngayShort}</td>
+            <td class="col-hide-mobile" style="text-align:center">${ngayShort}</td>
 
             <td style="font-weight:bold;">${item.tenBN || ''}${dischargeMark}</td>
 
-            <td style="text-align:center;">${item.namSinh || ''}</td>
+            <td class="col-hide-mobile" style="text-align:center;">${item.namSinh || ''}</td>
 
             <td style="text-align:center;">${item.phong || ''}</td>
 
@@ -7097,11 +7097,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
             <td>${(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(item.nvChinh) : (item.nvChinh || ''))}</td>
 
-            <td>${(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(item.nvPhu) : (item.nvPhu || ''))}</td>
+            <td class="col-hide-mobile">${(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(item.nvPhu) : (item.nvPhu || ''))}</td>
 
-            <td>${item.may || ''}</td>
+            <td class="col-hide-mobile">${item.may || ''}</td>
 
-            <td style="text-align:center;">${item.giuong || ''}</td>
+            <td class="col-hide-mobile" style="text-align:center;">${item.giuong || ''}</td>
 
         </tr>`;
 
@@ -7309,7 +7309,11 @@ window.renderSttOrderControl = function (type, i, total) {
             list.innerHTML = '<tr><td colspan="12" align="center"><div class="spinner"></div></td></tr>';
 
             const startTime = performance.now();
-            if (window.showGlobalLoading) window.showGlobalLoading("Đang chạy thuật toán tối ưu xếp lịch (AI + CP-SAT)...");
+            const isMiniPCOnline = preferLocal && (window.SchedulerEngine && typeof window.SchedulerEngine.getCachedSolverInfo === 'function' && window.SchedulerEngine.getCachedSolverInfo()?.online);
+            const loadingMsg = isMiniPCOnline
+                ? "Đang chạy thuật toán tối ưu xếp lịch (MiniPC OR-Tools CP-SAT)..."
+                : "Đang chạy thuật toán tối ưu xếp lịch (Client-Side Turbo Engine)...";
+            if (window.showGlobalLoading) window.showGlobalLoading(loadingMsg);
             await new Promise(r => setTimeout(r, 16)); // Yield 1 frame for silky-smooth UI paint
 
             try {

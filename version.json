@@ -1,6 +1,6 @@
 {
-    "version": "4.1.4-rev4",
+    "version": "4.1.4-rev5",
     "releaseDate": "23/09/2026",
-    "releaseTime": "10:30 23/09/2026",
-    "notes": "fix(perfection): Đồng bộ UnscheduledDiagnosticEngine dùng ScheduleUtils, chuẩn hóa CPSatStrategy không dùng solveAsync, và nối dây ExportService vào app.js."
+    "releaseTime": "10:45 23/09/2026",
+    "notes": "feat(mobile-ux): Tối ưu toàn diện trải nghiệm người dùng trên Điện thoại và Máy tính bảng: chống WebKit auto-zoom iOS, vùng chạm chuẩn Apple HIG, tối ưu bảng lịch màn hình hẹp và thông báo solver trực quan."
 }

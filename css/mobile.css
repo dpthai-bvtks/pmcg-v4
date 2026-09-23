@@ -681,4 +681,69 @@
     background: #111827 !important;
     border-bottom-color: #334155 !important;
   }
+
+  /* 📱 CHỐNG TỰ ĐỘNG PHÓNG TO (AUTO-ZOOM) TRÊN IPHONE / IPAD SAFARI */
+  input,
+  select,
+  textarea,
+  .login-input,
+  .form-control,
+  .swal2-input,
+  .swal2-select {
+    font-size: 16px !important;
+  }
+
+  /* 📱 TỐI ƯU VÙNG CHẠM CẢM ỨNG (TOUCH TARGETS) THEO APPLE HIG & MATERIAL DESIGN */
+  .btn,
+  .action-btn {
+    min-height: 38px;
+    touch-action: manipulation;
+  }
+
+  .btn-sm {
+    min-height: 36px;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    touch-action: manipulation;
+  }
+
+  /* Khoảng cách an toàn giữa nút Sửa và nút Xóa để chống chạm nhầm */
+  .btn-primary.btn-sm,
+  .btn-warning.btn-sm {
+    margin-right: 8px !important;
+  }
+
+  /* Phản hồi chạm trực quan trên màn hình cảm ứng */
+  @media (hover: none) {
+    tbody tr.editable-row:active,
+    td.editable-row:active,
+    .card:active {
+      background-color: #f0fdf4 !important;
+    }
+  }
 }
+
+/* ==========================================================================
+   11. PHONE NARROW SCREEN BREAKPOINT (@media max-width: 600px)
+   ========================================================================== */
+@media screen and (max-width: 600px) {
+  /* Ẩn các cột thứ yếu trên điện thoại màn hình hẹp */
+  .col-hide-mobile {
+    display: none !important;
+  }
+
+  #schedule-table th,
+  #schedule-table td {
+    padding: 8px 6px !important;
+    font-size: 12px !important;
+  }
+
+  .schedule-table-wrap {
+    border-radius: 4px !important;
+  }
+}
+

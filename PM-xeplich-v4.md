@@ -5347,6 +5347,33 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   - **Rule 4**: Deploy thành công Cloudflare Pages.
   - **Rule 5**: Git commit & push `origin main`.
 
+---
+
+### [v4.1.4-rev5] - 10:45 23/09/2026: Tối Ưu Toàn Diện Trải Nghiệm Trên Điện Thoại & Máy Tính Bảng (Mobile & Tablet UX)
+
+- *Yêu cầu & Nội dung triển khai*:
+  - Triển khai trọn vẹn cả 3 giai đoạn tối ưu hóa giao diện di động cho iPhone, iPad và điện thoại Android:
+    1. **Triệt tiêu lỗi WebKit Auto-Zoom trên iOS**:
+       - Trong `css/mobile.css` (khối `@media screen and (max-width: 960px)`): ép `font-size: 16px !important` cho tất cả các thẻ `input, select, textarea, .login-input, .form-control, .swal2-input, .swal2-select`. Ngăn ngừa hoàn toàn hiện tượng Safari/Chrome iOS tự động phóng to khung nhìn làm giật màn hình khi chạm vào ô nhập liệu.
+    2. **Mở rộng vùng chạm cảm ứng (Touch Targets $\ge 38-40px$) theo chuẩn Apple HIG**:
+       - Tăng chiều cao tối thiểu `.btn, .action-btn` lên `38-40px` và `.btn-sm` lên `36px`, có `touch-action: manipulation`.
+       - Thiết lập khoảng cách an toàn `margin-right: 8px !important` giữa các nút thao tác (`.btn-primary.btn-sm` và `.btn-danger.btn-sm`) để chống chạm nhầm.
+       - Thêm phản hồi xúc giác `@media (hover: none)`: đổi màu sáng nhẹ (`#f0fdf4`) khi ngón tay chạm vào dòng `class="editable-row"`.
+    3. **Đồng bộ thao tác chạm 1 lần mở sửa phác đồ**:
+       - Sửa `js/app.js` dòng 4545: đổi từ `ondblclick` sang `onclick="editProtocol(${i})"`, đồng bộ với pattern của toàn bộ hệ thống.
+    4. **Tối ưu Bảng Lịch Trình trên màn hình hẹp ($\le 600px$)**:
+       - Khởi tạo breakpoint `@media screen and (max-width: 600px)` và gán class `.col-hide-mobile` vào 5 cột thứ yếu (`Ngày, Năm Sinh, NV Phụ, Máy, Giường`) trong cả `index.html` và `js/app.js`.
+       - Bảng lịch trên điện thoại chỉ tập trung vào 7 cột sống còn: `STT, Tên BN, Phòng, Thủ Thuật, Bắt Đầu, Kết Thúc, NV Chính`, hiển thị vừa vặn và trực quan.
+    5. **Thông báo trạng thái Solver minh bạch trên di động**:
+       - Trong `js/app.js`: hiển thị thông báo rõ ràng trong `showGlobalLoading` khi chạy ở chế độ Client-Side Turbo Engine (khi không kết nối được máy trạm MiniPC).
+
+- *Kiểm thử & Triển khai*:
+  - **Rule 1**: Kiểm tra cú pháp `node -c` toàn bộ 15 tệp: PASS 100% (0 lỗi).
+  - **Rule 3**: Nâng phiên bản `4.1.4-rev5`, `sw.js` cache name `pmcg-v4-cache-4.1.4-rev5`, `index.html` cập nhật timestamp `10:45 23/09/2026`.
+  - **Rule 4**: Deploy thành công Cloudflare Pages (`deploy:web`).
+  - **Rule 5**: Git commit & push `origin main`.
+
+
 
 
 
