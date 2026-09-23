@@ -5471,6 +5471,27 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - Deploy Cloudflare Worker API (`pmcg-api`) và Cloudflare Pages (`pmcg-v3.pages.dev`).
      - Kiểm thử trực tiếp API live: `getBootstrapData` trả về chính xác `schedule: 198 ca`, `is_finalized_today: true`.
 
+---
+
+### [v4.1.4-rev9] - 17:55 23/09/2026: Chuẩn Hóa Hiển Thị Bảng Lịch Trình Sau Khi Chốt Sổ Tự Động
+
+- *Yêu cầu của người dùng*: Sau khi chốt sổ tự động lúc 16:20, bảng lịch trình vẫn hiển thị đầy đủ 198 ca thay vì thông báo đã hoàn tất.
+
+- *Phân tích Nguyên nhân Gốc*:
+  - Bản v4.1.4-rev8 đã fix lỗi "các máy khác không xem được lịch" bằng cách bơm toàn bộ dữ liệu từ `lich_su` vào `scheduleRows` khi `lich_trinh` trống. Điều này vô tình khiến sau khi chốt sổ, bảng lịch trình vẫn hiện đầy đủ 198 ca trên tất cả thiết bị — người dùng không biết lịch đã được lưu trữ và bảng đã sẵn sàng cho ngày mới.
+  - Hành vi đúng cần có: sau khi chốt sổ, bảng lịch trình phải TRỐNG và hiển thị thông báo "Hôm nay đã hoàn tất chốt sổ ngày (198 ca)" kèm nút "Xem Dữ Liệu Trong Lịch Sử".
+
+- *Giải pháp Đã Triển Khai*:
+  1. **Backend `backup-sync.js`**: Hoàn nguyên logic bơm dữ liệu. Khi `lich_trinh` rỗng và hôm nay đã chốt sổ vào `lich_su`, backend chỉ trả về `schedule: []` + `is_finalized_today: true` + `finalized_today_count: 198` (dùng `COUNT(*)` thay vì `SELECT *` để nhẹ hơn).
+  2. **Frontend `app.js`**: Logic hiện tại đã đúng — khi nhận `schedule: []` + `is_finalized_today: true`, hàm `loadScheduleList()` tự động hiển thị thông báo hoàn tất thay vì bảng dữ liệu (code đã có sẵn từ trước ở dòng 7046-7061).
+  3. **Đồng bộ Phiên bản & Triển khai**:
+     - Nâng phiên bản hệ thống lên `4.1.4-rev9`.
+     - `sw.js` cache name `pmcg-v4-cache-4.1.4-rev9`.
+     - `index.html` cập nhật timestamp `17:55 23/09/2026` và toàn bộ cache busters.
+     - Deploy Cloudflare Worker API (`29e8c57f`) và Cloudflare Pages (`85db609e.pmcg-v3.pages.dev`).
+     - Git commit & push `origin main` (`7199019`).
+
+
 
 
 
