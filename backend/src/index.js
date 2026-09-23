@@ -2171,36 +2171,42 @@ async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
       "SELECT date FROM lich_trinh WHERE unit_code = ? AND (date = ? OR date = ?) LIMIT 1"
     ).bind(unitCode, todayDateStr, todayYMD).first().catch(() => null);
 
-    if (currentHourMin >= chotSoTime) {
+    // CHỈ tự động chốt nếu hôm nay chưa chốt (lastChotSoDate !== todayDateStr && lastChotSoDate !== todayYMD)
+    // Nếu người dùng xếp lại lịch sau giờ chốt sổ, TUYỆT ĐỐI không tự ý xóa sạch lịch vừa tạo!
+    if (currentHourMin >= chotSoTime && todaySched) {
       if (lastChotSoDate !== todayDateStr && lastChotSoDate !== todayYMD) {
         shouldClose = true;
-        closeTargetDate = todaySched ? (todaySched.date || todayYMD) : todayYMD;
+        closeTargetDate = todaySched.date || todayYMD;
         reason = `Đã đến giờ chốt sổ hàng ngày (${currentHourMin} >= ${chotSoTime})`;
-      } else if (todaySched) {
-        // Trường hợp đặc biệt: lastChotSoDate bị gắn nhầm (do catch-up ngày cũ vào buổi sáng)
-        // nhưng lich_trinh hôm nay vẫn còn dữ liệu và lich_su chưa có -> vẫn chốt sổ!
-        const todayHist = await db.prepare(
-          "SELECT id FROM lich_su WHERE unit_code = ? AND (date = ? OR date = ?) LIMIT 1"
-        ).bind(unitCode, todayDateStr, todayYMD).first().catch(() => null);
-        if (!todayHist) {
-          shouldClose = true;
-          closeTargetDate = todaySched.date || todayYMD;
-          reason = `Lịch hôm nay (${closeTargetDate}) còn tồn đọng chưa được lưu vào lịch sử`;
-        }
       }
     }
 
     // 2. Cơ chế hồi phục an toàn (Safety Catch-up):
-    // Nếu trong lich_trinh còn tồn đọng lịch của ngày cũ (quá khứ) chưa được chốt (ví dụ: tắt máy sớm, nghỉ lễ/cuối tuần)
+    // Chỉ tự động chốt nếu trong lich_trinh còn tồn đọng lịch của ngày QUÁ KHỨ (ngày cũ nhỏ hơn hôm nay)
+    // Tuyệt đối KHÔNG chốt ngày hôm nay hoặc ngày tương lai (ngày mai, tuần sau)
     if (!shouldClose) {
-      const pastSched = await db.prepare(
-        "SELECT date FROM lich_trinh WHERE unit_code = ? AND date IS NOT NULL AND TRIM(date) != '' AND date != ? AND date != ? LIMIT 1"
-      ).bind(unitCode, todayDateStr, todayYMD).first().catch(() => null);
+      const allDatesRes = await db.prepare(
+        "SELECT DISTINCT date FROM lich_trinh WHERE unit_code = ? AND date IS NOT NULL AND TRIM(date) != ''"
+      ).bind(unitCode).all().catch(() => ({ results: [] }));
 
-      if (pastSched && pastSched.date) {
-        shouldClose = true;
-        closeTargetDate = pastSched.date;
-        reason = `Tồn đọng lịch ngày cũ (${pastSched.date}) chưa chốt`;
+      const parseDateToYMD = (dStr) => {
+        if (!dStr) return "";
+        const s = String(dStr).trim();
+        if (s.includes("/")) {
+          const p = s.split("/");
+          if (p.length === 3) return `${p[2]}-${p[1].padStart(2, "0")}-${p[0].padStart(2, "0")}`;
+        }
+        return s;
+      };
+
+      for (const row of (allDatesRes.results || [])) {
+        const rowYMD = parseDateToYMD(row.date);
+        if (rowYMD && rowYMD < todayYMD) {
+          shouldClose = true;
+          closeTargetDate = row.date;
+          reason = `Tồn đọng lịch ngày cũ (${row.date}) chưa chốt`;
+          break;
+        }
       }
     }
 

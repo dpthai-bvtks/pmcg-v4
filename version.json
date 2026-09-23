@@ -1,6 +1,6 @@
 {
-    "version": "4.1.4-rev7",
+    "version": "4.1.4-rev8",
     "releaseDate": "23/09/2026",
-    "releaseTime": "11:45 23/09/2026",
-    "notes": "fix(staff-patients): Bổ sung fallback phòng thủ toàn diện cho sanitizeInputText và healBackendPatientName trong tất cả sub-routers, khắc phục triệt để lỗi lưu giờ bận nhân sự và bệnh nhân."
+    "releaseTime": "16:35 23/09/2026",
+    "notes": "fix(schedule-sync): Khắc phục lỗi điện thoại và máy tính khác không xem được bảng lịch trình; tự động nạp lịch từ lịch sử hôm nay vào getBootstrapData; sửa logic auto-chotSo không xóa nhầm lịch ngày mới/tương lai."
 }

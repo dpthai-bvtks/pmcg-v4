@@ -5435,6 +5435,42 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - Deploy thành công Cloudflare Worker API (`a8e66bda-c1d6-4639-8543-7be85563542f`) và Cloudflare Pages.
      - Git commit & push `origin main`.
 
+---
+
+### [v4.1.4-rev8] - 16:35 23/09/2026: Khắc Phục Lỗi Điện Thoại & Máy Tính Khác Không Xem Được Bảng Lịch Trình Sau Khi Chốt Sổ Tự Động
+
+- *Hiện tượng & Phản ánh của người dùng*:
+  - Trên MiniPC xếp lịch xong thì nhìn thấy bảng lịch trình (198 ca), nhưng mở trên các máy tính khác hoặc điện thoại thì bảng lịch trình trống trơn, không hiển thị gì cả.
+
+- *Phân tích Nguyên nhân Gốc (Root Cause)*:
+  1. **Cơ chế Chốt sổ tự động đám mây lúc 16:20**:
+     - Cloudflare Worker có Cron `*/10 * * * *` và hàm `getBootstrapData` gọi `checkAutoChotSo(db, unitCode)`. Khi quá 16:20, hệ thống tự động lưu toàn bộ 198 ca trong `lich_trinh` sang bảng `lich_su` và xóa sạch bảng `lich_trinh`.
+  2. **getBootstrapData trả về schedule rỗng**:
+     - Khi các thiết bị khác (điện thoại, máy tính nhân viên) truy cập, `getBootstrapData` kiểm tra thấy `scheduleRows.length === 0` và `histTodayRes.cnt > 0` (`isFinalizedToday = true`). Backend **chủ đích trả về `schedule: []`** để "chuẩn bị bảng trống cho ngày mới".
+  3. **Lệch trạng thái giữa MiniPC và các thiết bị khác**:
+     - MiniPC vừa chạy xếp lịch nên giữ 198 ca trong bộ nhớ RAM (`window.currentScheduleData`) và `localStorage.meds_success`.
+     - Các máy khác/điện thoại khi tải trang nhận về `schedule: []`, xóa sạch cache cục bộ và chỉ hiện thông báo *"Hôm nay đã hoàn tất chốt sổ ngày"*, khiến người dùng không thể xem được lịch trình đã xếp trong ngày.
+  4. **Cơ chế Safety Catch-up trong checkAutoChotSo**:
+     - Biểu thức kiểm tra `date != todayDateStr AND date != todayYMD` khiến các lịch xếp trước cho ngày mai/ngày tương lai bị ngộ nhận là "ngày cũ tồn đọng" và bị dọn sạch vào lịch sử.
+
+- *Giải pháp Đã Triển Khai (Phòng thủ đa tầng)*:
+  1. **Cung cấp Dữ liệu Lịch Trình Liền Mạch trong `getBootstrapData` (`backend/src/routes/backup-sync.js`)**:
+     - Chuẩn hóa đối chiếu ngày `todayArg` linh hoạt theo cả định dạng `YYYY-MM-DD` và `DD/MM/YYYY`.
+     - Khi `lich_trinh` rỗng mà hôm nay đã chốt sổ vào `lich_su`, `getBootstrapData` tự động nạp toàn bộ danh sách ca từ `lich_su` hôm nay vào `scheduleRows` (chuẩn hóa tên bệnh nhân qua `healBackendPatientName`).
+     - Nhờ đó, tất cả điện thoại và máy tính khác khi mở lên đều nhận đầy đủ 100% (198/198 ca) để xem, tra cứu và in ấn bình thường, kèm theo huy hiệu `🔒 Đã chốt sổ ngày (198 ca)`.
+  2. **Bảo vệ Lịch Trình Ngày Hôm Nay & Ngày Mai trong `checkAutoChotSo` (`backend/src/index.js`)**:
+     - Tinh chỉnh cơ chế Safety Catch-up: chuyển đổi ngày sang chuẩn `YYYY-MM-DD` và so sánh nghiêm ngặt `rowYMD < todayYMD`. Tuyệt đối không tự động dọn dẹp lịch của ngày hôm nay hoặc các ngày tương lai.
+     - Kiểm tra nếu `lastChotSoDate === todayYMD` và đã có lịch mới, không xóa đè.
+  3. **Tối ưu Khởi tạo & Lưu Cache Frontend (`js/app.js` & `js/init.js`)**:
+     - Tại `loadBootstrapData`: Khi `b.schedule` có dữ liệu (kể cả khi đã chốt sổ `b.is_finalized_today = true`), lưu ngay vào `localStorage.meds_success`, `dataCache.schedule`, `window.currentScheduleData` và render bảng đầy đủ.
+     - Tại `js/init.js`: Sửa điều kiện xóa cache khi khác đơn vị, chỉ xóa khi cả `scheduleUnitTag` và `currentUnitCode` đều tồn tại và khác nhau (`scheduleUnitTag && currentUnitCode && scheduleUnitTag !== currentUnitCode`).
+  4. **Đồng bộ Phiên bản & Triển khai**:
+     - Nâng phiên bản hệ thống lên `4.1.4-rev8`.
+     - `sw.js` cache name `pmcg-v4-cache-4.1.4-rev8`.
+     - `index.html` cập nhật timestamp `16:35 23/09/2026` và toàn bộ cache busters JS/CSS.
+     - Deploy Cloudflare Worker API (`pmcg-api`) và Cloudflare Pages (`pmcg-v3.pages.dev`).
+     - Kiểm thử trực tiếp API live: `getBootstrapData` trả về chính xác `schedule: 198 ca`, `is_finalized_today: true`.
+
 
 
 

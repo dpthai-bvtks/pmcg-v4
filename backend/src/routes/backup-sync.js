@@ -155,7 +155,7 @@ export async function handleBackupSyncAction(action, ctx) {
       await checkAutoChotSo(db, unitCode);
 
       // Lấy ngày từ client, hoặc tự tính theo múi giờ Việt Nam (UTC+7)
-      const todayArg = args[0] || "";
+      const todayArg = String(args[0] || "").trim();
       let todayVN = todayArg;
       if (!todayVN) {
         const nowVN = new Date(Date.now() + 7 * 60 * 60 * 1000);
@@ -164,8 +164,21 @@ export async function handleBackupSyncAction(action, ctx) {
         const dd = String(nowVN.getUTCDate()).padStart(2, "0");
         todayVN = `${yy}-${mm}-${dd}`;
       }
-      const [ty, tm, td] = todayVN.split("-");
-      const todayVNSlash = `${td}/${tm}/${ty}`; // VD: 21/08/2026
+      let ymd = todayVN;
+      let dmy = todayVN;
+      if (todayVN.includes('/')) {
+        const p = todayVN.split('/');
+        if (p.length === 3) {
+          ymd = `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
+          dmy = `${p[0].padStart(2, '0')}/${p[1].padStart(2, '0')}/${p[2]}`;
+        }
+      } else if (todayVN.includes('-')) {
+        const p = todayVN.split('-');
+        if (p.length === 3) {
+          ymd = `${p[0]}-${p[1].padStart(2, '0')}-${p[2].padStart(2, '0')}`;
+          dmy = `${p[2].padStart(2, '0')}/${p[1].padStart(2, '0')}/${p[0]}`;
+        }
+      }
 
       const [settingsRes, staffRes, machinesRes, roomsRes, proceduresRes, patientsRes, scheduleRes, accountsRes, phacDoRes, tenantRes] = await db.batch([
         db.prepare("SELECT key, value FROM cai_dat WHERE unit_code = ?").bind(unitCode),
@@ -174,7 +187,7 @@ export async function handleBackupSyncAction(action, ctx) {
         db.prepare("SELECT * FROM phong WHERE unit_code = ? ORDER BY order_idx ASC, id ASC").bind(unitCode),
         db.prepare("SELECT * FROM thu_thuat WHERE unit_code = ? ORDER BY order_idx ASC, id ASC").bind(unitCode),
         db.prepare("SELECT * FROM benh_nhan WHERE unit_code = ? AND is_saturday = 0 ORDER BY order_idx ASC, id ASC").bind(unitCode),
-        db.prepare("SELECT * FROM lich_trinh WHERE unit_code = ? AND (date = ? OR date = ?) ORDER BY order_idx ASC, start_time ASC").bind(unitCode, todayVN, todayVNSlash),
+        db.prepare("SELECT * FROM lich_trinh WHERE unit_code = ? AND (date = ? OR date = ?) ORDER BY order_idx ASC, start_time ASC").bind(unitCode, ymd, dmy),
         db.prepare("SELECT id, username, role, permissions FROM tai_khoan WHERE unit_code = ?").bind(unitCode),
         db.prepare("SELECT * FROM phac_do WHERE unit_code = ? AND is_active = 1 ORDER BY order_idx ASC, id ASC").bind(unitCode),
         db.prepare("SELECT * FROM tenants WHERE unit_code = ?").bind(unitCode)
@@ -373,20 +386,36 @@ export async function handleBackupSyncAction(action, ctx) {
 
       let isFinalizedToday = false;
       let finalizedTodayCount = 0;
-      // 🛡️ Kiểm tra xem ngày hôm nay đã chốt sổ chưa (không nạp lịch sử vào lịch trình hiện tại để bảng lịch trống sẵn sàng cho ngày mới)
+      // 🛡️ Nếu lich_trinh chưa có dữ liệu ngày hôm nay, kiểm tra xem đã chốt sổ vào lich_su chưa
       if (scheduleRows.length === 0) {
         try {
-          const histTodayRes = await db.prepare("SELECT count(*) as cnt FROM lich_su WHERE unit_code = ? AND (date = ? OR date = ?)").bind(unitCode, todayVN, todayVNSlash).first();
-          if (histTodayRes && histTodayRes.cnt > 0) {
+          const histTodayRes = await db.prepare(
+            "SELECT date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_su WHERE unit_code = ? AND (date = ? OR date = ?) ORDER BY start_time ASC"
+          ).bind(unitCode, ymd, dmy).all();
+          if (histTodayRes && histTodayRes.results && histTodayRes.results.length > 0) {
             isFinalizedToday = true;
-            finalizedTodayCount = Number(histTodayRes.cnt);
+            finalizedTodayCount = histTodayRes.results.length;
+            // 🚀 Bơm dữ liệu lịch sử hôm nay vào schedule để tất cả máy tính & điện thoại khác đều xem được bảng lịch trình!
+            scheduleRows = histTodayRes.results.map(s => ([
+              s.date,
+              healBackendPatientName(s.patient_name, true),
+              s.dob || "",
+              s.room || "",
+              s.procedure_name,
+              s.start_time,
+              s.end_time,
+              s.staff_name || "",
+              s.sub_staff_name || "",
+              s.machine_name || "",
+              s.bed || ""
+            ]));
           }
         } catch(e) {
           console.warn("Lỗi kiểm tra lich_su hôm nay:", e);
         }
 
-        // 🛡️ Nếu hôm nay chưa chốt sổ và chưa tìm thấy theo ngày cụ thể, nạp lịch đang có trong lich_trinh (tránh lệch định dạng ngày)
-        if (!isFinalizedToday) {
+        // 🛡️ Nếu hôm nay chưa có và lịch sử chưa có, nạp bất kỳ lịch nào đang có trong lich_trinh (tránh lệch định dạng ngày)
+        if (scheduleRows.length === 0) {
           try {
             const anySchedRes = await db.prepare("SELECT * FROM lich_trinh WHERE unit_code = ? ORDER BY order_idx ASC, start_time ASC").bind(unitCode).all();
             if (anySchedRes && anySchedRes.results && anySchedRes.results.length > 0) {

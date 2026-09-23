@@ -142,8 +142,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedDateRaw = localStorage.getItem('meds_schedule_date') || (currentUnitCode ? localStorage.getItem(`${currentUnitCode}_meds_schedule_date`) : '') || '';
         const savedDateYMD = toYMD_init(savedDateRaw);
 
-        const isDifferentUnit = !scheduleUnitTag || (currentUnitCode && scheduleUnitTag !== currentUnitCode);
-        const isPastDate = savedDateYMD && savedDateYMD !== todayYMD_init;
+        const isDifferentUnit = scheduleUnitTag && currentUnitCode && (scheduleUnitTag !== currentUnitCode);
+        const isPastDate = savedDateYMD && (savedDateYMD !== todayYMD_init);
 
         if (isDifferentUnit || isPastDate) {
             localStorage.removeItem('meds_success');

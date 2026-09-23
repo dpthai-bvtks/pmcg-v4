@@ -3615,10 +3615,20 @@ window.renderSttOrderControl = function (type, i, total) {
                         if (b && Array.isArray(b.schedule)) {
                             dataCache.schedule = b.schedule;
                             window.currentScheduleData = (b.schedule.length > 0 && typeof markDischargedInSchedule === 'function') ? markDischargedInSchedule(b.schedule) : (b.schedule || []);
-                            if (b.schedule.length === 0) {
-                                // Server xác nhận hôm nay chưa có lịch (ngày mới hoặc đã chốt sổ), dọn sạch cache local
-                                const curUnit = getCurrentUnitCode();
-                                const uKey = (base) => (typeof getUnitStorageKey === 'function') ? getUnitStorageKey(base) : (curUnit ? `${curUnit}_${base}` : base);
+                            const curUnit = getCurrentUnitCode();
+                            const uKey = (base) => (typeof getUnitStorageKey === 'function') ? getUnitStorageKey(base) : (curUnit ? `${curUnit}_${base}` : base);
+                            if (b.schedule.length > 0) {
+                                try {
+                                    const schedJson = JSON.stringify(b.schedule);
+                                    const activeDate = (Array.isArray(b.schedule[0]) ? b.schedule[0][0] : (b.schedule[0]?.ngay || b.schedule[0]?.date)) || (document.getElementById('schedule-date')?.value) || '';
+                                    localStorage.setItem(uKey('meds_success'), schedJson);
+                                    localStorage.setItem('meds_success', schedJson);
+                                    localStorage.setItem(uKey('meds_schedule_date'), activeDate);
+                                    localStorage.setItem('meds_schedule_date', activeDate);
+                                    localStorage.setItem('meds_schedule_unit', curUnit);
+                                } catch(eCache) {}
+                            } else {
+                                // Server xác nhận hôm nay thực sự chưa có lịch
                                 localStorage.removeItem(uKey('meds_success'));
                                 localStorage.removeItem(uKey('meds_schedule_date'));
                                 localStorage.removeItem(uKey('meds_unscheduled'));
@@ -3629,7 +3639,7 @@ window.renderSttOrderControl = function (type, i, total) {
                             }
                             if (b.is_finalized_today) {
                                 window._todayIsFinalized = true;
-                                window._finalizedTodayCount = b.finalized_today_count || 0;
+                                window._finalizedTodayCount = b.finalized_today_count || (b.schedule ? b.schedule.length : 0);
                                 const countInfo = window._finalizedTodayCount ? ` (${window._finalizedTodayCount} ca)` : '';
                                 const displayEl = document.getElementById('display-date');
                                 if (displayEl) {
