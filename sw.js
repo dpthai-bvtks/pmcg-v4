@@ -3,7 +3,7 @@
  * Quản lý Cache đệm tĩnh, cho phép mở App ngoại tuyến (Offline-first) và tải tức thì.
  */
 
-const CACHE_NAME = 'pmcg-v4-cache-4.1.5-rev5';
+const CACHE_NAME = 'pmcg-v4-cache-4.1.5-rev6';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -16,6 +16,11 @@ const STATIC_ASSETS = [
   './js/schedule-strategies.js',
   './js/modules/export-service.js',
   './js/modules/history-manager.js',
+  './js/modules/app-error-checker.js',
+  './js/modules/app-export-reports.js',
+  './js/modules/app-backup-restore.js',
+  './js/modules/app-doc-lookup.js',
+  './js/modules/app-tenant-admin.js',
   './js/init.js',
   './js/app.js',
   './js/thongke.js',

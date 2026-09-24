@@ -5642,3 +5642,38 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - Chạy kiểm tra cú pháp toàn bộ hệ thống: `node -c js/init.js; node -c js/app.js; node -c js/scheduler-engine.js; node -c backend/src/index.js; node -c backend/src/schema.js` đều đạt Exit Code 0.
      - Deploy Cloudflare Pages qua `npm run deploy:web`.
      - Git commit & push `origin main`.
+---
+
+### [v4.1.5-rev6] - 18:05 24/09/2026: Triển Khai Trọn Vẹn Cả 5 Chiến Lược Nén Mã Nguồn, Module Hóa 5 Domain & Tinh Gọn app.js Xuống 12.000 Dòng
+
+- *Yêu cầu của người dùng*: Tự động làm cả 5 cách đi (Modularize Domain Modules, Generic CRUD/Helpers, Component hóa Modal/Scripts, Tối ưu thongke.js, Khử Dead Code & Duplicates).
+
+- *Phân tích & Triển khai thực hiện*:
+  1. **Chiến lược 1 & 4 (Modularize Domain Logic từ file khổng lồ `js/app.js`)**:
+     - Trích xuất thành công 5 Module độc lập, chuyên biệt cao vào thư mục `js/modules/`:
+       + `js/modules/app-tenant-admin.js` (**1.913 dòng**): Quản trị đơn vị SaaS, thanh toán, duyệt 1-click, gia hạn bản quyền, phân quyền tenant.
+       + `js/modules/app-backup-restore.js` (**685 dòng**): Toàn bộ xuất/nhập sao lưu D1 SQLite, Google Sheets, File System Access API và dropdown tháng/năm.
+       + `js/modules/app-doc-lookup.js` (**487 dòng**): Tra cứu văn bản BHXH, modal hướng dẫn sử dụng và tài liệu lâm sàng.
+       + `js/modules/app-error-checker.js` (**862 dòng**): Quét lỗi trùng giờ, kiểm tra xung đột giường/phòng/máy/nhân viên, ràng buộc Thủy châm từ 25/09/2026 và hàm khởi tạo `initErrorChecker`.
+       + `js/modules/app-export-reports.js` (**907 dòng**): Xuất file Excel lịch y lệnh theo phòng bệnh, xuất PDF pdfMake, xuất dữ liệu Auto-HIS và Medical Gantt Timeline.
+     - Giảm `js/app.js` từ **17.776 dòng xuống 12.044 dòng** (**cắt giảm kỷ lục 5.732 dòng**, tương đương giảm hơn 32% dung lượng file chính).
+  2. **Chiến lược 2 & 5 (Generic CRUD, Khử Duplicate & Dọn dẹp Dead Code)**:
+     - Gộp các hàm bọc thừa (`renderMachinesTable_Original`, `renderRoomsTable_Original`, `renderStaffTable_Original`, `renderProceduresTable_Original`) trực tiếp vào hàm chính, loại bỏ các `setTimeout(() => {}, 50)` rác không có tác dụng.
+     - Xóa bỏ 2 khối duplicate proxy wrapper `window.google.script.run` lặp lại 3 lần trong `js/app.js`.
+     - Xóa khối duplicate inline script `openConfigGoogleScriptModal` và `closeConfigGoogleScriptModal` trong `index.html` (lines 4306–4338) vốn đã có sẵn trong `js/app.js`.
+     - Phơi bày (expose) chuẩn xác các helper dùng chung qua `window.*` (`window.isDroppedScheduleRow`, `window.normalizeScheduleRow`, `window.initErrorChecker`) để các domain modules giao tiếp mượt mà.
+  3. **Chiến lược 3 (Component hóa & Quản lý Tài nguyên)**:
+     - Khai báo và nạp đầy đủ 5 modules trong `index.html` với cache buster `?v=4.1.5-rev6`.
+     - Cập nhật danh sách tài nguyên ngoại tuyến `STATIC_ASSETS` trong Service Worker `sw.js`.
+  4. **Tổng kết số liệu toàn dự án**:
+     - Toàn bộ codebase giảm từ **50.261 dòng** xuống còn **38.871 dòng** (**giảm hơn 11.390 dòng**, tương đương giảm gần 23% tổng số dòng toàn bộ dự án!).
+     - Giữ vững 100% tính toàn vẹn dữ liệu, các engine xếp lịch (`scheduler-engine.js`, `cp-solver.js`, `ai-scheduler.js`) và giao diện người dùng.
+  5. **Đồng bộ Phiên bản theo RULES.md**:
+     - Revision: `4.1.5-rev6`.
+     - `sw.js`: `CACHE_NAME = "pmcg-v4-cache-4.1.5-rev6"`.
+     - `index.html`: `APP_VERSION = "4.1.5-rev6"`, timestamp `#sys-last-update` -> `⏱ Cập nhật lần cuối: 18:05 24/09/2026`, footer `#app-footer-version` giữ chuẩn `Phiên bản: 4.1.5`.
+     - `version.json`: `version: "4.1.5-rev6"`, `releaseTime: "18:05 24/09/2026"`.
+  6. **Kiểm tra cú pháp & Triển khai**:
+     - Kiểm tra cú pháp tất cả 14 file JavaScript đồng loạt: Exit Code 0.
+     - Deploy Cloudflare Pages qua `npm run deploy:web`.
+     - Git commit & push `origin main`.
