@@ -5492,6 +5492,33 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - Git commit & push `origin main` (`7199019`).
      - Sửa triệt để lỗi mã hóa UTF-8: Phục hồi nguyên bản cấu trúc 4.928 dòng của [index.html](file:///c:/PRIVATE-DPT/PM-DPT/PM-xeplich/PM-chinh/ban_web/v4-thuongmai/index.html) và [sw.js](file:///c:/PRIVATE-DPT/PM-DPT/PM-xeplich/PM-chinh/ban_web/v4-thuongmai/sw.js) chuẩn UTF-8 sạch (không BOM, không nén 1 dòng). Deploy lại Cloudflare Pages.
 
+---
+
+### [v4.1.5-rev1] - 07:30 24/09/2026: Nâng Cấp Bộ Lọc Tìm Kiếm Phân Biệt Dấu Tiếng Việt Chuẩn Xác Tuyệt Đối
+
+- *Yêu cầu của người dùng*: Xem lại chức năng tìm kiếm vẫn chưa đạt yêu cầu, tìm "sông" lại ra một loạt kết quả không liên quan (như "sóng ngắn" của bệnh nhân khác), phải tìm đúng cả dấu tiếng Việt.
+
+- *Phân tích Nguyên nhân Gốc*:
+  - Trong `js/app.js`, hàm `fuzzySearchList` (dùng cho ô tìm kiếm Lịch trình `#schedule-search-input` và Timeline Gantt), cũng như `filterPatientTable` (bảng bệnh nhân `#pat-search-input`), `_satFilter` (tab thứ 7), `filterDocLookupList` (tra cứu văn bản):
+    + Trước đây luôn tự động loại bỏ toàn bộ dấu tiếng Việt (`removeVietnameseTones`) cả ở chuỗi tìm kiếm (`cleanQuery`) và dữ liệu từng cột/hàng (`removeVietnameseTones(row[k])`).
+    + Do từ "sông" và "sóng" khi bỏ dấu đều trở thành chuỗi `"song"`, câu lệnh `col.includes(qNoTone)` khiến truy vấn tìm kiếm `"sông"` khớp luôn với tất cả các ca có thủ thuật `"sóng ngắn"` của các bệnh nhân khác (ví dụ BÙI VĂN HANH - sóng ngắn, PHẠM THỊ THUẬN - sóng ngắn...).
+
+- *Giải pháp Đã Triển Khai*:
+  1. **Tạo hàm nhận diện dấu thanh `hasVietnameseDiacritics(str)`**:
+     - Kiểm tra nếu chuỗi người dùng nhập có chứa dấu thanh / ký tự tiếng Việt đặc thù (`clean !== removeVietnameseTones(clean)`).
+  2. **Nâng cấp `fuzzySearchList`**:
+     - Khi người dùng gõ có dấu (ví dụ: `"sông"` hoặc `"sóng"`): Hệ thống giữ nguyên chuỗi có dấu và so sánh trực tiếp dạng chữ thường (`val.toLowerCase().includes(targetQuery)`), đảm bảo chỉ những ca chứa đúng ký tự có dấu mới được hiển thị.
+     - Khi người dùng gõ không dấu (ví dụ: `"song"`): Hệ thống tự động chuyển đổi sang không dấu để tìm kiếm bao quát cả "sông", "sóng", "song", mang lại trải nghiệm tra cứu thông minh và tiện lợi nhất.
+  3. **Đồng bộ cơ chế cho tất cả các thanh tìm kiếm khác**:
+     - Bảng Bệnh nhân (`filterPatientTable` / `#pat-search-input`).
+     - Tab Bệnh nhân Thứ Bảy (`_satFilter` / `locBnSat` / `#sat-search-bn`).
+     - Tra cứu Văn bản Quy định (`filterDocLookupList` / `#doc-search-input`).
+  4. **Đồng bộ Phiên bản & Cache Buster**:
+     - Nâng phiên bản hệ thống lên `4.1.5-rev1`.
+     - `sw.js` cache name `pmcg-v4-cache-4.1.5-rev1`.
+     - `index.html` cập nhật timestamp `07:30 24/09/2026`, chân trang `Phiên bản: 4.1.5` và toàn bộ cache busters JS/CSS `?v=4.1.5-rev1`.
+     - `version.json` đồng bộ `version: "4.1.5-rev1"`, `releaseDate: "24/09/2026"`, `releaseTime: "07:30 24/09/2026"`.
+
 
 
 

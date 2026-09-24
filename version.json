@@ -1,6 +1,6 @@
 {
-    "version": "4.1.4-rev9",
-    "releaseDate": "23/09/2026",
-    "releaseTime": "17:55 23/09/2026",
-    "notes": "fix(schedule-display): Sau khi chot so tu dong (16:20), bang lich trinh hien thi thong bao Da hoan tat chot so (X ca) thay vi hien day du cac ca."
+    "version": "4.1.5-rev1",
+    "releaseDate": "24/09/2026",
+    "releaseTime": "07:30 24/09/2026",
+    "notes": "fix(search): Nâng cấp thuật toán tìm kiếm phân biệt dấu tiếng Việt chuẩn xác (gõ 'sông' chỉ tìm đúng 'sông', không bị lẫn sang 'sóng', gõ không dấu 'song' vẫn tìm linh hoạt cả hai)."
 }

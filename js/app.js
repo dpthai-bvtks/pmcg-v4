@@ -532,26 +532,42 @@ function healPatientName(rawName, candidates = [], forceUpperCase = false) {
 }
 window.healPatientName = healPatientName;
 
+function hasVietnameseDiacritics(str) {
+    if (!str) return false;
+    const clean = String(str).toLowerCase().trim();
+    return clean !== removeVietnameseTones(clean);
+}
+window.hasVietnameseDiacritics = hasVietnameseDiacritics;
+
 function fuzzySearchList(list, query, keys = ['tenBN', 'phong', 'nvChinh', 'nvPhu', 'thuThuat', 'may', 'giuong', 'namSinh']) {
     if (!query || !list || !list.length) return list;
     const cleanQuery = String(query).trim();
     if (!cleanQuery) return list;
 
-    const qNoTone = removeVietnameseTones(cleanQuery).toLowerCase();
-    const tokens = qNoTone.split(/\s+/).filter(Boolean);
+    const hasTone = hasVietnameseDiacritics(cleanQuery);
+    const qLower = cleanQuery.toLowerCase();
+    const qNoTone = removeVietnameseTones(cleanQuery);
+
+    const tokens = (hasTone ? qLower : qNoTone).split(/\s+/).filter(Boolean);
     if (!tokens.length) return list;
 
     return list.filter(row => {
         if (!row) return false;
-        // Trich xuat tung cot rieng biet (khong dau, chu thuong) - khong ghep chung
-        const colValues = keys.map(k => removeVietnameseTones(String(row[k] || '')).toLowerCase());
+        // Trich xuat tung cot rieng biet
+        // Neu query co dau tieng Viet (nhu "sông", "sóng"), giu nguyen co dau lowercase de so khop chinh xac dau
+        // Neu query khong dau (nhu "song"), chuyen ca cot ve khong dau de tim kiem linh hoat
+        const colValues = keys.map(k => {
+            const rawVal = String(row[k] || '').trim();
+            return hasTone ? rawVal.toLowerCase() : removeVietnameseTones(rawVal);
+        });
+
+        const targetQuery = hasTone ? qLower : qNoTone;
 
         // Cach 1: Toan bo cau query khop lien tuc trong it nhat 1 cot (uu tien cao nhat)
-        if (colValues.some(col => col.includes(qNoTone))) return true;
+        if (colValues.some(col => col.includes(targetQuery))) return true;
 
         // Cach 2: Tat ca token phai xuat hien trong CUNG 1 cot (tranh cross-column matching)
         // Vi du: "bs hoa" -> ca "bs" va "hoa" phai nam trong cung cot nvChinh = "bs hoa"
-        // Khong chap nhan: "bs" o nvChinh + "hoa" o tenBN (HOANG)
         return colValues.some(col => tokens.every(tok => col.includes(tok)));
     });
 }
@@ -6044,8 +6060,10 @@ window.renderSttOrderControl = function (type, i, total) {
             clearTimeout(patSearchTimeout);
             patSearchTimeout = setTimeout(function () {
                 const rawFilter = document.getElementById("pat-search-input")?.value || '';
-                const filterNoTone = removeVietnameseTones(rawFilter);
-                const tokens = filterNoTone.split(/\s+/).filter(Boolean);
+                const clean = rawFilter.trim();
+                const hasTone = hasVietnameseDiacritics(clean);
+                const qTarget = hasTone ? clean.toLowerCase() : removeVietnameseTones(clean);
+                const tokens = qTarget.split(/\s+/).filter(Boolean);
 
                 const table = document.getElementById("patients-table");
                 if (!table) return;
@@ -6058,8 +6076,8 @@ window.renderSttOrderControl = function (type, i, total) {
                         show = true;
                     } else {
                         const rowText = Array.from(tds).slice(1, tds.length - 1).map(td => td.textContent || td.innerText || '').join(' ');
-                        const rowNoTone = removeVietnameseTones(rowText);
-                        show = tokens.every(tok => rowNoTone.includes(tok));
+                        const targetText = hasTone ? rowText.toLowerCase() : removeVietnameseTones(rowText);
+                        show = tokens.every(tok => targetText.includes(tok));
                     }
                     tr.style.display = show ? "" : "none";
                     if (show && tds[0]) tds[0].innerText = sttCounter++;
@@ -10371,61 +10389,39 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         function _satFilter(fn) {
-
-            const kw = document.getElementById('sat-search-bn').value.toLowerCase();
-
+            const rawKw = document.getElementById('sat-search-bn').value || '';
+            const kw = rawKw.toLowerCase().trim();
+            const hasTone = hasVietnameseDiacritics(kw);
             const normalizedKw = xoaDau(kw);
 
             for (const bid in satCache) {
-
                 const bn = satCache[bid].info;
-
                 const str = `${bn.ten} ${bn.phong} ${bn.thuThuat}`.toLowerCase();
-
-                fn(bid, str, normalizedKw, kw);
-
+                const matched = hasTone ? str.includes(kw) : (str.includes(kw) || xoaDau(str).includes(normalizedKw));
+                fn(bid, matched);
             }
-
         }
 
         function locBnSat() {
-
-            _satFilter((bid, str, normalizedKw, kw) => {
-
-                const display = (str.includes(kw) || xoaDau(str).includes(normalizedKw)) ? 'block' : 'none';
-
-                document.getElementById(satCache[bid].frameId).style.display = display;
-
+            _satFilter((bid, matched) => {
+                document.getElementById(satCache[bid].frameId).style.display = matched ? 'block' : 'none';
             });
-
         }
 
         function chonHetSat() {
-
-            _satFilter((bid, str, normalizedKw, kw) => {
-
-                if (!(str.includes(kw) || xoaDau(str).includes(normalizedKw))) return;
-
+            _satFilter((bid, matched) => {
+                if (!matched) return;
                 const f = document.getElementById(satCache[bid].frameId);
-
                 if (f?.style.display !== 'none') f.querySelectorAll('input[type="checkbox"]').forEach(cb => { if (!cb.checked) { cb.checked = true; cb.onchange(); } });
-
             });
-
         }
 
         function boChonHetSat() {
-
-            _satFilter((bid, str, normalizedKw, kw) => {
-
-                if (!(str.includes(kw) || xoaDau(str).includes(normalizedKw))) return;
-
+            _satFilter((bid, matched) => {
+                if (!matched) return;
                 const f = document.getElementById(satCache[bid].frameId);
-
                 if (f?.style.display !== 'none') f.querySelectorAll('input[type="checkbox"]').forEach(cb => { if (cb.checked) { cb.checked = false; cb.onchange(); } });
-
             });
-
         }
 
         function locSotSat() {
@@ -15489,8 +15485,10 @@ window.renderDocLookupTableUI = function(docs) {
 
 window.filterDocLookupList = function() {
     const rawQuery = document.getElementById('doc-search-input')?.value || '';
-    const queryNoTone = removeVietnameseTones(rawQuery);
-    const tokens = queryNoTone.split(/\s+/).filter(Boolean);
+    const cleanQuery = rawQuery.trim();
+    const hasTone = hasVietnameseDiacritics(cleanQuery);
+    const qTarget = hasTone ? cleanQuery.toLowerCase() : removeVietnameseTones(cleanQuery);
+    const tokens = qTarget.split(/\s+/).filter(Boolean);
     const agency = document.getElementById('doc-filter-agency')?.value || '';
 
     const filtered = (window.cachedDocuments || []).filter(doc => {
@@ -15499,9 +15497,9 @@ window.filterDocLookupList = function() {
         const ag = (doc.agency || doc.coQuan || '').toLowerCase();
 
         const allText = `${docNum} ${title} ${ag}`;
-        const allTextNoTone = removeVietnameseTones(allText);
+        const targetText = hasTone ? allText : removeVietnameseTones(allText);
 
-        const matchQuery = !tokens.length || tokens.every(tok => allTextNoTone.includes(tok));
+        const matchQuery = !tokens.length || tokens.every(tok => targetText.includes(tok));
         const matchAgency = !agency || (doc.agency || doc.coQuan || '').includes(agency);
 
         return matchQuery && matchAgency;
