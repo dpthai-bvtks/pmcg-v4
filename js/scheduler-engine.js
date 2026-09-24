@@ -2523,12 +2523,31 @@ function getSafeCache() {
 
               const rawCompactedSched = compactTimelineGaps(formattedSched, db);
               const { cleanSched: compactedSched, collisionDrops } = validateNoOverlapWithExisting(rawCompactedSched, cleanExistingSched, db);
-              const allDrops = finalDropList.concat(collisionDrops);
+              let allDrops = finalDropList.concat(collisionDrops);
+              let finalSched = compactedSched;
+              let rescuerMsg = '';
+
+              // 🧠 Universal Rescuer cho Kịch bản 2: Giải cứu các ca rớt nếu có
+              if (typeof window !== 'undefined' && window.MedicalCPSolver && allDrops.length > 0) {
+                try {
+                  const cpRes = window.MedicalCPSolver.solve(db, dateVal, finalSched, allDrops, 800, cleanExistingSched);
+                  if (cpRes && cpRes.sched) {
+                    finalSched = cpRes.sched;
+                    allDrops = cpRes.rot || [];
+                    if (cpRes.rescuedCount > 0) {
+                      rescuerMsg = ` + Cứu ${cpRes.rescuedCount} ca`;
+                    }
+                  }
+                } catch (rErr) {
+                  console.warn('[SchedulerEngine]: Rescuer pass for Mini PC error:', rErr);
+                }
+              }
+
               const elapsed = localRes.elapsedMs || Math.round(performance.now() - startTime);
 
               const diagnosedRot = allDrops.map(item => {
                 if (typeof UnscheduledDiagnosticEngine !== 'undefined') {
-                  const diag = UnscheduledDiagnosticEngine.diagnose(item, db, compactedSched);
+                  const diag = UnscheduledDiagnosticEngine.diagnose(item, db, finalSched);
                   if (diag) {
                     return {
                       ...item,
@@ -2544,15 +2563,15 @@ function getSafeCache() {
               });
 
               return {
-                scheduleCount: compactedSched.length,
+                scheduleCount: finalSched.length,
                 unscheduledCount: diagnosedRot.length,
-                schedule: compactedSched,
-                sched: compactedSched,
+                schedule: finalSched,
+                sched: finalSched,
                 unscheduled: diagnosedRot,
                 rot: diagnosedRot,
                 elapsedMs: elapsed,
                 threadCount: 4,
-                engine: `🧠 Mini PC Google OR-Tools CP-SAT (${localRes.status || 'OPTIMAL'}, 4 Luồng)`
+                engine: `🧠 Mini PC Google OR-Tools CP-SAT (${localRes.status || 'OPTIMAL'}, 4 Luồng)${rescuerMsg}`
               };
             } else if (solverFailed) {
               console.warn(`[SchedulerEngine]: Mini PC trả về status '${solverStatus}' (schedule rỗng hoặc không khả thi), tự động fallback về Turbo-Engine JS.`);

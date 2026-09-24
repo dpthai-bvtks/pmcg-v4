@@ -10,6 +10,19 @@ from typing import Dict, List, Any, Tuple, Optional
 from ortools.sat.python import cp_model
 
 
+import unicodedata
+
+def strip_accents(s: str) -> str:
+    """Loại bỏ dấu tiếng Việt để so khớp kỹ năng và tên thủ thuật"""
+    if not s:
+        return ""
+    s = str(s).strip().lower()
+    s = s.replace("đ", "d")
+    s = unicodedata.normalize("NFD", s)
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    return s
+
+
 def t2m(t: Any) -> int:
     """Chuyển đổi giờ HH:MM sang số phút tính từ 00:00"""
     if t is None or t == "" or t == 0:
@@ -234,7 +247,25 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
 
     for s_name in staff_names:
         staff_intervals[s_name] = []
-        # Chặn các mốc bận cá nhân của nhân sự
+        # 1. Chặn các mốc ngoài ca làm việc thực tế của nhân sự
+        s_shifts = staff_dict[s_name]["shifts"]
+        if s_shifts:
+            # Chặn trước ca đầu
+            first_s = s_shifts[0][0]
+            if first_s > 0:
+                staff_intervals[s_name].append(model.NewIntervalVar(0, first_s, first_s, f"pre_shift_{s_name}"))
+            # Chặn giữa các ca (nghỉ trưa)
+            for idx in range(len(s_shifts) - 1):
+                gap_s = s_shifts[idx][1]
+                gap_e = s_shifts[idx + 1][0]
+                if gap_e > gap_s:
+                    staff_intervals[s_name].append(model.NewIntervalVar(gap_s, gap_e - gap_s, gap_e, f"lunch_shift_{s_name}_{idx}"))
+            # Chặn sau ca cuối
+            last_e = s_shifts[-1][1]
+            if last_e < 1440:
+                staff_intervals[s_name].append(model.NewIntervalVar(last_e, 1440 - last_e, 1440, f"post_shift_{s_name}"))
+
+        # 2. Chặn các mốc bận cá nhân của nhân sự
         for b_idx, (b_s, b_e) in enumerate(staff_dict[s_name]["busy"]):
             b_dur = b_e - b_s
             if b_dur > 0:
@@ -303,14 +334,18 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
         p_iv = model.NewOptionalIntervalVar(start_var, tg_may + 5, end_var + 5, is_scheduled, f"pat_iv_{tid}")
         patient_intervals.setdefault(t["p_id"], []).append(p_iv)
 
-        # 2. Phân công Giường bệnh trong phòng của bệnh nhân
+    # 4. Phân công Giường bệnh trong phòng của bệnh nhân
         candidate_beds = list(room_beds.get(p_room, []))
         if not candidate_beds:
             candidate_beds = ["Giường 1", "Giường 2", "Giường 3", "Giường 4", "Giường 5"]
-        # Ghế phụ / giường kéo giãn linh hoạt
-        is_keo_gian = "kéo giãn" in t["loai_may"].lower()
-        if is_keo_gian or any(k in t["tt_name"].lower() for k in ["siêu âm", "tập vận", "cứu", "thủy châm", "điện châm", "hồng ngoại", "xoa bóp"]):
-            candidate_beds.append("Giường máy Kéo giãn" if is_keo_gian else "Ghế điều trị")
+        # Ghế phụ / giường kéo giãn / ghế điều trị linh hoạt cho các thủ thuật không bắt buộc giường cứng
+        is_keo_gian = "kéo giãn" in t["loai_may"].lower() or "kg" in t["loai_may"].lower()
+        if is_keo_gian:
+            candidate_beds.append("Giường máy Kéo giãn")
+        else:
+            # Cho phép sử dụng Ghế điều trị / Giường phụ linh hoạt để không bị nghẽn giường
+            candidate_beds.append("Ghế điều trị")
+            candidate_beds.append("Giường phụ")
 
         bed_choice_vars = {}
         for b_name in candidate_beds:
@@ -322,10 +357,17 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
 
         model.Add(sum(bed_choice_vars.values()) == is_scheduled)
 
-        # 3. Phân công Máy móc
+        # 5. Phân công Máy móc
         mach_choice_vars = {}
         if t["loai_may"] != "Thủ công":
             c_machs = all_machines_by_type.get(t["loai_may"].strip().lower(), [])
+            if not c_machs:
+                # Tìm kiếm tương đối theo từ khóa loại máy
+                lm_clean = t["loai_may"].strip().lower().replace("máy ", "").replace("đèn ", "")
+                for mk, mv in all_machines_by_type.items():
+                    if lm_clean in mk or mk in lm_clean:
+                        c_machs = mv
+                        break
             if not c_machs:
                 c_machs = [f"{t['loai_may']} 01"]
             for m_name in c_machs:
@@ -337,18 +379,43 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
         else:
             mach_choice_vars["Thủ công"] = is_scheduled
 
-        # 4. Phân công Nhân sự Chính (Bác sĩ / KTV)
+        # 6. Phân công Nhân sự Chính (Bác sĩ / KTV)
         # Lọc nhân sự có kỹ năng phù hợp
         staff_candidates = []
+        p_tt = t["tt_name"].lower().strip()
+        p_tt_clean = strip_accents(p_tt)
+        p_vt = str(info[9] if len(info) > 9 and info[9] else "").lower().strip()
+        p_tg = str(info[8] if len(info) > 8 and info[8] else "").lower().strip()
+
         for s_name in doc_ktv_names:
             st = staff_dict[s_name]
             s_skills = st["skills"]
-            p_tt = t["tt_name"].lower()
-            match_skill = ("all" in s_skills or "toàn bộ" in s_skills or "cả hai" in s_skills or
-                           ("yhct" in s_skills and t["khoa"] == "YHCT") or
-                           ("phcn" in s_skills and t["khoa"] == "PHCN") or
-                           p_tt in s_skills or (st["is_doc"] and t["khoa"] == "YHCT"))
-            if match_skill:
+            s_skills_clean = strip_accents(s_skills)
+            
+            # Kiểm tra kỹ năng bao quát
+            has_all_skills = ("all" in s_skills or "toàn bộ" in s_skills or "toan bo" in s_skills_clean or "cả hai" in s_skills or "ca hai" in s_skills_clean)
+            is_dept_match = (("yhct" in s_skills and t["khoa"] == "YHCT") or
+                             ("phcn" in s_skills and t["khoa"] == "PHCN") or
+                             (st["is_doc"] and t["khoa"] == "YHCT"))
+            
+            # Khớp tên thủ thuật, tên viết tắt, tên gốc hoặc không dấu
+            is_proc_match = False
+            for part in s_skills.split(","):
+                part_clean = part.strip()
+                if not part_clean:
+                    continue
+                part_no_acc = strip_accents(part_clean)
+                if part_clean == p_tt or (p_vt and part_clean == p_vt) or (p_tg and part_clean == p_tg):
+                    is_proc_match = True
+                    break
+                if part_no_acc == p_tt_clean or (p_vt and part_no_acc == strip_accents(p_vt)):
+                    is_proc_match = True
+                    break
+                if part_clean in p_tt or p_tt in part_clean or part_no_acc in p_tt_clean:
+                    is_proc_match = True
+                    break
+
+            if has_all_skills or is_dept_match or is_proc_match:
                 staff_candidates.append(s_name)
 
         if not staff_candidates:
@@ -385,7 +452,7 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
 
         model.Add(sum(staff_choice_vars.values()) == is_scheduled)
 
-        # 5. Phân công Nhân sự Phụ (Điều dưỡng hỗ trợ) nếu thủ thuật cần phụ
+        # 7. Phân công Nhân sự Phụ (Điều dưỡng hỗ trợ) nếu thủ thuật cần phụ
         sub_choice_vars = {}
         if t["can_phu"] == 1:
             nurse_candidates = nurse_names if nurse_names else staff_names

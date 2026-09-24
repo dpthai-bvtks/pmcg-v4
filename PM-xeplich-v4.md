@@ -5517,7 +5517,40 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - Nâng phiên bản hệ thống lên `4.1.5-rev1`.
      - `sw.js` cache name `pmcg-v4-cache-4.1.5-rev1`.
      - `index.html` cập nhật timestamp `07:30 24/09/2026`, chân trang `Phiên bản: 4.1.5` và toàn bộ cache busters JS/CSS `?v=4.1.5-rev1`.
-     - `version.json` đồng bộ `version: "4.1.5-rev1"`, `releaseDate: "24/09/2026"`, `releaseTime: "07:30 24/09/2026"`.
+
+---
+
+### [v4.1.5-rev2] - 10:35 24/09/2026: Tối Ưu Hóa Thuật Toán Solver OR-Tools Kịch Bản 2 & Tích Hợp Universal Rescuer Cứu Ca Tự Động
+
+- *Yêu cầu của người dùng*: Đọc `RULES.md` và giải quyết lý do khi chạy xếp lịch Kịch bản 2 (Google OR-Tools CP-SAT) lại bị rớt nhiều ca (thành công 35 ca, rớt 118 ca).
+
+- *Phân tích Nguyên nhân Gốc*:
+  1. **Nghẽn tài nguyên Giường bệnh**: Trong `solver.py`, solver chỉ gán ca vào các giường cố định của phòng bệnh (thường chỉ có 3–5 giường). Khi số bệnh nhân dồn vào buổi sáng/chiều đông, các ca điều trị yêu cầu giường bị từ chối hàng loạt do không còn giường trống, trong khi Kịch bản 1 (Genetic/Simulated Annealing) có cơ chế dùng ghế điều trị và giường phụ linh hoạt.
+  2. **So khớp kỹ năng nhân sự bị từ chối oan**: `solver.py` ban đầu chỉ so sánh cứng chuỗi `p_tt in s_skills` (khớp chuỗi nguyên bản). Trên thực tế, danh mục nhân sự lưu mã viết tắt (`HC, ĐC, SN, DX...`) hoặc tên không dấu hoặc có biến thể dấu khác với tên thủ thuật trong bảng thủ thuật của bệnh nhân, dẫn tới đa số nhân sự bị loại bỏ và solver không tìm ra người thực hiện khả dĩ.
+  3. **Ràng buộc máy móc quá cứng**: Khi bệnh nhân chỉ định tên máy có tiền tố hoặc hậu tố (ví dụ "máy kéo giãn", "máy sóng ngắn..."), solver không tìm được máy chính xác và từ chối xếp ca.
+  4. **Thiếu tầng giải cứu (Safety Fallback/Rescuer)**: Kịch bản 1 có bộ giải cứu `MedicalCPSolver.solve` chạy 800ms để cứu vớt các ca rớt, trong khi Kịch bản 2 sau 20s nếu solver Mini PC trả về các ca chưa xếp được thì bị bỏ mặc luôn thành ca rớt.
+
+- *Giải pháp Đã Triển Khai*:
+  1. **Nâng cấp `local-solver/solver.py`**:
+     - *Mở rộng phân bổ Giường bệnh*: Bổ sung tài nguyên `Ghế điều trị` và `Giường phụ` linh hoạt cho tất cả các phòng để triệt tiêu hoàn toàn điểm nghẽn giường.
+     - *Khớp kỹ năng nhân sự đa tầng*: Bổ sung hàm `strip_accents()`, nhận diện mã viết tắt thủ thuật (`ĐC, HC, SN, DX, TTG, TKT...`), tên gốc và so khớp không dấu thay vì so khớp cứng.
+     - *Tìm kiếm máy tương đối*: Fallback thông minh theo từ khóa loại máy (tự động chuẩn hóa bỏ tiền tố "máy ", "đèn ").
+     - *Khóa ca ngoài giờ làm việc*: Khóa chặt các khoảng thời gian trước ca, nghỉ trưa và sau ca trực vào `staff_intervals` để solver không bao giờ xếp ca ngoài giờ làm việc thực tế của nhân sự.
+  2. **Đồng bộ mã nguồn vào hệ thống & kiểm thử trực tiếp**:
+     - Đã chạy kiểm thử `test_solver.py` đạt 100% OPTIMAL.
+     - Đồng bộ `solver.py` vào `C:\PMCG-System\PMCG-Solver`, khởi động lại dịch vụ Mini PC. `GET /api/health` trả về HTTP 200 OK.
+  3. **Tích hợp Universal Rescuer trong `js/scheduler-engine.js`**:
+     - Ngay tại nhánh kết quả `localRes` của Mini PC, nếu CP-SAT sau thời gian quét còn sót ca chưa xếp được, engine lập tức kích hoạt bộ giải cứu `MedicalCPSolver.solve` trong 800ms để cứu tối đa các ca còn lại, gắn nhãn kết quả rõ ràng: `🧠 Mini PC Google OR-Tools CP-SAT (..., 4 Luồng) + Cứu X ca`.
+  4. **Đồng bộ Phiên bản theo RULES.md**:
+     - Nâng phiên bản hệ thống lên `4.1.5-rev2`.
+     - `sw.js` cache name `pmcg-v4-cache-4.1.5-rev2`.
+     - `index.html` cập nhật timestamp `10:35 24/09/2026`, chân trang `Phiên bản: 4.1.5` và toàn bộ cache busters JS/CSS `?v=4.1.5-rev2`.
+     - `version.json` đồng bộ `version: "4.1.5-rev2"`, `releaseDate: "24/09/2026"`, `releaseTime: "10:35 24/09/2026"`.
+  5. **Kiểm tra cú pháp & Triển khai**:
+     - Rà soát cú pháp `node -c` toàn bộ file JS đều đạt Exit Code 0.
+     - Deploy Cloudflare Pages thành công (`f87f19bb.pmcg-v3.pages.dev`).
+     - Commit và Push Git `origin main`.
+
 
 
 

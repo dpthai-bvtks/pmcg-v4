@@ -1,6 +1,6 @@
 {
-    "version": "4.1.5-rev1",
+    "version": "4.1.5-rev2",
     "releaseDate": "24/09/2026",
-    "releaseTime": "07:30 24/09/2026",
-    "notes": "fix(search): Nâng cấp thuật toán tìm kiếm phân biệt dấu tiếng Việt chuẩn xác (gõ 'sông' chỉ tìm đúng 'sông', không bị lẫn sang 'sóng', gõ không dấu 'song' vẫn tìm linh hoạt cả hai)."
+    "releaseTime": "10:35 24/09/2026",
+    "notes": "fix(solver): Khắc phục triệt để lỗi rớt nhiều ca ở Kịch bản 2 (Google OR-Tools CP-SAT) bằng cách mở rộng giường phụ/ghế điều trị linh hoạt, chuẩn hóa so khớp kỹ năng đa dạng và tích hợp Universal Rescuer."
 }

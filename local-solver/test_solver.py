@@ -44,9 +44,8 @@ def test_basic_schedule():
             "Phòng 201": ["Máy điện châm 1", "Máy điện châm 2", "Máy siêu âm 1"]
         },
         "machineTypes": {
-            "Máy điện châm 1": "Điện châm",
-            "Máy điện châm 2": "Điện châm",
-            "Máy siêu âm 1": "Siêu âm"
+            "điện châm": ["Máy điện châm 1", "Máy điện châm 2"],
+            "siêu âm": ["Máy siêu âm 1"]
         },
         "thuThuatInfo": {
             "điện châm": ["Điện châm", 25, 5, "YHCT", 1, 1, [], 5, 0, 0, 0, 0, 1], # is_cont = False, tg_may=25, tg_nv=5
