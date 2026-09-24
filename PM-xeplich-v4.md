@@ -5551,12 +5551,31 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - Deploy Cloudflare Pages thành công (`f87f19bb.pmcg-v3.pages.dev`).
      - Commit và Push Git `origin main`.
 
+---
 
+### [v4.1.5-rev3] - 14:42 24/09/2026: Cập Nhật Ràng Buộc Khóa Giờ Kết Thúc Ca Cho KTV/TTV Chính Đối Với Thủ Thuật Thủy Châm
 
+- *Yêu cầu của người dùng*: Thay đổi nghiệp vụ xếp lịch: hiện tại Thủy châm đang không khóa giờ kết thúc của TTV chính, hãy đổi thành khóa giờ kết thúc của TTV chính với cả Thủy châm.
 
-
-
-
-
-
-
+- *Phân tích & Triển khai*:
+  1. **Nguyên lý nghiệp vụ trước đây**:
+     - Trước đây, TTV chính thực hiện Thủy châm chỉ tiêm và thao tác trong khoảng thời gian đầu ca (khoảng 10-15 phút) rồi được giải phóng để làm thủ thuật khác; chỉ người Phụ (Điều dưỡng) mới bị khóa giờ kết thúc/theo dõi phản ứng thuốc đến hết ca (`mainNeedsTeardown = false`, `subNeedsTeardown = true`).
+  2. **Điều chỉnh nghiệp vụ mới**:
+     - Cho phép TTV chính tiếp tục chịu trách nhiệm theo dõi/kết thúc ca Thủy châm (`mainNeedsTeardown = true`).
+     - TTV chính sẽ bị khóa thêm một khoảng thời gian kết thúc ca (teardown lock) từ lúc kết thúc thời gian lưu/theo dõi để thực hiện các bước theo dõi sát, rút kim/sát khuẩn và hoàn tất ca, ngăn chặn engine xếp ca khác đè lên thời điểm kết thúc ca Thủy châm.
+  3. **Chi tiết can thiệp mã nguồn**:
+     - `js/scheduler-engine.js`:
+       + Trong `loadExistingSchedule`: loại bỏ ngoại lệ `!isThuyChamProc`, đưa `isThuyChamProc` vào điều kiện kích hoạt `mainNeedsTeardown`.
+       + Trong `tryScheduleOne`: đưa `isThuyChamProc` vào `mainNeedsTeardown`, đồng thời cập nhật ghi nhận tải và bận vào timeline nhân viên chính.
+       + Trong kiểm tra va chạm nhân sự (collision check): bổ sung `candIsThuyCham` và `exIsThuyCham` vào `candMainTeardown` và `exMainTeardown`.
+     - `js/app.js`:
+       + Trong `buildAllStaffLoadBreakdowns`: cập nhật `mainHasTeardown` bao gồm cả `isThuyCham`, hiển thị khoảng bận kết thúc ca của Thủy châm (`Theo dõi/kết thúc Thủy châm`).
+  4. **Đồng bộ Phiên bản theo RULES.md**:
+     - Nâng số revision: `4.1.5-rev3`.
+     - `sw.js`: cập nhật `CACHE_NAME = 'pmcg-v4-cache-4.1.5-rev3'`.
+     - `index.html`: cập nhật toàn bộ script/link CSS cache busters `?v=4.1.5-rev3`, `APP_VERSION = '4.1.5-rev3'`, timestamp `#sys-last-update` -> `⏱ Cập nhật lần cuối: 14:42 24/09/2026`. Chân trang `#app-footer-version` giữ đúng chuẩn `Phiên bản: 4.1.5`.
+     - `version.json`: `version: "4.1.5-rev3"`, `releaseTime: "14:42 24/09/2026"`.
+  5. **Kiểm tra cú pháp & Triển khai**:
+     - Chạy `node -c js/init.js; node -c js/app.js; node -c js/scheduler-engine.js; node -c backend/src/index.js` đạt 100% không có lỗi cú pháp.
+     - Deploy Cloudflare Pages qua `npm run deploy:web`.
+     - Git commit & push `origin main`.

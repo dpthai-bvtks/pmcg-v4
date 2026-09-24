@@ -14218,9 +14218,8 @@ window.renderSttOrderControl = function (type, i, total) {
                 const isThuyCham = procTenLower.includes('thủy châm') || procTenLower === 'tc';
 
                 // Khóa giờ kết thúc đối với TTV chính:
-                // Điện châm, Hào châm (kể cả có Điều dưỡng phụ) và thủ thuật PHCN có rút máy -> TTV chính bị khóa giờ kết thúc ca.
-                // Riêng Thủy châm: TTV chính chỉ tiêm/thao tác đầu ca, không bị khóa giờ kết thúc.
-                const mainHasTeardown = !isCont && !isThuyCham && (isDienCham || isHaoCham || canRutMay);
+                // Điện châm, Hào châm (kể cả có Điều dưỡng phụ), Thủy châm và thủ thuật PHCN có rút máy -> TTV chính bị khóa giờ kết thúc ca.
+                const mainHasTeardown = !isCont && (isDienCham || isHaoCham || isThuyCham || canRutMay);
 
                 const durMinutes = Math.round((end.getTime() - start.getTime()) / 60000);
 
@@ -14242,8 +14241,11 @@ window.renderSttOrderControl = function (type, i, total) {
                         isTear: false
                     });
                     if (mainHasTeardown) {
+                        let tearName = `Tháo máy/tắt máy kết thúc ca`;
+                        if (isDienCham || isHaoCham) tearName = `Rút kim kết thúc ca`;
+                        else if (isThuyCham) tearName = `Theo dõi/kết thúc Thủy châm`;
                         busyIntervals.push({
-                            name: (isDienCham || isHaoCham) ? `Rút kim kết thúc ca` : `Tháo máy/tắt máy kết thúc ca`,
+                            name: tearName,
                             start: end.getTime(),
                             end: end.getTime(),
                             isTear: true

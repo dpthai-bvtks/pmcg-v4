@@ -522,8 +522,8 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
     const isThuyChamProc = /thủy châm|tc\b/i.test(tenThuThuat) || (info[8] && /thủy châm|tc\b/i.test(info[8]));
 
     // Khóa giờ kết thúc:
-    // TTV chính bị khóa giờ rút kim (Điện châm, Hào châm) hoặc rút máy PHCN (info[4] === 1). Riêng Thủy châm không khóa.
-    const mainNeedsTeardown = hasTeardown && tearStart !== null && !isThuyChamProc && (isDienChamProc || isHaoChamProc || (info[4] === 1));
+    // TTV chính bị khóa giờ rút kim (Điện châm, Hào châm), Thủy châm hoặc rút máy PHCN (info[4] === 1).
+    const mainNeedsTeardown = hasTeardown && tearStart !== null && (isDienChamProc || isHaoChamProc || isThuyChamProc || (info[4] === 1));
     // Người phụ bị khóa giờ kết thúc/rút kim (Điện châm, Hào châm) hoặc theo dõi đến hết ca (Thủy châm).
     const subNeedsTeardown = hasTeardown && tearStart !== null && (isDienChamProc || isHaoChamProc || isThuyChamProc);
 
@@ -740,8 +740,8 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       const isThuyChamProc = /thủy châm|tc\b/i.test(tenThuThuat) || (info[8] && /thủy châm|tc\b/i.test(info[8]));
 
       // Khóa giờ kết thúc thủ thuật:
-      // 1. TTV chính: bị khóa giờ rút kim (Điện châm, Hào châm - kể cả khi có Điều dưỡng phụ) hoặc rút máy PHCN (info[4] === 1). Riêng Thủy châm không khóa.
-      const mainNeedsTeardown = hasTeardown && !isThuyChamProc && (isDienChamProc || isHaoChamProc || (info[4] === 1));
+      // 1. TTV chính: bị khóa giờ rút kim (Điện châm, Hào châm - kể cả khi có Điều dưỡng phụ), Thủy châm hoặc rút máy PHCN (info[4] === 1).
+      const mainNeedsTeardown = hasTeardown && (isDienChamProc || isHaoChamProc || isThuyChamProc || (info[4] === 1));
 
       // 2. Người phụ (Điều dưỡng): bị khóa giờ kết thúc cho Điện châm, Hào châm (rút kim) hoặc Thủy châm (theo dõi đến hết ca).
       const subNeedsTeardown = hasTeardown && (isDienChamProc || isHaoChamProc || isThuyChamProc);
@@ -941,8 +941,8 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         blockStaff(nvChinh, tNow, tNow + tgNhanVien, khoangCach, staffTimeline, staffSetupReady, staffLoad, tenThuThuat, staffLastProc);
         staffCurrentRoom[nvChinh] = targetRoom;
 
-        // Khóa giờ bận kết thúc ca (Teardown / Rút kim / Rút máy):
-        // 1. TTV chính: khóa giờ rút kim (Điện châm, Hào châm) hoặc rút máy PHCN (Thủy châm không khóa)
+        // Khóa giờ bận kết thúc ca (Teardown / Rút kim / Rút máy / Theo dõi):
+        // 1. TTV chính: khóa giờ rút kim (Điện châm, Hào châm), theo dõi (Thủy châm) hoặc rút máy PHCN
         if (mainNeedsTeardown) {
           staffTimeline[nvChinh].push([tearStart, tearEnd]);
           staffTimeline[nvChinh] = mergeTimeline(staffTimeline[nvChinh]);
@@ -1828,14 +1828,14 @@ function getPatientSignature(pat) {
         const candIsHaoCham = /hào châm|hc\b/i.test(cTenTT) || (cInfo && cInfo[8] && /hào châm|hc\b/i.test(cInfo[8]));
         const candIsThuyCham = /thủy châm|tc\b/i.test(cTenTT) || (cInfo && cInfo[8] && /thủy châm|tc\b/i.test(cInfo[8]));
 
-        const candMainTeardown = cHasTeardown && !candIsThuyCham && (candIsDienCham || candIsHaoCham || (cInfo && (cInfo[4] === 1 || cInfo[9] === 'Có' || cInfo[9] === 1)));
+        const candMainTeardown = cHasTeardown && (candIsDienCham || candIsHaoCham || candIsThuyCham || (cInfo && (cInfo[4] === 1 || cInfo[9] === 'Có' || cInfo[9] === 1)));
         const candSubTeardown = cHasTeardown && (candIsDienCham || candIsHaoCham || candIsThuyCham);
 
         const exIsDienCham = /điện châm|đc\b/i.test(ex.name || '') || (ex.tt && /điện châm|đc\b/i.test(ex.tt)) || (ex.ttInfo && ex.ttInfo[8] && /điện châm|đc\b/i.test(ex.ttInfo[8]));
         const exIsHaoCham = /hào châm|hc\b/i.test(ex.name || '') || (ex.tt && /hào châm|hc\b/i.test(ex.tt)) || (ex.ttInfo && ex.ttInfo[8] && /hào châm|hc\b/i.test(ex.ttInfo[8]));
         const exIsThuyCham = /thủy châm|tc\b/i.test(ex.name || '') || (ex.tt && /thủy châm|tc\b/i.test(ex.tt)) || (ex.ttInfo && ex.ttInfo[8] && /thủy châm|tc\b/i.test(ex.ttInfo[8]));
 
-        const exMainTeardown = ex.hasTeardown && !exIsThuyCham && (exIsDienCham || exIsHaoCham || (ex.ttInfo && (ex.ttInfo[4] === 1 || ex.ttInfo[9] === 'Có' || ex.ttInfo[9] === 1)));
+        const exMainTeardown = ex.hasTeardown && (exIsDienCham || exIsHaoCham || exIsThuyCham || (ex.ttInfo && (ex.ttInfo[4] === 1 || ex.ttInfo[9] === 'Có' || ex.ttInfo[9] === 1)));
         const exSubTeardown = ex.hasTeardown && (exIsDienCham || exIsHaoCham || exIsThuyCham);
 
         const checkStaffOverlap = (candStaff, candDoesTeardown) => {

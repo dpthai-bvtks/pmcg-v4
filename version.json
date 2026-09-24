@@ -1,6 +1,6 @@
 {
-    "version": "4.1.5-rev2",
+    "version": "4.1.5-rev3",
     "releaseDate": "24/09/2026",
-    "releaseTime": "10:35 24/09/2026",
-    "notes": "fix(solver): Khắc phục triệt để lỗi rớt nhiều ca ở Kịch bản 2 (Google OR-Tools CP-SAT) bằng cách mở rộng giường phụ/ghế điều trị linh hoạt, chuẩn hóa so khớp kỹ năng đa dạng và tích hợp Universal Rescuer."
+    "releaseTime": "14:42 24/09/2026",
+    "notes": "feat(rules): Cập nhật ràng buộc khóa giờ kết thúc ca của KTV/TTV chính cho cả thủ thuật Thủy châm (teardown lock), đồng bộ kiểm tra xung đột nhân sự và hiển thị timeline bận."
 }
