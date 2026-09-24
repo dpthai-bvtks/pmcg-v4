@@ -5579,3 +5579,32 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - Chạy `node -c js/init.js; node -c js/app.js; node -c js/scheduler-engine.js; node -c backend/src/index.js` đạt 100% không có lỗi cú pháp.
      - Deploy Cloudflare Pages qua `npm run deploy:web`.
      - Git commit & push `origin main`.
+
+---
+
+### [v4.1.5-rev4] - 15:58 24/09/2026: Giới Hạn Áp Dụng Khóa Giờ Kết Thúc Thủy Châm Cho KTV Chính Chỉ Từ Ngày 25/09/2026 Trở Đi
+
+- *Yêu cầu của người dùng*: Vì có sự thay đổi về việc khóa giờ kết thúc của thủy châm nên sẽ có rất nhiều lỗi khi kiểm tra. Bỏ qua những lỗi liên quan, chỉ áp dụng kiểm tra/xếp lịch việc khóa giờ kết thúc thủy châm với mốc bắt đầu từ ngày 25/09/2026, các lỗi khác vẫn giữ nguyên.
+
+- *Phân tích & Triển khai*:
+  1. **Bảo toàn lịch sử & Bỏ qua lỗi cũ trước ngày 25/09/2026**:
+     - Với các ngày trước 25/09/2026 (ví dụ: ngày 19/09, 23/09, 24/09...): KTV chính thực hiện Thủy châm không bị tính khoảng bận khóa phút kết thúc (`applyThuyChamTeardown = false`), không báo lỗi trùng giờ kết thúc hay thiếu khoảng đệm khi kiểm tra file Excel/HIS hoặc kiểm tra lịch đang mở.
+     - Với các ngày từ **25/09/2026 trở đi**: Tự động kích hoạt đầy đủ ràng buộc khóa giờ kết thúc ca cho KTV chính của Thủy châm cả khi xếp lịch mới (`scheduler-engine.js`) và khi quét kiểm tra lỗi (`processErrorChecking` trong `app.js`).
+  2. **Chi tiết can thiệp**:
+     - `js/scheduler-engine.js`:
+       + Bổ sung hàm `isNgayFrom25Sep2026(dateStr)` hỗ trợ nhận diện các định dạng `DD/MM/YYYY`, `YYYY-MM-DD`.
+       + `loadExistingSchedule`: Chỉ áp dụng `applyThuyChamMainTeardown` cho Thủy châm khi ngày xếp `>= 25/09/2026`.
+       + `tryScheduleOne`: Chỉ áp dụng `applyThuyChamTryMainTeardown` cho Thủy châm khi ngày xếp `>= 25/09/2026`.
+       + Hậu kiểm tra va chạm (`collision post-validator`): Chỉ đưa Thủy châm vào khoảng khóa teardown của TTV chính khi ca thuộc ngày `>= 25/09/2026`.
+     - `js/app.js`:
+       + Bổ sung `isDateFrom25Sep2026(dateObj, row)` trong module Kiểm tra lỗi (`initErrorChecker`).
+       + Khai báo chính xác cờ `isThuyCham` trong `processErrorChecking`: `applyThuyChamTeardown = isThuyCham && isFrom25Sep`.
+       + Đối với các ca trước 25/09/2026: Thủy châm không sinh khoảng bận teardown của KTV chính -> hoàn toàn không bị bắt lỗi trùng giờ kết thúc hoặc thiếu khoảng đệm; tất cả các lỗi khác (Điện châm, Hào châm, sai tên, sai thời gian, trùng BN, giường...) vẫn được giữ nguyên 100%.
+  3. **Đồng bộ Phiên bản theo RULES.md**:
+     - Revision: `4.1.5-rev4`.
+     - `sw.js`: `CACHE_NAME = "pmcg-v4-cache-4.1.5-rev4"`.
+     - `index.html`: `APP_VERSION = "4.1.5-rev4"`.
+     - `version.json`: `version: "4.1.5-rev4"`, `releaseTime: "15:58 24/09/2026"`.
+  4. **Kiểm tra cú pháp & Triển khai**:
+     - `node -c js/app.js; node -c js/scheduler-engine.js` đạt Exit Code 0.
+     - Deploy Cloudflare Pages qua `npm run deploy:web` và commit push git.

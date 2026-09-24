@@ -168,6 +168,23 @@ function parseNgayVao(dateStr) {
   return parts.length === 3 ? parseInt(parts[2]) * 10000 + parseInt(parts[1]) * 100 + parseInt(parts[0]) : 99999999;
 }
 
+function isNgayFrom25Sep2026(dateStr) {
+  if (!dateStr) return true; // Mặc định xếp lịch ngày mới nếu không truyền
+  const s = String(dateStr).trim();
+  const mDmy = s.match(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\b/);
+  if (mDmy) {
+    const d = parseInt(mDmy[1], 10), m = parseInt(mDmy[2], 10), y = parseInt(mDmy[3], 10);
+    return y > 2026 || (y === 2026 && (m > 9 || (m === 9 && d >= 25)));
+  }
+  const mYmd = s.match(/\b(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})\b/);
+  if (mYmd) {
+    const y = parseInt(mYmd[1], 10), m = parseInt(mYmd[2], 10), d = parseInt(mYmd[3], 10);
+    return y > 2026 || (y === 2026 && (m > 9 || (m === 9 && d >= 25)));
+  }
+  return true;
+}
+
+
 function updatePatientCache(patient, thuThuatInfo) {
   patient.max_dur = 0; patient.has_yhct = 0; patient.has_toan_tg = 0;
   patient.leave_pri = patient.leave !== 9999 ? 0 : 1;
@@ -522,8 +539,11 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
     const isThuyChamProc = /thủy châm|tc\b/i.test(tenThuThuat) || (info[8] && /thủy châm|tc\b/i.test(info[8]));
 
     // Khóa giờ kết thúc:
-    // TTV chính bị khóa giờ rút kim (Điện châm, Hào châm), Thủy châm hoặc rút máy PHCN (info[4] === 1).
-    const mainNeedsTeardown = hasTeardown && tearStart !== null && (isDienChamProc || isHaoChamProc || isThuyChamProc || (info[4] === 1));
+    // TTV chính bị khóa giờ rút kim (Điện châm, Hào châm) hoặc rút máy PHCN (info[4] === 1).
+    // Riêng Thủy châm: Áp dụng khóa giờ kết thúc cho TTV chính từ ngày 25/09/2026 trở đi (trước ngày này không khóa để tránh báo lỗi các ca quá khứ).
+    const isExistingFrom25 = isNgayFrom25Sep2026(row.ngay || row.date || ngayXep);
+    const applyThuyChamMainTeardown = isThuyChamProc && isExistingFrom25;
+    const mainNeedsTeardown = hasTeardown && tearStart !== null && (isDienChamProc || isHaoChamProc || applyThuyChamMainTeardown || (info[4] === 1));
     // Người phụ bị khóa giờ kết thúc/rút kim (Điện châm, Hào châm) hoặc theo dõi đến hết ca (Thủy châm).
     const subNeedsTeardown = hasTeardown && tearStart !== null && (isDienChamProc || isHaoChamProc || isThuyChamProc);
 
@@ -740,8 +760,11 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       const isThuyChamProc = /thủy châm|tc\b/i.test(tenThuThuat) || (info[8] && /thủy châm|tc\b/i.test(info[8]));
 
       // Khóa giờ kết thúc thủ thuật:
-      // 1. TTV chính: bị khóa giờ rút kim (Điện châm, Hào châm - kể cả khi có Điều dưỡng phụ), Thủy châm hoặc rút máy PHCN (info[4] === 1).
-      const mainNeedsTeardown = hasTeardown && (isDienChamProc || isHaoChamProc || isThuyChamProc || (info[4] === 1));
+      // 1. TTV chính: bị khóa giờ rút kim (Điện châm, Hào châm - kể cả khi có Điều dưỡng phụ) hoặc rút máy PHCN (info[4] === 1).
+      // Riêng Thủy châm: Áp dụng khóa giờ kết thúc cho TTV chính từ ngày 25/09/2026 trở đi (trước ngày này không khóa).
+      const isDayFrom25 = isNgayFrom25Sep2026(ngayXep);
+      const applyThuyChamTryMainTeardown = isThuyChamProc && isDayFrom25;
+      const mainNeedsTeardown = hasTeardown && (isDienChamProc || isHaoChamProc || applyThuyChamTryMainTeardown || (info[4] === 1));
 
       // 2. Người phụ (Điều dưỡng): bị khóa giờ kết thúc cho Điện châm, Hào châm (rút kim) hoặc Thủy châm (theo dõi đến hết ca).
       const subNeedsTeardown = hasTeardown && (isDienChamProc || isHaoChamProc || isThuyChamProc);
@@ -1782,7 +1805,8 @@ function getPatientSignature(pat) {
         nv2: cleanStaffStr(row.nvPhu),
         may: String(row.may || '').toLowerCase().replace(/\s+/g, ''),
         phong: String(row.phong || '').toLowerCase().replace(/\s+/g, ''),
-        giuong: String(row.giuong || '').toLowerCase().replace(/\s+/g, '').replace(/^giuong|^g/i, '')
+        giuong: String(row.giuong || '').toLowerCase().replace(/\s+/g, '').replace(/^giuong|^g/i, ''),
+        rawRow: row
       };
     }).filter(r => !isNaN(r.s) && !isNaN(r.e) && r.e > r.s);
 
@@ -1827,15 +1851,17 @@ function getPatientSignature(pat) {
         const candIsDienCham = /điện châm|đc\b/i.test(cTenTT) || (cInfo && cInfo[8] && /điện châm|đc\b/i.test(cInfo[8]));
         const candIsHaoCham = /hào châm|hc\b/i.test(cTenTT) || (cInfo && cInfo[8] && /hào châm|hc\b/i.test(cInfo[8]));
         const candIsThuyCham = /thủy châm|tc\b/i.test(cTenTT) || (cInfo && cInfo[8] && /thủy châm|tc\b/i.test(cInfo[8]));
+        const candApplyThuyCham = candIsThuyCham && isNgayFrom25Sep2026(cand.ngay || cand.date || dbRef?.ngayXep);
 
-        const candMainTeardown = cHasTeardown && (candIsDienCham || candIsHaoCham || candIsThuyCham || (cInfo && (cInfo[4] === 1 || cInfo[9] === 'Có' || cInfo[9] === 1)));
+        const candMainTeardown = cHasTeardown && (candIsDienCham || candIsHaoCham || candApplyThuyCham || (cInfo && (cInfo[4] === 1 || cInfo[9] === 'Có' || cInfo[9] === 1)));
         const candSubTeardown = cHasTeardown && (candIsDienCham || candIsHaoCham || candIsThuyCham);
 
         const exIsDienCham = /điện châm|đc\b/i.test(ex.name || '') || (ex.tt && /điện châm|đc\b/i.test(ex.tt)) || (ex.ttInfo && ex.ttInfo[8] && /điện châm|đc\b/i.test(ex.ttInfo[8]));
         const exIsHaoCham = /hào châm|hc\b/i.test(ex.name || '') || (ex.tt && /hào châm|hc\b/i.test(ex.tt)) || (ex.ttInfo && ex.ttInfo[8] && /hào châm|hc\b/i.test(ex.ttInfo[8]));
         const exIsThuyCham = /thủy châm|tc\b/i.test(ex.name || '') || (ex.tt && /thủy châm|tc\b/i.test(ex.tt)) || (ex.ttInfo && ex.ttInfo[8] && /thủy châm|tc\b/i.test(ex.ttInfo[8]));
+        const exApplyThuyCham = exIsThuyCham && isNgayFrom25Sep2026(ex.rawRow?.ngay || ex.rawRow?.date || dbRef?.ngayXep);
 
-        const exMainTeardown = ex.hasTeardown && (exIsDienCham || exIsHaoCham || exIsThuyCham || (ex.ttInfo && (ex.ttInfo[4] === 1 || ex.ttInfo[9] === 'Có' || ex.ttInfo[9] === 1)));
+        const exMainTeardown = ex.hasTeardown && (exIsDienCham || exIsHaoCham || exApplyThuyCham || (ex.ttInfo && (ex.ttInfo[4] === 1 || ex.ttInfo[9] === 'Có' || ex.ttInfo[9] === 1)));
         const exSubTeardown = ex.hasTeardown && (exIsDienCham || exIsHaoCham || exIsThuyCham);
 
         const checkStaffOverlap = (candStaff, candDoesTeardown) => {

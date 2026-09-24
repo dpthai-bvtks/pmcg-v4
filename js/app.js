@@ -14122,6 +14122,42 @@ window.renderSttOrderControl = function (type, i, total) {
             return false;
         }
 
+        // Kiểm tra xem ca thủ thuật có diễn ra từ ngày 25/09/2026 trở đi hay không
+        function isDateFrom25Sep2026(dateObj, row) {
+            if (dateObj instanceof Date && !isNaN(dateObj.getTime())) {
+                const y = dateObj.getFullYear();
+                const m = dateObj.getMonth();
+                const d = dateObj.getDate();
+                if (y > 2026) return true;
+                if (y === 2026) {
+                    if (m > 8) return true; // Sau tháng 9
+                    if (m === 8 && d >= 25) return true; // Từ 25/09/2026
+                }
+            }
+            if (row && typeof row === 'object') {
+                for (const k of Object.keys(row)) {
+                    const v = String(row[k] || '');
+                    const mDate = v.match(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\b/);
+                    if (mDate) {
+                        const d = parseInt(mDate[1], 10);
+                        const m = parseInt(mDate[2], 10);
+                        const y = parseInt(mDate[3], 10);
+                        if (y > 2026 || (y === 2026 && (m > 9 || (m === 9 && d >= 25)))) return true;
+                        if (y < 2026 || (y === 2026 && (m < 9 || (m === 9 && d < 25)))) return false;
+                    }
+                    const mIso = v.match(/\b(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})\b/);
+                    if (mIso) {
+                        const y = parseInt(mIso[1], 10);
+                        const m = parseInt(mIso[2], 10);
+                        const d = parseInt(mIso[3], 10);
+                        if (y > 2026 || (y === 2026 && (m > 9 || (m === 9 && d >= 25)))) return true;
+                        if (y < 2026 || (y === 2026 && (m < 9 || (m === 9 && d < 25)))) return false;
+                    }
+                }
+            }
+            return false;
+        }
+
         function isDieuDuong(staffName) {
             if (!staffName) return false;
             const sNorm = String(staffName).trim().toLowerCase();
@@ -14216,10 +14252,12 @@ window.renderSttOrderControl = function (type, i, total) {
                 const isDienCham = procTenLower.includes('điện châm') || procTenLower === 'đc' || procTenLower === 'dctb';
                 const isHaoCham = procTenLower.includes('hào châm') || procTenLower === 'hc';
                 const isThuyCham = procTenLower.includes('thủy châm') || procTenLower === 'tc';
-
                 // Khóa giờ kết thúc đối với TTV chính:
-                // Điện châm, Hào châm (kể cả có Điều dưỡng phụ), Thủy châm và thủ thuật PHCN có rút máy -> TTV chính bị khóa giờ kết thúc ca.
-                const mainHasTeardown = !isCont && (isDienCham || isHaoCham || isThuyCham || canRutMay);
+                // Điện châm, Hào châm (kể cả có Điều dưỡng phụ) và thủ thuật PHCN có rút máy -> TTV chính bị khóa giờ kết thúc ca.
+                // Riêng Thủy châm: Áp dụng khóa giờ kết thúc của TTV chính từ ngày 25/09/2026 trở đi (trước 25/09/2026 không khóa để không báo lỗi quá khứ).
+                const isFrom25Sep = isDateFrom25Sep2026(start, row);
+                const applyThuyChamTeardown = isThuyCham && isFrom25Sep;
+                const mainHasTeardown = !isCont && (isDienCham || isHaoCham || applyThuyChamTeardown || canRutMay);
 
                 const durMinutes = Math.round((end.getTime() - start.getTime()) / 60000);
 
