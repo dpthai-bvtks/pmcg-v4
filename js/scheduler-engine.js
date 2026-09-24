@@ -184,7 +184,6 @@ function isNgayFrom25Sep2026(dateStr) {
   return true;
 }
 
-
 function updatePatientCache(patient, thuThuatInfo) {
   patient.max_dur = 0; patient.has_yhct = 0; patient.has_toan_tg = 0;
   patient.leave_pri = patient.leave !== 9999 ? 0 : 1;

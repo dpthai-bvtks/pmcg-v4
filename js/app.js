@@ -75,7 +75,6 @@ window.saveProtocolFromModal = function() {
     window.closeProtocolModal();
 };
 
-
 window.updateAppHeader = function(unitCode, role) {
     const uCode = (unitCode || localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
     let sessRole = role;
@@ -200,7 +199,6 @@ window.pingServerConnection = function () {
         }
     });
 };
-
 
 window.sanitizeGoogleScriptUrl = function (rawUrl) {
     if (!rawUrl || typeof rawUrl !== 'string') return '';
@@ -421,7 +419,6 @@ window.google.script.run = window.google.script.run || new Proxy({}, {
     }
 });
 var google = window.google;
-
 
 // =========================================================
 // 🛡️ BẢO MẬT DỮ LIỆU (DOMPURIFY) & 🔍 TÌM KIẾM MỜ (FUSE.JS)
@@ -735,11 +732,9 @@ function initTableDragAndDrop(tbodyId, arrayRef, onReorderFinish) {
    ========================================== */
 
 window.showGlobalLoading = function (text) {
-
             let overlay = document.getElementById('global-loading-overlay');
 
             if (!overlay) {
-
                 overlay = document.createElement('div');
 
                 overlay.id = 'global-loading-overlay';
@@ -749,22 +744,18 @@ window.showGlobalLoading = function (text) {
                 overlay.innerHTML = '<div style="border:4px solid rgba(255,255,255,0.3); border-top:4px solid #fff; border-radius:50%; width:40px; height:40px; animation:spin 1s linear infinite; margin-bottom:15px;"></div><style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style><span id="global-loading-text"></span>';
 
                 document.body.appendChild(overlay);
-
-            }
+}
 
             document.getElementById('global-loading-text').innerText = text || 'Đang xử lý...';
 
             overlay.style.display = 'flex';
-
-        };
+};
 
         window.hideGlobalLoading = function () {
-
             const overlay = document.getElementById('global-loading-overlay');
 
             if (overlay) overlay.style.display = 'none';
-
-        };
+};
 
         window.showToast = function (message, type = 'success', duration = 3500) {
             let container = document.getElementById('global-toast-container');
@@ -1244,84 +1235,9 @@ window.google.script.run = window.google.script.run || new Proxy({}, {
 });
 var google = window.google;
 
-
-// =========================================================
-// GLOBAL HELPERS & DUAL-MODE TABLE REORDERING ENGINE
-// =========================================================
-function withLock(fn) {
-    let locked = false;
-    return function (...args) {
-        if (locked) {
-            console.warn('[withLock]: Thao tác đang được xử lý, vui lòng chờ...');
-            return;
-        }
-        locked = true;
-        try {
-            const res = fn.apply(this, args);
-            if (res && typeof res.then === 'function') {
-                return res.finally(() => { locked = false; });
-            }
-            setTimeout(() => { locked = false; }, 300);
-            return res;
-        } catch (e) {
-            locked = false;
-            throw e;
-        }
-    };
-}
-window.withLock = withLock;
-
-window.moveRowUp = function (type, index) {
-    let arr = null;
-    let renderFn = null;
-    if (type === 'staff') { arr = dataCache.staff; renderFn = renderStaffTable; }
-    else if (type === 'machines') { arr = dataCache.machine; renderFn = renderMachinesTable; }
-    else if (type === 'procedures') { arr = dataCache.proc; renderFn = renderProceduresTable; }
-    else if (type === 'rooms') { arr = dataCache.room; renderFn = renderRoomsTable; }
-
-    if (!arr || index <= 0 || index >= arr.length) return;
-    const item = arr.splice(index, 1)[0];
-    arr.splice(index - 1, 0, item);
-    if (typeof renderFn === 'function') renderFn();
-    saveReorderedData(type, arr);
-};
-
-window.moveRowDown = function (type, index) {
-    let arr = null;
-    let renderFn = null;
-    if (type === 'staff') { arr = dataCache.staff; renderFn = renderStaffTable; }
-    else if (type === 'machines') { arr = dataCache.machine; renderFn = renderMachinesTable; }
-    else if (type === 'procedures') { arr = dataCache.proc; renderFn = renderProceduresTable; }
-    else if (type === 'rooms') { arr = dataCache.room; renderFn = renderRoomsTable; }
-
-    if (!arr || index < 0 || index >= arr.length - 1) return;
-    const item = arr.splice(index, 1)[0];
-    arr.splice(index + 1, 0, item);
-    if (typeof renderFn === 'function') renderFn();
-    saveReorderedData(type, arr);
-};
-
-window.renderSttOrderControl = function (type, i, total) {
-    return `<div class="stt-order-cell" style="display:inline-flex; align-items:center; justify-content:center; gap:5px;">
-        <span class="drag-handle-btn" title="Bấm giữ kéo thả ☰ để sắp xếp thứ tự" style="cursor:grab; user-select:none; font-size:14px; color:#475569; padding:2px 4px; border-radius:4px; transition:background 0.2s;">☰</span>
-        <span style="font-weight:700; min-width:18px; text-align:center;">${i + 1}</span>
-    </div>`;
-};
-
 // ============================================================
-        // GITHUB PAGES API CONFIGURATION (SELF-HEALING)
-        // ============================================================
-        // ============================================================
-        // DUAL-ENGINE HIGH-PERFORMANCE API DISPATCHER (FETCH + JSONP + DEDUPLICATION)
-        // ============================================================
-        
-        // ============================================================
-        // GITHUB PAGES API CONFIGURATION (SELF-HEALING)
-        // ============================================================
-        
-        // ============================================================
-        // GITHUB PAGES API CONFIGURATION (SELF-HEALING)
-        // ============================================================
+// DUAL-ENGINE HIGH-PERFORMANCE API DISPATCHER (FETCH + JSONP + DEDUPLICATION)
+// ============================================================
         const MAX_CONCURRENT_API_REQUESTS = 6;
         let activeApiRequests = 0;
         let apiQueue = [];
@@ -1685,132 +1601,71 @@ window.renderSttOrderControl = function (type, i, total) {
         }
         window.escapeHtml = escapeHtml;
 
-
-
-
         window.google = window.google || {};
 
         window.google.script = window.google.script || {};
 
         window.google.script.run = new Proxy({}, {
-
             get: function (target, prop) {
-
                 if (prop === 'withSuccessHandler') {
-
                     return function (successCallback) {
-
                         return new Proxy({}, {
-
                             get: function (target2, prop2) {
-
                                 if (prop2 === 'withFailureHandler') {
-
                                     return function (errorCallback) {
-
                                         return new Proxy({}, {
-
                                             get: function (target3, methodName) {
-
                                                 return function (...args) {
-
                                                     callApi(methodName, args, successCallback, errorCallback);
-
-                                                };
-
-                                            }
-
-                                        });
-
-                                    };
-
-                                }
+};
+}
+});
+};
+}
 
                                 return function (...args) {
-
                                     callApi(prop2, args, successCallback, null);
-
-                                };
-
-                            }
-
-                        });
-
-                    };
-
-                }
+};
+}
+});
+};
+}
 
                 if (prop === 'withFailureHandler') {
-
                     return function (errorCallback) {
-
                         return new Proxy({}, {
-
                             get: function (target2, prop2) {
-
                                 if (prop2 === 'withSuccessHandler') {
-
                                     return function (successCallback) {
-
                                         return new Proxy({}, {
-
                                             get: function (target3, methodName) {
-
                                                 return function (...args) {
-
                                                     callApi(methodName, args, successCallback, errorCallback);
-
-                                                };
-
-                                            }
-
-                                        });
-
-                                    };
-
-                                }
+};
+}
+});
+};
+}
 
                                 return function (...args) {
-
                                     callApi(prop2, args, null, errorCallback);
-
-                                };
-
-                            }
-
-                        });
-
-                    };
-
-                }
+};
+}
+});
+};
+}
 
                 return function (...args) {
-
                     callApi(prop, args, null, null);
-
-                };
-
-            }
-
-        });
-
-
-
-
-
-
-
-
-
-
+};
+}
+});
 
         // --- AUTH CODE MOVED TO TOP ---
 
         // ============================================================
 
         let adminAccCache = [];
-
-
 
         // --- Block Merged ---
 
@@ -1986,10 +1841,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
         // ============================================================
 
-
-
         window.alert = function (message) {
-
             const m = String(message).toLowerCase();
 
             const [type, title] =
@@ -2013,15 +1865,9 @@ window.renderSttOrderControl = function (type, i, total) {
             } else {
                 console.log(message);
             }
-
-        };
-
-
+};
 
         dataCache = window.dataCache || { machine: [], proc: [], staff: [], room: [], pat: [] };
-
-
-
 
         let editIndex = { machine: -1, proc: -1, staff: -1, room: -1, pat: -1, proto: -1 };
 
@@ -2037,16 +1883,12 @@ window.renderSttOrderControl = function (type, i, total) {
 
         window.scheduleSortState = null;
 
-
-
         // ─── Chống double-click ───────────────────────────────────────
 
         function withLock(fn, delay = 500) {
-
             let locked = false;
 
             return function (...args) {
-
                 if (locked) return;
 
                 locked = true;
@@ -2054,51 +1896,35 @@ window.renderSttOrderControl = function (type, i, total) {
                 setTimeout(() => { locked = false; }, delay);
 
                 fn.apply(this, args);
-
-            };
-
-        }
-
-
+};
+}
 
         // ─── Tiện ích chung ──────────────────────────────────────────
 
         function xoaDau(str) {
-
             return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D");
-
-        }
+}
 
         function normalizeName(str) {
-
             if (!str) return "";
 
             return xoaDau(String(str)).toLowerCase().replace(/\s+/g, '');
-
-        }
+}
 
         // ⚠️ CẢNH BÁO: ĐỒNG BỘ VỚI t2m() trong code.gs-v2.txt — sửa 1 bên PHẢI sửa bên kia!
         function t2m(t_str) {
-
             if (!t_str || !String(t_str).includes(":")) return 0;
 
             let parts = String(t_str).split(":");
 
             return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-
-        }
-
-
+}
 
         function isDroppedScheduleRow(row) {
-
             const g = String(row?.gioDienRa || row?.[5] || '');
 
             return g === '--' || g.includes('Rớt');
-
-        }
-
-
+}
 
         function normalizeScheduleRow(row) {
             if (!row) return {};
@@ -2157,8 +1983,6 @@ window.renderSttOrderControl = function (type, i, total) {
             ];
         }
 
-
-
         function normalizeDroppedItem(item, fallbackDate = '') {
             if (!item) return {};
             const cleanHealProcFn = (window.SchedulerEngine && typeof window.SchedulerEngine.cleanAndHealProcedureName === 'function')
@@ -2186,8 +2010,6 @@ window.renderSttOrderControl = function (type, i, total) {
             };
         }
 
-
-
         function setUnscheduledData(items, dateVal = '') {
             let list = [];
             if (Array.isArray(items)) {
@@ -2201,7 +2023,6 @@ window.renderSttOrderControl = function (type, i, total) {
             }
             const seen = new Set();
             const normalized = list.map(item => normalizeDroppedItem(item, dateVal)).filter(item => {
-
                 const key = [item.ngay, item.bn, item.ns, item.tt, item.room || item.phong, item.reason].map(x => String(x || '').trim().toLowerCase()).join('|');
 
                 if (seen.has(key)) return false;
@@ -2209,8 +2030,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 seen.add(key);
 
                 return true;
-
-            });
+});
 
             window.lastUnscheduledData = normalized;
 
@@ -2221,25 +2041,19 @@ window.renderSttOrderControl = function (type, i, total) {
             if (dateVal) localStorage.setItem('meds_schedule_date', dateVal);
 
             return normalized;
-
-        }
+}
 
         function m2t(mins) {
-
             let h = Math.floor(mins / 60), m = mins % 60;
 
             return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-
-        }
+}
 
         function renderEmptyRow(colspan, msg = 'Chưa có dữ liệu') {
-
             return `<tr><td colspan="${colspan}" align="center" style="padding:20px;color:#999">${msg}</td></tr>`;
-
-        }
+}
 
         function sortTimeSlots(slotsStr) {
-
             if (!slotsStr) return "";
 
             let slots = [...new Set(slotsStr.split(',').map(s => s.trim()).filter(s => s))];
@@ -2247,8 +2061,7 @@ window.renderSttOrderControl = function (type, i, total) {
             slots.sort((a, b) => t2m(a.split('-')[0].trim()) - t2m(b.split('-')[0].trim()));
 
             return slots.join(', ');
-
-        }
+}
 
         function cleanMedicalProc(s) {
             return String(s || '')
@@ -2398,8 +2211,6 @@ window.renderSttOrderControl = function (type, i, total) {
             if (phcnStr) res.push(phcnStr);
             return res.join('; ');
         }
-
-
 
         // ─── Index lookup gom chung ──────────────────────────────────
 
@@ -2606,8 +2417,6 @@ window.renderSttOrderControl = function (type, i, total) {
 
         function getLeavePatIdx() { return getEntityIdx('pat', 'leave-pat-input'); }
 
-
-
         // ============================================================
 
         // ⏰ TIME MASKING
@@ -2615,7 +2424,6 @@ window.renderSttOrderControl = function (type, i, total) {
         // ============================================================
 
         document.addEventListener('input', function (e) {
-
             if (!e.target?.classList.contains('time-input')) return;
 
             if (e.inputType === 'deleteContentBackward') return;
@@ -2637,11 +2445,9 @@ window.renderSttOrderControl = function (type, i, total) {
             if (v.length >= 2) res += ':' + m;
 
             e.target.value = res.substring(0, 5);
-
-        });
+});
 
         document.addEventListener('focusout', function (e) {
-
             if (!e.target?.classList.contains('time-input') || !e.target.value) return;
 
             const v = e.target.value;
@@ -2651,10 +2457,7 @@ window.renderSttOrderControl = function (type, i, total) {
             else if (v.endsWith(':')) e.target.value = v + '00';
 
             else if (v.length === 4 && v.includes(':')) e.target.value = v + '0';
-
-        });
-
-
+});
 
         // ============================================================
 
@@ -2663,9 +2466,7 @@ window.renderSttOrderControl = function (type, i, total) {
         // ============================================================
 
         function setupTableSorting(container = document) {
-
             container.querySelectorAll('th').forEach(th => {
-
                 if (th.dataset.sortBound) return;
 
                 th.dataset.sortBound = "true";
@@ -2673,7 +2474,6 @@ window.renderSttOrderControl = function (type, i, total) {
                 th.title = 'Bấm để sắp xếp (A-Z / Z-A)';
 
                 th.addEventListener('click', function () {
-
                     const table = this.closest('table');
 
                     const tbody = table?.querySelector('tbody');
@@ -2684,19 +2484,14 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     let isAsc = this.dataset.dir !== 'asc';
 
-
-
                     if (table?.id === 'schedule-table') {
-
                         window.scheduleSortState = { index, dir: isAsc ? 'asc' : 'desc' };
 
                         this.parentElement.querySelectorAll('th').forEach(el => {
-
                             if (el !== this) el.dataset.dir = '';
 
                             el.innerText = el.innerText.replace(' ▲', '').replace(' ▼', '');
-
-                        });
+});
 
                         this.dataset.dir = window.scheduleSortState.dir;
 
@@ -2707,33 +2502,23 @@ window.renderSttOrderControl = function (type, i, total) {
                         renderSchedPage();
 
                         return;
-
-                    }
-
-
+}
 
                     const rows = Array.from(tbody.querySelectorAll('tr'));
 
                     if (rows.length === 0 || (rows.length === 1 && rows[0].cells.length <= 1)) return;
 
-
-
                     this.dataset.dir = isAsc ? 'asc' : 'desc';
 
                     this.parentElement.querySelectorAll('th').forEach(el => {
-
                         if (el !== this) el.dataset.dir = '';
 
                         el.innerText = el.innerText.replace(' ▲', '').replace(' ▼', '');
-
-                    });
+});
 
                     this.innerText = this.innerText + (isAsc ? ' ▲' : ' ▼');
 
-
-
                     rows.sort((a, b) => {
-
                         let valA = a.cells[index]?.innerText.trim() || '';
 
                         let valB = b.cells[index]?.innerText.trim() || '';
@@ -2748,91 +2533,57 @@ window.renderSttOrderControl = function (type, i, total) {
 
                         let primaryDiff = 0;
 
-
-
                         if (dateA && dateB) {
-
                             valA = dateA[3] + dateA[2] + dateA[1];
 
                             valB = dateB[3] + dateB[2] + dateB[1];
 
                             primaryDiff = isAsc ? valA.localeCompare(valB, 'vi', { numeric: true }) : valB.localeCompare(valA, 'vi', { numeric: true });
-
-                        } else if (valA.match(/^\d{2}:\d{2}$/) && valB.match(/^\d{2}:\d{2}$/)) {
-
+} else if (valA.match(/^\d{2}:\d{2}$/) && valB.match(/^\d{2}:\d{2}$/)) {
                             valA = valA.replace(':', '');
 
                             valB = valB.replace(':', '');
 
                             primaryDiff = isAsc ? valA.localeCompare(valB, 'vi', { numeric: true }) : valB.localeCompare(valA, 'vi', { numeric: true });
-
-                        } else if (!isNaN(numA) && !isNaN(numB) && !valA.match(/[a-zA-Z\u00C0-\u024F\u1EA0-\u1EF9]/) && !valB.match(/[a-zA-Z\u00C0-\u024F\u1EA0-\u1EF9]/)) {
-
+} else if (!isNaN(numA) && !isNaN(numB) && !valA.match(/[a-zA-Z\u00C0-\u024F\u1EA0-\u1EF9]/) && !valB.match(/[a-zA-Z\u00C0-\u024F\u1EA0-\u1EF9]/)) {
                             primaryDiff = isAsc ? numA - numB : numB - numA;
-
-                        } else {
-
+} else {
                             primaryDiff = isAsc ? valA.localeCompare(valB, 'vi', { numeric: true }) : valB.localeCompare(valA, 'vi', { numeric: true });
-
-                        }
-
-
+}
 
                         if (primaryDiff !== 0) return primaryDiff;
-
-
 
                         const headerCells = Array.from(this.parentElement.children);
 
                         let timeColIdx = headerCells.findIndex(th => {
-
                             const text = th.innerText.toLowerCase();
 
                             return text.includes('bắt đầu') || text.includes('giờ') || text.includes('thời gian') || text.includes('b.đầu');
-
-                        });
-
-
+});
 
                         if (timeColIdx !== -1 && timeColIdx !== index) {
-
                             let timeA = a.cells[timeColIdx]?.innerText.trim().replace(':', '') || '';
 
                             let timeB = b.cells[timeColIdx]?.innerText.trim().replace(':', '') || '';
 
                             return timeA.localeCompare(timeB, 'vi', { numeric: true });
-
-                        }
-
-
+}
 
                         return 0;
-
-                    });
+});
 
                     rows.forEach(row => tbody.appendChild(row));
 
-
-
                     if (this.parentElement.children[0].innerText.includes('STT')) {
-
                         let stt = 1;
 
                         Array.from(tbody.querySelectorAll('tr')).forEach(row => {
-
                             if (row.cells[0]) row.cells[0].innerText = stt++;
-
-                        });
-
-                    }
-
-                });
-
-            });
-
-        }
-
-
+});
+}
+});
+});
+}
 
         // ============================================================
 
@@ -2841,14 +2592,11 @@ window.renderSttOrderControl = function (type, i, total) {
         // ============================================================
 
         document.addEventListener('keydown', function (e) {
-
             const isInput = e.target.tagName.toLowerCase() === 'textarea' ||
 
                 (e.target.tagName.toLowerCase() === 'input' && (e.target.type === 'text' || e.target.type === 'number'));
 
             if (isInput && e.key !== 'Enter') return;
-
-
 
             const activeTab = document.querySelector('.tab-content.active');
 
@@ -2856,16 +2604,12 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const tabId = activeTab.id;
 
-
-
             if (e.key === 'Enter') {
-
                 const targetId = e.target.id;
 
                 e.preventDefault();
 
                 if (tabId === 'tab-busy') {
-
                     if (targetId === 'busy-staff-select') { document.getElementById('busy-staff-from').focus(); return; }
 
                     if (targetId === 'busy-pat-input') { document.getElementById('busy-pat-from').focus(); return; }
@@ -2879,8 +2623,7 @@ window.renderSttOrderControl = function (type, i, total) {
                         }
                         return;
                     }
-
-                }
+}
 
                 if (isInput) e.target.blur();
 
@@ -2903,15 +2646,12 @@ window.renderSttOrderControl = function (type, i, total) {
                 else if (tabBtnMap[tabId]) { document.getElementById(tabBtnMap[tabId])?.click(); return; }
 
                 if (tabId === 'tab-busy') {
-
                     const busyBtnMap = { staff: 'btn-sv-stf-bsy', pat: 'btn-sv-pat-bsy', leave: 'btn-sv-pat-lv' };
 
                     document.getElementById(busyBtnMap[lastBusyContext])?.click();
-
-                }
+}
 
                 if (tabId === 'tab-utils') {
-
                     // Tự động điền ngày hôm nay khi lần đầu mở tab
                     const utilsDateEl = document.getElementById('utils-search-date');
                     if (utilsDateEl && !utilsDateEl.value) {
@@ -2923,17 +2663,11 @@ window.renderSttOrderControl = function (type, i, total) {
                     if (targetId === 'search-doc-time') timBacSiRanh();
 
                     else if (targetId === 'search-machine-time' || targetId === 'search-machine-type') timMayRanh();
-
-                }
-
-            }
-
-
+}
+}
 
             if (e.key === 'Delete' && !isInput) {
-
                 const delMap = {
-
                     'tab-machines': () => editIndex.machine > -1 && deleteMachine(editIndex.machine),
 
                     'tab-procedures': () => editIndex.proc > -1 && deleteProcedure(editIndex.proc),
@@ -2943,24 +2677,17 @@ window.renderSttOrderControl = function (type, i, total) {
                     'tab-rooms': () => editIndex.room > -1 && deleteRoom(editIndex.room),
 
                     'tab-patients': () => editIndex.pat > -1 && deletePatient(editIndex.pat),
-
-                };
+};
 
                 if (delMap[tabId]) { delMap[tabId](); return; }
 
                 if (tabId === 'tab-busy') {
-
                     const busyDelMap = { staff: 'btn-del-stf-bsy', pat: 'btn-del-pat-bsy', leave: 'btn-cl-pat-lv' };
 
                     document.getElementById(busyDelMap[lastBusyContext])?.click();
-
-                }
-
-            }
-
-        });
-
-
+}
+}
+});
 
         // ============================================================
 
@@ -2969,15 +2696,12 @@ window.renderSttOrderControl = function (type, i, total) {
         // ============================================================
 
         document.addEventListener('DOMContentLoaded', function () {
-
             // Phần 1: Bơm Footer
 
             try {
-
                 const khuonDuc = document.getElementById('khuon-duc-footer');
 
                 if (khuonDuc) {
-
                     const noiDungFooter = khuonDuc.innerHTML;
 
                     document.querySelectorAll('.tab-content, .page').forEach(tab => tab.insertAdjacentHTML('beforeend', noiDungFooter));
@@ -2989,21 +2713,15 @@ window.renderSttOrderControl = function (type, i, total) {
                         });
                     }
                 }
-
-            } catch (err) { console.warn("Lỗi khi bơm Footer:", err); }
-
-
+} catch (err) { console.warn("Lỗi khi bơm Footer:", err); }
 
             // Phần 2: Chuyển Tab
 
             const tabs = document.querySelectorAll('.nav-tab, .nav-item');
 
             tabs.forEach(tab => {
-
                 tab.addEventListener('click', () => {
-
                     try {
-
                         if (typeof window.flushPendingChamCongSave === 'function') {
                             try { window.flushPendingChamCongSave(); } catch(e) {}
                         }
@@ -3014,13 +2732,9 @@ window.renderSttOrderControl = function (type, i, total) {
 
                         document.querySelectorAll('.tab-content, .page').forEach(c => c.classList.remove('active'));
 
-
-
                         const targetTab = tab.getAttribute('data-tab');
 
                         const targetEl = document.getElementById(targetTab);
-
-
 
                         if (targetEl) {
                             targetEl.classList.add('active');
@@ -3030,41 +2744,29 @@ window.renderSttOrderControl = function (type, i, total) {
                             console.warn("Không tìm thấy tab:", targetTab);
                         }
 
-
-
                         // Toggle class lên body để CSS điều chỉnh layout riêng cho từng tab
 
                         document.body.classList.toggle('tab-sat-active', targetTab === 'tab-sat');
 
                         document.body.classList.toggle('tab-schedule-active', targetTab === 'tab-schedule');
 
-
-
                         // Các lệnh gọi dữ liệu riêng cho từng Tab
 
                         if (targetTab === 'tab-sat' && typeof satCache !== 'undefined' && Object.keys(satCache).length === 0) {
-
                             if (typeof taiDsSat === 'function') taiDsSat();
-
-                        }
+}
 
                         if (targetTab === 'tab-home' || targetTab === 'page-dashboard') {
-
                             if (typeof loadDashboard === 'function') loadDashboard();
-
-                        }
-
-
+}
 
                         // 🔥 ĐOẠN FIX CHỐNG LỖI NHẢY TRANG CHO TAB XẾP LỊCH:
 
                         if (targetTab === 'tab-schedule') {
-
                             if (typeof schedCurrentPage !== 'undefined') schedCurrentPage = 1; // Luôn quay về trang 1
 
                             if (typeof loadScheduleList === 'function') loadScheduleList(); // Kích hoạt tải lại dữ liệu từ Sheet & ngắt trang
-
-                        }
+}
 
                         if (targetTab === 'tab-stats' && typeof renderStats === 'function') {
                             renderStats(window.lastUnscheduledData);
@@ -3116,12 +2818,9 @@ window.renderSttOrderControl = function (type, i, total) {
 
                         // Cập nhật URL hash để hỗ trợ chia sẻ / mở trực tiếp tab
                         window.location.hash = '#' + targetTab;
-
-                    } catch (error) { console.error("Lỗi chuyển tab:", error); }
-
-                });
-
-            });
+} catch (error) { console.error("Lỗi chuyển tab:", error); }
+});
+});
 
             // Phần 3: Khởi tạo ngày mặc định và nạp Bootstrap
             const today = new Date();
@@ -3768,8 +3467,6 @@ window.renderSttOrderControl = function (type, i, total) {
 
         window.dataCacheTime = window.dataCacheTime || {};
 
-
-
         function loadEntity(apiMethod, cacheKey, callback, extraCallbacks = [], forceRefresh = false) {
             const CACHE_TTL = 5 * 60 * 1000; // Lưu Cache 5 phút
             const now = Date.now();
@@ -3778,8 +3475,6 @@ window.renderSttOrderControl = function (type, i, total) {
             let callbacksToRun = [];
             if (typeof callback === 'function') callbacksToRun.push(callback);
             if (Array.isArray(extraCallbacks)) callbacksToRun = callbacksToRun.concat(extraCallbacks);
-
-
 
             if (!forceRefresh && typeof dataCache !== 'undefined' && dataCache[cacheKey] && window.dataCacheTime[cacheKey] && dataCache[cacheKey].length > 0) {
                 if (now - window.dataCacheTime[cacheKey] < CACHE_TTL) {
@@ -3905,9 +3600,7 @@ window.renderSttOrderControl = function (type, i, total) {
         function loadPatients() { loadEntity('getBenhNhan', 'pat', renderPatientsTable); }
 
         function loadProcedures() {
-
             google.script.run.withSuccessHandler(data => {
-
                 dataCache.proc = data;
 
                 renderProceduresTable();
@@ -3915,22 +3608,16 @@ window.renderSttOrderControl = function (type, i, total) {
                 renderProcedureCheckboxes();
 
                 loadStaff();
-
-            }).getThuThuat();
-
-        }
+}).getThuThuat();
+}
 
         function loadStaff() {
-
             loadEntity('getNhanSu', 'staff', renderStaffTable, [
 
                 () => { if (typeof loadPatients === 'function') loadPatients(); }
 
             ]);
-
-        }
-
-
+}
 
         // ============================================================
 
@@ -3939,17 +3626,13 @@ window.renderSttOrderControl = function (type, i, total) {
         // ============================================================
 
         function cancelEdit(type) {
-
             editIndex[type] = -1;
 
             document.querySelectorAll(`.tab-content.active .sidebar-form input[type="text"]:not([readonly]), .tab-content.active .sidebar-form input[type="number"], .tab-content.active .sidebar-form textarea:not([readonly])`).forEach(i => i.value = '');
 
             document.querySelectorAll(`.tab-content.active .sidebar-form input[type="checkbox"]`).forEach(c => c.checked = false);
 
-
-
             const configs = {
-
                 machine: () => { document.getElementById('group-qty').style.display = 'flex'; document.getElementById('btn-save-machine').innerText = "Thêm"; document.getElementById('btn-cancel-machine').style.display = "none"; },
 
                 proc: () => { 
@@ -3977,7 +3660,6 @@ window.renderSttOrderControl = function (type, i, total) {
                 },
 
                 pat: () => {
-
                     document.getElementById('btn-save-pat').innerText = "Thêm";
 
                     document.getElementById('btn-cancel-pat').style.display = "none";
@@ -3998,16 +3680,11 @@ window.renderSttOrderControl = function (type, i, total) {
                     if(document.getElementById('pat-buoi-dieu-tri')) document.getElementById('pat-buoi-dieu-tri').value = 'TuDong';
                     if(typeof togglePatSessionSelect === 'function') togglePatSessionSelect();
                     document.querySelectorAll('.pat-proc-cb-extra-container, .extra-proc-item').forEach(el => el.remove());
-
-                },
-
-            };
+},
+};
 
             configs[type]?.();
-
-        }
-
-
+}
 
         function parseNgayVao(dStr) {
             if (!dStr || typeof dStr !== 'string' || !dStr.includes('/')) return 0;
@@ -4034,7 +3711,6 @@ window.renderSttOrderControl = function (type, i, total) {
         // ⚙️ 1. MÁY MÓC
 
         // ============================================================
-
 
         function renderMachinesTable() {
             renderMachinesTable_Original();
@@ -4080,8 +3756,6 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         function saveMachine() {
-            
-
             const t = document.getElementById('machine-type').value.trim();
 
             const c = document.getElementById('machine-code').value.trim();
@@ -4107,18 +3781,14 @@ window.renderSttOrderControl = function (type, i, total) {
                     maMay: c,
                     trangThai: s
                 }, editIndex.machine, t, c, s, oldMaMay);
-
-            } else {
-
+} else {
                 for (let i = 0; i < parseInt(q); i++) dataCache.machine.push({ tenLoai: t, maMay: `${c}${i + 1}`, trangThai: s });
 
                 google.script.run.addMayMoc(t, c, q, s);
-
-            }
+}
 
             cancelEdit('machine'); renderMachinesTable();
-
-        }
+}
 
         function editRoomMachine(index) {
             if (window.innerWidth <= 960 && typeof window.openMobileFormForEdit === "function") window.openMobileFormForEdit("machine");
@@ -4143,8 +3813,7 @@ window.renderSttOrderControl = function (type, i, total) {
             document.getElementById('btn-save-machine').innerText = "Lưu Sửa";
 
             document.getElementById('btn-cancel-machine').style.display = "inline-block";
-
-        }
+}
 
         function deleteMachine(i) {
             showCustomConfirm("Xác nhận xóa máy", "Bác sĩ có chắc chắn muốn xóa máy này?", function () {
@@ -4167,7 +3836,6 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         function renderDynamicMachineInputs() {
-
             const container = document.getElementById('dynamic-machine-inputs');
 
             if (!container) return;
@@ -4207,10 +3875,7 @@ window.renderSttOrderControl = function (type, i, total) {
             <input type="number" class="room-machine-input" data-type="${escapeHtml(type.toLowerCase().trim())}" min="0" style="width:40px; padding:2px">
 
         </div>`).join('');
-
-        }
-
-
+}
 
         // ============================================================
         // 🎯 DYNAMIC CLINICAL PROTOCOLS ENGINE (Quản lý Phác đồ Riêng)
@@ -4802,7 +4467,6 @@ window.renderSttOrderControl = function (type, i, total) {
             if (typeof renderProtoProcsFormCheckboxes === 'function') renderProtoProcsFormCheckboxes();
         }
 
-
         function renderProceduresTable() {
             renderProceduresTable_Original();
             if (typeof renderProtoProcsFormCheckboxes === 'function') renderProtoProcsFormCheckboxes();
@@ -5043,14 +4707,11 @@ window.renderSttOrderControl = function (type, i, total) {
             });
         }
 
-
-
         // ============================================================
 
         // 👨‍⚕️ 3. NHÂN SỰ
 
         // ============================================================
-
 
         function renderStaffTable() {
             renderStaffTable_Original();
@@ -5219,14 +4880,12 @@ window.renderSttOrderControl = function (type, i, total) {
             document.getElementById('staff-replace').value = item.nguoiThayThe || 'Không';
 
             if (item.thoiGianLam) {
-
                 const caArr = item.thoiGianLam.split(',');
 
                 if (caArr[0]) { const sang = caArr[0].split('-'); if (sang[0]) document.getElementById('staff-ms').value = sang[0].trim(); if (sang[1]) document.getElementById('staff-me').value = sang[1].trim(); }
 
                 if (caArr[1]) { const chieu = caArr[1].split('-'); if (chieu[0]) document.getElementById('staff-as').value = chieu[0].trim(); if (chieu[1]) document.getElementById('staff-ae').value = chieu[1].trim(); }
-
-            }
+}
 
             const skillsArr = item.kyNang.split(',').map(s => s.trim().toLowerCase());
 
@@ -5235,8 +4894,7 @@ window.renderSttOrderControl = function (type, i, total) {
             document.getElementById('btn-save-staff').innerText = "Lưu Sửa";
 
             document.getElementById('btn-cancel-staff').style.display = "inline-block";
-
-        }
+}
 
         function deleteStaff(i) {
             const s = dataCache.staff[i];
@@ -5264,14 +4922,11 @@ window.renderSttOrderControl = function (type, i, total) {
             });
         }
 
-
-
         // ============================================================
 
         // 🏥 4. PHÒNG
 
         // ============================================================
-
 
         function renderRoomsTable() {
             renderRoomsTable_Original();
@@ -5338,7 +4993,6 @@ window.renderSttOrderControl = function (type, i, total) {
             let finalMachineList = [];
 
             document.querySelectorAll('.room-machine-input').forEach(inp => {
-
                 let reqQty = parseInt(inp.value) || 0;
 
                 if (!reqQty) return;
@@ -5368,21 +5022,18 @@ window.renderSttOrderControl = function (type, i, total) {
                             if (foundType === typeName) usedCount++;
                         }
                     });
-
-                }
+}
 
                 const assigned = machinesOfType.slice(usedCount, usedCount + reqQty);
 
                 if (assigned.length < reqQty) alert(`⚠️ Kho thiếu máy [${typeName.toUpperCase()}]! Còn ${machinesOfType.length - usedCount} máy rảnh.`);
 
                 finalMachineList = finalMachineList.concat(assigned);
-
-            });
+});
 
             const dsMay = finalMachineList.join(', ');
 
             if (editIndex.room > -1) {
-
                 const oldItem = dataCache.room[editIndex.room];
                 const oldName = oldItem ? String(oldItem.tenPhong || oldItem.ten_phong || (Array.isArray(oldItem) ? oldItem[1] : '') || '').trim() : '';
                 const oldId = oldItem ? oldItem.id : null;
@@ -5390,7 +5041,6 @@ window.renderSttOrderControl = function (type, i, total) {
                 dataCache.room[editIndex.room] = { id: oldId, tenPhong: ten, bacSi: bs, ktv, danhSachMay: dsMay, soGiuong: slGiuong, danhSachGiuong: dsGiuong };
 
                 if (oldName !== ten && dataCache.pat) {
-
                     dataCache.pat.forEach(p => { 
                         const pRoom = p.phong || p[4] || '';
                         if (String(pRoom).trim() === String(oldName).trim()) {
@@ -5400,8 +5050,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     });
 
                     if (typeof renderPatientsTable === 'function') renderPatientsTable();
-
-                }
+}
 
                 google.script.run.editPhong({
                     index: editIndex.room,
@@ -5414,18 +5063,14 @@ window.renderSttOrderControl = function (type, i, total) {
                     soGiuong: slGiuong,
                     danhSachGiuong: dsGiuong
                 }, editIndex.room, ten, bs, ktv, dsMay, slGiuong, dsGiuong, oldName);
-
-            } else {
-
+} else {
                 dataCache.room.push({ tenPhong: ten, bacSi: bs, ktv, danhSachMay: dsMay, soGiuong: slGiuong, danhSachGiuong: dsGiuong });
 
                 google.script.run.addPhong(ten, bs, ktv, dsMay, slGiuong, dsGiuong);
-
-            }
+}
 
             cancelEdit('room'); renderRoomsTable();
-
-        }
+}
 
         function editRoom(index) {
             if (window.innerWidth <= 960 && typeof window.openMobileFormForEdit === "function") window.openMobileFormForEdit("room");
@@ -5456,9 +5101,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const danhSachMay = item.danhSachMay || item[4] || '';
             if (danhSachMay && dataCache.machine && Array.isArray(dataCache.machine)) {
-
                 danhSachMay.split(',').map(x => x.trim()).filter(Boolean).forEach(code => {
-
                     const m = dataCache.machine.find(x => {
                         if (!x) return false;
                         const mCode = String(x.maMay || x.ma_may || (Array.isArray(x) ? x[2] : '') || x.ma || x.code || '').trim();
@@ -5472,16 +5115,13 @@ window.renderSttOrderControl = function (type, i, total) {
                             if (inp) inp.value = (parseInt(inp.value) || 0) + 1; 
                         }
                     }
-
-                });
-
-            }
+});
+}
 
             document.getElementById('btn-save-room').innerText = "Lưu Sửa";
 
             document.getElementById('btn-cancel-room').style.display = "inline-block";
-
-        }
+}
 
         function deleteRoom(i) {
             showCustomConfirm("Xác nhận xóa phòng", "Bác sĩ có chắc chắn muốn xóa phòng này không?", function () {
@@ -5503,14 +5143,11 @@ window.renderSttOrderControl = function (type, i, total) {
             });
         }
 
-
-
         // ============================================================
 
         // 🛌 5. BỆNH NHÂN
 
         // ============================================================
-
 
         let _patSortMode = 2; // 2 = Ngày vào cũ -> mới (Mặc định), 1 = Ngày vào mới -> cũ, 2 = Ngày vào cũ -> mới
         window.toggleSortPatientsByNgayVao = function() {
@@ -5709,18 +5346,15 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         function updateBusyTime() {
-
             const start = document.getElementById('busy-start').value;
 
             const end = document.getElementById('busy-end').value;
 
             document.getElementById('pat-busy').value = (start && end) ? `${start}-${end}` : '';
-
-        }
+}
 
         function savePatient() {
             if (checkUnclosedDay()) return;
-
 
             // 🛡️ Chống gọi kép: Bỏ qua nếu đã đang xử lý
             if (window._savePatientLock) { console.warn("savePatient: blocked double call"); return; }
@@ -5861,8 +5495,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     .withFailureHandler(onError)
                     .addBenhNhan(ten, nam, ngay, gio, ban, ra, phong, tt, loai_bn, buoi_dieu_tri);
             }
-
-        }
+}
 
         function editPatient(index) {
             if (window.innerWidth <= 960 && typeof window.openMobileFormForEdit === "function") window.openMobileFormForEdit("pat");
@@ -5984,8 +5617,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
             document.getElementById('btn-save-pat').innerText = "Lưu Sửa";
             document.getElementById('btn-cancel-pat').style.display = "inline-block";
-
-        }
+}
 
         // ============================================================
 
@@ -5995,7 +5627,6 @@ window.renderSttOrderControl = function (type, i, total) {
 
         function deletePatient(i) {
             if (checkUnclosedDay()) return;
-
 
             const p = dataCache.pat[i];
 
@@ -6034,12 +5665,9 @@ window.renderSttOrderControl = function (type, i, total) {
             });
         }
 
-
-
         // Tự động điền năm sinh khi gõ tên bệnh nhân
 
         document.getElementById('pat-name').addEventListener('input', function () {
-
             const val = this.value.trim().toLowerCase();
 
             if (!val) return;
@@ -6047,10 +5675,7 @@ window.renderSttOrderControl = function (type, i, total) {
             const found = dataCache.pat.find(p => p.ten.toLowerCase() === val);
 
             if (found && !document.getElementById('pat-year').value) document.getElementById('pat-year').value = found.namSinh;
-
-        });
-
-
+});
 
         // Tìm kiếm bảng bệnh nhân (debounce chống Unikey)
 
@@ -6084,8 +5709,6 @@ window.renderSttOrderControl = function (type, i, total) {
                 });
             }, 100);
         }
-
-
 
         // ============================================================
 
@@ -6159,7 +5782,6 @@ window.renderSttOrderControl = function (type, i, total) {
             lastBusyContext = 'pat';
 
             if (singleSlot) {
-
                 window.editingPatName = ten;
 
                 window.editingPatSlot = singleSlot;
@@ -6169,9 +5791,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 document.getElementById('busy-pat-from').value = parts[0]?.trim() || '';
 
                 document.getElementById('busy-pat-to').value = parts[1]?.trim() || '';
-
-            } else {
-
+} else {
                 window.editingPatName = '';
 
                 window.editingPatSlot = '';
@@ -6179,10 +5799,8 @@ window.renderSttOrderControl = function (type, i, total) {
                 document.getElementById('busy-pat-from').value = '';
 
                 document.getElementById('busy-pat-to').value = '';
-
-            }
-
-        }
+}
+}
 
         const savePatBusy = withLock(function () {
             if (checkUnclosedDay()) return;
@@ -6289,8 +5907,6 @@ window.renderSttOrderControl = function (type, i, total) {
                 })
                 .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, '', p.gioRa, p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri, p.id);
         }
-
-
 
         // ============================================================
 
@@ -6457,8 +6073,6 @@ window.renderSttOrderControl = function (type, i, total) {
                 })
                 .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, '', p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri, p.id);
         }
-
-
 
         // ============================================================
 
@@ -6708,8 +6322,6 @@ window.renderSttOrderControl = function (type, i, total) {
                 .editNhanSu(sheetIdx, s.ten, s.vaiTro || 'Kỹ thuật viên', s.trangThai || 'Đi làm', s.thoiGianLam || '07:30-11:30, 13:00-16:30', kyNangStr, '', s.nguoiThayThe || 'Không', s.quyen || 'Cả hai', s.tenHis || '');
         }
 
-
-
         // ============================================================
 
         // 📅 TAB XẾP LỊCH
@@ -6883,23 +6495,17 @@ window.renderSttOrderControl = function (type, i, total) {
 
         const PAGE_SIZE = 500; // Số ca hiển thị mỗi trang (Để số cực lớn để tắt phân trang)
 
-
-
         // Bộ nhớ cho Tab Xếp Lịch
 
         let schedCurrentPage = 1;
 
         let schedFilteredData = [];
 
-
-
         // Bộ nhớ cho Tab Trang Chủ
 
         let homeCurrentPage = 1;
 
         let homeFilteredData = [];
-
-
 
         // 1. Hàm lọc dữ liệu (Đã tích hợp Fuse.js & Tìm kiếm tiếng Việt không dấu chuẩn xác 100%)
         function filterSchedule() {
@@ -6946,20 +6552,14 @@ window.renderSttOrderControl = function (type, i, total) {
             }
         }
 
-
-
         // 2. Hàm vẽ bảng (Chỉ vẽ phần dữ liệu của trang hiện tại) - BẢN CHUẨN 12 CỘT
 
         function renderSchedPage() {
-
             const tbody = document.getElementById('schedule-list');
 
             if (!tbody || !window.currentScheduleData) return;
 
-
-
             const compareScheduleRows = (a, b) => {
-
                 if (!!a.__dropped !== !!b.__dropped) return a.__dropped ? 1 : -1;
 
                 let isDischargedA = !!a.__isDischarged;
@@ -6969,7 +6569,6 @@ window.renderSttOrderControl = function (type, i, total) {
                 if (!activeSort && isDischargedA !== isDischargedB) return isDischargedA ? -1 : 1;
 
                 if (activeSort) {
-
                     const fields = ['__stt', 'ngay', 'tenBN', 'namSinh', 'phong', 'thuThuat', 'gioDienRa', 'gioKetThuc', 'nvChinh', 'nvPhu', 'may', 'giuong'];
 
                     const field = fields[activeSort.index];
@@ -6987,52 +6586,35 @@ window.renderSttOrderControl = function (type, i, total) {
                     let primaryDiff = 0;
 
                     if (!isNaN(numA) && !isNaN(numB) && !String(valA).match(/[a-zA-Z\u00C0-\u024F\u1EA0-\u1EF9]/) && !String(valB).match(/[a-zA-Z\u00C0-\u024F\u1EA0-\u1EF9]/)) {
-
                         primaryDiff = (numA - numB) * dir;
-
-                    } else if (/^\d{2}\/\d{2}$/.test(valA) && /^\d{2}\/\d{2}$/.test(valB)) {
-
+} else if (/^\d{2}\/\d{2}$/.test(valA) && /^\d{2}\/\d{2}$/.test(valB)) {
                         let vA = valA.split('/').reverse().join('');
 
                         let vB = valB.split('/').reverse().join('');
 
                         primaryDiff = vA.localeCompare(vB, 'vi', { numeric: true }) * dir;
-
-                    } else if (/^\d{2}:\d{2}$/.test(valA) && /^\d{2}:\d{2}$/.test(valB)) {
-
+} else if (/^\d{2}:\d{2}$/.test(valA) && /^\d{2}:\d{2}$/.test(valB)) {
                         let vA = valA.replace(':', '');
 
                         let vB = valB.replace(':', '');
 
                         primaryDiff = vA.localeCompare(vB, 'vi', { numeric: true }) * dir;
-
-                    } else {
-
+} else {
                         primaryDiff = valA.localeCompare(valB, 'vi', { numeric: true }) * dir;
-
-                    }
-
-
+}
 
                     if (primaryDiff !== 0) return primaryDiff;
 
-
-
                     if (field !== 'gioDienRa') {
-
                         let timeA = String(a.gioDienRa || '').replace(':', '');
 
                         let timeB = String(b.gioDienRa || '').replace(':', '');
 
                         return timeA.localeCompare(timeB, 'vi', { numeric: true });
-
-                    }
+}
 
                     return 0;
-
-                }
-
-
+}
 
                 // 💡 Sắp xếp mặc định: Tên NV chính (A-Z) -> Thời gian bắt đầu (Sớm - Muộn)
 
@@ -7044,8 +6626,6 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 if (nvA !== nvB) return nvA.localeCompare(nvB, 'vi');
 
-
-
                 // Ưu tiên 2: Thời gian bắt đầu
 
                 let timeA = String(a.gioDienRa || '').replace(':', '');
@@ -7053,12 +6633,9 @@ window.renderSttOrderControl = function (type, i, total) {
                 let timeB = String(b.gioDienRa || '').replace(':', '');
 
                 return timeA.localeCompare(timeB);
-
-            };
+};
 
             schedFilteredData.sort(compareScheduleRows);
-
-
 
             if (schedFilteredData.length === 0) {
                 if (window._todayIsFinalized) {
@@ -7095,7 +6672,6 @@ window.renderSttOrderControl = function (type, i, total) {
             const pageData = schedFilteredData.slice(start, start + PAGE_SIZE);
 
             tbody.innerHTML = pageData.map((item, i) => {
-
                 const ngayShort = item.ngay ? String(item.ngay).split('-').reverse().join('/').substring(0, 5) : '';
 
                 const rowClass = item.__dropped ? 'row-dropped' : 'row-scheduled';
@@ -7132,53 +6708,36 @@ window.renderSttOrderControl = function (type, i, total) {
             <td class="col-hide-mobile" style="text-align:center;">${item.giuong || ''}</td>
 
         </tr>`;
-
-            }).join('');
-
-
+}).join('');
 
             // Vẽ thanh điều hướng riêng cho Xếp lịch
 
             renderPaginationUI('sched-pagination-container', schedFilteredData.length, schedCurrentPage, totalPages, 'SCHED');
-
-        }
-
-
+}
 
         // 3. Hàm tạo Thanh điều hướng (ĐÃ TÍCH HỢP NÚT XUẤT PDF)
 
         function renderPaginationUI(containerId, totalItems, currentPage, totalPages, context) {
-
             let container = document.getElementById(containerId);
 
             if (!container) return;
 
-
-
             // Ẩn hoàn toàn khi chỉ có 1 trang
 
             if (totalPages <= 1) {
-
                 container.style.display = 'none';
 
                 return;
-
-            }
+}
 
             container.style.display = '';
-
-
 
             const startItem = totalItems === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
 
             const endItem = Math.min(currentPage * PAGE_SIZE, totalItems);
 
-
-
             container.className = 'pagination-container';
             container.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:12px; font-size:13px; position:-webkit-sticky; position:sticky; bottom:0; z-index:950; box-shadow:0 -4px 12px rgba(0,0,0,0.1); margin:0; border-radius:0 0 8px 8px;';
-
-
 
             // Đã xóa sạch biến pdfBtn gây lỗi sập Web
 
@@ -7201,39 +6760,27 @@ window.renderSttOrderControl = function (type, i, total) {
         </div>
 
     `;
-
-        }
-
-
+}
 
         // Hàm đổi trang thông minh
 
         function appChangePage(dir, context) {
-
             if (context === 'HOME') {
-
                 homeCurrentPage += dir;
 
                 if (typeof renderDashboardPreview === 'function') {
                     renderDashboardPreview(homeFilteredData);
                 }
-
-            } else {
-
+} else {
                 schedCurrentPage += dir;
 
                 renderSchedPage();
-
-            }
-
-        }
-
-
+}
+}
 
         // 4. Lệnh lật trang
 
         function changeSchedPage(dir) {
-
             const totalPages = Math.ceil((schedFilteredData || []).length / PAGE_SIZE) || 1;
 
             schedCurrentPage += dir;
@@ -7242,13 +6789,10 @@ window.renderSttOrderControl = function (type, i, total) {
 
             if (schedCurrentPage > totalPages) schedCurrentPage = totalPages;
 
-
-
             // 🔥 Ép hệ thống vẽ lại bảng của tab Xếp Lịch
 
             renderSchedPage();
-
-        }
+}
 
         function runScheduling() {
             if (!document.getElementById('schedule-date').value) return alert("Vui lòng chọn ngày xếp lịch trước!");
@@ -7627,8 +7171,6 @@ window.renderSttOrderControl = function (type, i, total) {
             }
         }
 
-
-
         // ============================================================
 
         // 📊 THỐNG KÊ
@@ -7636,7 +7178,6 @@ window.renderSttOrderControl = function (type, i, total) {
         // ============================================================
 
         function renderStats(unscheduledData) {
-
             const rawData = window.currentScheduleData || [];
 
             const unscheduled = (unscheduledData === undefined ? window.lastUnscheduledData : unscheduledData) || [];
@@ -7660,7 +7201,6 @@ window.renderSttOrderControl = function (type, i, total) {
                 ? `<tr><td colspan="6" align="center" style="padding:20px;">Không có ca rớt</td></tr>`
 
                 : unscheduled.map((raw, i) => {
-
                     const item = normalizeDroppedItem(raw);
 
                     const causeBadge = item.causeTitle 
@@ -7682,8 +7222,7 @@ window.renderSttOrderControl = function (type, i, total) {
                             </button>
                         </td>
                     </tr>`;
-
-                }).join('');
+}).join('');
 
             const st_tbody = document.getElementById('stats-staff-list');
 
@@ -7692,9 +7231,7 @@ window.renderSttOrderControl = function (type, i, total) {
             let staffStats = {}, totalInvolvements = 0;
 
             successData.forEach(row => {
-
                 [row.nvChinh, row.nvPhu].forEach(nv => {
-
                     if (!nv?.trim()) return;
 
                     const tt_info = dataCache.proc?.find(p => p.ten.toLowerCase() === String(row.thuThuat).trim().toLowerCase());
@@ -7708,22 +7245,17 @@ window.renderSttOrderControl = function (type, i, total) {
                     staffStats[nv].details[tt_short] = (staffStats[nv].details[tt_short] || 0) + 1;
 
                     totalInvolvements++;
-
-                });
-
-            });
+});
+});
 
             st_tbody.innerHTML = Object.entries(staffStats).sort((a, b) => b[1].total - a[1].total).map(([name, s]) => {
-
                 const s_rate = ((s.total / totalInvolvements) * 100).toFixed(1);
 
                 const detailsStr = Object.entries(s.details).map(([k, v]) => `<strong>${k}</strong>: ${v}`).join(' | ');
 
                 return `<tr><td><strong>${name}</strong></td><td align="center" style="font-weight:bold; color:#27ae60; font-size:14px;">${s.total}</td><td align="center">${s_rate}%</td><td style="font-size:11px;">${detailsStr}</td></tr>`;
-
-            }).join('');
-
-        }
+}).join('');
+}
 
         // ============================================================
         // 💡 BỘ CỐ VẤN GIẢI CỨU CA RỚT THÔNG MINH (SMART UNSCHEDULED ADVISOR)
@@ -8022,8 +7554,6 @@ window.renderSttOrderControl = function (type, i, total) {
         window.renderUnscheduledAdvisor = renderUnscheduledAdvisor;
         window.executeRescueAdvice = executeRescueAdvice;
 
-
-
         // ============================================================
         // 📤 XUẤT LỊCH Y LỆNH EXCEL (1 SHEET KÈM DROP-LIST LỌC PHÒNG, A-Z & RV ĐẦU BẢNG)
         // ============================================================
@@ -8280,37 +7810,20 @@ window.renderSttOrderControl = function (type, i, total) {
             if (typeof showToast === 'function') showToast("📂 Đã xuất file Excel lịch trình có bộ lọc phòng!");
         }
 
-
-
-
-
-
-
-
-
         function printSchedule() {
-
             if (!filteredSchedData || filteredSchedData.length === 0) {
-
                 return alert("Không có dữ liệu để in! Bác sĩ hãy kiểm tra lại ô tìm kiếm.");
-
-            }
-
-
+}
 
             const dateInput = document.getElementById('schedule-date')?.value;
 
             let displayDate = "......";
 
             if (dateInput) {
-
                 displayDate = dateInput.split('-').reverse().join('/');
-
-            } else if (filteredSchedData[0] && filteredSchedData[0].ngay) {
-
+} else if (filteredSchedData[0] && filteredSchedData[0].ngay) {
                 displayDate = String(filteredSchedData[0].ngay).split('-').reverse().join('/');
-
-            }
+}
             let printData = filteredSchedData.map((r, idx) => ({ ...r, __originalIndex: idx }));
 
             printData.sort((a, b) => {
@@ -8345,8 +7858,6 @@ window.renderSttOrderControl = function (type, i, total) {
             </tr>`;
             }).join('');
 
-
-
             const printFrame = document.createElement('iframe');
 
             printFrame.style.position = 'absolute';
@@ -8356,8 +7867,6 @@ window.renderSttOrderControl = function (type, i, total) {
             document.body.appendChild(printFrame);
 
             const doc = printFrame.contentWindow.document;
-
-
 
             doc.open();
 
@@ -8405,17 +7914,12 @@ window.renderSttOrderControl = function (type, i, total) {
 
             doc.close();
 
-
-
             setTimeout(() => {
-
                 printFrame.contentWindow.print();
 
                 document.body.removeChild(printFrame);
-
-            }, 500);
-
-        }
+}, 500);
+}
 
         // ============================================================
         // 📄 XUẤT PDF THEO TỪNG PHÒNG BỆNH (PDFMAKE ENGINE - MULTI-PAGE)
@@ -8926,10 +8430,7 @@ window.renderSttOrderControl = function (type, i, total) {
         }
         window.renderScheduleGanttTimeline = renderScheduleGanttTimeline;
 
-
-
         function importScheduleFile() {
-
             const input = document.createElement('input');
 
             input.type = 'file';
@@ -8937,7 +8438,6 @@ window.renderSttOrderControl = function (type, i, total) {
             input.accept = '.xlsx,.xls';
 
             input.onchange = ev => {
-
                 const file = ev.target.files?.[0];
 
                 if (!file) return;
@@ -8945,9 +8445,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 const reader = new FileReader();
 
                 reader.onload = e => {
-
                     try {
-
                         const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
 
                         const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -8958,20 +8456,15 @@ window.renderSttOrderControl = function (type, i, total) {
 
                         if (headerIndex < 0) throw new Error('Không tìm thấy dòng tiêu đề trong file lịch.');
 
-
-
                         const headers = rows[headerIndex].map(h => xoaDau(String(h || '').toLowerCase()).replace(/\s+/g, ' ').trim());
 
                         const col = keys => {
-
                             const normalizedKeys = keys.map(k => xoaDau(k.toLowerCase()));
 
                             return headers.findIndex(h => normalizedKeys.some(k => h.includes(k)));
-
-                        };
+};
 
                         const idx = {
-
                             ngay: col(['ngay']),
 
                             ten: col(['ten benh nhan', 'ten bn', 'hoten']),
@@ -8995,21 +8488,16 @@ window.renderSttOrderControl = function (type, i, total) {
                             giuong: col(['giuong']),
 
                             status: col(['trang thai', 'ghi chu'])
-
-                        };
+};
 
                         if (idx.ten < 0 || idx.tt < 0) throw new Error('File không đúng cấu trúc lịch đã xuất.');
-
-
 
                         const scheduled = [], dropped = [];
 
                         rows.slice(headerIndex + 1).forEach(r => {
-
                             if (!r || !r.some(c => String(c).trim())) return;
 
                             const row = {
-
                                 ngay: idx.ngay >= 0 ? r[idx.ngay] : "",
 
                                 tenBN: idx.ten >= 0 ? String(r[idx.ten] || "").replace(/\s*\((?:✔ RV|❌ Rớt|RV|Rớt)\)/gi, "").trim() : "",
@@ -9031,8 +8519,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                 may: idx.may >= 0 ? r[idx.may] : "",
 
                                 giuong: idx.giuong >= 0 ? r[idx.giuong] : ""
-
-                            };
+};
 
                             const statusText = idx.status >= 0 ? String(r[idx.status] || "") : "";
 
@@ -9041,7 +8528,6 @@ window.renderSttOrderControl = function (type, i, total) {
                             const isDropped = String(row.gioDienRa || "").includes("Rớt") || statusLower.includes("không xếp") || statusLower.includes("rớt");
 
                             if (isDropped) {
-
                                 // Sử dụng chuỗi để tránh làm parser ngoặc nhầm lẫn
 
                                 const regLydo = new RegExp("^.*Lý do:\\s*", "i");
@@ -9049,22 +8535,14 @@ window.renderSttOrderControl = function (type, i, total) {
                                 const regEnd = new RegExp("[)]+$", "");
 
                                 dropped.push(normalizeDroppedItem({
-
                                     ngay: row.ngay, bn: row.tenBN, ns: row.namSinh, room: row.phong,
 
                                     tt: row.thuThuat, staff: row.nvChinh, reason: statusText.replace(regLydo, "").replace(regEnd, "") || row.may || "Ca rớt trong file cũ"
-
-                                }));
-
-                            } else {
-
+}));
+} else {
                                 scheduled.push(row);
-
-                            }
-
-                        });
-
-
+}
+});
 
                         window.currentScheduleData = markDischargedInSchedule(scheduled);
 
@@ -9075,26 +8553,16 @@ window.renderSttOrderControl = function (type, i, total) {
                         window.viewingImportedScheduleFile = true;
 
                         filterSchedule();
-
-                    } catch (err) {
-
+} catch (err) {
                         alert('Lỗi: ' + err.message);
-
-                    }
-
-                };
+}
+};
 
                 reader.readAsArrayBuffer(file);
-
-            };
+};
 
             input.click();
-
-        }
-
-
-
-
+}
 
         function callChotSo() {
             showCustomConfirm("Chốt sổ?", "Bạn có chắc chắn muốn chốt sổ ngày hôm nay?", function () {
@@ -9155,7 +8623,6 @@ window.renderSttOrderControl = function (type, i, total) {
                 });
             });
         }
-
 
         window._historyCache = window._historyCache || {};
         // Backup/restore dataCache khi chuyển sang chế độ xem lịch cũ
@@ -9351,7 +8818,6 @@ window.renderSttOrderControl = function (type, i, total) {
         };
 
         function handleUtilsFile(e) {
-
             const file = e.target.files[0];
 
             if (!file) return;
@@ -9359,9 +8825,7 @@ window.renderSttOrderControl = function (type, i, total) {
             const reader = new FileReader();
 
             reader.onload = function (ev) {
-
                 try {
-
                     const workbook = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
 
                     const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
@@ -9369,56 +8833,37 @@ window.renderSttOrderControl = function (type, i, total) {
                     window.externalUtilsData = jsonData.slice(1).map(r => ({ thuThuat: r[0], gioDienRa: r[1], gioKetThuc: r[2], nvChinh: r[3], nvPhu: '', may: r[4] }));
 
                     alert("Đã nạp file thành công!");
-
-                } catch (err) { alert("Lỗi đọc file: " + err.message); }
-
-            };
+} catch (err) { alert("Lỗi đọc file: " + err.message); }
+};
 
             reader.readAsArrayBuffer(file);
-
-        }
-
-
+}
 
         window.loadTimRanhDataFromServer = function () {
-
             const statusEl = document.getElementById('utils-file-status');
 
             if (statusEl) {
-
                 statusEl.innerText = "⏳ Đang kết nối máy chủ để lấy dữ liệu Tìm Rảnh chung...";
 
                 statusEl.style.color = "#f39c12";
-
-            }
-
-
+}
 
             google.script.run.withSuccessHandler(function (data) {
-
                 if (data && data.length > 0) {
-
                     window.externalUtilsData = data;
 
                     if (statusEl) {
-
                         statusEl.innerText = `✅ Đã tải ${data.length} ca dùng chung từ máy chủ (Sheet TimRanh)!`;
 
                         statusEl.style.color = "#27ae60";
-
-                    }
-
-                } else if (statusEl) {
-
+}
+} else if (statusEl) {
                     statusEl.innerText = "(Chưa có dữ liệu chung. Đang dùng: Lịch phần mềm xếp)";
 
                     statusEl.style.color = "#e67e22";
-
-                }
-
-            }).getTimRanhData();
-
-        };
+}
+}).getTimRanhData();
+};
 
         // ============================================================
         // 🛠️ TIỆN ÍCH TÌM KIẾM RẢNH (HỖ TRỢ CẢ LỊCH HỆ THỐNG & FILE HIS)
@@ -10063,8 +9508,6 @@ window.renderSttOrderControl = function (type, i, total) {
             }
         }
 
-
-
         // ============================================================
 
         // 📅 TAB 7 - THỨ 7
@@ -10073,12 +9516,8 @@ window.renderSttOrderControl = function (type, i, total) {
 
         let satCache = {}, t8_ns_vars = {}, satStaffIndices = {};
 
-
-
         function taiDsSat() {
-
             google.script.run.withSuccessHandler(data => {
-
                 const frNs = document.getElementById('sat-staff-list');
 
                 frNs.innerHTML = '';
@@ -10092,8 +9531,6 @@ window.renderSttOrderControl = function (type, i, total) {
                 const s1_val = isSummerVal ? "07:00" : "07:30", s2_val = isSummerVal ? "11:30" : "12:00";
 
                 const c1_val = "13:00", c2_val = "16:30";
-
-
 
                 // 🛡️ Lấy toàn bộ nhân sự từ backend getSatData kết hợp với dataCache.staff (từ tab-staff)
                 let allStaff = (data && Array.isArray(data.staff) && data.staff.length > 0) ? [...data.staff] : [];
@@ -10171,8 +9608,6 @@ window.renderSttOrderControl = function (type, i, total) {
                     cbLabel.append(cbInput, spanName, roleBadge);
                     fItem.appendChild(cbLabel);
 
-
-
                     const timeDiv = document.createElement('div');
 
                     timeDiv.id = `sat-time-${idx}`;
@@ -10204,10 +9639,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     fItem.appendChild(timeDiv);
 
                     frNs.appendChild(fItem);
-
-                });
-
-
+});
 
                 const frDsLeft = document.getElementById('sat-patient-list-left');
                 const frDsRight = document.getElementById('sat-patient-list-right');
@@ -10249,7 +9681,6 @@ window.renderSttOrderControl = function (type, i, total) {
                 const midPoint = Math.ceil(filteredPatients.length / 2);
 
                 filteredPatients.forEach((r, pIdx) => {
-
                     const bn_id = "BN_" + pIdx + "_" + (r.id || "0");
 
                     satCache[bn_id] = { info: r, items: [], frameId: `sat-bn-${bn_id}` };
@@ -10324,14 +9755,11 @@ window.renderSttOrderControl = function (type, i, total) {
                     } else {
                         frDsRight.appendChild(fBn);
                     }
-
-                });
+});
 
                 updateSummarySat();
-
-            }).getSatData();
-
-        }
+}).getSatData();
+}
 
         function toggleSatStaff() {
             const container = document.getElementById('sat-staff-container');
@@ -10373,7 +9801,6 @@ window.renderSttOrderControl = function (type, i, total) {
                             </div>`;
 
             Object.entries(counts).sort((a, b) => b[1] - a[1]).forEach(([tt, qty]) => {
-
                 html += `<div
 
                                 style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #ecf0f1;">
@@ -10381,12 +9808,10 @@ window.renderSttOrderControl = function (type, i, total) {
                                 <span>• ${tt}:</span> <b style="color:#e67e22">${qty} ca</b>
 
                             </div>`;
-
-            });
+});
 
             sumDiv.innerHTML = html;
-
-        }
+}
 
         function _satFilter(fn) {
             const rawKw = document.getElementById('sat-search-bn').value || '';
@@ -10425,13 +9850,11 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         function locSotSat() {
-
             document.getElementById('sat-search-bn').value = '';
 
             let count = 0;
 
             for (const bid in satCache) {
-
                 const hasChecked = satCache[bid].items.some(item => item.checked);
 
                 document.getElementById(satCache[bid].frameId).style.display = hasChecked ? 'none' :
@@ -10439,27 +9862,22 @@ window.renderSttOrderControl = function (type, i, total) {
                     'block';
 
                 if (!hasChecked) count++;
-
-            }
+}
 
             if (!count) locBnSat();
-
-        }
+}
 
         window.chonHetSat = chonHetSat;
         window.boChonHetSat = boChonHetSat;
         window.locSotSat = locSotSat;
 
         function luuDsSat() {
-
             const data = [];
 
             for (const bid in satCache) {
-
                 const chosen = satCache[bid].items.filter(item => item.checked).map(item => item.name);
 
                 if (chosen.length > 0) {
-
                     const r = satCache[bid].info;
 
                     // Lấy giờ sẵn sàng hiện tại trên giao diện
@@ -10468,19 +9886,13 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     const readyTime = readyInput ? readyInput.value : "07:30";
 
-
-
                     // Thêm readyTime làm cột thứ 4
 
                     data.push([bid, r.ten, chosen.join(", "), readyTime]);
-
-                }
-
-            }
+}
+}
 
             if (!data.length) return alert("Chưa có thủ thuật nào được tick để lưu!");
-
-
 
             const t7ExportData = [["Mã Truy Xuất", "Tên Bệnh Nhân", "Thủ Thuật Đã Chọn", "Giờ Sẵn Sàng"], ...data];
             const t7FileName = `DS_ThuThuat_T7_${new Date().toISOString().slice(0, 10)}.xlsx`;
@@ -10898,11 +10310,9 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         function getSatPayload() {
-
             const allowed_staff = [], staff_shifts_dict = {};
 
             for (const ten in t8_ns_vars) {
-
                 if (!t8_ns_vars[ten]) continue;
 
                 allowed_staff.push(ten);
@@ -10926,13 +10336,11 @@ window.renderSttOrderControl = function (type, i, total) {
                 }
 
                 staff_shifts_dict[ten] = shifts;
-
-            }
+}
 
             const final_pats = [];
 
             for (const bid in satCache) {
-
                 const chosen = satCache[bid].items.filter(item => item.checked).map(item => item.name);
 
                 if (!chosen.length) continue;
@@ -10941,27 +10349,19 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 const readyInput = document.querySelector(`#${satCache[bid].frameId} .input-ready-time`);
 
-
-
                 // 🔥 Đã sửa: Gán giờ sẵn sàng vào biến gioVao để thuật toán Code.gs đọc được
 
                 const timeToRun = readyInput ? readyInput.value : "07:30";
 
-
-
                 final_pats.push({
-
                     id: r.id, ten: r.ten, ns: r.namSinh, tt: chosen.join(", "),
 
                     phong: r.phong, gioVao: timeToRun, loai: r.loaiBn
-
-                });
-
-            }
+});
+}
 
             return { allowed_staff, staff_shifts_dict, final_pats };
-
-        }
+}
 
         function xepLichSat() {
             const dateVal = document.getElementById('sat-schedule-date').value;
@@ -11057,12 +10457,9 @@ window.renderSttOrderControl = function (type, i, total) {
                     alert("Lỗi: " + err.message);
                 }
             }, 30);
-
-
-        }
+}
 
         function updateSatDefaultTime() {
-
             const isSummer = document.querySelector('input[name="sat-season"]:checked').value ===
 
                 'summer';
@@ -11072,20 +10469,13 @@ window.renderSttOrderControl = function (type, i, total) {
                 ["07:30", "12:00", "13:00", "16:30"];
 
             for (const ten in satStaffIndices) {
-
                 const idx = satStaffIndices[ten];
 
                 ['sat-s1', 'sat-s2', 'sat-c1', 'sat-c2'].forEach((prefix, i) => {
-
                     const el = document.getElementById(`${prefix}-${idx}`); if (el) el.value = vals[i];
-
-                });
-
-            }
-
-        }
-
-
+});
+}
+}
 
         // ============================================================
 
@@ -11094,7 +10484,6 @@ window.renderSttOrderControl = function (type, i, total) {
         // ============================================================
 
         function exportPatients() {
-
             if (!dataCache.pat.length) return alert("Không có dữ liệu bệnh nhân để xuất!");
 
             const ws_data = [["STT", "Tên BN", "Năm Sinh", "Ngày Vào", "Giờ Vào", "Giờ Bận", "Giờ Ra", "Phòng", "Thủ Thuật"],
@@ -11280,14 +10669,10 @@ window.renderSttOrderControl = function (type, i, total) {
                 };
 
                 reader.readAsArrayBuffer(e.target.files[0]);
-
-            };
+};
 
             input.click();
-
-        }
-
-
+}
 
         // ============================================================
         // 🏥 NHẬP TỪ HIS (Y LỆNH) - ĐỌC FILE EXCEL CỦA BỆNH VIỆN
@@ -11570,8 +10955,7 @@ window.renderSttOrderControl = function (type, i, total) {
                                 }
                             );
                         });
-
-                    } catch (err) {
+} catch (err) {
                         showCustomAlert('Lỗi đọc file', '❌ ' + err.message, '❌', '#e74c3c');
                     }
                 };
@@ -11581,7 +10965,6 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         // ============================================================
-
 
         // ============================================================
 
@@ -11754,7 +11137,6 @@ window.renderSttOrderControl = function (type, i, total) {
         window.applyPermissions = applyPermissions;
 
         function togglePermissionsBox() {
-
             const box = document.getElementById('acc-perms-box');
 
             const isAdmin = document.getElementById('acc-role').value === 'Admin';
@@ -11762,8 +11144,7 @@ window.renderSttOrderControl = function (type, i, total) {
             box.style.opacity = isAdmin ? '0.5' : '1';
 
             box.style.pointerEvents = isAdmin ? 'none' : 'auto';
-
-        }
+}
 
         // ============================================================
 
@@ -11772,7 +11153,6 @@ window.renderSttOrderControl = function (type, i, total) {
         // ============================================================
 
         function loadAccounts() {
-
             callApi('getAccounts', [], data => {
                 const list = Array.isArray(data) ? data : [];
                 adminAccCache = list;
@@ -11806,14 +11186,10 @@ window.renderSttOrderControl = function (type, i, total) {
                                     <td align="center"><button class="btn-danger" style="border-radius:5px; padding:4px 10px; font-weight:bold; cursor:pointer;" onclick="event.stopPropagation(); deleteAccount('${acc.id || ''}', '${escapeHtml(uName)}')">🗑️ Xóa</button></td>
                                 </tr>`;
                 }).join('');
-
-            }, err => {
+}, err => {
                 console.error('[loadAccounts] Lỗi tải tài khoản:', err);
             });
-
-        }
-
-
+}
 
         function editAccount(i) {
             const acc = adminAccCache[i];
@@ -11838,10 +11214,7 @@ window.renderSttOrderControl = function (type, i, total) {
             document.getElementById('btn-save-acc').innerText = "Cập nhật MK / Quyền";
         }
 
-
-
         function luuTaiKhoan() {
-
             const id = document.getElementById('acc-id').value;
 
             const user = document.getElementById('acc-user').value;
@@ -11850,15 +11223,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
             const role = document.getElementById('acc-role').value;
 
-
-
             if (!user) return showCustomAlert("Lưu ý", "Vui lòng nhập tên tài khoản!");
 
             // Chỉ bắt buộc nhập mật khẩu nếu là tài khoản tạo mới (không có ID)
 
             if (!id && !pass) return showCustomAlert("Lưu ý", "Vui lòng nhập mật khẩu cho tài khoản mới!");
-
-
 
             const perms = role === 'User' ?
 
@@ -11881,13 +11250,9 @@ window.renderSttOrderControl = function (type, i, total) {
                 btn.innerText = "Lưu Tài Khoản";
                 btn.disabled = false;
             });
-
-        }
-
-
+}
 
         function huySuaTaiKhoan() {
-
             ['acc-id', 'acc-user', 'acc-pass'].forEach(id => {
                 const el = document.getElementById(id);
 
@@ -11903,11 +11268,9 @@ window.renderSttOrderControl = function (type, i, total) {
             togglePermissionsBox();
 
             document.getElementById('btn-save-acc').innerText = "Lưu Tài Khoản";
-
-        }
+}
 
         function deleteAccount(id, user) {
-
             if (user.toLowerCase() === 'admin') return showCustomAlert("Cảnh báo bảo mật", "Không được phép xóa tài khoản Admin gốc!");
 
             showCustomConfirm("Xóa tài khoản", `Bác sĩ có chắc chắn muốn xóa vĩnh viễn tài khoản [ ${user} ] không?`, function () {
@@ -11918,10 +11281,7 @@ window.renderSttOrderControl = function (type, i, total) {
                     showCustomAlert("Lỗi", "Không thể xóa tài khoản: " + (typeof err === 'string' ? err : JSON.stringify(err)));
                 });
             });
-
-        }
-
-
+}
 
         // ============================================================
 
@@ -12043,8 +11403,6 @@ window.renderSttOrderControl = function (type, i, total) {
             }, 15000); // Tự động cập nhật lịch mỗi 15 giây
         }
 
-
-
         window.onload = function () {
             const sessionStr = localStorage.getItem('meds_session');
             const token = localStorage.getItem('pm_jwt_token');
@@ -12062,35 +11420,23 @@ window.renderSttOrderControl = function (type, i, total) {
                 }
                 
                 startAutoSync();
-
-            } else {
-
+} else {
                 const overlay = document.getElementById('login-overlay');
                 if (overlay) overlay.style.display = 'flex';
                 if (typeof clearAllDomTables === 'function') clearAllDomTables(false);
                 document.getElementById('login-user')?.focus();
-
-            }
-
-        };
+}
+};
 
         window.addEventListener('load', function () {
-
             setTimeout(function () {
-
                 const sessionStr = localStorage.getItem('meds_session');
                 if (sessionStr) {
                     if (typeof loadAllData === 'function') loadAllData();
                     if (typeof loadDashboard === 'function') loadDashboard();
                 }
-
-            }, 800);
-
-        });
-
-
-
-
+}, 800);
+});
 
         // ============================================================
         // UI - CHUYỂN TAB ADMIN
@@ -12282,7 +11628,6 @@ window.renderSttOrderControl = function (type, i, total) {
         // ============================================================
 
         function luuDongChuChay(btn) {
-
             const noiDungMoi = document.getElementById('admin-marquee-input').value;
 
             if (!noiDungMoi) return alert("⚠️ Vui lòng nhập nội dung thông báo trước khi lưu!");
@@ -12302,10 +11647,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 .withFailureHandler(err => { btn.innerText = textGoc; btn.disabled = false; alert("❌ Lỗi khi lưu: " + err.message); })
 
                 .luuThongBaoDongChuChay(noiDungMoi);
-
-        }
-
-
+}
 
         // ============================================================
 
@@ -12322,17 +11664,14 @@ window.renderSttOrderControl = function (type, i, total) {
         }
 
         function parseTimeToMinutes(timeStr) {
-
             if (!timeStr) return 0;
 
             const parts = String(timeStr).trim().toLowerCase().replace('h', ':').split(':');
 
             return (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0);
-
-        }
+}
 
         function handleHLFile(event) {
-
             const file = event.target.files[0];
 
             if (!file) return;
@@ -12342,9 +11681,7 @@ window.renderSttOrderControl = function (type, i, total) {
             const reader = new FileReader();
 
             reader.onload = function (e) {
-
                 try {
-
                     let workbook;
 
                     try { workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' }); }
@@ -12353,10 +11690,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                     if (!workbook?.SheetNames?.length) { logHL("❌ LỖI ĐỊNH DẠNG: File bị hỏng. Hãy mở bằng Excel và Save As lại nhé."); event.target.value = ""; return; }
 
-
-
                     function bocTachGioExcel(cellVal) {
-
                         if (cellVal === undefined || cellVal === null || cellVal === '') return null;
 
                         if (typeof cellVal === 'number' && cellVal >= 0 && cellVal < 1) {
@@ -12396,7 +11730,6 @@ window.renderSttOrderControl = function (type, i, total) {
                                         headerRow = i;
 
                                     formatType = 'FLAT'; rowArr.forEach((cell, j) => {
-
                                         const v = String(cell || '').trim().toUpperCase().replace(/\r?\n|\r/g, '');
 
                                         if (v.includes('NHANVIEN') || v === 'HOTEN' || v.includes('NHÂN VIÊN')) colIdx.nv = j;
@@ -12406,21 +11739,15 @@ window.renderSttOrderControl = function (type, i, total) {
                                         if (v.includes('GIODIENRA') || v.includes('BẮT ĐẦU')) colIdx.bd = j;
 
                                         if (v.includes('GIOKETTHUC') || v.includes('KẾT THÚC')) colIdx.kt = j;
-
-                                    });
+});
 
                                     break;
-
-                                }
-
-                        }
+}
+}
 
                         if (headerRow === -1) continue;
 
-
-
                         if (formatType === 'FLAT') {
-
                             for (let i = headerRow + 1; i < rawData.length; i++) {
                                 const row = rawData[i]; if
 
@@ -12454,7 +11781,6 @@ window.renderSttOrderControl = function (type, i, total) {
                                         lines = String(row[j] || '').trim().split(/\r?\n/); if (lines.length >= 2 &&
 
                                             lines[0].includes('-')) {
-
                                         const timeParts = lines[0].split('-'), nv = lines[1]?.trim() || '', tt =
 
                                             headers[j] ? String(headers[j]).trim() : '';
@@ -12464,7 +11790,6 @@ window.renderSttOrderControl = function (type, i, total) {
                                             bocTachGioExcel(timeParts[1]);
 
                                         if (timeBD && timeKT && nv) {
-
                                             const bdMins = parseTimeToMinutes(timeBD), ktMins =
 
                                                 parseTimeToMinutes(timeKT), tgThucTe = ktMins - bdMins;
@@ -12477,13 +11802,9 @@ window.renderSttOrderControl = function (type, i, total) {
                                 }
                             }
                         } if (records.length > 0) { formatTypeUsed = formatType; break; }
-
-                    }
-
-
+}
 
                     if (records.length > 0) {
-
                         logHL(`🚀 Đã bóc tách thành công ${records.length} ca (Dạng
 
                                                 ${formatTypeUsed}). Đang lưu...`);
@@ -12495,21 +11816,16 @@ window.renderSttOrderControl = function (type, i, total) {
                         }).withFailureHandler(err => logHL("❌ Lỗi lưu: " +
 
                             err.message)).saveAITrainingData(records);
-
-                    } else logHL("❌ Không tìm thấy dữ liệu giờ giấc hợp lệ trong bất kỳ Sheet nào của file!");
-
-                } catch (err) { logHL("❌ Lỗi kỹ thuật: " + err.message); }
+} else logHL("❌ Không tìm thấy dữ liệu giờ giấc hợp lệ trong bất kỳ Sheet nào của file!");
+} catch (err) { logHL("❌ Lỗi kỹ thuật: " + err.message); }
 
                 event.target.value = "";
-
-            };
+};
 
             reader.readAsArrayBuffer(file);
-
-        }
+}
 
         function loadHLData() {
-
             const tbody = document.querySelector('#hl-table tbody');
 
             if (!tbody) return;
@@ -12519,7 +11835,6 @@ window.renderSttOrderControl = function (type, i, total) {
                                                     </td>
 
                                                 </tr>`; google.script.run.withSuccessHandler(data => {
-
                 if (!data?.length) {
                     tbody.innerHTML = `<tr> <td colspan="5" style="text-align:center; color:gray">Kho dữ liệu
 
@@ -12541,13 +11856,10 @@ window.renderSttOrderControl = function (type, i, total) {
                                                     <td style="text-align:center;">+${row[7]} ph</td>
 
                                                 </tr>`).join('');
-
-            }).getAITrainingData();
-
-        }
+}).getAITrainingData();
+}
 
         function clearHLData() {
-
             if (!confirm("⚠️ Bác sĩ có chắc chắn muốn xóa TOÀN BỘ dữ liệu huấn luyện AI? Hành động này không thể hoàn tác!")) return;
 
             logHL("🗑 Đang tiến hành xóa kho dữ liệu...");
@@ -12557,15 +11869,12 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 loadHLData();
             }).clearAITrainingData();
-
-        }
+}
 
         function exportAIPrompt() {
-
             logHL("⏳ Đang tạo Siêu lệnh (Mega-Prompt)...");
 
             google.script.run.withSuccessHandler(data => {
-
                 if (!data?.length) return alert("Chưa có dữ liệu huấn luyện nào!");
 
                 let promptText = "Bạn là Chuyên gia Khoa học Dữ liệu và Quản lý Y tế.\n";
@@ -12599,12 +11908,8 @@ window.renderSttOrderControl = function (type, i, total) {
                 URL.revokeObjectURL(url);
 
                 logHL("✅ Đã xuất file thành công!");
-
-            }).getAITrainingData();
-
-        }
-
-
+}).getAITrainingData();
+}
 
         // ============================================================
 
@@ -12613,7 +11918,6 @@ window.renderSttOrderControl = function (type, i, total) {
         // ============================================================
 
         function autoFormatDate(obj) {
-
             let val = obj.value.replace(/\D/g, '');
 
             if (val.length > 8) val = val.substring(0, 8);
@@ -12627,10 +11931,7 @@ window.renderSttOrderControl = function (type, i, total) {
                 `${val.substring(0, 2)}/${val.substring(2, 4)}`;
 
             else obj.value = val;
-
-        }
-
-
+}
 
         // ============================================================
 
@@ -13161,7 +12462,6 @@ window.renderSttOrderControl = function (type, i, total) {
         window.renderDashboardMonthlyCharts = renderDashboardMonthlyCharts;
 
         function renderCharts(data) {
-
             const valid = data.filter(r => r[4] && r[7]);
 
             // Build lookups from dataCache
@@ -13248,25 +12548,19 @@ window.renderSttOrderControl = function (type, i, total) {
             renderGroup('staffLoadChart-ktv',  Object.entries(staffLoadKTV).sort((a,b)=>b[1]-a[1]).slice(0,10),  colorsKTV);
             renderGroup('procDistChart-yhct',  Object.entries(procCountYHCT).sort((a,b)=>b[1]-a[1]).slice(0,10), colorsYHCT);
             renderGroup('procDistChart-phcn',  Object.entries(procCountPHCN).sort((a,b)=>b[1]-a[1]).slice(0,10), colorsPHCN);
-
-        }
+}
 
         function refreshDashboard() {
-
             const picker = document.getElementById('dashboard-date-filter');
 
             if (picker) {
                 const t = new Date(); picker.value =
 
                     `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
-
-            }
+}
 
             if (typeof loadDashboard === 'function') loadDashboard();
-
-        }
-
-
+}
 
         // ============================================================
 
@@ -13275,7 +12569,6 @@ window.renderSttOrderControl = function (type, i, total) {
         // ============================================================
 
         function updateClock() {
-
             const now = new Date();
 
             const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
@@ -13291,12 +12584,9 @@ window.renderSttOrderControl = function (type, i, total) {
                 `${days[now.getDay()]},
 
                                                 ${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`;
-
-        }
+}
 
         updateClock(); setInterval(updateClock, 1000);
-
-
 
         // ============================================================
 
@@ -13307,7 +12597,6 @@ window.renderSttOrderControl = function (type, i, total) {
         let globalConfirmCallback = null;
 
         function showCustomConfirm(title, message, callback) {
-
             document.getElementById('confirm-title').innerText = title;
 
             document.getElementById('confirm-message').innerHTML = message;
@@ -13315,11 +12604,9 @@ window.renderSttOrderControl = function (type, i, total) {
             globalConfirmCallback = callback;
 
             document.getElementById('custom-confirm-modal').style.display = 'flex';
-
-        }
+}
 
         function showCustomAlert(title, message, icon = '💡', btnColor = '#3498db') {
-
             const iconEl = document.getElementById('gca-icon');
             const titleEl = document.getElementById('gca-title');
             const msgEl = document.getElementById('gca-message');
@@ -13362,19 +12649,15 @@ window.renderSttOrderControl = function (type, i, total) {
             }
 
             document.getElementById('global-custom-alert').style.display = 'flex';
-
-        }
+}
 
         document.getElementById('confirm-ok-btn').onclick = function () {
-
             if (globalConfirmCallback) globalConfirmCallback();
 
             document.getElementById('custom-confirm-modal').style.display = 'none';
-
-        };
+};
 
         document.addEventListener('keydown', function (event) {
-
             const confirmModal = document.getElementById('custom-confirm-modal');
 
             const alertModal = document.getElementById('global-custom-alert');
@@ -13382,7 +12665,6 @@ window.renderSttOrderControl = function (type, i, total) {
             const successModal = document.getElementById('custom-success-popup');
 
             if (confirmModal?.style.display === 'flex') {
-
                 if (event.key === 'Enter') {
                     event.preventDefault();
 
@@ -13396,43 +12678,30 @@ window.renderSttOrderControl = function (type, i, total) {
                 }
 
                 return;
-
-            }
+}
 
             if (alertModal?.style.display === 'flex') {
-
                 if (event.key === 'Enter' || event.key === 'Escape') {
-
                     event.preventDefault(); alertModal.style.display = 'none';
                 }
 
                 return;
-
-            }
+}
 
             if (successModal && (successModal.style.display === 'flex' ||
 
                 successModal.style.display === 'block')) {
-
                 if (event.key === 'Enter' || event.key === 'Escape') {
-
                     event.preventDefault(); successModal.style.display = 'none';
                 }
 
                 return; // Nếu popup thành công đang mở thì chỉ đóng popup, không lưu form
-
-            }
-
-
+}
 
             // ⚠️ ĐÃ XÓA: Xử lý Enter tự động click nút Lưu/Thêm được
             // xử lý tập trung tại listener ở trên (~dòng 7261)
             // để tránh savePatient() bị gọi 2 lần gây trùng dữ liệu.
-
-        });
-
-
-
+});
 
         function checkUnclosedDay() {
             if (window._forceHistoryMode || window.viewingImportedScheduleFile) {
@@ -13464,65 +12733,41 @@ window.renderSttOrderControl = function (type, i, total) {
             return false;
         }
 
-
         // TỐI ƯU UX 2: Tự động định dạng Giờ và Ngày khi gõ tắt (0830 -> 08:30)
 
         document.addEventListener('focusout', function (e) {
-
             if (e.target && e.target.tagName === 'INPUT') {
-
                 const val = e.target.value.trim();
 
                 if (!val) return;
 
-
-
                 // Tự động định dạng giờ (gõ 830 hoặc 0830 -> 08:30)
 
                 if (e.target.id.includes('-time') || e.target.id.includes('-gio') || e.target.id.includes('gio-') || e.target.id.includes('-leave') || e.target.classList.contains('time-input')) {
-
                     if (/^\d{3,4}$/.test(val)) {
-
                         let formatted = val.length === 3 ? '0' + val : val;
 
                         e.target.value = formatted.substring(0, 2) + ':' + formatted.substring(2);
-
-                    }
-
-                }
-
-
+}
+}
 
                 // Tự động định dạng ngày (gõ 120526 hoặc 12052026 -> 12/05/2026)
 
                 if (e.target.id.includes('-date') || e.target.id.includes('-ngay') || e.target.id.includes('ngay-') || e.target.classList.contains('date-input')) {
-
                     if (/^\d{6}$/.test(val)) {
-
                         e.target.value = val.substring(0, 2) + '/' + val.substring(2, 4) + '/20' + val.substring(4);
-
-                    } else if (/^\d{8}$/.test(val)) {
-
+} else if (/^\d{8}$/.test(val)) {
                         e.target.value = val.substring(0, 2) + '/' + val.substring(2, 4) + '/' + val.substring(4);
-
-                    }
-
-                }
-
-            }
-
-        });
-
-
+}
+}
+}
+});
 
         // TỐI ƯU UX 3: Click đúp vào ô Thời gian (Giờ vào, Giờ ra, Giờ bận) để tự động điền GIỜ HIỆN TẠI
 
         document.addEventListener('dblclick', function (e) {
-
             if (e.target && e.target.tagName === 'INPUT') {
-
                 if (e.target.id.includes('-time') || e.target.id.includes('-gio') || e.target.id.includes('gio-') || e.target.id.includes('-leave') || e.target.classList.contains('time-input')) {
-
                     const now = new Date();
 
                     const hh = String(now.getHours()).padStart(2, '0');
@@ -13534,18 +12779,11 @@ window.renderSttOrderControl = function (type, i, total) {
                     // Bôi đen để người dùng dễ nhìn thấy dữ liệu vừa được điền
 
                     e.target.select();
-
-                }
-
-            }
-
-        });
-
-
+}
+}
+});
 
         // --- Script Blocks Merged ---
-
-
 
         // -----------------------------------------------------------
 
@@ -13554,43 +12792,30 @@ window.renderSttOrderControl = function (type, i, total) {
         // -----------------------------------------------------------
 
         document.addEventListener('DOMContentLoaded', function () {
-
             // Override logic chuyển tab cũ
 
             const tabs = document.querySelectorAll('.nav-tab, .nav-item');
-
-
 
             // 1. Lắng nghe Hash Change
 
             window.addEventListener('hashchange', handleHashChange);
 
-
-
             // 2. Chạy lần đầu khi load trang
 
             if (window.location.hash) {
-
                 handleHashChange();
-
-            } else {
-
+} else {
                 // Mặc định mở tab-home
 
                 window.location.hash = '#tab-home';
-
-            }
-
-
+}
 
             // 3. Sửa lại event click của các tab để chỉ đổi hash
 
             tabs.forEach(tab => {
-
                 // Bỏ event click cũ bằng cách clone node nếu cần, nhưng tốt nhất là ngăn chặn hành vi mặc định
 
                 tab.addEventListener('click', function (e) {
-
                     if (typeof window.flushPendingChamCongSave === 'function') {
                         try { window.flushPendingChamCongSave(); } catch(e) {}
                     }
@@ -13602,15 +12827,10 @@ window.renderSttOrderControl = function (type, i, total) {
                     const targetTab = tab.getAttribute('data-tab');
 
                     window.location.hash = '#' + targetTab;
-
-                }, true); // Use capture phase to intercept
-
-            });
-
-
+}, true); // Use capture phase to intercept
+});
 
             function handleHashChange() {
-
                 if (typeof window.flushPendingChamCongSave === 'function') {
                     try { window.flushPendingChamCongSave(); } catch(e) {}
                 }
@@ -13619,11 +12839,7 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 if (!hash) hash = '#tab-home';
 
-
-
                 let targetTab = hash.substring(1); // Xóa dấu #
-
-
 
                 // Cập nhật giao diện
 
@@ -13633,15 +12849,11 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 if (activeBtn) activeBtn.classList.add('active');
 
-
-
                 document.querySelectorAll('.tab-content, .page').forEach(c => c.classList.remove('active'));
 
                 let targetEl = document.getElementById(targetTab);
 
                 if (targetEl) targetEl.classList.add('active');
-
-
 
                 // Điều chỉnh class body như logic cũ
 
@@ -13649,41 +12861,29 @@ window.renderSttOrderControl = function (type, i, total) {
 
                 document.body.classList.toggle('tab-schedule-active', targetTab === 'tab-schedule');
 
-
-
                 // Kích hoạt load dữ liệu riêng
 
                 if (targetTab === 'tab-sat' && typeof satCache !== 'undefined' && Object.keys(satCache).length === 0) {
-
                     if (typeof taiDsSat === 'function') taiDsSat();
-
-                }
+}
 
                 if (targetTab === 'tab-home' || targetTab === 'page-dashboard') {
-
                     if (typeof loadDashboard === 'function') loadDashboard();
-
-                }
+}
 
                 if (targetTab === 'tab-schedule') {
-
                     if (typeof schedCurrentPage !== 'undefined') schedCurrentPage = 1;
 
                     if (typeof loadScheduleList === 'function') loadScheduleList();
-
-                }
+}
 
                 if (targetTab === 'tab-stats' && typeof renderStats === 'function') {
-
                     renderStats(window.lastUnscheduledData);
-
-                }
+}
 
                 if (targetTab === 'tab-chamcong') {
-
                     if (typeof loadChamCongData === 'function') loadChamCongData();
-
-                }
+}
 
                 if (targetTab === 'tab-tenants') {
                     if (typeof loadTenantsList === 'function') loadTenantsList();
@@ -13704,20 +12904,14 @@ window.renderSttOrderControl = function (type, i, total) {
                     }
                 }
                 if (targetTab === 'tab-thongke') {
-
                     if (typeof loadThongKeData === 'function') loadThongKeData();
-
-                }
+}
 
                 if ((targetTab === 'tab-staff' || targetTab === 'tab-patients') && typeof renderProcedureCheckboxes === 'function') {
-
                     renderProcedureCheckboxes();
-
-                }
-
-            }
-
-        });
+}
+}
+});
 
         // --- USER MENU DROPDOWN LOGIC ---
         window.goToAdminTab = function() {
@@ -15290,7 +14484,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 200);
 });
 
-
 // ==========================================
 // DYNAMIC MONTH/YEAR DROPDOWN GENERATOR
 // ==========================================
@@ -15703,7 +14896,6 @@ window.saveDocListToServer = function() {
     }
 };
 
-
 // ============================================================
 // 📱 MOBILE & TABLET NAVIGATION CONTROLLER (v3.2.0)
 // ============================================================
@@ -15804,7 +14996,6 @@ window.addEventListener('hashchange', () => {
     }
 });
 
-
 // ============================================================
 // 📱 MOBILE FORM TOGGLE & EDIT EXPANSION HELPERS
 // ============================================================
@@ -15858,8 +15049,6 @@ window.openMobileFormForEdit = function(type) {
         }
     }
 };
-
-
 
 // ============================================================
 // 🏢 QUẢN TRỊ ĐƠN VỊ & BẢN QUYỀN SAAS (SUPER ADMIN)
@@ -16147,13 +15336,9 @@ window.importTenantDataPrompt = function (code) {
     fileInput.click();
 };
 
-
 // ============================================================
 // 🔑 ĐỔI MẬT KHẨU TÀI KHOẢN (SUPER ADMIN & ALL USERS)
 // ============================================================
-
-
-
 
 window.submitChangePassword = function() {
     const uName = (document.getElementById('cpw-username')?.value || '').trim();

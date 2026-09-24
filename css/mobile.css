@@ -15,7 +15,6 @@
   --mobile-primary-hover: #115e59;
 }
 
-
 /* ==========================================================================
    2. GLOBAL MOBILE ADAPTATIONS (@media max-width: 960px)
    ========================================================================== */
@@ -31,7 +30,6 @@
     height: 0 !important;
     pointer-events: none !important;
   }
-
   /* Reset Container và Main Wrapper */
   .container,
   .container.collapsed-sidebar {
@@ -42,7 +40,6 @@
     padding: 0 !important;
     grid-template-columns: 1fr !important;
   }
-
   .main-wrapper {
     margin: 0 !important;
     padding: 6px 6px calc(var(--mobile-bottom-nav-height) + var(--mobile-safe-bottom) + 25px) 6px !important;
@@ -50,7 +47,6 @@
     max-width: 100% !important;
     min-height: auto !important;
   }
-
   html, body {
     -webkit-overflow-scrolling: touch;
     touch-action: manipulation;
@@ -58,30 +54,14 @@
     width: 100% !important;
     font-size: 13px !important;
   }
-
-  body {
-    padding-bottom: calc(var(--mobile-bottom-nav-height) + var(--mobile-safe-bottom) + 15px) !important;
-  }
-
+  body { padding-bottom: calc(var(--mobile-bottom-nav-height) + var(--mobile-safe-bottom) + 15px) !important; }
   /* Header Desktop ẩn đi, hiện Header di động */
   .header-main-desktop,
   .header,
-  .top-bar-desktop {
-    display: none !important;
-  }
-
-  .mobile-header-bar {
-    display: flex !important;
-  }
-
-  .mobile-bottom-nav {
-    display: flex !important;
-  }
-
-  .mobile-fab-btn {
-    display: flex !important;
-  }
-
+  .top-bar-desktop { display: none !important; }
+  .mobile-header-bar { display: flex !important; }
+  .mobile-bottom-nav { display: flex !important; }
+  .mobile-fab-btn { display: flex !important; }
   /* Chuyển layout 2 cột Split-Layout thành 1 cột dọc chuẩn */
   .split-layout {
     display: flex !important;
@@ -91,7 +71,6 @@
     width: 100% !important;
     height: auto !important;
   }
-
   .split-layout > div {
     position: static !important;
     flex: none !important;
@@ -103,7 +82,6 @@
     overflow: visible !important;
     box-sizing: border-box !important;
   }
-
   /* Form nhập liệu mở rộng 100% chiều rộng, không bị ghim sticky đè lên bảng */
   .sidebar-form {
     position: static !important;
@@ -121,7 +99,6 @@
     background: #ffffff !important;
     box-sizing: border-box !important;
   }
-
   .sidebar-form > div,
   .sidebar-form-body,
   .form-pinned-footer,
@@ -137,7 +114,6 @@
     box-shadow: none !important;
     border: none !important;
   }
-
   /* Bảng dữ liệu luôn hiển thị phía dưới Form, cho phép vuốt ngang */
   .main-table,
   .table-container,
@@ -159,7 +135,6 @@
     padding: 0 !important;
     box-sizing: border-box !important;
   }
-
   /* Đảm bảo toàn bộ bảng có độ rộng tối thiểu để vuốt ngang mượt mà */
   .main-table table,
   .data-table,
@@ -178,32 +153,25 @@
     display: table !important;
     font-size: 12px !important;
   }
-
   .main-table table th,
   .data-table th {
     padding: 6px 6px !important;
     font-size: 11.5px !important;
     white-space: nowrap !important;
   }
-
   .main-table table td,
   .data-table td {
     padding: 5px 6px !important;
     font-size: 12px !important;
   }
-
   /* Thu nhỏ khoảng cách giữa các ô nhập trong form */
-  .form-group {
-    margin-bottom: 6px !important;
-  }
-
+  .form-group { margin-bottom: 6px !important; }
   .form-group label {
     font-size: 11.5px !important;
     font-weight: 600 !important;
     margin-bottom: 2px !important;
     color: #475569 !important;
   }
-
   .form-group input,
   .form-group select,
   .form-group textarea,
@@ -218,7 +186,6 @@
     border: 1px solid #cbd5e1 !important;
     box-sizing: border-box !important;
   }
-
   /* Nút bấm tinh gọn */
   button, .btn, .btn-success, .btn-primary, .btn-secondary, .btn-danger {
     min-height: 34px !important;
@@ -228,7 +195,6 @@
     font-weight: 600 !important;
     border-radius: 6px !important;
   }
-
   /* Tiêu đề Tab tinh gọn */
   .tab-header-title {
     font-size: 13.5px !important;
@@ -237,7 +203,6 @@
     margin-bottom: 8px !important;
     border-radius: 6px !important;
   }
-
   /* Banner Trang chủ Dashboard trên điện thoại */
   #tab-home img,
   .dashboard-banner img {
@@ -245,13 +210,11 @@
     height: auto !important;
     margin-bottom: 4px !important;
   }
-
   #tab-home h1, #tab-home h2, #tab-home h3 {
     font-size: 13.5px !important;
     line-height: 1.3 !important;
     margin: 2px 0 !important;
   }
-
   /* Thẻ thống kê Dashboard co nhỏ hiển thị 2 cột */
   .dashboard-stat-grid,
   .stat-boxes {
@@ -259,22 +222,15 @@
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 6px !important;
   }
-
   .stat-box,
   .dashboard-stat-card {
     padding: 8px 10px !important;
     border-radius: 8px !important;
   }
-
   .stat-box .number,
-  .stat-box-val {
-    font-size: 18px !important;
-  }
-
+  .stat-box-val { font-size: 18px !important; }
   .stat-box .label,
-  .stat-box-lbl {
-    font-size: 11px !important;
-  }
+  .stat-box-lbl { font-size: 11px !important; }
 }
 
 /* ==========================================================================
@@ -404,18 +360,14 @@
   transition: transform 0.15s ease;
 }
 
-.mobile-nav-item.active {
-  color: #0f766e;
-}
+.mobile-nav-item.active { color: #0f766e; }
 
 .mobile-nav-item.active .mobile-nav-icon {
   transform: scale(1.1);
   color: #0f766e;
 }
 
-.mobile-nav-item:active {
-  background-color: #f1f5f9;
-}
+.mobile-nav-item:active { background-color: #f1f5f9; }
 
 /* ==========================================================================
    5. MOBILE DRAWER MENU (Menu trượt danh mục mở rộng)
@@ -450,9 +402,7 @@
   flex-direction: column;
 }
 
-.mobile-drawer.active {
-  transform: translateX(-280px);
-}
+.mobile-drawer.active { transform: translateX(-280px); }
 
 .mobile-drawer-header {
   padding: 14px 12px;
@@ -557,7 +507,6 @@
     z-index: 5 !important;
     background: #f8fafc !important;
   }
-
   #chamcong-table th:nth-child(2),
   #chamcong-table td:nth-child(2),
   #thongke-table th:nth-child(2),
@@ -570,13 +519,10 @@
   }
 }
 
-
 /* ==========================================================================
    8. MOBILE COLLAPSIBLE FORM STYLES
    ========================================================================== */
-.mobile-toggle-form-btn {
-  display: none;
-}
+.mobile-toggle-form-btn { display: none; }
 
 @media screen and (max-width: 960px) {
   .mobile-toggle-form-btn {
@@ -599,12 +545,10 @@
     gap: 6px !important;
     transition: all 0.2s ease !important;
   }
-
   .mobile-toggle-form-btn.active {
     background: #64748b !important;
     box-shadow: 0 2px 6px rgba(100, 116, 139, 0.25) !important;
   }
-
   .sidebar-form {
     display: none !important;
     position: static !important;
@@ -617,19 +561,16 @@
     padding: 12px !important;
     margin: 0 0 12px 0 !important;
   }
-
   .sidebar-form.show-mobile-form {
     display: block !important;
     animation: mobileFormSlideDown 0.25s ease-out !important;
   }
-
   .sidebar-form-scroll-body,
   .sidebar-form > div:first-child {
     flex: none !important;
     overflow-y: visible !important;
     padding: 0 !important;
   }
-
   .sidebar-form-sticky-footer,
   .sidebar-form > div:last-child {
     flex-shrink: 0 !important;
@@ -653,35 +594,22 @@
     border-color: #334155 !important;
     color: #e2e8f0 !important;
   }
-
-  [data-theme="dark"] .mobile-drawer-body {
-    background: #1e293b !important;
-  }
-
-  [data-theme="dark"] .mobile-drawer-item {
-    color: #e2e8f0 !important;
-  }
-
+  [data-theme="dark"] .mobile-drawer-body { background: #1e293b !important; }
+  [data-theme="dark"] .mobile-drawer-item { color: #e2e8f0 !important; }
   [data-theme="dark"] .mobile-drawer-item:hover,
   [data-theme="dark"] .mobile-drawer-item.active {
     background: #253347 !important;
     color: #38bdf8 !important;
   }
-
   [data-theme="dark"] .mobile-form-modal-content {
     background: #1e293b !important;
     color: #e2e8f0 !important;
   }
-
-  [data-theme="dark"] .mobile-form-modal-body {
-    background: #0f172a !important;
-  }
-
+  [data-theme="dark"] .mobile-form-modal-body { background: #0f172a !important; }
   [data-theme="dark"] .mobile-form-modal-header {
     background: #111827 !important;
     border-bottom-color: #334155 !important;
   }
-
   /* 📱 CHỐNG TỰ ĐỘNG PHÓNG TO (AUTO-ZOOM) TRÊN IPHONE / IPAD SAFARI */
   input,
   select,
@@ -689,17 +617,13 @@
   .login-input,
   .form-control,
   .swal2-input,
-  .swal2-select {
-    font-size: 16px !important;
-  }
-
+  .swal2-select { font-size: 16px !important; }
   /* 📱 TỐI ƯU VÙNG CHẠM CẢM ỨNG (TOUCH TARGETS) THEO APPLE HIG & MATERIAL DESIGN */
   .btn,
   .action-btn {
     min-height: 38px;
     touch-action: manipulation;
   }
-
   .btn-sm {
     min-height: 36px;
     padding: 6px 12px !important;
@@ -710,20 +634,14 @@
     gap: 4px;
     touch-action: manipulation;
   }
-
   /* Khoảng cách an toàn giữa nút Sửa và nút Xóa để chống chạm nhầm */
   .btn-primary.btn-sm,
-  .btn-warning.btn-sm {
-    margin-right: 8px !important;
-  }
-
+  .btn-warning.btn-sm { margin-right: 8px !important; }
   /* Phản hồi chạm trực quan trên màn hình cảm ứng */
   @media (hover: none) {
     tbody tr.editable-row:active,
     td.editable-row:active,
-    .card:active {
-      background-color: #f0fdf4 !important;
-    }
+    .card:active { background-color: #f0fdf4 !important; }
   }
 }
 
@@ -732,18 +650,11 @@
    ========================================================================== */
 @media screen and (max-width: 600px) {
   /* Ẩn các cột thứ yếu trên điện thoại màn hình hẹp */
-  .col-hide-mobile {
-    display: none !important;
-  }
-
+  .col-hide-mobile { display: none !important; }
   #schedule-table th,
   #schedule-table td {
     padding: 8px 6px !important;
     font-size: 12px !important;
   }
-
-  .schedule-table-wrap {
-    border-radius: 4px !important;
-  }
+  .schedule-table-wrap { border-radius: 4px !important; }
 }
-

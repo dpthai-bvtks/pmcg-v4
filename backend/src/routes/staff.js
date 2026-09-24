@@ -45,7 +45,6 @@ export async function handleStaffAction(action, ctx) {
       return success(list);
     }
 
-
     case "addNhanSu": {
       let s = (typeof args[0] === "object" && args[0] !== null) ? args[0] : {
         ten: args[0],
@@ -77,7 +76,6 @@ export async function handleStaffAction(action, ctx) {
       await db.batch([stmtAdd, makeBumpDataVersionStmt(db, unitCode)]);
       return success(true);
     }
-
 
     case "editNhanSu": {
       let s;
@@ -128,7 +126,6 @@ export async function handleStaffAction(action, ctx) {
       return success(true);
     }
 
-
     case "deleteNhanSu": {
       const name = typeof args[1] === "string" ? args[1] : (typeof args[0] === "string" ? args[0] : null);
       if (name && !/^\d+$/.test(name)) {
@@ -168,7 +165,6 @@ export async function handleStaffAction(action, ctx) {
       }
       return success({ count: busyList.length });
     }
-
 
     case "getGioBanChungCu": {
       const filterDate = String(args[0] || "").trim();
@@ -218,7 +214,6 @@ export async function handleStaffAction(action, ctx) {
       });
     }
 
-
     case "deleteGioBanChungCu": {
       const id = args[0];
       if (!id) return error("Thiếu ID bản ghi cần xóa");
@@ -226,14 +221,12 @@ export async function handleStaffAction(action, ctx) {
       return success({ deletedId: id });
     }
 
-
     case "deleteGioBanCuByDate": {
       const delDate = String(args[0] || '').trim();
       if (!delDate) return error("Thiếu date cần xóa");
       const delRes = await db.prepare("DELETE FROM gio_ban_cu WHERE unit_code = ? AND date = ?").bind(unitCode, delDate).run();
       return success({ deletedDate: delDate, changes: delRes?.meta?.changes ?? '?' });
     }
-
 
     case "getEmployees": {
       const isDefault = (unitCode === "bvtks-cs2" || unitCode === "bvtks_cs2");
@@ -270,7 +263,6 @@ export async function handleStaffAction(action, ctx) {
       return success([]);
     }
 
-
     case "saveEmployees": {
       let list = args[0] || [];
       if (typeof list === "object" && list !== null && !Array.isArray(list)) {
@@ -284,7 +276,6 @@ export async function handleStaffAction(action, ctx) {
       await bumpDataVersion(db, unitCode);
       return success({ message: "Đã lưu danh sách nhân sự chấm công thành công!" });
     }
-
 
     case "getChamCongSymbols": {
       const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'chamcong_symbols'").bind(unitCode).first();
@@ -318,7 +309,6 @@ export async function handleStaffAction(action, ctx) {
       return success(defaultSymbols);
     }
 
-
     case "saveChamCongSymbols": {
       const symbols = (args[0] || []).map(item => ({
         ...item,
@@ -328,8 +318,6 @@ export async function handleStaffAction(action, ctx) {
       await bumpDataVersion(db, unitCode);
       return success({ message: "Đã lưu danh sách ký hiệu chấm công thành công!" });
     }
-
-
 
     case "getChamCong": {
       const myRaw = String(args[0] || "").trim();
@@ -400,7 +388,6 @@ export async function handleStaffAction(action, ctx) {
 
       return success({});
     }
-
 
     case "saveChamCong": {
       let my = "";
@@ -485,7 +472,6 @@ export async function handleStaffAction(action, ctx) {
       await db.batch([stmtChamCong, makeBumpDataVersionStmt(db, unitCode)]);
       return success({ message: "Đã lưu bảng chấm công thành công!" });
     }
-
 
     default:
       return null;

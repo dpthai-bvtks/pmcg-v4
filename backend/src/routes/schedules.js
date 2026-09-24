@@ -86,7 +86,6 @@ export async function handleSchedulesAction(action, ctx) {
       return success(rows);
     }
 
-
     case "saveSchedule": {
       const date = args[0] || new Date().toISOString().slice(0, 10);
       const rows = args[1] || [];
@@ -148,7 +147,6 @@ export async function handleSchedulesAction(action, ctx) {
       }
       return success(true);
     }
-
 
     case "chuyenNgayMoi":
 
@@ -237,7 +235,6 @@ export async function handleSchedulesAction(action, ctx) {
       return success({ count: records.length });
     }
 
-
     case "deduplicateHistory": {
       const targetDate = args[0] ? String(args[0]).trim() : "";
       let sql = `
@@ -268,7 +265,6 @@ export async function handleSchedulesAction(action, ctx) {
       await bumpDataVersion(db, unitCode);
       return success({ message: "Đã khử trùng lặp lịch sử thành công!", changes: delRes?.meta?.changes ?? 0 });
     }
-
 
     case "getHistoryFullData": {
       const rawDate = String(args[0] || "").trim();
@@ -384,7 +380,6 @@ export async function handleSchedulesAction(action, ctx) {
         } catch(e) {}
       }
 
-
       // Safe parse slots và phân bổ vào staffBusy / patBusyList / leavePatList
       const staffBusy = [];
       const patBusyList = [];
@@ -434,7 +429,6 @@ export async function handleSchedulesAction(action, ctx) {
       });
     }
 
-
     case "getScheduleData": {
       const targetDate = args[0];
       let ymd = targetDate || "";
@@ -471,7 +465,6 @@ export async function handleSchedulesAction(action, ctx) {
       return success(rows);
     }
 
-
     case "getSatData": {
       const staffRes = await db.prepare("SELECT * FROM nhan_su WHERE unit_code = ? AND name NOT GLOB '[0-9]*' ORDER BY priority ASC, id ASC").bind(unitCode).all().catch(() => db.prepare("SELECT * FROM nhan_su WHERE unit_code = ? ORDER BY id ASC").bind(unitCode).all());
       const patRes = await db.prepare("SELECT id, name, age, arrive_time, room, thu_thuat, leave_time FROM benh_nhan WHERE unit_code = ? AND is_saturday = 0 AND (leave_time IS NULL OR TRIM(leave_time) = '' OR LOWER(leave_time) = 'none')").bind(unitCode).all();
@@ -506,7 +499,6 @@ export async function handleSchedulesAction(action, ctx) {
       });
       return success({ staff: nhan_su, patients: benh_nhan, nhan_su, benh_nhan });
     }
-
 
     case "getTimRanhData": {
       const res = await db.prepare("SELECT procedure_name, start_time, end_time, staff_name, machine_name FROM tim_ranh WHERE unit_code = ? ORDER BY rowid ASC").bind(unitCode).all();
@@ -544,7 +536,6 @@ export async function handleSchedulesAction(action, ctx) {
       return success({ message: "Đã lưu mô hình AI vào CSDL đám mây!" });
     }
 
-
     case "getAIModel":
 
     case "getAILearnedModel": {
@@ -555,7 +546,6 @@ export async function handleSchedulesAction(action, ctx) {
       }
       return success(model);
     }
-
 
     case "trainAI":
 
@@ -577,12 +567,10 @@ export async function handleSchedulesAction(action, ctx) {
       return success({ message: "Đã lưu dữ liệu AI Training!" });
     }
 
-
     case "clearAITrainingData": {
       await db.prepare("DELETE FROM cai_dat WHERE unit_code = ? AND key = 'ai_training_data'").bind(unitCode).run();
       return success({ message: "Đã xóa dữ liệu AI Training!" });
     }
-
 
     case "autoChotSo": {
       const closeRes = await checkAutoChotSo(db, unitCode);
@@ -594,7 +582,6 @@ export async function handleSchedulesAction(action, ctx) {
         count: closeRes?.count || 0
       });
     }
-
 
     default:
       return null;

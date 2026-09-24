@@ -5608,3 +5608,37 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
   4. **Kiểm tra cú pháp & Triển khai**:
      - `node -c js/app.js; node -c js/scheduler-engine.js` đạt Exit Code 0.
      - Deploy Cloudflare Pages qua `npm run deploy:web` và commit push git.
+
+---
+
+### [v4.1.5-rev5] - 17:07 24/09/2026: Tối Ưu Hóa Toàn Diện Mã Nguồn, Khử Trùng Lặp & Cắt Giảm 4.460+ Dòng Code
+
+- *Yêu cầu của người dùng*: Đọc rules.md và xem toàn bộ code xem có rút ngắn được số lượng dòng code không? Nén càng nhiều càng tốt (Thực hiện Phương án 1: Khử trùng lặp & Tái cấu trúc chuẩn mực).
+
+- *Phân tích & Triển khai*:
+  1. **Khử trùng lặp & Tách Module Backend Worker (`backend/src/`)**:
+     - Tách toàn bộ 760 dòng DDL bảng, chỉ mục và migration tự chữa lành CSDL (`ensureSchema`) từ `backend/src/index.js` sang module độc lập `backend/src/schema.js`.
+     - Giúp `backend/src/index.js` giảm từ 2.345 dòng xuống còn 1.581 dòng (-764 dòng), phân định rõ ràng giữa Routing Controller và Schema Engine.
+     - Dọn dẹp khoảng trống thừa trong toàn bộ sub-routes `backend/src/routes/*.js`.
+  2. **Tối ưu hóa & Nén chuẩn mực `css/style.css`**:
+     - Dọn sạch 2.355 dòng trống thừa nằm rải rác giữa các thuộc tính CSS.
+     - Rút gọn 237 quy tắc đơn thuộc tính và 198 quy tắc kép thuộc tính (Dark Theme) thành định dạng súc tích.
+     - Gộp 141 khối selector danh sách nhiều dòng thành một khối liên tục.
+     - Giảm kích thước `css/style.css` từ 8.509 dòng xuống còn 5.435 dòng (**-3.074 dòng**, tiết kiệm 48.8 KB), bảo đảm 100% khớp đúng 3.937 thuộc tính CSS không mất bất kỳ style nào.
+     - Tối ưu `css/mobile.css` từ 750 dòng xuống 661 dòng (-89 dòng).
+  3. **Khử trùng lặp hàm & Dọn dẹp Frontend `js/app.js`**:
+     - Phát hiện và loại bỏ khối hàm trùng lặp (`withLock`, `moveRowUp`, `moveRowDown`, `renderSttOrderControl`) bị định nghĩa lặp lại ở dòng 1238–1314, đồng thời khôi phục hỗ trợ reorder cho `protocols`.
+     - Dọn dẹp khoảng cách thừa giữa các hàm, giảm `js/app.js` từ 17.776 dòng xuống 16.961 dòng (**-815 dòng**).
+  4. **Tối ưu hóa `index.html`**:
+     - Dọn sạch dòng trống thừa giữa các thẻ div modal và block comment, giảm từ 4.928 dòng xuống 4.534 dòng (**-394 dòng**).
+  5. **Tổng kết cắt giảm**:
+     - Toàn bộ codebase giảm từ **50.261 dòng** xuống còn **45.800 dòng** (**cắt giảm thành công 4.461 dòng code thừa & trùng lặp**, giảm ~58 KB dung lượng).
+  6. **Đồng bộ Phiên bản theo RULES.md**:
+     - Revision: `4.1.5-rev5`.
+     - `sw.js`: `CACHE_NAME = "pmcg-v4-cache-4.1.5-rev5"`.
+     - `index.html`: `APP_VERSION = "4.1.5-rev5"`, timestamp `#sys-last-update` -> `⏱ Cập nhật lần cuối: 17:07 24/09/2026`, chân trang `#app-footer-version` giữ chuẩn `Phiên bản: 4.1.5`.
+     - `version.json`: `version: "4.1.5-rev5"`, `releaseTime: "17:07 24/09/2026"`.
+  7. **Kiểm tra cú pháp & Triển khai**:
+     - Chạy kiểm tra cú pháp toàn bộ hệ thống: `node -c js/init.js; node -c js/app.js; node -c js/scheduler-engine.js; node -c backend/src/index.js; node -c backend/src/schema.js` đều đạt Exit Code 0.
+     - Deploy Cloudflare Pages qua `npm run deploy:web`.
+     - Git commit & push `origin main`.

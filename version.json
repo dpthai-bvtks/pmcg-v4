@@ -1,6 +1,6 @@
 {
-    "version": "4.1.5-rev4",
+    "version": "4.1.5-rev5",
     "releaseDate": "24/09/2026",
-    "releaseTime": "15:12 24/09/2026",
-    "notes": "feat(rules): Giới hạn phạm vi áp dụng khóa giờ kết thúc Thủy châm cho KTV chính chỉ từ ngày 25/09/2026 trở đi, bảo toàn lịch sử và không làm phát sinh lỗi giả trên các ngày trước đó."
+    "releaseTime": "17:07 24/09/2026",
+    "notes": "refactor(core): Tối ưu hóa kiến trúc, khử trùng lặp và rút ngắn 4.460+ dòng code toàn hệ thống, tách schema.js cho backend worker, tinh gọn style.css và dọn dẹp các khối mã lặp."
 }

@@ -252,7 +252,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-
 window.dataCacheTime = window.dataCacheTime || {};
 
 window.loadTimRanhDataFromServer = function () {

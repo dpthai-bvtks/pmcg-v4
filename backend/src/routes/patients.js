@@ -35,7 +35,6 @@ export async function handlePatientsAction(action, ctx) {
       return success(list);
     }
 
-
     case "addMayMoc": {
       let payload = {};
       if (typeof args[0] === "object" && args[0] !== null) payload = args[0];
@@ -56,7 +55,6 @@ export async function handlePatientsAction(action, ctx) {
       await db.batch(stmts);
       return success({ message: "Thêm thiết bị thành công" });
     }
-
 
     case "editMayMoc": {
       let payload = {};
@@ -92,7 +90,6 @@ export async function handlePatientsAction(action, ctx) {
       return success({ message: "Cập nhật thiết bị thành công" });
     }
 
-
     case "deleteMayMoc": {
       let payload = {};
       if (typeof args[0] === "object" && args[0] !== null) payload = args[0];
@@ -114,7 +111,6 @@ export async function handlePatientsAction(action, ctx) {
       await bumpDataVersion(db, unitCode);
       return success({ message: "Xóa máy thành công" });
     }
-
 
     case "getThuThuat": {
       // Tự động nạp mốc lịch sử định mức ban đầu (áp dụng từ trước 21/09/2026) vào bảng lich_su_dinh_muc nếu chưa có
@@ -212,7 +208,6 @@ export async function handlePatientsAction(action, ctx) {
         };
       }));
     }
-
 
     case "addThuThuat":
 
@@ -410,7 +405,6 @@ export async function handlePatientsAction(action, ctx) {
       return success({ message: "Lưu thủ thuật thành công" });
     }
 
-
     case "deleteThuThuat": {
       let payload = {};
       if (typeof args[0] === "object" && args[0] !== null) payload = args[0];
@@ -434,7 +428,6 @@ export async function handlePatientsAction(action, ctx) {
       return success({ message: "Xóa thủ thuật thành công" });
     }
 
-
     case "getPhong":
 
     case "getPhongThuThuat": {
@@ -450,7 +443,6 @@ export async function handlePatientsAction(action, ctx) {
         danhSachGiuong: r.danh_sach_giuong || ""
       })));
     }
-
 
     case "addPhong":
 
@@ -503,7 +495,6 @@ export async function handlePatientsAction(action, ctx) {
       return success({ message: "Lưu phòng thành công" });
     }
 
-
     case "deletePhong": {
       let payload = {};
       if (typeof args[0] === "object" && args[0] !== null) payload = args[0];
@@ -525,7 +516,6 @@ export async function handlePatientsAction(action, ctx) {
       await bumpDataVersion(db, unitCode);
       return success({ message: "Xóa phòng thành công" });
     }
-
 
     case "getBenhNhan": {
       const res = await db.prepare("SELECT * FROM benh_nhan WHERE unit_code = ? AND is_saturday = 0 ORDER BY ngay_vao ASC, name ASC").bind(unitCode).all();
@@ -559,7 +549,6 @@ export async function handlePatientsAction(action, ctx) {
       });
       return success(list);
     }
-
 
   case "addBenhNhan": {
     let p = (typeof args[0] === "object") ? args[0] : {
@@ -643,7 +632,6 @@ export async function handlePatientsAction(action, ctx) {
     const insertedId = res[0]?.meta?.last_row_id || res[0]?.meta?.changes || 1;
     return success({ id: insertedId });
   }
-
 
   case "editBenhNhan": {
     let offset = (typeof args[0] === "number" || (typeof args[0] === "string" && /^\d+$/.test(args[0]) && args.length >= 9)) ? 1 : 0;
@@ -798,7 +786,6 @@ export async function handlePatientsAction(action, ctx) {
     return success(true);
   }
 
-
     case "deleteBenhNhan": {
       let payload = {};
       if (typeof args[0] === "object" && args[0] !== null) payload = args[0];
@@ -822,7 +809,6 @@ export async function handlePatientsAction(action, ctx) {
       await bumpDataVersion(db, unitCode);
       return success({ message: "Xóa bệnh nhân thành công" });
     }
-
 
     case "saveReorderedData": {
       const type = String(args[0] || "").toLowerCase().trim();
@@ -884,7 +870,6 @@ export async function handlePatientsAction(action, ctx) {
       }
       return success({ message: `Đã lưu thứ tự ${type} thành công!` });
     }
-
 
     case "bulkUpdatePatients": {
       const patientList = Array.isArray(args[0]) ? args[0] : [];
@@ -991,7 +976,6 @@ export async function handlePatientsAction(action, ctx) {
       return success({ message: `Cập nhật danh sách ${uniquePatients.size} bệnh nhân thành công!` });
     }
 
-
     case "getProtocolsData":
 
     case "getClinicalProtocols":
@@ -1027,7 +1011,6 @@ export async function handlePatientsAction(action, ctx) {
       return success([]);
     }
 
-
     case "saveProtocolsData":
 
     case "saveClinicalProtocols":
@@ -1058,7 +1041,6 @@ export async function handlePatientsAction(action, ctx) {
       await bumpDataVersion(db, unitCode);
       return success(true);
     }
-
 
     case "addPhacDo":
 
@@ -1092,7 +1074,6 @@ export async function handlePatientsAction(action, ctx) {
       return success({ message: "Thêm phác đồ thành công" });
     }
 
-
     case "editPhacDo":
 
     case "editProtocol": {
@@ -1123,7 +1104,6 @@ export async function handlePatientsAction(action, ctx) {
       await bumpDataVersion(db, unitCode);
       return success({ message: "Cập nhật phác đồ thành công" });
     }
-
 
     case "deletePhacDo":
 
@@ -1222,7 +1202,6 @@ export async function handlePatientsAction(action, ctx) {
       }
     }
 
-
     case "saveThongKeThuThuat": {
       const my = String(args[0] || "").trim();
       const data = args[1] || {};
@@ -1266,7 +1245,6 @@ export async function handlePatientsAction(action, ctx) {
       await bumpDataVersion(db, unitCode);
       return success({ message: "Đã lưu dữ liệu thống kê thủ thuật thành công!" });
     }
-
 
     default:
       return null;

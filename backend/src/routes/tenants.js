@@ -32,14 +32,12 @@ export async function handleTenantsAction(action, ctx) {
       }
     }
 
-
     case "getSubscriptionPlans": {
       return success({
         plans: SUBSCRIPTION_PLANS,
         list: Object.values(SUBSCRIPTION_PLANS)
       });
     }
-
 
     case "getPublicTenantInfo": {
       const targetUnit = String(args[0] || unitCode || "bvtks-cs2").trim().toLowerCase();
@@ -48,7 +46,6 @@ export async function handleTenantsAction(action, ctx) {
       const subInfo = calculateSubscriptionInfo(tenant);
       return success({ ...tenant, ...subInfo });
     }
-
 
     case "registerTrialTenant": {
       const payload = args[0] || {};
@@ -241,7 +238,6 @@ export async function handleTenantsAction(action, ctx) {
       });
     }
 
-
     case "renewTenantSubscription": {
       const payload = args[0] || {};
       const uCode = String(payload.unit_code || payload.code || args[0] || unitCode || "").trim().toLowerCase();
@@ -350,7 +346,6 @@ export async function handleTenantsAction(action, ctx) {
       });
     }
 
-
     case "checkPaymentStatus": {
       const payload = args[0] || {};
       const orderCode = String(payload.order_code || args[0] || "").trim();
@@ -411,7 +406,6 @@ export async function handleTenantsAction(action, ctx) {
         days_left: subInfo.days_left
       });
     }
-
 
     case "manualApprovePayment": {
       const payload = args[0] || {};
@@ -484,7 +478,6 @@ export async function handleTenantsAction(action, ctx) {
       });
     }
 
-
     case "getPaymentTransactions": {
       try {
         const list = await db.prepare("SELECT * FROM payment_transactions ORDER BY id DESC LIMIT 50").all();
@@ -493,7 +486,6 @@ export async function handleTenantsAction(action, ctx) {
         return success([]);
       }
     }
-
 
     case "paymentWebhook": {
       const payload = args[0] || {};
@@ -626,7 +618,6 @@ export async function handleTenantsAction(action, ctx) {
       });
     }
 
-
     case "getTenantsList": {
       // Dành riêng cho Super Admin
       try {
@@ -636,7 +627,6 @@ export async function handleTenantsAction(action, ctx) {
         return error("Không thể lấy danh sách đơn vị: " + e.message, 500);
       }
     }
-
 
     case "addTenant": {
       const payload = args[0] || {};
@@ -802,7 +792,6 @@ export async function handleTenantsAction(action, ctx) {
       });
     }
 
-
     case "updateTenant": {
       const payload = args[0] || {};
       const oldCode = String(payload.old_unit_code || payload.old_code || payload.unit_code || payload.code || "").trim().toLowerCase();
@@ -879,7 +868,6 @@ export async function handleTenantsAction(action, ctx) {
       return success({ message: `Đã cập nhật thông tin đơn vị '${uCode}' thành công!`, unit_code: uCode, old_unit_code: oldCode });
     }
 
-
     case "toggleTenantStatus": {
       const uCode = String(args[0] || "").trim().toLowerCase();
       const isActive = args[1] ? 1 : 0;
@@ -887,7 +875,6 @@ export async function handleTenantsAction(action, ctx) {
       await db.prepare("UPDATE tenants SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ?").bind(isActive, uCode).run();
       return success({ message: `Đã ${isActive ? 'kích hoạt' : 'khóa'} đơn vị '${uCode}'!`, is_active: isActive });
     }
-
 
     case "deleteTenant": {
       const uCode = String(args[0] || "").trim().toLowerCase();
@@ -910,7 +897,6 @@ export async function handleTenantsAction(action, ctx) {
 
       return success({ message: `Đã xóa toàn bộ dữ liệu đơn vị '${uCode}'!` });
     }
-
 
     case "changePassword": {
       const payload = args[0] || {};
@@ -982,7 +968,6 @@ export async function handleTenantsAction(action, ctx) {
       return success({ message: "Đã đổi mật khẩu thành công!" });
     }
 
-
     case "resetTenantAdminPassword": {
       const uCode = String(args[0] || "").trim().toLowerCase();
       const newPass = String(args[1] || "").trim();
@@ -1033,7 +1018,6 @@ export async function handleTenantsAction(action, ctx) {
         ]);
       }
     }
-
 
     case "saveAccount": {
       let id = "", username = "", password = "", role = "User", permissions = "ALL";
@@ -1090,7 +1074,6 @@ export async function handleTenantsAction(action, ctx) {
       return success({ message: "Đã lưu tài khoản thành công!" });
     }
 
-
     case "deleteAccount": {
       const target = String(args[0] || "").trim();
       if (!target) return error("Tài khoản không hợp lệ!", 400);
@@ -1100,7 +1083,6 @@ export async function handleTenantsAction(action, ctx) {
       await db.prepare("DELETE FROM tai_khoan WHERE unit_code = ? AND (id = ? OR username = ?)").bind(unitCode, target, target).run();
       return success({ message: "Đã xóa tài khoản thành công!" });
     }
-
 
     case "verifyLogin":
 
@@ -1298,7 +1280,6 @@ export async function handleTenantsAction(action, ctx) {
       await new Promise(r => setTimeout(r, 1000));
       return error("Tên đăng nhập hoặc mật khẩu không chính xác!", 401);
     }
-
 
     default:
       return null;

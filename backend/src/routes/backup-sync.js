@@ -51,7 +51,6 @@ export async function handleBackupSyncAction(action, ctx) {
       return success(exportPackage);
     }
 
-
     case "exportAllDatabaseForSuperAdmin":
 
     case "exportAllDatabase": {
@@ -104,7 +103,6 @@ export async function handleBackupSyncAction(action, ctx) {
       return success(dbPayload);
     }
 
-
     case "importTenantData": {
       const payload = args[0] || {};
       const targetUnit = String(payload.unit_code || "").trim().toLowerCase();
@@ -148,7 +146,6 @@ export async function handleBackupSyncAction(action, ctx) {
         unit_code: targetUnit
       });
     }
-
 
     case "getBootstrapData": {
       // Tự động kiểm tra chốt sổ khi nạp dữ liệu đầu ngày
@@ -456,13 +453,11 @@ export async function handleBackupSyncAction(action, ctx) {
       });
     }
 
-
     case "getDataVersion": {
       const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'data_version'").bind(unitCode).first();
       const v = rec ? String(rec.value) : "1";
       return success({ version: v });
     }
-
 
     case "getMarqueeText":
 
@@ -470,7 +465,6 @@ export async function handleBackupSyncAction(action, ctx) {
       const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'marquee_text'").bind(unitCode).first();
       return success(rec ? rec.value : ("PHẦN MỀM XẾP LỊCH THỦ THUẬT - " + unitCode.toUpperCase()));
     }
-
 
     case "saveMarqueeText":
 
@@ -481,14 +475,12 @@ export async function handleBackupSyncAction(action, ctx) {
       return success(true);
     }
 
-
     case "getSystemSettings": {
       const res = await db.prepare("SELECT key, value FROM cai_dat WHERE unit_code = ?").bind(unitCode).all();
       const obj = {};
       (res.results || []).forEach(r => { obj[r.key] = r.value; });
       return success(obj);
     }
-
 
     case "saveSystemSettings": {
       let settings = args[0] || {};
@@ -506,7 +498,6 @@ export async function handleBackupSyncAction(action, ctx) {
       return success(true);
     }
 
-
     case "getQuickLinks": {
       const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'quick_links'").bind(unitCode).first();
       if (rec && rec.value) {
@@ -522,7 +513,6 @@ export async function handleBackupSyncAction(action, ctx) {
       ];
       return success(defaultLinks);
     }
-
 
     case "saveQuickLinks": {
       const links = Array.isArray(args[0]) ? args[0] : (args[0]?.links || []);
@@ -543,14 +533,12 @@ export async function handleBackupSyncAction(action, ctx) {
       return success({ staff: {} });
     }
 
-
     case "saveErrorConfig": {
       const config = args[0] || { staff: {} };
       await setCaiDat(db, unitCode, 'error_config', JSON.stringify(config));
       await bumpDataVersion(db, unitCode);
       return success({ message: "Đã lưu cấu hình thành công!" });
     }
-
 
     case "getDocuments": {
       try {
@@ -574,14 +562,12 @@ export async function handleBackupSyncAction(action, ctx) {
       return success(defaultDocs);
     }
 
-
     case "saveDocuments": {
       const docs = Array.isArray(args[0]) ? args[0] : [];
       await setCaiDat(db, unitCode, 'vb_documents', JSON.stringify(docs));
       await bumpDataVersion(db, unitCode);
       return success({ message: "Đã lưu danh mục tài liệu tra cứu thành công!" });
     }
-
 
     case "exportDatabase": {
       const isMaster = unitCode === 'master' || unitCode === 'MASTER';
@@ -616,7 +602,6 @@ export async function handleBackupSyncAction(action, ctx) {
       });
     }
 
-
     case "importDatabase": {
       const data = args[0] || {};
       let restoredCount = 0;
@@ -632,24 +617,20 @@ export async function handleBackupSyncAction(action, ctx) {
       return success({ message: `Đã phục hồi thành công ${restoredCount} mục cài đặt!` });
     }
 
-
     case "saveGoogleDriveSettings": {
       const cfg = args[0] || {};
       await setCaiDat(db, unitCode, 'gdrive_settings', JSON.stringify(cfg));
       return success({ message: "Đã lưu cài đặt Google Drive!" });
     }
 
-
     case "getGoogleDriveSettings": {
       const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'gdrive_settings'").bind(unitCode).first();
       return success(rec && rec.value ? JSON.parse(rec.value) : {});
     }
 
-
     case "testGoogleDriveUpload": {
       return success({ message: "Kết nối Google Drive thành công!" });
     }
-
 
     default:
       return null;
