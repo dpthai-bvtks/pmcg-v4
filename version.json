@@ -1,6 +1,6 @@
 {
-    "version": "4.1.6-rev6",
+    "version": "4.1.6-rev7",
     "releaseDate": "25/09/2026",
-    "releaseTime": "10:20 25/09/2026",
-    "notes": "Chuẩn hóa toàn diện notify() thay thế showToast rải rác trong app.js, bổ sung docstring cảnh báo đồng bộ t2m/m2t kế thừa từ Google Apps Script code.gs và OR-Tools solvers."
+    "releaseTime": "11:23 25/09/2026",
+    "notes": "Chuyển đổi triệt để 100% các lệnh google.script.run trong app.js sang callApi với native callback, loại bỏ hoàn toàn các hàm ủy quyền trùng tên và khôi phục hiển thị dữ liệu bình thường cho mọi tab."
 }

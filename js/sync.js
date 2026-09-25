@@ -242,32 +242,29 @@
 
     function doPoll() {
         if (isSyncing) return;
-        if (typeof google === 'undefined' || !google.script || !google.script.run) return;
+        if (typeof callApi !== 'function') return;
         isSyncing = true;
-        google.script.run
-            .withSuccessHandler(function(data) {
-                isSyncing = false;
-                if (!data) return;
-                const v = String(data.version || '0');
-                if (lastKnownVersion === null) {
-                    lastKnownVersion = v; // lần đầu: ghi nhớ version hiện tại
+        callApi('getDataVersion', [], function(data) {
+            isSyncing = false;
+            if (!data) return;
+            const v = String(data.version || '0');
+            if (lastKnownVersion === null) {
+                lastKnownVersion = v; // lần đầu: ghi nhớ version hiện tại
+                return;
+            }
+            if (v !== lastKnownVersion) {
+                // 🛡️ Khử báo động giả: nếu chính tab này vừa thực hiện lưu trong vòng 30s qua
+                if (window._lastLocalMutationTime && (Date.now() - window._lastLocalMutationTime < 30000)) {
+                    lastKnownVersion = v;
+                    window._lastLocalMutationTime = 0;
                     return;
                 }
-                if (v !== lastKnownVersion) {
-                    // 🛡️ Khử báo động giả: nếu chính tab này vừa thực hiện lưu trong vòng 30s qua
-                    if (window._lastLocalMutationTime && (Date.now() - window._lastLocalMutationTime < 30000)) {
-                        lastKnownVersion = v;
-                        window._lastLocalMutationTime = 0;
-                        return;
-                    }
 
-                    lastKnownVersion = v;
-                    syncRefreshData();
-                    showSyncToast('🔄 Đã đồng bộ dữ liệu mới');
-                }
-            })
-            .withFailureHandler(function() { isSyncing = false; })
-            .getDataVersion();
+                lastKnownVersion = v;
+                syncRefreshData();
+                showSyncToast('🔄 Đã đồng bộ dữ liệu mới');
+            }
+        }, function() { isSyncing = false; });
     }
 
     // Bắt đầu sau khi trang load xong

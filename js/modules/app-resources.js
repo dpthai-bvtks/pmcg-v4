@@ -125,23 +125,23 @@
 
             cache.machine[editIdx.machine] = { id: oldId, tenLoai: t, maMay: c, trangThai: s };
 
-            if (window.google && window.google.script && window.google.script.run) {
-                window.google.script.run.editMayMoc({
+            if (typeof callApi === 'function') {
+                callApi('editMayMoc', [{
                     index: editIdx.machine,
                     oldMaMay: oldMaMay,
                     id: oldId,
                     tenLoai: t,
                     maMay: c,
                     trangThai: s
-                }, editIdx.machine, t, c, s, oldMaMay);
+                }, editIdx.machine, t, c, s, oldMaMay]);
             }
         } else {
             for (let i = 0; i < parseInt(q); i++) {
                 cache.machine.push({ tenLoai: t, maMay: `${c}${i + 1}`, trangThai: s });
             }
 
-            if (window.google && window.google.script && window.google.script.run) {
-                window.google.script.run.addMayMoc(t, c, q, s);
+            if (typeof callApi === 'function') {
+                callApi('addMayMoc', [t, c, q, s]);
             }
         }
 
@@ -191,15 +191,14 @@
             cache.machine.splice(i, 1);
             renderMachinesTable();
 
-            if (window.google && window.google.script && window.google.script.run) {
-                window.google.script.run
-                    .withSuccessHandler(() => {
-                        notifyMsg('Đã xóa máy móc thành công!', 'success');
-                    })
-                    .withFailureHandler(e => {
+            if (typeof callApi === 'function') {
+                callApi('deleteMayMoc', [{ maMay, id: machineId, index: i }, maMay, machineId],
+                    () => notifyMsg('Đã xóa máy móc thành công!', 'success'),
+                    e => {
                         alert('Lỗi khi xóa máy: ' + e);
                         if (typeof window.loadMachines === 'function') window.loadMachines();
-                    }).deleteMayMoc({ maMay, id: machineId, index: i }, maMay, machineId);
+                    }
+                );
             }
         });
     }
@@ -382,8 +381,8 @@
                 if (typeof window.renderPatientsTable === 'function') window.renderPatientsTable();
             }
 
-            if (window.google && window.google.script && window.google.script.run) {
-                window.google.script.run.editPhong({
+            if (typeof callApi === 'function') {
+                callApi('editPhong', [{
                     index: editIdx.room,
                     oldTenPhong: oldName,
                     id: oldId,
@@ -393,13 +392,13 @@
                     danhSachMay: dsMay,
                     soGiuong: slGiuong,
                     danhSachGiuong: dsGiuong
-                }, editIdx.room, ten, bs, ktv, dsMay, slGiuong, dsGiuong, oldName);
+                }, editIdx.room, ten, bs, ktv, dsMay, slGiuong, dsGiuong, oldName]);
             }
         } else {
             cache.room.push({ tenPhong: ten, bacSi: bs, ktv, danhSachMay: dsMay, soGiuong: slGiuong, danhSachGiuong: dsGiuong });
 
-            if (window.google && window.google.script && window.google.script.run) {
-                window.google.script.run.addPhong(ten, bs, ktv, dsMay, slGiuong, dsGiuong);
+            if (typeof callApi === 'function') {
+                callApi('addPhong', [ten, bs, ktv, dsMay, slGiuong, dsGiuong]);
             }
         }
 
@@ -486,15 +485,14 @@
             cache.room.splice(i, 1);
             renderRoomsTable();
 
-            if (window.google && window.google.script && window.google.script.run) {
-                window.google.script.run
-                    .withSuccessHandler(() => {
-                        notifyMsg('Đã xóa phòng thành công!', 'success');
-                    })
-                    .withFailureHandler(e => {
+            if (typeof callApi === 'function') {
+                callApi('deletePhong', [{ tenPhong, id: roomId, index: i }, tenPhong, roomId],
+                    () => notifyMsg('Đã xóa phòng thành công!', 'success'),
+                    e => {
                         alert('Lỗi khi xóa phòng: ' + e);
                         if (typeof window.loadRooms === 'function') window.loadRooms();
-                    }).deletePhong({ tenPhong, id: roomId, index: i }, tenPhong, roomId);
+                    }
+                );
             }
         });
     }

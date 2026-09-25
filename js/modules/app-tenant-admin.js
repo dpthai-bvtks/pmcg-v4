@@ -543,11 +543,6 @@ window.onAppDateChange = function(dateStr, sourceTab) {
 
     if (typeof callApi === 'function') {
         callApi('getHistoryFullData', [targetDate], onSuccess, onError);
-    } else if (window.google && window.google.script && window.google.script.run) {
-        window.google.script.run
-            .withSuccessHandler(onSuccess)
-            .withFailureHandler(onError)
-            .getHistoryFullData(targetDate);
     } else {
         if (window.hideGlobalLoading) window.hideGlobalLoading();
     }
@@ -606,13 +601,6 @@ window.loadBusyHistoryDates = function(forceReload) {
         }, err => {
             console.warn('[loadBusyHistoryDates] Không thể tải danh mục ngày bận:', err);
         });
-    } else if (window.google && window.google.script && window.google.script.run && window.google.script.run.getGioBanChungCu) {
-        window.google.script.run
-            .withSuccessHandler(res => {
-                const dates = (res && res.dates) ? res.dates : [];
-                if (dates.length > 0) populateDates(dates);
-            })
-            .getGioBanChungCu('all', 'all', '');
     }
 };
 

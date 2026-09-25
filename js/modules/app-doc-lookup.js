@@ -149,11 +149,6 @@ window.loadDocumentListFromServer = function() {
 
     if (typeof callApi === 'function') {
         callApi('getDocuments', [], handleSuccess, handleFailure);
-    } else if (window.google && window.google.script && window.google.script.run) {
-        window.google.script.run
-            .withSuccessHandler(handleSuccess)
-            .withFailureHandler(handleFailure)
-            .getDocuments();
     } else {
         handleFailure("No API");
     }
@@ -377,11 +372,6 @@ window.saveDocListToServer = function() {
 
     if (typeof callApi === 'function') {
         callApi('saveDocuments', [window.cachedDocuments], handleSuccess, handleFailure);
-    } else if (window.google && window.google.script && window.google.script.run) {
-        window.google.script.run
-            .withSuccessHandler(handleSuccess)
-            .withFailureHandler(handleFailure)
-            .saveDocuments(window.cachedDocuments);
     }
 };
 

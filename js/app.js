@@ -3138,8 +3138,7 @@ var dataCache = window.dataCache;
                 restoreOfflineCache();
             }
 
-            google.script.run
-                .withSuccessHandler(function (b) {
+            callApi('getBootstrapData', [document.getElementById('schedule-date')?.value || ''], function (b) {
                     if (!b) return;
 
                     // 🛡️ Tự động chữa lành họ tên bệnh nhân và lịch trình trước khi lưu cache
@@ -3308,16 +3307,14 @@ var dataCache = window.dataCache;
                         window._systemReadyLogged = true;
                         console.log('✅ Hệ thống T.I.M.E.S đã tải và đồng bộ dữ liệu thành công! Sẵn sàng hoạt động.');
                     }
-                })
-                .withFailureHandler(function (err) {
+                }, function (err) {
                     if (!window._systemReadyLogged) {
                         window._systemReadyLogged = true;
                         console.log('✅ Hệ thống T.I.M.E.S đã sẵn sàng hoạt động (Chế độ ngoại tuyến).');
                     }
                     console.warn('[Bootstrap API] Máy chủ bận, đang sử dụng dữ liệu đã lưu trong máy:', err);
                     [loadMachines, loadRooms, loadScheduleList, loadProcedures, loadPatients, loadStaff].forEach(fn => fn());
-                })
-                .getBootstrapData(document.getElementById('schedule-date')?.value || '');
+                });
         }
 
         function loadAllData() {
@@ -3355,8 +3352,7 @@ var dataCache = window.dataCache;
         }
 
         function loadFromSheets(apiMethod, cacheKey, callbacks) {
-            google.script.run
-                .withSuccessHandler(data => {
+            callApi(apiMethod, [], data => {
                     if (typeof dataCache !== 'undefined') {
                         const rawData = data || [];
                         rawData.forEach((item, i) => {
@@ -3421,12 +3417,10 @@ var dataCache = window.dataCache;
                     window.dataCacheTime = window.dataCacheTime || {};
                     window.dataCacheTime[cacheKey] = Date.now();
                     callbacks.forEach(cb => cb());
-                })
-                .withFailureHandler(e => {
+                }, e => {
                     console.error("❌ Lỗi tải [" + cacheKey + "]:", e);
                     callbacks.forEach(cb => cb());
-                })
-            [apiMethod]();
+                });
         }
 
         function triggerDataRefresh(btn) {
@@ -3464,16 +3458,15 @@ var dataCache = window.dataCache;
         function loadPatients() { loadEntity('getBenhNhan', 'pat', renderPatientsTable); }
 
         function loadProcedures() {
-            google.script.run.withSuccessHandler(data => {
+            callApi('getThuThuat', [], data => {
                 dataCache.proc = data;
-
                 renderProceduresTable();
-
                 renderProcedureCheckboxes();
-
                 loadStaff();
-}).getThuThuat();
-}
+            }, err => {
+                console.error("Lỗi nạp thủ thuật:", err);
+            });
+        }
 
         function loadStaff() {
             loadEntity('getNhanSu', 'staff', renderStaffTable, [
@@ -4377,14 +4370,12 @@ var dataCache = window.dataCache;
                     }
                 } catch(e) {}
 
-                google.script.run
-                    .withSuccessHandler(() => {
-                        notify(`Đã xóa thủ thuật "${ten}" thành công!`, 'success');
-                    })
-                    .withFailureHandler(e => {
-                        alert('Lỗi xóa thủ thuật: ' + e);
-                        if (typeof loadProcedures === 'function') loadProcedures();
-                    }).deleteThuThuat({ ten, id: procId, index: i }, ten, procId);
+                callApi('deleteThuThuat', [{ ten, id: procId, index: i }, ten, procId], () => {
+                    notify(`Đã xóa thủ thuật "${ten}" thành công!`, 'success');
+                }, e => {
+                    alert('Lỗi xóa thủ thuật: ' + e);
+                    if (typeof loadProcedures === 'function') loadProcedures();
+                });
             });
         }
 
@@ -4506,27 +4497,21 @@ var dataCache = window.dataCache;
                 obj.index = editIndex.staff;
                 dataCache.staff[editIndex.staff] = obj;
                 if (window.dataCacheTime) window.dataCacheTime['staff'] = Date.now();
-                google.script.run
-                    .withSuccessHandler(() => {
-                        notify('Đã lưu nhân sự thành công!', 'success');
-                    })
-                    .withFailureHandler((err) => {
-                        alert("Lỗi lưu nhân sự: " + (err.message || err));
-                        safeCall('loadDashboard');
-                    })
-                    .editNhanSu(sheetIdx, ten, vaiTro, trangThai, tgLam, kyNang, gioBan, thayThe, quyen, tenHis);
+                callApi('editNhanSu', [sheetIdx, ten, vaiTro, trangThai, tgLam, kyNang, gioBan, thayThe, quyen, tenHis], () => {
+                    notify('Đã lưu nhân sự thành công!', 'success');
+                }, (err) => {
+                    alert("Lỗi lưu nhân sự: " + (err.message || err));
+                    safeCall('loadDashboard');
+                });
             } else {
                 dataCache.staff.push(obj);
                 if (window.dataCacheTime) window.dataCacheTime['staff'] = Date.now();
-                google.script.run
-                    .withSuccessHandler(() => {
-                        notify('Đã thêm nhân sự thành công!', 'success');
-                    })
-                    .withFailureHandler((err) => {
-                        alert("Lỗi thêm nhân sự: " + (err.message || err));
-                        safeCall('loadDashboard');
-                    })
-                    .addNhanSu(ten, vaiTro, trangThai, tgLam, kyNang, gioBan, thayThe, quyen, tenHis);
+                callApi('addNhanSu', [ten, vaiTro, trangThai, tgLam, kyNang, gioBan, thayThe, quyen, tenHis], () => {
+                    notify('Đã thêm nhân sự thành công!', 'success');
+                }, (err) => {
+                    alert("Lỗi thêm nhân sự: " + (err.message || err));
+                    safeCall('loadDashboard');
+                });
             }
 
             cancelEdit('staff'); renderStaffTable();
@@ -4585,13 +4570,12 @@ var dataCache = window.dataCache;
                 });
                 renderStaffTable();
 
-                google.script.run.withSuccessHandler(() => {
+                callApi('deleteNhanSu', [deletedSheetIndex, staffName], () => {
                     notify(`Đã xóa nhân sự [ ${staffName} ]!`, 'success');
-                })
-                    .withFailureHandler(e => {
-                        alert('Lỗi khi xóa: ' + e);
-                        safeCall('loadDashboard');
-                    }).deleteNhanSu(deletedSheetIndex, staffName);
+                }, e => {
+                    alert('Lỗi khi xóa: ' + e);
+                    safeCall('loadDashboard');
+                });
             });
         }
 
@@ -4941,15 +4925,9 @@ var dataCache = window.dataCache;
 
             if (currentEditIdx > -1 && currentItem) {
                 const sheetIdx = currentItem.sheetIndex !== undefined ? currentItem.sheetIndex : currentEditIdx;
-                google.script.run
-                    .withSuccessHandler(onDone)
-                    .withFailureHandler(onError)
-                    .editBenhNhan(sheetIdx, ten, nam, ngay, gio, ban, ra, phong, tt, origTen, origNam, loai_bn, buoi_dieu_tri, origId);
+                callApi('editBenhNhan', [sheetIdx, ten, nam, ngay, gio, ban, ra, phong, tt, origTen, origNam, loai_bn, buoi_dieu_tri, origId], onDone, onError);
             } else {
-                google.script.run
-                    .withSuccessHandler(onDone)
-                    .withFailureHandler(onError)
-                    .addBenhNhan(ten, nam, ngay, gio, ban, ra, phong, tt, loai_bn, buoi_dieu_tri);
+                callApi('addBenhNhan', [ten, nam, ngay, gio, ban, ra, phong, tt, loai_bn, buoi_dieu_tri], onDone, onError);
             }
 }
 
@@ -5107,16 +5085,13 @@ var dataCache = window.dataCache;
                 renderPatientsTable();
 
                 // Gọi máy chủ xóa ngay lập tức
-                google.script.run
-                    .withSuccessHandler(() => {
-                        notify(`Đã xóa bệnh nhân [ ${patName} ] thành công!`, 'success');
-                        safeCall('loadDashboard');
-                    })
-                    .withFailureHandler(e => {
-                        alert('Lỗi khi xóa: ' + e);
-                        if (typeof loadPatients === 'function') loadPatients();
-                    })
-                    .deleteBenhNhan(deletedSheetIndex, p.ten, p.namSinh, p.id);
+                callApi('deleteBenhNhan', [deletedSheetIndex, p.ten, p.namSinh, p.id], () => {
+                    notify(`Đã xóa bệnh nhân [ ${patName} ] thành công!`, 'success');
+                    safeCall('loadDashboard');
+                }, e => {
+                    alert('Lỗi khi xóa: ' + e);
+                    if (typeof loadPatients === 'function') loadPatients();
+                });
             });
         }
 
@@ -5282,18 +5257,15 @@ var dataCache = window.dataCache;
             if (busyInput) busyInput.value = '';
 
             const sheetIdx = p.sheetIndex !== undefined ? p.sheetIndex : idx;
-            google.script.run
-                .withSuccessHandler(() => {
-                    if (window.dataCacheTime) window.dataCacheTime['pat'] = Date.now();
-                })
-                .withFailureHandler(err => {
-                    alert("Lỗi lưu giờ bận: " + (err.message || err));
-                    if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
-                    loadEntity('getBenhNhan', 'pat', renderPatientsTable, [
-                        () => { if (typeof renderBusyPat === 'function') renderBusyPat(); }
-                    ], true);
-                })
-                .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, p.gioRa, p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri, p.id);
+            callApi('editBenhNhan', [sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, p.gioRa, p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri, p.id], () => {
+                if (window.dataCacheTime) window.dataCacheTime['pat'] = Date.now();
+            }, err => {
+                alert("Lỗi lưu giờ bận: " + (err.message || err));
+                if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
+                loadEntity('getBenhNhan', 'pat', renderPatientsTable, [
+                    () => { if (typeof renderBusyPat === 'function') renderBusyPat(); }
+                ], true);
+            });
         });
 
         function deleteSinglePatBusy() {
@@ -5319,18 +5291,15 @@ var dataCache = window.dataCache;
                 if (busyInput) busyInput.value = '';
 
                 const sheetIdx = p.sheetIndex !== undefined ? p.sheetIndex : idx;
-                google.script.run
-                    .withSuccessHandler(() => {
-                        if (window.dataCacheTime) window.dataCacheTime['pat'] = Date.now();
-                    })
-                    .withFailureHandler(err => {
-                        alert("Lỗi xóa giờ bận: " + (err.message || err));
-                        if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
-                        loadEntity('getBenhNhan', 'pat', renderPatientsTable, [
-                            () => { if (typeof renderBusyPat === 'function') renderBusyPat(); }
-                        ], true);
-                    })
-                    .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, p.gioRa, p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri, p.id);
+                callApi('editBenhNhan', [sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, p.gioRa, p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri, p.id], () => {
+                    if (window.dataCacheTime) window.dataCacheTime['pat'] = Date.now();
+                }, err => {
+                    alert("Lỗi xóa giờ bận: " + (err.message || err));
+                    if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
+                    loadEntity('getBenhNhan', 'pat', renderPatientsTable, [
+                        () => { if (typeof renderBusyPat === 'function') renderBusyPat(); }
+                    ], true);
+                });
             });
         }
 
@@ -5349,18 +5318,15 @@ var dataCache = window.dataCache;
             if (busyInput) busyInput.value = '';
 
             const sheetIdx = p.sheetIndex !== undefined ? p.sheetIndex : idx;
-            google.script.run
-                .withSuccessHandler(() => {
-                    if (window.dataCacheTime) window.dataCacheTime['pat'] = Date.now();
-                })
-                .withFailureHandler(err => {
-                    alert("Lỗi xóa giờ bận: " + (err.message || err));
-                    if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
-                    loadEntity('getBenhNhan', 'pat', renderPatientsTable, [
-                        () => { if (typeof renderBusyPat === 'function') renderBusyPat(); }
-                    ], true);
-                })
-                .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, '', p.gioRa, p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri, p.id);
+            callApi('editBenhNhan', [sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, '', p.gioRa, p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri, p.id], () => {
+                if (window.dataCacheTime) window.dataCacheTime['pat'] = Date.now();
+            }, err => {
+                alert("Lỗi xóa giờ bận: " + (err.message || err));
+                if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
+                loadEntity('getBenhNhan', 'pat', renderPatientsTable, [
+                    () => { if (typeof renderBusyPat === 'function') renderBusyPat(); }
+                ], true);
+            });
         }
 
         // ============================================================
@@ -5469,18 +5435,15 @@ var dataCache = window.dataCache;
             if (leaveInput) leaveInput.value = '';
 
             const sheetIdx = p.sheetIndex !== undefined ? p.sheetIndex : idx;
-            google.script.run
-                .withSuccessHandler(() => {
-                    if (window.dataCacheTime) window.dataCacheTime['pat'] = Date.now();
-                })
-                .withFailureHandler(err => {
-                    alert("Lỗi cập nhật giờ ra viện: " + (err.message || err));
-                    if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
-                    loadEntity('getBenhNhan', 'pat', renderPatientsTable, [
-                        () => { if (typeof renderLeavePat === 'function') renderLeavePat(); }
-                    ], true);
-                })
-                .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, leaveTime, p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri, p.id);
+            callApi('editBenhNhan', [sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, leaveTime, p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri, p.id], () => {
+                if (window.dataCacheTime) window.dataCacheTime['pat'] = Date.now();
+            }, err => {
+                alert("Lỗi cập nhật giờ ra viện: " + (err.message || err));
+                if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
+                loadEntity('getBenhNhan', 'pat', renderPatientsTable, [
+                    () => { if (typeof renderLeavePat === 'function') renderLeavePat(); }
+                ], true);
+            });
         });
 
         function clearPatLeave() {
@@ -5515,18 +5478,15 @@ var dataCache = window.dataCache;
             if (leaveInput) leaveInput.value = '';
 
             const sheetIdx = p.sheetIndex !== undefined ? p.sheetIndex : idx;
-            google.script.run
-                .withSuccessHandler(() => {
-                    if (window.dataCacheTime) window.dataCacheTime['pat'] = Date.now();
-                })
-                .withFailureHandler(err => {
-                    alert("Lỗi hủy giờ ra viện: " + (err.message || err));
-                    if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
-                    loadEntity('getBenhNhan', 'pat', renderPatientsTable, [
-                        () => { if (typeof renderLeavePat === 'function') renderLeavePat(); }
-                    ], true);
-                })
-                .editBenhNhan(sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, '', p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri, p.id);
+            callApi('editBenhNhan', [sheetIdx, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, '', p.phong, p.thuThuat, p.ten, p.namSinh, p.loai_bn, p.buoi_dieu_tri, p.id], () => {
+                if (window.dataCacheTime) window.dataCacheTime['pat'] = Date.now();
+            }, err => {
+                alert("Lỗi hủy giờ ra viện: " + (err.message || err));
+                if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
+                loadEntity('getBenhNhan', 'pat', renderPatientsTable, [
+                    () => { if (typeof renderLeavePat === 'function') renderLeavePat(); }
+                ], true);
+            });
         }
 
         // ============================================================
@@ -5689,18 +5649,15 @@ var dataCache = window.dataCache;
             const kyNangStr = typeof s.kyNang === 'string' ? s.kyNang : (Array.isArray(s.kyNang) ? s.kyNang.join(', ') : '');
             const gioBanStr = typeof s.gioBan === 'string' ? s.gioBan : (Array.isArray(s.gioBan) ? s.gioBan.join(', ') : '');
 
-            google.script.run
-                .withSuccessHandler(() => {
-                    notify('Đã cập nhật giờ bận nhân sự!', 'success');
-                })
-                .withFailureHandler(err => {
-                    alert("Lỗi lưu giờ bận: " + (err.message || err));
-                    if (window.dataCacheTime) window.dataCacheTime['staff'] = 0;
-                    loadEntity('getNhanSu', 'staff', renderStaffTable, [
-                        () => { if (typeof renderBusyStaff === 'function') renderBusyStaff(); }
-                    ], true);
-                })
-                .editNhanSu(sheetIdx, s.ten, s.vaiTro || 'Kỹ thuật viên', s.trangThai || 'Đi làm', s.thoiGianLam || '07:30-11:30, 13:00-16:30', kyNangStr, gioBanStr, s.nguoiThayThe || 'Không', s.quyen || 'Cả hai', s.tenHis || '');
+            callApi('editNhanSu', [sheetIdx, s.ten, s.vaiTro || 'Kỹ thuật viên', s.trangThai || 'Đi làm', s.thoiGianLam || '07:30-11:30, 13:00-16:30', kyNangStr, gioBanStr, s.nguoiThayThe || 'Không', s.quyen || 'Cả hai', s.tenHis || ''], () => {
+                notify('Đã cập nhật giờ bận nhân sự!', 'success');
+            }, err => {
+                alert("Lỗi lưu giờ bận: " + (err.message || err));
+                if (window.dataCacheTime) window.dataCacheTime['staff'] = 0;
+                loadEntity('getNhanSu', 'staff', renderStaffTable, [
+                    () => { if (typeof renderBusyStaff === 'function') renderBusyStaff(); }
+                ], true);
+            });
         });
 
         function deleteSingleStaffBusy() {
@@ -5730,18 +5687,15 @@ var dataCache = window.dataCache;
                 const kyNangStr = typeof s.kyNang === 'string' ? s.kyNang : (Array.isArray(s.kyNang) ? s.kyNang.join(', ') : '');
                 const gioBanStr = typeof s.gioBan === 'string' ? s.gioBan : (Array.isArray(s.gioBan) ? s.gioBan.join(', ') : '');
 
-                google.script.run
-                    .withSuccessHandler(() => {
-                        notify('Đã xóa giờ bận!', 'success');
-                    })
-                    .withFailureHandler(err => {
-                        alert("Lỗi xóa giờ bận: " + (err.message || err));
-                        if (window.dataCacheTime) window.dataCacheTime['staff'] = 0;
-                        loadEntity('getNhanSu', 'staff', renderStaffTable, [
-                            () => { if (typeof renderBusyStaff === 'function') renderBusyStaff(); }
-                        ], true);
-                    })
-                    .editNhanSu(sheetIdx, s.ten, s.vaiTro || 'Kỹ thuật viên', s.trangThai || 'Đi làm', s.thoiGianLam || '07:30-11:30, 13:00-16:30', kyNangStr, gioBanStr, s.nguoiThayThe || 'Không', s.quyen || 'Cả hai', s.tenHis || '');
+                callApi('editNhanSu', [sheetIdx, s.ten, s.vaiTro || 'Kỹ thuật viên', s.trangThai || 'Đi làm', s.thoiGianLam || '07:30-11:30, 13:00-16:30', kyNangStr, gioBanStr, s.nguoiThayThe || 'Không', s.quyen || 'Cả hai', s.tenHis || ''], () => {
+                    notify('Đã xóa giờ bận!', 'success');
+                }, err => {
+                    alert("Lỗi xóa giờ bận: " + (err.message || err));
+                    if (window.dataCacheTime) window.dataCacheTime['staff'] = 0;
+                    loadEntity('getNhanSu', 'staff', renderStaffTable, [
+                        () => { if (typeof renderBusyStaff === 'function') renderBusyStaff(); }
+                    ], true);
+                });
             });
         }
 
@@ -5763,18 +5717,15 @@ var dataCache = window.dataCache;
             const sheetIdx = s.sheetIndex !== undefined ? s.sheetIndex : parseInt(idx);
             const kyNangStr = typeof s.kyNang === 'string' ? s.kyNang : (Array.isArray(s.kyNang) ? s.kyNang.join(', ') : '');
 
-            google.script.run
-                .withSuccessHandler(() => {
-                    notify('Đã xóa toàn bộ giờ bận!', 'success');
-                })
-                .withFailureHandler(err => {
-                    alert("Lỗi xóa giờ bận: " + (err.message || err));
-                    if (window.dataCacheTime) window.dataCacheTime['staff'] = 0;
-                    loadEntity('getNhanSu', 'staff', renderStaffTable, [
-                        () => { if (typeof renderBusyStaff === 'function') renderBusyStaff(); }
-                    ], true);
-                })
-                .editNhanSu(sheetIdx, s.ten, s.vaiTro || 'Kỹ thuật viên', s.trangThai || 'Đi làm', s.thoiGianLam || '07:30-11:30, 13:00-16:30', kyNangStr, '', s.nguoiThayThe || 'Không', s.quyen || 'Cả hai', s.tenHis || '');
+            callApi('editNhanSu', [sheetIdx, s.ten, s.vaiTro || 'Kỹ thuật viên', s.trangThai || 'Đi làm', s.thoiGianLam || '07:30-11:30, 13:00-16:30', kyNangStr, '', s.nguoiThayThe || 'Không', s.quyen || 'Cả hai', s.tenHis || ''], () => {
+                notify('Đã xóa toàn bộ giờ bận!', 'success');
+            }, err => {
+                alert("Lỗi xóa giờ bận: " + (err.message || err));
+                if (window.dataCacheTime) window.dataCacheTime['staff'] = 0;
+                loadEntity('getNhanSu', 'staff', renderStaffTable, [
+                    () => { if (typeof renderBusyStaff === 'function') renderBusyStaff(); }
+                ], true);
+            });
         }
 
         // ============================================================
@@ -7421,22 +7372,21 @@ var dataCache = window.dataCache;
                 statusEl.style.color = "#f39c12";
 }
 
-            google.script.run.withSuccessHandler(function (data) {
+            callApi('getTimRanhData', [], function (data) {
                 if (data && data.length > 0) {
                     window.externalUtilsData = data;
-
                     if (statusEl) {
                         statusEl.innerText = `✅ Đã tải ${data.length} ca dùng chung từ máy chủ (Sheet TimRanh)!`;
-
                         statusEl.style.color = "#27ae60";
-}
-} else if (statusEl) {
+                    }
+                } else if (statusEl) {
                     statusEl.innerText = "(Chưa có dữ liệu chung. Đang dùng: Lịch phần mềm xếp)";
-
                     statusEl.style.color = "#e67e22";
-}
-}).getTimRanhData();
-};
+                }
+            }, function (err) {
+                console.warn('Lỗi tải TimRanhData:', err);
+            });
+        };
 
         // ============================================================
         // 🛠️ TIỆN ÍCH TÌM KIẾM RẢNH (HỖ TRỢ CẢ LỊCH HỆ THỐNG & FILE HIS)
@@ -7725,20 +7675,16 @@ var dataCache = window.dataCache;
             }
 
             if (statusEl) { statusEl.innerText = '⏳ Đang tải...'; statusEl.style.color = '#f39c12'; }
-            if (btn) { btn.disabled = true; btn.innerText = '⏳ Đang tải...'; }
-            google.script.run
-                .withSuccessHandler(function (data) {
-                    var sched = (data && data.schedule) ? data.schedule : (Array.isArray(data) ? data : []);
-                    var sb = (data && data.staffBusy) ? data.staffBusy : [];
-                    handleSuccess(sched, sb);
-                })
-                .withFailureHandler(function (err) {
-                    if (statusEl) { statusEl.innerText = '❌ Lỗi tải dữ liệu!'; statusEl.style.color = '#c0392b'; }
-                    if (btn) { btn.disabled = false; btn.innerText = '📊 Xem Lịch'; }
-                    console.error('taiLichTheoNgay error:', err);
-                    if (typeof callback === 'function') callback([]);
-                })
-                .getHistoryFullData(date);
+            callApi('getHistoryFullData', [date], function (data) {
+                var sched = (data && data.schedule) ? data.schedule : (Array.isArray(data) ? data : []);
+                var sb = (data && data.staffBusy) ? data.staffBusy : [];
+                handleSuccess(sched, sb);
+            }, function (err) {
+                if (statusEl) { statusEl.innerText = '❌ Lỗi tải dữ liệu!'; statusEl.style.color = '#c0392b'; }
+                if (btn) { btn.disabled = false; btn.innerText = '📊 Xem Lịch'; }
+                console.error('taiLichTheoNgay error:', err);
+                if (typeof callback === 'function') callback([]);
+            });
         }
 
         // Chạy luôn hàm tải dữ liệu ngay khi mở web
@@ -8086,7 +8032,7 @@ var dataCache = window.dataCache;
         let satCache = {}, t8_ns_vars = {}, satStaffIndices = {};
 
         function taiDsSat() {
-            google.script.run.withSuccessHandler(data => {
+            callApi('getSatData', [], data => {
                 const frNs = document.getElementById('sat-staff-list');
 
                 frNs.innerHTML = '';
@@ -8327,8 +8273,10 @@ var dataCache = window.dataCache;
 });
 
                 updateSummarySat();
-}).getSatData();
-}
+            }, err => {
+                console.error('Lỗi tải dữ liệu thứ 7:', err);
+            });
+        }
 
         function toggleSatStaff() {
             const container = document.getElementById('sat-staff-container');
@@ -9073,41 +9021,35 @@ var dataCache = window.dataCache;
         }
 
         function savePatientsWithFallback(cleanList, replaceAll, onSuccess, onError, onProgress) {
-            google.script.run
-                .withSuccessHandler(res => {
-                    if (onSuccess) onSuccess(res);
-                })
-                .withFailureHandler(err => {
-                    console.warn("[bulkUpdatePatients API fallback to sequential]:", err);
-                    const total = cleanList.length;
-                    if (total === 0) {
-                        if (onSuccess) onSuccess({ message: "Danh sách trống" });
+            callApi('bulkUpdatePatients', [cleanList, replaceAll], res => {
+                if (onSuccess) onSuccess(res);
+            }, err => {
+                console.warn("[bulkUpdatePatients API fallback to sequential]:", err);
+                const total = cleanList.length;
+                if (total === 0) {
+                    if (onSuccess) onSuccess({ message: "Danh sách trống" });
+                    return;
+                }
+
+                let current = 0;
+                function saveNext() {
+                    if (current >= total) {
+                        if (onSuccess) onSuccess({ message: `Đã lưu thành công ${total} bệnh nhân!` });
                         return;
                     }
-
-                    let current = 0;
-                    function saveNext() {
-                        if (current >= total) {
-                            if (onSuccess) onSuccess({ message: `Đã lưu thành công ${total} bệnh nhân!` });
-                            return;
-                        }
-                        const p = cleanList[current];
-                        if (onProgress) onProgress(current + 1, total);
-                        google.script.run
-                            .withSuccessHandler(() => {
-                                current++;
-                                saveNext();
-                            })
-                            .withFailureHandler(subErr => {
-                                console.warn(`[Lỗi lưu BN ${p.ten}]:`, subErr);
-                                current++;
-                                saveNext();
-                            })
-                            .addBenhNhan(p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, p.gioRa, p.phong, p.thuThuat);
-                    }
-                    saveNext();
-                })
-                .bulkUpdatePatients(cleanList, replaceAll);
+                    const p = cleanList[current];
+                    if (onProgress) onProgress(current + 1, total);
+                    callApi('addBenhNhan', [p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, p.gioRa, p.phong, p.thuThuat], () => {
+                        current++;
+                        saveNext();
+                    }, subErr => {
+                        console.warn(`[Lỗi lưu BN ${p.ten}]:`, subErr);
+                        current++;
+                        saveNext();
+                    });
+                }
+                saveNext();
+            });
         }
 
         function importPatients() {
@@ -10103,19 +10045,19 @@ var dataCache = window.dataCache;
             }
 
             // 3. Lưu trực tiếp vào CSDL máy chủ (MiniPC + Turso Cloud)
-            google.script.run.withSuccessHandler(function (res) {
+            callApi('saveSystemSettings', [newSettings], function (res) {
                 if (btn && !isAutoSave) {
                     btn.innerHTML = oldText;
                     btn.disabled = false;
                     showCustomAlert("Cài đặt hệ thống", "Đã lưu thành công cài đặt thời gian vận hành và trọng số thuật toán!", "✅", "#16a085");
                 }
-            }).withFailureHandler(function (err) {
+            }, function (err) {
                 if (btn && !isAutoSave) {
                     btn.innerHTML = oldText;
                     btn.disabled = false;
                     alert("Lỗi lưu cài đặt: " + err);
                 }
-            }).saveSystemSettings(newSettings);
+            });
         }
         window.luuCaiDatChotSo = luuCaiDatChotSo;
 
@@ -10208,14 +10150,12 @@ var dataCache = window.dataCache;
 
             if (marqueeTag) marqueeTag.innerText = noiDungMoi;
 
-            google.script.run
-
-                .withSuccessHandler(() => { btn.innerText = textGoc; btn.disabled = false; alert("✅ Đã lưu thông báo mới thành công!"); })
-
-                .withFailureHandler(err => { btn.innerText = textGoc; btn.disabled = false; alert("❌ Lỗi khi lưu: " + err.message); })
-
-                .luuThongBaoDongChuChay(noiDungMoi);
-}
+            callApi('luuThongBaoDongChuChay', [noiDungMoi], () => {
+                btn.innerText = textGoc; btn.disabled = false; alert("✅ Đã lưu thông báo mới thành công!");
+            }, err => {
+                btn.innerText = textGoc; btn.disabled = false; alert("❌ Lỗi khi lưu: " + (err.message || err));
+            });
+        }
 
         // ============================================================
 
@@ -10373,111 +10313,85 @@ var dataCache = window.dataCache;
 }
 
                     if (records.length > 0) {
-                        logHL(`🚀 Đã bóc tách thành công ${records.length} ca (Dạng
+                        logHL(`🚀 Đã bóc tách thành công ${records.length} ca (Dạng ${formatTypeUsed}). Đang lưu...`);
 
-                                                ${formatTypeUsed}). Đang lưu...`);
-
-                        google.script.run.withSuccessHandler(res => {
+                        callApi('saveAITrainingData', [records], res => {
                             logHL("✅ " + res);
-
                             loadHLData();
-                        }).withFailureHandler(err => logHL("❌ Lỗi lưu: " +
-
-                            err.message)).saveAITrainingData(records);
-} else logHL("❌ Không tìm thấy dữ liệu giờ giấc hợp lệ trong bất kỳ Sheet nào của file!");
-} catch (err) { logHL("❌ Lỗi kỹ thuật: " + err.message); }
+                        }, err => logHL("❌ Lỗi lưu: " + (err.message || err)));
+                    } else logHL("❌ Không tìm thấy dữ liệu giờ giấc hợp lệ trong bất kỳ Sheet nào của file!");
+                } catch (err) { logHL("❌ Lỗi kỹ thuật: " + err.message); }
 
                 event.target.value = "";
-};
+            };
 
             reader.readAsArrayBuffer(file);
-}
+        }
 
         function loadHLData() {
             const tbody = document.querySelector('#hl-table tbody');
-
             if (!tbody) return;
 
-            tbody.innerHTML = `<tr> <td colspan="5" style="text-align:center;">⏳ Đang tải dữ liệu...
-
-                                                    </td>
-
-                                                </tr>`; google.script.run.withSuccessHandler(data => {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">⏳ Đang tải dữ liệu...</td></tr>`;
+            callApi('getAITrainingData', [], data => {
                 if (!data?.length) {
-                    tbody.innerHTML = `<tr> <td colspan="5" style="text-align:center; color:gray">Kho dữ liệu
-
-                                                        hiện đang trống.</td>
-
-                                                </tr>`; return;
-                } tbody.innerHTML = data.slice(0, 100).map(row => `<tr>
-
-                                                    <td>${row[0]}</td>
-
-                                                    <td style="font-weight:bold; color:#2c3e50;">${row[2]}</td>
-
-                                                    <td>${row[3]}</td>
-
-                                                    <td style="color:#27ae60; font-weight:bold; text-align:center;">
-
-                                                        ${row[6]} ph</td>
-
-                                                    <td style="text-align:center;">+${row[7]} ph</td>
-
-                                                </tr>`).join('');
-}).getAITrainingData();
-}
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:gray">Kho dữ liệu hiện đang trống.</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = data.slice(0, 100).map(row => `<tr>
+                    <td>${row[0]}</td>
+                    <td style="font-weight:bold; color:#2c3e50;">${row[2]}</td>
+                    <td>${row[3]}</td>
+                    <td style="color:#27ae60; font-weight:bold; text-align:center;">${row[6]} ph</td>
+                    <td style="text-align:center;">+${row[7]} ph</td>
+                </tr>`).join('');
+            }, err => {
+                console.error("Lỗi getAITrainingData:", err);
+            });
+        }
 
         function clearHLData() {
             if (!confirm("⚠️ Bác sĩ có chắc chắn muốn xóa TOÀN BỘ dữ liệu huấn luyện AI? Hành động này không thể hoàn tác!")) return;
 
             logHL("🗑 Đang tiến hành xóa kho dữ liệu...");
 
-            google.script.run.withSuccessHandler(res => {
+            callApi('clearAITrainingData', [], res => {
                 logHL("✅ " + res);
-
                 loadHLData();
-            }).clearAITrainingData();
-}
+            }, err => {
+                logHL("❌ Lỗi xóa: " + (err.message || err));
+            });
+        }
 
         function exportAIPrompt() {
             logHL("⏳ Đang tạo Siêu lệnh (Mega-Prompt)...");
 
-            google.script.run.withSuccessHandler(data => {
+            callApi('getAITrainingData', [], data => {
                 if (!data?.length) return alert("Chưa có dữ liệu huấn luyện nào!");
 
                 let promptText = "Bạn là Chuyên gia Khoa học Dữ liệu và Quản lý Y tế.\n";
-
                 promptText += "Nhiệm vụ của bạn là tối ưu hóa thuật toán xếp lịch thủ thuật cho Khoa Y học Cổ truyền - Phục hồi Chức năng.\n\n";
-
                 promptText += "BƯỚC 1: Phân tích dữ liệu ca y lệnh dưới đây để tìm quy luật (Nhịp điệu, thời gian thực tế, transition time...).\n";
-
                 promptText += "BƯỚC 2: Tôi sẽ cung cấp code Javascript ở tin nhắn tiếp theo.\n";
-
                 promptText += "BƯỚC 3: Viết lại thuật toán xếp lịch để cân bằng tải.\n\n";
-
                 promptText += "=== KHO DỮ LIỆU HUẤN LUYỆN ===\n";
-
                 promptText += "Ngày | File Nguồn | Nhân Viên | Thủ Thuật | Phút Bắt Đầu | Phút Kết Thúc | Thực Tế (phút) | Khoảng Cách 7h (phút)\n";
-
                 data.forEach(row => { promptText += `${row.join(' | ')}\n`; });
 
                 const blob = new Blob([promptText], { type: 'text/plain;charset=utf-8' });
-
                 const url = URL.createObjectURL(blob);
-
                 const a = document.createElement('a');
-
-                a.href = url; a.download = `Bo_Nao_AI_Xep_Lich_${new
-
-                    Date().toLocaleDateString('vi-VN').replace(/\//g, '')}.txt`;
-
-                document.body.appendChild(a); a.click(); document.body.removeChild(a);
-
+                a.href = url;
+                a.download = `Bo_Nao_AI_Xep_Lich_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '')}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-
                 logHL("✅ Đã xuất file thành công!");
-}).getAITrainingData();
-}
+            }, err => {
+                alert("❌ Lỗi tải dữ liệu AI: " + (err.message || err));
+            });
+        }
 
         // ============================================================
 
@@ -10759,11 +10673,11 @@ var dataCache = window.dataCache;
                     notify("Đã tải dữ liệu lịch sử từ bộ nhớ", "info");
                 } else {
                     if (window.showGlobalLoading) window.showGlobalLoading("Đang tải dữ liệu lịch sử...");
-                    google.script.run.withSuccessHandler(data => {
+                    callApi('getHistoryFullData', [selectedDate], data => {
                         processHistoryData(data);
                         if (window.hideGlobalLoading) window.hideGlobalLoading();
                         notify("Đã tải xong dữ liệu lịch sử!", "success");
-                    }).withFailureHandler(err => {
+                    }, err => {
                         if (window.hideGlobalLoading) window.hideGlobalLoading();
                         console.error("Lỗi tải lịch sử Dashboard: " + err);
                         if (statScheduledEl) statScheduledEl.textContent = "0";
@@ -10772,7 +10686,7 @@ var dataCache = window.dataCache;
                         if (statStaff) statStaff.textContent = "0";
                         if (statTotalProcsEl) statTotalProcsEl.textContent = "0";
                         notify("Lỗi tải dữ liệu lịch sử: " + err, "error");
-                    }).getHistoryFullData(selectedDate);
+                    });
                 }
             }
         }

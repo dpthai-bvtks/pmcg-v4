@@ -5829,3 +5829,26 @@ otify(...) (các tính năng: đồng bộ phác đồ đám mây, lưu/xóa ph�
      - 20 file JS passed cú pháp (Exit Code 0).
      - Deploy Cloudflare Pages qua `npm run deploy:web --prefix backend`.
      - Git commit và push lên remote `origin/main`.
+
+---
+
+### [v4.1.6-rev7] - 11:23 25/09/2026: Chuyển Đổi Triệt Để 100% google.script.run Sang callApi Với Native Callback & Khôi Phục Hiển Thị Dữ Liệu Các Tab
+
+- **Nguyên nhân sự cố**:
+  + Tại các bản trước, các tab hiển thị "Đang tải... không có dữ liệu" do sự bất đồng bộ giữa proxy shim `google.script.run` và cơ chế nạp thực tế qua Workers backend REST API.
+  + Các hàm ủy quyền rỗng trung gian trong `app.js` cho module tài nguyên có thể gây lỗi hoặc không tìm thấy hàm khi nạp.
+- **Chi tiết triển khai**:
+  1. **Khử trùng lặp ủy quyền trong `js/app.js`**:
+     - Loại bỏ các hàm khai báo ủy quyền trung gian `renderMachinesTable()`, `renderDynamicMachineInputs()`, `renderRoomsTable()`, `saveMachine()`, `saveRoom()`, `deleteMachine()`, `deleteRoom()` khỏi `app.js` để trình duyệt gọi trực tiếp vào implementation thực tế trên `window.*` từ `js/modules/app-resources.js`.
+  2. **Chuyển đổi 100% `google.script.run` sang `callApi`**:
+     - Thay thế toàn bộ 25 vị trí gọi `google.script.run` trong `js/app.js` sang `callApi(methodName, params, onSuccess, onFailure)`.
+     - Các khối chức năng được nâng cấp trực tiếp: `loadFromSheets`, `loadProcedures`, `deleteProc`, `saveStaff`, `deleteStaff`, `savePatient`, `deletePatient`, `savePatBusy`, `deleteSinglePatBusy`, `clearPatBusy`, `savePatLeave`, `clearPatLeave`, `saveStaffBusy`, `deleteSingleStaffBusy`, `clearStaffBusy`, `loadTimRanhDataFromServer`, `taiLichTheoNgay`, `taiDsSat`, `savePatientsWithFallback`, `luuCaiDatChotSo`, `luuDongChuChay`, AI training handlers (`saveAITrainingData`, `getAITrainingData`, `clearAITrainingData`), và Dashboard history loader.
+     - Proxy shim `google.script.run` vẫn được giữ nguyên tại dòng 367 làm fallback bảo vệ cuối cùng nếu có thư viện ngoài gọi tới.
+  3. **Đồng bộ phiên bản**:
+     - `sw.js`: Nâng cache name lên `pmcg-v4-cache-4.1.6-rev7`.
+     - `index.html`: Cập nhật `APP_VERSION = '4.1.6-rev7'`, timestamp `#sys-last-update` `11:23 25/09/2026`, đồng bộ chuỗi query `?v=4.1.6-rev7` cho toàn bộ tài nguyên CSS/JS, `#app-footer-version` giữ nguyên `Phiên bản: 4.1.6`.
+     - `version.json`: Nâng phiên bản lên `4.1.6-rev7`.
+  4. **Kiểm tra cú pháp & Triển khai**:
+     - Kiểm tra toàn bộ file JS bằng `node -c` đạt Exit Code 0.
+     - Deploy lên Cloudflare Pages qua `npm run deploy:web --prefix backend`.
+     - Commit và push lên GitHub remote `origin/main`.
