@@ -1,13 +1,7 @@
 
 window.updateAppHeader = function(unitCode, role) {
     const uCode = (unitCode || localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
-    let sessRole = role;
-    if (!sessRole) {
-        try {
-            const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
-            sessRole = sess.role || '';
-        } catch(e) {}
-    }
+    const sessRole = role || (typeof getSession === 'function' ? getSession().role : '') || '';
 
     const appHosp = document.getElementById('app-hospital-name');
     const appSub = document.getElementById('app-sub-title');
@@ -86,12 +80,9 @@ document.addEventListener('DOMContentLoaded', () => {
     window.initAppTheme();
 
     // 🏢 Khôi phục thông tin Mã Đơn Vị & Thương Hiệu đa bệnh viện
-    let hasValidSession = false;
-    try {
-        const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
-        const token = localStorage.getItem('pm_jwt_token');
-        if (sess && (sess.username || sess.role) && token) hasValidSession = true;
-    } catch(e) {}
+    const sess = (typeof getSession === 'function') ? getSession() : {};
+    const token = (typeof getAuthToken === 'function') ? getAuthToken() : '';
+    const hasValidSession = !!((sess.username || sess.role) && token);
 
     const savedUnit = hasValidSession ? (localStorage.getItem('pm_unit_code') || '') : '';
     const unitInput = document.getElementById('login-unit');
@@ -184,26 +175,24 @@ document.addEventListener('DOMContentLoaded', () => {
         window.updateAppHeader(savedUnit);
     }
 
-    try {
-        const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
-        if (sess.role === 'SUPER_ADMIN') {
-            const superTab = document.getElementById('nav-tab-tenants');
-            if (superTab) superTab.style.display = 'flex';
-            if (typeof applyPermissions === 'function') applyPermissions('SUPER_ADMIN', 'ALL');
-        } else if (sess.role) {
-            const superTab = document.getElementById('nav-tab-tenants');
-            if (superTab) superTab.style.display = 'none';
-            if (typeof applyPermissions === 'function') applyPermissions(sess.role, sess.permissions || 'all');
-        }
-        if (typeof window.updateSubscriptionHeaderBadge === 'function' && (sess.username || sess.role)) {
-            const isBvtks = (sess.unit_code === 'bvtks-cs2' || sess.unit_code === 'bvtks_cs2');
-            const pTier = isBvtks ? 'ENTERPRISE' : (localStorage.getItem('pm_plan_tier') || sess.plan_tier);
-            const pExp = isBvtks ? '2099-12-31' : (localStorage.getItem('pm_expires_at') || sess.expires_at);
-            const pName = isBvtks ? 'Bản Quyền Vĩnh Viễn' : (localStorage.getItem('pm_plan_name') || sess.plan_name);
-            const pDays = isBvtks ? 99999 : (localStorage.getItem('pm_days_left') || sess.days_left);
-            window.updateSubscriptionHeaderBadge(pTier, pExp, pName, pDays);
-        }
-    } catch(e) {}
+    const userSess = (typeof getSession === 'function') ? getSession() : {};
+    if (userSess.role === 'SUPER_ADMIN') {
+        const superTab = document.getElementById('nav-tab-tenants');
+        if (superTab) superTab.style.display = 'flex';
+        if (typeof applyPermissions === 'function') applyPermissions('SUPER_ADMIN', 'ALL');
+    } else if (userSess.role) {
+        const superTab = document.getElementById('nav-tab-tenants');
+        if (superTab) superTab.style.display = 'none';
+        if (typeof applyPermissions === 'function') applyPermissions(userSess.role, userSess.permissions || 'all');
+    }
+    if (typeof window.updateSubscriptionHeaderBadge === 'function' && (userSess.username || userSess.role)) {
+        const isBvtks = (userSess.unit_code === 'bvtks-cs2' || userSess.unit_code === 'bvtks_cs2');
+        const pTier = isBvtks ? 'ENTERPRISE' : (localStorage.getItem('pm_plan_tier') || userSess.plan_tier);
+        const pExp = isBvtks ? '2099-12-31' : (localStorage.getItem('pm_expires_at') || userSess.expires_at);
+        const pName = isBvtks ? 'Bản Quyền Vĩnh Viễn' : (localStorage.getItem('pm_plan_name') || userSess.plan_name);
+        const pDays = isBvtks ? 99999 : (localStorage.getItem('pm_days_left') || userSess.days_left);
+        window.updateSubscriptionHeaderBadge(pTier, pExp, pName, pDays);
+    }
 
     // loadSystemSettings() is automatically handled by loadBootstrapData with offline-first cache
 
@@ -255,13 +244,9 @@ document.addEventListener('DOMContentLoaded', () => {
 window.dataCacheTime = window.dataCacheTime || {};
 
 window.loadTimRanhDataFromServer = function () {
-    const token = localStorage.getItem('pm_jwt_token');
-    let hasValidSession = false;
-    try {
-        const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
-        if (sess && (sess.username || sess.role)) hasValidSession = true;
-    } catch(e) {}
-    if (!token || !hasValidSession) return;
+    const token = (typeof getAuthToken === 'function') ? getAuthToken() : '';
+    const sess = (typeof getSession === 'function') ? getSession() : {};
+    if (!token || (!sess.username && !sess.role)) return;
 
     const statusEl = document.getElementById('utils-file-status');
     if (statusEl) {
@@ -269,8 +254,9 @@ window.loadTimRanhDataFromServer = function () {
         statusEl.style.color = '#f39c12';
     }
 
-    if (typeof callApi === 'function') {
-        callApi('getTimRanhData', [], data => {
+    const apiCaller = (typeof safeCallApi === 'function') ? safeCallApi : (typeof callApi === 'function' ? callApi : null);
+    if (apiCaller) {
+        apiCaller('getTimRanhData', [], data => {
             if (data && data.length > 0) {
                 window.externalUtilsData = data;
                 if (statusEl) {

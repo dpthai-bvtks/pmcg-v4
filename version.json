@@ -1,6 +1,6 @@
 {
-    "version": "4.1.6-rev1",
+    "version": "4.1.6-rev2",
     "releaseDate": "25/09/2026",
-    "releaseTime": "07:20 25/09/2026",
-    "notes": "Khôi phục hoàn toàn cấu trúc layout container, modal và login-overlay chuẩn trong index.html, bảo toàn giao diện thẩm mỹ và 5 domain modules chuyên biệt."
+    "releaseTime": "07:45 25/09/2026",
+    "notes": "Triển khai toàn bộ 4 bước tối ưu kiến trúc: Core Helpers dùng chung, chuẩn hóa pattern session/token/notify, module hóa domain Quản lý Máy móc & Phòng bệnh (app-resources.js), bảo tồn 100% Google Script Run Proxy Shim."
 }

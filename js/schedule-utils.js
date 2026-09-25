@@ -11,6 +11,50 @@ var ScheduleUtils = (function () {
   const gScope = typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : (typeof global !== 'undefined' ? global : this));
 
   // ============================================================
+  // 0. SHARED APPLICATION HELPERS (DÙNG CHUNG TOÀN HỆ THỐNG)
+  // ============================================================
+  gScope.getSession = function() {
+    try {
+      return JSON.parse(localStorage.getItem('meds_session') || '{}');
+    } catch (e) {
+      return {};
+    }
+  };
+
+  gScope.getAuthToken = function() {
+    try {
+      return localStorage.getItem('pm_jwt_token') || '';
+    } catch (e) {
+      return '';
+    }
+  };
+
+  gScope.notify = function(msg, type = 'info') {
+    if (typeof gScope.showToast === 'function') return gScope.showToast(msg, type);
+    if (typeof showToast === 'function') return showToast(msg, type);
+    alert(msg);
+  };
+
+  gScope.safeCall = function(fnName, ...args) {
+    const fn = (typeof fnName === 'function') ? fnName : gScope[fnName];
+    if (typeof fn === 'function') {
+      try {
+        return fn(...args);
+      } catch (err) {
+        console.warn('[safeCall] Lỗi thực thi ' + fnName + ':', err);
+      }
+    }
+  };
+
+  gScope.safeCallApi = function(name, args, onSuccess, onError) {
+    const caller = (typeof gScope.callApi === 'function') ? gScope.callApi : 
+                   ((typeof callApi === 'function') ? callApi : null);
+    if (caller) return caller(name, args, onSuccess, onError);
+    console.warn('[safeCallApi] callApi chưa sẵn sàng cho:', name);
+    if (typeof onError === 'function') onError(new Error('API not available'));
+  };
+
+  // ============================================================
   // 1. TIỆN ÍCH THỜI GIAN (TIME CONVERSION & OVERLAP)
   // ============================================================
   function t2m(thoiGian) {
@@ -350,6 +394,11 @@ var ScheduleUtils = (function () {
     healProcedureName: cleanAndHealProcedureName,
     cleanAndHealStaffName,
     healStaffName: cleanAndHealStaffName,
+    getSession: gScope.getSession,
+    getAuthToken: gScope.getAuthToken,
+    notify: gScope.notify,
+    safeCall: gScope.safeCall,
+    safeCallApi: gScope.safeCallApi,
     TCVN3_MAP,
     VNI_PAIRS
   };

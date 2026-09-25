@@ -5706,3 +5706,36 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - Đã chạy kiểm tra cú pháp toàn bộ 14 tệp JavaScript: Exit Code 0.
      - Deploy lên Cloudflare Pages qua `npm run deploy:web`.
      - Git commit và push lên remote `origin/main`.
+
+---
+
+### [v4.1.6-rev2] - 07:45 25/09/2026: Triển Khai Toàn Diện 4 Bước Tối Ưu Kiến Trúc (Core Helpers, Chuẩn Hóa Session/Token, Tách Module Quản Lý Máy Móc & Phòng Bệnh, Bảo Tồn Proxy Shim)
+
+- *Nội dung thực hiện*:
+  1. **Bước 1: Bổ sung bộ Core Helpers dùng chung (`js/schedule-utils.js`)**:
+     - Định nghĩa và gắn vào phạm vi toàn cục `window.*`:
+       + `getSession()`: Trả về đối tượng phiên làm việc người dùng hiện tại an toàn, tránh parse lặp lại.
+       + `getAuthToken()`: Lấy JWT token xác thực từ bộ lưu trữ cục bộ.
+       + `notify(msg, type)`: Hiển thị thông báo toast/alert thống nhất cho toàn bộ hệ thống.
+       + `safeCall(fnName, ...args)`: Gọi hàm toàn cục an toàn không gây runtime exception nếu hàm chưa nạp.
+       + `safeCallApi(endpoint, params, onSuccess, onError)`: Bao bọc cuộc gọi API đồng bộ dữ liệu.
+  2. **Bước 2: Chuẩn hóa và tinh gọn các khối pattern lặp lại**:
+     - Thay thế hàng loạt các cụm `JSON.parse(localStorage.getItem('meds_session') || '{}')` và `localStorage.getItem('pm_jwt_token')` trong `js/init.js`, `js/app.js`, `js/thongke.js`, `js/modules/app-tenant-admin.js`, `js/modules/app-backup-restore.js`.
+     - Thay thế các khối gọi thông báo rải rác sang `notify(msg, type)`.
+  3. **Bước 3: Tách Domain Quản lý Máy móc & Phòng bệnh sang `js/modules/app-resources.js`**:
+     - Tạo mới tệp module `js/modules/app-resources.js` quản lý trọn gói:
+       + Quản lý Máy móc: `renderMachinesTable`, `saveMachine`, `editRoomMachine`, `deleteMachine`, `renderDynamicMachineInputs`.
+       + Quản lý Phòng bệnh: `renderRoomsTable`, `saveRoom`, `editRoom`, `deleteRoom`.
+     - Trong `js/app.js`, thay thế hơn 380 dòng code logic bằng các hàm delegate/proxy chuyển tiếp, giúp giảm tải kích thước `app.js` xuống còn 11.661 dòng.
+     - Khai báo script `js/modules/app-resources.js` vào `index.html` và thêm vào danh sách `STATIC_ASSETS` trong `sw.js`.
+  4. **Bước 4: Bảo tồn 100% Google Script Run Proxy Shim**:
+     - Giữ nguyên vẹn 100% lớp giả lập `window.google.script.run` proxy shim trong `js/app.js` (dòng 365-407) để duy trì khả năng tương thích ngược tuyệt đối với các hàm kế thừa từ Google Apps Script sang Cloudflare Workers + D1 Backend.
+  5. **Đồng bộ Phiên bản theo RULES.md**:
+     - Phiên bản: **`4.1.6-rev2`**.
+     - Chân trang `#app-footer-version`: **`Phiên bản: 4.1.6`** (chuẩn Rule 3: không có hậu tố revN).
+     - `#sys-last-update` và `version.json`: **`07:45 25/09/2026`**.
+     - Service Worker `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.1.6-rev2'`.
+  6. **Kiểm tra cú pháp & Triển khai**:
+     - Đã chạy kiểm tra cú pháp toàn bộ 19 tệp JavaScript (`node -c`): Exit Code 0.
+     - Deploy lên Cloudflare Pages qua `npm run deploy:web`.
+     - Git commit và push lên remote `origin/main`.

@@ -897,12 +897,9 @@ window.switchAdminSection = function(sectionId, btn) {
         window.applySymbolStyleToInput = applySymbolStyleToInput;
 
         function loadChamCongSymbols(callback) {
-            const token = localStorage.getItem('pm_jwt_token');
-            let hasValidSession = false;
-            try {
-                const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
-                if (sess && (sess.username || sess.role)) hasValidSession = true;
-            } catch(e) {}
+            const token = (typeof getAuthToken === 'function') ? getAuthToken() : (localStorage.getItem('pm_jwt_token') || '');
+            const sess = (typeof getSession === 'function') ? getSession() : JSON.parse(localStorage.getItem('meds_session') || '{}');
+            const hasValidSession = !!(sess && (sess.username || sess.role));
 
             if (!token || !hasValidSession) {
                 renderChamCongLegend();
@@ -1779,12 +1776,9 @@ window.switchAdminSection = function(sectionId, btn) {
             if (tkM) tkM.value = curM;
             if (tkY) tkY.value = curY;
 
-            const token = localStorage.getItem('pm_jwt_token');
-            let hasValidSession = false;
-            try {
-                const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
-                if (sess && (sess.username || sess.role)) hasValidSession = true;
-            } catch(e) {}
+            const token = (typeof getAuthToken === 'function') ? getAuthToken() : (localStorage.getItem('pm_jwt_token') || '');
+            const sess = (typeof getSession === 'function') ? getSession() : JSON.parse(localStorage.getItem('meds_session') || '{}');
+            const hasValidSession = !!(sess && (sess.username || sess.role));
 
             if (!token || !hasValidSession) {
                 renderChamCongLegend();

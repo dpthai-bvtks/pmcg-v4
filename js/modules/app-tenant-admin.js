@@ -957,8 +957,7 @@ window.copyPaymentText = function (text, label) {
 // ============================================================
 window.openContractPartyAModal = function (optPlanCode, optUnitCode, optUnitName, optExpiresAt) {
     const unitCode = String(optUnitCode || localStorage.getItem('pm_unit_code') || 'bvtks-cs2').trim().toLowerCase();
-    let sess = {};
-    try { sess = JSON.parse(localStorage.getItem('meds_session') || '{}'); } catch (e) {}
+    const sess = (typeof getSession === 'function' ? getSession() : (typeof window.getSession === 'function' ? window.getSession() : {}));
 
     const unitName = optUnitName ? decodeURIComponent(optUnitName) : (sess.unit_name || localStorage.getItem('pm_unit_name') || `Bệnh viện / Phòng khám ${unitCode.toUpperCase()}`);
     const planCode = String(optPlanCode || window._currentSelectedPlan || localStorage.getItem('pm_plan_tier') || sess.plan_tier || 'PLAN_1Y').toUpperCase();
@@ -1044,8 +1043,7 @@ window.downloadLicenseContractPDF = function (optUnitCode, optPlanCode, optUnitN
     }
 
     const unitCode = String(optUnitCode || localStorage.getItem('pm_unit_code') || 'bvtks-cs2').trim().toLowerCase();
-    let sess = {};
-    try { sess = JSON.parse(localStorage.getItem('meds_session') || '{}'); } catch (e) {}
+    const sess = (typeof getSession === 'function' ? getSession() : (typeof window.getSession === 'function' ? window.getSession() : {}));
 
     const rawUnitName = optUnitName ? decodeURIComponent(optUnitName) : (sess.unit_name || localStorage.getItem('pm_unit_name') || `Bệnh viện / Phòng khám ${unitCode.toUpperCase()}`);
     const planCode = String(optPlanCode || window._currentSelectedPlan || localStorage.getItem('pm_plan_tier') || sess.plan_tier || 'PLAN_1Y').toUpperCase();
@@ -1684,19 +1682,15 @@ window._handlePaymentSuccess = function (data, fallbackPlan) {
     localStorage.setItem('pm_days_left', daysLeft);
 
     // 2. Cập nhật meds_session
-    try {
-        const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
-        sess.plan_tier = planTier;
-        sess.plan_name = planName;
-        sess.expires_at = expiresAt;
-        sess.days_left = daysLeft;
-        localStorage.setItem('meds_session', JSON.stringify(sess));
-    } catch (e) {}
+    const sess = (typeof getSession === 'function' ? getSession() : (typeof window.getSession === 'function' ? window.getSession() : {}));
+    sess.plan_tier = planTier;
+    sess.plan_name = planName;
+    sess.expires_at = expiresAt;
+    sess.days_left = daysLeft;
+    try { localStorage.setItem('meds_session', JSON.stringify(sess)); } catch (e) {}
 
     // 3. Cập nhật Badge trên Header
-    if (typeof window.updateSubscriptionHeaderBadge === 'function') {
-        window.updateSubscriptionHeaderBadge(planTier, expiresAt, planName, daysLeft);
-    }
+    safeCall('updateSubscriptionHeaderBadge', planTier, expiresAt, planName, daysLeft);
 
     // 4. Chuyển sang màn hình chúc mừng thành công
     const payingView = document.getElementById('renew-paying-view');
@@ -1843,10 +1837,7 @@ window.updateSubscriptionHeaderBadge = function (planTier, expiresAt, planName, 
     const badge = document.getElementById('header-subscription-badge');
     if (!badge) return;
 
-    let sess = {};
-    try {
-        sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
-    } catch (e) {}
+    const sess = (typeof getSession === 'function' ? getSession() : (typeof window.getSession === 'function' ? window.getSession() : {}));
 
     const role = (sess.role || '').toUpperCase();
     const isSuper = role === 'SUPER_ADMIN' || role === 'SUPERADMIN';

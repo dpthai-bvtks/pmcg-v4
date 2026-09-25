@@ -24,11 +24,7 @@ window.openChangePasswordModal = function(e) {
     if (arrow) arrow.style.transform = 'rotate(0deg)';
 
     // Populate username
-    let currentUsername = 'admin';
-    try {
-        const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
-        currentUsername = sess.username || currentUsername;
-    } catch(e2) {}
+    const currentUsername = (typeof getSession === 'function' ? getSession().username : '') || 'admin';
 
     // Lấy modal và hiển thị trực tiếp bằng removeProperty để xóa display:none cũ
     const modal = document.getElementById('modal-change-password');
@@ -77,13 +73,7 @@ window.saveProtocolFromModal = function() {
 
 window.updateAppHeader = function(unitCode, role) {
     const uCode = (unitCode || localStorage.getItem('pm_unit_code') || 'bvtks-cs2').toLowerCase();
-    let sessRole = role;
-    if (!sessRole) {
-        try {
-            const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
-            sessRole = sess.role || '';
-        } catch(e) {}
-    }
+    const sessRole = role || (typeof getSession === 'function' ? getSession().role : '') || '';
 
     const appHosp = document.getElementById('app-hospital-name');
     const appSub = document.getElementById('app-sub-title');
@@ -137,11 +127,7 @@ window.openServerStatusModal = function (e) {
     if (unitEl) unitEl.innerText = `${uName} (${uCode})`;
 
     // Phân quyền: Chỉ Super Admin mới thấy các nút Sync Google Sheets, Xuất JSON, Cấu hình GAS
-    let sessRole = '';
-    try {
-        const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
-        sessRole = String(sess.role || '').toUpperCase();
-    } catch (e2) {}
+    const sessRole = String((typeof getSession === 'function' ? getSession().role : '') || '').toUpperCase();
     const isSuperAdmin = (sessRole === 'SUPER_ADMIN' || sessRole === 'SUPERADMIN');
     const superAdminActions = document.getElementById('modal-server-super-admin-actions');
     if (superAdminActions) {
@@ -692,6 +678,7 @@ function saveReorderedData(type, list) {
         });
     }, 300);
 }
+window.saveReorderedData = saveReorderedData;
 
 function initTableDragAndDrop(tbodyId, arrayRef, onReorderFinish) {
     const tbody = document.getElementById(tbodyId);
@@ -726,6 +713,7 @@ function initTableDragAndDrop(tbodyId, arrayRef, onReorderFinish) {
         return;
     }
 }
+window.initTableDragAndDrop = initTableDragAndDrop;
 
 /* ==========================================
    T.I.M.E.S SYSTEM - CORE APPLICATION LOGIC
@@ -1022,11 +1010,7 @@ window.showGlobalLoading = function (text) {
 
             localStorage.setItem('times_backup_api_url', backupUrl);
 
-            let sessRole = '';
-            try {
-                const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
-                sessRole = String(sess.role || '').toUpperCase();
-            } catch (e2) {}
+            const sessRole = String((typeof getSession === 'function' ? getSession().role : '') || '').toUpperCase();
             const isSuperAdmin = (sessRole === 'SUPER_ADMIN' || sessRole === 'SUPERADMIN');
 
             let modal = document.getElementById('sync-progress-modal');
@@ -1232,7 +1216,7 @@ var dataCache = window.dataCache;
                     }
                 }, 30000);
                 const currentUnit = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
-                const token = localStorage.getItem('pm_jwt_token') || '';
+                const token = (typeof getAuthToken === 'function') ? getAuthToken() : (localStorage.getItem('pm_jwt_token') || '');
 
                 const headers = {
                     'Content-Type': 'application/json',
@@ -1436,12 +1420,9 @@ var dataCache = window.dataCache;
         function callApi(functionName, args, onSuccess, onError) {
             return new Promise((resolve, reject) => {
                 // Kiểm tra trạng thái xác thực: nếu chưa đăng nhập và không phải API công khai -> bỏ qua, không gửi request 401
-                const token = localStorage.getItem('pm_jwt_token');
-                let hasValidSession = false;
-                try {
-                    const sess = JSON.parse(localStorage.getItem('meds_session') || '{}');
-                    if (sess && (sess.username || sess.role)) hasValidSession = true;
-                } catch(e) {}
+                const token = (typeof getAuthToken === 'function') ? getAuthToken() : (localStorage.getItem('pm_jwt_token') || '');
+                const sess = (typeof getSession === 'function') ? getSession() : {};
+                const hasValidSession = !!((sess.username || sess.role) && token);
 
                 if (!PUBLIC_API_ACTIONS.has(functionName) && (!token || !hasValidSession)) {
                     if (onError) {
@@ -1763,7 +1744,7 @@ var dataCache = window.dataCache;
 
         dataCache = window.dataCache || { machine: [], proc: [], staff: [], room: [], pat: [] };
 
-        let editIndex = { machine: -1, proc: -1, staff: -1, room: -1, pat: -1, proto: -1 };
+        let editIndex = window.editIndex = window.editIndex || { machine: -1, proc: -1, staff: -1, room: -1, pat: -1, proto: -1 };
 
         let lastBusyContext = 'staff';
 
@@ -1947,7 +1928,8 @@ var dataCache = window.dataCache;
 
         function renderEmptyRow(colspan, msg = 'Chưa có dữ liệu') {
             return `<tr><td colspan="${colspan}" align="center" style="padding:20px;color:#999">${msg}</td></tr>`;
-}
+        }
+        window.renderEmptyRow = renderEmptyRow;
 
         function sortTimeSlots(slotsStr) {
             if (!slotsStr) return "";
@@ -3009,8 +2991,8 @@ var dataCache = window.dataCache;
         function restoreOfflineCache() {
             try {
                 const curUnit = getCurrentUnitCode();
-                const sessionStr = localStorage.getItem('meds_session');
-                if (!sessionStr || !curUnit) return;
+                const sess = (typeof getSession === 'function') ? getSession() : null;
+                if (!sess || !sess.username || !curUnit) return;
                 const cacheKey = getBootstrapCacheKey();
                 const cachedStr = localStorage.getItem(cacheKey);
                 if (cachedStr) {
@@ -3155,9 +3137,9 @@ var dataCache = window.dataCache;
         }
 
         function loadBootstrapData(forceRefresh = false) {
-            const sessionStr = localStorage.getItem('meds_session');
+            const sess = (typeof getSession === 'function') ? getSession() : null;
             const curUnit = getCurrentUnitCode();
-            if (!sessionStr || !curUnit) {
+            if (!sess || !sess.username || !curUnit) {
                 console.log('[Bootstrap] Chưa đăng nhập hoặc chưa chọn đơn vị, bỏ qua nạp dữ liệu.');
                 return;
             }
@@ -3580,7 +3562,8 @@ var dataCache = window.dataCache;
 };
 
             configs[type]?.();
-}
+        }
+        window.cancelEdit = cancelEdit;
 
         function parseNgayVao(dStr) {
             if (!dStr || typeof dStr !== 'string' || !dStr.includes('/')) return 0;
@@ -3603,170 +3586,13 @@ var dataCache = window.dataCache;
         }
 
         // ============================================================
-
-        // ⚙️ 1. MÁY MÓC
-
+        // ⚙️ 1. MÁY MÓC (Module hóa tại js/modules/app-resources.js)
         // ============================================================
-
-        function renderMachinesTable() {
-            const statEl = document.getElementById('stat-machines');
-            if (statEl) statEl.innerText = dataCache.machine.length;
-            const tbody = document.getElementById('machines-list');
-            if (!tbody) return;
-
-            const procMachineSelect = document.getElementById('proc-machine');
-            const searchMachineSelect = document.getElementById('search-machine-type');
-            if (procMachineSelect && searchMachineSelect) {
-                const types = [...new Set(dataCache.machine.map(m => String(m.tenLoai || m[1] || '').trim()))].filter(Boolean);
-                procMachineSelect.innerHTML = '<option>Thủ công</option>' + types.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
-                searchMachineSelect.innerHTML = '<option>Chọn loại máy</option>' + types.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
-            }
-
-            if (!dataCache.machine.length) { tbody.innerHTML = renderEmptyRow(5, 'Chưa có thiết bị'); return; }
-
-            tbody.innerHTML = dataCache.machine.map((item, i) => {
-                const idx = dataCache.machine.indexOf(item);
-                const ten = String(item.tenLoai || item[1] || '').trim();
-                const ma = String(item.maMay || item[2] || '').trim();
-                const tt = item.trangThai || item[3] || '';
-                return `<tr class="draggable-row editable-row" data-drag-idx="${i}" data-machine-index="${idx}" onclick="if(!window._isDraggingRow) editRoomMachine(parseInt(this.dataset.machineIndex))" title="Bấm sửa (Kéo thả nút ☰ hoặc bấm ▲/▼ để đổi thứ tự, Phím Delete để xóa)">
-            <td>${renderSttOrderControl("machines", i, dataCache.machine.length)}</td>
-            <td><b>${ten}</b></td>
-            <td><span class="badge badge-info">${ma}</span></td>
-            <td><span class="status-badge ${tt === 'Sẵn sàng' ? 'status-ready' : 'status-busy'}">${tt}</span></td>
-            <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteMachine(${idx})">Xóa</button></td>
-        </tr>`;
-            }).join('');
-
-            if (typeof renderDynamicMachineInputs === 'function') renderDynamicMachineInputs();
-
-            initTableDragAndDrop('machines-list', dataCache.machine, () => {
-                renderMachinesTable();
-                saveReorderedData('machines', dataCache.machine);
-            });
-        }
-
-        function saveMachine() {
-            const t = document.getElementById('machine-type').value.trim();
-
-            const c = document.getElementById('machine-code').value.trim();
-
-            const q = document.getElementById('machine-qty').value;
-
-            const s = document.getElementById('machine-status').value;
-
-            if (!t || !c) return alert("Điền tên và mã máy!");
-
-            if (editIndex.machine > -1) {
-                const oldItem = dataCache.machine[editIndex.machine];
-                const oldMaMay = oldItem ? String(oldItem.maMay || oldItem.ma_may || (Array.isArray(oldItem) ? oldItem[2] : '') || '').trim() : '';
-                const oldId = oldItem ? oldItem.id : null;
-
-                dataCache.machine[editIndex.machine] = { id: oldId, tenLoai: t, maMay: c, trangThai: s };
-
-                google.script.run.editMayMoc({
-                    index: editIndex.machine,
-                    oldMaMay: oldMaMay,
-                    id: oldId,
-                    tenLoai: t,
-                    maMay: c,
-                    trangThai: s
-                }, editIndex.machine, t, c, s, oldMaMay);
-} else {
-                for (let i = 0; i < parseInt(q); i++) dataCache.machine.push({ tenLoai: t, maMay: `${c}${i + 1}`, trangThai: s });
-
-                google.script.run.addMayMoc(t, c, q, s);
-}
-
-            cancelEdit('machine'); renderMachinesTable();
-}
-
-        function editRoomMachine(index) {
-            if (window.innerWidth <= 960 && typeof window.openMobileFormForEdit === "function") window.openMobileFormForEdit("machine");
-
-            editIndex.machine = index;
-
-            const item = dataCache.machine[index];
-            if (!item) return;
-
-            const tenLoai = String(item.tenLoai || item.ten_loai || (Array.isArray(item) ? item[1] : '') || '').trim();
-            const maMay = String(item.maMay || item.ma_may || (Array.isArray(item) ? item[2] : '') || '').trim();
-            const trangThai = item.trangThai || item.trang_thai || (Array.isArray(item) ? item[3] : '') || 'Sẵn sàng';
-
-            document.getElementById('machine-type').value = tenLoai;
-
-            document.getElementById('machine-code').value = maMay;
-
-            document.getElementById('machine-status').value = trangThai;
-
-            document.getElementById('group-qty').style.display = 'none';
-
-            document.getElementById('btn-save-machine').innerText = "Lưu Sửa";
-
-            document.getElementById('btn-cancel-machine').style.display = "inline-block";
-}
-
-        function deleteMachine(i) {
-            showCustomConfirm("Xác nhận xóa máy", "Bác sĩ có chắc chắn muốn xóa máy này?", function () {
-                const targetMachine = dataCache.machine ? dataCache.machine[i] : null;
-                const maMay = targetMachine ? String(targetMachine.maMay || targetMachine.ma_may || (Array.isArray(targetMachine) ? targetMachine[2] : '') || targetMachine.ma || '').trim() : '';
-                const machineId = targetMachine ? (targetMachine.id || null) : null;
-
-                dataCache.machine.splice(i, 1);
-                renderMachinesTable();
-
-                google.script.run
-                    .withSuccessHandler(() => {
-                        if (typeof window.showToast === 'function') window.showToast('Đã xóa máy móc thành công!', 'success');
-                    })
-                    .withFailureHandler(e => {
-                        alert('Lỗi khi xóa máy: ' + e);
-                        if (typeof loadMachines === 'function') loadMachines();
-                    }).deleteMayMoc({ maMay, id: machineId, index: i }, maMay, machineId);
-            });
-        }
-
-        function renderDynamicMachineInputs() {
-            const container = document.getElementById('dynamic-machine-inputs');
-
-            if (!container) return;
-
-            if (!dataCache.machine || !Array.isArray(dataCache.machine) || dataCache.machine.length === 0) {
-                container.innerHTML = '<div style="color:#7f8c8d; font-style:italic; grid-column:span 2;">Chưa có loại máy trong kho</div>';
-                return;
-            }
-
-            const typeSet = new Set();
-            const typeList = [];
-
-            dataCache.machine.forEach(m => {
-                if (!m) return;
-                const rawName = m.tenLoai || m.ten_loai || (Array.isArray(m) ? m[1] : '') || m.ten || m.name || '';
-                const nameStr = String(rawName).trim();
-                if (!nameStr || nameStr === 'undefined' || nameStr === 'null' || nameStr.toLowerCase() === 'undefined') return;
-
-                const lowerKey = nameStr.toLowerCase();
-                if (!typeSet.has(lowerKey)) {
-                    typeSet.add(lowerKey);
-                    typeList.push(nameStr);
-                }
-            });
-
-            if (typeList.length === 0) {
-                container.innerHTML = '<div style="color:#7f8c8d; font-style:italic; grid-column:span 2;">Chưa có loại máy trong kho</div>';
-                return;
-            }
-
-            container.innerHTML = typeList.map(type => `
-
-        <div style="display:flex; justify-content:space-between; align-items:center" title="${escapeHtml(type)}">
-
-            <span style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:80px; text-transform:capitalize;">${escapeHtml(type)}</span>:
-
-            <input type="number" class="room-machine-input" data-type="${escapeHtml(type.toLowerCase().trim())}" min="0" style="width:40px; padding:2px">
-
-        </div>`).join('');
-}
+        function renderMachinesTable() { return window.renderMachinesTable ? window.renderMachinesTable() : undefined; }
+        function saveMachine() { return window.saveMachine ? window.saveMachine() : undefined; }
+        function editRoomMachine(index) { return window.editRoomMachine ? window.editRoomMachine(index) : undefined; }
+        function deleteMachine(i) { return window.deleteMachine ? window.deleteMachine(i) : undefined; }
+        function renderDynamicMachineInputs() { return window.renderDynamicMachineInputs ? window.renderDynamicMachineInputs() : undefined; }
 
         // ============================================================
         // 🎯 DYNAMIC CLINICAL PROTOCOLS ENGINE (Quản lý Phác đồ Riêng)
@@ -4803,220 +4629,12 @@ var dataCache = window.dataCache;
         }
 
         // ============================================================
-
-        // 🏥 4. PHÒNG
-
+        // 🏥 4. PHÒNG (Module hóa tại js/modules/app-resources.js)
         // ============================================================
-
-        function renderRoomsTable() {
-            const tbody = document.getElementById('rooms-list');
-            if (!tbody) return;
-            const roomSelect = document.getElementById('pat-room');
-            if (roomSelect) {
-                const currentVal = roomSelect.value;
-                const options = (dataCache.room || []).map(r => { const ten = String(r.tenPhong || r[1] || '').trim(); return `<option value="${escapeHtml(ten)}">${escapeHtml(ten)}</option>`; }).join('');
-                roomSelect.innerHTML = `<option value="">-- Chọn phòng --</option>` + options;
-                if (currentVal) roomSelect.value = currentVal;
-            }
-
-            if (typeof renderDynamicMachineInputs === 'function') {
-                renderDynamicMachineInputs();
-            }
-
-            if (!dataCache.room || !dataCache.room.length) { tbody.innerHTML = renderEmptyRow(7, 'Chưa có dữ liệu phòng'); return; }
-
-            tbody.innerHTML = dataCache.room.map((item, i) => {
-                const idx = dataCache.room.indexOf(item);
-                return `<tr class="draggable-row editable-row" data-drag-idx="${i}" onclick="if(!window._isDraggingRow) editRoom(${idx})" title="Bấm sửa (Kéo thả nút ☰ hoặc bấm ▲/▼ để đổi thứ tự, Phím Delete để xóa)">
-            <td>${renderSttOrderControl("rooms", i, dataCache.room.length)}</td>
-            <td><strong>${escapeHtml(item.tenPhong || item[1] || '')}</strong></td>
-            <td>${escapeHtml(item.bacSi || item[2] || '')}</td>
-            <td style="font-size:11px">${item.ktv || item[3] || ''}</td>
-            <td style="font-size:11px; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${item.danhSachMay || item[4] || ''}">${escapeHtml(item.danhSachMay || item[4] || '')}</td>
-            <td style="text-align:center;">${item.soGiuong || item[5] || 0}</td>
-            <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteRoom(${idx})">Xóa</button></td>
-        </tr>`;
-            }).join('');
-
-            if (typeof filterRoomTable === 'function') filterRoomTable();
-
-            initTableDragAndDrop('rooms-list', dataCache.room, () => {
-                renderRoomsTable();
-                saveReorderedData('rooms', dataCache.room);
-            });
-        }
-
-        function saveRoom() {
-            const ten = document.getElementById('room-name').value.trim();
-
-            const slGiuong = parseInt(document.getElementById('room-beds').value) || 0;
-
-            if (!ten) return alert("Nhập tên phòng");
-
-            const bs = Array.from(document.querySelectorAll('.room-doc-cb:checked')).map(cb => cb.value).join(', ');
-
-            const ktv = Array.from(document.querySelectorAll('.room-stf-cb:checked')).map(cb => cb.value).join(', ');
-
-            const roomIdx = editIndex.room > -1 ? editIndex.room : dataCache.room.length;
-
-            let usedBeds = 0;
-
-            for (let i = 0; i < roomIdx; i++) usedBeds += parseInt(dataCache.room[i]?.soGiuong || dataCache.room[i]?.[5]) || 0;
-
-            const dsGiuong = Array.from({ length: slGiuong }, (_, i) => "G" + (usedBeds + i + 1)).join(', ');
-
-            let finalMachineList = [];
-
-            document.querySelectorAll('.room-machine-input').forEach(inp => {
-                let reqQty = parseInt(inp.value) || 0;
-
-                if (!reqQty) return;
-
-                const typeName = (inp.getAttribute('data-type') || '').toLowerCase().trim();
-                if (!typeName || typeName === 'undefined' || typeName === 'null') return;
-
-                const machinesOfType = (dataCache.machine || []).filter(m => {
-                    if (!m) return false;
-                    const t = String(m.tenLoai || m.ten_loai || (Array.isArray(m) ? m[1] : '') || m.ten || m.name || '').toLowerCase().trim();
-                    return t === typeName;
-                }).map(m => String(m.maMay || m.ma_may || (Array.isArray(m) ? m[2] : '') || m.ma || m.code || '').trim()).filter(Boolean);
-
-                let usedCount = 0;
-
-                for (let i = 0; i < roomIdx; i++) {
-                    const rmList = String(dataCache.room[i]?.danhSachMay || dataCache.room[i]?.[4] || '');
-                    rmList.split(',').map(x => x.trim()).filter(Boolean).forEach(code => {
-                        const found = (dataCache.machine || []).find(m => {
-                            if (!m) return false;
-                            const mCode = String(m.maMay || m.ma_may || (Array.isArray(m) ? m[2] : '') || m.ma || m.code || '').trim();
-                            return mCode.toLowerCase() === code.toLowerCase();
-                        });
-
-                        if (found) {
-                            const foundType = String(found.tenLoai || found.ten_loai || (Array.isArray(found) ? found[1] : '') || found.ten || found.name || '').toLowerCase().trim();
-                            if (foundType === typeName) usedCount++;
-                        }
-                    });
-}
-
-                const assigned = machinesOfType.slice(usedCount, usedCount + reqQty);
-
-                if (assigned.length < reqQty) alert(`⚠️ Kho thiếu máy [${typeName.toUpperCase()}]! Còn ${machinesOfType.length - usedCount} máy rảnh.`);
-
-                finalMachineList = finalMachineList.concat(assigned);
-});
-
-            const dsMay = finalMachineList.join(', ');
-
-            if (editIndex.room > -1) {
-                const oldItem = dataCache.room[editIndex.room];
-                const oldName = oldItem ? String(oldItem.tenPhong || oldItem.ten_phong || (Array.isArray(oldItem) ? oldItem[1] : '') || '').trim() : '';
-                const oldId = oldItem ? oldItem.id : null;
-
-                dataCache.room[editIndex.room] = { id: oldId, tenPhong: ten, bacSi: bs, ktv, danhSachMay: dsMay, soGiuong: slGiuong, danhSachGiuong: dsGiuong };
-
-                if (oldName !== ten && dataCache.pat) {
-                    dataCache.pat.forEach(p => { 
-                        const pRoom = p.phong || p[4] || '';
-                        if (String(pRoom).trim() === String(oldName).trim()) {
-                            if (p.phong !== undefined) p.phong = ten;
-                            if (p[4] !== undefined) p[4] = ten;
-                        }
-                    });
-
-                    if (typeof renderPatientsTable === 'function') renderPatientsTable();
-}
-
-                google.script.run.editPhong({
-                    index: editIndex.room,
-                    oldTenPhong: oldName,
-                    id: oldId,
-                    tenPhong: ten,
-                    bacSi: bs,
-                    ktv: ktv,
-                    danhSachMay: dsMay,
-                    soGiuong: slGiuong,
-                    danhSachGiuong: dsGiuong
-                }, editIndex.room, ten, bs, ktv, dsMay, slGiuong, dsGiuong, oldName);
-} else {
-                dataCache.room.push({ tenPhong: ten, bacSi: bs, ktv, danhSachMay: dsMay, soGiuong: slGiuong, danhSachGiuong: dsGiuong });
-
-                google.script.run.addPhong(ten, bs, ktv, dsMay, slGiuong, dsGiuong);
-}
-
-            cancelEdit('room'); renderRoomsTable();
-}
-
-        function editRoom(index) {
-            if (window.innerWidth <= 960 && typeof window.openMobileFormForEdit === "function") window.openMobileFormForEdit("room");
-
-            editIndex.room = index;
-
-            const item = dataCache.room[index];
-            if (!item) return;
-
-            // Luôn đảm bảo dynamic machine inputs được render đầy đủ trước khi gán giá trị
-            if (typeof renderDynamicMachineInputs === 'function') {
-                renderDynamicMachineInputs();
-            }
-
-            document.getElementById('room-name').value = item.tenPhong || item[1] || '';
-
-            document.getElementById('room-beds').value = item.soGiuong || item[5] || 0;
-
-            document.querySelectorAll('.room-doc-cb, .room-stf-cb').forEach(cb => cb.checked = false);
-
-            const bacSi = item.bacSi || item[2] || '';
-            if (bacSi) bacSi.split(',').forEach(b => { const cb = document.querySelector(`.room-doc-cb[value="${b.trim()}"]`); if (cb) cb.checked = true; });
-
-            const ktv = item.ktv || item[3] || '';
-            if (ktv) ktv.split(',').forEach(k => { const cb = document.querySelector(`.room-stf-cb[value="${k.trim()}"]`); if (cb) cb.checked = true; });
-
-            document.querySelectorAll('.room-machine-input').forEach(inp => inp.value = '');
-
-            const danhSachMay = item.danhSachMay || item[4] || '';
-            if (danhSachMay && dataCache.machine && Array.isArray(dataCache.machine)) {
-                danhSachMay.split(',').map(x => x.trim()).filter(Boolean).forEach(code => {
-                    const m = dataCache.machine.find(x => {
-                        if (!x) return false;
-                        const mCode = String(x.maMay || x.ma_may || (Array.isArray(x) ? x[2] : '') || x.ma || x.code || '').trim();
-                        return mCode.toLowerCase() === code.toLowerCase();
-                    });
-
-                    if (m) { 
-                        const mType = String(m.tenLoai || m.ten_loai || (Array.isArray(m) ? m[1] : '') || m.ten || m.name || '').toLowerCase().trim();
-                        if (mType && mType !== 'undefined' && mType !== 'null') {
-                            const inp = document.querySelector(`.room-machine-input[data-type="${mType}"]`); 
-                            if (inp) inp.value = (parseInt(inp.value) || 0) + 1; 
-                        }
-                    }
-});
-}
-
-            document.getElementById('btn-save-room').innerText = "Lưu Sửa";
-
-            document.getElementById('btn-cancel-room').style.display = "inline-block";
-}
-
-        function deleteRoom(i) {
-            showCustomConfirm("Xác nhận xóa phòng", "Bác sĩ có chắc chắn muốn xóa phòng này không?", function () {
-                const targetRoom = dataCache.room ? dataCache.room[i] : null;
-                const tenPhong = targetRoom ? String(targetRoom.tenPhong || targetRoom.ten_phong || (Array.isArray(targetRoom) ? targetRoom[1] : '') || targetRoom.ten || '').trim() : '';
-                const roomId = targetRoom ? (targetRoom.id || null) : null;
-
-                dataCache.room.splice(i, 1);
-                renderRoomsTable();
-
-                google.script.run
-                    .withSuccessHandler(() => {
-                        if (typeof window.showToast === 'function') window.showToast('Đã xóa phòng thành công!', 'success');
-                    })
-                    .withFailureHandler(e => {
-                        alert('Lỗi khi xóa phòng: ' + e);
-                        if (typeof loadRooms === 'function') loadRooms();
-                    }).deletePhong({ tenPhong, id: roomId, index: i }, tenPhong, roomId);
-            });
-        }
+        function renderRoomsTable() { return window.renderRoomsTable ? window.renderRoomsTable() : undefined; }
+        function saveRoom() { return window.saveRoom ? window.saveRoom() : undefined; }
+        function editRoom(index) { return window.editRoom ? window.editRoom(index) : undefined; }
+        function deleteRoom(i) { return window.deleteRoom ? window.deleteRoom(i) : undefined; }
 
         // ============================================================
 
@@ -10407,11 +10025,10 @@ var dataCache = window.dataCache;
         }
 
         window.onload = function () {
-            const sessionStr = localStorage.getItem('meds_session');
-            const token = localStorage.getItem('pm_jwt_token');
+            const session = (typeof getSession === 'function') ? getSession() : JSON.parse(localStorage.getItem('meds_session') || '{}');
+            const token = (typeof getAuthToken === 'function') ? getAuthToken() : (localStorage.getItem('pm_jwt_token') || '');
 
-            if (sessionStr && token) {
-                const session = JSON.parse(sessionStr);
+            if (session && session.username && token) {
                 document.getElementById('login-overlay').style.display = 'none';
 
                 updateLogoutButton(session.username);
@@ -10433,8 +10050,8 @@ var dataCache = window.dataCache;
 
         window.addEventListener('load', function () {
             setTimeout(function () {
-                const sessionStr = localStorage.getItem('meds_session');
-                if (sessionStr) {
+                const sess = (typeof getSession === 'function') ? getSession() : null;
+                if (sess && sess.username) {
                     if (typeof loadAllData === 'function') loadAllData();
                     if (typeof loadDashboard === 'function') loadDashboard();
                 }
@@ -11978,9 +11595,9 @@ var dataCache = window.dataCache;
             if (typeof window.initErrorChecker === 'function') window.initErrorChecker();
             else if (typeof initErrorChecker === 'function') initErrorChecker();
             setTimeout(() => {
-                const token = localStorage.getItem('pm_jwt_token');
-                const sess = localStorage.getItem('meds_session');
-                if (token && sess) {
+                const token = (typeof getAuthToken === 'function') ? getAuthToken() : localStorage.getItem('pm_jwt_token');
+                const sess = (typeof getSession === 'function') ? getSession() : null;
+                if (token && sess && sess.username) {
                     if (typeof window.checkBackupReminder === 'function') window.checkBackupReminder();
                 }
                 if (typeof window.loadQuickLinks === 'function') window.loadQuickLinks();
