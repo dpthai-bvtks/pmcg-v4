@@ -24,20 +24,24 @@ export async function handleStaffAction(action, ctx) {
         const kyNangStr = skillsArr.join(", ");
         const gioBanStr = tempBusyArr.join(", ");
 
+        const isDoc = /bác sĩ|bac si|^bs\b/i.test(s.role || "") || /^bs\b/i.test(s.name || "");
+        const defaultSystem = isDoc ? "YHCT" : "Cả hai";
+        const systemVal = (s.system && String(s.system).trim()) ? String(s.system).trim() : defaultSystem;
+
         return {
           id: s.id || (idx + 1),
           ten: s.name,
           name: s.name,
-          vaiTro: s.role || "Kỹ thuật viên",
-          role: s.role || "Kỹ thuật viên",
+          vaiTro: s.role || (isDoc ? "Bác sĩ" : "Kỹ thuật viên"),
+          role: s.role || (isDoc ? "Bác sĩ" : "Kỹ thuật viên"),
           trangThai: s.trang_thai || "Đi làm",
           thoiGianLam: s.thoi_gian_lam || "07:30-11:30, 13:00-16:30",
           kyNang: kyNangStr,
           gioBan: gioBanStr,
           nguoiThayThe: s.nguoi_thay_the || "Không",
-          quyen: s.system || "Cả hai",
-          he: s.system || "Cả hai",
-          system: s.system || "Cả hai",
+          quyen: systemVal,
+          he: systemVal,
+          system: systemVal,
           tenHis: s.his_name || "",
           priority: s.priority || 0
         };

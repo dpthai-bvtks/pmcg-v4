@@ -325,6 +325,10 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       baseTimeline[tenNhanVien] = [];
       staffRole[tenNhanVien] = normalizedRole;
 
+      const staffQuyen = r[6] || (normalizedRole === 'Bác sĩ' ? 'YHCT' : 'Cả hai');
+      const isQuyenStrictYhct = /yhct/i.test(staffQuyen) && !/phcn|cả hai|ca hai|toàn bộ|tat ca|all/i.test(staffQuyen);
+      const isQuyenStrictPhcn = /phcn/i.test(staffQuyen) && !/yhct|cả hai|ca hai|toàn bộ|tat ca|all/i.test(staffQuyen);
+
       const kyNangList = r[2] ? String(r[2]).split(",").map(x => x.trim()).filter(Boolean) : [];
       const rawSkillsStr = String(r[2] || '').toLowerCase();
       const hasAll = /cả hai|ca hai|toàn bộ|tat ca|all/i.test(rawSkillsStr);
@@ -355,6 +359,10 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
           });
         }
 
+        // 🛡️ Phân hệ nghiêm ngặt: Quyền YHCT không bao giờ làm PHCN, Quyền PHCN không bao giờ làm YHCT
+        if (isQuyenStrictYhct && isProcPhcn) qualified = false;
+        if (isQuyenStrictPhcn && isProcYhct) qualified = false;
+
         if (qualified) {
           const keys = [procKey, pName];
           if (pVt) keys.push(pVt);
@@ -368,6 +376,11 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
       kyNangList.forEach(kyNang => {
         const kyNangLower = kyNang.toLowerCase();
+        const pInfo = thuThuatInfo[kyNangLower];
+        if (pInfo) {
+          if (isQuyenStrictYhct && pInfo[3] === 'PHCN') return;
+          if (isQuyenStrictPhcn && pInfo[3] === 'YHCT') return;
+        }
         if (!staffBySkill[kyNangLower]) staffBySkill[kyNangLower] = [];
         if (!staffBySkill[kyNangLower].includes(tenNhanVien)) staffBySkill[kyNangLower].push(tenNhanVien);
       });
@@ -1999,7 +2012,8 @@ function getSafeCache() {
         const skills = Array.isArray(s.kyNang) ? s.kyNang.join(", ") : (s.kyNang || s[5] || "");
         const shifts = s.thoiGianLam || s[4] || "07:30-11:30, 13:00-16:30";
         const busy = fixBusyString(s.gioBan || s[6] || "");
-        database.rawStaff.push([ten, vaiTro, skills, shifts, busy, trangThai]);
+        const quyen = s.quyen || s.system || s.he || (Array.isArray(s) ? (s[8] || s[7] || "") : "") || (vaiTro === "Bác sĩ" ? "YHCT" : "Cả hai");
+        database.rawStaff.push([ten, vaiTro, skills, shifts, busy, trangThai, quyen]);
       }
     });
 
@@ -2742,24 +2756,56 @@ function getSafeCache() {
 
     (payload.allowed_staff || []).forEach(tenNhanVien => {
       const normTen = normStr(tenNhanVien);
-      const staffRow = allStaff.find(r => {
-        const rName = (r.ten || r.name || (Array.isArray(r) ? r[1] : '') || '').trim();
-        if (!rName) return false;
-        if (rName === tenNhanVien) return true;
-        const normR = normStr(rName);
-        if (normR === normTen) return true;
-        const cleanR = normR.replace(/^(bs|bac si|ktv|dd|đd)\s*\.?\s*/i, '').trim();
-        const cleanT = normTen.replace(/^(bs|bac si|ktv|dd|đd)\s*\.?\s*/i, '').trim();
-        return cleanR && cleanT && (cleanR === cleanT || cleanR.endsWith(cleanT) || cleanT.endsWith(cleanR));
-      });
+      const cleanT = normTen.replace(/^(bs|bac si|ktv|dd|đd)\s*\.?\s*/i, '').trim();
+      const isDocTen = /^bs\b/i.test(tenNhanVien) || /bác sĩ|bac si/i.test(tenNhanVien);
+
+      // 🔍 Tìm thông tin nhân sự: ưu tiên payload.staff_details, sau đó allStaff
+      let staffRow = payload.staff_details?.[tenNhanVien] || null;
+      if (!staffRow) {
+        staffRow = allStaff.find(r => {
+          const rName = (r.ten || r.name || (Array.isArray(r) ? r[1] : '') || '').trim();
+          return rName === tenNhanVien;
+        });
+      }
+      if (!staffRow) {
+        staffRow = allStaff.find(r => {
+          const rName = (r.ten || r.name || (Array.isArray(r) ? r[1] : '') || '').trim();
+          return normStr(rName) === normTen;
+        });
+      }
+      if (!staffRow) {
+        staffRow = allStaff.find(r => {
+          const rName = (r.ten || r.name || (Array.isArray(r) ? r[1] : '') || '').trim();
+          const cleanR = normStr(rName).replace(/^(bs|bac si|ktv|dd|đd)\s*\.?\s*/i, '').trim();
+          return cleanR && cleanT && cleanR === cleanT;
+        });
+      }
+      if (!staffRow) {
+        const candidates = allStaff.filter(r => {
+          const rName = (r.ten || r.name || (Array.isArray(r) ? r[1] : '') || '').trim();
+          const cleanR = normStr(rName).replace(/^(bs|bac si|ktv|dd|đd)\s*\.?\s*/i, '').trim();
+          return cleanR && cleanT && (cleanR.endsWith(cleanT) || cleanT.endsWith(cleanR) || cleanR.includes(cleanT) || cleanT.includes(cleanR));
+        });
+        if (candidates.length > 0) {
+          if (isDocTen) {
+            staffRow = candidates.find(r => {
+              const rRole = Array.isArray(r) ? (r[2] || '') : (r.vaiTro || r.role || '');
+              const rName = (r.ten || r.name || (Array.isArray(r) ? r[1] : '') || '').trim();
+              return /bác sĩ|bac si|^bs\b/i.test(rRole) || /^bs\b/i.test(rName);
+            }) || candidates[0];
+          } else {
+            staffRow = candidates[0];
+          }
+        }
+      }
 
       let role = "Kỹ thuật viên";
       if (staffRow) {
         const rawRole = Array.isArray(staffRow) ? (staffRow[2] || "") : (staffRow.vaiTro || staffRow.role || "");
-        if (/bác sĩ|bac si|^bs\b/i.test(rawRole) || /^bs\b/i.test(tenNhanVien)) role = "Bác sĩ";
-        else if (/điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(rawRole)) role = "Điều dưỡng";
-        else if (/kỹ thuật viên|ky thuat vien|^ktv\b/i.test(rawRole)) role = "Kỹ thuật viên";
-      } else if (/^bs\b/i.test(tenNhanVien)) {
+        if (/bác sĩ|bac si|^bs\b/i.test(rawRole) || isDocTen) role = "Bác sĩ";
+        else if (/điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(rawRole) || /^đd\b|^dd\b/i.test(tenNhanVien)) role = "Điều dưỡng";
+        else if (/kỹ thuật viên|ky thuat vien|^ktv\b/i.test(rawRole) || /^ktv\b/i.test(tenNhanVien)) role = "Kỹ thuật viên";
+      } else if (isDocTen) {
         role = "Bác sĩ";
       }
 
@@ -2774,46 +2820,95 @@ function getSafeCache() {
       }
       const shiftStr = shifts.join(', ');
 
-      // Build skills
+      // Build skills & quyen (phân hệ)
       let rawSkills = "";
-      let quyen = "Cả hai";
-      if (Array.isArray(staffRow)) {
-        rawSkills = String(staffRow[5] || staffRow[2] || "").trim();
-        quyen = String(staffRow[3] || "Cả hai").trim();
-      } else if (staffRow && typeof staffRow === 'object') {
+      let quyen = "";
+      if (staffRow && typeof staffRow === 'object' && !Array.isArray(staffRow)) {
         rawSkills = Array.isArray(staffRow.kyNang) ? staffRow.kyNang.join(", ") : String(staffRow.kyNang || staffRow.skills || "").trim();
-        quyen = String(staffRow.quyen || staffRow.system || staffRow.he || "Cả hai").trim();
+        quyen = String(staffRow.quyen || staffRow.system || staffRow.he || "").trim();
+      } else if (Array.isArray(staffRow)) {
+        rawSkills = String(staffRow[5] || "").trim();
+        quyen = String(staffRow[8] || staffRow[7] || "").trim();
+      }
+
+      // Mặc định quyen: Bác sĩ mặc định YHCT; KTV mặc định Cả hai
+      if (!quyen) {
+        quyen = role === "Bác sĩ" ? "YHCT" : "Cả hai";
       }
 
       const allYhctProcs = procList.filter(p => (p.he || p[3]) === "YHCT").map(p => p.ten || p.name || (Array.isArray(p) ? p[1] : "")).filter(Boolean);
       const allPhcnProcs = procList.filter(p => (p.he || p[3]) === "PHCN").map(p => p.ten || p.name || (Array.isArray(p) ? p[1] : "")).filter(Boolean);
       const allProcs = procList.map(p => p.ten || p.name || (Array.isArray(p) ? p[1] : "")).filter(Boolean);
 
+      const isQuyenStrictYhct = /yhct/i.test(quyen) && !/phcn|cả hai|ca hai|toàn bộ|tat ca|all/i.test(quyen);
+      const isQuyenStrictPhcn = /phcn/i.test(quyen) && !/yhct|cả hai|ca hai|toàn bộ|tat ca|all/i.test(quyen);
+
       const skillSet = new Set(rawSkills ? rawSkills.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : []);
 
       if (role === "Bác sĩ") {
-        allYhctProcs.forEach(p => skillSet.add(p.toLowerCase()));
-        if (/cả hai|ca hai|toàn bộ|tat ca|all/i.test(quyen) || /cả hai|ca hai|toàn bộ|tat ca|all/i.test(rawSkills) || !quyen || quyen === "Cả hai") {
-          allPhcnProcs.forEach(p => skillSet.add(p.toLowerCase()));
-        }
-      } else {
-        if (/cả hai|ca hai|toàn bộ|tat ca|all/i.test(rawSkills)) {
-          allProcs.forEach(p => skillSet.add(p.toLowerCase()));
-        } else if (/yhct/i.test(rawSkills) && !allYhctProcs.some(p => skillSet.has(p.toLowerCase()))) {
+        // 🩺 Bác sĩ: Mặc định làm tất cả thủ thuật YHCT (trừ khi quyen là PHCN thuần túy)
+        if (!isQuyenStrictPhcn) {
           allYhctProcs.forEach(p => skillSet.add(p.toLowerCase()));
-        } else if (/phcn/i.test(rawSkills) && !allPhcnProcs.some(p => skillSet.has(p.toLowerCase()))) {
-          allPhcnProcs.forEach(p => skillSet.add(p.toLowerCase()));
         }
-      }
 
-      if (skillSet.size === 0) {
-        if (role === "Bác sĩ") {
-          allYhctProcs.forEach(p => skillSet.add(p.toLowerCase()));
-          if (/cả hai|ca hai|toàn bộ|tat ca|all/i.test(quyen)) {
+        // 🩺 CRITICAL FIX: Bác sĩ TUYỆT ĐỐI KHÔNG tự động nhận toàn bộ thủ thuật PHCN!
+        // Bác sĩ chỉ làm thủ thuật PHCN nếu:
+        // 1. Quyền KHÔNG PHẢI là thuần YHCT (isQuyenStrictYhct === false)
+        // 2. VÀ người dùng ĐÃ CHỦ ĐỘNG CÀI ĐẶT thủ thuật PHCN cụ thể trong kỹ năng:
+        //    - rawSkills có từ khóa "toàn bộ phcn" / "all phcn"
+        //    - HOẶC tên thủ thuật PHCN cụ thể có mặt trong rawSkills của Bác sĩ.
+        if (!isQuyenStrictYhct) {
+          if (/toàn bộ phcn|all phcn|tat ca phcn/i.test(rawSkills)) {
+            allPhcnProcs.forEach(p => skillSet.add(p.toLowerCase()));
+          } else if (rawSkills) {
+            allPhcnProcs.forEach(p => {
+              const pLow = p.toLowerCase();
+              if (rawSkills.toLowerCase().includes(pLow)) {
+                skillSet.add(pLow);
+              }
+            });
+          }
+        }
+      } else if (role === "Kỹ thuật viên") {
+        if (isQuyenStrictYhct) {
+          if (skillSet.size === 0 || /yhct/i.test(rawSkills)) {
+            allYhctProcs.forEach(p => skillSet.add(p.toLowerCase()));
+          }
+        } else if (isQuyenStrictPhcn) {
+          if (skillSet.size === 0 || /phcn/i.test(rawSkills)) {
             allPhcnProcs.forEach(p => skillSet.add(p.toLowerCase()));
           }
+        } else {
+          // Quyen Cả hai
+          if (/cả hai|ca hai|toàn bộ|tat ca|all/i.test(rawSkills) || skillSet.size === 0) {
+            allProcs.forEach(p => skillSet.add(p.toLowerCase()));
+          } else {
+            if (/yhct/i.test(rawSkills)) allYhctProcs.forEach(p => skillSet.add(p.toLowerCase()));
+            if (/phcn/i.test(rawSkills)) allPhcnProcs.forEach(p => skillSet.add(p.toLowerCase()));
+          }
+        }
+      } else {
+        // Điều dưỡng: chỉ làm theo kỹ năng đã cấu hình
+      }
+
+      // 🛡️ BỘ LỌC PHÂN QUYỀN TUYỆT ĐỐI (Strict System Permission Filter):
+      // Nếu quyen là YHCT: xóa triệt để mọi thủ thuật PHCN khỏi skillSet
+      if (isQuyenStrictYhct) {
+        allPhcnProcs.forEach(p => skillSet.delete(p.toLowerCase()));
+      }
+      // Nếu quyen là PHCN: xóa triệt để mọi thủ thuật YHCT khỏi skillSet
+      if (isQuyenStrictPhcn) {
+        allYhctProcs.forEach(p => skillSet.delete(p.toLowerCase()));
+      }
+
+      // Fallback an toàn nếu skillSet vẫn rỗng
+      if (skillSet.size === 0) {
+        if (role === "Bác sĩ") {
+          if (!isQuyenStrictPhcn) allYhctProcs.forEach(p => skillSet.add(p.toLowerCase()));
         } else if (role === "Kỹ thuật viên") {
-          allProcs.forEach(p => skillSet.add(p.toLowerCase()));
+          if (isQuyenStrictYhct) allYhctProcs.forEach(p => skillSet.add(p.toLowerCase()));
+          else if (isQuyenStrictPhcn) allPhcnProcs.forEach(p => skillSet.add(p.toLowerCase()));
+          else allProcs.forEach(p => skillSet.add(p.toLowerCase()));
         }
       }
 

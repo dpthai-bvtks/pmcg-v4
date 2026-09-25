@@ -8069,14 +8069,16 @@ var dataCache = window.dataCache;
                     window.dataCache.staff.forEach(s => {
                         const sTen = s.ten || s.name;
                         if (sTen && !allStaff.some(st => (st.ten || st.name) === sTen)) {
+                            const isDoc = /bác sĩ|bac si|^bs\b/i.test(s.vaiTro || s.role || '') || /^bs\b/i.test(sTen);
+                            const defQuyen = isDoc ? 'YHCT' : 'Cả hai';
                             allStaff.push({
                                 ...s,
                                 ten: sTen,
                                 name: sTen,
-                                vaiTro: s.vaiTro || s.role || 'KTV',
-                                role: s.vaiTro || s.role || 'KTV',
-                                quyen: s.quyen || s.system || 'Cả hai',
-                                system: s.quyen || s.system || 'Cả hai',
+                                vaiTro: s.vaiTro || s.role || (isDoc ? 'Bác sĩ' : 'KTV'),
+                                role: s.vaiTro || s.role || (isDoc ? 'Bác sĩ' : 'KTV'),
+                                quyen: s.quyen || s.system || s.he || defQuyen,
+                                system: s.quyen || s.system || s.he || defQuyen,
                                 kyNang: s.kyNang || s.skills || '',
                                 skills: s.kyNang || s.skills || ''
                             });
@@ -8843,12 +8845,21 @@ var dataCache = window.dataCache;
         }
 
         function getSatPayload() {
-            const allowed_staff = [], staff_shifts_dict = {};
+            const allowed_staff = [], staff_shifts_dict = {}, staff_details = {};
+            const allStaffList = (window.dataCache && Array.isArray(window.dataCache.staff)) ? window.dataCache.staff : [];
 
             for (const ten in t8_ns_vars) {
                 if (!t8_ns_vars[ten]) continue;
 
                 allowed_staff.push(ten);
+                const sObj = allStaffList.find(st => (st.ten || st.name) === ten);
+                if (sObj) {
+                    staff_details[ten] = {
+                        vaiTro: sObj.vaiTro || sObj.role || '',
+                        quyen: sObj.quyen || sObj.system || sObj.he || '',
+                        kyNang: sObj.kyNang || sObj.skills || ''
+                    };
+                }
 
                 const idx = satStaffIndices[ten];
 
@@ -8869,7 +8880,7 @@ var dataCache = window.dataCache;
                 }
 
                 staff_shifts_dict[ten] = shifts;
-}
+            }
 
             const final_pats = [];
 
@@ -8890,11 +8901,11 @@ var dataCache = window.dataCache;
                     id: r.id, ten: r.ten, ns: r.namSinh, tt: chosen.join(", "),
 
                     phong: r.phong, gioVao: timeToRun, loai: r.loaiBn
-});
-}
+                });
+            }
 
-            return { allowed_staff, staff_shifts_dict, final_pats };
-}
+            return { allowed_staff, staff_shifts_dict, staff_details, final_pats };
+        }
 
         function xepLichSat() {
             const dateVal = document.getElementById('sat-schedule-date').value;

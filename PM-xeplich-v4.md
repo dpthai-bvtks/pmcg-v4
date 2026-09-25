@@ -5884,3 +5884,42 @@ otify(...) (các tính năng: đồng bộ phác đồ đám mây, lưu/xóa ph�
      - Deploy lên Cloudflare Pages qua `npm run deploy:web --prefix backend`.
      - Commit và push lên GitHub remote `origin/main`.
 
+---
+
+### [v4.1.6-rev9] - 15:55 25/09/2026: Sửa Lỗi Xếp Lịch Thứ 7 (Phân Định Chặt Chẽ Quyền Phân Hệ & Không Tự Động Gán Thủ Thuật PHCN Cho Bác Sĩ)
+
+- **Yêu cầu của người dùng**:
+  + Đang xếp lịch thứ 7 nhưng BS Thảo không cài đặt làm thủ thuật PHCN thì lại được xếp vào là sao?
+- **Phân tích nguyên nhân gốc rễ**:
+  1. **Tự động gán toàn bộ thủ thuật PHCN cho Bác sĩ**: Trong thuật toán xếp lịch Thứ 7 (`runSaturdayScheduling` trong `js/scheduler-engine.js`), khi kiểm tra `role === "Bác sĩ"`, mã nguồn có điều kiện:
+     `if (/cả hai|ca hai|toàn bộ|tat ca|all/i.test(quyen) || /cả hai|ca hai|toàn bộ|tat ca|all/i.test(rawSkills) || !quyen || quyen === "Cả hai") { allPhcnProcs.forEach(p => skillSet.add(p.toLowerCase())); }`
+     Do `quyen` mặc định của nhân sự trong CSDL thường là `"Cả hai"` hoặc rỗng, mọi Bác sĩ khi xếp Thứ 7 đều bị cưỡng bức gán toàn bộ thủ thuật PHCN (Điện xung, Sóng ngắn, Hồng ngoại, Siêu âm, Kéo giãn...) vào danh sách kỹ năng!
+  2. **Tranh chấp thời gian và gây rớt bệnh nhân**: Khi Bác sĩ (BS Thảo) bị gán danh sách kỹ năng PHCN, thuật toán xếp lịch Thứ 7 phân bổ BS Thảo vào làm liên tiếp các ca máy PHCN (`điện xung`, `sóng ngắn`, `hồng ngoại` từ 10:16 đến 11:30), dẫn đến BS Thảo bị kín lịch hoàn toàn và bệnh nhân YHCT (BN Nguyễn Đình Quân cần làm `điện châm`) bị rớt với lý do: *"các KTV có kỹ năng (BS Thảo) kín lịch"*.
+  3. **Lỗi chỉ mục mảng nhân sự**: Khi `staffRow` là dạng mảng (Sheets/legacy), mã nguồn đọc `staffRow[3]` (thực chất là trường `trang_thai` - "Đi làm") thay vì chỉ mục quyền phân hệ (`staffRow[8]`), dẫn đến quyền bị sai lệch và rơi vào fallback `"Cả hai"`.
+- **Giải pháp & Các điểm đã tối ưu**:
+  1. **Cập nhật thuật toán xếp lịch Thứ 7 (`js/scheduler-engine.js`)**:
+     - Bác sĩ mặc định làm các thủ thuật YHCT.
+     - **Tuyệt đối không tự động gán toàn bộ thủ thuật PHCN (`allPhcnProcs`) cho Bác sĩ**: Bác sĩ chỉ thực hiện thủ thuật PHCN khi và chỉ khi trong `rawSkills` (kỹ năng) người dùng có chủ động cấu hình cụ thể thủ thuật PHCN đó (hoặc chứa từ khóa "toàn bộ phcn").
+     - Bổ sung **Bộ lọc phân quyền nghiêm ngặt (`isQuyenStrictYhct`, `isQuyenStrictPhcn`)**:
+       * Nếu quyền là `YHCT`: triệt để xóa mọi thủ thuật PHCN khỏi `skillSet`.
+       * Nếu quyền là `PHCN`: triệt để xóa mọi thủ thuật YHCT khỏi `skillSet`.
+     - Sửa lỗi đọc chỉ mục mảng `staffRow` (`staffRow[5]` cho kỹ năng, `staffRow[8]` cho quyền).
+     - Ưu tiên nhận thông tin chi tiết nhân sự từ `payload.staff_details` và nâng cấp thuật toán khớp tên nhân sự chính xác (ưu tiên vai trò Bác sĩ khi tên có tiền tố "BS").
+  2. **Đồng bộ hóa thuật toán xếp lịch ngày thường (`js/scheduler-engine.js`)**:
+     - Truyền `quyen` vào `database.rawStaff` trong `buildDbFromCache`.
+     - Trong `getPrecomputed`, áp dụng bộ lọc phân quyền nghiêm ngặt: Nhân sự có quyền thuần YHCT tuyệt đối không được phân quyền vào `staffBySkill` của thủ thuật PHCN và ngược lại.
+  3. **Dữ liệu giao diện & Payload Thứ 7 (`js/app.js`)**:
+     - `taiDsSat`: Mặc định quyền `YHCT` cho Bác sĩ nếu trường quyền trong CSDL rỗng.
+     - `getSatPayload`: Thu thập và truyền `staff_details` (vai trò, quyền, kỹ năng) đầy đủ vào payload gửi sang `SchedulerEngine`.
+  4. **Backend Worker API (`backend/src/routes/schedules.js` & `backend/src/routes/staff.js`)**:
+     - `getSatData` và `getNhanSu`: Tự động gán mặc định phân hệ `YHCT` cho Bác sĩ nếu cột `system` trong bảng `nhan_su` bị NULL hoặc rỗng.
+  5. **Đồng bộ phiên bản**:
+     - `sw.js`: Nâng cache name lên `pmcg-v4-cache-4.1.6-rev9`.
+     - `index.html`: Cập nhật `APP_VERSION = '4.1.6-rev9'`, đồng bộ query `?v=4.1.6-rev9` cho toàn bộ tài nguyên CSS/JS, modal force-update, `#app-footer-version` giữ nguyên `Phiên bản: 4.1.6`.
+     - `version.json`: Nâng phiên bản lên `4.1.6-rev9`.
+  6. **Kiểm tra cú pháp & Triển khai**:
+     - `node -c` toàn bộ file JS đạt Exit Code 0.
+     - Deploy frontend lên Cloudflare Pages.
+     - Git commit & push `origin/main`.
+
+

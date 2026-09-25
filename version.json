@@ -1,6 +1,6 @@
 {
-    "version": "4.1.6-rev8",
+    "version": "4.1.6-rev9",
     "releaseDate": "25/09/2026",
-    "releaseTime": "15:25 25/09/2026",
-    "notes": "Chỉnh sửa ô nhập liệu và quy trình thêm máy móc: loại bỏ ô nhập số lượng, nhập trực tiếp Tên loại máy (kèm datalist gợi ý), Ký hiệu máy cụ thể và Trạng thái; hỗ trợ phím Enter chuyển ô và lưu nhanh."
+    "releaseTime": "15:55 25/09/2026",
+    "notes": "Sửa lỗi xếp lịch Thứ 7: Phân định chặt chẽ quyền phân hệ và vai trò Bác sĩ/KTV. Bác sĩ không được tự động gán thủ thuật PHCN nếu không có cấu hình cụ thể; tôn trọng triệt để quyền YHCT/PHCN của nhân sự."
 }

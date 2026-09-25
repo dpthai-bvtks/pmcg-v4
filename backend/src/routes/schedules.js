@@ -469,20 +469,25 @@ export async function handleSchedulesAction(action, ctx) {
       const staffRes = await db.prepare("SELECT * FROM nhan_su WHERE unit_code = ? AND name NOT GLOB '[0-9]*' ORDER BY priority ASC, id ASC").bind(unitCode).all().catch(() => db.prepare("SELECT * FROM nhan_su WHERE unit_code = ? ORDER BY id ASC").bind(unitCode).all());
       const patRes = await db.prepare("SELECT id, name, age, arrive_time, room, thu_thuat, leave_time FROM benh_nhan WHERE unit_code = ? AND is_saturday = 0 AND (leave_time IS NULL OR TRIM(leave_time) = '' OR LOWER(leave_time) = 'none')").bind(unitCode).all();
       
-      const nhan_su = (staffRes.results || []).map((r, idx) => ({
-        id: r.id || (idx + 1),
-        ten: r.name,
-        name: r.name,
-        vaiTro: r.role || "KTV",
-        role: r.role || "KTV",
-        quyen: r.system || "Cả hai",
-        system: r.system || "Cả hai",
-        kyNang: r.skills || "",
-        skills: r.skills || "",
-        trangThai: r.trang_thai || "Đi làm",
-        thoiGianLam: r.thoi_gian_lam || "07:30-11:30, 13:00-16:30",
-        tenHis: r.his_name || ""
-      }));
+      const nhan_su = (staffRes.results || []).map((r, idx) => {
+        const isDoc = /bác sĩ|bac si|^bs\b/i.test(r.role || "") || /^bs\b/i.test(r.name || "");
+        const defaultSystem = isDoc ? "YHCT" : "Cả hai";
+        const systemVal = (r.system && String(r.system).trim()) ? String(r.system).trim() : defaultSystem;
+        return {
+          id: r.id || (idx + 1),
+          ten: r.name,
+          name: r.name,
+          vaiTro: r.role || (isDoc ? "Bác sĩ" : "KTV"),
+          role: r.role || (isDoc ? "Bác sĩ" : "KTV"),
+          quyen: systemVal,
+          system: systemVal,
+          kyNang: r.skills || "",
+          skills: r.skills || "",
+          trangThai: r.trang_thai || "Đi làm",
+          thoiGianLam: r.thoi_gian_lam || "07:30-11:30, 13:00-16:30",
+          tenHis: r.his_name || ""
+        };
+      });
       const benh_nhan = (patRes.results || []).map(r => {
         let procs = [];
         try { procs = JSON.parse(r.thu_thuat || "[]").map(x => (typeof x === "object" ? x.name : x)); } catch(e) {}
