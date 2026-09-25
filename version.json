@@ -1,6 +1,6 @@
 {
-    "version": "4.1.5-rev6",
-    "releaseDate": "24/09/2026",
-    "releaseTime": "18:05 24/09/2026",
-    "notes": "refactor(modular): Chia tách 5 domain modules (tenant-admin, backup-restore, doc-lookup, error-checker, export-reports), tinh gọn app.js từ 17.776 xuống 12.044 dòng (-5.732 dòng), gộp hàm table render, chuẩn hóa toàn diện codebase."
+    "version": "4.1.6-rev1",
+    "releaseDate": "25/09/2026",
+    "releaseTime": "07:20 25/09/2026",
+    "notes": "Khôi phục hoàn toàn cấu trúc layout container, modal và login-overlay chuẩn trong index.html, bảo toàn giao diện thẩm mỹ và 5 domain modules chuyên biệt."
 }

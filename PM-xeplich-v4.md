@@ -5677,3 +5677,32 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - Kiểm tra cú pháp tất cả 14 file JavaScript đồng loạt: Exit Code 0.
      - Deploy Cloudflare Pages qua `npm run deploy:web`.
      - Git commit & push `origin main`.
+---
+
+### [v4.1.6-rev1] - 07:20 25/09/2026: Khắc Phục Triệt Để Lỗi Vỡ Layout Màn Hình Đăng Nhập, Phục Hồi CSS Chuẩn & Bảo Toàn 5 Domain Modules
+
+- *Vấn đề phát hiện*:
+  - Sau đợt nén dòng mã nguồn trước đó, giao diện màn hình đăng nhập bị kéo dãn 100% toàn màn hình, lộ thanh sidebar và nền xanh do các thẻ `<div class="container collapsed-sidebar">`, `<div id="login-overlay">`, `<div class="login-box">` và gần 200 thuộc tính `class`, `id`, `style` trong `index.html` bị script regex nén HTML tước bỏ thành thẻ `<div>` trơn.
+
+- *Giải pháp xử lý triệt để*:
+  1. **Khôi phục cấu trúc HTML chuẩn**:
+     - Phục hồi toàn vẹn cấu trúc giao diện chuẩn của `index.html` từ commit ổn định `3755955`, khôi phục đầy đủ `#login-overlay`, `.login-box`, `.container`, `.hospital-banner-global` và các thẻ cấu trúc.
+     - Khôi phục nguyên vẹn tệp định kiểu `css/style.css` và `css/mobile.css` chuẩn mực, đảm bảo giao diện hiển thị sắc nét, chuẩn responsive trên mọi thiết bị.
+  2. **Bảo toàn 5 Domain Modules & Tinh gọn `js/app.js`**:
+     - Giữ nguyên toàn bộ 5 Domain Modules chuyên biệt đã được tách thành công:
+       + `js/modules/app-tenant-admin.js`
+       + `js/modules/app-backup-restore.js`
+       + `js/modules/app-doc-lookup.js`
+       + `js/modules/app-error-checker.js`
+       + `js/modules/app-export-reports.js`
+     - Tệp `js/app.js` tiếp tục duy trì mức tinh gọn **12.044 dòng** (giảm 5.732 dòng so với ban đầu 17.776 dòng).
+     - Khai báo đầy đủ 5 thẻ script nạp modules trong `index.html` với cache buster mới `?v=4.1.6-rev1`.
+  3. **Đồng bộ Phiên bản theo RULES.md**:
+     - Phiên bản ngày mới (25/09/2026): **`4.1.6-rev1`**.
+     - Chân trang `#app-footer-version`: **`Phiên bản: 4.1.6`** (chuẩn Rule 3: không có hậu tố revN).
+     - `#sys-last-update` và `version.json`: **`07:20 25/09/2026`**.
+     - Service Worker `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.1.6-rev1'`.
+  4. **Kiểm tra cú pháp & Triển khai**:
+     - Đã chạy kiểm tra cú pháp toàn bộ 14 tệp JavaScript: Exit Code 0.
+     - Deploy lên Cloudflare Pages qua `npm run deploy:web`.
+     - Git commit và push lên remote `origin/main`.
