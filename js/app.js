@@ -3565,13 +3565,33 @@ var dataCache = window.dataCache;
         }
 
         // ============================================================
-        // ⚙️ 1. MÁY MÓC (Module hóa tại js/modules/app-resources.js)
+        // ⚙️ 1. MÁY MÓC (Ủy quyền sang js/modules/app-resources.js)
         // ============================================================
-        function renderMachinesTable() { return window.renderMachinesTable ? window.renderMachinesTable() : undefined; }
-        function saveMachine() { return window.saveMachine ? window.saveMachine() : undefined; }
-        function editRoomMachine(index) { return window.editRoomMachine ? window.editRoomMachine(index) : undefined; }
-        function deleteMachine(i) { return window.deleteMachine ? window.deleteMachine(i) : undefined; }
-        function renderDynamicMachineInputs() { return window.renderDynamicMachineInputs ? window.renderDynamicMachineInputs() : undefined; }
+        function renderMachinesTable(...args) { 
+            return (window.AppResources && window.AppResources.renderMachinesTable) 
+                ? window.AppResources.renderMachinesTable(...args) 
+                : undefined; 
+        }
+        function saveMachine(...args) { 
+            return (window.AppResources && window.AppResources.saveMachine) 
+                ? window.AppResources.saveMachine(...args) 
+                : undefined; 
+        }
+        function editRoomMachine(...args) { 
+            return (window.AppResources && window.AppResources.editRoomMachine) 
+                ? window.AppResources.editRoomMachine(...args) 
+                : undefined; 
+        }
+        function deleteMachine(...args) { 
+            return (window.AppResources && window.AppResources.deleteMachine) 
+                ? window.AppResources.deleteMachine(...args) 
+                : undefined; 
+        }
+        function renderDynamicMachineInputs(...args) { 
+            return (window.AppResources && window.AppResources.renderDynamicMachineInputs) 
+                ? window.AppResources.renderDynamicMachineInputs(...args) 
+                : undefined; 
+        }
 
         // ============================================================
         // 🎯 DYNAMIC CLINICAL PROTOCOLS ENGINE (Quản lý Phác đồ Riêng)
@@ -4606,12 +4626,28 @@ var dataCache = window.dataCache;
         }
 
         // ============================================================
-        // 🏥 4. PHÒNG (Module hóa tại js/modules/app-resources.js)
+        // 🏥 4. PHÒNG (Ủy quyền sang js/modules/app-resources.js)
         // ============================================================
-        function renderRoomsTable() { return window.renderRoomsTable ? window.renderRoomsTable() : undefined; }
-        function saveRoom() { return window.saveRoom ? window.saveRoom() : undefined; }
-        function editRoom(index) { return window.editRoom ? window.editRoom(index) : undefined; }
-        function deleteRoom(i) { return window.deleteRoom ? window.deleteRoom(i) : undefined; }
+        function renderRoomsTable(...args) { 
+            return (window.AppResources && window.AppResources.renderRoomsTable) 
+                ? window.AppResources.renderRoomsTable(...args) 
+                : undefined; 
+        }
+        function saveRoom(...args) { 
+            return (window.AppResources && window.AppResources.saveRoom) 
+                ? window.AppResources.saveRoom(...args) 
+                : undefined; 
+        }
+        function editRoom(...args) { 
+            return (window.AppResources && window.AppResources.editRoom) 
+                ? window.AppResources.editRoom(...args) 
+                : undefined; 
+        }
+        function deleteRoom(...args) { 
+            return (window.AppResources && window.AppResources.deleteRoom) 
+                ? window.AppResources.deleteRoom(...args) 
+                : undefined; 
+        }
 
         // ============================================================
 
