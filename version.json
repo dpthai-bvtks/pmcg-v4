@@ -1,6 +1,6 @@
 {
-    "version": "4.1.6-rev2",
+    "version": "4.1.6-rev3",
     "releaseDate": "25/09/2026",
-    "releaseTime": "07:45 25/09/2026",
-    "notes": "Triển khai toàn bộ 4 bước tối ưu kiến trúc: Core Helpers dùng chung, chuẩn hóa pattern session/token/notify, module hóa domain Quản lý Máy móc & Phòng bệnh (app-resources.js), bảo tồn 100% Google Script Run Proxy Shim."
+    "releaseTime": "08:05 25/09/2026",
+    "notes": "Chuẩn hóa thứ tự nạp module (app-resources nạp trước app.js), khử trùng lặp withLock, t2m, m2t, áp dụng toàn diện notify() và safeCall('loadDashboard')."
 }

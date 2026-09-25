@@ -2981,33 +2981,9 @@ const UnscheduledDiagnosticEngine = (function () {
   'use strict';
 
   const _U = (typeof window !== 'undefined' && window.ScheduleUtils) ? window.ScheduleUtils : null;
-
-  function t2m(thoiGian) {
-    if (_U && _U.t2m) return _U.t2m(thoiGian);
-    if (!thoiGian && thoiGian !== 0) return 0;
-    if (thoiGian instanceof Date) {
-      if (isNaN(thoiGian.getTime())) return 0;
-      return thoiGian.getUTCHours() * 60 + thoiGian.getUTCMinutes();
-    }
-    const str = String(thoiGian).trim();
-    if (!str || str === '0') return 0;
-    if (!isNaN(str) && parseFloat(str) > 0 && parseFloat(str) <= 1) return Math.round(parseFloat(str) * 1440);
-    if (!str.includes(":")) return 0;
-    const parts = str.split(":");
-    const gio = parseInt(parts[0].split(" ").pop(), 10);
-    const phut = parseInt(parts[1], 10);
-    return (isNaN(gio) ? 0 : gio) * 60 + (isNaN(phut) ? 0 : phut);
-  }
-
-  function m2t(totalMinutes) {
-    if (_U && _U.m2t) return _U.m2t(totalMinutes);
-    return `${String(Math.floor(totalMinutes / 60)).padStart(2, '0')}:${String(totalMinutes % 60).padStart(2, '0')}`;
-  }
-
-  function is_overlap(start1, end1, start2, end2) {
-    if (_U && _U.is_overlap) return _U.is_overlap(start1, end1, start2, end2);
-    return Math.max(start1, start2) < Math.min(end1, end2);
-  }
+  const t2m = (val) => (_U && _U.t2m) ? _U.t2m(val) : ((typeof window !== 'undefined' && window.t2m) ? window.t2m(val) : 0);
+  const m2t = (val) => (_U && _U.m2t) ? _U.m2t(val) : ((typeof window !== 'undefined' && window.m2t) ? window.m2t(val) : '00:00');
+  const is_overlap = (s1, e1, s2, e2) => (_U && _U.is_overlap) ? _U.is_overlap(s1, e1, s2, e2) : Math.max(s1, s2) < Math.min(e1, e2);
 
   function diagnose(rotItem, db, currentSched = []) {
     if (!rotItem) return null;

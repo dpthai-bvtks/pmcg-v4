@@ -596,7 +596,7 @@ window.fuzzySearchList = fuzzySearchList;
 // =========================================================
 // GLOBAL HELPERS & DUAL-MODE TABLE REORDERING ENGINE
 // =========================================================
-function withLock(fn) {
+function withLock(fn, delay = 500) {
     let locked = false;
     return function (...args) {
         if (locked) {
@@ -609,7 +609,7 @@ function withLock(fn) {
             if (res && typeof res.then === 'function') {
                 return res.finally(() => { locked = false; });
             }
-            setTimeout(() => { locked = false; }, 300);
+            setTimeout(() => { locked = false; }, delay);
             return res;
         } catch (e) {
             locked = false;
@@ -1758,21 +1758,7 @@ var dataCache = window.dataCache;
 
         window.scheduleSortState = null;
 
-        // ─── Chống double-click ───────────────────────────────────────
-
-        function withLock(fn, delay = 500) {
-            let locked = false;
-
-            return function (...args) {
-                if (locked) return;
-
-                locked = true;
-
-                setTimeout(() => { locked = false; }, delay);
-
-                fn.apply(this, args);
-};
-}
+        // ─── Chống double-click (Dùng withLock chuẩn hóa ở đầu app.js) ─
 
         // ─── Tiện ích chung ──────────────────────────────────────────
 
@@ -1786,14 +1772,9 @@ var dataCache = window.dataCache;
             return xoaDau(String(str)).toLowerCase().replace(/\s+/g, '');
 }
 
-        // ⚠️ CẢNH BÁO: ĐỒNG BỘ VỚI t2m() trong code.gs-v2.txt — sửa 1 bên PHẢI sửa bên kia!
         function t2m(t_str) {
-            if (!t_str || !String(t_str).includes(":")) return 0;
-
-            let parts = String(t_str).split(":");
-
-            return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-}
+            return (typeof window.t2m === 'function') ? window.t2m(t_str) : 0;
+        }
 
         function isDroppedScheduleRow(row) {
             const g = String(row?.gioDienRa || row?.[5] || '');
@@ -1921,10 +1902,8 @@ var dataCache = window.dataCache;
 }
 
         function m2t(mins) {
-            let h = Math.floor(mins / 60), m = mins % 60;
-
-            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
+            return (typeof window.m2t === 'function') ? window.m2t(mins) : '00:00';
+        }
 
         function renderEmptyRow(colspan, msg = 'Chưa có dữ liệu') {
             return `<tr><td colspan="${colspan}" align="center" style="padding:20px;color:#999">${msg}</td></tr>`;
@@ -2635,7 +2614,7 @@ var dataCache = window.dataCache;
 }
 
                         if (targetTab === 'tab-home' || targetTab === 'page-dashboard') {
-                            if (typeof loadDashboard === 'function') loadDashboard();
+                            safeCall('loadDashboard');
 }
 
                         // 🔥 ĐOẠN FIX CHỐNG LỖI NHẢY TRANG CHO TAB XẾP LỊCH:
@@ -2829,7 +2808,7 @@ var dataCache = window.dataCache;
             const targetUrl = `${baseUrl}#tab=${tabId}`;
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(targetUrl).then(() => {
-                    if (typeof window.showToast === 'function') window.showToast(`📋 Đã sao chép liên kết Tab: ${targetUrl}`);
+                    notify(`📋 Đã sao chép liên kết Tab: ${targetUrl}`);
                 }).catch(() => {
                     prompt('Sao chép liên kết Tab tại đây:', targetUrl);
                 });
@@ -3128,7 +3107,7 @@ var dataCache = window.dataCache;
                         }
                         const now = Date.now();
                         window.dataCacheTime = { pat: now, staff: now, machine: now, room: now, proc: now, sched: now };
-                        if (typeof loadDashboard === 'function') loadDashboard();
+                        safeCall('loadDashboard');
                     }
                 }
             } catch (e) {
@@ -3312,7 +3291,7 @@ var dataCache = window.dataCache;
 
                     if (typeof updateStats === 'function') updateStats();
                     if (typeof renderScheduleCalendar === 'function') renderScheduleCalendar();
-                    if (typeof loadDashboard === 'function') loadDashboard();
+                    safeCall('loadDashboard');
 
                     if (!window._systemReadyLogged) {
                         window._systemReadyLogged = true;
@@ -3810,8 +3789,7 @@ var dataCache = window.dataCache;
             const name = (nameInput ? nameInput.value : '').trim();
 
             if (!name) {
-                if (typeof window.showToast === 'function') window.showToast('⚠️ Vui lòng nhập tên phác đồ điều trị!', 'warning');
-                else alert('Vui lòng nhập tên phác đồ điều trị!');
+                notify('⚠️ Vui lòng nhập tên phác đồ điều trị!', 'warning');
                 if (nameInput) nameInput.focus();
                 return;
             }
@@ -3820,8 +3798,7 @@ var dataCache = window.dataCache;
             const selectedProcs = checkedCbs.map(cb => (cb.value || '').trim()).filter(Boolean);
 
             if (!selectedProcs.length) {
-                if (typeof window.showToast === 'function') window.showToast('⚠️ Vui lòng chọn ít nhất 1 thủ thuật cho phác đồ!', 'warning');
-                else alert('Vui lòng chọn ít nhất 1 thủ thuật cho phác đồ!');
+                notify('⚠️ Vui lòng chọn ít nhất 1 thủ thuật cho phác đồ!', 'warning');
                 return;
             }
 
@@ -4340,7 +4317,7 @@ var dataCache = window.dataCache;
                     oldTen
                 ], () => {
                     if (typeof showToastSuccess === 'function') showToastSuccess(`Đã lưu thủ thuật "${ten}" thành công!`);
-                    else if (typeof window.showToast === 'function') window.showToast(`Đã lưu thủ thuật "${ten}" thành công!`, 'success');
+                    else notify(`Đã lưu thủ thuật "${ten}" thành công!`, 'success');
                 }, (err) => {
                     console.error("Lỗi lưu thủ thuật:", err);
                     alert("Lỗi lưu thủ thuật lên máy chủ: " + err);
@@ -4412,7 +4389,7 @@ var dataCache = window.dataCache;
                 google.script.run
                     .withSuccessHandler(() => {
                         if (typeof showToastSuccess === 'function') showToastSuccess(`Đã xóa thủ thuật "${ten}" thành công!`);
-                        else if (typeof window.showToast === 'function') window.showToast(`Đã xóa thủ thuật "${ten}" thành công!`, 'success');
+                        else notify(`Đã xóa thủ thuật "${ten}" thành công!`, 'success');
                     })
                     .withFailureHandler(e => {
                         alert('Lỗi xóa thủ thuật: ' + e);
@@ -4541,11 +4518,11 @@ var dataCache = window.dataCache;
                 if (window.dataCacheTime) window.dataCacheTime['staff'] = Date.now();
                 google.script.run
                     .withSuccessHandler(() => {
-                        if (typeof window.showToast === 'function') window.showToast('Đã lưu nhân sự thành công!', 'success');
+                        notify('Đã lưu nhân sự thành công!', 'success');
                     })
                     .withFailureHandler((err) => {
                         alert("Lỗi lưu nhân sự: " + (err.message || err));
-                        if (typeof loadDashboard === 'function') loadDashboard();
+                        safeCall('loadDashboard');
                     })
                     .editNhanSu(sheetIdx, ten, vaiTro, trangThai, tgLam, kyNang, gioBan, thayThe, quyen, tenHis);
             } else {
@@ -4553,11 +4530,11 @@ var dataCache = window.dataCache;
                 if (window.dataCacheTime) window.dataCacheTime['staff'] = Date.now();
                 google.script.run
                     .withSuccessHandler(() => {
-                        if (typeof window.showToast === 'function') window.showToast('Đã thêm nhân sự thành công!', 'success');
+                        notify('Đã thêm nhân sự thành công!', 'success');
                     })
                     .withFailureHandler((err) => {
                         alert("Lỗi thêm nhân sự: " + (err.message || err));
-                        if (typeof loadDashboard === 'function') loadDashboard();
+                        safeCall('loadDashboard');
                     })
                     .addNhanSu(ten, vaiTro, trangThai, tgLam, kyNang, gioBan, thayThe, quyen, tenHis);
             }
@@ -4619,11 +4596,11 @@ var dataCache = window.dataCache;
                 renderStaffTable();
 
                 google.script.run.withSuccessHandler(() => {
-                    if (typeof window.showToast === 'function') window.showToast(`Đã xóa nhân sự [ ${staffName} ]!`, 'success');
+                    notify(`Đã xóa nhân sự [ ${staffName} ]!`, 'success');
                 })
                     .withFailureHandler(e => {
                         alert('Lỗi khi xóa: ' + e);
-                        if (typeof loadDashboard === 'function') loadDashboard();
+                        safeCall('loadDashboard');
                     }).deleteNhanSu(deletedSheetIndex, staffName);
             });
         }
@@ -4963,7 +4940,7 @@ var dataCache = window.dataCache;
                     createdPat.id = res.id;
                 }
                 if (window.dataCacheTime) window.dataCacheTime['pat'] = Date.now();
-                if (typeof loadDashboard === 'function') loadDashboard();
+                safeCall('loadDashboard');
                 if (btnSave) { btnSave.disabled = false; btnSave.innerText = 'Lưu'; }
             };
 
@@ -5147,8 +5124,8 @@ var dataCache = window.dataCache;
                 google.script.run
                     .withSuccessHandler(() => {
                         if (typeof showToastSuccess === 'function') showToastSuccess(`Đã xóa bệnh nhân [ ${patName} ] thành công!`);
-                        else if (typeof window.showToast === 'function') window.showToast(`Đã xóa bệnh nhân [ ${patName} ] thành công!`, 'success');
-                        if (typeof loadDashboard === 'function') loadDashboard();
+                        else notify(`Đã xóa bệnh nhân [ ${patName} ] thành công!`, 'success');
+                        safeCall('loadDashboard');
                     })
                     .withFailureHandler(e => {
                         alert('Lỗi khi xóa: ' + e);
@@ -5729,7 +5706,7 @@ var dataCache = window.dataCache;
 
             google.script.run
                 .withSuccessHandler(() => {
-                    if (typeof window.showToast === 'function') window.showToast('Đã cập nhật giờ bận nhân sự!', 'success');
+                    notify('Đã cập nhật giờ bận nhân sự!', 'success');
                 })
                 .withFailureHandler(err => {
                     alert("Lỗi lưu giờ bận: " + (err.message || err));
@@ -5770,7 +5747,7 @@ var dataCache = window.dataCache;
 
                 google.script.run
                     .withSuccessHandler(() => {
-                        if (typeof window.showToast === 'function') window.showToast('Đã xóa giờ bận!', 'success');
+                        notify('Đã xóa giờ bận!', 'success');
                     })
                     .withFailureHandler(err => {
                         alert("Lỗi xóa giờ bận: " + (err.message || err));
@@ -5803,7 +5780,7 @@ var dataCache = window.dataCache;
 
             google.script.run
                 .withSuccessHandler(() => {
-                    if (typeof window.showToast === 'function') window.showToast('Đã xóa toàn bộ giờ bận!', 'success');
+                    notify('Đã xóa toàn bộ giờ bận!', 'success');
                 })
                 .withFailureHandler(err => {
                     alert("Lỗi xóa giờ bận: " + (err.message || err));
@@ -5981,7 +5958,7 @@ var dataCache = window.dataCache;
             filterSchedule();
             if (typeof renderStats === 'function') renderStats(window.lastUnscheduledData);
             if (typeof renderPatientsTable === 'function') renderPatientsTable();
-            if (typeof loadDashboard === 'function') loadDashboard();
+            safeCall('loadDashboard');
         }
 
         // --- QUẢN LÝ PHÂN TRANG RIÊNG BIỆT ---
@@ -6460,7 +6437,7 @@ var dataCache = window.dataCache;
                 setTimeout(() => {
                     if (typeof renderStats === 'function') renderStats(window.lastUnscheduledData);
                     if (typeof renderPatientsTable === 'function') renderPatientsTable();
-                    if (typeof loadDashboard === 'function') loadDashboard();
+                    safeCall('loadDashboard');
 
                     try {
                         const cachedStr = localStorage.getItem(window.getBootstrapCacheKey ? window.getBootstrapCacheKey() : "times_bootstrap_cache");
@@ -6612,8 +6589,8 @@ var dataCache = window.dataCache;
 
                     const backendSched = mergedSched.map(x => scheduleRowToBackendArray(x, dateVal));
                     callApi('saveSchedule', [dateVal, backendSched], 
-                        () => { if (typeof showToast === 'function') showToast('☁️ Đã đồng bộ lịch bổ sung lên đám mây!', 'success'); },
-                        (err) => { if (typeof showToast === 'function') showToast('⚠️ Lỗi lưu lịch bổ sung: ' + (err?.message || err), 'danger'); }
+                        () => { notify('☁️ Đã đồng bộ lịch bổ sung lên đám mây!', 'success'); },
+                        (err) => { notify('⚠️ Lỗi lưu lịch bổ sung: ' + (err?.message || err), 'danger'); }
                     );
                 }
 
@@ -6639,7 +6616,7 @@ var dataCache = window.dataCache;
                 filterSchedule();
                 if (typeof renderStats === 'function') renderStats(window.lastUnscheduledData);
                 if (typeof renderPatientsTable === 'function') renderPatientsTable();
-                if (typeof loadDashboard === 'function') loadDashboard();
+                safeCall('loadDashboard');
 
                 const totalFail = window.lastUnscheduledData ? window.lastUnscheduledData.length : 0;
                 const contentEl = document.getElementById('custom-popup-content');
@@ -7028,7 +7005,7 @@ var dataCache = window.dataCache;
             filterSchedule();
             if (typeof renderStats === 'function') renderStats(window.lastUnscheduledData);
             if (typeof renderPatientsTable === 'function') renderPatientsTable();
-            if (typeof loadDashboard === 'function') loadDashboard();
+            safeCall('loadDashboard');
 
             const backendSched = window.currentScheduleData.map(x => scheduleRowToBackendArray(x, targetDate));
             callApi('saveSchedule', [targetDate, backendSched], null, null);
@@ -7402,7 +7379,7 @@ var dataCache = window.dataCache;
                     if (displayEl) displayEl.textContent = d.split('-').reverse().join('/');
                 }
                 window._forceHistoryMode = true;
-                if (typeof loadDashboard === 'function') loadDashboard();
+                safeCall('loadDashboard');
             }
         }
 
@@ -9063,14 +9040,14 @@ var dataCache = window.dataCache;
                     filterSchedule(); 
                     if (typeof renderStats === 'function') renderStats(window.lastUnscheduledData);
                     if (typeof renderPatientsTable === 'function') renderPatientsTable();
-                    if (typeof loadDashboard === 'function') loadDashboard();
+                    safeCall('loadDashboard');
 
                     // Đồng bộ lưu lịch trình thứ 7 vào D1 SQLite trong nền
                     if (sched.length > 0) {
                         const backendSched = sched.map(x => scheduleRowToBackendArray(x, dateVal));
                         callApi('saveSchedule', [dateVal, backendSched], 
-                            () => { if (typeof showToast === 'function') showToast('☁️ Đã đồng bộ lịch thứ 7 lên đám mây!', 'success'); },
-                            (err) => { if (typeof showToast === 'function') showToast('⚠️ Lỗi lưu lịch thứ 7: ' + (err?.message || err), 'danger'); }
+                            () => { notify('☁️ Đã đồng bộ lịch thứ 7 lên đám mây!', 'success'); },
+                            (err) => { notify('⚠️ Lỗi lưu lịch thứ 7: ' + (err?.message || err), 'danger'); }
                         );
                     }
                 } catch(err) {
@@ -10053,7 +10030,7 @@ var dataCache = window.dataCache;
                 const sess = (typeof getSession === 'function') ? getSession() : null;
                 if (sess && sess.username) {
                     if (typeof loadAllData === 'function') loadAllData();
-                    if (typeof loadDashboard === 'function') loadDashboard();
+                    safeCall('loadDashboard');
                 }
 }, 800);
 });
@@ -11169,6 +11146,8 @@ var dataCache = window.dataCache;
             renderGroup('procDistChart-yhct',  Object.entries(procCountYHCT).sort((a,b)=>b[1]-a[1]).slice(0,10), colorsYHCT);
             renderGroup('procDistChart-phcn',  Object.entries(procCountPHCN).sort((a,b)=>b[1]-a[1]).slice(0,10), colorsPHCN);
 }
+        window.loadDashboard = loadDashboard;
+        window.refreshDashboard = refreshDashboard;
 
         function refreshDashboard() {
             const picker = document.getElementById('dashboard-date-filter');
@@ -11179,7 +11158,7 @@ var dataCache = window.dataCache;
                     `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
 }
 
-            if (typeof loadDashboard === 'function') loadDashboard();
+            safeCall('loadDashboard');
 }
 
         // ============================================================
@@ -11488,7 +11467,7 @@ var dataCache = window.dataCache;
 }
 
                 if (targetTab === 'tab-home' || targetTab === 'page-dashboard') {
-                    if (typeof loadDashboard === 'function') loadDashboard();
+                    safeCall('loadDashboard');
 }
 
                 if (targetTab === 'tab-schedule') {

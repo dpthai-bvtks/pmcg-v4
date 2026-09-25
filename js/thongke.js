@@ -764,7 +764,7 @@ function saveAdminChamCongData(showAlert = true) {
         return callApi('saveErrorConfig', [{ staff: adminChamCongStaffConfig }]);
     }).then(() => {
         if (showAlert) {
-            if (typeof window.showToast === 'function') window.showToast("Đã lưu danh sách nhân sự chấm công lên máy chủ!", "success");
+            notify("Đã lưu danh sách nhân sự chấm công lên máy chủ!", "success");
             try { renderAdminChamCongTable(); } catch(e) { console.error(e); }
         }
         // Luôn cập nhật Bảng Chấm Công (31 ngày) để đồng bộ theo thứ tự mới sắp xếp
@@ -772,8 +772,7 @@ function saveAdminChamCongData(showAlert = true) {
     }).catch(err => {
         if (showAlert) {
             console.error(err);
-            if (typeof window.showToast === 'function') window.showToast('Lỗi khi lưu nhân sự: ' + (err.message || err), 'error');
-            else alert('Lỗi khi lưu nhân sự: ' + (err.message || err));
+            notify('Lỗi khi lưu nhân sự: ' + (err.message || err), 'error');
         } else {
             console.error('[ChamCong] saveAdminChamCongData error:', err);
         }
@@ -2292,11 +2291,10 @@ window.switchAdminSection = function(sectionId, btn) {
             const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
             if (!apiFn) return;
             apiFn('saveThongKeThuThuat', [my, thongKeData]).then(() => {
-                if (typeof window.showToast === 'function') window.showToast("Đã lưu dữ liệu thủ thuật lên máy chủ!", "success");
+                notify("Đã lưu dữ liệu thủ thuật lên máy chủ!", "success");
             }).catch(err => {
                 console.error(err);
-                if (typeof window.showToast === 'function') window.showToast("Lỗi khi lưu dữ liệu thủ thuật: " + (err.message || err), "error");
-                else alert("Lỗi khi lưu dữ liệu thủ thuật!");
+                notify("Lỗi khi lưu dữ liệu thủ thuật: " + (err.message || err), "error");
             });
         }
 

@@ -5739,3 +5739,27 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - Đã chạy kiểm tra cú pháp toàn bộ 19 tệp JavaScript (`node -c`): Exit Code 0.
      - Deploy lên Cloudflare Pages qua `npm run deploy:web`.
      - Git commit và push lên remote `origin/main`.
+
+---
+
+### [v4.1.6-rev3] - 08:05 25/09/2026: Chuẩn Hóa Thứ Tự Nạp Script (Dependency First), Khử Trùng Lặp withLock/t2m/m2t & Áp Dụng Toàn Diện notify() / safeCall()
+
+- *Nội dung thực hiện*:
+  1. **Chuẩn hóa thứ tự nạp thẻ script (`index.html`)**:
+     - Đưa `<script src="js/modules/app-resources.js">` lên TRƯỚC `<script src="js/app.js">` theo đúng nguyên tắc "dependency load trước", đảm bảo các hàm `window.renderMachinesTable`, `window.saveRoom`... luôn sẵn sàng ngay từ đầu.
+  2. **Khử trùng lặp các hàm dùng chung (`app.js` & `scheduler-engine.js`)**:
+     - Chuẩn hóa `withLock(fn, delay = 500)` duy nhất ở đầu `app.js`, hỗ trợ Promise, Timeout và Exception safety; xóa bỏ hàm `withLock` trùng lặp cũ ở dòng 1763.
+     - Khử trùng lặp `t2m` và `m2t` trong `app.js` và `UnscheduledDiagnosticEngine` (`scheduler-engine.js`), ủy quyền đồng nhất sang `ScheduleUtils` (`schedule-utils.js`).
+  3. **Áp dụng toàn diện `notify()` & `safeCall()`**:
+     - Gán `window.loadDashboard = loadDashboard; window.refreshDashboard = refreshDashboard;` phục vụ gọi an toàn.
+     - Thay thế 17 vị trí `if (typeof loadDashboard === 'function') loadDashboard();` bằng `safeCall('loadDashboard')`.
+     - Thay thế hơn 50 vị trí kiểm tra rườm rà `if (typeof window.showToast === 'function') ...` trong `app.js` và `thongke.js` bằng `notify(msg, type)` gọn gàng và an toàn tuyệt đối.
+  4. **Đồng bộ Phiên bản theo RULES.md**:
+     - Phiên bản: **`4.1.6-rev3`**.
+     - Chân trang `#app-footer-version`: **`Phiên bản: 4.1.6`** (chuẩn Rule 3: không có hậu tố revN).
+     - `#sys-last-update` và `version.json`: **`08:05 25/09/2026`**.
+     - Service Worker `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.1.6-rev3'`.
+  5. **Kiểm tra cú pháp & Triển khai**:
+     - Đã chạy kiểm tra cú pháp toàn bộ 19 tệp JavaScript (`node -c`): Exit Code 0.
+     - Deploy lên Cloudflare Pages qua `npm run deploy:web`.
+     - Git commit và push lên remote `origin/main`.
