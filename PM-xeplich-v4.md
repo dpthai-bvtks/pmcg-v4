@@ -5786,3 +5786,24 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - Đã chạy kiểm tra cú pháp toàn bộ 20 tệp JavaScript (`node -c`): Exit Code 0.
      - Deploy thành công lên Cloudflare Pages qua `npm run deploy:web --prefix backend`.
      - Git commit và push lên remote `origin/main`.
+
+---
+
+### [v4.1.6-rev5] - 09:40 25/09/2026: Khắc Phục Triệt Để Lỗi Đệ Quy Stack Size Tại t2m & m2t
+
+- **Yêu cầu của người dùng**:
+  + Báo lỗi console: `RangeError: Maximum call stack size exceeded at t2m (app.js?v=4.1.6-rev4:1775:21) at t2m (app.js?v=4.1.6-rev4:1776:64)`.
+- **Phân tích nguyên nhân & Giải pháp**:
+  1. **Nguyên nhân cốt lõi**:
+     - Hàm `function t2m(t_str) { return (typeof window.t2m === 'function') ? window.t2m(t_str) : 0; }` và `function m2t(mins) { return (typeof window.m2t === 'function') ? window.m2t(mins) : '00:00'; }` trong `js/app.js` bị tự gọi lại chính nó do function declaration ở top-level của file tự động gán đè lên `window.t2m` / `window.m2t`.
+     - Khi bất kỳ tác vụ xếp lịch, sắp xếp slot thời gian hoặc kiểm tra trùng lịch chạy tới `t2m` / `m2t`, nó rơi vào vòng lặp vô hạn gây RangeError tràn stack.
+  2. **Giải pháp xử lý**:
+     - **`js/app.js`**: Sửa đổi trực tiếp `t2m` và `m2t`: ưu tiên gọi `window.ScheduleUtils.t2m` / `window.ScheduleUtils.m2t`, đồng thời có fallback thuật toán toán học thuần túy (không gọi đệ quy `window.t2m`/`window.m2t`). Gán `window.t2m = t2m; window.m2t = m2t;`.
+     - **`js/schedule-utils.js`**: Luôn đăng ký trực tiếp mọi tiện ích của `ScheduleUtils` ra window scope.
+     - **`js/scheduler-engine.js`**: Bọc an toàn tuyệt đối `t2m`, `m2t`, `is_overlap` trong `UnscheduledDiagnosticEngine` với fallback toán học độc lập.
+     - **`sw.js`**: Nâng cache name lên `pmcg-v4-cache-4.1.6-rev5`.
+     - **`index.html` & `version.json`**: Nâng version lên `4.1.6-rev5`, timestamp `09:40 25/09/2026`, chân trang #app-footer-version giữ đúng `Phiên bản: 4.1.6`.
+  3. **Kiểm tra cú pháp & Triển khai**:
+     - 20 file JS passed cú pháp (Exit Code 0).
+     - Deploy Cloudflare Pages qua `npm run deploy:web --prefix backend`.
+     - Git commit và push lên remote `origin/main`.

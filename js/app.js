@@ -1773,8 +1773,14 @@ var dataCache = window.dataCache;
 }
 
         function t2m(t_str) {
-            return (typeof window.t2m === 'function') ? window.t2m(t_str) : 0;
+            if (window.ScheduleUtils && typeof window.ScheduleUtils.t2m === 'function') {
+                return window.ScheduleUtils.t2m(t_str);
+            }
+            if (!t_str) return 0;
+            const parts = String(t_str).trim().split(':');
+            return ((parseInt(parts[0], 10) || 0) * 60) + (parseInt(parts[1], 10) || 0);
         }
+        window.t2m = t2m;
 
         function isDroppedScheduleRow(row) {
             const g = String(row?.gioDienRa || row?.[5] || '');
@@ -1902,8 +1908,13 @@ var dataCache = window.dataCache;
 }
 
         function m2t(mins) {
-            return (typeof window.m2t === 'function') ? window.m2t(mins) : '00:00';
+            if (window.ScheduleUtils && typeof window.ScheduleUtils.m2t === 'function') {
+                return window.ScheduleUtils.m2t(mins);
+            }
+            const p = Math.max(0, parseInt(mins, 10) || 0);
+            return `${String(Math.floor(p / 60)).padStart(2, '0')}:${String(p % 60).padStart(2, '0')}`;
         }
+        window.m2t = m2t;
 
         function renderEmptyRow(colspan, msg = 'Chưa có dữ liệu') {
             return `<tr><td colspan="${colspan}" align="center" style="padding:20px;color:#999">${msg}</td></tr>`;

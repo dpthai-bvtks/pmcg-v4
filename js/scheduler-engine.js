@@ -2980,10 +2980,27 @@ function getSafeCache() {
 const UnscheduledDiagnosticEngine = (function () {
   'use strict';
 
-  const _U = (typeof window !== 'undefined' && window.ScheduleUtils) ? window.ScheduleUtils : null;
-  const t2m = (val) => (_U && _U.t2m) ? _U.t2m(val) : ((typeof window !== 'undefined' && window.t2m) ? window.t2m(val) : 0);
-  const m2t = (val) => (_U && _U.m2t) ? _U.m2t(val) : ((typeof window !== 'undefined' && window.m2t) ? window.m2t(val) : '00:00');
-  const is_overlap = (s1, e1, s2, e2) => (_U && _U.is_overlap) ? _U.is_overlap(s1, e1, s2, e2) : Math.max(s1, s2) < Math.min(e1, e2);
+  const t2m = (val) => {
+    if (typeof window !== 'undefined' && window.ScheduleUtils && typeof window.ScheduleUtils.t2m === 'function') {
+      return window.ScheduleUtils.t2m(val);
+    }
+    if (!val) return 0;
+    const parts = String(val).trim().split(':');
+    return ((parseInt(parts[0], 10) || 0) * 60) + (parseInt(parts[1], 10) || 0);
+  };
+  const m2t = (val) => {
+    if (typeof window !== 'undefined' && window.ScheduleUtils && typeof window.ScheduleUtils.m2t === 'function') {
+      return window.ScheduleUtils.m2t(val);
+    }
+    const p = Math.max(0, parseInt(val, 10) || 0);
+    return `${String(Math.floor(p / 60)).padStart(2, '0')}:${String(p % 60).padStart(2, '0')}`;
+  };
+  const is_overlap = (s1, e1, s2, e2) => {
+    if (typeof window !== 'undefined' && window.ScheduleUtils && typeof window.ScheduleUtils.is_overlap === 'function') {
+      return window.ScheduleUtils.is_overlap(s1, e1, s2, e2);
+    }
+    return Math.max(s1, s2) < Math.min(e1, e2);
+  };
 
   function diagnose(rotItem, db, currentSched = []) {
     if (!rotItem) return null;

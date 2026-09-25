@@ -405,11 +405,9 @@ var ScheduleUtils = (function () {
 
   if (gScope) {
     gScope.ScheduleUtils = utils;
-    // Đăng ký trực tiếp ra window nếu chưa có để code cũ không bị gián đoạn
+    // Đăng ký trực tiếp ra window để toàn bộ hệ thống luôn có tiện ích chuẩn
     for (const k in utils) {
-      if (!gScope[k]) {
-        gScope[k] = utils[k];
-      }
+      gScope[k] = utils[k];
     }
   }
 

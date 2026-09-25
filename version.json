@@ -1,6 +1,6 @@
 {
-    "version": "4.1.6-rev4",
+    "version": "4.1.6-rev5",
     "releaseDate": "25/09/2026",
-    "releaseTime": "09:30 25/09/2026",
-    "notes": "Khắc phục triệt để lỗi đệ quy RangeError Maximum call stack size exceeded tại renderMachinesTable và renderRoomsTable, xóa bỏ hoàn toàn hàm ủy quyền wrapper trùng tên, đảm bảo nạp dữ liệu thông suốt trên mọi tab."
+    "releaseTime": "09:40 25/09/2026",
+    "notes": "Khắc phục triệt để lỗi đệ quy RangeError Maximum call stack size exceeded tại t2m và m2t, chuyển sang gọi trực tiếp ScheduleUtils với fallback tính toán thuần túy."
 }
