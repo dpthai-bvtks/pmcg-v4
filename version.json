@@ -1,6 +1,6 @@
 {
-    "version": "4.1.6-rev7",
+    "version": "4.1.6-rev8",
     "releaseDate": "25/09/2026",
-    "releaseTime": "11:23 25/09/2026",
-    "notes": "Chuyển đổi triệt để 100% các lệnh google.script.run trong app.js sang callApi với native callback, loại bỏ hoàn toàn các hàm ủy quyền trùng tên và khôi phục hiển thị dữ liệu bình thường cho mọi tab."
+    "releaseTime": "15:25 25/09/2026",
+    "notes": "Chỉnh sửa ô nhập liệu và quy trình thêm máy móc: loại bỏ ô nhập số lượng, nhập trực tiếp Tên loại máy (kèm datalist gợi ý), Ký hiệu máy cụ thể và Trạng thái; hỗ trợ phím Enter chuyển ô và lưu nhanh."
 }

@@ -72,6 +72,12 @@
             searchMachineSelect.innerHTML = '<option>Chọn loại máy</option>' + types.map(t => `<option value="${safeEscape(t)}">${safeEscape(t)}</option>`).join('');
         }
 
+        const typeDatalist = document.getElementById('machine-types-datalist');
+        if (typeDatalist) {
+            const types = [...new Set((cache.machine || []).map(m => String(m.tenLoai || m.ten_loai || (Array.isArray(m) ? m[1] : '') || '').trim()))].filter(Boolean);
+            typeDatalist.innerHTML = types.map(t => `<option value="${safeEscape(t)}">`).join('');
+        }
+
         if (!cache.machine || !cache.machine.length) {
             tbody.innerHTML = emptyRowHtml(5, 'Chưa có thiết bị');
             return;
@@ -108,20 +114,36 @@
         const editIdx = getEditIdx();
         const typeEl = document.getElementById('machine-type');
         const codeEl = document.getElementById('machine-code');
-        const qtyEl = document.getElementById('machine-qty');
         const statusEl = document.getElementById('machine-status');
 
         const t = typeEl ? typeEl.value.trim() : '';
         const c = codeEl ? codeEl.value.trim() : '';
-        const q = qtyEl ? qtyEl.value : '1';
         const s = statusEl ? statusEl.value : 'Sẵn sàng';
 
-        if (!t || !c) return alert("Điền tên và mã máy!");
+        if (!t || !c) {
+            alert("Vui lòng nhập đầy đủ Tên loại máy và Ký hiệu máy!");
+            if (!t && typeEl) typeEl.focus();
+            else if (!c && codeEl) codeEl.focus();
+            return;
+        }
 
         if (editIdx.machine > -1) {
+            // Sửa thông tin máy
             const oldItem = cache.machine[editIdx.machine];
             const oldMaMay = oldItem ? String(oldItem.maMay || oldItem.ma_may || (Array.isArray(oldItem) ? oldItem[2] : '') || '').trim() : '';
             const oldId = oldItem ? oldItem.id : null;
+
+            // Kiểm tra trùng ký hiệu với máy khác
+            const isDup = (cache.machine || []).some((m, idx) => {
+                if (idx === editIdx.machine) return false;
+                const mCode = String(m.maMay || m.ma_may || (Array.isArray(m) ? m[2] : '') || '').trim();
+                return mCode.toLowerCase() === c.toLowerCase();
+            });
+            if (isDup) {
+                alert(`Ký hiệu máy "${c}" đã tồn tại! Vui lòng chọn ký hiệu khác.`);
+                if (codeEl) codeEl.focus();
+                return;
+            }
 
             cache.machine[editIdx.machine] = { id: oldId, tenLoai: t, maMay: c, trangThai: s };
 
@@ -133,20 +155,53 @@
                     tenLoai: t,
                     maMay: c,
                     trangThai: s
-                }, editIdx.machine, t, c, s, oldMaMay]);
+                }, editIdx.machine, t, c, s, oldMaMay],
+                () => notifyMsg(`Đã cập nhật máy "${c}" thành công!`, 'success'),
+                e => alert('Lỗi khi cập nhật máy: ' + e));
+            } else {
+                notifyMsg(`Đã cập nhật máy "${c}" thành công!`, 'success');
             }
+
+            doCancelEdit('machine');
+            renderMachinesTable();
         } else {
-            for (let i = 0; i < parseInt(q); i++) {
-                cache.machine.push({ tenLoai: t, maMay: `${c}${i + 1}`, trangThai: s });
+            // Thêm mới 1 máy cụ thể (nhập tên loại máy, ký hiệu máy, trạng thái; không qua số lượng)
+            const isDup = (cache.machine || []).some(m => {
+                const mCode = String(m.maMay || m.ma_may || (Array.isArray(m) ? m[2] : '') || '').trim();
+                return mCode.toLowerCase() === c.toLowerCase();
+            });
+            if (isDup) {
+                alert(`Ký hiệu máy "${c}" đã tồn tại! Vui lòng chọn ký hiệu khác.`);
+                if (codeEl) codeEl.focus();
+                return;
             }
+
+            cache.machine.push({ tenLoai: t, maMay: c, trangThai: s });
 
             if (typeof callApi === 'function') {
-                callApi('addMayMoc', [t, c, q, s]);
+                callApi('addMayMoc', [{
+                    tenLoai: t,
+                    maMay: c,
+                    soLuong: 1,
+                    qty: 1,
+                    trangThai: s
+                }, t, c, 1, s],
+                () => notifyMsg(`Đã thêm máy "${c}" (${t}) thành công!`, 'success'),
+                e => alert('Lỗi khi thêm máy: ' + e));
+            } else {
+                notifyMsg(`Đã thêm máy "${c}" (${t}) thành công!`, 'success');
+            }
+
+            doCancelEdit('machine');
+            renderMachinesTable();
+
+            // Giữ lại Tên loại máy và focus Ký hiệu máy để người dùng nhập tiếp máy khác cùng loại nhanh chóng
+            if (typeEl) typeEl.value = t;
+            if (codeEl) {
+                codeEl.value = '';
+                codeEl.focus();
             }
         }
-
-        doCancelEdit('machine');
-        renderMachinesTable();
     }
 
     function editRoomMachine(index) {

@@ -5852,3 +5852,35 @@ otify(...) (các tính năng: đồng bộ phác đồ đám mây, lưu/xóa ph�
      - Kiểm tra toàn bộ file JS bằng `node -c` đạt Exit Code 0.
      - Deploy lên Cloudflare Pages qua `npm run deploy:web --prefix backend`.
      - Commit và push lên GitHub remote `origin/main`.
+
+---
+
+### [v4.1.6-rev8] - 15:25 25/09/2026: Tinh Chỉnh Ô Nhập Liệu & Quy Trình Thêm Máy Móc (Bỏ Số Lượng, Nhập Trực Tiếp Ký Hiệu Máy & Hỗ Trợ Datalist)
+
+- **Yêu cầu của người dùng**:
+  + Chỉnh sửa lại các ô nhập liệu và cách thức nhập liệu máy móc, thay vì nhập số lượng của từng máy thì sẽ nhập tên loại máy, ký hiệu máy, trạng thái.
+- **Phân tích nguyên nhân & Giải pháp thực hiện**:
+  1. **Giao diện người dùng (`index.html`)**:
+     - Loại bỏ hoàn toàn trường nhập "Số lượng" (`#group-qty`, `#machine-qty`).
+     - Chuẩn hóa 3 ô nhập liệu:
+       * **Tên loại máy**: Tích hợp danh sách gợi ý `<datalist id="machine-types-datalist">` tự động trích xuất các loại máy đang có trong kho, giúp người dùng chọn nhanh không cần gõ lại.
+       * **Ký hiệu máy**: Cho phép người dùng nhập trực tiếp mã máy cụ thể (ví dụ: `Đèn HN 01`, `Sáp PA 01`...).
+       * **Trạng thái**: Chọn trạng thái máy (`Sẵn sàng`, `Bảo trì`, `Hỏng`).
+  2. **Quy trình lưu và xử lý máy móc (`js/modules/app-resources.js`)**:
+     - Cập nhật hàm `renderMachinesTable()` tự động trích xuất danh sách duy nhất các loại máy đưa vào `<datalist id="machine-types-datalist">`.
+     - Thay thế vòng lặp tự động cộng số đếm `${c}${i + 1}` bằng thao tác thêm chính xác 1 máy với Ký hiệu máy do người dùng nhập.
+     - Thêm kiểm tra trùng mã máy (case-insensitive) trước khi thêm/sửa, cảnh báo nếu ký hiệu máy đã tồn tại.
+     - Tối ưu trải nghiệm nhập liệu liên tục: sau khi bấm Thêm thành công, giữ lại Tên loại máy và tự động xóa trắng + focus con trỏ vào ô Ký hiệu máy.
+     - Bổ sung callback thông báo thành công / thất bại đồng bộ với Worker API `addMayMoc` và `editMayMoc`.
+  3. **Điều hướng phím tắt & Reset form (`js/app.js`)**:
+     - Bổ sung lắng nghe phím Enter: khi người dùng gõ xong Tên loại máy và bấm Enter, con trỏ tự động nhảy sang ô Ký hiệu máy; bấm Enter tại ô Ký hiệu máy sẽ thực hiện Thêm máy ngay lập tức.
+     - Cập nhật hàm `cancelEdit('machine')` kiểm tra an toàn `#group-qty`, tránh lỗi khi form không còn ô nhập số lượng.
+  4. **Đồng bộ phiên bản**:
+     - `sw.js`: Nâng cache name lên `pmcg-v4-cache-4.1.6-rev8`.
+     - `index.html`: Cập nhật `APP_VERSION = '4.1.6-rev8'`, timestamp `#sys-last-update` `15:25 25/09/2026`, đồng bộ chuỗi query `?v=4.1.6-rev8` cho toàn bộ tài nguyên CSS/JS, `#app-footer-version` giữ nguyên `Phiên bản: 4.1.6`.
+     - `version.json`: Nâng phiên bản lên `4.1.6-rev8`.
+  5. **Kiểm tra cú pháp & Triển khai**:
+     - Kiểm tra toàn bộ file JS bằng `node -c` đạt Exit Code 0.
+     - Deploy lên Cloudflare Pages qua `npm run deploy:web --prefix backend`.
+     - Commit và push lên GitHub remote `origin/main`.
+

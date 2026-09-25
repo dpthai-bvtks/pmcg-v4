@@ -2491,7 +2491,14 @@ var dataCache = window.dataCache;
                         }
                         return;
                     }
-}
+                }
+
+                if (tabId === 'tab-machines') {
+                    if (targetId === 'machine-type') {
+                        document.getElementById('machine-code')?.focus();
+                        return;
+                    }
+                }
 
                 if (isInput) e.target.blur();
 
@@ -3490,7 +3497,16 @@ var dataCache = window.dataCache;
             document.querySelectorAll(`.tab-content.active .sidebar-form input[type="checkbox"]`).forEach(c => c.checked = false);
 
             const configs = {
-                machine: () => { document.getElementById('group-qty').style.display = 'flex'; document.getElementById('btn-save-machine').innerText = "Thêm"; document.getElementById('btn-cancel-machine').style.display = "none"; },
+                machine: () => {
+                    const grp = document.getElementById('group-qty');
+                    if (grp) grp.style.display = 'none';
+                    const btnSave = document.getElementById('btn-save-machine');
+                    if (btnSave) btnSave.innerText = "Thêm";
+                    const btnCancel = document.getElementById('btn-cancel-machine');
+                    if (btnCancel) btnCancel.style.display = "none";
+                    const statusEl = document.getElementById('machine-status');
+                    if (statusEl) statusEl.value = 'Sẵn sàng';
+                },
 
                 proc: () => { 
                     document.getElementById('btn-save-proc').innerText = "Thêm"; 
