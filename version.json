@@ -1,6 +1,6 @@
 {
-    "version": "4.1.6-rev5",
+    "version": "4.1.6-rev6",
     "releaseDate": "25/09/2026",
-    "releaseTime": "09:40 25/09/2026",
-    "notes": "Khắc phục triệt để lỗi đệ quy RangeError Maximum call stack size exceeded tại t2m và m2t, chuyển sang gọi trực tiếp ScheduleUtils với fallback tính toán thuần túy."
+    "releaseTime": "10:20 25/09/2026",
+    "notes": "Chuẩn hóa toàn diện notify() thay thế showToast rải rác trong app.js, bổ sung docstring cảnh báo đồng bộ t2m/m2t kế thừa từ Google Apps Script code.gs và OR-Tools solvers."
 }

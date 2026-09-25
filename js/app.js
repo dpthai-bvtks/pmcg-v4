@@ -3454,11 +3454,7 @@ var dataCache = window.dataCache;
                 if (window.hideGlobalLoading) window.hideGlobalLoading();
                 btn.disabled = false;
                 btn.innerText = origText;
-                if (window.showToast) {
-                    window.showToast("❌ Lỗi tải dữ liệu: " + err, "error", 5000);
-                } else {
-                    alert("❌ Lỗi tải dữ liệu: " + err);
-                }
+                notify("❌ Lỗi tải dữ liệu: " + err, "error");
             });
         }
         function loadMachines() { loadEntity('getDanhSachMay', 'machine', renderMachinesTable); }
@@ -3732,13 +3728,9 @@ var dataCache = window.dataCache;
             const list = (window.dataCache && window.dataCache.protocols) ? window.dataCache.protocols : ((typeof dataCache !== 'undefined' && dataCache.protocols) ? dataCache.protocols : []);
             if (typeof callApi === 'function') {
                 callApi('saveProtocolsData', [list], res => {
-                    if (showToastMsg && typeof window.showToast === 'function') {
-                        window.showToast(`☁️ Đã đồng bộ ${list.length} phác đồ vào Cloudflare D1 thành công!`);
-                    }
+                    if (showToastMsg) notify(`☁️ Đã đồng bộ ${list.length} phác đồ vào Cloudflare D1 thành công!`, 'success');
                 }, err => {
-                    if (showToastMsg && typeof window.showToast === 'function') {
-                        window.showToast('⚠️ Lỗi đồng bộ đám mây: ' + err, 'error');
-                    }
+                    if (showToastMsg) notify('⚠️ Lỗi đồng bộ đám mây: ' + err, 'error');
                 });
             }
         }
@@ -3825,9 +3817,7 @@ var dataCache = window.dataCache;
             saveProtocolsData(list);
             cancelEdit('proto');
             
-            if (typeof window.showToast === 'function') {
-                window.showToast(`✅ Đã lưu phác đồ: "${name}" (${selectedProcs.length} thủ thuật)`);
-            }
+            notify(`✅ Đã lưu phác đồ: "${name}" (${selectedProcs.length} thủ thuật)`, 'success');
         }
         window.saveProtocolFromForm = saveProtocolFromForm;
 
@@ -3895,9 +3885,7 @@ var dataCache = window.dataCache;
                 list.splice(index, 1);
                 saveProtocolsData(list);
                 if (editIndex.proto === index) cancelEdit('proto');
-                if (typeof window.showToast === 'function') {
-                    window.showToast(`🗑️ Đã xóa phác đồ: "${targetName}"`);
-                }
+                notify(`🗑️ Đã xóa phác đồ: "${targetName}"`, 'info');
             };
 
             if (typeof showCustomConfirm === 'function') {
@@ -4034,9 +4022,7 @@ var dataCache = window.dataCache;
                 }
             });
 
-            if (typeof window.showToast === 'function') {
-                window.showToast(`🎯 Đã áp dụng: ${pObj.name} (${matchedCount} thủ thuật)`);
-            }
+            notify(`🎯 Đã áp dụng: ${pObj.name} (${matchedCount} thủ thuật)`, 'info');
         }
         window.applyClinicalProtocol = applyClinicalProtocol;
 
@@ -4322,8 +4308,7 @@ var dataCache = window.dataCache;
                     procId,
                     oldTen
                 ], () => {
-                    if (typeof showToastSuccess === 'function') showToastSuccess(`Đã lưu thủ thuật "${ten}" thành công!`);
-                    else notify(`Đã lưu thủ thuật "${ten}" thành công!`, 'success');
+                    notify(`Đã lưu thủ thuật "${ten}" thành công!`, 'success');
                 }, (err) => {
                     console.error("Lỗi lưu thủ thuật:", err);
                     alert("Lỗi lưu thủ thuật lên máy chủ: " + err);
@@ -4394,8 +4379,7 @@ var dataCache = window.dataCache;
 
                 google.script.run
                     .withSuccessHandler(() => {
-                        if (typeof showToastSuccess === 'function') showToastSuccess(`Đã xóa thủ thuật "${ten}" thành công!`);
-                        else notify(`Đã xóa thủ thuật "${ten}" thành công!`, 'success');
+                        notify(`Đã xóa thủ thuật "${ten}" thành công!`, 'success');
                     })
                     .withFailureHandler(e => {
                         alert('Lỗi xóa thủ thuật: ' + e);
@@ -5125,8 +5109,7 @@ var dataCache = window.dataCache;
                 // Gọi máy chủ xóa ngay lập tức
                 google.script.run
                     .withSuccessHandler(() => {
-                        if (typeof showToastSuccess === 'function') showToastSuccess(`Đã xóa bệnh nhân [ ${patName} ] thành công!`);
-                        else notify(`Đã xóa bệnh nhân [ ${patName} ] thành công!`, 'success');
+                        notify(`Đã xóa bệnh nhân [ ${patName} ] thành công!`, 'success');
                         safeCall('loadDashboard');
                     })
                     .withFailureHandler(e => {
@@ -6457,15 +6440,11 @@ var dataCache = window.dataCache;
                     callApi('saveSchedule', [dateVal, backendSched], 
                         (res) => {
                             console.log('[saveSchedule] Đã lưu lịch trình lên đám mây thành công!');
-                            if (typeof showToast === 'function') {
-                                showToast('☁️ Đã đồng bộ lịch trình lên đám mây thành công!', 'success');
-                            }
+                            notify('☁️ Đã đồng bộ lịch trình lên đám mây thành công!', 'success');
                         },
                         (err) => {
                             console.error('[saveSchedule] Lỗi lưu lịch trình lên đám mây:', err);
-                            if (typeof showToast === 'function') {
-                                showToast('⚠️ Chưa đồng bộ được lịch lên máy chủ: ' + (err?.message || err), 'danger');
-                            }
+                            notify('⚠️ Chưa đồng bộ được lịch lên máy chủ: ' + (err?.message || err), 'error');
                         }
                     );
                 }
@@ -6971,9 +6950,7 @@ var dataCache = window.dataCache;
                     .map(v => String(v || '').trim().toLowerCase()).join('|') === _dupKey
             );
             if (_alreadyExists) {
-                if (typeof showToast === 'function') {
-                    showToast(`⚠️ Ca [${rescuedRow.thuThuat}] cho BN ${rescuedRow.tenBN} lúc ${rescuedRow.gioDienRa} đã có trong lịch, không thêm lại!`, 'warning', 3500);
-                }
+                notify(`⚠️ Ca [${rescuedRow.thuThuat}] cho BN ${rescuedRow.tenBN} lúc ${rescuedRow.gioDienRa} đã có trong lịch, không thêm lại!`, 'warning');
                 return;
             }
 
@@ -7012,11 +6989,7 @@ var dataCache = window.dataCache;
             const backendSched = window.currentScheduleData.map(x => scheduleRowToBackendArray(x, targetDate));
             callApi('saveSchedule', [targetDate, backendSched], null, null);
 
-            if (typeof showToast === 'function') {
-                showToast(`⚡ Đã giải cứu ca [${rescuedRow.thuThuat}] cho BN ${rescuedRow.tenBN} (${rescuedRow.gioDienRa}–${rescuedRow.gioKetThuc}, ${rescuedRow.nvChinh})!`, 'success');
-            } else {
-                alert(`⚡ Đã giải cứu thành công ca [${rescuedRow.thuThuat}] cho BN ${rescuedRow.tenBN}!`);
-            }
+            notify(`⚡ Đã giải cứu ca [${rescuedRow.thuThuat}] cho BN ${rescuedRow.tenBN} (${rescuedRow.gioDienRa}–${rescuedRow.gioKetThuc}, ${rescuedRow.nvChinh})!`, 'success');
 
             renderUnscheduledAdvisor();
         }
@@ -7370,7 +7343,7 @@ var dataCache = window.dataCache;
 
         function xemLichSu() {
             const d = document.getElementById('history-date')?.value || '';
-            if (!d) return window.showToast ? window.showToast("Vui lòng chọn ngày!", "error") : alert("Chọn ngày!");
+            if (!d) return notify("Vui lòng chọn ngày!", "error");
             if (typeof window.onAppDateChange === 'function') {
                 window.onAppDateChange(d, 'schedule');
             } else {
@@ -7509,9 +7482,7 @@ var dataCache = window.dataCache;
             taiLichTheoNgay(function () {
                 timBacSiRanh();
             });
-            if (window.showToast) {
-                window.showToast('Đã quay về sử dụng Lịch Hệ Thống!', 'info', 2000);
-            }
+            notify('Đã quay về sử dụng Lịch Hệ Thống!', 'info');
         }
 
         function initUtilsHisUploader() {
@@ -7698,9 +7669,7 @@ var dataCache = window.dataCache;
                         updateUtilsSourceUI();
 
                         if (window.hideGlobalLoading) window.hideGlobalLoading();
-                        if (window.showToast) {
-                            window.showToast(`Đã nạp file HIS "${file.name}" (${parsedSchedule.length} ca)!`, 'success', 3000);
-                        }
+                        notify(`Đã nạp file HIS "${file.name}" (${parsedSchedule.length} ca)!`, 'success');
 
                         timBacSiRanh();
                     } catch (err) {
@@ -10787,13 +10756,13 @@ var dataCache = window.dataCache;
 
                 if (window._historyCache && window._historyCache[selectedDate]) {
                     processHistoryData(window._historyCache[selectedDate]);
-                    if (window.showToast) window.showToast("Đã tải dữ liệu lịch sử từ bộ nhớ", "info", 2000);
+                    notify("Đã tải dữ liệu lịch sử từ bộ nhớ", "info");
                 } else {
                     if (window.showGlobalLoading) window.showGlobalLoading("Đang tải dữ liệu lịch sử...");
                     google.script.run.withSuccessHandler(data => {
                         processHistoryData(data);
                         if (window.hideGlobalLoading) window.hideGlobalLoading();
-                        if (window.showToast) window.showToast("Đã tải xong dữ liệu lịch sử!", "success");
+                        notify("Đã tải xong dữ liệu lịch sử!", "success");
                     }).withFailureHandler(err => {
                         if (window.hideGlobalLoading) window.hideGlobalLoading();
                         console.error("Lỗi tải lịch sử Dashboard: " + err);
@@ -10802,7 +10771,7 @@ var dataCache = window.dataCache;
                         if (statBN) statBN.textContent = "0";
                         if (statStaff) statStaff.textContent = "0";
                         if (statTotalProcsEl) statTotalProcsEl.textContent = "0";
-                        if (window.showToast) window.showToast("Lỗi tải dữ liệu lịch sử: " + err, "error");
+                        notify("Lỗi tải dữ liệu lịch sử: " + err, "error");
                     }).getHistoryFullData(selectedDate);
                 }
             }

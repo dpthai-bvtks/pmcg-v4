@@ -56,6 +56,10 @@ var ScheduleUtils = (function () {
 
   // ============================================================
   // 1. TIỆN ÍCH THỜI GIAN (TIME CONVERSION & OVERLAP)
+  // ⚠️ CHÚ Ý: t2m() và m2t() là chuẩn mực tính toán thời gian dùng chung toàn hệ thống.
+  // Đồng bộ hoàn toàn với logic tính phút/giờ kế thừa từ code.gs (Google Apps Script cũ)
+  // và các bộ giải thuật OR-Tools (solver.py, cp-solver.js, scheduler-engine.js).
+  // Đảm bảo tương thích: Date object, số thập phân ngày của Excel (0..1) và chuỗi 'HH:mm'.
   // ============================================================
   function t2m(thoiGian) {
     if (!thoiGian && thoiGian !== 0) return 0;

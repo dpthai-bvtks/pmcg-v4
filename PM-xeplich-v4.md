@@ -5807,3 +5807,25 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - 20 file JS passed cú pháp (Exit Code 0).
      - Deploy Cloudflare Pages qua `npm run deploy:web --prefix backend`.
      - Git commit và push lên remote `origin/main`.
+
+---
+
+### [v4.1.6-rev6] - 10:20 25/09/2026: Chuẩn Hóa Toàn Diện notify() & Bổ Sung Docstring Đồng Bộ t2m/m2t
+
+- **Yêu cầu & Rà soát chất lượng**:
+  + Thay thế dứt điểm toàn bộ các lệnh gọi kiểm tra 	ypeof window.showToast === 'function' rải rác trong js/app.js bằng hàm trợ giúp tập trung 
+otify().
+  + Bổ sung tài liệu / docstring cảnh báo đồng bộ thuật toán 	2m() & m2t() trong js/schedule-utils.js kế thừa từ Google Apps Script code.gs di sản và các bộ giải thuật OR-Tools (solver.py, cp-solver.js, scheduler-engine.js).
+- **Chi tiết triển khai**:
+  1. **`js/schedule-utils.js`**:
+     - Thêm khối chú thích cảnh báo và tài liệu hóa chi tiết cho 	2m(thoiGian) và m2t(totalMinutes).
+  2. **`js/app.js`**:
+     - Chuyển đổi 12 vị trí gọi showToast / showToastSuccess sang 
+otify(...) (các tính năng: đồng bộ phác đồ đám mây, lưu/xóa phác đồ điều trị, lưu/xóa danh mục thủ thuật, xóa bệnh nhân, đồng bộ kết quả xếp lịch đám mây, giải cứu ca rơi rớt trong Advisor, nạp file Excel HIS, tải lịch sử Dashboard).
+  3. **Đồng bộ phiên bản**:
+     - `sw.js`: Nâng cache name lên `pmcg-v4-cache-4.1.6-rev6`.
+     - `index.html` & `version.json`: Nâng version lên `4.1.6-rev6`, timestamp `10:20 25/09/2026`, chân trang #app-footer-version giữ đúng `Phiên bản: 4.1.6`.
+  4. **Kiểm tra cú pháp & Triển khai**:
+     - 20 file JS passed cú pháp (Exit Code 0).
+     - Deploy Cloudflare Pages qua `npm run deploy:web --prefix backend`.
+     - Git commit và push lên remote `origin/main`.
