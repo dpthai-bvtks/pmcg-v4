@@ -1,6 +1,6 @@
 {
-    "version": "4.1.6-rev3",
+    "version": "4.1.6-rev4",
     "releaseDate": "25/09/2026",
-    "releaseTime": "08:05 25/09/2026",
-    "notes": "Chuẩn hóa thứ tự nạp module (app-resources nạp trước app.js), khử trùng lặp withLock, t2m, m2t, áp dụng toàn diện notify() và safeCall('loadDashboard')."
+    "releaseTime": "09:30 25/09/2026",
+    "notes": "Khắc phục triệt để lỗi đệ quy RangeError Maximum call stack size exceeded tại renderMachinesTable và renderRoomsTable, xóa bỏ hoàn toàn hàm ủy quyền wrapper trùng tên, đảm bảo nạp dữ liệu thông suốt trên mọi tab."
 }

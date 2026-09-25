@@ -5763,3 +5763,26 @@ orm (lo?i b? d?u ti?ng Vi?t) v� c?p nh?t co ch? kh?p tuong d?i (includes) cho 
      - Đã chạy kiểm tra cú pháp toàn bộ 19 tệp JavaScript (`node -c`): Exit Code 0.
      - Deploy lên Cloudflare Pages qua `npm run deploy:web`.
      - Git commit và push lên remote `origin/main`.
+
+---
+
+### [v4.1.6-rev4] - 09:30 25/09/2026: Khắc Phục Triệt Để Lỗi Đệ Quy Stack Size Khiến Các Tab Bị Treo "Đang tải... không có dữ liệu"
+
+- **Yêu cầu của người dùng**:
+  + Sau khi nâng cấp, tất cả các tab (Bệnh nhân, Máy móc, Phòng bệnh, Thủ thuật, Nhân sự...) đều bị treo chữ "Đang tải...".
+  + DevTools console báo lỗi tràn ngăn xếp: `RangeError: Maximum call stack size exceeded at renderMachinesTable (app.js?v=4.1.6-rev3:3570:85)`.
+- **Phân tích nguyên nhân & Giải pháp**:
+  1. **Nguyên nhân cốt lõi**:
+     - Trong `app.js`, các hàm wrapper ủy quyền dạng `function renderMachinesTable() { return window.renderMachinesTable ? window.renderMachinesTable() : undefined; }` nằm ở phạm vi toàn cục.
+     - Khi `app.js` nạp vào trình duyệt, khai báo `function renderMachinesTable` tự động ghi đè lên `window.renderMachinesTable` do `app-resources.js` gán trước đó. Khi đó, `window.renderMachinesTable` trỏ vào chính hàm wrapper trong `app.js`, gọi vòng tròn lặp vô hạn (mutual recursion) dẫn tới lỗi RangeError.
+     - Do lỗi RangeError làm vỡ tiến trình thực thi tại bước `restoreOfflineCache()` và `loadBootstrapData()`, luồng JS bị ngắt quãng khiến toàn bộ các hàm render phía sau (`renderRoomsTable`, `renderProceduresTable`, `renderStaffTable`, `loadScheduleList`, `renderPatientsTable`...) đều không thể chạy, làm tất cả các tab bị kẹt ở trạng thái "Đang tải...".
+     - Đồng thời, Service Worker cache `pmcg-v4-cache-4.1.6-rev3` giữ lại file JS cũ trong bộ nhớ trình duyệt khiến người dùng F5 không nhận được bản sửa lỗi nếu không tăng số revision.
+  2. **Giải pháp xử lý**:
+     - **`js/app.js`**: Xóa bỏ hoàn toàn 2 khối hàm wrapper ủy quyền trung gian của Máy móc (`renderMachinesTable`, `saveMachine`, `editRoomMachine`, `deleteMachine`, `renderDynamicMachineInputs`) và Phòng bệnh (`renderRoomsTable`, `saveRoom`, `editRoom`, `deleteRoom`). Để `window.renderMachinesTable`, `window.renderRoomsTable`... từ `js/modules/app-resources.js` làm nguồn chân lý duy nhất. Mọi cuộc gọi trong `app.js` và trên DOM HTML đều trỏ thẳng trực tiếp vào hàm trong `app-resources.js`, triệt tiêu 100% nguy cơ đệ quy.
+     - **`sw.js`**: Nâng cache name lên `pmcg-v4-cache-4.1.6-rev4` để Service Worker tự động dọn sạch cache cũ trên thiết bị người dùng.
+     - **`index.html`**: Cập nhật toàn bộ cache-buster query string `?v=4.1.6-rev4`, `APP_VERSION = '4.1.6-rev4'`, timestamp `#sys-last-update` thành `⏱ Cập nhật lần cuối: 09:30 25/09/2026`, chân trang `#app-footer-version` giữ nguyên `Phiên bản: 4.1.6` (chuẩn Rule 3).
+     - **`version.json`**: Cập nhật `version: "4.1.6-rev4"`, `releaseTime: "09:30 25/09/2026"`.
+  3. **Kiểm tra cú pháp & Triển khai**:
+     - Đã chạy kiểm tra cú pháp toàn bộ 20 tệp JavaScript (`node -c`): Exit Code 0.
+     - Deploy thành công lên Cloudflare Pages qua `npm run deploy:web --prefix backend`.
+     - Git commit và push lên remote `origin/main`.
