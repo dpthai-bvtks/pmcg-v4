@@ -98,6 +98,7 @@
         }).join('');
 
         if (typeof renderDynamicMachineInputs === 'function') renderDynamicMachineInputs();
+        if (typeof window.filterMachinesTable === 'function') window.filterMachinesTable();
 
         if (typeof window.initTableDragAndDrop === 'function') {
             window.initTableDragAndDrop('machines-list', cache.machine, () => {

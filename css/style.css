@@ -3062,7 +3062,8 @@
 
 
 
-        .patients-search-bar {
+        .patients-search-bar,
+        .table-search-bar {
 
             position: -webkit-sticky !important;
 
@@ -7293,6 +7294,7 @@ transition: box-shadow 0.3s;
 
 /* 3. Thanh tìm kiếm (Search Bars) trên các tab */
 [data-theme="dark"] .patients-search-bar,
+[data-theme="dark"] .table-search-bar,
 [data-theme="dark"] .search-bar,
 [data-theme="dark"] div[class*="search-bar"],
 [data-theme="dark"] div[id*="search-bar"],
@@ -7304,6 +7306,7 @@ transition: box-shadow 0.3s;
 }
 
 [data-theme="dark"] .patients-search-bar label,
+[data-theme="dark"] .table-search-bar label,
 [data-theme="dark"] .search-bar label,
 [data-theme="dark"] div[style*="justify-content: space-between"] label,
 [data-theme="dark"] .schedule-compact-header label {
@@ -7391,6 +7394,10 @@ transition: box-shadow 0.3s;
 [data-theme="dark"] textarea,
 [data-theme="dark"] .time-input,
 [data-theme="dark"] #pat-search-input,
+[data-theme="dark"] #machine-search-input,
+[data-theme="dark"] #proc-search-input,
+[data-theme="dark"] #staff-search-input,
+[data-theme="dark"] #room-search-input,
 [data-theme="dark"] #schedule-search-input,
 [data-theme="dark"] #sat-search-bn,
 [data-theme="dark"] #proto-search-proc-input,

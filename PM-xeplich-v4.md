@@ -6000,3 +6000,49 @@ otify(...) (các tính năng: đồng bộ phác đồ đám mây, lưu/xóa ph�
      - Đạt `node -c` toàn bộ các file JS lõi và module.
      - Deploy Cloudflare Pages thành công.
      - Git commit & push `origin main`.
+
+---
+
+### [v4.1.7-rev3] - 14:05 28/09/2026: Nâng cấp bộ lọc tìm kiếm thông minh chống khớp chéo cột & Bổ sung thanh tìm kiếm cho 4 tab Máy móc, Thủ thuật, Nhân sự, Phòng
+
+- **Yêu cầu & Mục tiêu**:
+  1. Xử lý triệt để lỗi tìm kiếm: Khi gõ cụm từ như "lê hiền", phần mềm trước đây gộp toàn bộ nội dung các cột trong hàng lại để kiểm tra từ khóa, dẫn tới việc tìm thấy BN "Lê Văn Căn" do có phòng mang tên "Hiền Phan" (từ "lê" ở cột Tên BN và từ "hiền" ở cột Phòng).
+  2. Nâng cấp thuật toán tìm kiếm thông minh: Tất cả các từ trong một cụm tìm kiếm bắt buộc phải cùng nằm trong *một cột duy nhất* (column-level matching). Hỗ trợ tìm kiếm nâng cao đa tiêu chí qua nhiều cột khi người dùng phân tách các cụm bằng dấu phẩy (vd: "Lê, Hiền").
+  3. Bổ sung các hộp tìm kiếm có chức năng tương tự cho 4 tab quản lý tài nguyên: Tab Máy móc (`#tab-machines`), Tab Thủ thuật (`#tab-procedures`), Tab Nhân sự (`#tab-staff`), Tab Phòng (`#tab-rooms`).
+  4. Hỗ trợ tiếng Việt có dấu/không dấu, chống xung đột bộ gõ tiếng Việt Unikey (debounce 100ms), tự động đánh lại STT hiển thị nhưng vẫn bảo lưu nút kéo thả sắp xếp thứ tự `☰`, tích hợp Dark Mode hoàn hảo.
+
+- **Các file đã sửa đổi & Chi tiết kỹ thuật**:
+  1. **`index.html`**:
+     - Bổ sung thanh tìm kiếm `.table-search-bar` phía trên bảng dữ liệu của 4 tab:
+       * Tab Máy móc: `#machine-search-input` (tìm loại máy, mã máy, trạng thái).
+       * Tab Thủ thuật: `#proc-search-input` (tìm tên thủ thuật, viết tắt).
+       * Tab Nhân sự: `#staff-search-input` (tìm họ tên, tên HIS, kỹ năng, ca làm).
+       * Tab Phòng: `#room-search-input` (tìm tên phòng, bác sĩ, ĐD/KTV, danh sách máy).
+     - Chuyển toàn bộ sự kiện tìm kiếm sang `oninput` để bắt sự kiện tức thời khi gõ phím Unikey, dán (paste) hoặc xóa chữ.
+     - Cập nhật 33 chuỗi cache-busting sang `?v=4.1.7-rev3`, `APP_VERSION = '4.1.7-rev3'`.
+     - Chân trang `#app-footer-version` giữ chuẩn: `Phiên bản: 4.1.7`.
+     - Cập nhật dấu thời gian `#sys-last-update`: `⏱ Cập nhật lần cuối: 14:05 28/09/2026`.
+  2. **`css/style.css`**:
+     - Thiết lập class `.table-search-bar` sticky ở đầu bảng, nền sáng thanh lịch, viền tinh tế đồng bộ với `.patients-search-bar`.
+     - Bổ sung cấu hình Dark Mode cho `.table-search-bar` và 4 ô input tìm kiếm mới (`#machine-search-input`, `#proc-search-input`, `#staff-search-input`, `#room-search-input`).
+  3. **`js/app.js`**:
+     - Xây dựng hàm tìm kiếm đa năng `filterTableGeneric(tableId, inputId, options)`:
+       * Thuật toán kiểm tra từng cột: `inspectedTds.some(td => tokens.every(tok => colTarget.includes(tok)))` ngăn chặn 100% việc khớp chéo giữa các cột khác nhau.
+       * Hỗ trợ tìm kiếm kết hợp nhiều tiêu chí bằng dấu phẩy: `subQueries = clean.split(',')...`.
+       * Debounce 100ms mượt mà khi gõ với Unikey tiếng Việt.
+       * Tự động renumber STT hiển thị trên các hàng thỏa mãn, đồng thời bảo tồn phần tử kéo thả `.stt-order-cell`.
+     - Định nghĩa và gắn toàn cục các hàm lọc: `filterPatientTable`, `filterMachinesTable`, `filterProceduresTable` (kèm alias `filterProcTable`), `filterStaffTable`, `filterRoomsTable` (kèm alias `filterRoomTable`).
+     - Tích hợp gọi `filterStaffTable()` bên trong hàm kết xuất `renderStaffTable()`.
+     - Cập nhật danh sách xóa input trong `clearAllDomTables()`.
+  4. **`js/modules/app-resources.js`**:
+     - Tích hợp gọi `window.filterMachinesTable()` trong `renderMachinesTable()`.
+     - Đảm bảo `window.filterRoomTable()` gọi chuẩn xác hàm lọc phòng khi `renderRoomsTable()` hoàn tất.
+  5. **`sw.js`**:
+     - Cập nhật tên bộ nhớ đệm: `CACHE_NAME = 'pmcg-v4-cache-4.1.7-rev3'`.
+  6. **`version.json`**:
+     - Cập nhật phiên bản `4.1.7-rev3` cùng ghi chú phát hành chi tiết.
+
+- **Kết quả kiểm thử & Triển khai**:
+  - Kiểm thử cú pháp Node.js (`node -c`): Toàn bộ file JS trong dự án vượt qua kiểm tra, không có lỗi cú pháp.
+  - Kiểm thử logic tìm kiếm độc lập: Đạt 100% các ca kiểm thử: "lê hiền" chỉ khớp BN có cả "lê" và "hiền" trong tên, không khớp BN Lê Văn Căn ở phòng Hiền Phan; "le hien" không dấu hoạt động chuẩn xác; tìm kiếm máy móc, nhân sự, thủ thuật, phòng đều lọc chính xác tức thì.
+  - Triển khai Cloudflare Pages và đẩy Git commit lên `origin main` an toàn.

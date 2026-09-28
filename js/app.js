@@ -935,7 +935,7 @@ window.showGlobalLoading = function (text) {
             const elTotal = document.getElementById('statTotalProcs'); if (elTotal) elTotal.textContent = statVal;
 
             if (!showLoading) {
-                ['pat-name', 'nam-sinh', 'pat-search-input', 'schedule-search-input', 'sat-search-bn', 'staff-name', 'room-name', 'proc-name'].forEach(id => {
+                ['pat-name', 'nam-sinh', 'pat-search-input', 'machine-search-input', 'proc-search-input', 'staff-search-input', 'room-search-input', 'schedule-search-input', 'sat-search-bn', 'staff-name', 'room-name', 'proc-name'].forEach(id => {
                     const inp = document.getElementById(id);
                     if (inp) inp.value = '';
                 });
@@ -4483,6 +4483,8 @@ var dataCache = window.dataCache;
                 try { renderBusyStaff(); } catch(e) { console.warn("[renderBusyStaff error]:", e); }
             }
 
+            if (typeof filterStaffTable === 'function') filterStaffTable();
+
             initTableDragAndDrop('staff-list', staffList, () => {
                 renderStaffTable();
                 saveReorderedData('staff', staffList);
@@ -5133,38 +5135,120 @@ var dataCache = window.dataCache;
             if (found && !document.getElementById('pat-year').value) document.getElementById('pat-year').value = found.namSinh;
 });
 
-        // Tìm kiếm bảng bệnh nhân (debounce chống Unikey)
+        // ============================================================
+        // 🔍 TÌM KIẾM BẢNG DỮ LIỆU THÔNG MINH (CHỐNG KHỚP CHÉO CỘT & HỖ TRỢ UNIKEY)
+        // ============================================================
+        const tableSearchTimeouts = {};
 
-        let patSearchTimeout;
-
-        function filterPatientTable() {
-            clearTimeout(patSearchTimeout);
-            patSearchTimeout = setTimeout(function () {
-                const rawFilter = document.getElementById("pat-search-input")?.value || '';
+        function filterTableGeneric(tableId, inputId, options = {}) {
+            clearTimeout(tableSearchTimeouts[tableId]);
+            tableSearchTimeouts[tableId] = setTimeout(function () {
+                const rawFilter = document.getElementById(inputId)?.value || '';
                 const clean = rawFilter.trim();
-                const hasTone = hasVietnameseDiacritics(clean);
-                const qTarget = hasTone ? clean.toLowerCase() : removeVietnameseTones(clean);
-                const tokens = qTarget.split(/\s+/).filter(Boolean);
-
-                const table = document.getElementById("patients-table");
+                const table = document.getElementById(tableId);
                 if (!table) return;
 
-                let sttCounter = 1;
-                Array.from(table.getElementsByTagName("tr")).slice(1).forEach(tr => {
-                    const tds = tr.getElementsByTagName("td");
-                    let show = false;
-                    if (!tokens.length) {
-                        show = true;
+                const tbody = table.querySelector("tbody");
+                const rows = tbody ? Array.from(tbody.querySelectorAll("tr")) : Array.from(table.querySelectorAll("tr")).slice(1);
+                if (!rows.length) return;
+
+                function updateRowStt(td, num) {
+                    if (!td) return;
+                    const orderNumSpan = td.querySelector(".stt-order-cell span:last-child");
+                    if (orderNumSpan) {
+                        orderNumSpan.textContent = num;
                     } else {
-                        const rowText = Array.from(tds).slice(1, tds.length - 1).map(td => td.textContent || td.innerText || '').join(' ');
-                        const targetText = hasTone ? rowText.toLowerCase() : removeVietnameseTones(rowText);
-                        show = tokens.every(tok => targetText.includes(tok));
+                        td.innerText = num;
                     }
-                    tr.style.display = show ? "" : "none";
-                    if (show && tds[0]) tds[0].innerText = sttCounter++;
+                }
+
+                if (!clean) {
+                    let sttCounter = 1;
+                    rows.forEach(tr => {
+                        const isPlaceholder = tr.querySelector("td[colspan]");
+                        if (!isPlaceholder) {
+                            tr.style.display = "";
+                            const tds = tr.getElementsByTagName("td");
+                            if (tds.length > 0 && options.renumberSTT !== false) {
+                                updateRowStt(tds[0], sttCounter++);
+                            }
+                        }
+                    });
+                    return;
+                }
+
+                // Hỗ trợ tìm kiếm kết hợp nhiều tiêu chí phân tách bằng dấu phẩy (vd: "Lê, Phòng 1")
+                const subQueries = clean.split(',').map(s => s.trim()).filter(Boolean);
+                let sttCounter = 1;
+
+                rows.forEach(tr => {
+                    const isPlaceholder = tr.querySelector("td[colspan]");
+                    if (isPlaceholder) {
+                        tr.style.display = "none";
+                        return;
+                    }
+
+                    const tds = Array.from(tr.getElementsByTagName("td"));
+                    if (tds.length === 0) return;
+
+                    // Chỉ kiểm tra các cột nội dung, bỏ qua STT (cột 0) và Thao tác (cột cuối)
+                    const startCol = options.startCol !== undefined ? options.startCol : 1;
+                    const endCol = options.endCol !== undefined ? options.endCol : Math.max(1, tds.length - 1);
+                    const inspectedTds = tds.slice(startCol, endCol);
+
+                    // Hàng được coi là khớp nếu TẤT CẢ các cụm tiêu chí (subQueries) đều được thỏa mãn
+                    const rowMatches = subQueries.every(subQ => {
+                        const subHasTone = hasVietnameseDiacritics(subQ);
+                        const subTarget = subHasTone ? subQ.toLowerCase() : removeVietnameseTones(subQ);
+                        const tokens = subTarget.split(/\s+/).filter(Boolean);
+
+                        if (!tokens.length) return true;
+
+                        // Chống khớp chéo cột: TẤT CẢ các từ trong cụm tiêu chí phải cùng nằm trong MỘT cột duy nhất
+                        // hoặc toàn bộ chuỗi phụ xuất hiện trọn vẹn trong một cột
+                        return inspectedTds.some(td => {
+                            const text = td.textContent || td.innerText || '';
+                            const colTarget = subHasTone ? text.toLowerCase() : removeVietnameseTones(text);
+                            if (colTarget.includes(subTarget)) return true;
+                            return tokens.every(tok => colTarget.includes(tok));
+                        });
+                    });
+
+                    tr.style.display = rowMatches ? "" : "none";
+                    if (rowMatches && options.renumberSTT !== false) {
+                        updateRowStt(tds[0], sttCounter++);
+                    }
                 });
             }, 100);
         }
+        window.filterTableGeneric = filterTableGeneric;
+
+        function filterPatientTable() {
+            filterTableGeneric("patients-table", "pat-search-input");
+        }
+        window.filterPatientTable = filterPatientTable;
+
+        function filterMachinesTable() {
+            filterTableGeneric("machines-table", "machine-search-input");
+        }
+        window.filterMachinesTable = filterMachinesTable;
+
+        function filterProceduresTable() {
+            filterTableGeneric("procedures-table", "proc-search-input");
+        }
+        window.filterProceduresTable = filterProceduresTable;
+        window.filterProcTable = filterProceduresTable;
+
+        function filterStaffTable() {
+            filterTableGeneric("staff-table", "staff-search-input");
+        }
+        window.filterStaffTable = filterStaffTable;
+
+        function filterRoomsTable() {
+            filterTableGeneric("rooms-table", "room-search-input");
+        }
+        window.filterRoomsTable = filterRoomsTable;
+        window.filterRoomTable = filterRoomsTable;
 
         // ============================================================
 

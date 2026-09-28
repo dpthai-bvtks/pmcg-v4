@@ -1,6 +1,6 @@
 {
-    "version": "4.1.7-rev2",
+    "version": "4.1.7-rev3",
     "releaseDate": "28/09/2026",
-    "releaseTime": "09:35 28/09/2026",
-    "notes": "Nâng cấp cơ chế đồng bộ thời gian thực đa trình duyệt/thiết bị: Tăng tốc độ polling lên 8s, kiểm tra an toàn document.readyState đảm bảo sync ngầm luôn chạy trên mọi máy, sửa lỗi nuốt version khi form bận giúp tự động cập nhật ngay khi form rảnh, thu hẹp phạm vi kiểm tra form không chặn ô tìm kiếm bệnh nhân, bổ sung trigger đồng bộ tức thì khi chuyển tab Bệnh nhân."
+    "releaseTime": "14:05 28/09/2026",
+    "notes": "Nâng cấp bộ lọc tìm kiếm thông minh chống khớp chéo cột (các từ trong cụm tìm kiếm phải cùng thuộc một cột, hỗ trợ tìm đa tiêu chí phân tách bằng dấu phẩy) cho Bệnh nhân; bổ sung thanh tìm kiếm nhanh đồng bộ cho 4 tab: Máy móc, Thủ thuật, Nhân sự, Phòng với giao diện hiện đại, hỗ trợ tiếng Việt không dấu, gõ Unikey và Dark Mode hoàn hảo."
 }
