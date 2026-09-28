@@ -1,6 +1,6 @@
 {
-    "version": "4.1.7-rev4",
+    "version": "4.1.7-rev5",
     "releaseDate": "28/09/2026",
-    "releaseTime": "14:50 28/09/2026",
-    "notes": "Tự động cập nhật tên phòng cho bệnh nhân hiện tại (bảng benh_nhan) và lịch trình hôm nay khi đổi tên phòng ở tab Phòng; bảo toàn tuyệt đối 100% dữ liệu lịch sử các ngày trước đã chốt sổ; đồng bộ tức thì đa tab và đa thiết bị."
+    "releaseTime": "16:45 28/09/2026",
+    "notes": "Tối ưu hóa kiểm tra lỗi: phân biệt chính xác bệnh nhân trùng tên theo Năm sinh / Mã BN (không bị báo trùng lịch ảo khi 2 bệnh nhân trùng tên xếp thủ thuật cùng giờ), hiển thị năm sinh kèm tên bệnh nhân."
 }

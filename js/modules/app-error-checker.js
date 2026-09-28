@@ -178,6 +178,62 @@
                 const giuongRaw = String(row.giuong || row['GIƯỜNG'] || row['giuong'] || '').trim();
                 const mayRaw = String(row.may || row['MÁY'] || row['may'] || '').trim();
 
+                // 🎯 Phân biệt bệnh nhân trùng tên bằng Năm sinh / Mã BN
+                let patientDob = String(row.namSinh || row.dob || row.ns || row.NAMSINH || row['NĂM SINH'] || row['nam_sinh'] || '').trim();
+                if (!patientDob) {
+                    for (const colKey of ['D', 'H', 'namSinh', 'NAMSINH']) {
+                        if (row[colKey]) {
+                            const dVal = String(row[colKey]).trim();
+                            const yMatch = dVal.match(/\b(19\d{2}|20\d{2})\b/);
+                            if (yMatch) {
+                                patientDob = yMatch[1];
+                                break;
+                            } else if (/^\d{1,3}$/.test(dVal)) {
+                                patientDob = dVal;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Tra cứu bổ sung từ CSDL bệnh nhân (dataCache.pat) nếu file/hàng chưa có năm sinh
+                if (!patientDob && patientName && patientName !== 'Không rõ' && typeof dataCache !== 'undefined' && Array.isArray(dataCache.pat)) {
+                    const matchingPats = dataCache.pat.filter(p => {
+                        const pTen = (p.ten || p.name || '').trim().toLowerCase();
+                        return pTen === patientName.toLowerCase();
+                    });
+                    if (matchingPats.length === 1) {
+                        patientDob = String(matchingPats[0].namSinh || matchingPats[0].age || '').trim();
+                    } else if (matchingPats.length > 1) {
+                        const matchByRoom = matchingPats.find(p => phongRaw && String(p.phong || '').trim().toLowerCase() === phongRaw.toLowerCase());
+                        if (matchByRoom) {
+                            patientDob = String(matchByRoom.namSinh || matchByRoom.age || '').trim();
+                        } else {
+                            const matchByProc = matchingPats.find(p => {
+                                const tt = String(p.thuThuat || p.thu_thuat || '').toLowerCase();
+                                return procName && tt.includes(procName.toLowerCase());
+                            });
+                            if (matchByProc) {
+                                patientDob = String(matchByProc.namSinh || matchByProc.age || '').trim();
+                            }
+                        }
+                    }
+                }
+
+                const patientCode = String(row.pId || row.id || row.maBN || row['MÃ BN'] || row['mabn'] || (row['B'] && /^\d+$/.test(String(row['B']).trim()) ? row['B'] : '') || '').trim();
+
+                let patientKey = patientName.toUpperCase();
+                if (patientDob) {
+                    patientKey += `_${patientDob}`;
+                } else if (patientCode) {
+                    patientKey += `_ID_${patientCode}`;
+                }
+
+                let patientDisplay = patientName;
+                if (patientDob) {
+                    patientDisplay += ` (${patientDob})`;
+                }
+
                 // 1. Thống kê thủ thuật cho KTV chính (vẫn đếm để ghi nhận số liệu ngày 18/09/2026)
                 if (techMainNorm && counts[techMainNorm]) {
                     const loaiVal = String(row['AN'] || (procInfo ? (procInfo.phanLoai || procInfo.loai || procInfo.phan_loai || '') : '')).normalize('NFC').toLowerCase().trim();
@@ -212,9 +268,6 @@
                 const isDienCham = procTenLower.includes('điện châm') || procTenLower === 'đc' || procTenLower === 'dctb';
                 const isHaoCham = procTenLower.includes('hào châm') || procTenLower === 'hc';
                 const isThuyCham = procTenLower.includes('thủy châm') || procTenLower === 'tc';
-                // Khóa giờ kết thúc đối với TTV chính:
-                // Điện châm, Hào châm (kể cả có Điều dưỡng phụ) và thủ thuật PHCN có rút máy -> TTV chính bị khóa giờ kết thúc ca.
-                // Riêng Thủy châm: Áp dụng khóa giờ kết thúc của TTV chính từ ngày 25/09/2026 trở đi (trước 25/09/2026 không khóa để không báo lỗi quá khứ).
                 const isFrom25Sep = isDateFrom25Sep2026(start, row);
                 const applyThuyChamTeardown = isThuyCham && isFrom25Sep;
                 const mainHasTeardown = !isCont && (isDienCham || isHaoCham || applyThuyChamTeardown || canRutMay);
@@ -254,6 +307,9 @@
                 const itemBase = {
                     raw: row,
                     patientName: patientName,
+                    patientDob: patientDob,
+                    patientDisplay: patientDisplay,
+                    patientKey: patientKey,
                     procName: procName,
                     procInfo: procInfo,
                     procMethod: String(row['AG'] || ''),
@@ -277,44 +333,44 @@
                 if (!isDate18) {
                     const timeAStr = `${formatDate(start)} -> ${formatDate(end)}`;
                     if (techMainRaw && !validStaffNames.includes(techMainNorm)) {
-                        addOtherRow(otherTbody, sttOther++, techMainRaw, `${patientName}<br/>${procName}`, timeAStr, "Sai tên NV Chính (Không có trong CSDL)");
+                        addOtherRow(otherTbody, sttOther++, techMainRaw, `${patientDisplay}<br/>${procName}`, timeAStr, "Sai tên NV Chính (Không có trong CSDL)");
                     }
                     if (techPhuRaw && !validStaffNames.includes(techPhuNorm)) {
-                        addOtherRow(otherTbody, sttOther++, techPhuRaw, `${patientName}<br/>${procName}`, timeAStr, "Sai tên NV Phụ (Không có trong CSDL)");
+                        addOtherRow(otherTbody, sttOther++, techPhuRaw, `${patientDisplay}<br/>${procName}`, timeAStr, "Sai tên NV Phụ (Không có trong CSDL)");
                     }
 
                     const status = String(row['AF'] || '').trim().toLowerCase();
                     if (status && status !== "chủ động" && status !== "nan") {
-                        addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Sai Tình hình PTTT: '${row['AF']}' (Phải là Chủ động)`);
+                        addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientDisplay}<br/>${procName}`, timeAStr, `Sai Tình hình PTTT: '${row['AF']}' (Phải là Chủ động)`);
                     }
 
                     const anes = String(row['AS'] || '').trim().toLowerCase();
                     if (anes && anes !== "khác" && anes !== "nan") {
-                        addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Sai Vô cảm: '${row['AS']}' (Bắt buộc Khác)`);
+                        addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientDisplay}<br/>${procName}`, timeAStr, `Sai Vô cảm: '${row['AS']}' (Bắt buộc Khác)`);
                     }
 
                     if (row['AG'] && normalizeTextJS(row['AE']) !== normalizeTextJS(row['AG'])) {
-                        addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Sai PP tiến hành: '${row['AG']}' (Phải giống tên thủ thuật)`);
+                        addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientDisplay}<br/>${procName}`, timeAStr, `Sai PP tiến hành: '${row['AG']}' (Phải giống tên thủ thuật)`);
                     }
 
                     if (procInfo && techMainNorm && !checkPermissionJS(techMainNorm, procInfo)) {
-                        addOtherRow(otherTbody, sttOther++, techMainNorm, `${patientName}<br/>${procInfo.ten}`, timeAStr, "Làm thủ thuật ngoài phạm vi phân quyền YHCT/PHCN");
+                        addOtherRow(otherTbody, sttOther++, techMainNorm, `${patientDisplay}<br/>${procInfo.ten}`, timeAStr, "Làm thủ thuật ngoài phạm vi phân quyền YHCT/PHCN");
                     }
 
                     // 1. Kiểm tra thời gian thủ thuật của ca so với định mức TG TT (MIN) và TG TT (MAX)
                     if (procInfo) {
                         if (durMinutes < tgTtMin) {
-                            addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thời gian thủ thuật ngắn hơn quy định (${durMinutes} phút < ${tgTtMin} phút)`);
+                            addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientDisplay}<br/>${procName}`, timeAStr, `Thời gian thủ thuật ngắn hơn quy định (${durMinutes} phút < ${tgTtMin} phút)`);
                         } else if (durMinutes > tgTtMax) {
-                            addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thời gian thủ thuật vượt quá quy định (${durMinutes} phút > ${tgTtMax} phút)`);
+                            addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientDisplay}<br/>${procName}`, timeAStr, `Thời gian thủ thuật vượt quá quy định (${durMinutes} phút > ${tgTtMax} phút)`);
                         }
 
                         // 2. Nếu là thủ thuật làm liên tục: thời gian thao tác liên tục của KTV phải tuân thủ TG TH
                         if (isCont) {
                             if (durMinutes < tgThMin) {
-                                addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thời gian thao tác liên tục ngắn hơn định mức (${durMinutes} phút < ${tgThMin} phút)`);
+                                addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientDisplay}<br/>${procName}`, timeAStr, `Thời gian thao tác liên tục ngắn hơn định mức (${durMinutes} phút < ${tgThMin} phút)`);
                             } else if (durMinutes > tgThMax) {
-                                addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thời gian thao tác liên tục vượt quá định mức (${durMinutes} phút > ${tgThMax} phút)`);
+                                addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientDisplay}<br/>${procName}`, timeAStr, `Thời gian thao tác liên tục vượt quá định mức (${durMinutes} phút > ${tgThMax} phút)`);
                             }
                         }
 
@@ -323,7 +379,7 @@
                         // Chỉ file lịch trình do phần mềm xếp mới có trường người phụ.
                         // Bật lại kiểm tra này khi cần bằng cách bỏ comment dưới đây.
                         // if (canNguoiPhu && (!techPhuRaw || techPhuRaw === '--' || techPhuRaw === 'Không' || techPhuRaw === 'nan')) {
-                        //     addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientName}<br/>${procName}`, timeAStr, `Thủ thuật yêu cầu có Người phụ nhưng chưa phân công`);
+                        //     addOtherRow(otherTbody, sttOther++, techMainNorm || techMainRaw, `${patientDisplay}<br/>${procName}`, timeAStr, `Thủ thuật yêu cầu có Người phụ nhưng chưa phân công`);
                         // }
                     }
                 }
@@ -351,10 +407,11 @@
                 }
                 */
 
-                // Gom nhóm Bệnh Nhân (MỤC 2)
+                // Gom nhóm Bệnh Nhân (MỤC 2) - Phân biệt theo patientKey (Tên + Năm sinh / Mã BN)
                 if (patientName && patientName !== 'Không rõ') {
-                    if (!groupedPatients[patientName]) groupedPatients[patientName] = [];
-                    groupedPatients[patientName].push({
+                    const patGroupKey = patientKey || patientName;
+                    if (!groupedPatients[patGroupKey]) groupedPatients[patGroupKey] = [];
+                    groupedPatients[patGroupKey].push({
                         ...itemBase,
                         techMainNorm: techMainNorm,
                         techPhuNorm: techPhuNorm
@@ -438,7 +495,7 @@
                                     break;
                                 }
                                 // 3. Thiếu khoảng đệm 1 phút chuyển giường giữa 2 bệnh nhân khác nhau (MỤC 1)
-                                else if (A.patientName !== B.patientName && second.start < first.end + GAP_MS) {
+                                else if (A.patientKey !== B.patientKey && second.start < first.end + GAP_MS) {
                                     conflictFound = {
                                         type: 'GAP',
                                         reason: `Thiếu khoảng đệm 1p chuyển giường giữa ${first.name} (kết thúc ${formatDate(new Date(first.end))}) và ${second.name} (bắt đầu ${formatDate(new Date(second.start))})`
@@ -459,8 +516,8 @@
 
                             const timeAStr = `${formatDate(A.start)} -> ${formatDate(A.end)}`;
                             const timeBStr = `${formatDate(B.start)} -> ${formatDate(B.end)}`;
-                            const ca1Info = `<b>${A.patientName}</b><br/>${A.procName}<br/><span style="color:#2c3e50;">⏱ ${timeAStr}</span>`;
-                            const ca2Info = `<b>${B.patientName}</b><br/>${B.procName}<br/><span style="color:#2c3e50;">⏱ ${timeBStr}</span>`;
+                            const ca1Info = `<b>${A.patientDisplay || A.patientName}</b><br/>${A.procName}<br/><span style="color:#2c3e50;">⏱ ${timeAStr}</span>`;
+                            const ca2Info = `<b>${B.patientDisplay || B.patientName}</b><br/>${B.procName}<br/><span style="color:#2c3e50;">⏱ ${timeBStr}</span>`;
                             const techDisplay = (A.role === 'Phụ' || B.role === 'Phụ') ? `${tech} <small style="color:#e67e22;">(${A.role === B.role ? 'Hỗ trợ phụ' : 'Chính & Phụ'})</small>` : tech;
                             
                             addTimeRow(timeTbody, sttTime++, techDisplay, ca1Info, ca2Info, conflictFound.reason + roleTag);
@@ -472,7 +529,7 @@
             // ============================================================
             // 🚨 2. QUÉT LỖI TRÙNG BỆNH NHÂN (1 BN LÀM 2 THỦ THUẬT CÙNG LÚC)
             // ============================================================
-            for (const [pName, pRows] of Object.entries(groupedPatients)) {
+            for (const [pKey, pRows] of Object.entries(groupedPatients)) {
                 pRows.sort((a, b) => a.start.getTime() - b.start.getTime());
                 const m = pRows.length;
 
@@ -491,7 +548,8 @@
                         const timeP2Str = `${formatDate(P2.start)} -> ${formatDate(P2.end)}`;
                         const p1Info = `<b>${P1.procName}</b><br/><span style="color:#2c3e50;">⏱ ${timeP1Str}</span><br/><small>KTV: ${P1.techMainNorm || 'Chưa rõ'}${P1.techPhuNorm ? ` | Phụ: ${P1.techPhuNorm}` : ''}</small>`;
                         const p2Info = `<b>${P2.procName}</b><br/><span style="color:#2c3e50;">⏱ ${timeP2Str}</span><br/><small>KTV: ${P2.techMainNorm || 'Chưa rõ'}${P2.techPhuNorm ? ` | Phụ: ${P2.techPhuNorm}` : ''}</small>`;
-                        const bnTag = `<span style="color:#2980b9; font-weight:bold;">👤 ${pName}</span><br/><small style="color:#7f8c8d;">(Trùng BN)</small>`;
+                        const pDisplayName = P1.patientDisplay || P1.patientName || pKey;
+                        const bnTag = `<span style="color:#2980b9; font-weight:bold;">👤 ${pDisplayName}</span><br/><small style="color:#7f8c8d;">(Trùng BN)</small>`;
                         
                         addTimeRow(timeTbody, sttTime++, bnTag, p1Info, p2Info, `Bệnh nhân bị xếp 2 thủ thuật cùng lúc (${formatDate(P2.start)} đè lên ca trước kết thúc lúc ${formatDate(P1.end)})`);
                     }
@@ -518,8 +576,8 @@
                         // Trùng giường: G2 bắt đầu trước khi G1 kết thúc!
                         const timeG1Str = `${formatDate(G1.start)} -> ${formatDate(G1.end)}`;
                         const timeG2Str = `${formatDate(G2.start)} -> ${formatDate(G2.end)}`;
-                        const g1Info = `<b>${G1.patientName}</b><br/>${G1.procName}<br/><span style="color:#2c3e50;">⏱ ${timeG1Str}</span><br/><small>KTV: ${G1.techMainNorm || 'Chưa rõ'}</small>`;
-                        const g2Info = `<b>${G2.patientName}</b><br/>${G2.procName}<br/><span style="color:#2c3e50;">⏱ ${timeG2Str}</span><br/><small>KTV: ${G2.techMainNorm || 'Chưa rõ'}</small>`;
+                        const g1Info = `<b>${G1.patientDisplay || G1.patientName}</b><br/>${G1.procName}<br/><span style="color:#2c3e50;">⏱ ${timeG1Str}</span><br/><small>KTV: ${G1.techMainNorm || 'Chưa rõ'}</small>`;
+                        const g2Info = `<b>${G2.patientDisplay || G2.patientName}</b><br/>${G2.procName}<br/><span style="color:#2c3e50;">⏱ ${timeG2Str}</span><br/><small>KTV: ${G2.techMainNorm || 'Chưa rõ'}</small>`;
                         const bedTag = `<span style="color:#8e44ad; font-weight:bold;">🛏️ ${bedKey}</span><br/><small style="color:#7f8c8d;">(Trùng Giường)</small>`;
 
                         addTimeRow(timeTbody, sttTime++, bedTag, g1Info, g2Info, `2 ca nằm trùng giường bệnh (${formatDate(G2.start)} đè lên ca trước kết thúc lúc ${formatDate(G1.end)})`);
@@ -547,8 +605,8 @@
                         // Trùng máy: M2 bắt đầu trước khi M1 kết thúc!
                         const timeM1Str = `${formatDate(M1.start)} -> ${formatDate(M1.end)}`;
                         const timeM2Str = `${formatDate(M2.start)} -> ${formatDate(M2.end)}`;
-                        const m1Info = `<b>${M1.patientName}</b><br/>${M1.procName}<br/><span style="color:#2c3e50;">⏱ ${timeM1Str}</span><br/><small>KTV: ${M1.techMainNorm || 'Chưa rõ'}</small>`;
-                        const m2Info = `<b>${M2.patientName}</b><br/>${M2.procName}<br/><span style="color:#2c3e50;">⏱ ${timeM2Str}</span><br/><small>KTV: ${M2.techMainNorm || 'Chưa rõ'}</small>`;
+                        const m1Info = `<b>${M1.patientDisplay || M1.patientName}</b><br/>${M1.procName}<br/><span style="color:#2c3e50;">⏱ ${timeM1Str}</span><br/><small>KTV: ${M1.techMainNorm || 'Chưa rõ'}</small>`;
+                        const m2Info = `<b>${M2.patientDisplay || M2.patientName}</b><br/>${M2.procName}<br/><span style="color:#2c3e50;">⏱ ${timeM2Str}</span><br/><small>KTV: ${M2.techMainNorm || 'Chưa rõ'}</small>`;
                         const machineTag = `<span style="color:#d35400; font-weight:bold;">⚡ ${mName}</span><br/><small style="color:#7f8c8d;">(Trùng Máy)</small>`;
 
                         addTimeRow(timeTbody, sttTime++, machineTag, m1Info, m2Info, `2 ca sử dụng cùng 1 máy móc (${formatDate(M2.start)} đè lên ca trước kết thúc lúc ${formatDate(M1.end)})`);
@@ -643,10 +701,16 @@
                         const pName = (r.tenBN || r.hoTen || r['HỌ TÊN'] || '').replace(/\s*\((?:✔ RV|❌ Rớt|RV|Rớt)\)/gi, '').trim();
                         const proc = r.thuThuat || r.dichVu || r['DỊCH VỤ'] || '';
                         const procInfo = mapProcedureJS(proc);
+                        const pDob = String(r.namSinh || r.NAMSINH || r.dob || r.ns || r['NĂM SINH'] || r['nam_sinh'] || '').trim();
+                        const pId = String(r.pId || r.id || r.maBN || r['MÃ BN'] || r.mabn || '').trim();
                         return {
                             'AT': r.nvChinh || r['NV CHÍNH'] || '',
                             'AU': r.nvPhu || r['NV PHỤ'] || '',
                             'C': pName,
+                            'D': pDob,
+                            'namSinh': pDob,
+                            'dob': pDob,
+                            'pId': pId,
                             'AE': proc,
                             'AG': proc,
                             'AF': 'Chủ động',
@@ -727,6 +791,8 @@
                                 const colIdx = {
                                     ngay: headerRow.findIndex(h => h.includes('ngay')),
                                     ten: headerRow.findIndex(h => h.includes('ten benh nhan') || h.includes('ten bn') || h.includes('hoten')),
+                                    namSinh: headerRow.findIndex(h => h.includes('nam sinh') || h.includes('namsinh') || h.includes('tuoi') || h === 'ns' || h.includes('dob')),
+                                    pId: headerRow.findIndex(h => h.includes('ma bn') || h.includes('mabn') || h.includes('pid') || h.includes('ma benh nhan')),
                                     tt: headerRow.findIndex(h => h.includes('thu thuat') || h.includes('dich vu') || h.includes('dichvu')),
                                     bd: headerRow.findIndex(h => h.includes('bat dau') || h.includes('gio dien ra') || h.includes('giodienra')),
                                     kt: headerRow.findIndex(h => h.includes('ket thuc') || h.includes('gioketthuc')),
@@ -752,11 +818,17 @@
                                     const procName = colIdx.tt >= 0 ? String(r[colIdx.tt] || '').trim() : '';
                                     const procInfo = mapProcedureJS(procName);
                                     const procLoai = procInfo ? (procInfo.phanLoai || procInfo.loai || procInfo.he || '') : '';
+                                    const namSinhVal = colIdx.namSinh >= 0 ? String(r[colIdx.namSinh] || '').trim() : '';
+                                    const pIdVal = colIdx.pId >= 0 ? String(r[colIdx.pId] || '').trim() : '';
 
                                     return {
                                         'AT': colIdx.nv >= 0 ? r[colIdx.nv] : '',
                                         'AU': colIdx.nvPhu >= 0 ? r[colIdx.nvPhu] : '',
                                         'C': cleanBN,
+                                        'D': namSinhVal,
+                                        'namSinh': namSinhVal,
+                                        'dob': namSinhVal,
+                                        'pId': pIdVal,
                                         'AE': procName,
                                         'AG': procName,
                                         'AF': 'Chủ động',

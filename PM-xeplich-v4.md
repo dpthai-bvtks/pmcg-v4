@@ -6082,3 +6082,36 @@ otify(...) (các tính năng: đồng bộ phác đồ đám mây, lưu/xóa ph�
   - Kiểm thử cú pháp Node.js (`node -c`): 100% vượt qua kiểm tra, không có lỗi cú pháp.
   - Triển khai Cloudflare Worker API (`wrangler deploy`) và Cloudflare Pages (`npm run deploy:web`) thành công.
   - Git commit & push lên `origin main` an toàn.
+
+---
+
+### [v4.1.7-rev5] - 16:45 28/09/2026: Phân biệt chính xác bệnh nhân trùng tên theo Tên + Năm sinh trong Kiểm tra lỗi, loại bỏ hoàn toàn báo lỗi ảo khi trùng tên
+
+- **Yêu cầu & Mục tiêu**:
+  1. Người dùng phản ánh khi chạy "Kiểm tra lỗi" trên lịch trình hiện tại, hệ thống báo lỗi xung đột thời gian:
+     `👤 LÊ THỊ THU (Trùng BN)` - `Thủy châm 14:20 -> 14:45` và `Kỹ thuật xoa bóp vùng 14:20 -> 14:35` báo `Bệnh nhân bị xếp 2 thủ thuật cùng lúc`.
+  2. Thực tế trên lâm sàng có 2 bệnh nhân hoàn toàn khác nhau cùng mang tên "Lê Thị Thu", chỉ khác năm sinh (ví dụ: một người sinh năm 1960, một người sinh năm 1985). Động cơ xếp lịch (`scheduler-engine.js`) đã phân biệt chính xác theo `patKey = name + '_' + namSinh`, nhưng mô-đun Kiểm tra lỗi (`app-error-checker.js`) lại gom nhóm chỉ theo `patientName`, dẫn đến việc xem 2 người là 1 và báo trùng giờ oan.
+  3. Cần nâng cấp mô-đun Kiểm tra lỗi để phân biệt bệnh nhân theo Tên + Năm sinh / Mã BN, hiển thị năm sinh cạnh tên bệnh nhân trên bảng lỗi để người dùng dễ theo dõi.
+
+- **Các file đã sửa đổi & Chi tiết kỹ thuật**:
+  1. **`js/modules/app-error-checker.js`**:
+     - *Trích xuất Năm sinh & Mã định danh*: Bổ sung trích xuất `patientDob` từ các trường `namSinh`, `dob`, `ns`, `NAMSINH`, `NĂM SINH`, cột `D`, cột `H`, và tra cứu bổ sung từ CSDL bệnh nhân `dataCache.pat` (kèm lọc theo phòng/thủ thuật khi trùng tên).
+     - *Khóa gom nhóm duy nhất (`patientKey`)*: Xây dựng `patientKey = patientName.toUpperCase() + (patientDob ? '_' + patientDob : (patientCode ? '_ID_' + patientCode : ''))`.
+     - *Hiển thị trực quan (`patientDisplay`)*: Hiển thị tên kèm năm sinh `Lê Thị Thu (1960)` trên bảng báo lỗi giúp người dùng phân biệt tức thì.
+     - *Gom nhóm bệnh nhân theo `patientKey`*: Thay thế gom nhóm theo `patientName` thành `groupedPatients[patientKey]`. Nhờ đó 2 ca của 2 bệnh nhân trùng tên nhưng khác năm sinh nằm ở 2 giỏ độc lập, hoàn toàn không bị báo trùng lịch.
+     - *Kiểm tra khoảng đệm 1 phút chuyển giường của KTV*: Sử dụng `A.patientKey !== B.patientKey` thay vì `A.patientName !== B.patientName` để đảm bảo KTV điều trị 2 bệnh nhân khác nhau dù cùng tên vẫn được kiểm tra đệm 1 phút chuyển giường chính xác.
+     - *Đồng bộ nạp từ Lịch trình hiện tại (`btn-check-current-schedule`)*: Truyền đầy đủ `namSinh`, `dob`, `pId`, cột `D` từ `currentScheduleData` sang `processErrorChecking`.
+     - *Đồng bộ đọc file Excel tải lên*: Bổ sung cột Năm sinh (`namSinh`, `namsinh`, `tuoi`, `ns`, `dob`) và Mã BN vào `colIdx` và truyền sang dữ liệu kiểm tra.
+  2. **`index.html`**:
+     - Cập nhật toàn bộ 33 chuỗi cache-busting sang `?v=4.1.7-rev5`, `APP_VERSION = '4.1.7-rev5'`.
+     - Chân trang `#app-footer-version` giữ chuẩn: `Phiên bản: 4.1.7`.
+     - Cập nhật dấu thời gian `#sys-last-update`: `⏱ Cập nhật lần cuối: 16:45 28/09/2026`.
+  3. **`sw.js`**:
+     - Cập nhật tên bộ nhớ đệm: `CACHE_NAME = 'pmcg-v4-cache-4.1.7-rev5'`.
+  4. **`version.json`**:
+     - Nâng phiên bản `4.1.7-rev5` cùng ghi chú phát hành chi tiết.
+
+- **Kết quả kiểm thử & Triển khai**:
+  - Kiểm thử cú pháp Node.js (`node -c`): 100% vượt qua kiểm tra trên toàn bộ file JS của dự án.
+  - Triển khai Cloudflare Pages (`npm run deploy:web`) thành công.
+  - Git commit & push lên `origin main` an toàn.
