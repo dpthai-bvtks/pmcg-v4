@@ -167,57 +167,50 @@
         toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 3000);
     }
 
-    // Reload dữ liệu bị thay đổi có bảo vệ form đang nhập dở
+    // Reload dữ liệu bị thay đổi có bảo vệ toàn bộ form đang nhập dở
     function syncRefreshData() {
-        if (typeof loadEntity !== 'function') return;
         try {
-            // 🛡️ Kiểm tra người dùng có đang nhập dữ liệu form bệnh nhân không
-            const patFormActive = typeof window.isPatientFormActive === 'function' ? window.isPatientFormActive() : false;
+            // 🛡️ Kiểm tra người dùng có đang nhập dữ liệu form nào không
             const isEditingPat = typeof editIndex !== 'undefined' && editIndex.pat > -1;
+            const isEditingMachine = typeof editIndex !== 'undefined' && editIndex.machine > -1;
+            const isEditingRoom = typeof editIndex !== 'undefined' && editIndex.room > -1;
+            const isEditingStaff = typeof editIndex !== 'undefined' && editIndex.staff > -1;
+            const isEditingProc = typeof editIndex !== 'undefined' && editIndex.proc > -1;
+            const patFormActive = typeof window.isPatientFormActive === 'function' ? window.isPatientFormActive() : false;
             const shouldSkipPat = patFormActive || isEditingPat || window._savePatientLock;
+            const isAnyFormActive = shouldSkipPat || isEditingMachine || isEditingRoom || isEditingStaff || isEditingProc;
+
+            if (isAnyFormActive) {
+                console.log('[RealtimeSync]: Người dùng đang thao tác trên form nhập liệu, tạm hoãn nạp lại để bảo toàn dữ liệu.');
+                return;
+            }
 
             // Xóa cache time cho các danh mục cần làm mới
             if (window.dataCacheTime) {
-                ['machine', 'room', 'staff'].forEach(k => { window.dataCacheTime[k] = 0; });
-                if (!shouldSkipPat) {
-                    window.dataCacheTime['proc'] = 0;
-                    window.dataCacheTime['pat'] = 0;
-                }
+                ['machine', 'room', 'staff', 'proc', 'pat', 'sched'].forEach(k => { window.dataCacheTime[k] = 0; });
             }
 
-            // Tải lại độc lập (không gọi lồng chéo nhau để chống trùng lặp request)
-            if (typeof loadMachines === 'function') loadMachines();
-            if (typeof loadRooms === 'function') loadRooms();
-
-            // Danh mục thủ thuật: chỉ reload khi không mở form bệnh nhân để tránh ghi đè làm mất checkbox
-            if (!shouldSkipPat) {
+            // ⚡ Ưu tiên nạp trọn bộ cả danh mục và lịch trình mới nhất từ máy chủ
+            if (typeof loadBootstrapData === 'function') {
+                loadBootstrapData(true);
+            } else {
+                if (typeof loadMachines === 'function') loadMachines();
+                if (typeof loadRooms === 'function') loadRooms();
                 if (typeof loadEntity === 'function') {
                     loadEntity('getThuThuat', 'proc', () => {
                         if (typeof renderProceduresTable === 'function') renderProceduresTable();
                         if (typeof renderProcedureCheckboxes === 'function') renderProcedureCheckboxes();
                     }, [], true);
-                }
-            }
-
-            // Nhân sự: tải độc lập (không gọi kèm loadPatients)
-            if (typeof loadEntity === 'function') {
-                loadEntity('getNhanSu', 'staff', () => {
-                    if (typeof renderStaffTable === 'function') renderStaffTable();
-                }, [], true);
-            }
-
-            // Bệnh nhân: chỉ tải lại khi form bệnh nhân KHÔNG đang nhập dở
-            if (!shouldSkipPat) {
-                if (typeof loadEntity === 'function') {
+                    loadEntity('getNhanSu', 'staff', () => {
+                        if (typeof renderStaffTable === 'function') renderStaffTable();
+                    }, [], true);
                     loadEntity('getBenhNhan', 'pat', () => {
                         if (typeof renderPatientsTable === 'function') renderPatientsTable();
                     }, [], true);
                 }
-            } else {
-                console.log('[RealtimeSync]: Người dùng đang thao tác trên form bệnh nhân, bảo toàn dữ liệu đang nhập.');
+                if (typeof loadScheduleList === 'function') loadScheduleList();
+                else if (typeof filterSchedule === 'function') filterSchedule();
             }
-
-            if (typeof filterSchedule === 'function') filterSchedule();
         } catch(e) {
             console.warn('[RealtimeSync error]:', e);
         }

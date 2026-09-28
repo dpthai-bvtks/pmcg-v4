@@ -5923,3 +5923,41 @@ otify(...) (các tính năng: đồng bộ phác đồ đám mây, lưu/xóa ph�
      - Git commit & push `origin/main`.
 
 
+
+---
+
+### [v4.1.7-rev1] - 07:20 28/09/2026: Khắc Phục Triệt Để Lỗi Cấu Trúc Form Khi Kiểm Tra Lỗi & Nâng Cấp Đồng Bộ Lịch Trình Đa Thiết Bị
+- **Yêu cầu của người dùng**:
+  1. Ở máy tính chính (MiniPC) thao tác, xếp lịch, xử lý, xem lỗi đều bình thường nhưng ở các máy trạm/máy khác (laptop, điện thoại, máy nhân viên) lại bị báo 'lỗi form' khi kiểm tra lỗi và có hiện tượng không đồng bộ giữa các máy.
+  2. Yêu cầu sửa toàn bộ và kiểm tra kỹ lưỡng theo RULES.md.
+- **Phân tích nguyên nhân cốt lõi**:
+  1. **Lỗi "Vui lòng kiểm tra lại cấu trúc form" khi kiểm tra lỗi**:
+     - Trong `js/modules/app-error-checker.js` (dòng 744 cũ), câu lệnh `reader.onerror` và khối `catch` khi đọc file Excel hiển thị thông báo mặc định: "Lỗi khi đọc file. Vui lòng kiểm tra lại cấu trúc form.".
+     - Trên các máy trạm khác, khi người dùng mở trang hoặc chuyển máy, bộ nhớ RAM `dataCache.staff` chưa được khởi tạo (`undefined`). Khi hàm `getShortNameJS()` chạy duyệt `for (const s of dataCache.staff)` hoặc `checkPermissionJS()` chạy `dataCache.staff.find(...)`, JavaScript lập tức quăng lỗi `TypeError: dataCache.staff is not iterable` hoặc `Cannot read properties of undefined`.
+     - Lỗi JS này bị khối `catch` nuốt chửng và ném ra thông báo đánh lừa người dùng là "lỗi cấu trúc form".
+     - Các phần tử DOM bảng lỗi (`timeTbody`, `otherTbody`) không có kiểm tra phòng thủ `null`, nếu bảng chưa sẵn sàng cũng dẫn tới `TypeError`.
+  2. **Không đồng bộ lịch trình giữa máy chính và các máy khác**:
+     - Tại `js/sync.js`, hàm `syncRefreshData()` định kỳ lắng nghe sự thay đổi `data_version` từ server (khi máy MiniPC xếp lịch hoặc cập nhật). Tuy nhiên hàm này chỉ nạp lại các thực thể đơn lẻ (máy móc, phòng, nhân sự, thủ thuật, bệnh nhân) mà hoàn toàn **không tải lại lịch trình** (`schedule`).
+     - Hậu quả: Máy MiniPC đã xếp lịch xong và lưu vào đám mây, nhưng các máy khác kiểm tra chỉ thấy mảng lịch trong bộ nhớ rỗng (0 ca). Khi người dùng bấm "Kiểm Tra Lịch Đang Mở", hệ thống thấy rỗng nên yêu cầu nạp file Excel, nạp file vào thì vấp phải lỗi `dataCache.staff` ở trên!
+     - Khi tiến trình đồng bộ ngầm chạy, nếu người dùng trên máy phụ đang gõ form (sửa máy, sửa phòng, sửa nhân sự, sửa bệnh nhân), việc tải lại vô điều kiện sẽ xóa mất dữ liệu người dùng đang nhập dở trên máy trạm.
+- **Giải pháp xử lý triệt để**:
+  1. **Nâng cấp `js/modules/app-error-checker.js`**:
+     - Bảo vệ an toàn tuyệt đối mảng nhân sự: Trong `getShortNameJS()` và `checkPermissionJS()`, bọc `(dataCache?.staff || [])` đảm bảo không bao giờ bị `TypeError` kể cả khi `dataCache.staff` rỗng/chưa tải xong.
+     - Bổ sung `try-catch` khi parse JSON định mức `s.lichSuDinhMuc`.
+     - Bảo vệ DOM: Kiểm tra `if (timeTbody)` và `if (otherTbody)` trước khi gán `innerHTML`.
+     - Tự động đồng bộ lịch đám mây cho nút "Kiểm Tra Lịch Đang Mở" (`#btn-check-current-schedule`): Nếu lịch trong bộ nhớ rỗng, hệ thống tự động gọi API `getBootstrapData` kéo lịch mới nhất từ cơ sở dữ liệu đám mây (do máy MiniPC vừa xếp) về RAM & LocalStorage và kiểm tra lỗi ngay lập tức, không bắt người dùng phải tự tải file.
+     - Hiển thị thông điệp lỗi chính xác từ `err.message` thay vì thông báo cứng chung chung "lỗi cấu trúc form".
+  2. **Nâng cấp cơ chế đồng bộ đa thiết bị (`js/sync.js`)**:
+     - Cập nhật `syncRefreshData()` chuyển sang gọi `loadBootstrapData(true)` để kéo toàn bộ dữ liệu thực thể và lịch trình mới nhất (`b.schedule`) khi máy MiniPC hoặc máy khác có cập nhật.
+     - Bổ sung cờ bảo vệ form nhập liệu (`isEditingMachine`, `isEditingRoom`, `isEditingStaff`, `isEditingProc`, `patFormActive`) tránh hiện tượng xóa mất dữ liệu người dùng đang nhập dở trên máy trạm.
+  3. **Đồng bộ phiên bản theo RULES.md**:
+     - Nâng phiên bản ngày 28/09/2026: `4.1.7-rev1`.
+     - Chân trang `#app-footer-version` hiển thị chuẩn: `Phiên bản: 4.1.7`.
+     - Thời gian cập nhật `#sys-last-update`: `⏱ Cập nhật lần cuối: 07:20 28/09/2026`.
+     - Đồng bộ toàn bộ 38 chuỗi query cache buster `?v=4.1.7-rev1` trong `index.html`.
+     - Cập nhật `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.1.7-rev1'`.
+     - Cập nhật `version.json`: phiên bản `4.1.7-rev1`.
+  4. **Kiểm tra cú pháp & Triển khai**:
+     - Đạt `node -c` toàn bộ các file JS lõi và module.
+     - Deploy Cloudflare Pages thành công.
+     - Git commit & push `origin main`.

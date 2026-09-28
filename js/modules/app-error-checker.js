@@ -138,13 +138,15 @@
             const timeTbody = document.getElementById('error-time-body');
             const otherTbody = document.getElementById('error-other-body');
             if (countBody) countBody.innerHTML = '';
-            timeTbody.innerHTML = '';
-            otherTbody.innerHTML = '';
+            if (timeTbody) timeTbody.innerHTML = '';
+            if (otherTbody) otherTbody.innerHTML = '';
 
             const counts = {};
-            const staffList = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff)) ? dataCache.staff : [];
+            const staffList = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff)) 
+                ? dataCache.staff 
+                : (Array.isArray(window.dataCache?.staff) ? window.dataCache.staff : []);
             staffList.forEach(s => {
-                counts[s.ten] = { l1: 0, l2: 0, l3: 0, other: 0 };
+                if (s && s.ten) counts[s.ten] = { l1: 0, l2: 0, l3: 0, other: 0 };
             });
 
             let sttTime = 1;
@@ -554,8 +556,8 @@
                 }
             }
 
-            if (timeTbody.children.length === 0) timeTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Không có lỗi trùng giờ! 🎉</td></tr>';
-            if (otherTbody.children.length === 0) otherTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Không có lỗi phân quyền/quy trình! 🎉</td></tr>';
+            if (timeTbody && timeTbody.children.length === 0) timeTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Không có lỗi trùng giờ! 🎉</td></tr>';
+            if (otherTbody && otherTbody.children.length === 0) otherTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Không có lỗi phân quyền/quy trình! 🎉</td></tr>';
 
             if (countBody) {
                 let countHtml = '';
@@ -593,8 +595,40 @@
             const btnCheckCurrent = document.getElementById('btn-check-current-schedule');
 
             if (btnCheckCurrent) {
-                btnCheckCurrent.addEventListener('click', () => {
-                    const currentSched = (window.currentScheduleData && window.currentScheduleData.length) ? window.currentScheduleData : ((typeof dataCache !== 'undefined' && dataCache.schedule) ? dataCache.schedule : []);
+                btnCheckCurrent.addEventListener('click', async () => {
+                    let currentSched = (window.currentScheduleData && window.currentScheduleData.length) 
+                        ? window.currentScheduleData 
+                        : ((typeof dataCache !== 'undefined' && dataCache.schedule) ? dataCache.schedule : []);
+
+                    // 🛡️ Nếu trên máy khác chưa có dữ liệu trong RAM/LocalStorage: tự động tải từ CSDL về
+                    if (!currentSched || currentSched.length === 0) {
+                        const curDate = document.getElementById('schedule-date')?.value || '';
+                        if (typeof callApi === 'function') {
+                            if (window.showGlobalLoading) window.showGlobalLoading('Đang tải dữ liệu lịch trình từ máy chủ...');
+                            try {
+                                await new Promise(resolve => {
+                                    callApi('getBootstrapData', [curDate], function (b) {
+                                        if (b && Array.isArray(b.schedule) && b.schedule.length > 0) {
+                                            if (typeof dataCache !== 'undefined') dataCache.schedule = b.schedule;
+                                            window.currentScheduleData = b.schedule;
+                                            currentSched = b.schedule;
+                                            if (b.staff && Array.isArray(b.staff) && typeof dataCache !== 'undefined') {
+                                                dataCache.staff = b.staff;
+                                            }
+                                            if (b.procedures && Array.isArray(b.procedures) && typeof dataCache !== 'undefined') {
+                                                dataCache.proc = b.procedures;
+                                            }
+                                        }
+                                        resolve();
+                                    }, () => resolve());
+                                });
+                            } catch (eLoad) {
+                                console.warn('[ErrorChecker]: Không thể nạp bootstrap data:', eLoad);
+                            }
+                            if (window.hideGlobalLoading) window.hideGlobalLoading();
+                        }
+                    }
+
                     if (!currentSched || currentSched.length === 0) {
                         alert('Hiện chưa có dữ liệu trên bảng xếp lịch. Vui lòng bấm "Xếp lịch" hoặc chọn file Excel/HIS để kiểm tra.');
                         return;
@@ -641,6 +675,9 @@
                     const reader = new FileReader();
                     reader.onload = function (ev) {
                         try {
+                            if (typeof XLSX === 'undefined') {
+                                throw new Error('Thư viện đọc file Excel (XLSX) chưa sẵn sàng hoặc mạng bị chặn CDN. Vui lòng tải lại trang hoặc kiểm tra kết nối mạng.');
+                            }
                             const data = new Uint8Array(ev.target.result);
                             const workbook = XLSX.read(data, { type: 'array', cellDates: false });
                             const firstSheetName = workbook.SheetNames[0];
@@ -740,10 +777,11 @@
                             if (window.hideGlobalLoading) window.hideGlobalLoading();
                         } catch (err) {
                             if (window.hideGlobalLoading) window.hideGlobalLoading();
-                            console.error(err);
-                            alert("Lỗi khi đọc file. Vui lòng kiểm tra lại cấu trúc form.");
-                            timeTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Chưa tải dữ liệu</td></tr>';
-                            otherTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Chưa tải dữ liệu</td></tr>';
+                            console.error('[ErrorChecker File Error]:', err);
+                            const errMsg = (err && err.message) ? err.message : 'Vui lòng kiểm tra lại cấu trúc file Excel.';
+                            alert('Lỗi khi đọc file: ' + errMsg);
+                            if (timeTbody) timeTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Chưa tải dữ liệu</td></tr>';
+                            if (otherTbody) otherTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Chưa tải dữ liệu</td></tr>';
                         }
                     };
                     reader.readAsArrayBuffer(file);
@@ -760,12 +798,17 @@
             const lowerName = normalizeTextJS(fullName);
             if (!lowerName) return '';
             
-            for (const s of dataCache.staff) {
-                const tenHIS = String(s.tenHis || '').toLowerCase();
+            const staffList = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff))
+                ? dataCache.staff
+                : (Array.isArray(window.dataCache?.staff) ? window.dataCache.staff : []);
+
+            for (const s of staffList) {
+                if (!s) continue;
+                const tenHIS = String(s.tenHis || s.ten_his || '').toLowerCase();
                 if (!tenHIS) continue;
                 const keys = tenHIS.split(',').map(k => k.trim()).filter(k => k);
                 for (const k of keys) {
-                    if (lowerName.includes(k)) return s.ten;
+                    if (lowerName.includes(k)) return s.ten || s.name || '';
                 }
             }
             return String(fullName).trim();
@@ -774,11 +817,14 @@
         function mapProcedureJS(procStr, targetDate) {
             if (!procStr) return null;
             const procStrLower = normalizeTextJS(procStr);
-            const procList = (typeof dataCache !== 'undefined' && dataCache && dataCache.proc) ? dataCache.proc : [];
+            const procList = (typeof dataCache !== 'undefined' && dataCache && Array.isArray(dataCache.proc)) 
+                ? dataCache.proc 
+                : (Array.isArray(window.dataCache?.proc) ? window.dataCache.proc : []);
             let matched = null;
             for (const p of procList) {
+                if (!p) continue;
                 const ten = String(p.ten || p.name || '').toLowerCase();
-                const vietTat = String(p.vietTat || '').toLowerCase();
+                const vietTat = String(p.vietTat || p.viet_tat || '').toLowerCase();
                 if ((ten && procStrLower.includes(ten)) || (vietTat && procStrLower === vietTat)) {
                     matched = p;
                     break;
@@ -808,14 +854,20 @@
             const mm = String(dObj.getMonth() + 1).padStart(2, '0');
             const dd = String(dObj.getDate()).padStart(2, '0');
             const dateStr = `${yyyy}-${mm}-${dd}`;
-            const historyList = (matched.history && Array.isArray(matched.history))
-                ? matched.history
-                : ((matched.lichSuDinhMuc && Array.isArray(matched.lichSuDinhMuc))
-                    ? matched.lichSuDinhMuc
-                    : (typeof matched.lichSuDinhMuc === 'string' ? JSON.parse(matched.lichSuDinhMuc || '[]') : []));
+            let historyList = [];
+            try {
+                historyList = (matched.history && Array.isArray(matched.history))
+                    ? matched.history
+                    : ((matched.lichSuDinhMuc && Array.isArray(matched.lichSuDinhMuc))
+                        ? matched.lichSuDinhMuc
+                        : (typeof matched.lichSuDinhMuc === 'string' ? JSON.parse(matched.lichSuDinhMuc || '[]') : []));
+            } catch (eHist) {
+                historyList = [];
+            }
 
             if (historyList && historyList.length) {
                 for (const h of historyList) {
+                    if (!h) continue;
                     const from = h.from || h.tuNgay || h.tu_ngay || '0000-00-00';
                     const to = h.to || h.denNgay || h.den_ngay || '9999-99-99';
                     if (dateStr >= from && dateStr <= to) {
@@ -845,7 +897,11 @@
         }
 
         function checkPermissionJS(techName, procInfo) {
-            const staff = dataCache.staff.find(s => s.ten === techName);
+            const staffList = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff))
+                ? dataCache.staff
+                : (Array.isArray(window.dataCache?.staff) ? window.dataCache.staff : []);
+
+            const staff = staffList.find(s => s && (s.ten === techName || s.name === techName));
             if (!staff) return true;
             if (!procInfo) return true;
             
