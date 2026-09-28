@@ -1,6 +1,6 @@
 {
-    "version": "4.1.7-rev1",
+    "version": "4.1.7-rev2",
     "releaseDate": "28/09/2026",
-    "releaseTime": "07:20 28/09/2026",
-    "notes": "Khắc phục triệt để lỗi cấu trúc form khi kiểm tra lỗi và đồng bộ đa thiết bị: Tự động nạp lịch trình từ máy chủ khi bộ nhớ trống, bọc an toàn 100% dữ liệu nhân sự/DOM, nâng cấp cơ chế realtime sync nạp toàn diện và bảo toàn form nhập liệu trên các máy khác."
+    "releaseTime": "09:35 28/09/2026",
+    "notes": "Nâng cấp cơ chế đồng bộ thời gian thực đa trình duyệt/thiết bị: Tăng tốc độ polling lên 8s, kiểm tra an toàn document.readyState đảm bảo sync ngầm luôn chạy trên mọi máy, sửa lỗi nuốt version khi form bận giúp tự động cập nhật ngay khi form rảnh, thu hẹp phạm vi kiểm tra form không chặn ô tìm kiếm bệnh nhân, bổ sung trigger đồng bộ tức thì khi chuyển tab Bệnh nhân."
 }

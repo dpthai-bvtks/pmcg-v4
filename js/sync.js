@@ -128,7 +128,7 @@
 })();
 
 (function initRealtimeSync() {
-    const POLL_INTERVAL = 15000; // 15 giây
+    const POLL_INTERVAL = 8000; // 8 giây: cực kỳ nhạy bén, kiểm tra ngầm siêu nhẹ
     let lastKnownVersion = null;
     let syncTimer = null;
     let isSyncing = false;
@@ -170,20 +170,22 @@
     // Reload dữ liệu bị thay đổi có bảo vệ toàn bộ form đang nhập dở
     function syncRefreshData() {
         try {
-            // 🛡️ Kiểm tra người dùng có đang nhập dữ liệu form nào không
-            const isEditingPat = typeof editIndex !== 'undefined' && editIndex.pat > -1;
-            const isEditingMachine = typeof editIndex !== 'undefined' && editIndex.machine > -1;
-            const isEditingRoom = typeof editIndex !== 'undefined' && editIndex.room > -1;
-            const isEditingStaff = typeof editIndex !== 'undefined' && editIndex.staff > -1;
-            const isEditingProc = typeof editIndex !== 'undefined' && editIndex.proc > -1;
+            // 🛡️ Kiểm tra người dùng có đang thực sự gõ phím trên form không
             const patFormActive = typeof window.isPatientFormActive === 'function' ? window.isPatientFormActive() : false;
-            const shouldSkipPat = patFormActive || isEditingPat || window._savePatientLock;
-            const isAnyFormActive = shouldSkipPat || isEditingMachine || isEditingRoom || isEditingStaff || isEditingProc;
-
-            if (isAnyFormActive) {
+            const isSaveLocked = !!window._savePatientLock;
+            
+            // Nếu người dùng đang bấm Lưu hoặc đang gõ dở dữ liệu thì tạm hoãn để bảo toàn
+            if (isSaveLocked || patFormActive) {
                 console.log('[RealtimeSync]: Người dùng đang thao tác trên form nhập liệu, tạm hoãn nạp lại để bảo toàn dữ liệu.');
-                return;
+                return false; // Trả về false để doPoll KHÔNG nuốt version và sẽ thử lại ở chu kỳ tiếp theo!
             }
+
+            // Bảo lưu giá trị các ô input form bệnh nhân phòng trường hợp đang có dữ liệu tạm
+            const savedFormData = {};
+            ['pat-name', 'pat-year', 'pat-time', 'busy-start', 'busy-end', 'pat-leave', 'pat-room'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.value) savedFormData[id] = el.value;
+            });
 
             // Xóa cache time cho các danh mục cần làm mới
             if (window.dataCacheTime) {
@@ -211,8 +213,21 @@
                 if (typeof loadScheduleList === 'function') loadScheduleList();
                 else if (typeof filterSchedule === 'function') filterSchedule();
             }
+
+            // Khôi phục lại giá trị form nếu người dùng trước đó đã nhập mà chưa lưu
+            setTimeout(() => {
+                for (let id in savedFormData) {
+                    const el = document.getElementById(id);
+                    if (el && savedFormData[id] && !el.value) {
+                        el.value = savedFormData[id];
+                    }
+                }
+            }, 300);
+
+            return true;
         } catch(e) {
             console.warn('[RealtimeSync error]:', e);
+            return false;
         }
     }
 
@@ -246,36 +261,49 @@
                 return;
             }
             if (v !== lastKnownVersion) {
-                // 🛡️ Khử báo động giả: nếu chính tab này vừa thực hiện lưu trong vòng 30s qua
-                if (window._lastLocalMutationTime && (Date.now() - window._lastLocalMutationTime < 30000)) {
+                // 🛡️ Khử báo động giả: nếu chính tab này vừa thực hiện lưu trong vòng 10s qua
+                if (window._lastLocalMutationTime && (Date.now() - window._lastLocalMutationTime < 10000)) {
                     lastKnownVersion = v;
                     window._lastLocalMutationTime = 0;
                     return;
                 }
 
-                lastKnownVersion = v;
-                syncRefreshData();
-                showSyncToast('🔄 Đã đồng bộ dữ liệu mới');
+                const refreshOk = syncRefreshData();
+                if (refreshOk !== false) {
+                    lastKnownVersion = v;
+                    showSyncToast('🔄 Đã đồng bộ dữ liệu mới');
+                } else {
+                    console.log('[RealtimeSync]: Tạm hoãn cập nhật version, sẽ tự động thử lại sau ' + (POLL_INTERVAL/1000) + 's.');
+                }
             }
         }, function() { isSyncing = false; });
     }
+    window.triggerDataSync = doPoll;
 
-    // Bắt đầu sau khi trang load xong
-    document.addEventListener('DOMContentLoaded', function() {
-        // Poll lần đầu sau 5 giây (đợi login xong)
-        setTimeout(function() {
-            doPoll();
-            syncTimer = setInterval(doPoll, POLL_INTERVAL);
-        }, 5000);
-    });
+    function startAutoPolling() {
+        if (syncTimer) return;
+        doPoll();
+        syncTimer = setInterval(doPoll, POLL_INTERVAL);
+    }
+
+    // Bắt đầu an toàn tuyệt đối bất kể trạng thái nạp của DOM
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(startAutoPolling, 2000);
+        });
+    } else {
+        setTimeout(startAutoPolling, 1000);
+    }
 
     // Dừng polling khi tab bị ẩn (tiết kiệm quota), bật lại khi tab hiện
     document.addEventListener('visibilitychange', function() {
         if (document.hidden) {
-            clearInterval(syncTimer);
+            if (syncTimer) {
+                clearInterval(syncTimer);
+                syncTimer = null;
+            }
         } else {
-            doPoll(); // sync ngay khi quay lại tab
-            syncTimer = setInterval(doPoll, POLL_INTERVAL);
+            startAutoPolling();
         }
     });
 })();

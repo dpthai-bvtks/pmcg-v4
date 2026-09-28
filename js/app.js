@@ -2643,6 +2643,11 @@ var dataCache = window.dataCache;
                             if (typeof loadScheduleList === 'function') loadScheduleList(); // Kích hoạt tải lại dữ liệu từ Sheet & ngắt trang
 }
 
+                        if (targetTab === 'tab-patients') {
+                            if (typeof renderPatientsTable === 'function') renderPatientsTable();
+                            if (typeof window.triggerDataSync === 'function') window.triggerDataSync();
+                        }
+
                         if (targetTab === 'tab-stats' && typeof renderStats === 'function') {
                             renderStats(window.lastUnscheduledData);
                         }
@@ -4926,6 +4931,11 @@ var dataCache = window.dataCache;
                     createdPat.id = res.id;
                 }
                 if (window.dataCacheTime) window.dataCacheTime['pat'] = Date.now();
+                try {
+                    if (window.OfflineSyncEngine && typeof window.OfflineSyncEngine.broadcastLiveEvent === 'function') {
+                        window.OfflineSyncEngine.broadcastLiveEvent('PATIENTS_UPDATED', { id: res?.id, timestamp: Date.now() });
+                    }
+                } catch(e) {}
                 safeCall('loadDashboard');
                 if (btnSave) { btnSave.disabled = false; btnSave.innerText = 'Lưu'; }
             };
@@ -9837,41 +9847,28 @@ var dataCache = window.dataCache;
         }
 
         function isPatientFormActive() {
-            if (typeof editIndex !== 'undefined' && editIndex.pat > -1) return true;
             if (window._savePatientLock) return true;
 
             const activeEl = document.activeElement;
             const tabPat = document.getElementById('tab-patients');
             if (!tabPat) return false;
 
-            // 1. Kiểm tra nếu tiêu điểm (focus) nằm trong form của tab-patients
-            if (activeEl && tabPat.contains(activeEl) &&
+            const formContainer = tabPat.querySelector('.sidebar-form');
+            // Chỉ coi là active khi con trỏ chuột ĐANG nằm trong các ô input của form nhập liệu .sidebar-form
+            if (activeEl && formContainer && formContainer.contains(activeEl) &&
                 (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT' || activeEl.tagName === 'TEXTAREA')) {
-                return true;
+                // Bỏ qua các nút bấm hoặc ô tìm kiếm
+                if (activeEl.tagName !== 'BUTTON' && activeEl.id !== 'pat-search-input') {
+                    return true;
+                }
             }
 
-            // 2. Kiểm tra nếu các ô nhập liệu có chứa dữ liệu dở dang
-            const patName = document.getElementById('pat-name')?.value || '';
-            if (patName.trim() !== '') return true;
-
-            const patYear = document.getElementById('pat-year')?.value || '';
-            if (patYear.trim() !== '') return true;
-
-            const patTime = document.getElementById('pat-time')?.value || '';
-            if (patTime.trim() !== '') return true;
-
-            const busyStart = document.getElementById('busy-start')?.value || '';
-            if (busyStart.trim() !== '') return true;
-
-            const busyEnd = document.getElementById('busy-end')?.value || '';
-            if (busyEnd.trim() !== '') return true;
-
-            const patLeave = document.getElementById('pat-leave')?.value || '';
-            if (patLeave.trim() !== '') return true;
-
-            // Kiểm tra xem có thủ thuật nào đang được chọn không
-            const checkedProcs = document.querySelectorAll('.pat-proc-cb:checked');
-            if (checkedProcs.length > 0) return true;
+            // Chỉ coi là đang sửa nếu nút Hủy đang hiển thị (đang trong phiên edit) VÀ con trỏ đang ở form
+            const btnCancel = document.getElementById('btn-cancel-pat');
+            const isEditingMode = btnCancel && btnCancel.style.display !== 'none' && typeof editIndex !== 'undefined' && editIndex.pat > -1;
+            if (isEditingMode && activeEl && formContainer && formContainer.contains(activeEl)) {
+                return true;
+            }
 
             return false;
         }
@@ -9882,27 +9879,11 @@ var dataCache = window.dataCache;
             const tabBusy = document.getElementById('tab-busy');
             if (!tabBusy) return false;
 
-            // 1. Kiểm tra nếu tiêu điểm (focus) nằm trong form của tab-busy
-            if (activeEl && tabBusy.contains(activeEl) &&
+            const formContainer = tabBusy.querySelector('.sidebar-form') || tabBusy.querySelector('form');
+            if (activeEl && formContainer && formContainer.contains(activeEl) &&
                 (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT' || activeEl.tagName === 'TEXTAREA')) {
                 return true;
             }
-
-            // 2. Kiểm tra nếu các ô nhập liệu của tab-busy có chứa dữ liệu dở dang
-            const staffFrom = document.getElementById('busy-staff-from')?.value || '';
-            if (staffFrom.trim() !== '') return true;
-
-            const staffTo = document.getElementById('busy-staff-to')?.value || '';
-            if (staffTo.trim() !== '') return true;
-
-            const patInput = document.getElementById('busy-pat-input')?.value || '';
-            if (patInput.trim() !== '') return true;
-
-            const patFrom = document.getElementById('busy-pat-from')?.value || '';
-            if (patFrom.trim() !== '') return true;
-
-            const patTo = document.getElementById('busy-pat-to')?.value || '';
-            if (patTo.trim() !== '') return true;
 
             return false;
         }
@@ -9911,17 +9892,7 @@ var dataCache = window.dataCache;
         function isAnyFormActive() {
             if (isPatientFormActive()) return true;
             if (typeof isBusyFormActive === 'function' && isBusyFormActive()) return true;
-            if (typeof editIndex !== 'undefined') {
-                for (let k in editIndex) {
-                    if (editIndex[k] > -1) return true;
-                }
-            }
-            const activeEl = document.activeElement;
-            if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT')) {
-                if (activeEl.id !== 'schedule-search-input' && activeEl.id !== 'pat-search-input') {
-                    return true;
-                }
-            }
+            if (window._savePatientLock) return true;
             return false;
         }
         window.isAnyFormActive = isAnyFormActive;

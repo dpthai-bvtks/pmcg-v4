@@ -5961,3 +5961,42 @@ otify(...) (các tính năng: đồng bộ phác đồ đám mây, lưu/xóa ph�
      - Đạt `node -c` toàn bộ các file JS lõi và module.
      - Deploy Cloudflare Pages thành công.
      - Git commit & push `origin main`.
+
+---
+
+### [v4.1.7-rev2] - 09:35 28/09/2026: Nâng Cấp Toàn Diện Cơ Chế Đồng Bộ Thời Gian Thực Đa Thiết Bị & Khắc Phục Lỗi Hiển Thị Giờ Y Lệnh/Phòng Bệnh Nhân
+- **Yêu cầu của người dùng**: 1 số bệnh nhân ở trình duyệt này đã thêm giờ y lệnh và phòng nhưng trình duyệt khác lại không hiện, phải F5 lại mới thấy, tìm nguyên nhân và sửa toàn bộ.
+- **Phân tích nguyên nhân cốt lõi phát hiện**:
+  1. **Lỗi Nuốt Phiên Bản (Version Swallowing) khi Form Bận**:
+     - Khi Trình duyệt A lưu bệnh nhân, CSDL tăng `data_version`. Trình duyệt B phát hiện thay đổi qua `getDataVersion`, lập tức gán `lastKnownVersion = v`.
+     - Nhưng khi vào `syncRefreshData()`, nếu người dùng trên Trình duyệt B đang mở ô tìm kiếm bệnh nhân hoặc đã từng bấm xem một bệnh nhân trước đó, hàm `isPatientFormActive()` / `isAnyFormActive()` trả về `true` làm hàm refresh thoát ra (`return;`) mà không nạp lại dữ liệu.
+     - Do `lastKnownVersion` đã bị cập nhật trước đó, các chu kỳ polling tiếp theo so sánh thấy trùng khớp nên bỏ qua, dẫn đến việc Trình duyệt B vĩnh viễn không tự động tải lại nếu không bấm F5.
+  2. **Phạm vi kiểm tra form hoạt động quá rộng**:
+     - `isPatientFormActive()` trước đây kiểm tra toàn bộ container `#tab-patients` (chứa cả ô tìm kiếm `pat-search-input` và bộ lọc loại bệnh nhân). Do đó chỉ cần người dùng click vào thanh tìm kiếm là toàn bộ tiến trình đồng bộ ngầm bị chặn đứng.
+  3. **Khởi chạy Polling thiếu an toàn khi trang nạp từ Cache/Service Worker**:
+     - `sync.js` chỉ lắng nghe `document.addEventListener('DOMContentLoaded', ...)` ở cuối script. Khi trang nạp xong trước đó (`document.readyState === 'complete'`), sự kiện không bao giờ kích hoạt, làm timer kiểm tra ngầm không hề chạy.
+  4. **Thiếu cơ chế đồng bộ tức thì khi chuyển tab Bệnh nhân**:
+     - Khi người dùng click chuyển sang tab Bệnh nhân (`tab-patients`), hệ thống không tự động kích hoạt kiểm tra đồng bộ ngầm.
+- **Giải pháp & Cải tiến đã thực hiện**:
+  1. **Nâng cấp `js/sync.js`**:
+     - Tăng tốc chu kỳ polling từ 15s xuống 8s (`POLL_INTERVAL = 8000`), cực kỳ nhẹ và nhạy bén.
+     - Khởi chạy Polling an toàn: Kiểm tra `document.readyState === 'loading'`. Nếu trang đã nạp xong thì khởi chạy ngay lập tức, đảm bảo timer luôn hoạt động 100% trên mọi thiết bị.
+     - Chống nuốt phiên bản: Chỉ cập nhật `lastKnownVersion = v` khi `syncRefreshData()` thực sự nạp lại dữ liệu thành công (`return true`). Nếu người dùng đang bận nhập form, giữ nguyên version cũ để thử lại ở chu kỳ tiếp theo ngay khi người dùng rời form.
+     - Tự động bảo lưu giá trị các ô nhập liệu tạm thời (`pat-name`, `pat-year`, `pat-time`, `busy-start`, `busy-end`, `pat-leave`, `pat-room`) trong suốt quá trình nạp lại dữ liệu, tránh mất dữ liệu người dùng đang nhập dở.
+     - Xuất bản `window.triggerDataSync` để các sự kiện chuyển tab kích hoạt đồng bộ ngay lập tức.
+  2. **Nâng cấp `js/app.js`**:
+     - Tinh chỉnh `isPatientFormActive()`: Chỉ kiểm tra active khi con trỏ chuột thực sự nằm trong `.sidebar-form` và đang ở chế độ sửa (`btn-cancel-pat` đang hiển thị), loại trừ hoàn toàn ô tìm kiếm bệnh nhân và bộ lọc.
+     - Tinh chỉnh `isAnyFormActive()` tương thích.
+     - Bổ sung kích hoạt đồng bộ khi click chuyển sang tab `tab-patients`.
+     - Bổ sung phát sự kiện `PATIENTS_UPDATED` qua `BroadcastChannel` trong `savePatient()` để đồng bộ tức thì giữa các tab cùng trình duyệt.
+  3. **Đồng bộ phiên bản theo RULES.md**:
+     - Nâng phiên bản: `4.1.7-rev2` (28/09/2026).
+     - Chân trang `#app-footer-version` giữ chuẩn: `Phiên bản: 4.1.7`.
+     - Thời gian cập nhật `#sys-last-update`: `⏱ Cập nhật lần cuối: 09:35 28/09/2026`.
+     - Đồng bộ toàn bộ 33 chuỗi cache buster `?v=4.1.7-rev2` trong `index.html`.
+     - Cập nhật `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.1.7-rev2'`.
+     - Cập nhật `version.json`: phiên bản `4.1.7-rev2`.
+  4. **Kiểm tra cú pháp & Triển khai**:
+     - Đạt `node -c` toàn bộ các file JS lõi và module.
+     - Deploy Cloudflare Pages thành công.
+     - Git commit & push `origin main`.
