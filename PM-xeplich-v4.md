@@ -6046,3 +6046,39 @@ otify(...) (các tính năng: đồng bộ phác đồ đám mây, lưu/xóa ph�
   - Kiểm thử cú pháp Node.js (`node -c`): Toàn bộ file JS trong dự án vượt qua kiểm tra, không có lỗi cú pháp.
   - Kiểm thử logic tìm kiếm độc lập: Đạt 100% các ca kiểm thử: "lê hiền" chỉ khớp BN có cả "lê" và "hiền" trong tên, không khớp BN Lê Văn Căn ở phòng Hiền Phan; "le hien" không dấu hoạt động chuẩn xác; tìm kiếm máy móc, nhân sự, thủ thuật, phòng đều lọc chính xác tức thì.
   - Triển khai Cloudflare Pages và đẩy Git commit lên `origin main` an toàn.
+
+---
+
+### [v4.1.7-rev4] - 14:50 28/09/2026: Tự động cập nhật tên phòng cho bệnh nhân hiện tại & lịch trình khi đổi tên phòng ở tab Phòng (Bảo toàn 100% dữ liệu lịch sử đã chốt sổ)
+
+- **Yêu cầu & Mục tiêu**:
+  1. Khi người dùng đổi tên phòng ở tab-rooms (ví dụ: "Phòng 1" thành "Phòng 101"), hệ thống tự động cập nhật tên phòng mới cho tất cả các bệnh nhân hiện tại đang điều trị thuộc phòng cũ đó.
+  2. Dữ liệu bệnh nhân mới phải được lưu vĩnh viễn trên CSDL máy chủ (Cloudflare D1 & Google Sheets) để khi F5 hoặc mở trên các máy khác không bao giờ bị nhảy lại tên phòng cũ.
+  3. Đảm bảo nguyên tắc bảo toàn dữ liệu lịch sử: Chỉ đổi bệnh nhân hiện tại trong bảng `benh_nhan` và lịch hôm nay (`lich_trinh`). Tuyệt đối giữ nguyên vẹn 100% bảng lịch sử `lich_su` của các ngày trước đã chốt sổ để đảm bảo tính pháp lý và toàn vẹn của hồ sơ bệnh án.
+  4. Đồng bộ thời gian thực tức thì (0ms) sang tất cả các tab khác qua kênh `BroadcastChannel` (`pmcg_live_bus`) và kích hoạt tự động đồng bộ trên các thiết bị khác qua version bump.
+
+- **Các file đã sửa đổi & Chi tiết kỹ thuật**:
+  1. **`backend/src/routes/patients.js`**:
+     - Trong handler `editPhong`: Bổ sung cơ chế Cascade tự động khi phát hiện `actualOldTenPhong && actualOldTenPhong !== tenPhong`.
+     - Thực thi câu lệnh SQL cập nhật bảng bệnh nhân hiện tại:
+       `UPDATE benh_nhan SET room = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ? AND (TRIM(room) = ? OR room = ?)`
+     - Đồng thời cập nhật lịch trình đang xếp của ngày hôm nay:
+       `UPDATE lich_trinh SET room = ? WHERE unit_code = ? AND (TRIM(room) = ? OR room = ?)`
+     - Tuyệt đối không can thiệp vào bảng `lich_su` (bảng lưu vết các ngày đã chốt sổ).
+     - Tự động gọi `bumpDataVersion` để các máy khác nhận biết phiên bản dữ liệu mới và kéo về tức thì.
+  2. **`js/modules/app-resources.js`**:
+     - Trong `saveRoom()`: Khi đổi tên phòng, ngoài việc cập nhật `cache.pat` và vẽ lại bảng bệnh nhân (`renderPatientsTable()`), bổ sung cập nhật trường phòng cho cả lịch trình đang mở trong bộ nhớ (`cache.schedule`) và vẽ lại bảng lịch trình (`renderScheduleTable()`).
+     - Bổ sung phát sự kiện `CACHE_UPDATED` qua `OfflineSyncEngine.broadcastLiveEvent` để tất cả các cửa sổ/tab trình duyệt khác đang mở lập tức đồng bộ dữ liệu mới (0ms).
+  3. **`index.html`**:
+     - Cập nhật toàn bộ 33 chuỗi cache-busting sang `?v=4.1.7-rev4`, `APP_VERSION = '4.1.7-rev4'`.
+     - Chân trang `#app-footer-version` giữ chuẩn: `Phiên bản: 4.1.7`.
+     - Cập nhật dấu thời gian `#sys-last-update`: `⏱ Cập nhật lần cuối: 14:50 28/09/2026`.
+  4. **`sw.js`**:
+     - Cập nhật tên bộ nhớ đệm: `CACHE_NAME = 'pmcg-v4-cache-4.1.7-rev4'`.
+  5. **`version.json`**:
+     - Nâng phiên bản `4.1.7-rev4` cùng ghi chú phát hành chi tiết.
+
+- **Kết quả kiểm thử & Triển khai**:
+  - Kiểm thử cú pháp Node.js (`node -c`): 100% vượt qua kiểm tra, không có lỗi cú pháp.
+  - Triển khai Cloudflare Worker API (`wrangler deploy`) và Cloudflare Pages (`npm run deploy:web`) thành công.
+  - Git commit & push lên `origin main` an toàn.

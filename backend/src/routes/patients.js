@@ -475,10 +475,18 @@ export async function handlePatientsAction(action, ctx) {
       const id = payload.id || null;
 
       let updated = false;
-      if (id || (oldTenPhong && oldTenPhong !== tenPhong)) {
+      let actualOldTenPhong = oldTenPhong;
+      if (!actualOldTenPhong && id) {
+        const currentRoomRow = await db.prepare("SELECT ten_phong FROM phong WHERE unit_code = ? AND id = ?").bind(unitCode, id).first().catch(() => null);
+        if (currentRoomRow && currentRoomRow.ten_phong) {
+          actualOldTenPhong = currentRoomRow.ten_phong;
+        }
+      }
+
+      if (id || (actualOldTenPhong && actualOldTenPhong !== tenPhong)) {
         const updateRes = await db.prepare(
           `UPDATE phong SET ten_phong = ?, bac_si = ?, ktv = ?, danh_sach_may = ?, so_giuong = ?, danh_sach_giuong = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ? AND (id = ? OR ten_phong = ?)`
-        ).bind(tenPhong, bacSi, ktv, danhSachMay, soGiuong, danhSachGiuong, unitCode, id || -1, oldTenPhong || "").run();
+        ).bind(tenPhong, bacSi, ktv, danhSachMay, soGiuong, danhSachGiuong, unitCode, id || -1, actualOldTenPhong || "").run();
         if (updateRes && (updateRes.changes > 0 || updateRes.affected_row_count > 0)) {
           updated = true;
         }
@@ -492,6 +500,25 @@ export async function handlePatientsAction(action, ctx) {
       } else {
         await bumpDataVersion(db, unitCode);
       }
+
+      // 🔄 CASCADE: Tự động cập nhật tên phòng cho bệnh nhân hiện tại (bảng benh_nhan) và lịch hôm nay (lich_trinh)
+      // LƯU Ý: Giữ nguyên tuyệt đối bảng lich_su (lịch sử các ngày trước đã chốt sổ)
+      if (actualOldTenPhong && actualOldTenPhong !== tenPhong) {
+        try {
+          const oldClean = actualOldTenPhong.trim();
+          await db.prepare(
+            `UPDATE benh_nhan SET room = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ? AND (TRIM(room) = ? OR room = ?)`
+          ).bind(tenPhong, unitCode, oldClean, actualOldTenPhong).run();
+
+          await db.prepare(
+            `UPDATE lich_trinh SET room = ? WHERE unit_code = ? AND (TRIM(room) = ? OR room = ?)`
+          ).bind(tenPhong, unitCode, oldClean, actualOldTenPhong).run();
+          console.log(`[editPhong Cascade]: Đã tự động cập nhật tên phòng từ '${actualOldTenPhong}' sang '${tenPhong}' cho bệnh nhân và lịch trình hiện tại.`);
+        } catch (cascadeErr) {
+          console.warn("[editPhong Cascade Warning]:", cascadeErr);
+        }
+      }
+
       return success({ message: "Lưu phòng thành công" });
     }
 

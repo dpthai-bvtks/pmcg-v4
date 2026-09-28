@@ -1,6 +1,6 @@
 {
-    "version": "4.1.7-rev3",
+    "version": "4.1.7-rev4",
     "releaseDate": "28/09/2026",
-    "releaseTime": "14:05 28/09/2026",
-    "notes": "Nâng cấp bộ lọc tìm kiếm thông minh chống khớp chéo cột (các từ trong cụm tìm kiếm phải cùng thuộc một cột, hỗ trợ tìm đa tiêu chí phân tách bằng dấu phẩy) cho Bệnh nhân; bổ sung thanh tìm kiếm nhanh đồng bộ cho 4 tab: Máy móc, Thủ thuật, Nhân sự, Phòng với giao diện hiện đại, hỗ trợ tiếng Việt không dấu, gõ Unikey và Dark Mode hoàn hảo."
+    "releaseTime": "14:50 28/09/2026",
+    "notes": "Tự động cập nhật tên phòng cho bệnh nhân hiện tại (bảng benh_nhan) và lịch trình hôm nay khi đổi tên phòng ở tab Phòng; bảo toàn tuyệt đối 100% dữ liệu lịch sử các ngày trước đã chốt sổ; đồng bộ tức thì đa tab và đa thiết bị."
 }

@@ -425,16 +425,34 @@
 
             cache.room[editIdx.room] = { id: oldId, tenPhong: ten, bacSi: bs, ktv, danhSachMay: dsMay, soGiuong: slGiuong, danhSachGiuong: dsGiuong };
 
-            if (oldName !== ten && cache.pat) {
-                cache.pat.forEach(p => {
-                    const pRoom = p.phong || p[4] || '';
-                    if (String(pRoom).trim() === String(oldName).trim()) {
-                        if (p.phong !== undefined) p.phong = ten;
-                        if (p[4] !== undefined) p[4] = ten;
-                    }
-                });
+            if (oldName !== ten) {
+                if (cache.pat) {
+                    cache.pat.forEach(p => {
+                        const pRoom = p.phong || p[4] || '';
+                        if (String(pRoom).trim() === String(oldName).trim()) {
+                            if (p.phong !== undefined) p.phong = ten;
+                            if (p[4] !== undefined) p[4] = ten;
+                        }
+                    });
 
-                if (typeof window.renderPatientsTable === 'function') window.renderPatientsTable();
+                    if (typeof window.renderPatientsTable === 'function') window.renderPatientsTable();
+                }
+
+                if (cache.schedule && Array.isArray(cache.schedule)) {
+                    cache.schedule.forEach(item => {
+                        const itemRoom = item.phong || item.room || item.PHONG || '';
+                        if (String(itemRoom).trim() === String(oldName).trim()) {
+                            if (item.phong !== undefined) item.phong = ten;
+                            if (item.room !== undefined) item.room = ten;
+                            if (item.PHONG !== undefined) item.PHONG = ten;
+                        }
+                    });
+                    if (typeof window.renderScheduleTable === 'function') window.renderScheduleTable();
+                }
+
+                if (typeof window.OfflineSyncEngine !== 'undefined' && typeof window.OfflineSyncEngine.broadcastLiveEvent === 'function') {
+                    window.OfflineSyncEngine.broadcastLiveEvent('CACHE_UPDATED', { action: 'editPhong', oldName, newName: ten });
+                }
             }
 
             if (typeof callApi === 'function') {
