@@ -1,7 +1,6 @@
 {
-    "version": "4.1.7-rev6",
+    "version": "4.1.7-rev7",
     "releaseDate": "29/09/2026",
-    "releaseTime": "10:45 29/09/2026",
-    "notes": "Fix lỗi font chữ tiếng Việt (TCVN3/VNI/mojibake): (1) nhapDsSat thiếu decodeFn trước khi đọc tên BN từ file HIS, (2) mở rộng điều kiện phát hiện mojibake ở 3 hàm importPatients/importFromHIS/nhapDsSat, (3) loadBootstrapData thêm decodeVietnameseEncoding trước healPatientName, (4) mở rộng regex hasStrongTcvn3Char trong schedule-utils.js để phát hiện đủ các ký tự TCVN3."
+    "releaseTime": "11:20 29/09/2026",
+    "notes": "Sửa triệt để lỗi font chữ tiếng Việt do regex TCVN3 nhận nhầm nguyên âm Unicode chuẩn; sửa lỗi 0 BN khi nạp file HIS; bổ sung chuẩn hóa và chữa lành tên phòng, máy móc, nhân sự."
 }
-

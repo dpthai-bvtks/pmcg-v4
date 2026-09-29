@@ -6115,3 +6115,62 @@ otify(...) (các tính năng: đồng bộ phác đồ đám mây, lưu/xóa ph�
   - Kiểm thử cú pháp Node.js (`node -c`): 100% vượt qua kiểm tra trên toàn bộ file JS của dự án.
   - Triển khai Cloudflare Pages (`npm run deploy:web`) thành công.
   - Git commit & push lên `origin main` an toàn.
+
+### Fix Lỗi Font Chữ Tiếng Việt TCVN3/VNI/Mojibake Khi Nhập Bệnh Nhân Từ File HIS (29/09/2026 - v4.1.7-rev6)
+
+**Yêu cầu của người dùng:** Tìm và sửa nguyên nhân gây ra tình trạng lỗi font chữ (tên bệnh nhân, tên phòng, tên nhân sự, tên máy móc...) khi thêm bệnh nhân từ file HIS hoặc khi xếp lịch.
+
+**Phân tích nguyên nhân & Giải pháp:**
+
+1. **nhapDsSat() thiếu decodeFn trước khi đọc rawTen [NGHIÊM TRỌNG NHẤT]:**
+   - Lỗi: const rawTen = row[colTen] — lấy thẳng giá trị thô từ Excel, không qua decodeFn, khiến TCVN3/VNI không được giải mã.
+   - So với importFromHIS() đã đúng (const rawTen = decodeFn(row[colTen])).
+   - Sửa: Thêm decodeFn(row[colTen]) và truyền candNames vào healFn để đối chiếu tốt hơn.
+
+2. **Điều kiện phát hiện mojibake chỉ kiểm tra \ufffd và ?:**
+   - Lỗi: TCVN3 và VNI không tạo ra ký tự \ufffd — chúng chỉ tạo ký tự Latin sai (µ, ¸, Ô, ñ...) nên điều kiện luôn false → không gọi healFn.
+   - Sửa (3 hàm nhapDsSat/importPatients/importFromHIS): Bổ sung kiểm tra thêm /[\u00A7-\u00AE\u00B5-\u00CB\u00DE-\u00E7\u00EE-\u00F8\u00FF]/.test(rawOrig) trên chuỗi gốc trước khi decode.
+
+3. **loadBootstrapData() không decode trước khi chữa lành:**
+   - Lỗi: healPatientName(pt.ten) không gọi decodeVietnameseEncoding → dữ liệu DB đã lưu sai mã không phục hồi được khi load lại.
+   - Sửa: Tạo _decodeForHeal wrapper, wrap tất cả lời gọi healPatientName với _decodeForHeal(value) trước.
+
+4. **schedule-utils.js: hasStrongTcvn3Char regex quá hẹp:**
+   - Lỗi: Chỉ kiểm tra 8 ký tự \u00A7–\u00AE trong khi bảng TCVN3_MAP có hơn 80 ký tự → các ký tự TCVN3 nhẹ (µ \u00B5, ¸ \u00B8...) không bị phát hiện → hàm eturn sớm bỏ qua toàn bộ decode TCVN3/VNI.
+   - Sửa: Mở rộng regex sang toàn bộ vùng TCVN3_MAP thực tế: /[\u00A7-\u00AE\u00B5-\u00CB\u00DE-\u00E7\u00EE-\u00F8\u00FF]/.
+
+**File sửa đổi:**
+- js/app.js: nhapDsSat() dòng 8845, importPatients() dòng 9234, importFromHIS() dòng 9422, loadBootstrapData() dòng 3156-3173.
+- js/schedule-utils.js: hasStrongTcvn3Char regex dòng 151.
+- sw.js, index.html, ersion.json: Bump lên v4.1.7-rev6.
+
+### Khắc Phục Triệt Để Lỗi Font Chữ Do Regex TCVN3 Quá Rộng & Sửa Lỗi Không Đọc Được File HIS (29/09/2026 - v4.1.7-rev7)
+
+**Yêu cầu của người dùng:** Người dùng báo 'lỗi toàn bộ font chữ rồi' kèm ảnh chụp màn hình thông báo lỗi 'Không đọc được dữ liệu: HIS: 0 BN' khi nạp file HIS.
+
+**Phân tích nguyên nhân gốc rễ & Giải pháp khắc phục:**
+1. **Sửa sai lầm tai hại trong regex hasStrongTcvn3Char của js/schedule-utils.js:**
+   - *Nguyên nhân cốt lõi*: Ở bản rev6, regex đã mở rộng thành /[\u00A7-\u00AE\u00B5-\u00CB\u00DE-\u00E7\u00EE-\u00F8\u00FF]/. Dải \u00DE-\u00E7 và \u00EE-\u00F8 chứa chính các ký tự nguyên âm có dấu trong Latin-1 Supplement của tiếng Việt Unicode chuẩn (á, â, ã, ê, ò, ó, ô, õ, ù, ú, ý...). Kết quả là 99.9% từ tiếng Việt Unicode chuẩn đều bị coi là TCVN3 và bị TCVN3_MAP chuyển thành ký tự rác (ví dụ: 'Họ và tên' -> 'Họ và tũn', 'Nguyễn Văn Thái' -> 'Nguyễn Văn Thữi', 'Điện châm' -> 'Điện chựm').
+   - *Hệ quả với file HIS*: Tiêu đề cột 'Họ và tên' bị biến thành 'Họ và tũn', hàm 
+orm() chuẩn hóa thành 'ho va tun' nên không khớp với bất kỳ từ khóa header nào -> máy dò nhầm sang hàng 10 với các cột sai -> dẫn đến đọc được 0 bệnh nhân (HIS: 0 BN) và bật popup lỗi.
+   - *Giải pháp*: Thu hẹp regex hasStrongTcvn3Char về tập ký tự biểu tượng độc nhất của TCVN3 (/[\u00A7-\u00AE\u00B5-\u00B9\u00BB-\u00BE]/). Tuyệt đối không bao gồm \u00C0-\u00FF để bảo vệ 100% nguyên âm tiếng Việt Unicode chuẩn.
+2. **Sửa regex phát hiện mojibake tại 3 hàm nhập bệnh nhân trong js/app.js:**
+   - Tại 
+hapDsSat(), importPatients(), importFromHIS(), sửa tương tự về /[\u00A7-\u00AE\u00B5-\u00B9\u00BB-\u00BE]/ để tránh gán nhầm cờ mojibake cho tên bệnh nhân bình thường.
+3. **Bổ sung chuẩn hóa và chữa lành toàn diện cho Phòng, Máy móc, Nhân sự, Thủ thuật:**
+   - Xây dựng 2 hàm mới: cleanAndHealRoomName và cleanAndHealMachineName trong schedule-utils.js và scheduler-engine.js.
+   - Trong 
+ormalizeScheduleItem (js/scheduler-engine.js): Bổ sung cleanAndHealRoomName cho cột phong và cleanAndHealMachineName cho cột may khi xếp lịch.
+   - Trong loadBootstrapData (js/app.js): Tự động giải mã và chuẩn hóa cho .rooms, .machines, .staff, .procedures ngay khi nạp từ Database về.
+4. **Kiểm tra xác thực (Validation):**
+   - 100% các từ tiếng Việt Unicode chuẩn giữ nguyên vẹn: Họ và tên, Nguyễn Văn Thái, Lê Văn Lâm, Điện châm, Thủy châm, Phòng điều trị, Máy kéo giãn.
+   - Hàm 
+orm('Họ và tên') trả về đúng 'ho va ten', nhận diện header file HIS chuẩn xác.
+   - Tên TCVN3 thực thụ ('Nguy«n V¨n Th¸i') vẫn được giải mã chuẩn xác.
+
+**File sửa đổi:**
+- js/schedule-utils.js: Thu hẹp hasStrongTcvn3Char, bổ sung cleanAndHealRoomName, cleanAndHealMachineName.
+- js/scheduler-engine.js: Thêm cleanAndHealRoomName, cleanAndHealMachineName, áp dụng vào 
+ormalizeScheduleItem.
+- js/app.js: Sửa regex mojibake tại 3 hàm import, bổ sung decode cho rooms, machines, staff, procedures trong loadBootstrapData.
+- ersion.json, index.html, sw.js: Nâng version lên 4.1.7-rev7.

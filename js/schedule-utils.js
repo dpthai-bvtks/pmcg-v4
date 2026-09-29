@@ -148,9 +148,9 @@ var ScheduleUtils = (function () {
     try { str = str.normalize('NFC'); } catch (e) {}
 
     // 🛡️ Xử lý sớm các từ TCVN3 đặc thù trước khi kiểm tra return early
-    // 🛡️ Fix: Mở rộng hasStrongTcvn3Char để bao quát toàn bộ vùng ký tự TCVN3_MAP
-    // Trước đây chỉ A7-AE (8 ký tự), bỏ sót các ký tự TCVN3 nhẹ → hàm return sớm không decode được
-    const hasStrongTcvn3Char = /[\u00A7-\u00AE\u00B5-\u00CB\u00DE-\u00E7\u00EE-\u00F8\u00FF]/.test(str);
+    // 🛡️ Chỉ bao gồm các ký tự biểu tượng độc nhất của TCVN3 (A7-AE, B5-B9, BB-BE)
+    // TUYỆT ĐỐI KHÔNG chứa \u00C0-\u00FF vì đó là toàn bộ các chữ cái nguyên âm Unicode tiếng Việt chuẩn!
+    const hasStrongTcvn3Char = /[\u00A7-\u00AE\u00B5-\u00B9\u00BB-\u00BE]/.test(str);
 
     const hasTcvn3Word = /\b(NguyÔn|Thñy|bãp|huyÖt)\b/i.test(str);
     if (hasTcvn3Word) {
@@ -382,6 +382,52 @@ var ScheduleUtils = (function () {
     return prefix ? (prefix + proper) : proper;
   }
 
+  function cleanAndHealRoomName(rawRoom, candidates = []) {
+    if (!rawRoom && rawRoom !== 0) return '';
+    let str = decodeVietnameseEncoding(rawRoom);
+    if (!str) return '';
+
+    let candList = Array.isArray(candidates) ? candidates : [];
+    if (!candList.length && typeof window !== 'undefined' && window.dataCache) {
+      candList = window.dataCache.room || [];
+    }
+
+    if (candList.length > 0) {
+      const cleanNoTone = stripTones(str.replace(/[\ufffd\u0000\?]+/g, ' '));
+      for (const c of candList) {
+        if (!c) continue;
+        const cName = String(c.tenPhong || c.ten || c[1] || c || '').normalize('NFC').trim();
+        if (!cName || /[\ufffd\u0000\?]/.test(cName)) continue;
+        if (cName.toLowerCase() === str.toLowerCase()) return cName;
+        if (stripTones(cName) === cleanNoTone && cleanNoTone.length >= 2) return cName;
+      }
+    }
+    return toVietnameseProperCase(str);
+  }
+
+  function cleanAndHealMachineName(rawMachine, candidates = []) {
+    if (!rawMachine && rawMachine !== 0) return '';
+    let str = decodeVietnameseEncoding(rawMachine);
+    if (!str) return '';
+
+    let candList = Array.isArray(candidates) ? candidates : [];
+    if (!candList.length && typeof window !== 'undefined' && window.dataCache) {
+      candList = window.dataCache.machine || [];
+    }
+
+    if (candList.length > 0) {
+      const cleanNoTone = stripTones(str.replace(/[\ufffd\u0000\?]+/g, ' '));
+      for (const c of candList) {
+        if (!c) continue;
+        const cName = String(c.tenLoai || c.ten || c[1] || c || '').normalize('NFC').trim();
+        if (!cName || /[\ufffd\u0000\?]/.test(cName)) continue;
+        if (cName.toLowerCase() === str.toLowerCase()) return cName;
+        if (stripTones(cName) === cleanNoTone && cleanNoTone.length >= 2) return cName;
+      }
+    }
+    return toVietnameseProperCase(str);
+  }
+
   // ============================================================
   // 4. ĐÓNG GÓI & XUẤT BẢN RA PHẠM VI TOÀN CỤC
   // ============================================================
@@ -401,6 +447,10 @@ var ScheduleUtils = (function () {
     healProcedureName: cleanAndHealProcedureName,
     cleanAndHealStaffName,
     healStaffName: cleanAndHealStaffName,
+    cleanAndHealRoomName,
+    healRoomName: cleanAndHealRoomName,
+    cleanAndHealMachineName,
+    healMachineName: cleanAndHealMachineName,
     getSession: gScope.getSession,
     getAuthToken: gScope.getAuthToken,
     notify: gScope.notify,

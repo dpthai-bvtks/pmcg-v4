@@ -3187,23 +3187,47 @@ var dataCache = window.dataCache;
 
                     if (typeof dataCache !== 'undefined') {
                         if (b.machines && Array.isArray(b.machines)) {
-                            b.machines.forEach((m, i) => { if (m) m.sheetIndex = i; });
+                            b.machines.forEach((m, i) => { 
+                                if (m) {
+                                    m.sheetIndex = i;
+                                    if (m.tenLoai) m.tenLoai = (typeof window.cleanAndHealMachineName === 'function') ? window.cleanAndHealMachineName(m.tenLoai) : _decodeForHeal(m.tenLoai);
+                                    if (Array.isArray(m) && m[1]) m[1] = (typeof window.cleanAndHealMachineName === 'function') ? window.cleanAndHealMachineName(m[1]) : _decodeForHeal(m[1]);
+                                }
+                            });
                             dataCache.machine = b.machines.filter(m => m && (m.tenLoai || m[1]));
                             if (typeof renderMachinesTable === 'function') renderMachinesTable();
                         }
                         if (b.rooms && Array.isArray(b.rooms)) {
-                            b.rooms.forEach((r, i) => { if (r) r.sheetIndex = i; });
+                            b.rooms.forEach((r, i) => { 
+                                if (r) {
+                                    r.sheetIndex = i;
+                                    if (r.tenPhong) r.tenPhong = (typeof window.cleanAndHealRoomName === 'function') ? window.cleanAndHealRoomName(r.tenPhong) : _decodeForHeal(r.tenPhong);
+                                    if (Array.isArray(r) && r[1]) r[1] = (typeof window.cleanAndHealRoomName === 'function') ? window.cleanAndHealRoomName(r[1]) : _decodeForHeal(r[1]);
+                                }
+                            });
                             dataCache.room = b.rooms.filter(r => r && (r.tenPhong || r[1]));
                             if (typeof renderRoomsTable === 'function') renderRoomsTable();
                         }
                         if (b.procedures && Array.isArray(b.procedures)) {
-                            b.procedures.forEach((p, i) => { if (p) p.sheetIndex = i; });
+                            b.procedures.forEach((p, i) => { 
+                                if (p) {
+                                    p.sheetIndex = i;
+                                    if (p.ten) p.ten = (typeof window.cleanAndHealProcedureName === 'function') ? window.cleanAndHealProcedureName(p.ten) : _decodeForHeal(p.ten);
+                                    if (Array.isArray(p) && p[1]) p[1] = (typeof window.cleanAndHealProcedureName === 'function') ? window.cleanAndHealProcedureName(p[1]) : _decodeForHeal(p[1]);
+                                }
+                            });
                             dataCache.proc = b.procedures;
                             if (typeof renderProceduresTable === 'function') renderProceduresTable();
                             if (typeof renderProcedureCheckboxes === 'function') renderProcedureCheckboxes();
                         }
                         if (b.staff && Array.isArray(b.staff)) {
-                            b.staff.forEach((st, i) => { if (st) st.sheetIndex = i; });
+                            b.staff.forEach((st, i) => { 
+                                if (st) {
+                                    st.sheetIndex = i;
+                                    if (st.ten) st.ten = (typeof window.cleanAndHealStaffName === 'function') ? window.cleanAndHealStaffName(st.ten) : _decodeForHeal(st.ten);
+                                    if (Array.isArray(st) && st[1]) st[1] = (typeof window.cleanAndHealStaffName === 'function') ? window.cleanAndHealStaffName(st[1]) : _decodeForHeal(st[1]);
+                                }
+                            });
                             dataCache.staff = b.staff.filter(st => st && st.ten);
                             if (typeof renderStaffTable === 'function') renderStaffTable();
                             if (typeof window.resetChamCongForUnit === 'function') {
@@ -8850,7 +8874,7 @@ var dataCache = window.dataCache;
                             const rawTen = decodeFn(row[colTen]);
                             const _rawTenOrig = String(row[colTen] || '');
                             const _hasMojibake = rawTen.includes('\ufffd') || rawTen.includes('?') ||
-                                /[\u00A7-\u00AE\u00B5-\u00CB\u00DE-\u00E7\u00EE-\u00F8\u00FF]/.test(_rawTenOrig);
+                                /[\u00A7-\u00AE\u00B5-\u00B9\u00BB-\u00BE]/.test(_rawTenOrig);
                             const ten = _hasMojibake ? healFn(rawTen, candNames, false) : properFn(rawTen);
                             const dichVu = decodeFn(row[colDichVu]);
 
@@ -9242,7 +9266,7 @@ var dataCache = window.dataCache;
                         // 🛡️ Fix: mở rộng điều kiện phát hiện mojibake (TCVN3/VNI không tạo \ufffd)
                         const _rawTOrig = String(r[1] || '');
                         const _hasMojibakeT = rawT.includes('\ufffd') || rawT.includes('?') ||
-                            /[\u00A7-\u00AE\u00B5-\u00CB\u00DE-\u00E7\u00EE-\u00F8\u00FF]/.test(_rawTOrig);
+                            /[\u00A7-\u00AE\u00B5-\u00B9\u00BB-\u00BE]/.test(_rawTOrig);
                         const ten = _hasMojibakeT ? healFn(rawT, candNames, false) : properFn(rawT);
                         const namSinh = decodeFn(r[2]);
                         const key = buildMatchKeyLocal(ten, namSinh);
@@ -9434,7 +9458,7 @@ var dataCache = window.dataCache;
                             // Giữ nguyên họ tên thực tế từ file Excel, không đoán mò gán nhầm sang BN khác
                             const _rawTenHisOrig = String(row[colTen] || '');
                             const _hasMojibakeHis = rawTen.includes('\ufffd') || rawTen.includes('?') ||
-                                /[\u00A7-\u00AE\u00B5-\u00CB\u00DE-\u00E7\u00EE-\u00F8\u00FF]/.test(_rawTenHisOrig);
+                                /[\u00A7-\u00AE\u00B5-\u00B9\u00BB-\u00BE]/.test(_rawTenHisOrig);
                             const ten = _hasMojibakeHis ? healFn(rawTen, candNames, false) : properFn(rawTen);
                             const namSinh = decodeFn(row[colNamSinh]);
                             const dichVu = decodeFn(row[colDichVu]);

@@ -67,6 +67,16 @@ var SchedulerEngine = (typeof window !== 'undefined' ? window : (typeof global !
     return toVietnameseProperCase(rawProc);
   }
 
+  function cleanAndHealRoomName(rawRoom, candidates = []) {
+    if (_U && typeof _U.cleanAndHealRoomName === 'function') return _U.cleanAndHealRoomName(rawRoom, candidates);
+    return toVietnameseProperCase(rawRoom);
+  }
+
+  function cleanAndHealMachineName(rawMachine, candidates = []) {
+    if (_U && typeof _U.cleanAndHealMachineName === 'function') return _U.cleanAndHealMachineName(rawMachine, candidates);
+    return toVietnameseProperCase(rawMachine);
+  }
+
 function normalizeScheduleItem(row) {
   if (!row) return null;
   if (Array.isArray(row)) {
@@ -76,13 +86,13 @@ function normalizeScheduleItem(row) {
       ngay: String(row[0] || '').trim(),
       tenBN: cleanAndHealPatientName(String(row[1] || '').trim()),
       namSinh: String(row[2] || '').trim(),
-      phong: String(row[3] || '').trim(),
+      phong: cleanAndHealRoomName(String(row[3] || '').trim()),
       thuThuat: cleanAndHealProcedureName(String(row[4] || '').trim()),
       gioDienRa: gioDienRa,
       gioKetThuc: String(row[6] || '').trim(),
       nvChinh: cleanAndHealStaffName(String(row[7] || '').trim()),
       nvPhu: cleanAndHealStaffName(String(row[8] || '').trim()),
-      may: String(row[9] || '').trim(),
+      may: cleanAndHealMachineName(String(row[9] || '').trim()),
       giuong: String(row[10] || '').trim(),
       __isDischarged: false,
       __dropped: isDrop
@@ -94,13 +104,13 @@ function normalizeScheduleItem(row) {
     ngay: String(row.ngay || row.NGAY || row.date || '').trim(),
     tenBN: cleanAndHealPatientName(String(row.tenBN || row.HOTEN || row.patient_name || row.ten || row.name || '').trim()),
     namSinh: String(row.namSinh || row.NAMSINH || row.dob || row.ns || row.age || '').trim(),
-    phong: String(row.phong || row.PHONG || row.room || '').trim(),
+    phong: cleanAndHealRoomName(String(row.phong || row.PHONG || row.room || '').trim()),
     thuThuat: cleanAndHealProcedureName(String(row.thuThuat || row.DICHVU || row.procedure_name || row.tt || '').trim()),
     gioDienRa: rawGio,
     gioKetThuc: String(row.gioKetThuc || row.GIOKETTHUC || row.end_time || row.end || '').trim(),
     nvChinh: cleanAndHealStaffName(String(row.nvChinh || row['NV CHÍNH'] || row.staff_name || row.staff || row.nv1 || '').trim()),
     nvPhu: cleanAndHealStaffName(String(row.nvPhu || row['NV PHỤ'] || row.sub_staff_name || row.sub_staff || row.nv2 || '').trim()),
-    may: String(row.may || row.MAY || row.machine_name || row.machine || '').trim(),
+    may: cleanAndHealMachineName(String(row.may || row.MAY || row.machine_name || row.machine || '').trim()),
     giuong: String(row.giuong || row.GIUONG || row.bed || '').trim(),
     __isDischarged: !!row.__isDischarged,
     __dropped: isDrop
@@ -3031,6 +3041,10 @@ function getSafeCache() {
     cleanAndHealPatientName,
     cleanAndHealProcedureName,
     healProcedureName: cleanAndHealProcedureName,
+    cleanAndHealRoomName,
+    healRoomName: cleanAndHealRoomName,
+    cleanAndHealMachineName,
+    healMachineName: cleanAndHealMachineName,
     buildDbFromCache,
     validateNoOverlapWithExisting,
     checkMiniPCSolverOnline,
@@ -3060,6 +3074,10 @@ function getSafeCache() {
     gScope.healPatientName = SchedulerEngine.cleanAndHealPatientName;
     gScope.cleanAndHealProcedureName = SchedulerEngine.cleanAndHealProcedureName;
     gScope.healProcedureName = SchedulerEngine.cleanAndHealProcedureName;
+    gScope.cleanAndHealRoomName = SchedulerEngine.cleanAndHealRoomName;
+    gScope.healRoomName = SchedulerEngine.cleanAndHealRoomName;
+    gScope.cleanAndHealMachineName = SchedulerEngine.cleanAndHealMachineName;
+    gScope.healMachineName = SchedulerEngine.cleanAndHealMachineName;
     gScope.normalizeScheduleItem = SchedulerEngine.normalizeScheduleItem;
     gScope.isContinuousProcedure = SchedulerEngine.isContinuousProcedure;
     gScope.checkMiniPCSolverOnline = SchedulerEngine.checkMiniPCSolverOnline;

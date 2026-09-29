@@ -1,9 +1,9 @@
 /**
- * SERVICE WORKER CHO PHáº¦N Má»€M Xáº¾P Lá»ŠCH YHCT - PHCN (T.I.M.E.S System v4.0.2 Multi-Tenant SaaS)
- * Quáº£n lÃ½ Cache Ä‘á»‡m tÄ©nh, cho phÃ©p má»Ÿ App ngoáº¡i tuyáº¿n (Offline-first) vÃ  táº£i tá»©c thÃ¬.
+ * SERVICE WORKER CHO PHẦN MỀM XẾP LỊCH YHCT - PHCN (T.I.M.E.S System v4.0.2 Multi-Tenant SaaS)
+ * Quản lý Cache đệm tĩnh, cho phép mở App ngoại tuyến (Offline-first) và tải tức thì.
  */
 
-const CACHE_NAME = 'pmcg-v4-cache-4.1.7-rev6';
+const CACHE_NAME = 'pmcg-v4-cache-4.1.7-rev7';
 const STATIC_ASSETS = [
   './',
   './index.html',
