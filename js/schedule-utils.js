@@ -148,7 +148,10 @@ var ScheduleUtils = (function () {
     try { str = str.normalize('NFC'); } catch (e) {}
 
     // 🛡️ Xử lý sớm các từ TCVN3 đặc thù trước khi kiểm tra return early
-    const hasStrongTcvn3Char = /[\u00A7\u00A8\u00A9\u00AA\u00AB\u00AC\u00AD\u00AE]/.test(str);
+    // 🛡️ Fix: Mở rộng hasStrongTcvn3Char để bao quát toàn bộ vùng ký tự TCVN3_MAP
+    // Trước đây chỉ A7-AE (8 ký tự), bỏ sót các ký tự TCVN3 nhẹ → hàm return sớm không decode được
+    const hasStrongTcvn3Char = /[\u00A7-\u00AE\u00B5-\u00CB\u00DE-\u00E7\u00EE-\u00F8\u00FF]/.test(str);
+
     const hasTcvn3Word = /\b(NguyÔn|Thñy|bãp|huyÖt)\b/i.test(str);
     if (hasTcvn3Word) {
       str = str.replace(/\bNguyÔn\b/g, 'Nguyễn').replace(/\bnguyÔn\b/g, 'nguyễn')

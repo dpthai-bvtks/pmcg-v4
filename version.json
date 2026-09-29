@@ -1,6 +1,7 @@
 {
-    "version": "4.1.7-rev5",
-    "releaseDate": "28/09/2026",
-    "releaseTime": "16:45 28/09/2026",
-    "notes": "Tối ưu hóa kiểm tra lỗi: phân biệt chính xác bệnh nhân trùng tên theo Năm sinh / Mã BN (không bị báo trùng lịch ảo khi 2 bệnh nhân trùng tên xếp thủ thuật cùng giờ), hiển thị năm sinh kèm tên bệnh nhân."
+    "version": "4.1.7-rev6",
+    "releaseDate": "29/09/2026",
+    "releaseTime": "10:45 29/09/2026",
+    "notes": "Fix lỗi font chữ tiếng Việt (TCVN3/VNI/mojibake): (1) nhapDsSat thiếu decodeFn trước khi đọc tên BN từ file HIS, (2) mở rộng điều kiện phát hiện mojibake ở 3 hàm importPatients/importFromHIS/nhapDsSat, (3) loadBootstrapData thêm decodeVietnameseEncoding trước healPatientName, (4) mở rộng regex hasStrongTcvn3Char trong schedule-utils.js để phát hiện đủ các ký tự TCVN3."
 }
+

@@ -3153,21 +3153,25 @@ var dataCache = window.dataCache;
             callApi('getBootstrapData', [document.getElementById('schedule-date')?.value || ''], function (b) {
                     if (!b) return;
 
-                    // 🛡️ Tự động chữa lành họ tên bệnh nhân và lịch trình trước khi lưu cache
+                    // 🛡️ Tự động decode + chữa lành họ tên bệnh nhân và lịch trình trước khi lưu cache
+                    // Fix: thêm decodeVietnameseEncoding trước healPatientName để xử lý dữ liệu DB lưu sai mã
+                    const _decodeForHeal = (typeof window.decodeVietnameseEncoding === 'function')
+                        ? window.decodeVietnameseEncoding
+                        : (s => String(s || '').normalize('NFC').trim());
                     if (b.patients && Array.isArray(b.patients)) {
                         b.patients.forEach((pt, i) => {
                             if (pt) {
                                 pt.sheetIndex = i;
-                                if (pt.ten) pt.ten = healPatientName(pt.ten);
-                                if (pt.name) pt.name = healPatientName(pt.name);
+                                if (pt.ten) pt.ten = healPatientName(_decodeForHeal(pt.ten));
+                                if (pt.name) pt.name = healPatientName(_decodeForHeal(pt.name));
                             }
                         });
                     }
                     if (b.schedule && Array.isArray(b.schedule)) {
                         b.schedule.forEach(sc => {
                             if (sc) {
-                                if (sc.tenBN) sc.tenBN = healPatientName(sc.tenBN, [], true);
-                                if (Array.isArray(sc) && sc[1]) sc[1] = healPatientName(sc[1], [], true);
+                                if (sc.tenBN) sc.tenBN = healPatientName(_decodeForHeal(sc.tenBN), [], true);
+                                if (Array.isArray(sc) && sc[1]) sc[1] = healPatientName(_decodeForHeal(sc[1]), [], true);
                             }
                         });
                     }
@@ -8842,8 +8846,12 @@ var dataCache = window.dataCache;
                         const hisLoaiMap = {};
                         const dataRows = roa.slice(startRow);
                         dataRows.forEach(row => {
-                            const rawTen = row[colTen];
-                            const ten = (rawTen && (String(rawTen).includes('\ufffd') || String(rawTen).includes('?'))) ? healFn(rawTen, [], false) : properFn(rawTen);
+                            // 🛡️ Fix: decodeFn trước để giải mã TCVN3/VNI; mở rộng điều kiện phát hiện mojibake
+                            const rawTen = decodeFn(row[colTen]);
+                            const _rawTenOrig = String(row[colTen] || '');
+                            const _hasMojibake = rawTen.includes('\ufffd') || rawTen.includes('?') ||
+                                /[\u00A7-\u00AE\u00B5-\u00CB\u00DE-\u00E7\u00EE-\u00F8\u00FF]/.test(_rawTenOrig);
+                            const ten = _hasMojibake ? healFn(rawTen, candNames, false) : properFn(rawTen);
                             const dichVu = decodeFn(row[colDichVu]);
 
                             let loaiBn = 'NoiTru';
@@ -9231,7 +9239,11 @@ var dataCache = window.dataCache;
 
                     const patientList = rows.slice(1).filter(r => r[1]).map(r => {
                         const rawT = decodeFn(r[1]);
-                        const ten = (rawT.includes('\ufffd') || rawT.includes('?')) ? healFn(rawT, [], false) : properFn(rawT);
+                        // 🛡️ Fix: mở rộng điều kiện phát hiện mojibake (TCVN3/VNI không tạo \ufffd)
+                        const _rawTOrig = String(r[1] || '');
+                        const _hasMojibakeT = rawT.includes('\ufffd') || rawT.includes('?') ||
+                            /[\u00A7-\u00AE\u00B5-\u00CB\u00DE-\u00E7\u00EE-\u00F8\u00FF]/.test(_rawTOrig);
+                        const ten = _hasMojibakeT ? healFn(rawT, candNames, false) : properFn(rawT);
                         const namSinh = decodeFn(r[2]);
                         const key = buildMatchKeyLocal(ten, namSinh);
                         const existing = existingMap[key];
@@ -9418,8 +9430,12 @@ var dataCache = window.dataCache;
 
                         dataRows.forEach(row => {
                             const rawTen = decodeFn(row[colTen]);
+                            // 🛡️ Fix: mở rộng điều kiện phát hiện mojibake (TCVN3/VNI không tạo \ufffd)
                             // Giữ nguyên họ tên thực tế từ file Excel, không đoán mò gán nhầm sang BN khác
-                            const ten = (rawTen.includes('\ufffd') || rawTen.includes('?')) ? healFn(rawTen, [], false) : properFn(rawTen);
+                            const _rawTenHisOrig = String(row[colTen] || '');
+                            const _hasMojibakeHis = rawTen.includes('\ufffd') || rawTen.includes('?') ||
+                                /[\u00A7-\u00AE\u00B5-\u00CB\u00DE-\u00E7\u00EE-\u00F8\u00FF]/.test(_rawTenHisOrig);
+                            const ten = _hasMojibakeHis ? healFn(rawTen, candNames, false) : properFn(rawTen);
                             const namSinh = decodeFn(row[colNamSinh]);
                             const dichVu = decodeFn(row[colDichVu]);
                             // Bỏ qua cột D (idx 3 - Buồng bệnh nội trú HIS), mặc định để phòng trống
