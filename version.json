@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev1",
+    "version": "4.1.8-rev2",
     "releaseDate": "30/09/2026",
-    "releaseTime": "08:05 30/09/2026",
-    "notes": "Tích hợp giải pháp dự phòng CSDL Google Sheets: tự động ghi song song (dual-write) lịch trình và tự động chuyển đổi dự phòng (auto-failover) nạp lịch từ Google Sheets khi Turso Cloud gián đoạn hoặc hết quota đọc."
+    "releaseTime": "09:20 30/09/2026",
+    "notes": "Tự động dự phòng đồng bộ Google Sheets trực tiếp từ MiniPC SQLite Engine và Offline Cache khi Turso Cloud bị chặn/hết quota; chuẩn hóa định dạng văn bản Plain Text cho Google Apps Script."
 }

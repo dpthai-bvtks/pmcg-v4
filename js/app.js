@@ -947,7 +947,7 @@ window.showGlobalLoading = function (text) {
         // GITHUB PAGES API CONFIGURATION (SELF-HEALING)
         // ============================================================
         const DEFAULT_API_URL = 'https://pmcg-api.dpthai-ttytmk.workers.dev';
-        const DEFAULT_BACKUP_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzx_09JRVmHQfV1P85_xcE_ZzN7nLu2WzEjL2Uu0bIGwMzcBGGrPrIsPh1xMj5mp8x7Yg/exec';
+        const DEFAULT_BACKUP_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyNvZYGa2UMzaZiGamV2bABMwgC_lo4-bNuoAqL-rOjBA3_leXw72wrV2aFOfABf_Ho/exec';
         const SECONDARY_BACKUP_URL = (localStorage.getItem('times_backup_api_url') || '').trim();
         window._serverMode = 'primary'; // 'primary' | 'backup' | 'offline'
         let _consecutiveApiErrors = 0;
@@ -956,6 +956,11 @@ window.showGlobalLoading = function (text) {
             let backupUrl = (typeof window.sanitizeGoogleScriptUrl === 'function')
                 ? window.sanitizeGoogleScriptUrl(localStorage.getItem('times_backup_api_url') || '')
                 : (localStorage.getItem('times_backup_api_url') || '').trim();
+            // Tự động nâng cấp nếu người dùng còn lưu link WebApp cũ bị lỗi
+            if (backupUrl && backupUrl.includes('AKfycbzx_09JRVmHQfV1P85')) {
+                backupUrl = DEFAULT_BACKUP_SHEETS_URL;
+                localStorage.setItem('times_backup_api_url', backupUrl);
+            }
             return backupUrl || DEFAULT_BACKUP_SHEETS_URL;
         }
         window.getBackupSheetsUrl = getBackupSheetsUrl;
@@ -1241,8 +1246,100 @@ window.showGlobalLoading = function (text) {
                             };
                         }
                     } catch (e) {
-                        console.warn('[SyncTenant] Không thể fetch bootstrap data, fallback cache:', e);
+                        console.warn('[SyncTenant] Không thể fetch bootstrap data từ Cloudflare, fallback:', e);
                     }
+                }
+
+                // 🛡️ BƯỚC DỰ PHÒNG 1: Nếu Cloudflare/Turso bị khóa hoặc lỗi, thử đọc trực tiếp từ MiniPC SQLite Engine (127.0.0.1:8080)
+                if (!dbPayload || !dbPayload.benh_nhan || dbPayload.benh_nhan.length === 0) {
+                    try {
+                        updateProgress(25, '[1/4] 🖥️ Đang trích xuất dữ liệu từ máy chủ MiniPC (SQLite)...');
+                        const localToken = 'pmcg_sec_4ce384f00896635ad33fb7ddba1619c8490fd24cad22e67d';
+                        const localResp = await fetch('http://127.0.0.1:8080/v2/pipeline', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer ' + localToken,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                requests: [
+                                    { type: 'execute', stmt: { sql: "SELECT * FROM benh_nhan WHERE unit_code='" + curUnitCode + "' OR unit_code IS NULL OR unit_code=''" } },
+                                    { type: 'execute', stmt: { sql: "SELECT * FROM nhan_su WHERE unit_code='" + curUnitCode + "' OR unit_code IS NULL OR unit_code=''" } },
+                                    { type: 'execute', stmt: { sql: "SELECT * FROM may_moc WHERE unit_code='" + curUnitCode + "' OR unit_code IS NULL OR unit_code=''" } },
+                                    { type: 'execute', stmt: { sql: "SELECT * FROM phong WHERE unit_code='" + curUnitCode + "' OR unit_code IS NULL OR unit_code=''" } },
+                                    { type: 'execute', stmt: { sql: "SELECT * FROM thu_thuat WHERE unit_code='" + curUnitCode + "' OR unit_code IS NULL OR unit_code=''" } },
+                                    { type: 'execute', stmt: { sql: "SELECT * FROM phac_do WHERE unit_code='" + curUnitCode + "' OR unit_code IS NULL OR unit_code=''" } },
+                                    { type: 'execute', stmt: { sql: "SELECT * FROM lich_trinh WHERE unit_code='" + curUnitCode + "'" } },
+                                    { type: 'execute', stmt: { sql: "SELECT * FROM lich_su WHERE unit_code='" + curUnitCode + "' ORDER BY date DESC, id DESC LIMIT 500" } },
+                                    { type: 'close' }
+                                ]
+                            })
+                        });
+                        if (localResp.ok) {
+                            const localData = await localResp.json();
+                            const parseRows = (resultIdx) => {
+                                const res = localData.results?.[resultIdx]?.response?.result;
+                                if (!res) return [];
+                                const cols = res.cols.map(c => c.name);
+                                return res.rows.map(r => {
+                                    const rowObj = {};
+                                    cols.forEach((col, idx) => { rowObj[col] = r[idx]?.value ?? ''; });
+                                    return rowObj;
+                                });
+                            };
+                            const localPatients = parseRows(0).map(b => ({ maBN: b.id, ten: b.name, namSinh: b.age, gioiTinh: b.gender, phong: b.room, giuong: b.bed, gioVao: b.arrive_time, dsThuThuat: b.thu_thuat, trangThai: b.status, loaiBN: b.loai_bn, buoiDieuTri: b.buoi_dieu_tri }));
+                            const localStaff = parseRows(1).map(n => ({ maNV: n.id, ten: n.name, chucVu: n.role, chuyenMon: n.skills, phong: n.room, trangThai: n.status }));
+                            const localMachines = parseRows(2).map(m => ({ maMay: m.id, tenLoai: m.name, phong: m.room, loaiMay: m.machine_type, trangThai: m.status }));
+                            const localRooms = parseRows(3).map(p => ({ maPhong: p.id, tenPhong: p.name, loaiPhong: p.room_type, soGiuong: p.capacity, trangThai: p.status }));
+                            const localProcs = parseRows(4).map(t => ({ maTT: t.id, ten: t.name, thoiGian: t.duration, thoiGianKtv: t.ktv_duration, canPhu: t.requires_assistant ? 'Có' : 'Không', loaiMay: t.machine_required, phong: t.room }));
+                            const localProtocols = parseRows(5).map(pd => ({ maPD: pd.id, ten: pd.name, chuanDoan: pd.diagnosis, danhSachTT: pd.procedures, ghiChu: pd.notes }));
+                            let localSched = parseRows(6).map(r => [r.date, r.patient_name, r.dob, r.room, r.procedure_name, r.start_time, r.end_time, r.staff_name, r.sub_staff_name, r.machine_name, r.bed]);
+                            const localHistory = parseRows(7).map(r => ({ ngay: r.date, tenBN: r.patient_name, namSinh: r.dob, phong: r.room, thuThuat: r.procedure_name, gioDienRa: r.start_time, gioKetThuc: r.end_time, nvChinh: r.staff_name, nvPhu: r.sub_staff_name, may: r.machine_name, giuong: r.bed }));
+
+                            if (localSched.length === 0 && localHistory.length > 0) {
+                                const latestDate = localHistory[0].ngay;
+                                localSched = localHistory.filter(h => h.ngay === latestDate).map(h => [h.ngay, h.tenBN, h.namSinh, h.phong, h.thuThuat, h.gioDienRa, h.gioKetThuc, h.nvChinh, h.nvPhu, h.may, h.giuong]);
+                            }
+
+                            if (localPatients.length > 0) {
+                                dbPayload = {
+                                    benh_nhan: localPatients,
+                                    nhan_su: localStaff,
+                                    may_moc: localMachines,
+                                    phong: localRooms,
+                                    thu_thuat: localProcs,
+                                    phac_do: localProtocols,
+                                    lich_trinh: localSched,
+                                    lich_su: localHistory
+                                };
+                                console.log('[Sync] ✅ Đã lấy dữ liệu trực tiếp từ MiniPC SQLite Engine thành công!');
+                            }
+                        }
+                    } catch(eLocal) {
+                        console.warn('[Sync] MiniPC local engine fallback:', eLocal);
+                    }
+                }
+
+                // 🛡️ BƯỚC DỰ PHÒNG 2: Nếu chưa có, lấy từ Offline Cache trong localStorage
+                if (!dbPayload || !dbPayload.benh_nhan || dbPayload.benh_nhan.length === 0) {
+                    try {
+                        const rawCache = localStorage.getItem(getBootstrapCacheKey());
+                        if (rawCache) {
+                            const bCache = JSON.parse(rawCache);
+                            if (bCache && (bCache.patients || bCache.pat || []).length > 0) {
+                                dbPayload = {
+                                    benh_nhan: bCache.patients || bCache.pat || [],
+                                    nhan_su: bCache.staff || [],
+                                    may_moc: bCache.machines || bCache.machine || [],
+                                    phong: bCache.rooms || bCache.room || [],
+                                    thu_thuat: bCache.procedures || bCache.proc || [],
+                                    phac_do: bCache.protocols || [],
+                                    lich_trinh: bCache.schedule || window.currentScheduleData || [],
+                                    lich_su: bCache.history || []
+                                };
+                            }
+                        }
+                    } catch(eCache) {}
                 }
 
                 const cache = window.dataCache || {};
@@ -1265,7 +1362,12 @@ window.showGlobalLoading = function (text) {
                     cai_dat: localStorage.getItem('times_settings_cache') || ''
                 };
 
-                updateProgress(75, '[3/4] 📤 Truyền dữ liệu sang Google Apps Script...');
+                const totalItems = (payload.benh_nhan || []).length + (payload.lich_trinh || []).length;
+                if (totalItems === 0) {
+                    throw new Error('Không tìm thấy dữ liệu trên thiết bị này để đồng bộ lên Google Sheets. Vui lòng bấm "Đồng bộ" trên máy chủ MiniPC hoặc đảm bảo máy đã mở dữ liệu lịch trình!');
+                }
+
+                updateProgress(65, `[3/4] 📤 Đang truyền ${payload.benh_nhan.length} BN, ${payload.nhan_su.length} NV, ${payload.lich_trinh.length} ca lịch sang Google Sheets...`);
 
                 const resp = await fetch(backupUrl, {
                     method: 'POST',
