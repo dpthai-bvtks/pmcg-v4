@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev6",
+    "version": "4.1.8-rev7",
     "releaseDate": "30/09/2026",
-    "releaseTime": "10:55 30/09/2026",
-    "notes": "Sắp xếp toàn bộ 5 bảng Dashboard trên cùng 1 hàng ngang duy nhất (Tổng quan, Tải trọng nhân viên, Phân bố thủ thuật, Bệnh nhân theo phòng, Lượt sử dụng máy móc) giúp quan sát trực quan toàn diện."
+    "releaseTime": "10:58 30/09/2026",
+    "notes": "Tối ưu hóa Dashboard responsive co giãn đa dạng mọi kích thước màn hình (chống tràn bảng) và mở rộng hiển thị trọn vẹn tên thiết bị máy móc."
 }

@@ -6279,3 +6279,35 @@ ormalizeScheduleItem.
 - sw.js
 - version.json
 - PM-xeplich-v4.md
+
+### Tối Ưu Hóa Responsive Dashboard Cho Mọi Kích Thước & Mở Rộng Tên Máy Móc (30/09/2026 - v4.1.8-rev7)
+
+**Yêu cầu của người dùng:**
+- Khắc phục tình trạng ở màn hình nhỏ hoặc kích thước tùy chỉnh bị nhảy ra ngoài bảng (vỡ layout / tràn container).
+- Khắc phục tình trạng tên máy móc bị che mất ("..."), không hiển thị đầy đủ.
+
+**Phân tích & Triển khai:**
+1. **Khắc phục tràn container trên màn hình nhỏ & kích thước co giãn đa dạng (css/style.css):**
+   - Thêm thuộc tính `min-width: 0` và `box-sizing: border-box; overflow: hidden;` vào `.dashboard-5col .dash-panel`, triệt tiêu hoàn toàn cơ chế mặc định `min-width: auto` của phần tử con trong CSS Grid (nguyên nhân khiến nội dung con đẩy bung khung lưới).
+   - Thiết kế hệ thống Breakpoints 3 tầng thích ứng hoàn hảo:
+     + **Màn hình lớn / PC / Siêu rộng (>= 1500px):** Dàn phẳng 5 cột rộng rãi (`0.85fr 1.3fr 1.3fr 0.95fr 1.3fr`).
+     + **Màn hình vừa / Laptop phổ thông / Cửa sổ thu nhỏ (961px - 1499px):** Chia hệ lưới 6 cột thông minh:
+       * Hàng 1 (3 cột x 2 spans): Tổng quan, Tải trọng nhân viên, Phân bố thủ thuật.
+       * Hàng 2 (2 cột x 3 spans): Bệnh nhân theo phòng, Sử dụng máy móc.
+       * Nhờ đó mỗi cột ở hàng 2 có diện tích rất rộng (50% màn hình), hiển thị thoải mái danh sách máy móc mà không bị chật chội.
+     + **Màn hình Tablet & Di động (<= 960px):** Xếp chồng 1 cột thanh thoát (`grid-template-columns: 1fr !important`).
+2. **Hiển thị đầy đủ tên máy móc & căn chỉnh nhãn lượt (js/app.js):**
+   - Tăng độ rộng nhãn tên máy móc `labelWidth` từ 80px lên **135px** trong `machineUsageChart`, cho phép các tên máy dài (như "Dx 04 - Máy 1a", "Máy Dc Ms: 0...", "Tập trợ giúp...", "Sáp Pa 01") hiển thị rõ ràng, trọn vẹn, không còn bị dấu ba chấm che khuất.
+   - Nâng cấp ô số lượt `val + unit` từ `width: 34px` cố định sang `min-width: 44px; white-space: nowrap; flex-shrink: 0;` đảm bảo các nhãn như "179 lượt", "16 lượt" nằm trọn trong viền thẻ, không bị tràn hay cấn viền.
+   - Thêm `Math.round()` và `min-width: 20px` cho thanh progress bar, đảm bảo tỷ lệ trực quan chuẩn xác.
+3. **Quy chuẩn phiên bản theo RULES.md:**
+   - Nâng phiên bản cache buster lên `4.1.8-rev7`, timestamp: `10:58 30/09/2026`.
+   - Đồng bộ `version.json`, `sw.js` (`pmcg-v4-cache-4.1.8-rev7`), `index.html`, `css/style.css`, `js/app.js`.
+
+**File sửa đổi:**
+- css/style.css
+- js/app.js
+- index.html
+- sw.js
+- version.json
+- PM-xeplich-v4.md
