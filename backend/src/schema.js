@@ -2,9 +2,17 @@
 
 let schemaEnsured = false;
 export async function ensureSchema(db) {
-  if (schemaEnsured || !db) return;
+  if (!db) return;
+
+  // 🛡️ Migration tức thời: Đảm bảo cột ma_bn luôn tồn tại trong benh_nhan (kể cả khi chạy trên Turso Cloud Fallback)
   try {
-    const chk = await db.prepare("SELECT 1 FROM lich_su_dinh_muc LIMIT 1").all().catch(() => null);
+    await db.prepare("ALTER TABLE benh_nhan ADD COLUMN ma_bn TEXT DEFAULT ''").run().catch(() => {});
+  } catch(eCol) {}
+
+  if (schemaEnsured) return;
+
+  try {
+    const chk = await db.prepare("SELECT ma_bn FROM benh_nhan LIMIT 1").all().catch(() => null);
     if (chk && Array.isArray(chk.results)) {
       schemaEnsured = true;
       return;

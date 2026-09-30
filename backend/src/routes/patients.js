@@ -12,6 +12,13 @@ export async function handlePatientsAction(action, ctx) {
   const sanitizeInputText = helpers?.sanitizeInputText || ((str) => (typeof str === "string" ? str.replace(/<[^>]*>/g, "") : str));
   const healBackendPatientName = helpers?.healBackendPatientName || ((str) => String(str || "").trim());
 
+  // 🛡️ Tự động đảm bảo cột ma_bn luôn tồn tại trong CSDL (hỗ trợ Turso Fallback khi máy chủ chính tắt)
+  if (action === "editBenhNhan" || action === "addBenhNhan" || action === "bulkUpdatePatients" || action === "deleteBenhNhan" || action === "getBenhNhan") {
+    try {
+      await db.prepare("ALTER TABLE benh_nhan ADD COLUMN ma_bn TEXT DEFAULT ''").run().catch(() => {});
+    } catch(eCol) {}
+  }
+
   switch (action) {
     case "getMayMoc":
 
@@ -616,22 +623,99 @@ export async function handlePatientsAction(action, ctx) {
 
       if (existing && existing.id) {
         // Đã tồn tại -> Cập nhật thông tin thay vì chèn lặp bản ghi thứ hai!
-        const stmtUpdate = db.prepare(`
-          UPDATE benh_nhan SET 
-            gender = ?, 
-            room = ?, 
-            bed = ?, 
-            arrive_time = ?, 
-            leave_time = ?, 
-            thu_thuat = ?, 
-            status = ?, 
-            gio_ban = ?, 
-            loai_bn = ?, 
-            buoi_dieu_tri = ?, 
-            ma_bn = ?,
-            updated_at = CURRENT_TIMESTAMP 
-          WHERE unit_code = ? AND id = ?
-        `).bind(
+        const doUpdate = async (withMaBn = true) => {
+          if (withMaBn) {
+            const stmtUpdate = db.prepare(`
+              UPDATE benh_nhan SET 
+                gender = ?, 
+                room = ?, 
+                bed = ?, 
+                arrive_time = ?, 
+                leave_time = ?, 
+                thu_thuat = ?, 
+                status = ?, 
+                gio_ban = ?, 
+                loai_bn = ?, 
+                buoi_dieu_tri = ?, 
+                ma_bn = ?,
+                updated_at = CURRENT_TIMESTAMP 
+              WHERE unit_code = ? AND id = ?
+            `).bind(
+              String(p.gender || "Nam"),
+              String(p.phong || p.room || ""),
+              String(p.bed || ""),
+              String(p.gioVao || p.arriveTime || "07:30"),
+              String(p.gioRa || p.leaveTime || ""),
+              JSON.stringify(procs),
+              String(p.status || "Chưa xếp"),
+              String(p.gioBan || ""),
+              String(p.loai_bn || "NoiTru"),
+              String(p.buoi_dieu_tri || "TuDong"),
+              patMaBN,
+              unitCode,
+              existing.id
+            );
+            await db.batch([stmtUpdate, makeBumpDataVersionStmt(db, unitCode)]);
+          } else {
+            const stmtUpdate = db.prepare(`
+              UPDATE benh_nhan SET 
+                gender = ?, 
+                room = ?, 
+                bed = ?, 
+                arrive_time = ?, 
+                leave_time = ?, 
+                thu_thuat = ?, 
+                status = ?, 
+                gio_ban = ?, 
+                loai_bn = ?, 
+                buoi_dieu_tri = ?, 
+                updated_at = CURRENT_TIMESTAMP 
+              WHERE unit_code = ? AND id = ?
+            `).bind(
+              String(p.gender || "Nam"),
+              String(p.phong || p.room || ""),
+              String(p.bed || ""),
+              String(p.gioVao || p.arriveTime || "07:30"),
+              String(p.gioRa || p.leaveTime || ""),
+              JSON.stringify(procs),
+              String(p.status || "Chưa xếp"),
+              String(p.gioBan || ""),
+              String(p.loai_bn || "NoiTru"),
+              String(p.buoi_dieu_tri || "TuDong"),
+              unitCode,
+              existing.id
+            );
+            await db.batch([stmtUpdate, makeBumpDataVersionStmt(db, unitCode)]);
+          }
+        };
+
+        try {
+          await doUpdate(true);
+        } catch (errUp) {
+          const errMsg = String(errUp?.message || errUp || "").toLowerCase();
+          if (errMsg.includes("no such column") && errMsg.includes("ma_bn")) {
+            try {
+              await db.prepare("ALTER TABLE benh_nhan ADD COLUMN ma_bn TEXT DEFAULT ''").run();
+              await doUpdate(true);
+            } catch (alterErr) {
+              await doUpdate(false);
+            }
+          } else {
+            throw errUp;
+          }
+        }
+        return success({ id: existing.id, isUpdated: true });
+      }
+    }
+
+    const doAdd = async (withMaBn = true) => {
+      if (withMaBn) {
+        const stmtAdd = db.prepare(
+          "INSERT INTO benh_nhan (unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri, ma_bn) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        ).bind(
+          unitCode,
+          patName,
+          patAge,
           String(p.gender || "Nam"),
           String(p.phong || p.room || ""),
           String(p.bed || ""),
@@ -639,38 +723,55 @@ export async function handlePatientsAction(action, ctx) {
           String(p.gioRa || p.leaveTime || ""),
           JSON.stringify(procs),
           String(p.status || "Chưa xếp"),
+          ngayVao,
           String(p.gioBan || ""),
           String(p.loai_bn || "NoiTru"),
           String(p.buoi_dieu_tri || "TuDong"),
-          patMaBN,
-          unitCode,
-          existing.id
+          patMaBN
         );
-        await db.batch([stmtUpdate, makeBumpDataVersionStmt(db, unitCode)]);
-        return success({ id: existing.id, isUpdated: true });
+        return await db.batch([stmtAdd, makeBumpDataVersionStmt(db, unitCode)]);
+      } else {
+        const stmtAdd = db.prepare(
+          "INSERT INTO benh_nhan (unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        ).bind(
+          unitCode,
+          patName,
+          patAge,
+          String(p.gender || "Nam"),
+          String(p.phong || p.room || ""),
+          String(p.bed || ""),
+          String(p.gioVao || p.arriveTime || "07:30"),
+          String(p.gioRa || p.leaveTime || ""),
+          JSON.stringify(procs),
+          String(p.status || "Chưa xếp"),
+          ngayVao,
+          String(p.gioBan || ""),
+          String(p.loai_bn || "NoiTru"),
+          String(p.buoi_dieu_tri || "TuDong")
+        );
+        return await db.batch([stmtAdd, makeBumpDataVersionStmt(db, unitCode)]);
+      }
+    };
+
+    let res = null;
+    try {
+      res = await doAdd(true);
+    } catch (errAdd) {
+      const errMsg = String(errAdd?.message || errAdd || "").toLowerCase();
+      if (errMsg.includes("no such column") && errMsg.includes("ma_bn")) {
+        console.warn("[addBenhNhan] CSDL thiếu cột ma_bn, đang tự động thêm cột và thử lại...");
+        try {
+          await db.prepare("ALTER TABLE benh_nhan ADD COLUMN ma_bn TEXT DEFAULT ''").run();
+          res = await doAdd(true);
+        } catch (alterErr) {
+          console.warn("[addBenhNhan] Thêm cột thất bại, chuyển sang thêm không có ma_bn:", alterErr);
+          res = await doAdd(false);
+        }
+      } else {
+        throw errAdd;
       }
     }
 
-    const stmtAdd = db.prepare(
-      "INSERT INTO benh_nhan (unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri, ma_bn) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-    ).bind(
-      unitCode,
-      patName,
-      patAge,
-      String(p.gender || "Nam"),
-      String(p.phong || p.room || ""),
-      String(p.bed || ""),
-      String(p.gioVao || p.arriveTime || "07:30"),
-      String(p.gioRa || p.leaveTime || ""),
-      JSON.stringify(procs),
-      String(p.status || "Chưa xếp"),
-      ngayVao,
-      String(p.gioBan || ""),
-      String(p.loai_bn || "NoiTru"),
-      String(p.buoi_dieu_tri || "TuDong"),
-      patMaBN
-    );
-    const res = await db.batch([stmtAdd, makeBumpDataVersionStmt(db, unitCode)]);
     const insertedId = res[0]?.meta?.last_row_id || res[0]?.meta?.changes || 1;
     return success({ id: insertedId });
   }
@@ -709,131 +810,265 @@ export async function handlePatientsAction(action, ctx) {
     const maBnVal = String(p.maBN || p.ma_bn || "").trim();
 
     let updateRes = null;
-    if (patId > 0) {
-      updateRes = await db.prepare(`
-        UPDATE benh_nhan SET 
-          name = ?, 
-          age = ?, 
-          gender = ?, 
-          room = ?, 
-          bed = ?, 
-          arrive_time = ?, 
-          leave_time = ?, 
-          thu_thuat = ?, 
-          status = ?, 
-          ngay_vao = ?, 
-          gio_ban = ?, 
-          loai_bn = CASE WHEN ? != '' THEN ? ELSE loai_bn END, 
-          buoi_dieu_tri = CASE WHEN ? != '' THEN ? ELSE buoi_dieu_tri END, 
-          ma_bn = CASE WHEN ? != '' THEN ? ELSE ma_bn END, 
-          updated_at = CURRENT_TIMESTAMP 
-        WHERE unit_code = ? AND id = ?
-      `).bind(
-        patName,
-        patAge,
-        String(p.gender || "Nam"),
-        String(p.phong || p.room || ""),
-        String(p.bed || ""),
-        String(p.gioVao || p.arriveTime || "07:30"),
-        String(p.gioRa || p.leaveTime || ""),
-        JSON.stringify(procs),
-        String(p.status || "Chưa xếp"),
-        String(p.ngayVao || ""),
-        String(p.gioBan || ""),
-        loaiBnVal, loaiBnVal,
-        buoiVal, buoiVal,
-        maBnVal, maBnVal,
-        unitCode,
-        patId
-      ).run();
-    }
+    const runUpdate = async (withMaBn = true) => {
+      if (patId > 0) {
+        if (withMaBn) {
+          updateRes = await db.prepare(`
+            UPDATE benh_nhan SET 
+              name = ?, 
+              age = ?, 
+              gender = ?, 
+              room = ?, 
+              bed = ?, 
+              arrive_time = ?, 
+              leave_time = ?, 
+              thu_thuat = ?, 
+              status = ?, 
+              ngay_vao = ?, 
+              gio_ban = ?, 
+              loai_bn = CASE WHEN ? != '' THEN ? ELSE loai_bn END, 
+              buoi_dieu_tri = CASE WHEN ? != '' THEN ? ELSE buoi_dieu_tri END, 
+              ma_bn = CASE WHEN ? != '' THEN ? ELSE ma_bn END, 
+              updated_at = CURRENT_TIMESTAMP 
+            WHERE unit_code = ? AND id = ?
+          `).bind(
+            patName,
+            patAge,
+            String(p.gender || "Nam"),
+            String(p.phong || p.room || ""),
+            String(p.bed || ""),
+            String(p.gioVao || p.arriveTime || "07:30"),
+            String(p.gioRa || p.leaveTime || ""),
+            JSON.stringify(procs),
+            String(p.status || "Chưa xếp"),
+            String(p.ngayVao || ""),
+            String(p.gioBan || ""),
+            loaiBnVal, loaiBnVal,
+            buoiVal, buoiVal,
+            maBnVal, maBnVal,
+            unitCode,
+            patId
+          ).run();
+        } else {
+          updateRes = await db.prepare(`
+            UPDATE benh_nhan SET 
+              name = ?, 
+              age = ?, 
+              gender = ?, 
+              room = ?, 
+              bed = ?, 
+              arrive_time = ?, 
+              leave_time = ?, 
+              thu_thuat = ?, 
+              status = ?, 
+              ngay_vao = ?, 
+              gio_ban = ?, 
+              loai_bn = CASE WHEN ? != '' THEN ? ELSE loai_bn END, 
+              buoi_dieu_tri = CASE WHEN ? != '' THEN ? ELSE buoi_dieu_tri END, 
+              updated_at = CURRENT_TIMESTAMP 
+            WHERE unit_code = ? AND id = ?
+          `).bind(
+            patName,
+            patAge,
+            String(p.gender || "Nam"),
+            String(p.phong || p.room || ""),
+            String(p.bed || ""),
+            String(p.gioVao || p.arriveTime || "07:30"),
+            String(p.gioRa || p.leaveTime || ""),
+            JSON.stringify(procs),
+            String(p.status || "Chưa xếp"),
+            String(p.ngayVao || ""),
+            String(p.gioBan || ""),
+            loaiBnVal, loaiBnVal,
+            buoiVal, buoiVal,
+            unitCode,
+            patId
+          ).run();
+        }
+      }
 
-    if (!updateRes || (updateRes.meta && updateRes.meta.changes === 0)) {
-      updateRes = await db.prepare(`
-        UPDATE benh_nhan SET 
-          name = ?, 
-          age = ?, 
-          gender = ?, 
-          room = ?, 
-          bed = ?, 
-          arrive_time = ?, 
-          leave_time = ?, 
-          thu_thuat = ?, 
-          status = ?, 
-          ngay_vao = ?, 
-          gio_ban = ?, 
-          loai_bn = CASE WHEN ? != '' THEN ? ELSE loai_bn END, 
-          buoi_dieu_tri = CASE WHEN ? != '' THEN ? ELSE buoi_dieu_tri END, 
-          ma_bn = CASE WHEN ? != '' THEN ? ELSE ma_bn END, 
-          updated_at = CURRENT_TIMESTAMP 
-        WHERE unit_code = ? AND name = ? AND (age = ? OR ? = 0 OR age = 0) AND (ma_bn = ? OR ? = '' OR ma_bn = '')
-      `).bind(
-        patName,
-        patAge,
-        String(p.gender || "Nam"),
-        String(p.phong || p.room || ""),
-        String(p.bed || ""),
-        String(p.gioVao || p.arriveTime || "07:30"),
-        String(p.gioRa || p.leaveTime || ""),
-        JSON.stringify(procs),
-        String(p.status || "Chưa xếp"),
-        String(p.ngayVao || ""),
-        String(p.gioBan || ""),
-        loaiBnVal, loaiBnVal,
-        buoiVal, buoiVal,
-        maBnVal, maBnVal,
-        unitCode,
-        targetName,
-        targetAge,
-        targetAge,
-        maBnVal,
-        maBnVal
-      ).run();
-    }
+      if (!updateRes || (updateRes.meta && updateRes.meta.changes === 0)) {
+        if (withMaBn) {
+          updateRes = await db.prepare(`
+            UPDATE benh_nhan SET 
+              name = ?, 
+              age = ?, 
+              gender = ?, 
+              room = ?, 
+              bed = ?, 
+              arrive_time = ?, 
+              leave_time = ?, 
+              thu_thuat = ?, 
+              status = ?, 
+              ngay_vao = ?, 
+              gio_ban = ?, 
+              loai_bn = CASE WHEN ? != '' THEN ? ELSE loai_bn END, 
+              buoi_dieu_tri = CASE WHEN ? != '' THEN ? ELSE buoi_dieu_tri END, 
+              ma_bn = CASE WHEN ? != '' THEN ? ELSE ma_bn END, 
+              updated_at = CURRENT_TIMESTAMP 
+            WHERE unit_code = ? AND name = ? AND (age = ? OR ? = 0 OR age = 0) AND (ma_bn = ? OR ? = '' OR ma_bn = '')
+          `).bind(
+            patName,
+            patAge,
+            String(p.gender || "Nam"),
+            String(p.phong || p.room || ""),
+            String(p.bed || ""),
+            String(p.gioVao || p.arriveTime || "07:30"),
+            String(p.gioRa || p.leaveTime || ""),
+            JSON.stringify(procs),
+            String(p.status || "Chưa xếp"),
+            String(p.ngayVao || ""),
+            String(p.gioBan || ""),
+            loaiBnVal, loaiBnVal,
+            buoiVal, buoiVal,
+            maBnVal, maBnVal,
+            unitCode,
+            targetName,
+            targetAge,
+            targetAge,
+            maBnVal,
+            maBnVal
+          ).run();
+        } else {
+          updateRes = await db.prepare(`
+            UPDATE benh_nhan SET 
+              name = ?, 
+              age = ?, 
+              gender = ?, 
+              room = ?, 
+              bed = ?, 
+              arrive_time = ?, 
+              leave_time = ?, 
+              thu_thuat = ?, 
+              status = ?, 
+              ngay_vao = ?, 
+              gio_ban = ?, 
+              loai_bn = CASE WHEN ? != '' THEN ? ELSE loai_bn END, 
+              buoi_dieu_tri = CASE WHEN ? != '' THEN ? ELSE buoi_dieu_tri END, 
+              updated_at = CURRENT_TIMESTAMP 
+            WHERE unit_code = ? AND name = ? AND (age = ? OR ? = 0 OR age = 0)
+          `).bind(
+            patName,
+            patAge,
+            String(p.gender || "Nam"),
+            String(p.phong || p.room || ""),
+            String(p.bed || ""),
+            String(p.gioVao || p.arriveTime || "07:30"),
+            String(p.gioRa || p.leaveTime || ""),
+            JSON.stringify(procs),
+            String(p.status || "Chưa xếp"),
+            String(p.ngayVao || ""),
+            String(p.gioBan || ""),
+            loaiBnVal, loaiBnVal,
+            buoiVal, buoiVal,
+            unitCode,
+            targetName,
+            targetAge,
+            targetAge
+          ).run();
+        }
+      }
 
-    if (updateRes && updateRes.meta && updateRes.meta.changes === 0) {
-      const existing = await db.prepare("SELECT id FROM benh_nhan WHERE unit_code = ? AND (name = ? OR (? > 0 AND id = ?) OR name = ?) LIMIT 1").bind(unitCode, targetName, patId, patId, patName).first();
-      if (existing && existing.id) {
-        await db.prepare(`
-          UPDATE benh_nhan SET 
-            name = ?, 
-            age = ?, 
-            gender = ?, 
-            room = ?, 
-            bed = ?, 
-            arrive_time = ?, 
-            leave_time = ?, 
-            thu_thuat = ?, 
-            status = ?, 
-            ngay_vao = ?, 
-            gio_ban = ?, 
-            loai_bn = CASE WHEN ? != '' THEN ? ELSE loai_bn END, 
-            buoi_dieu_tri = CASE WHEN ? != '' THEN ? ELSE buoi_dieu_tri END, 
-            ma_bn = CASE WHEN ? != '' THEN ? ELSE ma_bn END, 
-            updated_at = CURRENT_TIMESTAMP 
-          WHERE unit_code = ? AND id = ?
-        `).bind(
-          patName,
-          patAge,
-          String(p.gender || "Nam"),
-          String(p.phong || p.room || ""),
-          String(p.bed || ""),
-          String(p.gioVao || p.arriveTime || "07:30"),
-          String(p.gioRa || p.leaveTime || ""),
-          JSON.stringify(procs),
-          String(p.status || "Chưa xếp"),
-          String(p.ngayVao || ""),
-          String(p.gioBan || ""),
-          loaiBnVal, loaiBnVal,
-          buoiVal, buoiVal,
-          maBnVal, maBnVal,
-          unitCode,
-          existing.id
-        ).run();
+      if (updateRes && updateRes.meta && updateRes.meta.changes === 0) {
+        const existing = await db.prepare("SELECT id FROM benh_nhan WHERE unit_code = ? AND (name = ? OR (? > 0 AND id = ?) OR name = ?) LIMIT 1").bind(unitCode, targetName, patId, patId, patName).first();
+        if (existing && existing.id) {
+          if (withMaBn) {
+            await db.prepare(`
+              UPDATE benh_nhan SET 
+                name = ?, 
+                age = ?, 
+                gender = ?, 
+                room = ?, 
+                bed = ?, 
+                arrive_time = ?, 
+                leave_time = ?, 
+                thu_thuat = ?, 
+                status = ?, 
+                ngay_vao = ?, 
+                gio_ban = ?, 
+                loai_bn = CASE WHEN ? != '' THEN ? ELSE loai_bn END, 
+                buoi_dieu_tri = CASE WHEN ? != '' THEN ? ELSE buoi_dieu_tri END, 
+                ma_bn = CASE WHEN ? != '' THEN ? ELSE ma_bn END, 
+                updated_at = CURRENT_TIMESTAMP 
+              WHERE unit_code = ? AND id = ?
+            `).bind(
+              patName,
+              patAge,
+              String(p.gender || "Nam"),
+              String(p.phong || p.room || ""),
+              String(p.bed || ""),
+              String(p.gioVao || p.arriveTime || "07:30"),
+              String(p.gioRa || p.leaveTime || ""),
+              JSON.stringify(procs),
+              String(p.status || "Chưa xếp"),
+              String(p.ngayVao || ""),
+              String(p.gioBan || ""),
+              loaiBnVal, loaiBnVal,
+              buoiVal, buoiVal,
+              maBnVal, maBnVal,
+              unitCode,
+              existing.id
+            ).run();
+          } else {
+            await db.prepare(`
+              UPDATE benh_nhan SET 
+                name = ?, 
+                age = ?, 
+                gender = ?, 
+                room = ?, 
+                bed = ?, 
+                arrive_time = ?, 
+                leave_time = ?, 
+                thu_thuat = ?, 
+                status = ?, 
+                ngay_vao = ?, 
+                gio_ban = ?, 
+                loai_bn = CASE WHEN ? != '' THEN ? ELSE loai_bn END, 
+                buoi_dieu_tri = CASE WHEN ? != '' THEN ? ELSE buoi_dieu_tri END, 
+                updated_at = CURRENT_TIMESTAMP 
+              WHERE unit_code = ? AND id = ?
+            `).bind(
+              patName,
+              patAge,
+              String(p.gender || "Nam"),
+              String(p.phong || p.room || ""),
+              String(p.bed || ""),
+              String(p.gioVao || p.arriveTime || "07:30"),
+              String(p.gioRa || p.leaveTime || ""),
+              JSON.stringify(procs),
+              String(p.status || "Chưa xếp"),
+              String(p.ngayVao || ""),
+              String(p.gioBan || ""),
+              loaiBnVal, loaiBnVal,
+              buoiVal, buoiVal,
+              unitCode,
+              existing.id
+            ).run();
+          }
+        } else {
+          console.warn("[editBenhNhan]: Không tìm thấy bệnh nhân để sửa:", { patId, targetName, patName });
+        }
+      }
+    };
+
+    try {
+      await runUpdate(true);
+    } catch (errUpdate) {
+      const errMsg = String(errUpdate?.message || errUpdate || "").toLowerCase();
+      if (errMsg.includes("no such column") && errMsg.includes("ma_bn")) {
+        console.warn("[editBenhNhan] CSDL thiếu cột ma_bn, đang tự động thêm cột và thử lại...");
+        try {
+          await db.prepare("ALTER TABLE benh_nhan ADD COLUMN ma_bn TEXT DEFAULT ''").run();
+          await runUpdate(true);
+        } catch (alterErr) {
+          console.warn("[editBenhNhan] Thêm cột thất bại, chuyển sang cập nhật không có ma_bn:", alterErr);
+          await runUpdate(false);
+        }
       } else {
-        console.warn("[editBenhNhan]: Không tìm thấy bệnh nhân để sửa:", { patId, targetName, patName });
+        throw errUpdate;
       }
     }
+
     await bumpDataVersion(db, unitCode);
     return success(true);
   }

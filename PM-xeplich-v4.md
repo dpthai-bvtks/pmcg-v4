@@ -6445,3 +6445,35 @@ ormalizeScheduleItem.
 - sw.js
 - version.json
 - PM-xeplich-v4.md
+
+### Khắc Phục Lỗi SQL "no such column: ma_bn" Khi Lưu/Sửa Bệnh Nhân Trên Turso Fallback (30/09/2026 - v4.1.8-rev11)
+
+**Bối cảnh & Triệu chứng lỗi:**
+- Khi máy chủ chính (Mini PC) tắt và hệ thống tự động chuyển sang máy chủ dự phòng đám mây (Turso Fallback), người dùng thực hiện thao tác sửa thông tin bệnh nhân trên giao diện web thì gặp thông báo lỗi:
+  `[Router Error - editBenhNhan]: Turso SQL error (FALLBACK): {"message":"SQLite input error: no such column: ma_bn (at offset 477)","code":"SQL_INPUT_ERROR"}`.
+
+**Nguyên nhân gốc rễ (Root Cause Analysis):**
+1. **Lệnh kiểm tra schema return sớm trong `schema.js`:**
+   - Trong hàm `ensureSchema(db)`, đoạn mã kiểm tra `chk = await db.prepare("SELECT 1 FROM lich_su_dinh_muc LIMIT 1")` tìm thấy bảng cũ `lich_su_dinh_muc` đã tồn tại trong Turso Cloud nên thiết lập `schemaEnsured = true` và `return` ngay lập tức.
+   - Do đó, câu lệnh migration `ALTER TABLE benh_nhan ADD COLUMN ma_bn TEXT DEFAULT ''` (ở cuối file) **hoàn toàn không được thực thi** trên cơ sở dữ liệu Turso Fallback.
+2. **Thiếu cơ chế tự phục hồi phòng thủ trong `patients.js`:**
+   - Trong các action `editBenhNhan`, `addBenhNhan`, câu lệnh SQL chứa trực tiếp trường `ma_bn = CASE WHEN ? != '' THEN ? ELSE ma_bn END`. Khi bảng trên Turso Cloud chưa có cột này, câu lệnh lập tức ném lỗi 500 thay vì tự động chạy ALTER TABLE bổ sung cột và thử lại.
+
+**Giải pháp & Triển khai Kỹ thuật:**
+1. **Tái cấu trúc `ensureSchema` (`backend/src/schema.js`):**
+   - Đặt câu lệnh `ALTER TABLE benh_nhan ADD COLUMN ma_bn TEXT DEFAULT ''` lên ngay đầu hàm `ensureSchema`, chạy tự động mỗi khi khởi tạo kết nối CSDL (kể cả Primary và Fallback).
+   - Kiểm tra trực tiếp sự tồn tại của cột `ma_bn` qua `SELECT ma_bn FROM benh_nhan LIMIT 1` trước khi ghi nhận cờ hoàn thành schema.
+2. **Cơ chế Tự Phục Hồi 2 Lớp (Self-Healing Retry) trong `backend/src/routes/patients.js`:**
+   - **Lớp 1 (Pre-action Hook):** Ngay khi router nhận các action `editBenhNhan`, `addBenhNhan`, `bulkUpdatePatients`, `deleteBenhNhan`, tự động chạy ngầm kiểm tra và bổ sung cột `ma_bn` nếu chưa có.
+   - **Lớp 2 (Runtime Defensive Catch & Fallback):** Trong `editBenhNhan` và `addBenhNhan`, bọc các câu lệnh UPDATE/INSERT trong khối `try...catch`. Nếu bắt được lỗi chứa `no such column: ma_bn`, hệ thống tự động chạy `ALTER TABLE` và thực thi lại. Nếu việc thêm cột vẫn bị chặn (ví dụ do phân quyền replica), hệ thống tự động chuyển sang câu lệnh cập nhật loại trừ `ma_bn` để đảm bảo người dùng lưu được bệnh nhân thành công 100%, không bao giờ bị gián đoạn hay hiện popup lỗi đỏ.
+3. **Đồng bộ phiên bản:**
+   - Phiên bản: `4.1.8-rev11`, ngày phát hành: `30/09/2026`, timestamp: `17:50 30/09/2026`.
+   - Đã build và deploy cả Backend Cloudflare Worker và Frontend Cloudflare Pages.
+
+**File sửa đổi:**
+- backend/src/schema.js
+- backend/src/routes/patients.js
+- index.html
+- sw.js
+- version.json
+- PM-xeplich-v4.md

@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev10",
+    "version": "4.1.8-rev11",
     "releaseDate": "30/09/2026",
-    "releaseTime": "16:45 30/09/2026",
-    "notes": "Tự động kết nối và xem lịch sử các ngày cũ từ Google Sheets dự phòng khi máy chủ chính tắt hoặc gián đoạn mạng; bổ sung API getHistoryFullData và khử trùng lặp vào Google Apps Script."
+    "releaseTime": "17:50 30/09/2026",
+    "notes": "Khắc phục lỗi no such column: ma_bn trên Turso Fallback khi sửa bệnh nhân lúc máy chủ chính tắt; bổ sung auto-migration và cơ chế phòng thủ đa tầng."
 }
