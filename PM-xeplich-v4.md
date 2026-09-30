@@ -6174,3 +6174,51 @@ orm('Họ và tên') trả về đúng 'ho va ten', nhận diện header file HI
 ormalizeScheduleItem.
 - js/app.js: Sửa regex mojibake tại 3 hàm import, bổ sung decode cho rooms, machines, staff, procedures trong loadBootstrapData.
 - ersion.json, index.html, sw.js: Nâng version lên 4.1.7-rev7.
+
+
+### Tích Hợp Dự Phòng CSDL Google Sheets Tự Động (Dual-Write & Auto-Failover) (30/09/2026 - v4.1.8-rev1)
+
+**Bối cảnh & Yêu cầu của người dùng:**
+1. Người dùng phản ánh: Trên máy MiniPC đã xếp lịch xong lúc 11h hôm qua (29/09/2026), nhưng đến 13h30 mở điện thoại hoặc máy tính khác lại không thấy lịch trình đâu.
+2. Người dùng yêu cầu triển khai **"Phương án Google Sheets"** làm CSDL dự phòng song song để khắc phục tình trạng Turso Cloud bị khóa đọc do hết quota hoặc khi máy chủ MiniPC tắt máy/mất điện.
+
+**Phân tích nguyên nhân gốc rễ (Root Cause Analysis):**
+1. **Máy chủ MiniPC bị tắt nguồn từ 11:27 đến 13:48 (29/09/2026):**
+   - Kiểm tra Windows Event Log (System Event ID 1074, 6006, 6005): Máy chủ cục bộ MiniPC tắt nguồn lúc 11:27:11 và khởi động lại lúc 13:48:47.
+   - Trong khoảng thời gian 13h30, điện thoại và máy tính khác truy cập web không thể kết nối tới MiniPC.
+2. **Turso Cloud (Database đám mây đồng bộ) bị khóa đọc do vượt quá hạn mức (Quota Exceeded):**
+   - Kiểm tra gọi trực tiếp tới Turso Cloud Tokyo: Server trả về mã lỗi BLOCKED ("SQL read operations are forbidden").
+   - Do đó, khi MiniPC tắt nguồn, Cloudflare Worker cố gắng đọc Turso Cloud làm fallback nhưng bị Turso chặn toàn bộ truy vấn đọc.
+3. **Cơ chế Local Storage Cache phía client bị xóa trắng khi đổi ngày:**
+   - Dữ liệu 179 ca xếp lịch ngày 29/09/2026 vẫn nằm nguyên vẹn 100% trong CSDL cục bộ SQLite của MiniPC (C:\PMCG-System\PMCG-Data\pmcg.db).
+   - Nhưng khi điện thoại mở trang web lúc MiniPC tắt + Turso bị khóa, API trả về rỗng/lỗi, client tự động xóa cache lịch để tránh hiển thị sai lệch ngày cũ, dẫn đến điện thoại thấy bảng xếp lịch trống trơn.
+
+**Giải pháp đã triển khai:**
+1. **Google Apps Script hoàn thiện (backups/legacy-apps-script/code.gs):**
+   - Viết lại toàn diện mã nguồn Apps Script hỗ trợ:
+     - Tự động nhận diện Spreadsheet độc lập hoặc nhúng sẵn (getSpreadsheet()).
+     - Hỗ trợ cả 2 chuẩn API: doGet (JSON và JSONP cho Web/PWA) và doPost (text/plain;charset=utf-8 tránh bị chặn CORS preflight OPTIONS).
+     - Hàm getBootstrapData: Trả về dữ liệu 11 phần tử chuẩn cho mảng schedule, danh sách bệnh nhân, máy móc, phòng, thủ thuật, nhân sự.
+     - Hàm saveSchedule: Ghi đè lịch trình theo ngày sạch sẽ, an toàn, không bị tích tụ trùng lặp.
+     - Hàm saveBootstrapBackup: Hỗ trợ lưu trữ trọn bộ CSDL vào Google Sheets.
+2. **Cơ chế Ghi song song (Dual-Write Mirroring) trong js/app.js:**
+   - Bổ sung DEFAULT_BACKUP_SHEETS_URL và hàm getBackupSheetsUrl().
+   - Tạo hàm mirrorScheduleToGoogleSheets(dateVal, backendSched): Mỗi khi callApi('saveSchedule', ...) hoặc callApi('saveLichTrinh', ...) được gọi trên giao diện người dùng (kể cả trên MiniPC), hệ thống tự động đẩy thêm 1 bản sao lịch trình đồng thời sang Google Sheets WebApp dưới nền mà không làm chậm giao diện.
+3. **Cơ chế Tự động chuyển đổi dự phòng (Auto-Failover) khi nạp dữ liệu:**
+   - Trích xuất hàm lõi applyBootstrapData(b, isFromGoogleSheets): Xử lý và chữa lành họ tên, phục hồi cache, cập nhật badge updateServerStatusBadge('backup') và hiển thị thông báo dịu nhẹ khi đang dùng dữ liệu Sheets.
+   - Trong loadBootstrapData: Nếu callApi('getBootstrapData', ...) gặp lỗi (MiniPC tắt, Turso bị khóa hoặc mạng gián đoạn), hệ thống tự động kích hoạt fetchBootstrapFromGoogleSheets kéo ngay lịch trình và danh mục từ Google Sheets về hiển thị cho điện thoại/máy tính khác.
+   - Hỗ trợ cơ chế tải kép: fetch() thông thường kết hợp JSONP fallback để vượt qua mọi rào cản CORS trên trình duyệt di động.
+4. **Đồng bộ phiên bản theo RULES.md:**
+   - Ngày 30/09/2026: Nâng phiên bản Minor/Patch lên 4.1.8-rev1.
+   - sw.js: CACHE_NAME = 'pmcg-v4-cache-4.1.8-rev1'.
+   - version.json: version: 4.1.8-rev1, releaseTime: 08:05 30/09/2026.
+   - index.html: Cập nhật cache busters ?v=4.1.8-rev1, APP_VERSION = '4.1.8-rev1', footer version Phiên bản: 4.1.8, footer timestamp 08:05 30/09/2026.
+   - Triển khai thành công lên Cloudflare Pages qua npm run deploy:web.
+
+**File sửa đổi:**
+- backups/legacy-apps-script/code.gs
+- js/app.js
+- sw.js
+- version.json
+- index.html
+- PM-xeplich-v4.md

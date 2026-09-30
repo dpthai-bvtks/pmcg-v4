@@ -1,6 +1,6 @@
 {
-    "version": "4.1.7-rev7",
-    "releaseDate": "29/09/2026",
-    "releaseTime": "11:20 29/09/2026",
-    "notes": "Sửa triệt để lỗi font chữ tiếng Việt do regex TCVN3 nhận nhầm nguyên âm Unicode chuẩn; sửa lỗi 0 BN khi nạp file HIS; bổ sung chuẩn hóa và chữa lành tên phòng, máy móc, nhân sự."
+    "version": "4.1.8-rev1",
+    "releaseDate": "30/09/2026",
+    "releaseTime": "08:05 30/09/2026",
+    "notes": "Tích hợp giải pháp dự phòng CSDL Google Sheets: tự động ghi song song (dual-write) lịch trình và tự động chuyển đổi dự phòng (auto-failover) nạp lịch từ Google Sheets khi Turso Cloud gián đoạn hoặc hết quota đọc."
 }

@@ -947,9 +947,141 @@ window.showGlobalLoading = function (text) {
         // GITHUB PAGES API CONFIGURATION (SELF-HEALING)
         // ============================================================
         const DEFAULT_API_URL = 'https://pmcg-api.dpthai-ttytmk.workers.dev';
+        const DEFAULT_BACKUP_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzx_09JRVmHQfV1P85_xcE_ZzN7nLu2WzEjL2Uu0bIGwMzcBGGrPrIsPh1xMj5mp8x7Yg/exec';
         const SECONDARY_BACKUP_URL = (localStorage.getItem('times_backup_api_url') || '').trim();
         window._serverMode = 'primary'; // 'primary' | 'backup' | 'offline'
         let _consecutiveApiErrors = 0;
+
+        function getBackupSheetsUrl() {
+            let backupUrl = (typeof window.sanitizeGoogleScriptUrl === 'function')
+                ? window.sanitizeGoogleScriptUrl(localStorage.getItem('times_backup_api_url') || '')
+                : (localStorage.getItem('times_backup_api_url') || '').trim();
+            return backupUrl || DEFAULT_BACKUP_SHEETS_URL;
+        }
+        window.getBackupSheetsUrl = getBackupSheetsUrl;
+
+        function mirrorScheduleToGoogleSheets(dateVal, backendSched) {
+            try {
+                const backupUrl = getBackupSheetsUrl();
+                if (!backupUrl) return;
+                const curUnit = (typeof getCurrentUnitCode === 'function') ? getCurrentUnitCode() : (localStorage.getItem('pm_unit_code') || '');
+                if (!curUnit) return;
+                if (!dateVal || !Array.isArray(backendSched) || backendSched.length === 0) return;
+
+                console.log(`[Google Sheets Mirror] 📡 Đang đồng bộ song song lịch ngày ${dateVal} lên Google Sheets...`);
+                fetch(backupUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'saveSchedule',
+                        args: [dateVal, backendSched],
+                        unit_code: curUnit
+                    }),
+                    mode: 'cors'
+                })
+                .then(async res => {
+                    const raw = await res.text();
+                    let parsed;
+                    try { parsed = JSON.parse(raw); } catch(e) {}
+                    if (parsed && parsed.status === 'success') {
+                        console.log(`[Google Sheets Mirror] ✅ Đã lưu bản sao lịch trình ngày ${dateVal} lên Google Sheets thành công!`);
+                    } else {
+                        console.warn('[Google Sheets Mirror] Phản hồi từ Google Sheets:', raw.slice(0, 120));
+                    }
+                })
+                .catch(err => {
+                    console.warn('[Google Sheets Mirror] Không thể ghi bản sao lên Google Sheets:', err);
+                });
+            } catch (e) {
+                console.warn('[Google Sheets Mirror] Lỗi ngoại lệ:', e);
+            }
+        }
+        window.mirrorScheduleToGoogleSheets = mirrorScheduleToGoogleSheets;
+
+        function fetchBootstrapFromGoogleSheets(backupUrl, dateVal, onDone, onFail) {
+            if (!backupUrl) {
+                if (onFail) onFail(new Error('Chưa cấu hình URL Google Sheets dự phòng'));
+                return;
+            }
+            const curUnit = (typeof getCurrentUnitCode === 'function') ? getCurrentUnitCode() : (localStorage.getItem('pm_unit_code') || '');
+            const dateParam = encodeURIComponent(dateVal || (document.getElementById('schedule-date')?.value || ''));
+            const unitParam = encodeURIComponent(curUnit || '');
+            const targetUrl = `${backupUrl}${backupUrl.includes('?') ? '&' : '?'}action=getBootstrapData&date=${dateParam}&unit_code=${unitParam}&_t=${Date.now()}`;
+
+            let isHandled = false;
+
+            // 1. Thử fetch thông thường
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+            fetch(targetUrl, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' },
+                signal: controller.signal
+            })
+            .then(async res => {
+                clearTimeout(timeoutId);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const text = await res.text();
+                return JSON.parse(text);
+            })
+            .then(result => {
+                if (isHandled) return;
+                isHandled = true;
+                if (result && result.status === 'success' && result.data) {
+                    console.log('✅ Đã nạp thành công dữ liệu dự phòng từ Google Sheets!');
+                    if (onDone) onDone(result.data);
+                } else {
+                    throw new Error((result && result.error) || 'Dữ liệu không hợp lệ từ Google Sheets');
+                }
+            })
+            .catch(err => {
+                clearTimeout(timeoutId);
+                if (isHandled) return;
+                console.warn('[Google Sheets Fallback] Thử lại qua JSONP do fetch bị chặn hoặc lỗi:', err);
+                // 2. Thử tiếp qua JSONP để vượt qua mọi rào cản CORS trên di động
+                const callbackName = 'jsonp_gas_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
+                const script = document.createElement('script');
+                const jsonpUrl = `${backupUrl}${backupUrl.includes('?') ? '&' : '?'}action=getBootstrapData&date=${dateParam}&unit_code=${unitParam}&callback=${callbackName}&_t=${Date.now()}`;
+                script.src = jsonpUrl;
+                script.async = true;
+
+                let jsonpTimeout = setTimeout(() => {
+                    if (isHandled) return;
+                    isHandled = true;
+                    delete window[callbackName];
+                    if (script.parentNode) script.parentNode.removeChild(script);
+                    if (onFail) onFail(new Error('Quá thời gian kết nối Google Sheets (JSONP Timeout)'));
+                }, 15000);
+
+                window[callbackName] = function(result) {
+                    clearTimeout(jsonpTimeout);
+                    if (isHandled) return;
+                    isHandled = true;
+                    delete window[callbackName];
+                    if (script.parentNode) script.parentNode.removeChild(script);
+
+                    if (result && result.status === 'success' && result.data) {
+                        console.log('✅ Đã nạp thành công dữ liệu dự phòng từ Google Sheets (JSONP)!');
+                        if (onDone) onDone(result.data);
+                    } else {
+                        if (onFail) onFail(new Error((result && result.error) || 'Lỗi trả về từ Google Sheets'));
+                    }
+                };
+
+                script.onerror = function() {
+                    clearTimeout(jsonpTimeout);
+                    if (isHandled) return;
+                    isHandled = true;
+                    delete window[callbackName];
+                    if (script.parentNode) script.parentNode.removeChild(script);
+                    if (onFail) onFail(new Error('Không thể nạp dữ liệu từ Google Sheets qua Script Tag'));
+                };
+
+                document.head.appendChild(script);
+            });
+        }
+        window.fetchBootstrapFromGoogleSheets = fetchBootstrapFromGoogleSheets;
 
         function updateServerStatusBadge(mode) {
             window._serverMode = mode;
@@ -1445,6 +1577,15 @@ var dataCache = window.dataCache;
                 const isSilentMutation = SILENT_MUTATION_ACTIONS.has(functionName);
                 const isMutation = functionName.startsWith('add') || functionName.startsWith('edit') || functionName.startsWith('delete') || functionName.startsWith('bulkUpdate') || functionName.startsWith('save') || functionName.startsWith('chotSo') || functionName.startsWith('runScheduling') || functionName.startsWith('chuyenNgayMoi');
                 
+                // Tự động sao lưu song song lên Google Sheets khi lưu lịch trình
+                if (functionName === 'saveSchedule' || functionName === 'saveLichTrinh') {
+                    try {
+                        mirrorScheduleToGoogleSheets(args ? args[0] : '', args ? args[1] : []);
+                    } catch(eMirror) {
+                        console.warn('[Mirror Schedule Error]:', eMirror);
+                    }
+                }
+
                 // In-flight deduplication for non-mutation queries (getSchedule, getSystemSettings, getDataVersion...)
                 if (!isMutation) {
                     const reqKey = functionName + ':' + JSON.stringify(args || []);
@@ -2985,6 +3126,16 @@ var dataCache = window.dataCache;
                 } catch(e) {}
             }
 
+            // Đồng bộ URL WebApp Google Sheets dự phòng từ máy chủ (nếu có cấu hình)
+            if (res.gdrive_webhook_url && typeof res.gdrive_webhook_url === 'string') {
+                const cleanUrl = (typeof window.sanitizeGoogleScriptUrl === 'function')
+                    ? window.sanitizeGoogleScriptUrl(res.gdrive_webhook_url)
+                    : res.gdrive_webhook_url.trim();
+                if (cleanUrl) {
+                    localStorage.setItem('times_backup_api_url', cleanUrl);
+                }
+            }
+
             if (typeof window.renderAISettingsUI === 'function') {
                 window.renderAISettingsUI();
             }
@@ -3138,6 +3289,215 @@ var dataCache = window.dataCache;
             }
         }
 
+        function applyBootstrapData(b, isFromGoogleSheets = false) {
+            if (!b) return;
+
+            if (isFromGoogleSheets) {
+                updateServerStatusBadge('backup');
+                if (typeof showToast === 'function') {
+                    showToast('⚡️ Đang hiển thị lịch trình từ Google Sheets dự phòng (Turso Cloud đang bảo trì/hết quota)', 'info', 6000);
+                }
+            } else {
+                updateServerStatusBadge('primary');
+            }
+
+            // 🛡️ Tự động decode + chữa lành họ tên bệnh nhân và lịch trình trước khi lưu cache
+            // Fix: thêm decodeVietnameseEncoding trước healPatientName để xử lý dữ liệu DB lưu sai mã
+            const _decodeForHeal = (typeof window.decodeVietnameseEncoding === 'function')
+                ? window.decodeVietnameseEncoding
+                : (s => String(s || '').normalize('NFC').trim());
+            if (b.patients && Array.isArray(b.patients)) {
+                b.patients.forEach((pt, i) => {
+                    if (pt) {
+                        pt.sheetIndex = i;
+                        if (pt.ten) pt.ten = healPatientName(_decodeForHeal(pt.ten));
+                        if (pt.name) pt.name = healPatientName(_decodeForHeal(pt.name));
+                    }
+                });
+            }
+            if (b.schedule && Array.isArray(b.schedule)) {
+                b.schedule.forEach(sc => {
+                    if (sc) {
+                        if (sc.tenBN) sc.tenBN = healPatientName(_decodeForHeal(sc.tenBN), [], true);
+                        if (Array.isArray(sc) && sc[1]) sc[1] = healPatientName(_decodeForHeal(sc[1]), [], true);
+                    }
+                });
+            }
+
+            try {
+                const curUnit = getCurrentUnitCode();
+                b.unit_code = curUnit;
+                localStorage.setItem(getBootstrapCacheKey(), JSON.stringify(b));
+            } catch (e) { }
+
+            const now = Date.now();
+            window.dataCacheTime = { pat: now, staff: now, machine: now, room: now, proc: now, sched: now };
+
+            if (typeof dataCache !== 'undefined') {
+                if (b.machines && Array.isArray(b.machines)) {
+                    b.machines.forEach((m, i) => { 
+                        if (m) {
+                            m.sheetIndex = i;
+                            if (m.tenLoai) m.tenLoai = (typeof window.cleanAndHealMachineName === 'function') ? window.cleanAndHealMachineName(m.tenLoai) : _decodeForHeal(m.tenLoai);
+                            if (Array.isArray(m) && m[1]) m[1] = (typeof window.cleanAndHealMachineName === 'function') ? window.cleanAndHealMachineName(m[1]) : _decodeForHeal(m[1]);
+                        }
+                    });
+                    dataCache.machine = b.machines.filter(m => m && (m.tenLoai || m[1]));
+                    if (typeof renderMachinesTable === 'function') renderMachinesTable();
+                }
+                if (b.rooms && Array.isArray(b.rooms)) {
+                    b.rooms.forEach((r, i) => { 
+                        if (r) {
+                            r.sheetIndex = i;
+                            if (r.tenPhong) r.tenPhong = (typeof window.cleanAndHealRoomName === 'function') ? window.cleanAndHealRoomName(r.tenPhong) : _decodeForHeal(r.tenPhong);
+                            if (Array.isArray(r) && r[1]) r[1] = (typeof window.cleanAndHealRoomName === 'function') ? window.cleanAndHealRoomName(r[1]) : _decodeForHeal(r[1]);
+                        }
+                    });
+                    dataCache.room = b.rooms.filter(r => r && (r.tenPhong || r[1]));
+                    if (typeof renderRoomsTable === 'function') renderRoomsTable();
+                }
+                if (b.procedures && Array.isArray(b.procedures)) {
+                    b.procedures.forEach((p, i) => { 
+                        if (p) {
+                            p.sheetIndex = i;
+                            if (p.ten) p.ten = (typeof window.cleanAndHealProcedureName === 'function') ? window.cleanAndHealProcedureName(p.ten) : _decodeForHeal(p.ten);
+                            if (Array.isArray(p) && p[1]) p[1] = (typeof window.cleanAndHealProcedureName === 'function') ? window.cleanAndHealProcedureName(p[1]) : _decodeForHeal(p[1]);
+                        }
+                    });
+                    dataCache.proc = b.procedures;
+                    if (typeof renderProceduresTable === 'function') renderProceduresTable();
+                    if (typeof renderProcedureCheckboxes === 'function') renderProcedureCheckboxes();
+                }
+                if (b.staff && Array.isArray(b.staff)) {
+                    b.staff.forEach((st, i) => { 
+                        if (st) {
+                            st.sheetIndex = i;
+                            if (st.ten) st.ten = (typeof window.cleanAndHealStaffName === 'function') ? window.cleanAndHealStaffName(st.ten) : _decodeForHeal(st.ten);
+                            if (Array.isArray(st) && st[1]) st[1] = (typeof window.cleanAndHealStaffName === 'function') ? window.cleanAndHealStaffName(st[1]) : _decodeForHeal(st[1]);
+                        }
+                    });
+                    dataCache.staff = b.staff.filter(st => st && st.ten);
+                    if (typeof renderStaffTable === 'function') renderStaffTable();
+                    if (typeof window.resetChamCongForUnit === 'function') {
+                        window.resetChamCongForUnit(localStorage.getItem('pm_unit_code'));
+                    }
+                }
+                if (b && Array.isArray(b.schedule)) {
+                    dataCache.schedule = b.schedule;
+                    window.currentScheduleData = (b.schedule.length > 0 && typeof markDischargedInSchedule === 'function') ? markDischargedInSchedule(b.schedule) : (b.schedule || []);
+                    const curUnit = getCurrentUnitCode();
+                    const uKey = (base) => (typeof getUnitStorageKey === 'function') ? getUnitStorageKey(base) : (curUnit ? `${curUnit}_${base}` : base);
+                    if (b.schedule.length > 0) {
+                        try {
+                            const schedJson = JSON.stringify(b.schedule);
+                            const activeDate = (Array.isArray(b.schedule[0]) ? b.schedule[0][0] : (b.schedule[0]?.ngay || b.schedule[0]?.date)) || (document.getElementById('schedule-date')?.value) || '';
+                            localStorage.setItem(uKey('meds_success'), schedJson);
+                            localStorage.setItem('meds_success', schedJson);
+                            localStorage.setItem(uKey('meds_schedule_date'), activeDate);
+                            localStorage.setItem('meds_schedule_date', activeDate);
+                            localStorage.setItem('meds_schedule_unit', curUnit);
+                        } catch(eCache) {}
+                    } else {
+                        // Server xác nhận hôm nay thực sự chưa có lịch
+                        localStorage.removeItem(uKey('meds_success'));
+                        localStorage.removeItem(uKey('meds_schedule_date'));
+                        localStorage.removeItem(uKey('meds_unscheduled'));
+                        localStorage.removeItem('meds_success');
+                        localStorage.removeItem('meds_schedule_date');
+                        localStorage.removeItem('meds_unscheduled');
+                        localStorage.removeItem('meds_schedule_unit');
+                    }
+                    if (b.is_finalized_today) {
+                        window._todayIsFinalized = true;
+                        window._finalizedTodayCount = b.finalized_today_count || (b.schedule ? b.schedule.length : 0);
+                        const countInfo = window._finalizedTodayCount ? ` (${window._finalizedTodayCount} ca)` : '';
+                        const displayEl = document.getElementById('display-date');
+                        if (displayEl) {
+                            displayEl.innerHTML = `<span style="color:#b45309; background:#fef3c7; padding:2px 8px; border-radius:6px; font-weight:700;">📋 Hôm nay (Đã chốt sổ${countInfo})</span>`;
+                        }
+                        const statusEl = document.getElementById('utils-lich-status');
+                        if (statusEl) {
+                            statusEl.innerText = `📋 Hôm nay (Đã chốt sổ${countInfo})`;
+                            statusEl.style.color = '#b45309';
+                        }
+                    } else {
+                        window._todayIsFinalized = false;
+                        window._finalizedTodayCount = 0;
+                    }
+                } else {
+                    dataCache.schedule = [];
+                    window.currentScheduleData = [];
+                    window._todayIsFinalized = false;
+                    window._finalizedTodayCount = 0;
+                    const curUnit = getCurrentUnitCode();
+                    const uKey = (base) => (typeof getUnitStorageKey === 'function') ? getUnitStorageKey(base) : (curUnit ? `${curUnit}_${base}` : base);
+                    localStorage.removeItem(uKey('meds_success'));
+                    localStorage.removeItem(uKey('meds_schedule_date'));
+                    localStorage.removeItem(uKey('meds_unscheduled'));
+                    localStorage.removeItem('meds_success');
+                    localStorage.removeItem('meds_schedule_date');
+                    localStorage.removeItem('meds_unscheduled');
+                    localStorage.removeItem('meds_schedule_unit');
+                }
+                if (typeof loadScheduleList === 'function') loadScheduleList();
+
+                if (b && Array.isArray(b.patients)) {
+                    dataCache.pat = b.patients.filter(pt => pt && pt.ten);
+                } else {
+                    dataCache.pat = [];
+                }
+                if (typeof renderPatientsTable === 'function') renderPatientsTable();
+
+                // Đồng bộ phác đồ mới nhất từ máy chủ (Cloudflare D1)
+                const rawServerProto = (b.settings && b.settings.clinical_protocols) || b.protocols;
+                if (rawServerProto) {
+                    try {
+                        const parsed = typeof rawServerProto === 'string' ? JSON.parse(rawServerProto) : rawServerProto;
+                        if (Array.isArray(parsed)) {
+                            dataCache.protocols = parsed;
+                            if (window.dataCache) window.dataCache.protocols = parsed;
+                            try { localStorage.setItem('meds_protocols', JSON.stringify(parsed)); } catch(e) {}
+                            if (typeof renderProtocolsTable === 'function') renderProtocolsTable();
+                            if (typeof renderProtocolSelectOptions === 'function') renderProtocolSelectOptions();
+                        }
+                    } catch(e) {}
+                }
+            }
+
+            if (b.settings) {
+                if (typeof dataCache !== 'undefined') dataCache.settings = b.settings;
+                if (window.dataCache) window.dataCache.settings = b.settings;
+                applySystemSettings(b.settings);
+            }
+
+            if (b.marquee) {
+                const el = document.getElementById('thong-bao-chay');
+                if (el) el.innerText = b.marquee;
+                const inp = document.getElementById('admin-marquee-input');
+                if (inp) inp.value = b.marquee;
+            }
+
+            if (b.links && Array.isArray(b.links)) {
+                const uls = document.querySelectorAll('#khu-vuc-lien-ket');
+                if (uls.length) {
+                    const htmlContent = b.links.length
+                        ? b.links.map(item => `<li><a href="${item.url}" target="_blank"><span class="f-icon">${item.icon}</span> ${item.ten}</a></li>`).join('')
+                        : '<li><a href="#"><span class="f-icon">⚠️</span> Chưa có liên kết nào</a></li>';
+                    uls.forEach(ul => { ul.innerHTML = htmlContent; });
+                }
+            }
+
+            if (typeof updateStats === 'function') updateStats();
+            if (typeof renderScheduleCalendar === 'function') renderScheduleCalendar();
+            safeCall('loadDashboard');
+
+            if (!window._systemReadyLogged) {
+                window._systemReadyLogged = true;
+                console.log('✅ Hệ thống T.I.M.E.S đã tải và đồng bộ dữ liệu thành công! Sẵn sàng hoạt động.');
+            }
+        }
+        window.applyBootstrapData = applyBootstrapData;
+
         function loadBootstrapData(forceRefresh = false) {
             const sess = (typeof getSession === 'function') ? getSession() : null;
             const curUnit = getCurrentUnitCode();
@@ -3150,211 +3510,35 @@ var dataCache = window.dataCache;
                 restoreOfflineCache();
             }
 
-            callApi('getBootstrapData', [document.getElementById('schedule-date')?.value || ''], function (b) {
-                    if (!b) return;
+            const activeDate = document.getElementById('schedule-date')?.value || '';
 
-                    // 🛡️ Tự động decode + chữa lành họ tên bệnh nhân và lịch trình trước khi lưu cache
-                    // Fix: thêm decodeVietnameseEncoding trước healPatientName để xử lý dữ liệu DB lưu sai mã
-                    const _decodeForHeal = (typeof window.decodeVietnameseEncoding === 'function')
-                        ? window.decodeVietnameseEncoding
-                        : (s => String(s || '').normalize('NFC').trim());
-                    if (b.patients && Array.isArray(b.patients)) {
-                        b.patients.forEach((pt, i) => {
-                            if (pt) {
-                                pt.sheetIndex = i;
-                                if (pt.ten) pt.ten = healPatientName(_decodeForHeal(pt.ten));
-                                if (pt.name) pt.name = healPatientName(_decodeForHeal(pt.name));
-                            }
-                        });
-                    }
-                    if (b.schedule && Array.isArray(b.schedule)) {
-                        b.schedule.forEach(sc => {
-                            if (sc) {
-                                if (sc.tenBN) sc.tenBN = healPatientName(_decodeForHeal(sc.tenBN), [], true);
-                                if (Array.isArray(sc) && sc[1]) sc[1] = healPatientName(_decodeForHeal(sc[1]), [], true);
-                            }
-                        });
-                    }
-
-                    try {
-                        const curUnit = getCurrentUnitCode();
-                        b.unit_code = curUnit;
-                        localStorage.setItem(getBootstrapCacheKey(), JSON.stringify(b));
-                    } catch (e) { }
-
-                    const now = Date.now();
-                    window.dataCacheTime = { pat: now, staff: now, machine: now, room: now, proc: now, sched: now };
-
-                    if (typeof dataCache !== 'undefined') {
-                        if (b.machines && Array.isArray(b.machines)) {
-                            b.machines.forEach((m, i) => { 
-                                if (m) {
-                                    m.sheetIndex = i;
-                                    if (m.tenLoai) m.tenLoai = (typeof window.cleanAndHealMachineName === 'function') ? window.cleanAndHealMachineName(m.tenLoai) : _decodeForHeal(m.tenLoai);
-                                    if (Array.isArray(m) && m[1]) m[1] = (typeof window.cleanAndHealMachineName === 'function') ? window.cleanAndHealMachineName(m[1]) : _decodeForHeal(m[1]);
-                                }
-                            });
-                            dataCache.machine = b.machines.filter(m => m && (m.tenLoai || m[1]));
-                            if (typeof renderMachinesTable === 'function') renderMachinesTable();
+            callApi('getBootstrapData', [activeDate], function (b) {
+                applyBootstrapData(b, false);
+            }, function (err) {
+                console.warn('[Bootstrap API] Máy chủ Cloudflare/Turso gián đoạn hoặc hết quota, kích hoạt chuyển đổi dự phòng:', err);
+                const backupUrl = getBackupSheetsUrl();
+                if (backupUrl) {
+                    console.log('🔄 Đang nạp dữ liệu dự phòng từ Google Sheets...');
+                    fetchBootstrapFromGoogleSheets(backupUrl, activeDate, function(sheetData) {
+                        applyBootstrapData(sheetData, true);
+                    }, function(sheetErr) {
+                        console.warn('[Google Sheets] Không thể nạp dữ liệu dự phòng từ Sheets:', sheetErr);
+                        updateServerStatusBadge('offline');
+                        if (!window._systemReadyLogged) {
+                            window._systemReadyLogged = true;
+                            console.log('✅ Hệ thống T.I.M.E.S đã sẵn sàng hoạt động (Chế độ ngoại tuyến).');
                         }
-                        if (b.rooms && Array.isArray(b.rooms)) {
-                            b.rooms.forEach((r, i) => { 
-                                if (r) {
-                                    r.sheetIndex = i;
-                                    if (r.tenPhong) r.tenPhong = (typeof window.cleanAndHealRoomName === 'function') ? window.cleanAndHealRoomName(r.tenPhong) : _decodeForHeal(r.tenPhong);
-                                    if (Array.isArray(r) && r[1]) r[1] = (typeof window.cleanAndHealRoomName === 'function') ? window.cleanAndHealRoomName(r[1]) : _decodeForHeal(r[1]);
-                                }
-                            });
-                            dataCache.room = b.rooms.filter(r => r && (r.tenPhong || r[1]));
-                            if (typeof renderRoomsTable === 'function') renderRoomsTable();
-                        }
-                        if (b.procedures && Array.isArray(b.procedures)) {
-                            b.procedures.forEach((p, i) => { 
-                                if (p) {
-                                    p.sheetIndex = i;
-                                    if (p.ten) p.ten = (typeof window.cleanAndHealProcedureName === 'function') ? window.cleanAndHealProcedureName(p.ten) : _decodeForHeal(p.ten);
-                                    if (Array.isArray(p) && p[1]) p[1] = (typeof window.cleanAndHealProcedureName === 'function') ? window.cleanAndHealProcedureName(p[1]) : _decodeForHeal(p[1]);
-                                }
-                            });
-                            dataCache.proc = b.procedures;
-                            if (typeof renderProceduresTable === 'function') renderProceduresTable();
-                            if (typeof renderProcedureCheckboxes === 'function') renderProcedureCheckboxes();
-                        }
-                        if (b.staff && Array.isArray(b.staff)) {
-                            b.staff.forEach((st, i) => { 
-                                if (st) {
-                                    st.sheetIndex = i;
-                                    if (st.ten) st.ten = (typeof window.cleanAndHealStaffName === 'function') ? window.cleanAndHealStaffName(st.ten) : _decodeForHeal(st.ten);
-                                    if (Array.isArray(st) && st[1]) st[1] = (typeof window.cleanAndHealStaffName === 'function') ? window.cleanAndHealStaffName(st[1]) : _decodeForHeal(st[1]);
-                                }
-                            });
-                            dataCache.staff = b.staff.filter(st => st && st.ten);
-                            if (typeof renderStaffTable === 'function') renderStaffTable();
-                            if (typeof window.resetChamCongForUnit === 'function') {
-                                window.resetChamCongForUnit(localStorage.getItem('pm_unit_code'));
-                            }
-                        }
-                        if (b && Array.isArray(b.schedule)) {
-                            dataCache.schedule = b.schedule;
-                            window.currentScheduleData = (b.schedule.length > 0 && typeof markDischargedInSchedule === 'function') ? markDischargedInSchedule(b.schedule) : (b.schedule || []);
-                            const curUnit = getCurrentUnitCode();
-                            const uKey = (base) => (typeof getUnitStorageKey === 'function') ? getUnitStorageKey(base) : (curUnit ? `${curUnit}_${base}` : base);
-                            if (b.schedule.length > 0) {
-                                try {
-                                    const schedJson = JSON.stringify(b.schedule);
-                                    const activeDate = (Array.isArray(b.schedule[0]) ? b.schedule[0][0] : (b.schedule[0]?.ngay || b.schedule[0]?.date)) || (document.getElementById('schedule-date')?.value) || '';
-                                    localStorage.setItem(uKey('meds_success'), schedJson);
-                                    localStorage.setItem('meds_success', schedJson);
-                                    localStorage.setItem(uKey('meds_schedule_date'), activeDate);
-                                    localStorage.setItem('meds_schedule_date', activeDate);
-                                    localStorage.setItem('meds_schedule_unit', curUnit);
-                                } catch(eCache) {}
-                            } else {
-                                // Server xác nhận hôm nay thực sự chưa có lịch
-                                localStorage.removeItem(uKey('meds_success'));
-                                localStorage.removeItem(uKey('meds_schedule_date'));
-                                localStorage.removeItem(uKey('meds_unscheduled'));
-                                localStorage.removeItem('meds_success');
-                                localStorage.removeItem('meds_schedule_date');
-                                localStorage.removeItem('meds_unscheduled');
-                                localStorage.removeItem('meds_schedule_unit');
-                            }
-                            if (b.is_finalized_today) {
-                                window._todayIsFinalized = true;
-                                window._finalizedTodayCount = b.finalized_today_count || (b.schedule ? b.schedule.length : 0);
-                                const countInfo = window._finalizedTodayCount ? ` (${window._finalizedTodayCount} ca)` : '';
-                                const displayEl = document.getElementById('display-date');
-                                if (displayEl) {
-                                    displayEl.innerHTML = `<span style="color:#b45309; background:#fef3c7; padding:2px 8px; border-radius:6px; font-weight:700;">📋 Hôm nay (Đã chốt sổ${countInfo})</span>`;
-                                }
-                                const statusEl = document.getElementById('utils-lich-status');
-                                if (statusEl) {
-                                    statusEl.innerText = `📋 Hôm nay (Đã chốt sổ${countInfo})`;
-                                    statusEl.style.color = '#b45309';
-                                }
-                            } else {
-                                window._todayIsFinalized = false;
-                                window._finalizedTodayCount = 0;
-                            }
-                        } else {
-                            dataCache.schedule = [];
-                            window.currentScheduleData = [];
-                            window._todayIsFinalized = false;
-                            window._finalizedTodayCount = 0;
-                            const curUnit = getCurrentUnitCode();
-                            const uKey = (base) => (typeof getUnitStorageKey === 'function') ? getUnitStorageKey(base) : (curUnit ? `${curUnit}_${base}` : base);
-                            localStorage.removeItem(uKey('meds_success'));
-                            localStorage.removeItem(uKey('meds_schedule_date'));
-                            localStorage.removeItem(uKey('meds_unscheduled'));
-                            localStorage.removeItem('meds_success');
-                            localStorage.removeItem('meds_schedule_date');
-                            localStorage.removeItem('meds_unscheduled');
-                            localStorage.removeItem('meds_schedule_unit');
-                        }
-                        if (typeof loadScheduleList === 'function') loadScheduleList();
-
-                        if (b && Array.isArray(b.patients)) {
-                            dataCache.pat = b.patients.filter(pt => pt && pt.ten);
-                        } else {
-                            dataCache.pat = [];
-                        }
-                        if (typeof renderPatientsTable === 'function') renderPatientsTable();
-
-                        // Đồng bộ phác đồ mới nhất từ máy chủ (Cloudflare D1)
-                        const rawServerProto = (b.settings && b.settings.clinical_protocols) || b.protocols;
-                        if (rawServerProto) {
-                            try {
-                                const parsed = typeof rawServerProto === 'string' ? JSON.parse(rawServerProto) : rawServerProto;
-                                if (Array.isArray(parsed)) {
-                                    dataCache.protocols = parsed;
-                                    if (window.dataCache) window.dataCache.protocols = parsed;
-                                    try { localStorage.setItem('meds_protocols', JSON.stringify(parsed)); } catch(e) {}
-                                    if (typeof renderProtocolsTable === 'function') renderProtocolsTable();
-                                    if (typeof renderProtocolSelectOptions === 'function') renderProtocolSelectOptions();
-                                }
-                            } catch(e) {}
-                        }
-                    }
-
-                    if (b.settings) {
-                        if (typeof dataCache !== 'undefined') dataCache.settings = b.settings;
-                        if (window.dataCache) window.dataCache.settings = b.settings;
-                        applySystemSettings(b.settings);
-                    }
-
-                    if (b.marquee) {
-                        const el = document.getElementById('thong-bao-chay');
-                        if (el) el.innerText = b.marquee;
-                        const inp = document.getElementById('admin-marquee-input');
-                        if (inp) inp.value = b.marquee;
-                    }
-
-                    if (b.links && Array.isArray(b.links)) {
-                        const uls = document.querySelectorAll('#khu-vuc-lien-ket');
-                        if (uls.length) {
-                            const htmlContent = b.links.length
-                                ? b.links.map(item => `<li><a href="${item.url}" target="_blank"><span class="f-icon">${item.icon}</span> ${item.ten}</a></li>`).join('')
-                                : '<li><a href="#"><span class="f-icon">⚠️</span> Chưa có liên kết nào</a></li>';
-                            uls.forEach(ul => { ul.innerHTML = htmlContent; });
-                        }
-                    }
-
-                    if (typeof updateStats === 'function') updateStats();
-                    if (typeof renderScheduleCalendar === 'function') renderScheduleCalendar();
-                    safeCall('loadDashboard');
-
-                    if (!window._systemReadyLogged) {
-                        window._systemReadyLogged = true;
-                        console.log('✅ Hệ thống T.I.M.E.S đã tải và đồng bộ dữ liệu thành công! Sẵn sàng hoạt động.');
-                    }
-                }, function (err) {
+                        [loadMachines, loadRooms, loadScheduleList, loadProcedures, loadPatients, loadStaff].forEach(fn => fn());
+                    });
+                } else {
+                    updateServerStatusBadge('offline');
                     if (!window._systemReadyLogged) {
                         window._systemReadyLogged = true;
                         console.log('✅ Hệ thống T.I.M.E.S đã sẵn sàng hoạt động (Chế độ ngoại tuyến).');
                     }
-                    console.warn('[Bootstrap API] Máy chủ bận, đang sử dụng dữ liệu đã lưu trong máy:', err);
                     [loadMachines, loadRooms, loadScheduleList, loadProcedures, loadPatients, loadStaff].forEach(fn => fn());
-                });
+                }
+            });
         }
 
         function loadAllData() {
