@@ -6564,4 +6564,29 @@ ormalizeScheduleItem.
 - version.json
 - PM-xeplich-v4.md
 
+### Nâng Cấp Nhận Diện Mã BN Trong Kiểm Tra Lỗi & Rà Soát CSDL MiniPC (30/09/2026 - v4.1.8-rev15)
 
+**Yêu cầu người dùng:**
+1. Phần kiểm tra lỗi (Tab Kiểm Tra Lỗi) đọc cả Mã bệnh nhân để tránh sai sót (ví dụ phân biệt bệnh nhân trùng cả tên và năm sinh, tránh cảnh báo trùng lịch oan).
+2. Rà soát CSDL trên MiniPC (C4L / SQLite), liệt kê toàn bộ các bảng và xác định các bảng hiện không còn tác dụng.
+
+**Giải pháp & Triển khai Kỹ thuật:**
+1. **Mô-đun Kiểm Tra Lỗi (js/modules/app-error-checker.js):**
+   - Đọc đầy đủ các biến thể mã bệnh nhân: pId, maBN, ma_bn, MÃ BN, mabn, MA_BN, ma_benh_nhan, cột F trong file HIS y lệnh (01.xls).
+   - Tự động tra cứu bổ sung maBN từ CSDL bệnh nhân (dataCache.pat) nếu dòng lịch chưa mang theo mã.
+   - Nâng cấp patientKey kết hợp cả: ${patientName}_${patientDob}_ID_${patientCode} đảm bảo 2 bệnh nhân trùng cả Tên và Năm sinh nhưng khác Mã BN sẽ được xem là 2 cá thể độc lập, không bị báo lỗi trùng giờ oan.
+   - Hiển thị [#${patientCode}] trên tất cả bảng báo lỗi (Trùng giờ KTV, Trùng bệnh nhân, Trùng giường bệnh, Lỗi hành chính) để người dùng dễ dàng phân biệt.
+   - Nút "Kiểm Tra Lịch Đang Mở" (#btn-check-current-schedule) tự động bổ sung pId, maBN từ danh mục bệnh nhân khi nạp vào bộ kiểm tra.
+2. **Động cơ xếp lịch (js/scheduler-engine.js):**
+   - Bảo toàn pId và maBN xuyên suốt các định dạng kết quả xếp lịch (formattedSched ở các kịch bản thường, kịch bản Thứ 7 và tối ưu sâu) để lịch trình thời gian thực luôn chứa mã bệnh nhân.
+3. **Rà soát 24 bảng dữ liệu trên MiniPC SQLite (C4L):**
+   - Đã truy vấn sqlite_master và đếm số dòng dữ liệu thực tế trên toàn bộ 24 bảng.
+   - Xác định 3 bảng đã hết tác dụng / dư thừa: danh_muc (bản thử nghiệm v3 cũ), nhat_ky (chưa từng dùng, thay bằng audit_logs), gio_ban_cu (đã thay thế hoàn toàn bởi gio_ban_chung_cu).
+
+**File sửa đổi:**
+- js/modules/app-error-checker.js
+- js/scheduler-engine.js
+- index.html
+- sw.js
+- version.json
+- PM-xeplich-v4.md

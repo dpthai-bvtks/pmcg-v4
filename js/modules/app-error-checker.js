@@ -196,32 +196,65 @@
                     }
                 }
 
-                // Tra cứu bổ sung từ CSDL bệnh nhân (dataCache.pat) nếu file/hàng chưa có năm sinh
-                if (!patientDob && patientName && patientName !== 'Không rõ' && typeof dataCache !== 'undefined' && Array.isArray(dataCache.pat)) {
-                    const matchingPats = dataCache.pat.filter(p => {
-                        const pTen = (p.ten || p.name || '').trim().toLowerCase();
-                        return pTen === patientName.toLowerCase();
-                    });
-                    if (matchingPats.length === 1) {
-                        patientDob = String(matchingPats[0].namSinh || matchingPats[0].age || '').trim();
-                    } else if (matchingPats.length > 1) {
-                        const matchByRoom = matchingPats.find(p => phongRaw && String(p.phong || '').trim().toLowerCase() === phongRaw.toLowerCase());
-                        if (matchByRoom) {
-                            patientDob = String(matchByRoom.namSinh || matchByRoom.age || '').trim();
-                        } else {
-                            const matchByProc = matchingPats.find(p => {
-                                const tt = String(p.thuThuat || p.thu_thuat || '').toLowerCase();
-                                return procName && tt.includes(procName.toLowerCase());
-                            });
-                            if (matchByProc) {
-                                patientDob = String(matchByProc.namSinh || matchByProc.age || '').trim();
-                            }
+                // 🎯 Trích xuất mã bệnh nhân từ các trường thông dụng hoặc cột file HIS (F, MA_BN, pId, maBN, mabn...)
+                let patientCode = String(
+                    row.pId || row.id || row.maBN || row.ma_bn || 
+                    row['MÃ BN'] || row['Mã BN'] || row['Mã bn'] || row['mabn'] || 
+                    row['MA_BN'] || row['Mã bệnh nhân'] || row['ma_benh_nhan'] || row['Ma_BN'] || ''
+                ).trim();
+
+                // Nếu chưa có, kiểm tra các cột Excel có thể chứa mã BN (ví dụ cột F trong file 01.xls hoặc cột B có mã >= 4 chữ số)
+                if (!patientCode) {
+                    const fVal = String(row['F'] || '').trim();
+                    if (/^\d{4,}$/.test(fVal) || (/^[A-Z0-9_-]{4,}$/i.test(fVal) && !fVal.includes(' '))) {
+                        patientCode = fVal;
+                    } else {
+                        const bVal = String(row['B'] || '').trim();
+                        if (/^\d{5,}$/.test(bVal)) { // Tránh nhầm với số thứ tự 1, 2, 3...
+                            patientCode = bVal;
                         }
                     }
                 }
 
-                const patientCode = String(row.pId || row.id || row.maBN || row['MÃ BN'] || row['mabn'] || (row['B'] && /^\d+$/.test(String(row['B']).trim()) ? row['B'] : '') || '').trim();
+                // 🎯 Tra cứu bổ sung từ CSDL bệnh nhân (dataCache.pat) nếu file/hàng chưa có năm sinh HOẶC chưa có mã BN
+                const patCacheList = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.pat)) 
+                    ? dataCache.pat 
+                    : (Array.isArray(window.dataCache?.pat) ? window.dataCache.pat : []);
 
+                if ((!patientDob || !patientCode) && patientName && patientName !== 'Không rõ' && patCacheList.length > 0) {
+                    const matchingPats = patCacheList.filter(p => {
+                        const pTen = (p.ten || p.name || '').trim().toLowerCase();
+                        return pTen === patientName.toLowerCase();
+                    });
+
+                    if (matchingPats.length === 1) {
+                        if (!patientDob) patientDob = String(matchingPats[0].namSinh || matchingPats[0].age || '').trim();
+                        if (!patientCode) patientCode = String(matchingPats[0].maBN || matchingPats[0].ma_bn || matchingPats[0].pId || matchingPats[0].mabn || '').trim();
+                    } else if (matchingPats.length > 1) {
+                        let candidates = matchingPats;
+                        if (patientDob) {
+                            const byDob = matchingPats.filter(p => String(p.namSinh || p.age || '').trim() === patientDob);
+                            if (byDob.length > 0) candidates = byDob;
+                        }
+                        
+                        let bestMatch = candidates.find(p => phongRaw && String(p.phong || '').trim().toLowerCase() === phongRaw.toLowerCase());
+                        if (!bestMatch) {
+                            bestMatch = candidates.find(p => {
+                                const tt = String(p.thuThuat || p.thu_thuat || '').toLowerCase();
+                                return procName && tt.includes(procName.toLowerCase());
+                            });
+                        }
+                        if (bestMatch) {
+                            if (!patientDob) patientDob = String(bestMatch.namSinh || bestMatch.age || '').trim();
+                            if (!patientCode) patientCode = String(bestMatch.maBN || bestMatch.ma_bn || bestMatch.pId || bestMatch.mabn || '').trim();
+                        } else if (candidates.length === 1) {
+                            if (!patientDob) patientDob = String(candidates[0].namSinh || candidates[0].age || '').trim();
+                            if (!patientCode) patientCode = String(candidates[0].maBN || candidates[0].ma_bn || candidates[0].pId || candidates[0].mabn || '').trim();
+                        }
+                    }
+                }
+
+                // 🛡️ Xây dựng key định danh duy nhất cho bệnh nhân (kết hợp Tên + Năm sinh + Mã BN)
                 let patientKey = patientName.toUpperCase();
                 if (patientDob) {
                     patientKey += `_${patientDob}`;
@@ -747,7 +780,17 @@
                         const proc = r.thuThuat || r.dichVu || r['DỊCH VỤ'] || '';
                         const procInfo = mapProcedureJS(proc);
                         const pDob = String(r.namSinh || r.NAMSINH || r.dob || r.ns || r['NĂM SINH'] || r['nam_sinh'] || '').trim();
-                        const pId = String(r.pId || r.id || r.maBN || r['MÃ BN'] || r.mabn || '').trim();
+                        let pId = String(r.pId || r.id || r.maBN || r.ma_bn || r['MÃ BN'] || r['Mã BN'] || r.mabn || '').trim();
+                        if (!pId && typeof dataCache !== 'undefined' && Array.isArray(dataCache.pat)) {
+                            const foundPat = dataCache.pat.find(p => {
+                                const pTen = (p.ten || p.name || '').trim().toLowerCase();
+                                const pNs = String(p.namSinh || p.age || '').trim();
+                                return pTen === pName.toLowerCase() && (!pDob || pNs === pDob);
+                            });
+                            if (foundPat) {
+                                pId = String(foundPat.maBN || foundPat.ma_bn || foundPat.pId || foundPat.mabn || '').trim();
+                            }
+                        }
                         return {
                             'AT': r.nvChinh || r['NV CHÍNH'] || '',
                             'AU': r.nvPhu || r['NV PHỤ'] || '',
@@ -756,6 +799,8 @@
                             'namSinh': pDob,
                             'dob': pDob,
                             'pId': pId,
+                            'maBN': pId,
+                            'ma_bn': pId,
                             'AE': proc,
                             'AG': proc,
                             'AF': 'Chủ động',
@@ -838,7 +883,7 @@
                                     ngay: headerRow.findIndex(h => h.includes('ngay')),
                                     ten: headerRow.findIndex(h => h.includes('ten benh nhan') || h.includes('ten bn') || h.includes('hoten')),
                                     namSinh: headerRow.findIndex(h => h.includes('nam sinh') || h.includes('namsinh') || h.includes('tuoi') || h === 'ns' || h.includes('dob')),
-                                    pId: headerRow.findIndex(h => h.includes('ma bn') || h.includes('mabn') || h.includes('pid') || h.includes('ma benh nhan')),
+                                    pId: headerRow.findIndex(h => h.includes('ma bn') || h.includes('mabn') || h.includes('pid') || h.includes('ma benh nhan') || h.includes('ma nb') || h.includes('mabenhnhan') || h.includes('ma_bn')),
                                     tt: headerRow.findIndex(h => h.includes('thu thuat') || h.includes('dich vu') || h.includes('dichvu')),
                                     bd: headerRow.findIndex(h => h.includes('bat dau') || h.includes('gio dien ra') || h.includes('giodienra')),
                                     kt: headerRow.findIndex(h => h.includes('ket thuc') || h.includes('gioketthuc')),
@@ -875,6 +920,8 @@
                                         'namSinh': namSinhVal,
                                         'dob': namSinhVal,
                                         'pId': pIdVal,
+                                        'maBN': pIdVal,
+                                        'ma_bn': pIdVal,
                                         'AE': procName,
                                         'AG': procName,
                                         'AF': 'Chủ động',

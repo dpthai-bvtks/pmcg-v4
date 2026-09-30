@@ -2424,7 +2424,9 @@ function getSafeCache() {
       nvChinh: x["NV CHÍNH"],
       nvPhu: x["NV PHỤ"],
       may: x.MAY,
-      giuong: x.GIUONG
+      giuong: x.GIUONG,
+      pId: x.pId || x.maBN || x.id || '',
+      maBN: x.maBN || x.pId || x.id || ''
     }));
 
     const rawCompactedSched = compactTimelineGaps(formattedSched, db);
@@ -2567,7 +2569,9 @@ function getSafeCache() {
                 nvChinh: x["NV CHÍNH"] || x.nvChinh,
                 nvPhu: x["NV PHỤ"] || x.nvPhu,
                 may: x.MAY || x.may,
-                giuong: x.GIUONG || x.giuong
+                giuong: x.GIUONG || x.giuong,
+                pId: x.pId || x.maBN || x.id || '',
+                maBN: x.maBN || x.pId || x.id || ''
               }));
 
               const rawCompactedSched = compactTimelineGaps(formattedSched, db);
@@ -2685,7 +2689,9 @@ function getSafeCache() {
         nvChinh: x["NV CHÍNH"],
         nvPhu: x["NV PHỤ"],
         may: x.MAY,
-        giuong: x.GIUONG
+        giuong: x.GIUONG,
+        pId: x.pId || x.maBN || x.id || '',
+        maBN: x.maBN || x.pId || x.id || ''
       }));
 
       const rawCompactedSched = compactTimelineGaps(formattedSched, db);
@@ -2989,7 +2995,9 @@ function getSafeCache() {
         nvChinh: item["NV CHÍNH"],
         nvPhu: item["NV PHỤ"],
         may: item.MAY,
-        giuong: realBed
+        giuong: realBed,
+        pId: item.pId || item.maBN || item.id || '',
+        maBN: item.maBN || item.pId || item.id || ''
       };
     });
 
