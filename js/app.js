@@ -3624,6 +3624,11 @@ var dataCache = window.dataCache;
                         if (!pt.ten && pt.name) pt.ten = pt.name;
                         if (pt.ten) pt.ten = healPatientName(_decodeForHeal(pt.ten));
                         if (pt.name) pt.name = healPatientName(_decodeForHeal(pt.name));
+                        const c = String(pt.maBN || pt.ma_bn || pt.pId || pt.mabn || pt['Mã BN'] || pt['Mã bn'] || pt['ma_benh_nhan'] || '').trim();
+                        if (c) {
+                            pt.maBN = c;
+                            pt.ma_bn = c;
+                        }
                     }
                 });
                 b.patients = rawPatsForHeal;
@@ -3934,7 +3939,23 @@ var dataCache = window.dataCache;
                             if (item) item.sheetIndex = i;
                         });
                         let cleaned = rawData;
-                        if (cacheKey === 'pat' || cacheKey === 'staff') {
+                        if (cacheKey === 'pat') {
+                            cleaned = rawData.map(item => {
+                                if (!item) return null;
+                                const ten = item.ten || item.name || item['Tên BN'] || item['Tên'] || '';
+                                const namSinh = item.namSinh || item.age || item['Năm Sinh'] || '';
+                                const maBN = item.maBN || item.ma_bn || item.pId || item.mabn || item['Mã BN'] || '';
+                                return {
+                                    ...item,
+                                    ten: healPatientName(_decodeForHeal(ten)),
+                                    name: healPatientName(_decodeForHeal(ten)),
+                                    namSinh: String(namSinh || ''),
+                                    age: String(namSinh || ''),
+                                    maBN: String(maBN || ''),
+                                    ma_bn: String(maBN || '')
+                                };
+                            }).filter(item => item && item.ten && String(item.ten).trim() !== '' && !/^\d+$/.test(String(item.ten).trim()));
+                        } else if (cacheKey === 'staff') {
                             cleaned = rawData.filter(item => item && item.ten && String(item.ten).trim() !== '' && !/^\d+$/.test(String(item.ten).trim()));
                         } else if (cacheKey === 'machine') {
                             cleaned = rawData.filter(item => {
@@ -10218,6 +10239,10 @@ var dataCache = window.dataCache;
                                 bed: String(p.bed || p.giuong || '').trim(),
                                 order_idx: p.order_idx !== undefined ? Number(p.order_idx) : 0
                             })).filter(p => p.ten);
+
+                            // ⚡ Cập nhật ngay vào cache và vẽ lại bảng để giao diện phản hồi tức thì
+                            dataCache.pat = cleanMergedList;
+                            renderPatientsTable();
 
                             savePatientsWithFallback(
                                 cleanMergedList,

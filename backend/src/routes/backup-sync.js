@@ -349,8 +349,12 @@ export async function handleBackupSyncAction(action, ctx) {
         const thuThuatStr = procsArr.join(",");
 
         const patCleanName = healBackendPatientName(p.name);
+        const patMaBN = String(p.ma_bn || p.maBN || p.pId || p.mabn || "").trim();
         return {
           id: String(p.id || (idx + 1)),
+          maBN: patMaBN,
+          ma_bn: patMaBN,
+          pId: patMaBN,
           ten: patCleanName,
           name: patCleanName,
           namSinh: String(p.age || ""),

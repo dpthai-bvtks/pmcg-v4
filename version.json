@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev13",
+    "version": "4.1.8-rev14",
     "releaseDate": "30/09/2026",
-    "releaseTime": "19:05 30/09/2026",
-    "notes": "Đồng bộ thứ tự trường form và cột bảng: Tên bệnh nhân -> Năm sinh -> Mã bệnh nhân."
+    "releaseTime": "19:15 30/09/2026",
+    "notes": "Khắc phục triệt để lỗi mất Mã BN sau 3s: Bổ sung maBN/ma_bn vào getBootstrapData của Worker và Google Sheets, chuẩn hóa dữ liệu khi đồng bộ ngầm."
 }

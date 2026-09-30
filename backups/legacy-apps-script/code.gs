@@ -169,6 +169,38 @@ function handleApiRequest(action, args) {
           data: 'Đã sao lưu trọn bộ toàn bộ hệ thống sang Google Sheets thành công!'
         };
 
+      case 'bulkUpdatePatients':
+        var patList = args && args[0] ? args[0] : [];
+        if (Array.isArray(patList) && patList.length > 0) {
+          writeListToSheet(ss, 'BenhNhan', patList);
+        }
+        return { status: 'success', data: 'Đã lưu danh sách bệnh nhân vào Google Sheets!' };
+
+      case 'addBenhNhan':
+      case 'editBenhNhan':
+        var curPats = readSheetData(ss, 'BenhNhan');
+        var pData = args && args[0] ? (typeof args[0] === 'object' ? args[0] : {
+          ten: args[0], namSinh: args[1], ngayVao: args[2], gioVao: args[3],
+          gioBan: args[4], gioRa: args[5], phong: args[6], thuThuat: args[7],
+          loai_bn: args[8], buoi_dieu_tri: args[9], maBN: args[10]
+        }) : {};
+        if (pData.ten) {
+          var found = false;
+          for (var pi = 0; pi < curPats.length; pi++) {
+            var cp = curPats[pi];
+            if (cp.ten === pData.ten && String(cp.namSinh || cp.age || '') === String(pData.namSinh || pData.age || '')) {
+              if (!pData.maBN || !cp.maBN || cp.maBN === pData.maBN) {
+                curPats[pi] = Object.assign(cp, pData);
+                found = true;
+                break;
+              }
+            }
+          }
+          if (!found) curPats.push(pData);
+          writeListToSheet(ss, 'BenhNhan', curPats);
+        }
+        return { status: 'success', data: 'Đã cập nhật bệnh nhân vào Google Sheets!' };
+
       case 'loadAccounts':
         return { status: 'success', data: readSheetData(ss, 'TaiKhoan') };
 

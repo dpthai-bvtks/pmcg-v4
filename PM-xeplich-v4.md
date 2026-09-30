@@ -6529,4 +6529,39 @@ ormalizeScheduleItem.
 3. **Đồng bộ phiên bản:**
    - Phiên bản: `4.1.8-rev13`, timestamp: `19:05 30/09/2026`.
 
+### Khắc Phục Triệt Để Lỗi Mã BN Biến Mất Sau 3s Khi Nạp File HIS (30/09/2026 - v4.1.8-rev14)
+
+**Hiện tượng:**
+- Sau khi chọn file `01.xls` và xác nhận nạp, cột Mã BN hiển thị đầy đủ mã bệnh nhân `#xxxx`, nhưng khoảng 3 giây sau, toàn bộ mã BN lại biến mất và chuyển thành `--`.
+
+**Nguyên nhân gốc rễ (Root Cause):**
+1. **Thiếu trường `maBN` / `ma_bn` trong API `getBootstrapData` (`backend/src/routes/backup-sync.js`):**
+   - Khi nạp HIS thành công, hệ thống lưu bệnh nhân và gửi tín hiệu `PATIENTS_UPDATED`.
+   - Cơ chế đồng bộ thời gian thực (`sync.js`) nhận tín hiệu và sau ~3s tự động gọi `loadBootstrapData(true)` -> gọi API `getBootstrapData`.
+   - Trong `backup-sync.js`, câu lệnh SQL `SELECT * FROM benh_nhan` có cột `ma_bn`, nhưng đoạn mã map trả về JSON chỉ lấy `id, name, age, room...` mà **bỏ quên** `maBN: p.ma_bn || ""`.
+   - Khi dữ liệu trả về client, `applyBootstrapData` ghi đè `dataCache.pat` bằng mảng không có `maBN`, khiến bảng bệnh nhân vẽ lại và toàn bộ mã BN biến mất sau 3 giây.
+2. **Thiếu hỗ trợ action lưu bệnh nhân trong script Google Sheets (`code.gs`):**
+   - Trong `backups/legacy-apps-script/code.gs`, các action `bulkUpdatePatients`, `addBenhNhan`, `editBenhNhan` chưa được khai báo, dẫn đến việc nếu hệ thống fallback sang Sheets thì dữ liệu mã BN không được cập nhật tương ứng.
+
+**Giải pháp & Triển khai Kỹ thuật:**
+1. **Bổ sung `maBN`, `ma_bn`, `pId` trong `backend/src/routes/backup-sync.js`:**
+   - Trả về đầy đủ mã BN từ trường `ma_bn` của bảng `benh_nhan` trong hàm `getBootstrapData`.
+2. **Cập nhật Client `js/app.js`:**
+   - Trong `applyBootstrapData`: Kiểm tra và bảo toàn toàn bộ thuộc tính mã BN (`maBN`, `ma_bn`, `pId`, `mabn`, `Mã BN`...).
+   - Trong `loadFromSheets`: Chuẩn hóa dữ liệu bệnh nhân nạp từ mọi nguồn, gán đồng nhất cả `maBN` và `ma_bn`.
+   - Trong `importFromHIS`: Cập nhật trực tiếp `dataCache.pat = cleanMergedList` và vẽ lại bảng ngay lập tức để giao diện không bị giật lag.
+3. **Cập nhật Google Sheets Backup Script (`backups/legacy-apps-script/code.gs`):**
+   - Thêm xử lý `bulkUpdatePatients`, `addBenhNhan`, `editBenhNhan` hỗ trợ lưu trường `maBN` sang Google Sheets.
+4. **Triển khai:**
+   - Build và deploy Worker Backend (`wrangler deploy`) và Frontend Pages (`wrangler pages deploy`).
+   - Phiên bản: `4.1.8-rev14`, timestamp: `19:15 30/09/2026`.
+
+**File sửa đổi:**
+- backend/src/routes/backup-sync.js
+- backups/legacy-apps-script/code.gs
+- js/app.js
+- sw.js
+- version.json
+- PM-xeplich-v4.md
+
 
