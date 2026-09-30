@@ -3565,14 +3565,17 @@ var dataCache = window.dataCache;
             const _decodeForHeal = (typeof window.decodeVietnameseEncoding === 'function')
                 ? window.decodeVietnameseEncoding
                 : (s => String(s || '').normalize('NFC').trim());
-            if (b.patients && Array.isArray(b.patients)) {
-                b.patients.forEach((pt, i) => {
+            const rawPatsForHeal = b.patients || b.pat || b.benh_nhan || [];
+            if (Array.isArray(rawPatsForHeal)) {
+                rawPatsForHeal.forEach((pt, i) => {
                     if (pt) {
                         pt.sheetIndex = i;
+                        if (!pt.ten && pt.name) pt.ten = pt.name;
                         if (pt.ten) pt.ten = healPatientName(_decodeForHeal(pt.ten));
                         if (pt.name) pt.name = healPatientName(_decodeForHeal(pt.name));
                     }
                 });
+                b.patients = rawPatsForHeal;
             }
             if (b.schedule && Array.isArray(b.schedule)) {
                 b.schedule.forEach(sc => {
@@ -3615,27 +3618,50 @@ var dataCache = window.dataCache;
                     dataCache.room = b.rooms.filter(r => r && (r.tenPhong || r[1]));
                     if (typeof renderRoomsTable === 'function') renderRoomsTable();
                 }
-                if (b.procedures && Array.isArray(b.procedures)) {
-                    b.procedures.forEach((p, i) => { 
+                const rawProcs = b.procedures || b.proc || b.thu_thuat || [];
+                if (Array.isArray(rawProcs)) {
+                    rawProcs.forEach((p, i) => { 
                         if (p) {
                             p.sheetIndex = i;
+                            if (!p.ten && p.ten_thu_thuat) p.ten = p.ten_thu_thuat;
+                            if (p.ten && !p.ten_thu_thuat) p.ten_thu_thuat = p.ten;
                             if (p.ten) p.ten = (typeof window.cleanAndHealProcedureName === 'function') ? window.cleanAndHealProcedureName(p.ten) : _decodeForHeal(p.ten);
                             if (Array.isArray(p) && p[1]) p[1] = (typeof window.cleanAndHealProcedureName === 'function') ? window.cleanAndHealProcedureName(p[1]) : _decodeForHeal(p[1]);
+                            if (p.viet_tat && !p.vietTat) p.vietTat = p.viet_tat;
+                            if (p.vietTat && !p.viet_tat) p.viet_tat = p.vietTat;
+                            if (p.phan_loai && !p.phanLoai) p.phanLoai = p.phan_loai;
+                            if (p.phanLoai && !p.phan_loai) p.phan_loai = p.phanLoai;
+                            if (p.tg_thuc_hien && !p.thoiGianThucHien) p.thoiGianThucHien = Number(p.tg_thuc_hien);
+                            if (p.tg_thu_thuat && !p.thoiGianThuThuat) p.thoiGianThuThuat = Number(p.tg_thu_thuat);
+                            if (p.can_rut_may && !p.canRutMay) p.canRutMay = p.can_rut_may;
+                            if (p.can_nguoi_phu && !p.canNguoiPhu) p.canNguoiPhu = p.can_nguoi_phu;
+                            if (p.ds_nguoi_phu && !p.dsNguoiPhu) p.dsNguoiPhu = p.ds_nguoi_phu;
+                            if (p.lich_su_dinh_muc && !p.lichSuDinhMuc) p.lichSuDinhMuc = p.lich_su_dinh_muc;
+                            if (p.lichSuDinhMuc && !p.lich_su_dinh_muc) p.lich_su_dinh_muc = p.lichSuDinhMuc;
                         }
                     });
-                    dataCache.proc = b.procedures;
+                    dataCache.proc = rawProcs;
+                    b.procedures = rawProcs;
                     if (typeof renderProceduresTable === 'function') renderProceduresTable();
                     if (typeof renderProcedureCheckboxes === 'function') renderProcedureCheckboxes();
                 }
-                if (b.staff && Array.isArray(b.staff)) {
-                    b.staff.forEach((st, i) => { 
+                const rawStaff = b.staff || b.nhan_su || [];
+                if (Array.isArray(rawStaff)) {
+                    rawStaff.forEach((st, i) => { 
                         if (st) {
                             st.sheetIndex = i;
+                            if (!st.ten && st.name) st.ten = st.name;
                             if (st.ten) st.ten = (typeof window.cleanAndHealStaffName === 'function') ? window.cleanAndHealStaffName(st.ten) : _decodeForHeal(st.ten);
                             if (Array.isArray(st) && st[1]) st[1] = (typeof window.cleanAndHealStaffName === 'function') ? window.cleanAndHealStaffName(st[1]) : _decodeForHeal(st[1]);
+                            if (st.his_name && !st.tenHis) st.tenHis = st.his_name;
+                            if (st.tenHis && !st.his_name) st.his_name = st.tenHis;
+                            if (st.role && !st.chucVu) st.chucVu = st.role;
+                            if (st.system && !st.quyen) st.quyen = st.system;
+                            if (st.skills && !st.chuyenMon) st.chuyenMon = st.skills;
                         }
                     });
-                    dataCache.staff = b.staff.filter(st => st && st.ten);
+                    dataCache.staff = rawStaff.filter(st => st && (st.ten || st.name));
+                    b.staff = dataCache.staff;
                     if (typeof renderStaffTable === 'function') renderStaffTable();
                     if (typeof window.resetChamCongForUnit === 'function') {
                         window.resetChamCongForUnit(localStorage.getItem('pm_unit_code'));
@@ -3700,8 +3726,10 @@ var dataCache = window.dataCache;
                 }
                 if (typeof loadScheduleList === 'function') loadScheduleList();
 
-                if (b && Array.isArray(b.patients)) {
-                    dataCache.pat = b.patients.filter(pt => pt && pt.ten);
+                const rawFinalPats = b.patients || b.pat || b.benh_nhan || [];
+                if (Array.isArray(rawFinalPats)) {
+                    dataCache.pat = rawFinalPats.filter(pt => pt && (pt.ten || pt.name));
+                    b.patients = dataCache.pat;
                 } else {
                     dataCache.pat = [];
                 }

@@ -648,12 +648,53 @@
         // ✅ KIỂM TRA LỖI HIS
         // ============================================================
 
+        async function ensureErrorCheckerResources() {
+            const hasStaff = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0);
+            const hasProc = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.proc) && dataCache.proc.length > 0);
+            if (hasStaff && hasProc) return true;
+
+            // 1. Thử khôi phục từ Offline Cache trong localStorage
+            try {
+                const curUnit = (typeof getCurrentUnitCode === 'function') ? getCurrentUnitCode() : (localStorage.getItem('pm_unit_code') || 'bvtks-cs2');
+                const bKey = (typeof getBootstrapCacheKey === 'function') ? getBootstrapCacheKey() : `times_bootstrap_cache_${curUnit}`;
+                const rawB = localStorage.getItem(bKey);
+                if (rawB) {
+                    const b = JSON.parse(rawB);
+                    if (b && typeof applyBootstrapData === 'function') {
+                        applyBootstrapData(b, false);
+                    }
+                }
+            } catch(eC) {}
+
+            const reCheckStaff = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0);
+            const reCheckProc = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.proc) && dataCache.proc.length > 0);
+            if (reCheckStaff && reCheckProc) return true;
+
+            // 2. Thử nạp từ Google Sheets dự phòng
+            if (typeof fetchBootstrapFromGoogleSheets === 'function' && typeof getBackupSheetsUrl === 'function') {
+                const backupUrl = getBackupSheetsUrl();
+                if (backupUrl) {
+                    await new Promise(resolve => {
+                        fetchBootstrapFromGoogleSheets(backupUrl, '', function(sheetData) {
+                            if (typeof applyBootstrapData === 'function') applyBootstrapData(sheetData, true);
+                            resolve();
+                        }, function() {
+                            resolve();
+                        });
+                    });
+                }
+            }
+
+            return true;
+        }
+
         function initErrorChecker() {
             const fileInput = document.getElementById('error-file-input');
             const btnCheckCurrent = document.getElementById('btn-check-current-schedule');
 
             if (btnCheckCurrent) {
                 btnCheckCurrent.addEventListener('click', async () => {
+                    await ensureErrorCheckerResources();
                     let currentSched = (window.currentScheduleData && window.currentScheduleData.length) 
                         ? window.currentScheduleData 
                         : ((typeof dataCache !== 'undefined' && dataCache.schedule) ? dataCache.schedule : []);
@@ -728,13 +769,14 @@
             }
 
             if (fileInput) {
-                fileInput.addEventListener('change', (e) => {
+                fileInput.addEventListener('change', async (e) => {
                     const file = e.target.files[0];
                     if (!file) {
                         return;
                     }
 
                     if (window.showGlobalLoading) window.showGlobalLoading('Đang phân tích file HIS...');
+                    await ensureErrorCheckerResources();
 
                     const reader = new FileReader();
                     reader.onload = function (ev) {

@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev3",
+    "version": "4.1.8-rev4",
     "releaseDate": "30/09/2026",
-    "releaseTime": "09:55 30/09/2026",
-    "notes": "Kích hoạt cơ chế Tự động sao lưu ngầm đa tầng (Background Auto-Mirror) sang Google Sheets sau mỗi thay đổi dữ liệu bệnh nhân, nhân sự, máy móc, phòng, thủ thuật, phác đồ và lịch trình."
+    "releaseTime": "10:20 30/09/2026",
+    "notes": "Đồng bộ chuẩn hóa 100% các trường dữ liệu kiểm tra lỗi (tên HIS, định mức thời gian, phân loại thủ thuật, thông tin bệnh nhân) giữa MiniPC và Google Sheets; bổ sung nút Cập nhật & Xóa Cache trên menu để các máy khác đồng bộ tức thì."
 }
