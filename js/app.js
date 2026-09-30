@@ -1003,6 +1003,154 @@ window.showGlobalLoading = function (text) {
         }
         window.mirrorScheduleToGoogleSheets = mirrorScheduleToGoogleSheets;
 
+        // =================================================================
+        // 🔄 TỰ ĐỘNG SAO LƯU NGẦM TOÀN BỘ CSDL LÊN GOOGLE SHEETS (AUTO-MIRROR)
+        // =================================================================
+        let _autoSheetsSyncTimer = null;
+        let _isAutoSyncingToSheets = false;
+
+        function triggerDebouncedGoogleSheetsAutoSync(delayMs = 3500) {
+            try {
+                if (_autoSheetsSyncTimer) clearTimeout(_autoSheetsSyncTimer);
+                _autoSheetsSyncTimer = setTimeout(async () => {
+                    if (_isAutoSyncingToSheets) return;
+                    try {
+                        const backupUrl = getBackupSheetsUrl();
+                        if (!backupUrl) return;
+                        const curUnit = (typeof getCurrentUnitCode === 'function') ? getCurrentUnitCode() : (localStorage.getItem('pm_unit_code') || '');
+                        if (!curUnit) return;
+
+                        // 1. Thu thập dữ liệu từ window.dataCache
+                        const cache = window.dataCache || {};
+                        let pat = cache.pat || cache.benh_nhan || [];
+                        let staff = cache.staff || cache.nhan_su || [];
+                        let machines = cache.machine || cache.machines || cache.may_moc || [];
+                        let rooms = cache.room || cache.rooms || cache.phong || [];
+                        let procs = cache.proc || cache.procedures || cache.thu_thuat || [];
+                        let protocols = cache.protocols || cache.phac_do || [];
+                        let schedule = cache.schedule || window.currentScheduleData || [];
+                        let history = cache.history || [];
+
+                        // 2. Nếu bộ nhớ RAM chưa có bệnh nhân, đọc bổ sung từ Offline Cache trong localStorage
+                        if (!pat || pat.length === 0) {
+                            try {
+                                const bKey = (typeof getBootstrapCacheKey === 'function') ? getBootstrapCacheKey() : `times_bootstrap_cache_${curUnit}`;
+                                const rawCache = localStorage.getItem(bKey);
+                                if (rawCache) {
+                                    const bCache = JSON.parse(rawCache);
+                                    if (bCache) {
+                                        pat = bCache.patients || bCache.pat || [];
+                                        staff = bCache.staff || [];
+                                        machines = bCache.machines || bCache.machine || [];
+                                        rooms = bCache.rooms || bCache.room || [];
+                                        procs = bCache.procedures || bCache.proc || [];
+                                        protocols = bCache.protocols || [];
+                                        if (!schedule || schedule.length === 0) schedule = bCache.schedule || [];
+                                        if (!history || history.length === 0) history = bCache.history || [];
+                                    }
+                                }
+                            } catch(eC) {}
+                        }
+
+                        // 3. Nếu vẫn rỗng và đang chạy trên MiniPC, thử đọc trực tiếp từ MiniPC Engine
+                        if ((!pat || pat.length === 0) && (location.hostname === '127.0.0.1' || location.hostname === 'localhost')) {
+                            try {
+                                const localToken = 'pmcg_sec_4ce384f00896635ad33fb7ddba1619c8490fd24cad22e67d';
+                                const localResp = await fetch('http://127.0.0.1:8080/v2/pipeline', {
+                                    method: 'POST',
+                                    headers: { 'Authorization': 'Bearer ' + localToken, 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        requests: [
+                                            { type: 'execute', stmt: { sql: "SELECT * FROM benh_nhan WHERE unit_code='" + curUnit + "' OR unit_code IS NULL OR unit_code=''" } },
+                                            { type: 'execute', stmt: { sql: "SELECT * FROM nhan_su WHERE unit_code='" + curUnit + "' OR unit_code IS NULL OR unit_code=''" } },
+                                            { type: 'execute', stmt: { sql: "SELECT * FROM may_moc WHERE unit_code='" + curUnit + "' OR unit_code IS NULL OR unit_code=''" } },
+                                            { type: 'execute', stmt: { sql: "SELECT * FROM phong WHERE unit_code='" + curUnit + "' OR unit_code IS NULL OR unit_code=''" } },
+                                            { type: 'execute', stmt: { sql: "SELECT * FROM thu_thuat WHERE unit_code='" + curUnit + "' OR unit_code IS NULL OR unit_code=''" } },
+                                            { type: 'close' }
+                                        ]
+                                    })
+                                });
+                                if (localResp.ok) {
+                                    const lData = await localResp.json();
+                                    const parseR = (idx) => {
+                                        const r = lData.results?.[idx]?.response?.result;
+                                        if (!r) return [];
+                                        const cols = r.cols.map(c => c.name);
+                                        return r.rows.map(row => {
+                                            const obj = {};
+                                            cols.forEach((col, i) => { obj[col] = row[i]?.value ?? ''; });
+                                            return obj;
+                                        });
+                                    };
+                                    pat = parseR(0).map(b => ({ maBN: b.id, ten: b.name, namSinh: b.age, gioiTinh: b.gender, phong: b.room, giuong: b.bed, gioVao: b.arrive_time, dsThuThuat: b.thu_thuat, trangThai: b.status, loaiBN: b.loai_bn, buoiDieuTri: b.buoi_dieu_tri }));
+                                    staff = parseR(1).map(n => ({ maNV: n.id, ten: n.name, chucVu: n.role, chuyenMon: n.skills, phong: n.room, trangThai: n.status }));
+                                    machines = parseR(2).map(m => ({ maMay: m.id, tenLoai: m.name, phong: m.room, loaiMay: m.machine_type, trangThai: m.status }));
+                                    rooms = parseR(3).map(p => ({ maPhong: p.id, tenPhong: p.name, loaiPhong: p.room_type, soGiuong: p.capacity, trangThai: p.status }));
+                                    procs = parseR(4).map(t => ({ maTT: t.id, ten: t.name, thoiGian: t.duration, thoiGianKtv: t.ktv_duration, canPhu: t.requires_assistant ? 'Có' : 'Không', loaiMay: t.machine_required, phong: t.room }));
+                                }
+                            } catch(eLocal) {}
+                        }
+
+                        // Chỉ đồng bộ khi có ít nhất bệnh nhân hoặc lịch trình
+                        if ((!pat || pat.length === 0) && (!schedule || schedule.length === 0)) {
+                            return;
+                        }
+
+                        _isAutoSyncingToSheets = true;
+                        console.log(`[Google Sheets Auto-Sync] 🔄 Đang tự động sao lưu ngầm (${pat.length} BN, ${staff.length} NV, ${schedule.length} ca lịch) lên Google Sheets...`);
+
+                        const payload = {
+                            action: 'saveBootstrapBackup',
+                            args: [{
+                                pat: pat,
+                                benh_nhan: pat,
+                                staff: staff,
+                                nhan_su: staff,
+                                machines: machines,
+                                may_moc: machines,
+                                rooms: rooms,
+                                phong: rooms,
+                                procedures: procs,
+                                thu_thuat: procs,
+                                protocols: protocols,
+                                phac_do: protocols,
+                                schedule: schedule,
+                                lich_trinh: schedule,
+                                history: history,
+                                lich_su: history,
+                                cai_dat: localStorage.getItem('times_settings_cache') || ''
+                            }],
+                            unit_code: curUnit
+                        };
+
+                        const resp = await fetch(backupUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify(payload),
+                            mode: 'cors'
+                        });
+
+                        if (resp.ok) {
+                            const resText = await resp.text();
+                            let parsed;
+                            try { parsed = JSON.parse(resText); } catch(e) {}
+                            if (parsed && parsed.status === 'success') {
+                                console.log(`[Google Sheets Auto-Sync] ✅ Đã tự động đồng bộ ngầm toàn bộ dữ liệu mới nhất lên Google Sheets thành công! (${new Date().toLocaleTimeString()})`);
+                                window.dispatchEvent(new CustomEvent('googlesheets:synced', { detail: { timestamp: new Date() } }));
+                            }
+                        }
+                    } catch (err) {
+                        console.warn('[Google Sheets Auto-Sync Warning]:', err);
+                    } finally {
+                        _isAutoSyncingToSheets = false;
+                    }
+                }, delayMs);
+            } catch(e) {
+                console.warn('[Trigger Auto-Sync Error]:', e);
+            }
+        }
+        window.triggerDebouncedGoogleSheetsAutoSync = triggerDebouncedGoogleSheetsAutoSync;
+
         function fetchBootstrapFromGoogleSheets(backupUrl, dateVal, onDone, onFail) {
             if (!backupUrl) {
                 if (onFail) onFail(new Error('Chưa cấu hình URL Google Sheets dự phòng'));
@@ -1683,6 +1831,7 @@ var dataCache = window.dataCache;
                 if (functionName === 'saveSchedule' || functionName === 'saveLichTrinh') {
                     try {
                         mirrorScheduleToGoogleSheets(args ? args[0] : '', args ? args[1] : []);
+                        triggerDebouncedGoogleSheetsAutoSync(1500);
                     } catch(eMirror) {
                         console.warn('[Mirror Schedule Error]:', eMirror);
                     }
@@ -1742,6 +1891,10 @@ var dataCache = window.dataCache;
                     onSuccess = (data) => {
                         if (origOnSuccess) origOnSuccess(data);
                         resolve(data);
+                        // 🔄 Tự động đồng bộ ngầm toàn bộ CSDL sang Google Sheets sau mỗi thay đổi (3.5s debounce)
+                        try {
+                            triggerDebouncedGoogleSheetsAutoSync(3500);
+                        } catch(eSync) {}
                     };
 
                     onError = (err) => {
@@ -1751,6 +1904,10 @@ var dataCache = window.dataCache;
                         } else {
                             reject(err);
                         }
+                        // 🛡️ Nếu Worker lỗi (ví dụ Turso bị khóa quota), nhưng thao tác đã lưu cục bộ, vẫn kích hoạt sao lưu dự phòng sang Google Sheets
+                        try {
+                            triggerDebouncedGoogleSheetsAutoSync(4000);
+                        } catch(eSync) {}
                     };
                 }
 

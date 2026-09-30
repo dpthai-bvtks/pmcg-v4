@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev2",
+    "version": "4.1.8-rev3",
     "releaseDate": "30/09/2026",
-    "releaseTime": "09:20 30/09/2026",
-    "notes": "Tự động dự phòng đồng bộ Google Sheets trực tiếp từ MiniPC SQLite Engine và Offline Cache khi Turso Cloud bị chặn/hết quota; chuẩn hóa định dạng văn bản Plain Text cho Google Apps Script."
+    "releaseTime": "09:55 30/09/2026",
+    "notes": "Kích hoạt cơ chế Tự động sao lưu ngầm đa tầng (Background Auto-Mirror) sang Google Sheets sau mỗi thay đổi dữ liệu bệnh nhân, nhân sự, máy móc, phòng, thủ thuật, phác đồ và lịch trình."
 }
