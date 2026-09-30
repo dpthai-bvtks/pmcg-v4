@@ -6250,3 +6250,32 @@ ormalizeScheduleItem.
 - sw.js
 - version.json
 - PM-xeplich-v4.md
+
+### Sắp Xếp Toàn Bộ 5 Bảng Dashboard Nằm Chung 1 Hàng Ngang (30/09/2026 - v4.1.8-rev6)
+
+**Yêu cầu của người dùng:**
+- Đặt bảng "Thống kê Bệnh nhân theo từng phòng" và "Lượt sử dụng máy móc" nằm ngay bên cạnh "Tải trọng nhân viên" và "Phân bổ thủ thuật" trên cùng 1 hàng ngang duy nhất để quan sát liền mạch.
+
+**Phân tích & Triển khai:**
+1. **Giao diện Dashboard `.dashboard-5col` (index.html & css/style.css):**
+   - Hợp nhất toàn bộ 5 panel vào chung container `.dashboard-5col`:
+     + Cột 1: `📊 TỔNG QUAN` (Thu gọn tiêu đề và nhãn thẻ ngắn gọn: BS/KTV, Bệnh nhân, Tổng ca, Đã xếp, Không xếp).
+     + Cột 2: `👥 TẢI TRỌNG NHÂN VIÊN` (Bác sĩ | Kỹ thuật viên).
+     + Cột 3: `📈 PHÂN BỐ THỦ THUẬT` (Hệ YHCT | Hệ PHCN).
+     + Cột 4: `🏥 BN THEO PHÒNG` (Số lượng bệnh nhân từng phòng kèm thanh tiến trình và huy hiệu tổng số phòng).
+     + Cột 5: `⚡ SỬ DỤNG MÁY` (Số lượt sử dụng từng máy móc/thiết bị kèm thanh tiến trình và huy hiệu tổng số lượt).
+   - Tối ưu tỷ lệ cột: `grid-template-columns: 0.82fr 1.25fr 1.25fr 0.95fr 0.95fr`.
+   - Responsive linh hoạt: Trên màn hình trung bình (< 1440px), hỗ trợ cuộn ngang mượt mà (`repeat(5, minmax(220px, 1fr))`); trên di động/tablet (< 1024px) tự động chuyển về dạng 1 cột.
+2. **Tối ưu hóa renderGroup trong js/app.js:**
+   - Hỗ trợ tham số `labelWidth` linh hoạt: 68px cho các panel 2 cột con và 80px cho các panel đơn, đảm bảo tên người/máy/phòng không bị tràn hay ép dòng.
+3. **Quy chuẩn phiên bản theo RULES.md:**
+   - Nâng phiên bản cache buster lên `4.1.8-rev6`, timestamp: `10:55 30/09/2026`.
+   - Đồng bộ `version.json`, `sw.js` (`pmcg-v4-cache-4.1.8-rev6`), `index.html`, `css/style.css`.
+
+**File sửa đổi:**
+- css/style.css
+- index.html
+- js/app.js
+- sw.js
+- version.json
+- PM-xeplich-v4.md

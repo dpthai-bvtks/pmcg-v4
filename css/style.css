@@ -1254,10 +1254,33 @@
             gap: 15px;
         }
 
+        .dashboard-5col {
+            display: grid;
+            grid-template-columns: 0.82fr 1.25fr 1.25fr 0.95fr 0.95fr;
+            gap: 12px;
+            align-items: stretch;
+        }
+
+        .dashboard-5col .dash-panel {
+            padding: 16px 14px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @media (max-width: 1440px) {
+            .dashboard-5col {
+                grid-template-columns: repeat(5, minmax(220px, 1fr));
+                overflow-x: auto;
+                padding-bottom: 8px;
+            }
+        }
+
         @media (max-width: 1024px) {
             .dashboard-3col,
-            .dashboard-2col {
+            .dashboard-2col,
+            .dashboard-5col {
                 grid-template-columns: 1fr;
+                overflow-x: visible;
             }
         }
 
