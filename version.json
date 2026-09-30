@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev9",
+    "version": "4.1.8-rev10",
     "releaseDate": "30/09/2026",
-    "releaseTime": "16:25 30/09/2026",
-    "notes": "Hỗ trợ nhận diện cột Mã BN từ file HIS để phân biệt và tách riêng bệnh nhân trùng họ tên và năm sinh, hiển thị badge Mã BN trực quan và bảo lưu toàn diện trong CSDL."
+    "releaseTime": "16:45 30/09/2026",
+    "notes": "Tự động kết nối và xem lịch sử các ngày cũ từ Google Sheets dự phòng khi máy chủ chính tắt hoặc gián đoạn mạng; bổ sung API getHistoryFullData và khử trùng lặp vào Google Apps Script."
 }

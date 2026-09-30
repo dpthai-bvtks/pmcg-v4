@@ -6394,3 +6394,54 @@ ormalizeScheduleItem.
 - sw.js
 - version.json
 - PM-xeplich-v4.md
+
+### Khắc Phục Lỗi Không Xem Được Lịch Sử Khi Máy Chủ Chính Tắt Dù Đã Cài Đặt Google Sheets Dự Phòng (30/09/2026 - v4.1.8-rev10)
+
+**Bối cảnh & Yêu cầu của người dùng:**
+- Khi máy chủ chính (Mini PC / Local Server / Turso) tắt hoặc gián đoạn mạng, giao diện ở các máy trạm khác ("máy khác") hiển thị trạng thái chuyển sang máy chủ dự phòng, nhưng người dùng **không thể xem lại lịch sử các ngày cũ** (chọn ngày xem lịch thì báo lỗi hoặc không hiện gì), mặc dù đã cài đặt Google Sheets làm máy chủ dự phòng và đã đồng bộ dữ liệu.
+
+**Nguyên nhân gốc rễ (Root Cause Analysis):**
+1. **Google Apps Script WebApp thiếu Action getHistoryFullData:**
+   - Trong backups/legacy-apps-script/code.gs, hàm handleApiRequest trước đây chỉ hỗ trợ các action ping, getBootstrapData, getSchedule, saveSchedule, saveBootstrapBackup, loadAccounts.
+   - Khi máy trạm chuyển ngày để xem lại lịch cũ, frontend gửi request action=getHistoryFullData tới Google Apps Script và bị từ chối với lỗi: {"status":"error","error":"Action không hỗ trợ: getHistoryFullData"}.
+2. **Frontend thiếu cơ chế Tự Động Failover trong executeApiTask:**
+   - Khi máy chủ chính bị tắt nguồn, các lời gọi API từ máy trạm bị lỗi kết nối (Failed to fetch / Timeout). Hàm executeApiTask trong js/app.js lập tức báo lỗi lên UI chứ không tự động định tuyến lại tác vụ sang URL Google Sheets dự phòng (getBackupSheetsUrl()).
+3. **getApiUrl không tự động fallback về DEFAULT_BACKUP_SHEETS_URL:**
+   - Nếu máy trạm chưa từng mở hộp thoại lưu times_backup_api_url vào localStorage, getApiUrl trả về rỗng khi chuyển sang chế độ dự phòng thay vì sử dụng URL dự phòng mặc định của hệ thống.
+4. **Bỏ quên dữ liệu lịch sử tải về trong applyBootstrapData:**
+   - Mặc dù Google Apps Script khi chạy getBootstrapData đã nạp và trả về trọn bộ 500 bản ghi lịch sử trong thuộc tính history / lich_su, hàm applyBootstrapData trên máy khách chỉ lưu schedule, patients, staff, machines, v.v. mà không gán b.history vào dataCache.history và không lưu vào localStorage.
+5. **Hàm điều phối onAppDateChange chỉ báo lỗi mà không tận dụng bộ nhớ đệm lịch sử:**
+   - Khi callApi('getHistoryFullData') thất bại, khối onError của onAppDateChange lập tức hiện thông báo lỗi mà không kiểm tra xem trong dataCache.history hoặc localStorage đã có sẵn toàn bộ dữ liệu lịch sử các ngày cũ hay chưa.
+
+**Chi tiết Giải pháp & Triển khai Kỹ thuật:**
+1. **Nâng cấp Google Apps Script WebApp (backups/legacy-apps-script/code.gs):**
+   - Bổ sung action getHistoryFullData: Tự động tìm kiếm các bản ghi lịch sử trong sheet LichSu khớp với targetDate (chuẩn hóa cả định dạng YYYY-MM-DD và DD/MM/YYYY). Nếu không có trong LichSu, tự động dự phòng tìm trong sheet LichTrinh.
+   - Bổ sung khử trùng lặp bản ghi và định dạng cấu trúc trả về chuẩn 100% tương thích với D1/Cloudflare: { schedule, patients, benh_nhan, staffBusy, patBusy, leavePat }.
+   - Bổ sung các action đọc dữ liệu dự phòng khác: getLichSu, getAllHistory, getGioBanChungCu, getBusyHistoryDates, getBenhNhan, getNhanSu, getMayMoc, getPhong, getThuThuat.
+   - Hỗ trợ linh hoạt tham số date và targetDate cả qua phương thức GET (doGet) và POST (doPost).
+2. **Cơ chế Tự Động Chuyển Đổi Dự Phòng trong executeApiTask (js/app.js):**
+   - Khi kết nối tới máy chủ chính gặp lỗi mạng / tắt máy, hệ thống tự động:
+     + Chuyển window._serverMode = 'backup'.
+     + Đổi huy hiệu máy chủ sang màu vàng cam: Google Sheets Backup.
+     + Hiển thị thông báo trạng thái nhẹ nhàng (Toast): "Máy chủ chính đang tắt. Đã tự động kết nối Google Sheets dự phòng!".
+     + Tự động thực thi lại tác vụ ngay lập tức với getBackupSheetsUrl().
+   - Đảm bảo getApiUrl() luôn tự động lấy DEFAULT_BACKUP_SHEETS_URL nếu biến lưu trữ cục bộ chưa được cấu hình thủ công.
+3. **Bảo lưu và phục hồi dữ liệu Lịch sử Đa Tầng (js/app.js):**
+   - Trong applyBootstrapData: Nhận diện b.history || b.lich_su, lưu vào dataCache.history và ghi nhớ vào localStorage.setItem(uKey('history')) cùng pm_last_history_cache.
+   - Trong restoreOfflineCache: Khôi phục dataCache.history từ bộ nhớ đệm ngay khi mở ứng dụng ở chế độ ngoại tuyến.
+4. **Cơ chế Fallback Lịch Sử Toàn Diện Trên Giao Diện Người Dùng (js/modules/app-tenant-admin.js & js/app.js):**
+   - Trong onAppDateChange: Khi gọi getHistoryFullData thất bại, hệ thống tự động trích xuất các bản ghi từ dataCache.history theo ngày được chọn, tái tạo cấu trúc lịch và gọi handleLoadedHistory. Người dùng xem được lịch ngay tức thì mà không gặp bất kỳ thông báo lỗi nào.
+   - Trong loadBusyHistoryDates: Khi nạp danh sách ngày bận, hệ thống tự động trích xuất các ngày có trong lịch sử dataCache.history và nạp đầy đủ vào ô chọn nhanh ngày có lịch sử bận (#busy-quick-date-select).
+   - Trong taiLichTheoNgay (Tiện ích tìm rảnh) và Dashboard: Bổ sung fallback đọc dữ liệu từ dataCache.history khi máy chủ chính tắt.
+5. **Đồng bộ phiên bản theo RULES.md:**
+   - Phiên bản: 4.1.8-rev10, ngày phát hành: 30/09/2026, timestamp: 16:45 30/09/2026.
+   - Đồng bộ version.json, sw.js (pmcg-v4-cache-4.1.8-rev10), index.html.
+
+**File sửa đổi:**
+- backups/legacy-apps-script/code.gs
+- js/app.js
+- js/modules/app-tenant-admin.js
+- index.html
+- sw.js
+- version.json
+- PM-xeplich-v4.md

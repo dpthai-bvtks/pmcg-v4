@@ -8,6 +8,7 @@ backend/.dev.vars
 scratch_cache_update.js
 scratch/
 backups/
+!backups/legacy-apps-script/
 *.sql
 *.xls
 *.xlsx

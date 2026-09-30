@@ -1254,12 +1254,9 @@ window.showGlobalLoading = function (text) {
         window.updateServerStatusBadge = updateServerStatusBadge;
 
         function getApiUrl() {
-            let backupUrl = (typeof window.sanitizeGoogleScriptUrl === 'function')
-                ? window.sanitizeGoogleScriptUrl(localStorage.getItem('times_backup_api_url') || '')
-                : (localStorage.getItem('times_backup_api_url') || '').trim();
-            if (backupUrl && backupUrl !== localStorage.getItem('times_backup_api_url')) {
-                localStorage.setItem('times_backup_api_url', backupUrl);
-            }
+            let backupUrl = (typeof getBackupSheetsUrl === 'function')
+                ? getBackupSheetsUrl()
+                : ((localStorage.getItem('times_backup_api_url') || '').trim() || DEFAULT_BACKUP_SHEETS_URL);
             if (window._serverMode === 'backup' && backupUrl) {
                 return backupUrl;
             }
@@ -1671,6 +1668,44 @@ var dataCache = window.dataCache;
                 }
             } catch (err) {
                 console.warn(`[Cloudflare API Error] ${functionName}:`, err);
+
+                // 🛡️ TỰ ĐỘNG CHUYỂN ĐỔI SANG GOOGLE SHEETS DỰ PHÒNG KHI MÁY CHỦ CHÍNH BỊ TẮT / LỖI MẠNG
+                const backupUrl = (typeof getBackupSheetsUrl === 'function') ? getBackupSheetsUrl() : '';
+                const isCurrentlyPrimary = (window._serverMode !== 'backup');
+                if (isCurrentlyPrimary && backupUrl && !isMutation) {
+                    console.log(`🔄 [Auto Failover] Máy chủ chính gián đoạn. Tự động chuyển sang Google Sheets dự phòng cho: ${functionName}`);
+                    window._serverMode = 'backup';
+                    if (typeof updateServerStatusBadge === 'function') {
+                        updateServerStatusBadge('backup');
+                    }
+                    if (typeof showToast === 'function') {
+                        showToast('⚡️ Máy chủ chính đang tắt. Đã tự động kết nối Google Sheets dự phòng!', 'warning', 4000);
+                    }
+                    try {
+                        const fallbackResp = await fetch(backupUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({
+                                action: functionName,
+                                args: args || [],
+                                unit_code: currentUnit
+                            })
+                        });
+                        const fbRaw = await fallbackResp.text();
+                        let fbRes;
+                        try { fbRes = JSON.parse(fbRaw); } catch(e) {}
+                        if (fbRes && fbRes.status === 'success') {
+                            finish();
+                            if (onSuccess) {
+                                try { onSuccess(fbRes.data); } catch(e) { console.error(`Error in onSuccess for ${functionName}:`, e); }
+                            }
+                            return;
+                        }
+                    } catch(fbErr) {
+                        console.warn(`[Auto Failover Failed] Không thể gọi ${functionName} qua Google Sheets:`, fbErr);
+                    }
+                }
+
                 finish();
 
                 // Tự động thử lại 1 lần cho các query đọc dữ liệu nếu bị timeout hoặc lỗi mạng
@@ -3516,6 +3551,22 @@ var dataCache = window.dataCache;
                         } else {
                             dataCache.pat = [];
                         }
+
+                        // 📜 Phục hồi lịch sử điều trị từ cache
+                        let rawHistCache = b.history || b.lich_su;
+                        if (!rawHistCache || !rawHistCache.length) {
+                            try {
+                                const curUnit = getCurrentUnitCode();
+                                const uKey = (base) => (typeof getUnitStorageKey === 'function') ? getUnitStorageKey(base) : (curUnit ? `${curUnit}_${base}` : base);
+                                const hStr = localStorage.getItem(uKey('history')) || localStorage.getItem('pm_last_history_cache');
+                                if (hStr) rawHistCache = JSON.parse(hStr);
+                            } catch(eH) {}
+                        }
+                        if (Array.isArray(rawHistCache) && rawHistCache.length > 0) {
+                            dataCache.history = rawHistCache;
+                            if (window.dataCache) window.dataCache.history = rawHistCache;
+                        }
+
                         // Nạp phác đồ từ cache hoặc cài đặt máy chủ
                         const rawCachedProto = (b.settings && b.settings.clinical_protocols) || b.protocols;
                         if (rawCachedProto) {
@@ -3734,6 +3785,19 @@ var dataCache = window.dataCache;
                     dataCache.pat = [];
                 }
                 if (typeof renderPatientsTable === 'function') renderPatientsTable();
+
+                // 📜 Đồng bộ và lưu trữ lịch sử điều trị từ Google Sheets / Cloudflare
+                const rawHist = b.history || b.lich_su || [];
+                if (Array.isArray(rawHist) && rawHist.length > 0) {
+                    dataCache.history = rawHist;
+                    if (window.dataCache) window.dataCache.history = rawHist;
+                    try {
+                        const curUnit = getCurrentUnitCode();
+                        const uKey = (base) => (typeof getUnitStorageKey === 'function') ? getUnitStorageKey(base) : (curUnit ? `${curUnit}_${base}` : base);
+                        localStorage.setItem(uKey('history'), JSON.stringify(rawHist));
+                        localStorage.setItem('pm_last_history_cache', JSON.stringify(rawHist));
+                    } catch(eHist) {}
+                }
 
                 // Đồng bộ phác đồ mới nhất từ máy chủ (Cloudflare D1)
                 const rawServerProto = (b.settings && b.settings.clinical_protocols) || b.protocols;
@@ -8299,6 +8363,32 @@ var dataCache = window.dataCache;
                 var sb = (data && data.staffBusy) ? data.staffBusy : [];
                 handleSuccess(sched, sb);
             }, function (err) {
+                // 🛡️ Fallback: Lấy dữ liệu từ dataCache.history
+                var localHist = (window.dataCache && Array.isArray(window.dataCache.history)) ? window.dataCache.history : [];
+                var normTarget = (typeof normDate === 'function') ? normDate(date) : date;
+                var matched = localHist.filter(function(r) {
+                    var rDate = r.ngay || r.Ngay || r.date || '';
+                    return rDate === date || rDate === normTarget || ((typeof normDate === 'function') && normDate(rDate) === normTarget);
+                });
+                if (matched.length > 0) {
+                    var fallbackSched = matched.map(function(r) {
+                        return [
+                            r.ngay || r.Ngay || r.date || date,
+                            r.tenBN || r.TenBN || r.patient_name || '',
+                            r.namSinh || r.NamSinh || r.dob || '',
+                            r.phong || r.Phong || r.room || '',
+                            r.thuThuat || r.ThuThuat || r.procedure_name || '',
+                            r.gioDienRa || r.GioDienRa || r.start_time || '',
+                            r.gioKetThuc || r.GioKetThuc || r.end_time || '',
+                            r.nvChinh || r.NVChinh || r.staff_name || '',
+                            r.nvPhu || r.NVPhu || r.sub_staff_name || '',
+                            r.may || r.May || r.machine_name || '',
+                            r.giuong || r.Giuong || r.bed || ''
+                        ];
+                    });
+                    handleSuccess(fallbackSched, []);
+                    return;
+                }
                 if (statusEl) { statusEl.innerText = '❌ Lỗi tải dữ liệu!'; statusEl.style.color = '#c0392b'; }
                 if (btn) { btn.disabled = false; btn.innerText = '📊 Xem Lịch'; }
                 console.error('taiLichTheoNgay error:', err);
@@ -11308,6 +11398,33 @@ var dataCache = window.dataCache;
                         if (window.hideGlobalLoading) window.hideGlobalLoading();
                         notify("Đã tải xong dữ liệu lịch sử!", "success");
                     }, err => {
+                        // 🛡️ Fallback: Nạp lịch sử từ dataCache.history nếu server chính tắt
+                        const localHist = (window.dataCache && Array.isArray(window.dataCache.history)) ? window.dataCache.history : [];
+                        const normTarget = (typeof normDate === 'function') ? normDate(selectedDate) : selectedDate;
+                        const matched = localHist.filter(r => {
+                            const rDate = r.ngay || r.Ngay || r.date || '';
+                            return rDate === selectedDate || rDate === normTarget || ((typeof normDate === 'function') && normDate(rDate) === normTarget);
+                        });
+                        if (matched.length > 0) {
+                            const sched = matched.map(r => ({
+                                ngay: r.ngay || r.Ngay || r.date || selectedDate,
+                                tenBN: r.tenBN || r.TenBN || r.patient_name || '',
+                                namSinh: r.namSinh || r.NamSinh || r.dob || '',
+                                phong: r.phong || r.Phong || r.room || '',
+                                thuThuat: r.thuThuat || r.ThuThuat || r.procedure_name || '',
+                                gioDienRa: r.gioDienRa || r.GioDienRa || r.start_time || '',
+                                gioKetThuc: r.gioKetThuc || r.GioKetThuc || r.end_time || '',
+                                nvChinh: r.nvChinh || r.NVChinh || r.staff_name || '',
+                                nvPhu: r.nvPhu || r.NVPhu || r.sub_staff_name || '',
+                                may: r.may || r.May || r.machine_name || '',
+                                giuong: r.giuong || r.Giuong || r.bed || ''
+                            }));
+                            processHistoryData({ schedule: sched, patients: [], staffBusy: [], patBusy: [] });
+                            if (window.hideGlobalLoading) window.hideGlobalLoading();
+                            notify(`Đã nạp ${matched.length} ca lịch sử từ bộ nhớ dự phòng!`, "info");
+                            return;
+                        }
+
                         if (window.hideGlobalLoading) window.hideGlobalLoading();
                         console.error("Lỗi tải lịch sử Dashboard: " + err);
                         if (statScheduledEl) statScheduledEl.textContent = "0";

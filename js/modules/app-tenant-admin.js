@@ -533,6 +533,61 @@ window.onAppDateChange = function(dateStr, sourceTab) {
     const onError = function(err) {
         if (window.hideGlobalLoading) window.hideGlobalLoading();
         console.error(`Lỗi tải lịch sử ngày ${targetDate}:`, err);
+
+        // 🛡️ DỰ PHÒNG CẤP CAO: Thử nạp lịch sử từ dataCache.history hoặc localStorage dự phòng
+        const normTarget = (typeof normDate === 'function') ? normDate(targetDate) : targetDate;
+        let localHist = (window.dataCache && Array.isArray(window.dataCache.history)) ? window.dataCache.history : [];
+        if (localHist.length === 0) {
+            try {
+                const curUnit = (typeof getCurrentUnitCode === 'function') ? getCurrentUnitCode() : (localStorage.getItem('pm_unit_code') || '');
+                const uKey = (base) => (typeof getUnitStorageKey === 'function') ? getUnitStorageKey(base) : (curUnit ? `${curUnit}_${base}` : base);
+                const hStr = localStorage.getItem(uKey('history')) || localStorage.getItem('pm_last_history_cache');
+                if (hStr) localHist = JSON.parse(hStr);
+            } catch(e) {}
+        }
+
+        const matched = localHist.filter(r => {
+            const rDate = r.ngay || r.Ngay || r.date || r.Date || '';
+            return rDate === targetDate || rDate === normTarget || ((typeof normDate === 'function') && normDate(rDate) === normTarget);
+        });
+
+        if (matched.length > 0) {
+            console.log(`[History Fallback] Đã tìm thấy ${matched.length} ca trong bộ nhớ dự phòng cho ngày ${targetDate}`);
+            const schedule = matched.map(r => ({
+                ngay: r.ngay || r.Ngay || r.date || targetDate,
+                tenBN: r.tenBN || r.TenBN || r.patient_name || '',
+                namSinh: r.namSinh || r.NamSinh || r.dob || '',
+                phong: r.phong || r.Phong || r.room || '',
+                thuThuat: r.thuThuat || r.ThuThuat || r.procedure_name || '',
+                gioDienRa: r.gioDienRa || r.GioDienRa || r.start_time || '',
+                gioKetThuc: r.gioKetThuc || r.GioKetThuc || r.end_time || '',
+                nvChinh: r.nvChinh || r.NVChinh || r.staff_name || '',
+                nvPhu: r.nvPhu || r.NVPhu || r.sub_staff_name || '',
+                may: r.may || r.May || r.machine_name || '',
+                giuong: r.giuong || r.Giuong || r.bed || ''
+            }));
+            const patMap = {};
+            schedule.forEach(s => {
+                const pk = `${s.tenBN}|${s.namSinh}`.toUpperCase();
+                if (!patMap[pk]) patMap[pk] = { tenBN: s.tenBN, namSinh: s.namSinh, phong: s.phong, soLuongCa: 0, dsThuThuat: [] };
+                patMap[pk].soLuongCa++;
+                if (s.thuThuat && !patMap[pk].dsThuThuat.includes(s.thuThuat)) patMap[pk].dsThuThuat.push(s.thuThuat);
+            });
+            const fallbackData = {
+                schedule: schedule,
+                patients: Object.values(patMap),
+                benh_nhan: Object.values(patMap),
+                staffBusy: [],
+                patBusy: [],
+                leavePat: []
+            };
+            handleLoadedHistory(fallbackData);
+            if (window.showToast) {
+                window.showToast(`⚡️ Máy chủ chính tắt: Đang hiển thị ${matched.length} ca lịch sử ngày ${dmy} từ Google Sheets / Bộ nhớ dự phòng!`, 'warning', 5000);
+            }
+            return;
+        }
+
         const errMsg = (err && err.message) ? err.message : String(err);
         if (window.showToast) {
             window.showToast(`Không thể tải dữ liệu ngày ${dmy}: ${errMsg}`, 'error', 4000);
@@ -555,7 +610,7 @@ window.setAppDateToToday = function(sourceTab) {
 };
 
 // ============================================================
-// 📜 TẢI DANH SÁCH CÁC NGÀY CÓ LỊCH SỬ BẬN TỪ CSDL ĐÁM MÂY TURSO / MINIPC
+// 📜 TẢI DANH SÁCH CÁC NGÀY CÓ LỊCH SỬ BẬN TỪ CSDL ĐÁM MÂY TURSO / MINIPC / GOOGLE SHEETS
 // ============================================================
 window.loadBusyHistoryDates = function(forceReload) {
     const quickSelect = document.getElementById('busy-quick-date-select');
@@ -595,11 +650,35 @@ window.loadBusyHistoryDates = function(forceReload) {
             else if (res && Array.isArray(res.records)) {
                 dates = Array.from(new Set(res.records.map(r => r.date).filter(Boolean)));
             }
+            // Bổ sung các ngày có trong dataCache.history
+            const histList = (window.dataCache && Array.isArray(window.dataCache.history)) ? window.dataCache.history : [];
+            histList.forEach(h => {
+                const hd = h.ngay || h.Ngay || h.date || '';
+                if (hd) {
+                    const norm = (typeof normDate === 'function') ? normDate(hd) : hd;
+                    if (!dates.includes(norm)) dates.push(norm);
+                }
+            });
             if (dates.length > 0) {
+                dates.sort((a, b) => b.localeCompare(a));
                 populateDates(dates);
             }
         }, err => {
-            console.warn('[loadBusyHistoryDates] Không thể tải danh mục ngày bận:', err);
+            console.warn('[loadBusyHistoryDates] Không thể tải danh mục ngày bận từ máy chủ chính:', err);
+            // Fallback khi offline hoặc lỗi API: nạp từ dataCache.history
+            const histList = (window.dataCache && Array.isArray(window.dataCache.history)) ? window.dataCache.history : [];
+            const histDates = [];
+            histList.forEach(h => {
+                const hd = h.ngay || h.Ngay || h.date || '';
+                if (hd) {
+                    const norm = (typeof normDate === 'function') ? normDate(hd) : hd;
+                    if (!histDates.includes(norm)) histDates.push(norm);
+                }
+            });
+            if (histDates.length > 0) {
+                histDates.sort((a, b) => b.localeCompare(a));
+                populateDates(histDates);
+            }
         });
     }
 };
