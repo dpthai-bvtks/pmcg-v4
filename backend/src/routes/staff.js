@@ -228,7 +228,7 @@ export async function handleStaffAction(action, ctx) {
     case "deleteGioBanCuByDate": {
       const delDate = String(args[0] || '').trim();
       if (!delDate) return error("Thiếu date cần xóa");
-      const delRes = await db.prepare("DELETE FROM gio_ban_cu WHERE unit_code = ? AND date = ?").bind(unitCode, delDate).run();
+      const delRes = await db.prepare("DELETE FROM gio_ban_chung_cu WHERE unit_code = ? AND date = ? AND target_type = 'nhan_su'").bind(unitCode, delDate).run().catch(() => ({ meta: { changes: 0 } }));
       return success({ deletedDate: delDate, changes: delRes?.meta?.changes ?? '?' });
     }
 

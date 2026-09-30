@@ -818,7 +818,7 @@ export async function handleTenantsAction(action, ctx) {
           db.prepare("UPDATE benh_nhan SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
           db.prepare("UPDATE lich_trinh SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
           db.prepare("UPDATE lich_su SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
-          db.prepare("UPDATE gio_ban_cu SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
+          db.prepare("UPDATE gio_ban_chung_cu SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
           db.prepare("UPDATE cham_cong SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
           db.prepare("UPDATE thong_ke SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),
           db.prepare("UPDATE tim_ranh SET unit_code = ? WHERE unit_code = ?").bind(newCode, oldCode),

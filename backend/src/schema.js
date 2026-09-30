@@ -176,14 +176,6 @@ export async function ensureSchema(db) {
         end_time TEXT NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`),
-      db.prepare(`CREATE TABLE IF NOT EXISTS gio_ban_cu (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
-        date TEXT NOT NULL,
-        staff_name TEXT NOT NULL,
-        busy_ranges TEXT DEFAULT '',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )`),
       db.prepare(`CREATE TABLE IF NOT EXISTS gio_ban_chung_cu (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
@@ -306,7 +298,6 @@ export async function ensureSchema(db) {
       "ALTER TABLE benh_nhan ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
       "ALTER TABLE lich_trinh ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
       "ALTER TABLE lich_su ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
-      "ALTER TABLE gio_ban_cu ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
       "ALTER TABLE gio_ban_chung_cu ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
       "ALTER TABLE cham_cong ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
       "ALTER TABLE thong_ke ADD COLUMN unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2'",
@@ -324,7 +315,6 @@ export async function ensureSchema(db) {
       "CREATE INDEX IF NOT EXISTS idx_phac_do_unit ON phac_do(unit_code, is_active, order_idx)",
       "CREATE INDEX IF NOT EXISTS idx_lich_trinh_unit ON lich_trinh(unit_code, date)",
       "CREATE INDEX IF NOT EXISTS idx_lich_su_unit ON lich_su(unit_code, date)",
-      "CREATE INDEX IF NOT EXISTS idx_gio_ban_cu_unit ON gio_ban_cu(unit_code, date)",
       "CREATE INDEX IF NOT EXISTS idx_gio_ban_chung_cu_unit ON gio_ban_chung_cu(unit_code, date)",
       "CREATE INDEX IF NOT EXISTS idx_gio_ban_chung_cu_lookup ON gio_ban_chung_cu(unit_code, date, target_type)",
       "CREATE INDEX IF NOT EXISTS idx_tai_khoan_unit ON tai_khoan(unit_code, username)",
@@ -359,31 +349,32 @@ export async function ensureSchema(db) {
       } catch(e) {}
     }
 
-    // Multi-tenant auto-migration: chuyển dữ liệu từ gio_ban_cu sang gio_ban_chung_cu và lọc sạch dữ liệu ảo
+    // Multi-tenant auto-migration: chuyển dữ liệu từ gio_ban_cu sang gio_ban_chung_cu nếu bảng cũ còn tồn tại
     try {
-      const cntChung = await db.prepare("SELECT count(*) as total FROM gio_ban_chung_cu").first();
-      if (!cntChung || cntChung.total === 0) {
-        // 1. Chuyển nhân sự (BS/KTV)
-        await db.prepare(`
-          INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, busy_ranges, created_at)
-          SELECT unit_code, date, 'nhan_su', staff_name, busy_ranges, created_at
-          FROM gio_ban_cu
-          WHERE (staff_name LIKE 'BS%' OR staff_name LIKE 'Bs%' OR staff_name LIKE 'KTV%')
-            AND staff_name != 'ID' AND busy_ranges != 'ID' AND busy_ranges IS NOT NULL AND busy_ranges != ''
-        `).run();
+      const hasOldTable = await db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='gio_ban_cu'").first().catch(() => null);
+      if (hasOldTable) {
+        const cntChung = await db.prepare("SELECT count(*) as total FROM gio_ban_chung_cu").first().catch(() => null);
+        if (!cntChung || cntChung.total === 0) {
+          // 1. Chuyển nhân sự (BS/KTV)
+          await db.prepare(`
+            INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, busy_ranges, created_at)
+            SELECT unit_code, date, 'nhan_su', staff_name, busy_ranges, created_at
+            FROM gio_ban_cu
+            WHERE (staff_name LIKE 'BS%' OR staff_name LIKE 'Bs%' OR staff_name LIKE 'KTV%')
+              AND staff_name != 'ID' AND busy_ranges != 'ID' AND busy_ranges IS NOT NULL AND busy_ranges != ''
+          `).run().catch(() => {});
 
-        // 2. Chuyển bệnh nhân
-        await db.prepare(`
-          INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, busy_ranges, created_at)
-          SELECT unit_code, date, 'benh_nhan', staff_name, busy_ranges, created_at
-          FROM gio_ban_cu
-          WHERE staff_name NOT LIKE 'BS%' AND staff_name NOT LIKE 'Bs%' AND staff_name NOT LIKE 'KTV%'
-            AND staff_name != 'ID' AND busy_ranges != 'ID' AND busy_ranges IS NOT NULL AND busy_ranges != ''
-        `).run();
+          // 2. Chuyển bệnh nhân
+          await db.prepare(`
+            INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, busy_ranges, created_at)
+            SELECT unit_code, date, 'benh_nhan', staff_name, busy_ranges, created_at
+            FROM gio_ban_cu
+            WHERE staff_name NOT LIKE 'BS%' AND staff_name NOT LIKE 'Bs%' AND staff_name NOT LIKE 'KTV%'
+              AND staff_name != 'ID' AND busy_ranges != 'ID' AND busy_ranges IS NOT NULL AND busy_ranges != ''
+          `).run().catch(() => {});
+        }
       }
-    } catch(migErr) {
-      console.warn("[Migrate gio_ban_chung_cu warning]:", migErr);
-    }
+    } catch(migErr) {}
 
     schemaEnsured = true;
     

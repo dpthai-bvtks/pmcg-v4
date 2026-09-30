@@ -24,7 +24,7 @@ export async function handleBackupSyncAction(action, ctx) {
 
       const tables = [
         'tenants', 'cai_dat', 'tai_khoan', 'nhan_su', 'may_moc', 'phong',
-        'thu_thuat', 'benh_nhan', 'lich_trinh', 'lich_su', 'gio_ban_cu', 'gio_ban_chung_cu',
+        'thu_thuat', 'benh_nhan', 'lich_trinh', 'lich_su', 'gio_ban_chung_cu',
         'cham_cong', 'thong_ke', 'tim_ranh', 'tai_lieu', 'phac_do'
       ];
 
@@ -57,7 +57,7 @@ export async function handleBackupSyncAction(action, ctx) {
       // Dành riêng cho Super Admin: Xuất toàn bộ CSDL của tất cả các đơn vị
       const tables = [
         'tenants', 'cai_dat', 'tai_khoan', 'nhan_su', 'may_moc', 'phong',
-        'thu_thuat', 'benh_nhan', 'lich_trinh', 'lich_su', 'gio_ban_cu', 'gio_ban_chung_cu',
+        'thu_thuat', 'benh_nhan', 'lich_trinh', 'lich_su', 'gio_ban_chung_cu',
         'cham_cong', 'thong_ke', 'tim_ranh', 'tai_lieu', 'phac_do'
       ];
 
@@ -91,13 +91,12 @@ export async function handleBackupSyncAction(action, ctx) {
         benh_nhan: results[7]?.results || [],
         lich_trinh: results[8]?.results || [],
         lich_su: results[9]?.results || [],
-        gio_ban_cu: results[10]?.results || [],
-        gio_ban_chung_cu: results[11]?.results || [],
-        cham_cong: results[12]?.results || [],
-        thong_ke: results[13]?.results || [],
-        tim_ranh: results[14]?.results || [],
-        tai_lieu: results[15]?.results || [],
-        phac_do: results[16]?.results || []
+        gio_ban_chung_cu: results[10]?.results || [],
+        cham_cong: results[11]?.results || [],
+        thong_ke: results[12]?.results || [],
+        tim_ranh: results[13]?.results || [],
+        tai_lieu: results[14]?.results || [],
+        phac_do: results[15]?.results || []
       };
 
       return success(dbPayload);
@@ -113,7 +112,7 @@ export async function handleBackupSyncAction(action, ctx) {
 
       const tables = [
         'cai_dat', 'tai_khoan', 'nhan_su', 'may_moc', 'phong',
-        'thu_thuat', 'benh_nhan', 'lich_trinh', 'lich_su', 'gio_ban_cu', 'gio_ban_chung_cu',
+        'thu_thuat', 'benh_nhan', 'lich_trinh', 'lich_su', 'gio_ban_chung_cu',
         'cham_cong', 'thong_ke', 'tim_ranh', 'tai_lieu', 'phac_do'
       ];
 

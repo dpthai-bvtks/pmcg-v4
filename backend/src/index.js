@@ -1197,7 +1197,7 @@ export default {
         } else {
           const [
             tai_khoan, nhan_su, may_moc, phong, thu_thuat,
-            benh_nhan, lich_trinh, lich_su, gio_ban_cu,
+            benh_nhan, lich_trinh, lich_su, gio_ban_chung_cu,
             cham_cong, thong_ke, tim_ranh, tai_lieu, cai_dat
           ] = await Promise.all([
             db.prepare("SELECT * FROM tai_khoan").all(),
@@ -1208,7 +1208,7 @@ export default {
             db.prepare("SELECT * FROM benh_nhan").all(),
             db.prepare("SELECT * FROM lich_trinh").all(),
             db.prepare("SELECT * FROM lich_su").all(),
-            db.prepare("SELECT * FROM gio_ban_cu").all(),
+            db.prepare("SELECT * FROM gio_ban_chung_cu").all(),
             db.prepare("SELECT * FROM cham_cong").all(),
             db.prepare("SELECT * FROM thong_ke").all(),
             db.prepare("SELECT * FROM tim_ranh").all(),
@@ -1217,7 +1217,7 @@ export default {
           ]);
 
           const backupData = {
-            version: "v3.6",
+            version: "v4.0",
             exportDate: new Date().toISOString(),
             tables: {
               tai_khoan: tai_khoan.results || [],
@@ -1228,7 +1228,7 @@ export default {
               benh_nhan: benh_nhan.results || [],
               lich_trinh: lich_trinh.results || [],
               lich_su: lich_su.results || [],
-              gio_ban_cu: gio_ban_cu.results || [],
+              gio_ban_chung_cu: gio_ban_chung_cu.results || [],
               cham_cong: cham_cong.results || [],
               thong_ke: thong_ke.results || [],
               tim_ranh: tim_ranh.results || [],
