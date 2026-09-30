@@ -182,7 +182,7 @@
 
             // Bảo lưu giá trị các ô input form bệnh nhân phòng trường hợp đang có dữ liệu tạm
             const savedFormData = {};
-            ['pat-name', 'pat-year', 'pat-time', 'busy-start', 'busy-end', 'pat-leave', 'pat-room'].forEach(id => {
+            ['pat-name', 'pat-year', 'pat-code', 'pat-time', 'busy-start', 'busy-end', 'pat-leave', 'pat-room'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el && el.value) savedFormData[id] = el.value;
             });

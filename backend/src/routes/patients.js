@@ -554,6 +554,9 @@ export async function handlePatientsAction(action, ctx) {
         const procNames = procs.map(p => typeof p === "string" ? p : (p.name || p.ten || "")).filter(Boolean);
         return {
           id: r.id,
+          maBN: r.ma_bn || "",
+          ma_bn: r.ma_bn || "",
+          pId: r.ma_bn || "",
           ten: healBackendPatientName(r.name),
           name: healBackendPatientName(r.name),
           namSinh: r.age,
@@ -588,19 +591,28 @@ export async function handlePatientsAction(action, ctx) {
       phong: args[6],
       thuThuat: args[7],
       loai_bn: args[8],
-      buoi_dieu_tri: args[9]
+      buoi_dieu_tri: args[9],
+      maBN: args[10]
     };
 
     const patName = sanitizeInputText(healBackendPatientName(p.ten || p.name || ""));
     const patAge = parseInt(p.namSinh || p.age) || 0;
     const ngayVao = String(p.ngayVao || "").trim();
+    const patMaBN = String(p.maBN || p.ma_bn || p.pId || "").trim();
     const procs = typeof p.thuThuat === "string" ? p.thuThuat.split(",").map(x => ({ name: x.trim(), status: "Chưa xếp" })) : (p.thu_thuat || []);
     
-    // 🛡️ CHỐNG LẶP BỆNH NHÂN: Kiểm tra nếu bệnh nhân cùng tên, năm sinh, ngày vào đã tồn tại trong đơn vị
+    // 🛡️ CHỐNG LẶP BỆNH NHÂN: Kiểm tra nếu bệnh nhân cùng tên, năm sinh, ngày vào, mã BN đã tồn tại trong đơn vị
     if (patName && ngayVao) {
-      const existing = await db.prepare(
-        "SELECT id FROM benh_nhan WHERE unit_code = ? AND name = ? AND age = ? AND ngay_vao = ? LIMIT 1"
-      ).bind(unitCode, patName, patAge, ngayVao).first().catch(() => null);
+      let existing = null;
+      if (patMaBN) {
+        existing = await db.prepare(
+          "SELECT id FROM benh_nhan WHERE unit_code = ? AND name = ? AND age = ? AND (ma_bn = ? OR (ma_bn = '' AND ngay_vao = ?)) LIMIT 1"
+        ).bind(unitCode, patName, patAge, patMaBN, ngayVao).first().catch(() => null);
+      } else {
+        existing = await db.prepare(
+          "SELECT id FROM benh_nhan WHERE unit_code = ? AND name = ? AND age = ? AND ngay_vao = ? LIMIT 1"
+        ).bind(unitCode, patName, patAge, ngayVao).first().catch(() => null);
+      }
 
       if (existing && existing.id) {
         // Đã tồn tại -> Cập nhật thông tin thay vì chèn lặp bản ghi thứ hai!
@@ -616,6 +628,7 @@ export async function handlePatientsAction(action, ctx) {
             gio_ban = ?, 
             loai_bn = ?, 
             buoi_dieu_tri = ?, 
+            ma_bn = ?,
             updated_at = CURRENT_TIMESTAMP 
           WHERE unit_code = ? AND id = ?
         `).bind(
@@ -629,6 +642,7 @@ export async function handlePatientsAction(action, ctx) {
           String(p.gioBan || ""),
           String(p.loai_bn || "NoiTru"),
           String(p.buoi_dieu_tri || "TuDong"),
+          patMaBN,
           unitCode,
           existing.id
         );
@@ -638,7 +652,7 @@ export async function handlePatientsAction(action, ctx) {
     }
 
     const stmtAdd = db.prepare(
-      "INSERT INTO benh_nhan (unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO benh_nhan (unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri, ma_bn) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     ).bind(
       unitCode,
       patName,
@@ -653,7 +667,8 @@ export async function handlePatientsAction(action, ctx) {
       ngayVao,
       String(p.gioBan || ""),
       String(p.loai_bn || "NoiTru"),
-      String(p.buoi_dieu_tri || "TuDong")
+      String(p.buoi_dieu_tri || "TuDong"),
+      patMaBN
     );
     const res = await db.batch([stmtAdd, makeBumpDataVersionStmt(db, unitCode)]);
     const insertedId = res[0]?.meta?.last_row_id || res[0]?.meta?.changes || 1;
@@ -675,7 +690,8 @@ export async function handlePatientsAction(action, ctx) {
       oldNamSinh: args[offset + 9] || args[offset + 1],
       loai_bn: args[offset + 10],
       buoi_dieu_tri: args[offset + 11],
-      id: args[offset + 12] || 0
+      id: args[offset + 12] || 0,
+      maBN: args[offset + 13] || ""
     };
 
     const patId = parseInt(p.id) || 0;
@@ -690,6 +706,7 @@ export async function handlePatientsAction(action, ctx) {
     const procs = typeof p.thuThuat === "string" ? p.thuThuat.split(",").map(x => ({ name: x.trim(), status: "Chưa xếp" })).filter(x => x.name) : (p.thu_thuat || []);
     const loaiBnVal = p.loai_bn ? String(p.loai_bn).trim() : "";
     const buoiVal = p.buoi_dieu_tri ? String(p.buoi_dieu_tri).trim() : "";
+    const maBnVal = String(p.maBN || p.ma_bn || "").trim();
 
     let updateRes = null;
     if (patId > 0) {
@@ -708,6 +725,7 @@ export async function handlePatientsAction(action, ctx) {
           gio_ban = ?, 
           loai_bn = CASE WHEN ? != '' THEN ? ELSE loai_bn END, 
           buoi_dieu_tri = CASE WHEN ? != '' THEN ? ELSE buoi_dieu_tri END, 
+          ma_bn = CASE WHEN ? != '' THEN ? ELSE ma_bn END, 
           updated_at = CURRENT_TIMESTAMP 
         WHERE unit_code = ? AND id = ?
       `).bind(
@@ -724,6 +742,7 @@ export async function handlePatientsAction(action, ctx) {
         String(p.gioBan || ""),
         loaiBnVal, loaiBnVal,
         buoiVal, buoiVal,
+        maBnVal, maBnVal,
         unitCode,
         patId
       ).run();
@@ -745,8 +764,9 @@ export async function handlePatientsAction(action, ctx) {
           gio_ban = ?, 
           loai_bn = CASE WHEN ? != '' THEN ? ELSE loai_bn END, 
           buoi_dieu_tri = CASE WHEN ? != '' THEN ? ELSE buoi_dieu_tri END, 
+          ma_bn = CASE WHEN ? != '' THEN ? ELSE ma_bn END, 
           updated_at = CURRENT_TIMESTAMP 
-        WHERE unit_code = ? AND name = ? AND (age = ? OR ? = 0 OR age = 0)
+        WHERE unit_code = ? AND name = ? AND (age = ? OR ? = 0 OR age = 0) AND (ma_bn = ? OR ? = '' OR ma_bn = '')
       `).bind(
         patName,
         patAge,
@@ -761,10 +781,13 @@ export async function handlePatientsAction(action, ctx) {
         String(p.gioBan || ""),
         loaiBnVal, loaiBnVal,
         buoiVal, buoiVal,
+        maBnVal, maBnVal,
         unitCode,
         targetName,
         targetAge,
-        targetAge
+        targetAge,
+        maBnVal,
+        maBnVal
       ).run();
     }
 
@@ -773,7 +796,7 @@ export async function handlePatientsAction(action, ctx) {
       if (existing && existing.id) {
         await db.prepare(`
           UPDATE benh_nhan SET 
-            name = ?,
+            name = ?, 
             age = ?, 
             gender = ?, 
             room = ?, 
@@ -786,6 +809,7 @@ export async function handlePatientsAction(action, ctx) {
             gio_ban = ?, 
             loai_bn = CASE WHEN ? != '' THEN ? ELSE loai_bn END, 
             buoi_dieu_tri = CASE WHEN ? != '' THEN ? ELSE buoi_dieu_tri END, 
+            ma_bn = CASE WHEN ? != '' THEN ? ELSE ma_bn END, 
             updated_at = CURRENT_TIMESTAMP 
           WHERE unit_code = ? AND id = ?
         `).bind(
@@ -802,6 +826,7 @@ export async function handlePatientsAction(action, ctx) {
           String(p.gioBan || ""),
           loaiBnVal, loaiBnVal,
           buoiVal, buoiVal,
+          maBnVal, maBnVal,
           unitCode,
           existing.id
         ).run();
@@ -819,11 +844,16 @@ export async function handlePatientsAction(action, ctx) {
       const patId = parseInt(payload.id || args[3] || (typeof args[0] === "number" && args[0] > 1000 ? args[0] : 0)) || 0;
       const ten = String(payload.ten || payload.name || args[1] || (typeof args[0] === "string" && !/^\d+$/.test(args[0]) ? args[0] : "")).trim();
       const namSinh = parseInt(payload.namSinh || payload.age || args[2]) || 0;
+      const maBN = String(payload.maBN || payload.ma_bn || payload.code || args[4] || "").trim();
 
       if (patId > 0) {
         await db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND id = ?").bind(unitCode, patId).run();
       } else if (ten) {
-        await db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND name = ? AND (? = 0 OR age = ? OR age = 0)").bind(unitCode, ten, namSinh, namSinh).run();
+        if (maBN) {
+          await db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND name = ? AND (? = 0 OR age = ? OR age = 0) AND ma_bn = ?").bind(unitCode, ten, namSinh, namSinh, maBN).run();
+        } else {
+          await db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND name = ? AND (? = 0 OR age = ? OR age = 0)").bind(unitCode, ten, namSinh, namSinh).run();
+        }
       } else {
         const idx = typeof args[0] === "number" ? args[0] : parseInt(args[0]);
         if (!isNaN(idx)) {
@@ -914,8 +944,9 @@ export async function handlePatientsAction(action, ctx) {
         if (!name) return;
         const age = parseInt(String(p.namSinh || p.age || "0").replace(/\D/g, "")) || 0;
         const ngayVao = String(p.ngayVao || p.ngay_vao || "").trim();
-        const matchKey = `${name.toUpperCase()}|${age}|${ngayVao}`;
-        uniquePatients.set(matchKey, { p, name, age, ngayVao, idx });
+        const maBN = String(p.maBN || p.ma_bn || p.pId || "").trim();
+        const matchKey = `${name.toUpperCase()}|${age}|${ngayVao}${maBN ? '|' + maBN : (p.id ? '|ID_' + p.id : '')}`;
+        uniquePatients.set(matchKey, { p, name, age, ngayVao, maBN, idx });
       });
 
       // Nếu không phải replaceAll -> Tra cứu bệnh nhân hiện có để UPDATE thay vì chèn trùng lặp
@@ -923,10 +954,15 @@ export async function handlePatientsAction(action, ctx) {
       if (!replaceAll) {
         try {
           const existingRes = await db.prepare(
-            "SELECT id, name, age, ngay_vao FROM benh_nhan WHERE unit_code = ? AND (is_saturday = 0 OR is_saturday IS NULL OR is_saturday = '')"
-          ).bind(unitCode).all();
+            "SELECT id, name, age, ngay_vao, ma_bn FROM benh_nhan WHERE unit_code = ? AND (is_saturday = 0 OR is_saturday IS NULL OR is_saturday = '')"
+          ).bind(unitCode).all().catch(async () => {
+            return await db.prepare(
+              "SELECT id, name, age, ngay_vao FROM benh_nhan WHERE unit_code = ? AND (is_saturday = 0 OR is_saturday IS NULL OR is_saturday = '')"
+            ).bind(unitCode).all();
+          });
           (existingRes.results || []).forEach(r => {
-            const k = `${String(r.name || '').trim().toUpperCase()}|${r.age || 0}|${String(r.ngay_vao || '').trim()}`;
+            const rCode = String(r.ma_bn || '').trim();
+            const k = `${String(r.name || '').trim().toUpperCase()}|${r.age || 0}|${String(r.ngay_vao || '').trim()}${rCode ? '|' + rCode : ''}`;
             existingMap.set(k, r.id);
           });
         } catch(e) {
@@ -935,7 +971,7 @@ export async function handlePatientsAction(action, ctx) {
       }
 
       const statements = [];
-      uniquePatients.forEach(({ p, name, age, ngayVao, idx }) => {
+      uniquePatients.forEach(({ p, name, age, ngayVao, maBN, idx }) => {
         const gioVaoRaw = p.gioVao !== undefined ? p.gioVao : (p.arrive_time !== undefined ? p.arrive_time : "");
         const gioVao = String(gioVaoRaw || "07:30");
         const gioBan = String(p.gioBan || p.gio_ban || "");
@@ -960,8 +996,8 @@ export async function handlePatientsAction(action, ctx) {
         }
         const procsJson = JSON.stringify(procs);
 
-        const matchKey = `${name.toUpperCase()}|${age}|${ngayVao}`;
-        const existingId = existingMap.get(matchKey);
+        const matchKey = `${name.toUpperCase()}|${age}|${ngayVao}${maBN ? '|' + maBN : (p.id ? '|ID_' + p.id : '')}`;
+        const existingId = existingMap.get(matchKey) || (!maBN ? existingMap.get(`${name.toUpperCase()}|${age}|${ngayVao}`) : null);
 
         if (existingId) {
           // 🔄 Đã tồn tại -> Cập nhật thông tin thay vì chèn lặp bản ghi mới
@@ -970,22 +1006,22 @@ export async function handlePatientsAction(action, ctx) {
               UPDATE benh_nhan SET 
                 gender = ?, room = ?, bed = ?, arrive_time = ?, leave_time = ?, 
                 thu_thuat = ?, status = ?, gio_ban = ?, loai_bn = ?, buoi_dieu_tri = ?, 
-                updated_at = CURRENT_TIMESTAMP 
+                ma_bn = ?, updated_at = CURRENT_TIMESTAMP 
               WHERE unit_code = ? AND id = ?
             `).bind(
               gender, room, bed, gioVao, gioRa,
               procsJson, status, gioBan, loaiBn, buoiDieuTri,
-              unitCode, existingId
+              maBN, unitCode, existingId
             )
           );
         } else {
           // ➕ Bệnh nhân mới -> Chèn mới
           statements.push(
             db.prepare(
-              "INSERT INTO benh_nhan (unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri, order_idx) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+              "INSERT INTO benh_nhan (unit_code, name, age, gender, room, bed, arrive_time, leave_time, thu_thuat, status, ngay_vao, gio_ban, loai_bn, buoi_dieu_tri, order_idx, ma_bn) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             ).bind(
               unitCode, name, age, gender, room, bed, gioVao, gioRa,
-              procsJson, status, ngayVao, gioBan, loaiBn, buoiDieuTri, idx
+              procsJson, status, ngayVao, gioBan, loaiBn, buoiDieuTri, idx, maBN
             )
           );
         }

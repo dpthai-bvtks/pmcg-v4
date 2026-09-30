@@ -130,6 +130,7 @@ export async function ensureSchema(db) {
         order_idx INTEGER DEFAULT 0,
         loai_bn TEXT DEFAULT 'NoiTru',
         buoi_dieu_tri TEXT DEFAULT 'Sang',
+        ma_bn TEXT DEFAULT '',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`),
@@ -702,6 +703,11 @@ export async function ensureSchema(db) {
           await db.prepare(`DROP INDEX IF EXISTS ${idx.name}`).run().catch(() => {});
         }
       }
+
+      // 🛡️ Migration: Bổ sung cột ma_bn nếu chưa có
+      try {
+        await db.prepare("ALTER TABLE benh_nhan ADD COLUMN ma_bn TEXT DEFAULT ''").run().catch(() => {});
+      } catch(eCol) {}
 
       // 🛡️ TỰ ĐỘNG CHỮA LÀNH DỮ LIỆU CSDL (DATABASE SELF-HEALING)
       // Tự động phát hiện và phục hồi các bản ghi họ tên bị lỗi \uFFFD hoặc nuốt chữ

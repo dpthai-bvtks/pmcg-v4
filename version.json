@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev8",
+    "version": "4.1.8-rev9",
     "releaseDate": "30/09/2026",
-    "releaseTime": "11:20 30/09/2026",
-    "notes": "Khắc phục triệt để che mất số liệu thống kê Dashboard: tối ưu tỷ lệ cột grid, thanh cuộn siêu mảnh, cấu hình độ rộng số liệu theo đơn vị không bị ép lề."
+    "releaseTime": "16:25 30/09/2026",
+    "notes": "Hỗ trợ nhận diện cột Mã BN từ file HIS để phân biệt và tách riêng bệnh nhân trùng họ tên và năm sinh, hiển thị badge Mã BN trực quan và bảo lưu toàn diện trong CSDL."
 }

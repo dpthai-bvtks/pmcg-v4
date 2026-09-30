@@ -6347,3 +6347,50 @@ ormalizeScheduleItem.
 - sw.js
 - version.json
 - PM-xeplich-v4.md
+
+### Hỗ Trợ Cột Mã Bệnh Nhân (Mã BN) Nhận Diện Từ File HIS Phân Biệt Bệnh Nhân Trùng Tên & Năm Sinh (30/09/2026 - v4.1.8-rev9)
+
+**Bối cảnh & Yêu cầu của người dùng:**
+- Trên file Excel xuất từ hệ thống HIS, có trường hợp 2 bệnh nhân trùng cả họ tên và năm sinh (ví dụ: NGUYỄN VĂN CƯƠNG, sinh năm 1989), chỉ khác ngày vào viện. Tuy nhiên file Excel đưa vào phần mềm xếp lịch không có cột ngày vào viện mà chỉ phân biệt bằng cột **Mã BN** (ví dụ: `26030416` và `26004967`).
+- Trước đây, phần mềm dùng khóa nhận diện là `Tên + Năm sinh` (`buildMatchKey(ten, namSinh)`), khiến 2 bệnh nhân này bị gộp thành 1 bản ghi duy nhất có số lượng thủ thuật bằng tổng thủ thuật của cả 2 bệnh nhân cộng lại.
+
+**Nguyên nhân gốc rễ:**
+1. **Thiếu cột `ma_bn` trong CSDL D1:** Bảng `benh_nhan` trước đây chỉ lưu `name`, `age`, `room`, `bed`, `arrive_time`, v.v. nhưng chưa có trường `ma_bn`.
+2. **Khóa khớp dữ liệu `buildMatchKey` chỉ dựa vào Tên và Năm sinh:** Khi file HIS nạp vào, cả 2 dòng cùng tên và năm sinh đều sinh ra chuỗi key giống nhau, dẫn tới các thủ thuật của bệnh nhân thứ hai được thêm vào Set của bệnh nhân thứ nhất.
+3. **Lớp Deduplication Frontend loại trừ bản ghi:** Hàm `renderPatientsTable_Original` tạo `dedupMap` theo key `${n}|${ns}|${nv}`. Vì khi nạp HIS cả 2 đều gán ngày vào mặc định là ngày hiện tại, một trong hai bệnh nhân sẽ bị lọc mất khi render.
+4. **Bộ kiểm tra lỗi xung đột trùng bệnh nhân:** Trong `app-error-checker.js`, điều kiện `if (patientDob) ... else if (patientCode)` bỏ qua `patientCode` nếu đã có năm sinh.
+
+**Phân tích & Triển khai giải pháp:**
+1. **Cơ sở dữ liệu D1 & Migration (backend/src/schema.js):**
+   - Bổ sung cột `ma_bn TEXT DEFAULT ''` vào bảng `benh_nhan`.
+   - Bổ sung cơ chế auto-migration `ALTER TABLE benh_nhan ADD COLUMN ma_bn TEXT DEFAULT ''` trong hàm `ensureSchema()` để tự động tương thích CSDL hiện có.
+2. **Backend API Routes (backend/src/routes/patients.js):**
+   - `getBenhNhan`: Trả về cả `maBN` và `ma_bn` cho client.
+   - `addBenhNhan`: Hỗ trợ tham số `maBN`, kiểm tra trùng lặp có tính đến `ma_bn`, lưu vào cột `ma_bn`.
+   - `editBenhNhan`: Cập nhật `ma_bn` vào câu lệnh UPDATE và bảo vệ an toàn cho trường hợp trùng tên/năm sinh.
+   - `deleteBenhNhan`: Hỗ trợ tham số `maBN` để chỉ xóa đúng bệnh nhân có Mã BN tương ứng.
+   - `bulkUpdatePatients`: Đưa `maBN` vào `matchKey`, truy vấn `ma_bn` từ cơ sở dữ liệu và lưu `ma_bn` cho cả thao tác INSERT lẫn UPDATE.
+3. **Thuật toán Import File HIS (js/app.js - importFromHIS):**
+   - Tự động dò tìm cột Mã BN qua các tiêu đề thông dụng: `mã bn`, `mabn`, `mã bệnh nhân`, `pid`, `mã tiếp nhận`, `số hồ sơ`, `mã khám`, v.v. Nếu file không có dòng tiêu đề chuẩn, tự động dự phòng nhận diện cột mã số định dạng số ở cột B hoặc C.
+   - Nâng cấp `buildMatchKey(ten, namSinh, maBN)`: Ghép thêm mã BN vào khóa nhận diện (`ten|namSinh|maBN`). Hai bệnh nhân cùng họ tên, cùng năm sinh nhưng khác Mã BN sẽ có 2 key riêng biệt và lưu thành 2 dòng bệnh nhân độc lập với đầy đủ thủ thuật riêng.
+   - Hiển thị cột Mã BN trên modal Preview trước khi xác nhận nạp.
+4. **Giao diện & Trải nghiệm Người dùng (UI/UX):**
+   - **Bảng Bệnh nhân (Tab Bệnh nhân):** Hiển thị nhãn huy hiệu (badge) nổi bật `#26030416` cạnh tên bệnh nhân màu xanh dương tinh tế (`#0284c7`, viền `#bae6fd`), giúp bác sĩ phân biệt ngay trên danh sách.
+   - **Form nhập liệu Sidebar:** Thêm ô nhập liệu `Mã BN` đặt cạnh ô `Năm sinh`, tự động lưu và điền khi bấm sửa.
+   - **Đồng bộ & Ngoại tuyến (js/sync.js):** Bảo lưu giá trị ô `pat-code` khi làm mới danh mục nền.
+   - **Xuất Excel (exportPatients):** Bổ sung cột `Mã BN` trong file Excel xuất ra.
+   - **Hệ thống Kiểm tra Lỗi (js/modules/app-error-checker.js):** Cập nhật `patientKey` luôn bao gồm `_ID_${patientCode}` kể cả khi có năm sinh, tránh cảnh báo trùng bệnh nhân ảo.
+5. **Đồng bộ phiên bản theo RULES.md:**
+   - Phiên bản: `4.1.8-rev9`, ngày phát hành: `30/09/2026`, timestamp: `16:25 30/09/2026`.
+   - Đồng bộ `version.json`, `sw.js` (`pmcg-v4-cache-4.1.8-rev9`), `index.html`.
+
+**File sửa đổi:**
+- backend/src/schema.js
+- backend/src/routes/patients.js
+- js/app.js
+- js/sync.js
+- js/modules/app-error-checker.js
+- index.html
+- sw.js
+- version.json
+- PM-xeplich-v4.md

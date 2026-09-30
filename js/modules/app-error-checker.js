@@ -225,13 +225,17 @@
                 let patientKey = patientName.toUpperCase();
                 if (patientDob) {
                     patientKey += `_${patientDob}`;
-                } else if (patientCode) {
+                }
+                if (patientCode) {
                     patientKey += `_ID_${patientCode}`;
                 }
 
                 let patientDisplay = patientName;
                 if (patientDob) {
                     patientDisplay += ` (${patientDob})`;
+                }
+                if (patientCode) {
+                    patientDisplay += ` [#${patientCode}]`;
                 }
 
                 // 1. Thống kê thủ thuật cho KTV chính (vẫn đếm để ghi nhận số liệu ngày 18/09/2026)

@@ -5147,7 +5147,8 @@ var dataCache = window.dataCache;
                     const n = String(p.ten || p.name || '').trim().toUpperCase();
                     const ns = String(p.namSinh || p.age || '').trim();
                     const nv = String(p.ngayVao || p.ngay_vao || '').trim();
-                    const k = `${n}|${ns}|${nv}`;
+                    const code = String(p.maBN || p.ma_bn || p.pId || p.mabn || '').trim();
+                    const k = code ? `${n}|${ns}|${nv}|${code}` : (p.id ? `${n}|${ns}|${nv}|ID_${p.id}` : `${n}|${ns}|${nv}`);
                     if (!dedupMap.has(k)) {
                         dedupMap.set(k, p);
                     } else {
@@ -5178,9 +5179,10 @@ var dataCache = window.dataCache;
                 const name = String(p.ten || '').trim();
                 const ns = String(p.namSinh || '').trim();
                 const phong = String(p.phong || '').trim();
+                const code = String(p.maBN || p.ma_bn || p.pId || p.mabn || '').trim();
                 if (!name) return '';
                 if (nameCount[name] > 1 && ns) {
-                    return `<option value="${name} (${ns})">${name} (${ns}${phong ? ' - ' + phong : ''})</option>`;
+                    return `<option value="${name} (${ns})">${name} (${ns}${code ? ' - #' + code : ''}${phong ? ' - ' + phong : ''})</option>`;
                 }
                 return `<option value="${name}">${name}${ns ? ' (' + ns + ')' : ''}</option>`;
             }).filter(Boolean))].join('');
@@ -5287,10 +5289,12 @@ var dataCache = window.dataCache;
                 }
 
                 const displayGioYLenh = (item.gioVao && item.gioVao !== '07:30' && item.gioVao !== '7:30') ? item.gioVao : '';
+                const maBNVal = String(item.maBN || item.ma_bn || item.pId || item.mabn || '').trim();
+                const maBNBadge = maBNVal ? `<span style="font-size:10px;color:#0284c7;background:#e0f2fe;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px;border:1px solid #bae6fd;" title="Mã BN: ${escapeHtml(maBNVal)}">#${escapeHtml(maBNVal)}</span>` : '';
 
                 return `<tr class="editable-row" data-pat-index="${idx}" onclick="editPatient(parseInt(this.dataset.patIndex))" style="${item.gioRa ? 'background:#f8d7da;opacity:0.8;' : ''}" title="Bấm sửa (Phím Delete để xóa)">
             <td>${i + 1}</td>
-            <td><strong>${escapeHtml(item.ten)}</strong> ${nhanTrangThai}</td>
+            <td><strong>${escapeHtml(item.ten)}</strong>${maBNBadge} ${nhanTrangThai}</td>
             <td>${escapeHtml(item.namSinh || '')}</td>
             <td style="text-align:center;">${item.loai_bn === 'NgoaiTru' ? '<span style="color:#d35400;font-weight:bold;font-size:11px;">Ngoại trú</span>' : '<span style="color:#27ae60;font-weight:bold;font-size:11px;">Nội trú</span>'}</td>
             <td>${escapeHtml(item.ngayVao || '')}</td>
@@ -5332,6 +5336,7 @@ var dataCache = window.dataCache;
 
             let ten = document.getElementById('pat-name').value;
             const nam = document.getElementById('pat-year').value;
+            const maBN = (document.getElementById('pat-code')?.value || '').trim();
             // const ngay = document.getElementById('pat-date').value;
             // const gio = document.getElementById('pat-time').value.trim() || '07:30';
             const phong = document.getElementById('pat-room').value;
@@ -5391,6 +5396,7 @@ var dataCache = window.dataCache;
             if (currentEditIdx > -1 && currentItem) {
                 currentItem.ten = ten;
                 currentItem.namSinh = nam;
+                currentItem.maBN = maBN;
                 currentItem.ngayVao = ngay;
                 currentItem.gioVao = gio;
                 currentItem.gioBan = ban;
@@ -5404,6 +5410,7 @@ var dataCache = window.dataCache;
                 const newPat = {
                     ten: ten,
                     namSinh: nam,
+                    maBN: maBN,
                     ngayVao: ngay,
                     gioVao: gio,
                     gioBan: ban,
@@ -5452,9 +5459,9 @@ var dataCache = window.dataCache;
 
             if (currentEditIdx > -1 && currentItem) {
                 const sheetIdx = currentItem.sheetIndex !== undefined ? currentItem.sheetIndex : currentEditIdx;
-                callApi('editBenhNhan', [sheetIdx, ten, nam, ngay, gio, ban, ra, phong, tt, origTen, origNam, loai_bn, buoi_dieu_tri, origId], onDone, onError);
+                callApi('editBenhNhan', [sheetIdx, ten, nam, ngay, gio, ban, ra, phong, tt, origTen, origNam, loai_bn, buoi_dieu_tri, origId, maBN], onDone, onError);
             } else {
-                callApi('addBenhNhan', [ten, nam, ngay, gio, ban, ra, phong, tt, loai_bn, buoi_dieu_tri], onDone, onError);
+                callApi('addBenhNhan', [ten, nam, ngay, gio, ban, ra, phong, tt, loai_bn, buoi_dieu_tri, maBN], onDone, onError);
             }
 }
 
@@ -5480,6 +5487,9 @@ var dataCache = window.dataCache;
 
             document.getElementById('pat-name').value = healPatientName(item.ten || '');
             document.getElementById('pat-year').value = item.namSinh || '';
+            if (document.getElementById('pat-code')) {
+                document.getElementById('pat-code').value = item.maBN || item.ma_bn || item.pId || item.mabn || '';
+            }
 
             const ngayVao = item.ngayVao || '';
             if (ngayVao.includes('/')) {
@@ -5612,7 +5622,7 @@ var dataCache = window.dataCache;
                 renderPatientsTable();
 
                 // Gọi máy chủ xóa ngay lập tức
-                callApi('deleteBenhNhan', [deletedSheetIndex, p.ten, p.namSinh, p.id], () => {
+                callApi('deleteBenhNhan', [deletedSheetIndex, p.ten, p.namSinh, p.id, p.maBN || p.ma_bn || ''], () => {
                     notify(`Đã xóa bệnh nhân [ ${patName} ] thành công!`, 'success');
                     safeCall('loadDashboard');
                 }, e => {
@@ -9624,10 +9634,8 @@ var dataCache = window.dataCache;
         function exportPatients() {
             if (!dataCache.pat.length) return alert("Không có dữ liệu bệnh nhân để xuất!");
 
-            const ws_data = [["STT", "Tên BN", "Năm Sinh", "Ngày Vào", "Giờ Vào", "Giờ Bận", "Giờ Ra", "Phòng", "Thủ Thuật"],
-
-            ...dataCache.pat.map((p, i) => [i + 1, p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan,
-
+            const ws_data = [["STT", "Tên BN", "Năm Sinh", "Mã BN", "Ngày Vào", "Giờ Vào", "Giờ Bận", "Giờ Ra", "Phòng", "Thủ Thuật"],
+            ...dataCache.pat.map((p, i) => [i + 1, p.ten, p.namSinh, p.maBN || p.ma_bn || '', p.ngayVao, p.gioVao, p.gioBan,
             p.gioRa, p.phong, p.thuThuat])];
 
             const bnFileName = `DS_BenhNhan_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.xlsx`;
@@ -9660,7 +9668,7 @@ var dataCache = window.dataCache;
                     }
                     const p = cleanList[current];
                     if (onProgress) onProgress(current + 1, total);
-                    callApi('addBenhNhan', [p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, p.gioRa, p.phong, p.thuThuat], () => {
+                    callApi('addBenhNhan', [p.ten, p.namSinh, p.ngayVao, p.gioVao, p.gioBan, p.gioRa, p.phong, p.thuThuat, p.loai_bn || 'NoiTru', p.buoi_dieu_tri || 'TuDong', p.maBN || p.ma_bn || ''], () => {
                         current++;
                         saveNext();
                     }, subErr => {
@@ -9682,7 +9690,7 @@ var dataCache = window.dataCache;
                     const workbook = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
                     const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
 
-                    function buildMatchKeyLocal(t, ns) {
+                    function buildMatchKeyLocal(t, ns, maBN) {
                         const cleanTen = String(t || '')
                             .normalize('NFD')
                             .replace(/[\u0300-\u036f]/g, '')
@@ -9691,7 +9699,8 @@ var dataCache = window.dataCache;
                             .toLowerCase()
                             .replace(/[^a-z0-9]/g, '');
                         const cleanNS = String(ns || '').trim();
-                        return cleanTen + '|' + cleanNS;
+                        const cleanCode = String(maBN || '').trim().toLowerCase();
+                        return cleanCode ? `${cleanTen}|${cleanNS}|${cleanCode}` : `${cleanTen}|${cleanNS}`;
                     }
 
                     const decodeFn = (typeof window !== 'undefined' && typeof window.decodeVietnameseEncoding === 'function')
@@ -9725,7 +9734,7 @@ var dataCache = window.dataCache;
 
                     const existingMap = {};
                     existingPats.forEach(p => {
-                        const k = buildMatchKeyLocal(p.ten, p.namSinh);
+                        const k = buildMatchKeyLocal(p.ten, p.namSinh, p.maBN || p.ma_bn);
                         existingMap[k] = p;
                     });
 
@@ -9762,11 +9771,11 @@ var dataCache = window.dataCache;
                     if (!replaceAll && existingPats.length > 0) {
                         const mergedMap = new Map();
                         existingPats.forEach(p => {
-                            const k = buildMatchKeyLocal(p.ten, p.namSinh);
+                            const k = buildMatchKeyLocal(p.ten, p.namSinh, p.maBN || p.ma_bn);
                             mergedMap.set(k, { ...p });
                         });
                         patientList.forEach(p => {
-                            const k = buildMatchKeyLocal(p.ten, p.namSinh);
+                            const k = buildMatchKeyLocal(p.ten, p.namSinh, p.maBN || p.ma_bn);
                             if (mergedMap.has(k)) {
                                 const old = mergedMap.get(k);
                                 mergedMap.set(k, { ...old, ...p, id: old.id });
@@ -9833,7 +9842,7 @@ var dataCache = window.dataCache;
                         if (!rows.length) return showCustomAlert('File trống', 'File Excel không có dữ liệu!', '❌', '#e74c3c');
 
                         // --- Bước 1: Tự động dò hàng tiêu đề và cột ---
-                        let colTen = 6, colNamSinh = 7, colDichVu = 13, startRow = 10, colLoaiDieuTri = -1, colPhong = -1;
+                        let colTen = 6, colNamSinh = 7, colDichVu = 13, startRow = 10, colLoaiDieuTri = -1, colPhong = -1, colMaBN = -1;
                         const decodeFn = (typeof window !== 'undefined' && typeof window.decodeVietnameseEncoding === 'function')
                             ? window.decodeVietnameseEncoding
                             : (s => String(s || '').normalize('NFC').trim());
@@ -9861,7 +9870,7 @@ var dataCache = window.dataCache;
                                 ? SchedulerEngine.cleanAndHealPatientName
                                 : properFn;
 
-                        // Quét 15 hàng đầu - khớp tiếng Việt lẫn mã HIS (TEN_BN, NAM_SINH, PHONG...)
+                        // Quét 15 hàng đầu - khớp tiếng Việt lẫn mã HIS (TEN_BN, NAM_SINH, PHONG, MA_BN...)
                         for (let i = 0; i < Math.min(15, rows.length); i++) {
                             const rowStr = rows[i].map(c => norm(c)).join('|');
                             const isHeader = rowStr.includes('ho ten') || rowStr.includes('ten benh') ||
@@ -9880,6 +9889,12 @@ var dataCache = window.dataCache;
                                         cn === 'dichvu' || cn === 'dich_vu' || cn.includes('service') || cn.includes('procedure')) colDichVu = idx;
                                     else if (cn.includes('doi tuong') || cn.includes('loai dt') || cn.includes('loai dieu tri') ||
                                         cn.includes('hinh thuc') || cn.includes('noi/ngoai') || cn === 'loai_bn') colLoaiDieuTri = idx;
+                                    else if (cn.includes('ma bn') || cn.includes('mabn') || cn.includes('ma benh nhan') ||
+                                        cn.includes('ma nguoi benh') || cn.includes('ma nb') || cn.includes('patient id') ||
+                                        cn.includes('pid') || cn === 'ma_bn' || cn === 'manb' || cn === 'mabenhnhan' ||
+                                        cn.includes('ma so') || cn.includes('so ho so') || cn.includes('ma ho so') ||
+                                        cn.includes('mahs') || cn.includes('so benh an') || cn.includes('maba') ||
+                                        cn.includes('ma tiep nhan') || cn.includes('matiepnhan') || cn === 'code') colMaBN = idx;
                                     // Bỏ qua tuyệt đối cột D (idx 3) và các cột Buồng bệnh nội trú HIS
                                     else if (idx !== 3 && !cn.includes('buong') && !cn.includes('khoa') &&
                                         (cn === 'phong' || cn === 'ten_phong' || cn === 'phong_ban' || cn.includes('phong dieu tri') || cn.includes('phong thu thuat'))) colPhong = idx;
@@ -9892,8 +9907,20 @@ var dataCache = window.dataCache;
                         const dataRows = rows.slice(startRow);
                         if (!dataRows.length) return showCustomAlert('Không có dữ liệu', 'File không có dữ liệu từ dòng ' + (startRow + 1) + ' trở đi!', '❌', '#e74c3c');
 
-                        // Hàm sinh khóa chuẩn hóa để so khớp bệnh nhân (bỏ dấu, viết thường, bỏ tất cả khoảng trắng)
-                        function buildMatchKey(ten, namSinh) {
+                        // 🎯 Tự động phát hiện cột Mã BN nếu chưa khớp theo tiêu đề
+                        if (colMaBN < 0 && dataRows.length > 0) {
+                            for (const testCol of [1, 2, 0]) {
+                                if (testCol === colTen || testCol === colNamSinh || testCol === colDichVu) continue;
+                                const sampleVals = dataRows.slice(0, 10).map(r => String(r[testCol] || '').trim()).filter(Boolean);
+                                if (sampleVals.length >= 2 && sampleVals.every(v => /^\d{5,12}$/.test(v) || /^[A-Z0-9_-]{5,15}$/i.test(v))) {
+                                    colMaBN = testCol;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Hàm sinh khóa chuẩn hóa để so khớp bệnh nhân (bỏ dấu, viết thường, kết hợp Năm sinh và Mã BN nếu có)
+                        function buildMatchKey(ten, namSinh, maBN) {
                             const cleanTen = String(ten || '')
                                 .normalize('NFD')
                                 .replace(/[\u0300-\u036f]/g, '')
@@ -9902,7 +9929,8 @@ var dataCache = window.dataCache;
                                 .toLowerCase()
                                 .replace(/[^a-z0-9]/g, '');
                             const cleanNS = String(namSinh || '').trim();
-                            return cleanTen + '|' + cleanNS;
+                            const cleanCode = String(maBN || '').trim();
+                            return cleanTen + '|' + cleanNS + (cleanCode ? '|' + cleanCode : '');
                         }
 
                         function getTodayDMY() {
@@ -9920,11 +9948,21 @@ var dataCache = window.dataCache;
                         dataRows.forEach(row => {
                             // Chuẩn bản v3: Giữ nguyên họ tên thực tế từ file Excel, không can thiệp biến đổi ký tự
                             const rawTen = String(row[colTen] || '').normalize('NFC').trim();
-                            const ten = rawTen;
+                            let ten = rawTen;
                             const namSinh = String(row[colNamSinh] || '').trim();
                             const dichVu = String(row[colDichVu] || '').normalize('NFC').trim();
                             // Bỏ qua cột D (idx 3 - Buồng bệnh nội trú HIS), mặc định để phòng trống
                             const rawPhong = (colPhong >= 0 && colPhong !== 3 && row[colPhong] !== undefined) ? String(row[colPhong] || '').normalize('NFC').trim() : '';
+
+                            // Trích xuất mã bệnh nhân từ cột Mã BN hoặc từ ô tên nếu có
+                            let rawMaBN = colMaBN >= 0 ? String(row[colMaBN] || '').trim() : '';
+                            if (!rawMaBN && rawTen) {
+                                const mCode = rawTen.match(/\b(\d{6,12})\b/);
+                                if (mCode) rawMaBN = mCode[1];
+                            }
+                            if (rawMaBN && ten.includes(rawMaBN)) {
+                                ten = ten.replace(new RegExp(`[\\r\\n\\s]*${rawMaBN}[^\\r\\n]*`, 'g'), '').trim();
+                            }
 
                             let loaiBn = 'NoiTru';
                             let buoiDieuTri = 'TuDong';
@@ -9941,9 +9979,9 @@ var dataCache = window.dataCache;
                             if (!dichVu) return;
                             totalRead++;
 
-                            const key = buildMatchKey(ten, namSinh);
+                            const key = buildMatchKey(ten, namSinh, rawMaBN);
                             const properTen = ten;
-                            if (!hisMap[key]) hisMap[key] = { ten: properTen, namSinh, loaiBn, buoiDieuTri, phong: rawPhong, procs: new Set() };
+                            if (!hisMap[key]) hisMap[key] = { ten: properTen, namSinh, maBN: rawMaBN, loaiBn, buoiDieuTri, phong: rawPhong, procs: new Set() };
                             else if (rawPhong && !hisMap[key].phong) hisMap[key].phong = rawPhong;
 
                             // Tách nhiều thủ thuật trong 1 ô y lệnh HIS (hỗ trợ \n, ;, 1. 2., +, -, phẩy)
@@ -9963,8 +10001,11 @@ var dataCache = window.dataCache;
                         // Bệnh nhân mới  → thêm mới với ngày hôm nay, mặc định phòng trống
                         const existingMap = {};
                         existingPats.forEach(p => {
-                            const k = buildMatchKey(p.ten, p.namSinh);
-                            existingMap[k] = p;
+                            const code = p.maBN || p.ma_bn || p.pId || '';
+                            const kWithCode = buildMatchKey(p.ten, p.namSinh, code);
+                            existingMap[kWithCode] = p;
+                            const kNoCode = buildMatchKey(p.ten, p.namSinh, '');
+                            if (!existingMap[kNoCode]) existingMap[kNoCode] = p;
                         });
 
                         // Danh sách phòng thực tế từ cấu hình
@@ -9973,15 +10014,18 @@ var dataCache = window.dataCache;
 
                         let updatedCount = 0, newCount = 0;
                         const mergedList = existingPats.map(p => {
-                            const k = buildMatchKey(p.ten, p.namSinh);
-                            if (hisMap[k]) {
+                            const code = p.maBN || p.ma_bn || p.pId || '';
+                            const kWithCode = buildMatchKey(p.ten, p.namSinh, code);
+                            const hisData = hisMap[kWithCode] || (!code ? hisMap[buildMatchKey(p.ten, p.namSinh, '')] : null);
+                            if (hisData) {
                                 updatedCount++;
                                 return { 
                                     ...p, 
-                                    thuThuat: [...hisMap[k].procs].join(', '),
+                                    maBN: hisData.maBN || p.maBN || code || '',
+                                    thuThuat: [...hisData.procs].join(', '),
                                     phong: p.phong || '',
-                                    loai_bn: p.loai_bn || p.loaiBN || hisMap[k].loaiBn || 'NoiTru',
-                                    buoi_dieu_tri: p.buoi_dieu_tri || p.buoiDieuTri || hisMap[k].buoiDieuTri || 'TuDong'
+                                    loai_bn: p.loai_bn || p.loaiBN || hisData.loaiBn || 'NoiTru',
+                                    buoi_dieu_tri: p.buoi_dieu_tri || p.buoiDieuTri || hisData.buoiDieuTri || 'TuDong'
                                 };
                             }
                             return { 
@@ -9991,12 +10035,14 @@ var dataCache = window.dataCache;
                             };
                         });
                         Object.values(hisMap).forEach(hisPat => {
-                            const k = buildMatchKey(hisPat.ten, hisPat.namSinh);
-                            if (!existingMap[k]) {
+                            const kWithCode = buildMatchKey(hisPat.ten, hisPat.namSinh, hisPat.maBN);
+                            const existing = existingMap[kWithCode] || (!hisPat.maBN ? existingMap[buildMatchKey(hisPat.ten, hisPat.namSinh, '')] : null);
+                            if (!existing) {
                                 newCount++;
                                 mergedList.push({
                                     ten: hisPat.ten,
                                     namSinh: hisPat.namSinh,
+                                    maBN: hisPat.maBN || '',
                                     ngayVao: getTodayDMY(),
                                     gioVao: '',
                                     gioBan: '',
@@ -10013,17 +10059,17 @@ var dataCache = window.dataCache;
                         const totalHIS = Object.keys(hisMap).length;
                         let previewHTML = `<div style="font-size:13px;line-height:1.7;color:#2c3e50">`;
                         previewHTML += `<div style="background:#eaf6ff;border-radius:8px;padding:10px 14px;margin-bottom:10px;border-left:4px solid #3498db">`;
-                        previewHTML += `<b>📌 Thông tin đọc file:</b><br>Hàng: <b>${startRow + 1}</b> | Cột Tên: <b>${String.fromCharCode(65 + colTen)}</b> | Cột Năm: <b>${String.fromCharCode(65 + colNamSinh)}</b> | Cột DV: <b>${String.fromCharCode(65 + colDichVu)}</b> | Cột Phòng: <b>Trống (mặc định)</b></div>`;
+                        previewHTML += `<b>📌 Thông tin đọc file:</b><br>Hàng: <b>${startRow + 1}</b> | Cột Tên: <b>${String.fromCharCode(65 + colTen)}</b> | Cột Mã BN: <b>${colMaBN >= 0 ? String.fromCharCode(65 + colMaBN) : 'Tự động'}</b> | Cột Năm: <b>${String.fromCharCode(65 + colNamSinh)}</b> | Cột DV: <b>${String.fromCharCode(65 + colDichVu)}</b> | Cột Phòng: <b>Trống (mặc định)</b></div>`;
                         previewHTML += `<div style="background:#eafaf1;border-radius:8px;padding:10px 14px;margin-bottom:10px;border-left:4px solid #27ae60">`;
                         previewHTML += `📋 HIS: <b>${totalHIS}</b> BN &nbsp;|&nbsp; 🔄 Cập nhật TT: <b>${updatedCount}</b> BN &nbsp;|&nbsp; ➕ Thêm mới: <b>${newCount}</b> BN</div>`;
 
                         if (updatedCount > 0) {
                             previewHTML += `<b>🔄 BN đã có (giữ ngày/phòng, cập nhật thủ thuật):</b><ul style="margin:4px 0 8px 16px;padding:0">`;
                             mergedList.filter(p => {
-                                const k = buildMatchKey(p.ten, p.namSinh);
-                                return !!hisMap[k];
+                                const code = p.maBN || p.ma_bn || p.pId || '';
+                                return !!(hisMap[buildMatchKey(p.ten, p.namSinh, code)] || (!code && hisMap[buildMatchKey(p.ten, p.namSinh, '')]));
                             }).slice(0, 4).forEach(p => {
-                                previewHTML += `<li><b>${escapeHtml(p.ten)}</b> (${escapeHtml(p.namSinh)}): <span style="color:#8e44ad">${escapeHtml(p.thuThuat)}</span></li>`;
+                                previewHTML += `<li><b>${escapeHtml(p.ten)}</b> ${p.maBN ? `<span style="color:#0284c7;font-weight:600;">[${escapeHtml(p.maBN)}]</span>` : ''} (${escapeHtml(p.namSinh)}): <span style="color:#8e44ad">${escapeHtml(p.thuThuat)}</span></li>`;
                             });
                             if (updatedCount > 4) previewHTML += `<li style="color:#7f8c8d">...và ${updatedCount - 4} BN khác</li>`;
                             previewHTML += `</ul>`;
@@ -10031,7 +10077,7 @@ var dataCache = window.dataCache;
                         if (newCount > 0) {
                             previewHTML += `<b>➕ BN mới thêm vào (Phòng để trống):</b><ul style="margin:4px 0 8px 16px;padding:0">`;
                             mergedList.slice(-newCount).slice(0, 4).forEach(p => {
-                                previewHTML += `<li><b>${escapeHtml(p.ten)}</b> (${escapeHtml(p.namSinh)}): <span style="color:#27ae60">${escapeHtml(p.thuThuat)}</span></li>`;
+                                previewHTML += `<li><b>${escapeHtml(p.ten)}</b> ${p.maBN ? `<span style="color:#0284c7;font-weight:600;">[${escapeHtml(p.maBN)}]</span>` : ''} (${escapeHtml(p.namSinh)}): <span style="color:#27ae60">${escapeHtml(p.thuThuat)}</span></li>`;
                             });
                             if (newCount > 4) previewHTML += `<li style="color:#7f8c8d">...và ${newCount - 4} BN khác</li>`;
                             previewHTML += `</ul>`;
@@ -10054,6 +10100,7 @@ var dataCache = window.dataCache;
                             const cleanMergedList = mergedList.map(p => ({
                                 ten: String(p.ten || p.name || '').trim(),
                                 namSinh: String(p.namSinh || p.age || '').trim(),
+                                maBN: String(p.maBN || p.ma_bn || p.pId || '').trim(),
                                 ngayVao: String(p.ngayVao || p.ngay_vao || '').trim(),
                                 gioVao: String(p.gioVao || p.arrive_time || '').trim(),
                                 gioBan: String(p.gioBan || p.gio_ban || '').trim(),
