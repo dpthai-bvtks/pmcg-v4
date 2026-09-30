@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev11",
+    "version": "4.1.8-rev12",
     "releaseDate": "30/09/2026",
-    "releaseTime": "17:50 30/09/2026",
-    "notes": "Khắc phục lỗi no such column: ma_bn trên Turso Fallback khi sửa bệnh nhân lúc máy chủ chính tắt; bổ sung auto-migration và cơ chế phòng thủ đa tầng."
+    "releaseTime": "18:45 30/09/2026",
+    "notes": "Hiển thị đầy đủ ô nhập Mã BN trên form Bệnh nhân, bổ sung cột Mã BN trên bảng bệnh nhân, nâng cấp thuật toán so khớp nạp file HIS cập nhật thông tin bệnh nhân cũ mà không bị tạo trùng lặp."
 }

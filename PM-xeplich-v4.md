@@ -6477,3 +6477,38 @@ ormalizeScheduleItem.
 - sw.js
 - version.json
 - PM-xeplich-v4.md
+
+### Hiển Thị Trọn Vẹn Ô Nhập Mã BN, Bổ Sung Cột Mã BN Trên Bảng & Nâng Cấp Khớp Dữ Liệu File HIS (30/09/2026 - v4.1.8-rev12)
+
+**Bối cảnh & Vấn đề người dùng phản hồi:**
+1. **Ô nhập Mã BN bị ẩn trên Sidebar:** Trên form nhập/sửa bệnh nhân, chỉ thấy nhãn `Mã BN:` nằm chen ngang cạnh ô `Năm sinh:`, không thấy ô nhập liệu do bị co ép bởi thuộc tính flex và độ rộng nhãn cố định 100px.
+2. **Nạp file HIS bị nhân đôi bệnh nhân cũ:** Trong cơ sở dữ liệu đã có sẵn gần như toàn bộ bệnh nhân từ trước nhưng chưa có trường `ma_bn`. Khi nạp file HIS (`01.xls`), hệ thống so khớp theo key có chứa mã BN (`ten|namSinh|maBN`), khiến toàn bộ bệnh nhân cũ không khớp được với bản ghi trong file HIS, dẫn đến việc hệ thống tạo mới toàn bộ thành các bệnh nhân mới trùng lặp.
+3. **Bảng bệnh nhân thiếu cột Mã BN:** Bệnh nhân chỉ hiển thị mã BN dưới dạng nhãn nhỏ cạnh tên, người dùng muốn có một cột riêng biệt `Mã BN` trên bảng danh sách để tra cứu, theo dõi và sắp xếp rõ ràng.
+
+**Giải pháp & Triển khai Kỹ thuật:**
+1. **Thiết kế lại Form Sidebar Bệnh Nhân (`index.html`):**
+   - Tách riêng `Mã BN:` và `Năm sinh:` thành 2 nhóm `.form-group` độc lập, tiêu chuẩn với nhãn 100px và ô nhập liệu chiếm toàn bộ chiều ngang còn lại.
+   - Bố cục đồng bộ hoàn hảo với các trường `Tên BN`, `Ngày vào`, `Giờ Y lệnh`, `Giờ bận`, `Phòng`, người dùng nhìn thấy rõ ràng, nhập liệu và chỉnh sửa dễ dàng.
+2. **Bổ sung cột `Mã BN` trên Bảng Danh Sách Bệnh Nhân (`index.html`, `js/app.js`):**
+   - Thêm thẻ `<th>Mã BN</th>` trong `<thead>` của `#patients-table`, nằm ngay sau cột `Tên BN` và trước `Năm Sinh`.
+   - Cập nhật hàm `renderPatientsTable_Original`: hiển thị mã BN định dạng badge monospace `#xxxx` màu xanh dịu mắt, nếu chưa có mã hiển thị `--` màu xám mờ.
+   - Cập nhật `renderEmptyRow(11)` đồng bộ đúng số lượng cột.
+3. **Nâng cấp Thuật Toán So Khớp Thông Minh 2 Lượt Khi Nạp File HIS (`js/app.js`):**
+   - **Lượt 1 (So khớp và Cập nhật BN Đã Có):**
+     + Nếu bệnh nhân trong DB đã có mã BN: ưu tiên khớp theo `Tên + Năm sinh + Mã BN` (hoặc mã BN độc lập).
+     + Nếu bệnh nhân trong DB chưa có mã BN (bản ghi cũ): tự động khớp thông minh theo `Tên + Năm sinh` với bản ghi tương ứng trong file HIS. Khi khớp thành công, hệ thống tự động **cập nhật Mã BN và danh sách Thủ thuật** cho bệnh nhân cũ, bảo lưu nguyên vẹn ngày vào, phòng, giờ vào, giờ bận, giờ ra viện hiện tại.
+     + Đánh dấu bản ghi HIS đã được tiêu thụ vào `matchedHisIndices`.
+   - **Lượt 2 (Thêm Bệnh Nhân Thực Sự Mới):**
+     + Chỉ những dòng trong file HIS chưa được tiêu thụ ở Lượt 1 mới được tính là bệnh nhân mới (`newCount++`), tránh tuyệt đối tình trạng nhân đôi danh sách.
+   - Cập nhật cửa sổ Popup Preview hiển thị chính xác: `🔄 Cập nhật TT & Mã BN: X BN` và `➕ Thêm mới: Y BN`.
+4. **Đồng bộ phiên bản:**
+   - Phiên bản: `4.1.8-rev12`, ngày phát hành: `30/09/2026`, timestamp: `18:45 30/09/2026`.
+   - Cập nhật cache buster `v=4.1.8-rev12` trên toàn bộ link/script trong `index.html`, `version.json`, `sw.js`.
+
+**File sửa đổi:**
+- index.html
+- js/app.js
+- sw.js
+- version.json
+- PM-xeplich-v4.md
+

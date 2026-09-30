@@ -5260,7 +5260,7 @@ var dataCache = window.dataCache;
 
             const tbody = document.getElementById('patients-list');
             if (!tbody) return;
-            if (!dataCache.pat.length) { tbody.innerHTML = renderEmptyRow(10, 'Chưa có dữ liệu bệnh nhân'); return; }
+            if (!dataCache.pat.length) { tbody.innerHTML = renderEmptyRow(11, 'Chưa có dữ liệu bệnh nhân'); return; }
 
             const schedData = (window.currentScheduleData && window.currentScheduleData.length) ? window.currentScheduleData : ((typeof dataCache !== 'undefined' && dataCache.schedule) ? dataCache.schedule : []);
 
@@ -5354,11 +5354,14 @@ var dataCache = window.dataCache;
 
                 const displayGioYLenh = (item.gioVao && item.gioVao !== '07:30' && item.gioVao !== '7:30') ? item.gioVao : '';
                 const maBNVal = String(item.maBN || item.ma_bn || item.pId || item.mabn || '').trim();
-                const maBNBadge = maBNVal ? `<span style="font-size:10px;color:#0284c7;background:#e0f2fe;padding:1px 5px;border-radius:4px;font-weight:600;margin-left:4px;border:1px solid #bae6fd;" title="Mã BN: ${escapeHtml(maBNVal)}">#${escapeHtml(maBNVal)}</span>` : '';
+                const maBNCell = maBNVal
+                    ? `<span style="font-size:11px;font-family:monospace;color:#0369a1;background:#e0f2fe;padding:2px 6px;border-radius:4px;font-weight:600;border:1px solid #bae6fd;" title="Mã BN: ${escapeHtml(maBNVal)}">#${escapeHtml(maBNVal)}</span>`
+                    : `<span style="color:#9ca3af;font-size:11px;">--</span>`;
 
                 return `<tr class="editable-row" data-pat-index="${idx}" onclick="editPatient(parseInt(this.dataset.patIndex))" style="${item.gioRa ? 'background:#f8d7da;opacity:0.8;' : ''}" title="Bấm sửa (Phím Delete để xóa)">
             <td>${i + 1}</td>
-            <td><strong>${escapeHtml(item.ten)}</strong>${maBNBadge} ${nhanTrangThai}</td>
+            <td><strong>${escapeHtml(item.ten)}</strong> ${nhanTrangThai}</td>
+            <td style="text-align:center;">${maBNCell}</td>
             <td>${escapeHtml(item.namSinh || '')}</td>
             <td style="text-align:center;">${item.loai_bn === 'NgoaiTru' ? '<span style="color:#d35400;font-weight:bold;font-size:11px;">Ngoại trú</span>' : '<span style="color:#27ae60;font-weight:bold;font-size:11px;">Nội trú</span>'}</td>
             <td>${escapeHtml(item.ngayVao || '')}</td>
@@ -10087,47 +10090,60 @@ var dataCache = window.dataCache;
                         });
 
                         // --- Bước 3: Merge với danh sách bệnh nhân hiện tại ---
-                        // Bệnh nhân đã có → chỉ cập nhật thuThuat, giữ nguyên ngayVao/phong/giờ
+                        // Bệnh nhân đã có → chỉ cập nhật thuThuat & maBN, giữ nguyên ngayVao/phong/giờ
                         // Bệnh nhân mới  → thêm mới với ngày hôm nay, mặc định phòng trống
-                        const existingMap = {};
+                        const hisItems = Object.values(hisMap);
+                        const matchedHisIndices = new Set();
+                        const mergedList = [];
+                        let updatedCount = 0;
+
+                        // Lượt 1: So khớp từng bệnh nhân hiện có trong DB
                         existingPats.forEach(p => {
-                            const code = p.maBN || p.ma_bn || p.pId || '';
-                            const kWithCode = buildMatchKey(p.ten, p.namSinh, code);
-                            existingMap[kWithCode] = p;
-                            const kNoCode = buildMatchKey(p.ten, p.namSinh, '');
-                            if (!existingMap[kNoCode]) existingMap[kNoCode] = p;
-                        });
+                            const pCode = String(p.maBN || p.ma_bn || p.pId || p.mabn || '').trim();
+                            let matchedHisIdx = -1;
 
-                        // Danh sách phòng thực tế từ cấu hình
-                        const activeRooms = (dataCache && Array.isArray(dataCache.room)) ? dataCache.room : [];
-                        const validRoomNames = activeRooms.map(r => String(r.tenPhong || r.ten || (Array.isArray(r) ? r[1] : '') || '').trim()).filter(Boolean);
+                            if (pCode) {
+                                // Ưu tiên 1: Khớp chính xác cả Tên, Năm sinh và Mã BN
+                                const pKey = buildMatchKey(p.ten, p.namSinh, pCode);
+                                matchedHisIdx = hisItems.findIndex((h, idx) => !matchedHisIndices.has(idx) && buildMatchKey(h.ten, h.namSinh, h.maBN) === pKey);
 
-                        let updatedCount = 0, newCount = 0;
-                        const mergedList = existingPats.map(p => {
-                            const code = p.maBN || p.ma_bn || p.pId || '';
-                            const kWithCode = buildMatchKey(p.ten, p.namSinh, code);
-                            const hisData = hisMap[kWithCode] || (!code ? hisMap[buildMatchKey(p.ten, p.namSinh, '')] : null);
-                            if (hisData) {
+                                // Ưu tiên 2: Khớp theo Mã BN (nếu sai khác nhẹ về dấu tiếng Việt)
+                                if (matchedHisIdx < 0) {
+                                    matchedHisIdx = hisItems.findIndex((h, idx) => !matchedHisIndices.has(idx) && String(h.maBN || '').trim() === pCode);
+                                }
+                            } else {
+                                // Bệnh nhân cũ trong DB CHƯA CÓ Mã BN: Khớp thông minh theo Tên + Năm sinh
+                                const pNameKey = buildMatchKey(p.ten, p.namSinh, '');
+                                matchedHisIdx = hisItems.findIndex((h, idx) => !matchedHisIndices.has(idx) && buildMatchKey(h.ten, h.namSinh, '') === pNameKey);
+                            }
+
+                            if (matchedHisIdx >= 0) {
+                                matchedHisIndices.add(matchedHisIdx);
+                                const hisData = hisItems[matchedHisIdx];
                                 updatedCount++;
-                                return { 
-                                    ...p, 
-                                    maBN: hisData.maBN || p.maBN || code || '',
+                                mergedList.push({
+                                    ...p,
+                                    maBN: hisData.maBN || p.maBN || pCode || '',
                                     thuThuat: [...hisData.procs].join(', '),
                                     phong: p.phong || '',
                                     loai_bn: p.loai_bn || p.loaiBN || hisData.loaiBn || 'NoiTru',
-                                    buoi_dieu_tri: p.buoi_dieu_tri || p.buoiDieuTri || hisData.buoiDieuTri || 'TuDong'
-                                };
+                                    buoi_dieu_tri: p.buoi_dieu_tri || p.buoiDieuTri || hisData.buoiDieuTri || 'TuDong',
+                                    _isUpdatedFromHIS: true
+                                });
+                            } else {
+                                // Không có trong file HIS hôm nay -> giữ nguyên
+                                mergedList.push({
+                                    ...p,
+                                    loai_bn: p.loai_bn || p.loaiBN || 'NoiTru',
+                                    buoi_dieu_tri: p.buoi_dieu_tri || p.buoiDieuTri || 'TuDong'
+                                });
                             }
-                            return { 
-                                ...p,
-                                loai_bn: p.loai_bn || p.loaiBN || 'NoiTru',
-                                buoi_dieu_tri: p.buoi_dieu_tri || p.buoiDieuTri || 'TuDong'
-                            };
                         });
-                        Object.values(hisMap).forEach(hisPat => {
-                            const kWithCode = buildMatchKey(hisPat.ten, hisPat.namSinh, hisPat.maBN);
-                            const existing = existingMap[kWithCode] || (!hisPat.maBN ? existingMap[buildMatchKey(hisPat.ten, hisPat.namSinh, '')] : null);
-                            if (!existing) {
+
+                        // Lượt 2: Các dòng trong file HIS chưa được ghép -> BỆNH NHÂN THỰC SỰ MỚI
+                        let newCount = 0;
+                        hisItems.forEach((hisPat, idx) => {
+                            if (!matchedHisIndices.has(idx)) {
                                 newCount++;
                                 mergedList.push({
                                     ten: hisPat.ten,
@@ -10140,7 +10156,8 @@ var dataCache = window.dataCache;
                                     phong: hisPat.phong || '',
                                     thuThuat: [...hisPat.procs].join(', '),
                                     loai_bn: hisPat.loaiBn || 'NoiTru',
-                                    buoi_dieu_tri: hisPat.buoiDieuTri || 'TuDong'
+                                    buoi_dieu_tri: hisPat.buoiDieuTri || 'TuDong',
+                                    _isNewFromHIS: true
                                 });
                             }
                         });
@@ -10151,25 +10168,22 @@ var dataCache = window.dataCache;
                         previewHTML += `<div style="background:#eaf6ff;border-radius:8px;padding:10px 14px;margin-bottom:10px;border-left:4px solid #3498db">`;
                         previewHTML += `<b>📌 Thông tin đọc file:</b><br>Hàng: <b>${startRow + 1}</b> | Cột Tên: <b>${String.fromCharCode(65 + colTen)}</b> | Cột Mã BN: <b>${colMaBN >= 0 ? String.fromCharCode(65 + colMaBN) : 'Tự động'}</b> | Cột Năm: <b>${String.fromCharCode(65 + colNamSinh)}</b> | Cột DV: <b>${String.fromCharCode(65 + colDichVu)}</b> | Cột Phòng: <b>Trống (mặc định)</b></div>`;
                         previewHTML += `<div style="background:#eafaf1;border-radius:8px;padding:10px 14px;margin-bottom:10px;border-left:4px solid #27ae60">`;
-                        previewHTML += `📋 HIS: <b>${totalHIS}</b> BN &nbsp;|&nbsp; 🔄 Cập nhật TT: <b>${updatedCount}</b> BN &nbsp;|&nbsp; ➕ Thêm mới: <b>${newCount}</b> BN</div>`;
+                        previewHTML += `📋 HIS: <b>${totalHIS}</b> BN &nbsp;|&nbsp; 🔄 Cập nhật TT & Mã BN: <b>${updatedCount}</b> BN &nbsp;|&nbsp; ➕ Thêm mới: <b>${newCount}</b> BN</div>`;
 
                         if (updatedCount > 0) {
-                            previewHTML += `<b>🔄 BN đã có (giữ ngày/phòng, cập nhật thủ thuật):</b><ul style="margin:4px 0 8px 16px;padding:0">`;
-                            mergedList.filter(p => {
-                                const code = p.maBN || p.ma_bn || p.pId || '';
-                                return !!(hisMap[buildMatchKey(p.ten, p.namSinh, code)] || (!code && hisMap[buildMatchKey(p.ten, p.namSinh, '')]));
-                            }).slice(0, 4).forEach(p => {
-                                previewHTML += `<li><b>${escapeHtml(p.ten)}</b> ${p.maBN ? `<span style="color:#0284c7;font-weight:600;">[${escapeHtml(p.maBN)}]</span>` : ''} (${escapeHtml(p.namSinh)}): <span style="color:#8e44ad">${escapeHtml(p.thuThuat)}</span></li>`;
+                            previewHTML += `<b>🔄 BN đã có (cập nhật Mã BN & Thủ thuật, giữ ngày/phòng):</b><ul style="margin:4px 0 8px 16px;padding:0">`;
+                            mergedList.filter(p => p._isUpdatedFromHIS).slice(0, 5).forEach(p => {
+                                previewHTML += `<li><b>${escapeHtml(p.ten)}</b> ${p.maBN ? `<span style="color:#0284c7;font-weight:600;">[#${escapeHtml(p.maBN)}]</span>` : ''} (${escapeHtml(p.namSinh || '')}): <span style="color:#8e44ad">${escapeHtml(p.thuThuat)}</span></li>`;
                             });
-                            if (updatedCount > 4) previewHTML += `<li style="color:#7f8c8d">...và ${updatedCount - 4} BN khác</li>`;
+                            if (updatedCount > 5) previewHTML += `<li style="color:#7f8c8d">...và ${updatedCount - 5} BN khác</li>`;
                             previewHTML += `</ul>`;
                         }
                         if (newCount > 0) {
                             previewHTML += `<b>➕ BN mới thêm vào (Phòng để trống):</b><ul style="margin:4px 0 8px 16px;padding:0">`;
-                            mergedList.slice(-newCount).slice(0, 4).forEach(p => {
-                                previewHTML += `<li><b>${escapeHtml(p.ten)}</b> ${p.maBN ? `<span style="color:#0284c7;font-weight:600;">[${escapeHtml(p.maBN)}]</span>` : ''} (${escapeHtml(p.namSinh)}): <span style="color:#27ae60">${escapeHtml(p.thuThuat)}</span></li>`;
+                            mergedList.filter(p => p._isNewFromHIS).slice(0, 5).forEach(p => {
+                                previewHTML += `<li><b>${escapeHtml(p.ten)}</b> ${p.maBN ? `<span style="color:#0284c7;font-weight:600;">[#${escapeHtml(p.maBN)}]</span>` : ''} (${escapeHtml(p.namSinh || '')}): <span style="color:#27ae60">${escapeHtml(p.thuThuat)}</span></li>`;
                             });
-                            if (newCount > 4) previewHTML += `<li style="color:#7f8c8d">...và ${newCount - 4} BN khác</li>`;
+                            if (newCount > 5) previewHTML += `<li style="color:#7f8c8d">...và ${newCount - 5} BN khác</li>`;
                             previewHTML += `</ul>`;
                         }
                         if (unrecognized.size > 0) {
