@@ -6222,3 +6222,31 @@ ormalizeScheduleItem.
 - version.json
 - index.html
 - PM-xeplich-v4.md
+
+### Khôi Phục Cơ Chế Đọc Chuỗi Nguyên Bản Như Bản v3 & Thêm Thống Kê Phòng, Máy Móc Trên Dashboard (30/09/2026 - v4.1.8-rev5)
+
+**Yêu cầu của người dùng:**
+1. Quay lại cơ chế xử lý chuỗi/font chữ giống hoàn toàn với bản v3: Tuyệt đối không can thiệp, không đoán mò, không biến đổi ký tự khi nhập file HIS hoặc xếp lịch.
+2. Bổ sung trên Dashboard ở tab-home: Thống kê số lượng bệnh nhân của từng phòng và số lượt sử dụng máy móc bên cạnh các bảng hiện có.
+
+**Phân tích & Giải pháp:**
+1. **Khôi phục cơ chế xử lý chuỗi/font chữ như bản v3:**
+   - Trong `js/schedule-utils.js` & `js/scheduler-engine.js`: Đơn giản hóa toàn bộ các hàm `decodeVietnameseEncoding`, `cleanAndHealPatientName`, `cleanAndHealProcedureName`, `cleanAndHealStaffName`, `cleanAndHealRoomName`, `cleanAndHealMachineName`. Chỉ chuẩn hóa NFC và khoảng trắng, loại bỏ hoàn toàn các bộ lọc TCVN3 regex, VNI replacements, và cơ chế đoán mò/tráo đổi tên bệnh nhân/thủ thuật.
+   - Trong `js/app.js`: Các hàm `importPatients`, `nhapDsSat`, `importFromHIS` đọc trực tiếp chuỗi từ file Excel/HIS và giữ nguyên vẹn 100% như bản v3.
+2. **Thêm 2 panel thống kê mới trên Dashboard (tab-home):**
+   - Panel `🏥 BỆNH NHÂN THEO TỪNG PHÒNG`: Tính toán số lượng bệnh nhân thực tế của từng phòng từ lịch trình (hoặc danh sách bệnh nhân hiện tại khi chưa xếp lịch), hiển thị thanh biểu đồ trực quan kèm số lượng bệnh nhân và huy hiệu tổng số phòng có bệnh nhân.
+   - Panel `⚡ LƯỢT SỬ DỤNG MÁY MÓC`: Tính toán tổng số lượt phân bổ từng thiết bị/máy móc trong ngày, hiển thị thanh biểu đồ phân bổ lượt sử dụng kèm huy hiệu tổng số lượt máy.
+   - Bố cục responsive dạng lưới 2 cột (`.dashboard-2col`) đặt ngay dưới hàng tổng quan/nhân viên/thủ thuật, tự động chuyển về 1 cột trên màn hình di động/tablet.
+3. **Quy chuẩn phiên bản theo RULES.md:**
+   - Nâng phiên bản cache buster lên `4.1.8-rev5`, timestamp: `10:45 30/09/2026`.
+   - Đồng bộ `version.json`, `sw.js` (`pmcg-v4-cache-4.1.8-rev5`), `index.html`, `css/style.css`.
+
+**File sửa đổi:**
+- js/schedule-utils.js
+- js/scheduler-engine.js
+- js/app.js
+- css/style.css
+- index.html
+- sw.js
+- version.json
+- PM-xeplich-v4.md

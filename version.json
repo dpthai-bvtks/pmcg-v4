@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev4",
+    "version": "4.1.8-rev5",
     "releaseDate": "30/09/2026",
-    "releaseTime": "10:20 30/09/2026",
-    "notes": "Đồng bộ chuẩn hóa 100% các trường dữ liệu kiểm tra lỗi (tên HIS, định mức thời gian, phân loại thủ thuật, thông tin bệnh nhân) giữa MiniPC và Google Sheets; bổ sung nút Cập nhật & Xóa Cache trên menu để các máy khác đồng bộ tức thì."
+    "releaseTime": "10:45 30/09/2026",
+    "notes": "Khôi phục nguyên bản cơ chế đọc file Excel và xử lý họ tên/thủ thuật như bản v3 không can thiệp chuỗi; bổ sung thống kê số lượng bệnh nhân của từng phòng và số lượt sử dụng máy móc trên Dashboard."
 }

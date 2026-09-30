@@ -1248,8 +1248,15 @@
             gap: 15px;
         }
 
+        .dashboard-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
         @media (max-width: 1024px) {
-            .dashboard-3col {
+            .dashboard-3col,
+            .dashboard-2col {
                 grid-template-columns: 1fr;
             }
         }

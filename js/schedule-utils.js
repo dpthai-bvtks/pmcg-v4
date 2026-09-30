@@ -139,67 +139,13 @@ var ScheduleUtils = (function () {
 
   function decodeVietnameseEncoding(raw) {
     if (!raw && raw !== 0) return '';
-    let str = String(raw);
-
-    // 1. Dọn sạch ký tự vô hình, BOM, zero-width space, non-breaking space
-    str = str.replace(/[\ufeff\u200b\u200c\u200d\u200e\u200f]/g, '').replace(/\u00a0/g, ' ');
-
-    // 2. Chuyển Unicode NFD sang NFC
-    try { str = str.normalize('NFC'); } catch (e) {}
-
-    // 🛡️ Xử lý sớm các từ TCVN3 đặc thù trước khi kiểm tra return early
-    // 🛡️ Chỉ bao gồm các ký tự biểu tượng độc nhất của TCVN3 (A7-AE, B5-B9, BB-BE)
-    // TUYỆT ĐỐI KHÔNG chứa \u00C0-\u00FF vì đó là toàn bộ các chữ cái nguyên âm Unicode tiếng Việt chuẩn!
-    const hasStrongTcvn3Char = /[\u00A7-\u00AE\u00B5-\u00B9\u00BB-\u00BE]/.test(str);
-
-    const hasTcvn3Word = /\b(NguyÔn|Thñy|bãp|huyÖt)\b/i.test(str);
-    if (hasTcvn3Word) {
-      str = str.replace(/\bNguyÔn\b/g, 'Nguyễn').replace(/\bnguyÔn\b/g, 'nguyễn')
-               .replace(/Thñy/gi, 'Thủy').replace(/thñy/gi, 'thủy')
-               .replace(/bãp\s*b[Êê]m/gi, 'bóp bấm')
-               .replace(/huyÖt/gi, 'huyệt');
-    }
-
-    const hasPureUnicodeVN = /[\u0102\u0103\u0110\u0111\u0128\u0129\u0168\u0169\u01A0\u01A1\u01AF\u01B0\u1EA0-\u1EF9]/.test(str);
-
-    if (hasPureUnicodeVN && !hasStrongTcvn3Char) {
-      return str.replace(/\s+/g, ' ').trim();
-    }
-
-    // 3. Ưu tiên kiểm tra và giải mã VNI nếu có các cặp ký tự VNI đặc trưng
-    const vniPairRegex = /(?:[aAeEoOuUöÖôÔ][ùøûõïéèúüëáàåãäóò])|(?:[aAeEoO][âêô])|(?:uù|uø|öù|öø)/;
-    if (!hasStrongTcvn3Char && (vniPairRegex.test(str) || (/[ñÑ]/.test(str) && !hasPureUnicodeVN))) {
-      let vniDecoded = str;
-      for (let k = 0; k < VNI_PAIRS.length; k++) {
-        const vni = VNI_PAIRS[k][0];
-        const uni = VNI_PAIRS[k][1];
-        if (vniDecoded.includes(vni)) {
-          vniDecoded = vniDecoded.split(vni).join(uni);
-        }
-      }
-      str = vniDecoded;
-    }
-
-    // 4. Kiểm tra và giải mã TCVN3 (.VnTime, .VnArial)
-    if (hasStrongTcvn3Char) {
-      let tcvnDecoded = '';
-      for (let i = 0; i < str.length; i++) {
-        const ch = str[i];
-        tcvnDecoded += (TCVN3_MAP[ch] !== undefined) ? TCVN3_MAP[ch] : ch;
-      }
-      str = tcvnDecoded;
-    }
-
-    // 5. Chuẩn hóa NFC lần cuối và làm sạch khoảng trắng thừa
-    try { str = str.normalize('NFC'); } catch (e) {}
-    return str.replace(/\s+/g, ' ').trim();
+    // Chuẩn bản v3: Tuyệt đối không can thiệp bất kỳ bảng mã hay hoán đổi ký tự nào, giữ nguyên 100% dữ liệu gốc
+    return String(raw).normalize('NFC').replace(/[\ufeff\u200b\u200c\u200d\u200e\u200f]/g, '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
   }
 
   function toVietnameseProperCase(raw) {
     if (!raw && raw !== 0) return '';
-    const decoded = decodeVietnameseEncoding(raw);
-    if (!decoded) return '';
-    return decoded.toLowerCase().replace(/(?:^|[\s\-\_\/])\S/g, a => a.toUpperCase());
+    return String(raw).normalize('NFC').trim();
   }
 
   function stripTones(s) {
@@ -212,220 +158,38 @@ var ScheduleUtils = (function () {
   }
 
   // ============================================================
-  // 3. BỘ CHỮA LÀNH DỮ LIỆU (HEALERS)
+  // 3. BỘ CHỮA LÀNH DỮ LIỆU (HEALERS) - CHUẨN BẢN V3: GIỮ NGUYÊN BẢN 100%
   // ============================================================
   function cleanAndHealPatientName(rawName, candidates = [], forceUpperCase = false) {
-    if (!rawName) return '';
-    let name = decodeVietnameseEncoding(rawName);
+    if (!rawName && rawName !== 0) return '';
+    // Chuẩn bản v3: Giữ nguyên vẹn họ tên từ file HIS / CSDL, không đoán mò hay hoán đổi
+    const name = String(rawName).normalize('NFC').trim();
     if (!name) return '';
-
-    const isAllUpper = (name === name.toUpperCase() && /[A-Z\u00C0-\u024F\u1EA0-\u1EF9]/.test(name));
-    const shouldUpper = forceUpperCase || isAllUpper;
-
-    const hasCorruptChar = /[\ufffd\u0000]/.test(name) || /\b[A-Za-z\u00C0-\u024F\u1EA0-\u1EF9]+\?[A-Za-z\u00C0-\u024F\u1EA0-\u1EF9]+\b/.test(name);
-    const hasSwallowedVowel = /\b(Trn|Lnh|Nguyn|Phm)\b/i.test(name) ||
-      /\bTr[\ufffd\?]+n\b/i.test(name) ||
-      /\bL[\ufffd\?]+nh\b/i.test(name) ||
-      /\bC[\ufffd\?]+ng\b/i.test(name) ||
-      /\bNguy[\ufffd\?]+n\b/i.test(name) ||
-      /\bPh[\ufffd\?]+m\b/i.test(name);
-
-    if (!hasCorruptChar && !hasSwallowedVowel) {
-      return shouldUpper ? name.toUpperCase() : toVietnameseProperCase(name);
-    }
-
-    // 1. Đối chiếu candidates: CHỈ chấp nhận khi toàn bộ âm tiết không dấu khớp 100%
-    const candList = Array.isArray(candidates) ? candidates : [];
-    for (const cand of candList) {
-      if (!cand) continue;
-      const cleanCand = String(cand).normalize('NFC').trim();
-      if (/[\ufffd\u0000]/.test(cleanCand) || /\b(Trn|Lnh)\b/i.test(cleanCand)) continue;
-
-      const noToneName = stripTones(name.replace(/[\ufffd\u0000\?]+/g, ' '));
-      const noToneCand = stripTones(cleanCand);
-
-      if (noToneName && noToneCand && noToneName === noToneCand) {
-        return shouldUpper ? cleanCand.toUpperCase() : toVietnameseProperCase(cleanCand);
-      }
-    }
-
-    // 2. Chữa lành ngữ âm khi không có candidate
-    let healed = name;
-    healed = healed.replace(/\bTr[\ufffd\?]+n\b/gi, 'Trần').replace(/\bTrn\b/gi, 'Trần');
-    healed = healed.replace(/\bL[\ufffd\?]+nh\b/gi, 'Lãnh').replace(/\bLnh\b/gi, 'Lãnh');
-    healed = healed.replace(/\bC[\ufffd\?]+ng\b/gi, 'Cường');
-    healed = healed.replace(/\bNguy[\ufffd\?]+n\b/gi, 'Nguyễn').replace(/\bNguyn\b/gi, 'Nguyễn');
-    healed = healed.replace(/\bPh[\ufffd\?]+m\b/gi, 'Phạm').replace(/\bPhm\b/gi, 'Phạm');
-    healed = healed.replace(/\bTh[\ufffd\?]+(?=\s+|$)/gi, 'Thị');
-    healed = healed.replace(/\bV[\ufffd\?]+n\b/gi, 'Văn').replace(/\bVn\b/gi, 'Văn');
-    healed = healed.replace(/\bD[\ufffd\?]+nh\b/gi, 'Đình');
-
-    return shouldUpper ? healed.toUpperCase() : toVietnameseProperCase(healed);
+    return forceUpperCase ? name.toUpperCase() : name;
   }
 
   function cleanAndHealProcedureName(rawProc, candidates = []) {
     if (!rawProc && rawProc !== 0) return '';
-    let str = decodeVietnameseEncoding(rawProc);
-    if (!str) return '';
-
-    const hasCorruptChar = /[\ufffd\u0000]/.test(str) || /\b[A-Za-z\u00C0-\u024F\u1EA0-\u1EF9]+\?[A-Za-z\u00C0-\u024F\u1EA0-\u1EF9]+\b/.test(str) || /\?[A-Za-z\u00C0-\u024F\u1EA0-\u1EF9]+/.test(str) || /[A-Za-z\u00C0-\u024F\u1EA0-\u1EF9]+\?+/.test(str);
-    const hasSwallowedChar = /\b(chm|ngi|bop|bam|huyet)\b/i.test(str);
-
-    let candList = Array.isArray(candidates) ? candidates : [];
-    if (!candList.length && typeof window !== 'undefined' && window.dataCache) {
-      candList = window.dataCache.proc || window.dataCache.procedures || [];
-    }
-
-    if (candList.length > 0) {
-      const cleanNoTone = stripTones(str.replace(/[\ufffd\u0000\?]+/g, ' '));
-      for (const c of candList) {
-        if (!c) continue;
-        const cName = String(c.ten || c.name || c[1] || c || '').normalize('NFC').trim();
-        if (!cName || /[\ufffd\u0000\?]/.test(cName)) continue;
-        if (cName.toLowerCase() === str.toLowerCase()) return cName;
-        if (stripTones(cName) === cleanNoTone && cleanNoTone.length >= 3) return cName;
-      }
-
-      if (hasCorruptChar || hasSwallowedChar || /ch[\ufffd\s\?]*m/i.test(str)) {
-        const regexStr = '^' + stripTones(str)
-          .replace(/[\ufffd\u0000\?]+/g, '.*')
-          .replace(/\bchm\b/gi, 'ch.*m')
-          .replace(/\bngi\b/gi, 'ng.*i')
-          .replace(/\s+/g, '\\s+') + '$';
-        try {
-          const reg = new RegExp(regexStr, 'i');
-          for (const c of candList) {
-            if (!c) continue;
-            const cName = String(c.ten || c.name || c[1] || c || '').normalize('NFC').trim();
-            if (!cName || /[\ufffd\u0000\?]/.test(cName)) continue;
-            if (reg.test(stripTones(cName))) return cName;
-          }
-        } catch (e) {}
-
-        const targetTokens = cleanNoTone.split(/\s+/).filter(t => t.length >= 2);
-        for (const c of candList) {
-          if (!c) continue;
-          const cName = String(c.ten || c.name || c[1] || c || '').normalize('NFC').trim();
-          if (!cName || /[\ufffd\u0000\?]/.test(cName)) continue;
-          const cTokens = stripTones(cName).split(/\s+/).filter(t => t.length >= 2);
-          if (targetTokens.length >= 2 && targetTokens.length === cTokens.length) {
-            let diffCount = 0;
-            for (let i = 0; i < targetTokens.length; i++) {
-              if (targetTokens[i] !== cTokens[i]) {
-                if (cTokens[i].startsWith(targetTokens[i][0]) && cTokens[i].endsWith(targetTokens[i].slice(-1))) {
-                } else {
-                  diffCount++;
-                }
-              }
-            }
-            if (diffCount === 0 || (targetTokens.length >= 4 && diffCount <= 1)) {
-              return cName;
-            }
-          }
-        }
-      }
-    }
-
-    return toVietnameseProperCase(str);
+    // Chuẩn bản v3: Giữ nguyên vẹn tên thủ thuật gốc
+    return String(rawProc).normalize('NFC').trim();
   }
 
   function cleanAndHealStaffName(rawStaff, candidates = []) {
     if (!rawStaff && rawStaff !== 0) return '';
-    let str = decodeVietnameseEncoding(rawStaff);
-    if (!str) return '';
-
-    // Lấy tiền tố chuẩn nếu có (BS., KTV., ĐD.)
-    let prefix = '';
-    const prefixMatch = str.match(/^(bs|bac si|bác sĩ|ktv|dd|đd)\s*\.?\s*/i);
-    if (prefixMatch) {
-      const p = prefixMatch[0].trim().toLowerCase();
-      if (p.startsWith('bs') || p.startsWith('bac')) prefix = 'BS. ';
-      else if (p.startsWith('ktv')) prefix = 'KTV. ';
-      else if (p.startsWith('dd') || p.startsWith('đd')) prefix = 'ĐD. ';
-    }
-
-    let candList = Array.isArray(candidates) ? candidates : [];
-    if (!candList.length && typeof window !== 'undefined' && window.dataCache) {
-      candList = window.dataCache.staff || [];
-    }
-
-    const coreClean = cleanStaffStr(str);
-    const coreCleanNoTone = stripTones(coreClean);
-
-    if (candList.length > 0) {
-      // 1. So khớp chính xác sau khi chuẩn hóa cleanStaffStr
-      for (const c of candList) {
-        if (!c) continue;
-        const cRaw = String(c.ten || c.name || c[1] || c || '').normalize('NFC').trim();
-        if (!cRaw || /[\ufffd\u0000\?]/.test(cRaw)) continue;
-        if (cleanStaffStr(cRaw) === coreClean) {
-          return cRaw;
-        }
-      }
-
-      // 2. So khớp không dấu (phục hồi dấu hoặc chữ bị lỗi mã UTF-8)
-      if (coreCleanNoTone.length >= 3) {
-        for (const c of candList) {
-          if (!c) continue;
-          const cRaw = String(c.ten || c.name || c[1] || c || '').normalize('NFC').trim();
-          if (!cRaw || /[\ufffd\u0000\?]/.test(cRaw)) continue;
-          const candClean = cleanStaffStr(cRaw);
-          if (stripTones(candClean) === coreCleanNoTone) {
-            return cRaw;
-          }
-        }
-      }
-    }
-
-    // 3. Fallback: Proper-case chuỗi đã decode
-    const proper = toVietnameseProperCase(str.replace(/^(bs|bac si|bác sĩ|ktv|dd|đd)\s*\.?\s*/i, ''));
-    return prefix ? (prefix + proper) : proper;
+    // Chuẩn bản v3: Giữ nguyên vẹn tên nhân sự gốc
+    return String(rawStaff).normalize('NFC').trim();
   }
 
   function cleanAndHealRoomName(rawRoom, candidates = []) {
     if (!rawRoom && rawRoom !== 0) return '';
-    let str = decodeVietnameseEncoding(rawRoom);
-    if (!str) return '';
-
-    let candList = Array.isArray(candidates) ? candidates : [];
-    if (!candList.length && typeof window !== 'undefined' && window.dataCache) {
-      candList = window.dataCache.room || [];
-    }
-
-    if (candList.length > 0) {
-      const cleanNoTone = stripTones(str.replace(/[\ufffd\u0000\?]+/g, ' '));
-      for (const c of candList) {
-        if (!c) continue;
-        const cName = String(c.tenPhong || c.ten || c[1] || c || '').normalize('NFC').trim();
-        if (!cName || /[\ufffd\u0000\?]/.test(cName)) continue;
-        if (cName.toLowerCase() === str.toLowerCase()) return cName;
-        if (stripTones(cName) === cleanNoTone && cleanNoTone.length >= 2) return cName;
-      }
-    }
-    return toVietnameseProperCase(str);
+    // Chuẩn bản v3: Giữ nguyên vẹn tên phòng gốc
+    return String(rawRoom).normalize('NFC').trim();
   }
 
   function cleanAndHealMachineName(rawMachine, candidates = []) {
     if (!rawMachine && rawMachine !== 0) return '';
-    let str = decodeVietnameseEncoding(rawMachine);
-    if (!str) return '';
-
-    let candList = Array.isArray(candidates) ? candidates : [];
-    if (!candList.length && typeof window !== 'undefined' && window.dataCache) {
-      candList = window.dataCache.machine || [];
-    }
-
-    if (candList.length > 0) {
-      const cleanNoTone = stripTones(str.replace(/[\ufffd\u0000\?]+/g, ' '));
-      for (const c of candList) {
-        if (!c) continue;
-        const cName = String(c.tenLoai || c.ten || c[1] || c || '').normalize('NFC').trim();
-        if (!cName || /[\ufffd\u0000\?]/.test(cName)) continue;
-        if (cName.toLowerCase() === str.toLowerCase()) return cName;
-        if (stripTones(cName) === cleanNoTone && cleanNoTone.length >= 2) return cName;
-      }
-    }
-    return toVietnameseProperCase(str);
+    // Chuẩn bản v3: Giữ nguyên vẹn tên máy gốc
+    return String(rawMachine).normalize('NFC').trim();
   }
 
   // ============================================================

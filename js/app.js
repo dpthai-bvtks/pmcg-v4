@@ -9341,13 +9341,10 @@ var dataCache = window.dataCache;
                         const hisLoaiMap = {};
                         const dataRows = roa.slice(startRow);
                         dataRows.forEach(row => {
-                            // 🛡️ Fix: decodeFn trước để giải mã TCVN3/VNI; mở rộng điều kiện phát hiện mojibake
-                            const rawTen = decodeFn(row[colTen]);
-                            const _rawTenOrig = String(row[colTen] || '');
-                            const _hasMojibake = rawTen.includes('\ufffd') || rawTen.includes('?') ||
-                                /[\u00A7-\u00AE\u00B5-\u00B9\u00BB-\u00BE]/.test(_rawTenOrig);
-                            const ten = _hasMojibake ? healFn(rawTen, candNames, false) : properFn(rawTen);
-                            const dichVu = decodeFn(row[colDichVu]);
+                            // Chuẩn bản v3: Giữ nguyên họ tên từ file Excel, không can thiệp biến đổi ký tự
+                            const rawTen = String(row[colTen] || '').normalize('NFC').trim();
+                            const ten = rawTen;
+                            const dichVu = String(row[colDichVu] || '').normalize('NFC').trim();
 
                             let loaiBn = 'NoiTru';
                             let buoiDieuTri = 'TuDong';
@@ -9733,16 +9730,13 @@ var dataCache = window.dataCache;
                     });
 
                     const patientList = rows.slice(1).filter(r => r[1]).map(r => {
-                        const rawT = decodeFn(r[1]);
-                        // 🛡️ Fix: mở rộng điều kiện phát hiện mojibake (TCVN3/VNI không tạo \ufffd)
-                        const _rawTOrig = String(r[1] || '');
-                        const _hasMojibakeT = rawT.includes('\ufffd') || rawT.includes('?') ||
-                            /[\u00A7-\u00AE\u00B5-\u00B9\u00BB-\u00BE]/.test(_rawTOrig);
-                        const ten = _hasMojibakeT ? healFn(rawT, candNames, false) : properFn(rawT);
-                        const namSinh = decodeFn(r[2]);
+                        // Chuẩn bản v3: Giữ nguyên họ tên từ file Excel, không can thiệp biến đổi ký tự
+                        const rawT = String(r[1] || '').normalize('NFC').trim();
+                        const ten = rawT;
+                        const namSinh = String(r[2] || '').trim();
                         const key = buildMatchKeyLocal(ten, namSinh);
                         const existing = existingMap[key];
-                        const phongVal = decodeFn(r[7]).trim();
+                        const phongVal = String(r[7] || '').normalize('NFC').trim();
                         return {
                             ten: ten,
                             namSinh: namSinh,
@@ -9924,17 +9918,13 @@ var dataCache = window.dataCache;
                         let totalRead = 0;
 
                         dataRows.forEach(row => {
-                            const rawTen = decodeFn(row[colTen]);
-                            // 🛡️ Fix: mở rộng điều kiện phát hiện mojibake (TCVN3/VNI không tạo \ufffd)
-                            // Giữ nguyên họ tên thực tế từ file Excel, không đoán mò gán nhầm sang BN khác
-                            const _rawTenHisOrig = String(row[colTen] || '');
-                            const _hasMojibakeHis = rawTen.includes('\ufffd') || rawTen.includes('?') ||
-                                /[\u00A7-\u00AE\u00B5-\u00B9\u00BB-\u00BE]/.test(_rawTenHisOrig);
-                            const ten = _hasMojibakeHis ? healFn(rawTen, candNames, false) : properFn(rawTen);
-                            const namSinh = decodeFn(row[colNamSinh]);
-                            const dichVu = decodeFn(row[colDichVu]);
+                            // Chuẩn bản v3: Giữ nguyên họ tên thực tế từ file Excel, không can thiệp biến đổi ký tự
+                            const rawTen = String(row[colTen] || '').normalize('NFC').trim();
+                            const ten = rawTen;
+                            const namSinh = String(row[colNamSinh] || '').trim();
+                            const dichVu = String(row[colDichVu] || '').normalize('NFC').trim();
                             // Bỏ qua cột D (idx 3 - Buồng bệnh nội trú HIS), mặc định để phòng trống
-                            const rawPhong = (colPhong >= 0 && colPhong !== 3 && row[colPhong] !== undefined) ? decodeFn(row[colPhong]).trim() : '';
+                            const rawPhong = (colPhong >= 0 && colPhong !== 3 && row[colPhong] !== undefined) ? String(row[colPhong] || '').normalize('NFC').trim() : '';
 
                             let loaiBn = 'NoiTru';
                             let buoiDieuTri = 'TuDong';
@@ -11548,11 +11538,28 @@ var dataCache = window.dataCache;
 
             const staffLoadBS = {}, staffLoadKTV = {};
             const procCountYHCT = {}, procCountPHCN = {};
+            const roomPatientsMap = {}; // phong -> Set(patientKey)
+            const machineUsageMap = {}; // may -> count
 
             if (valid.length > 0) {
                 valid.forEach(r => {
                     const nvChinh = (r[7] || '').trim();
                     const thuThuat = (r[4] || '').trim();
+                    const room = (r[3] || 'Chưa xếp phòng').trim();
+                    const may = (r[9] || '').trim();
+
+                    // 1. Thống kê bệnh nhân theo từng phòng
+                    const pKey = (r[1] || '') + '|' + (r[2] || '');
+                    if (!roomPatientsMap[room]) roomPatientsMap[room] = new Set();
+                    if (r[1]) roomPatientsMap[room].add(pKey);
+
+                    // 2. Thống kê lượt sử dụng máy móc
+                    if (may && may !== '--' && may !== 'Thủ công' && !may.toLowerCase().includes('không')) {
+                        const mList = may.split(/[,;\+]/).map(m => m.trim()).filter(Boolean);
+                        mList.forEach(m => {
+                            machineUsageMap[m] = (machineUsageMap[m] || 0) + 1;
+                        });
+                    }
 
                     // Luôn đếm thủ thuật vào YHCT/PHCN trước (bất kể có NV hay không)
                     // → đảm bảo tổng "Phân Bổ Thủ Thuật" = tổng "Tải Trọng Nhân Viên"
@@ -11571,18 +11578,23 @@ var dataCache = window.dataCache;
 
                     let isDoctor = false;
                     if (role) {
-                        isDoctor = role.includes('b\u00e1c s\u0129') || role.includes('bs');
+                        isDoctor = role.includes('bác sĩ') || role.includes('bs');
                     } else {
                         const lowerName = nvChinh.toLowerCase();
-                        isDoctor = lowerName.startsWith('bs') || lowerName.includes('b\u00e1c s\u0129');
+                        isDoctor = lowerName.startsWith('bs') || lowerName.includes('bác sĩ');
                     }
 
                     if (isDoctor) staffLoadBS[nvChinh] = (staffLoadBS[nvChinh] || 0) + 1;
                     else staffLoadKTV[nvChinh] = (staffLoadKTV[nvChinh] || 0) + 1;
                 });
             } else {
-                // Fallback: Khi chưa xếp lịch, tính phân bổ thủ thuật từ danh sách bệnh nhân hiện tại (realtime)
+                // Fallback: Khi chưa xếp lịch, tính phân bổ thủ thuật & phòng từ danh sách bệnh nhân hiện tại (realtime)
                 (dataCache.pat || []).forEach(p => {
+                    const room = (p.phong || p.room || 'Chưa xếp phòng').trim();
+                    const pKey = (p.ten || p.name || '') + '|' + (p.namSinh || '');
+                    if (!roomPatientsMap[room]) roomPatientsMap[room] = new Set();
+                    if (p.ten || p.name) roomPatientsMap[room].add(pKey);
+
                     if (p.thuThuat) {
                         const procs = String(p.thuThuat).split(',').map(x => x.trim()).filter(x => x);
                         procs.forEach(thuThuat => {
@@ -11594,35 +11606,54 @@ var dataCache = window.dataCache;
                 });
             }
 
-            const colorsBS   = ['#1a3a5c', '#1f4d7a', '#245f96', '#2a72b3', '#3080c0', '#4a94cf', '#63a5d9', '#7db5e0', '#97c5e8', '#b0d4f0'];
-            const colorsKTV  = ['#1e3d2b', '#2d5a3d', '#3e6b4f', '#4a7c5f', '#5a8d70', '#6a9e80', '#7aaf91', '#8abfa2', '#9ad0b3', '#aae0c4'];
-            const colorsYHCT = ['#5a2d0c', '#7a3d10', '#9a5015', '#b86320', '#d07830', '#d98f50', '#e2a670', '#eabd90', '#f0d1b0', '#f5e4cc'];
-            const colorsPHCN = ['#1e3d2b', '#2d5a3d', '#3e6b4f', '#4a7c5f', '#5a8d70', '#6a9e80', '#7aaf91', '#8abfa2', '#9ad0b3', '#aae0c4'];
+            const colorsBS      = ['#1a3a5c', '#1f4d7a', '#245f96', '#2a72b3', '#3080c0', '#4a94cf', '#63a5d9', '#7db5e0', '#97c5e8', '#b0d4f0'];
+            const colorsKTV     = ['#1e3d2b', '#2d5a3d', '#3e6b4f', '#4a7c5f', '#5a8d70', '#6a9e80', '#7aaf91', '#8abfa2', '#9ad0b3', '#aae0c4'];
+            const colorsYHCT    = ['#5a2d0c', '#7a3d10', '#9a5015', '#b86320', '#d07830', '#d98f50', '#e2a670', '#eabd90', '#f0d1b0', '#f5e4cc'];
+            const colorsPHCN    = ['#1e3d2b', '#2d5a3d', '#3e6b4f', '#4a7c5f', '#5a8d70', '#6a9e80', '#7aaf91', '#8abfa2', '#9ad0b3', '#aae0c4'];
+            const colorsRoom    = ['#0f766e', '#14b8a6', '#0284c7', '#38bdf8', '#2563eb', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899'];
+            const colorsMachine = ['#b45309', '#d97706', '#f59e0b', '#ea580c', '#e11d48', '#be123c', '#4338ca', '#6d28d9', '#7c3aed', '#059669'];
 
-            const barRow = (label, val, max, color) => `
+            const barRow = (label, val, max, color, unit = '') => `
                 <div class="dash-chart-row" style="display:flex;align-items:center;gap:6px;margin-bottom:7px;">
-                    <div style="width:80px;min-width:80px;font-size:0.71rem;color:#2c3e50;font-weight:600;text-align:left;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;" title="${label}">${label}</div>
+                    <div style="width:105px;min-width:105px;font-size:0.71rem;color:#2c3e50;font-weight:600;text-align:left;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;" title="${label}">${label}</div>
                     <div style="flex:1;height:12px;background:#f1f3f5;border-radius:6px;overflow:hidden;">
                         <div style="width:${(val / max * 100)}%;height:100%;background:linear-gradient(90deg,${color}cc,${color});border-radius:6px;transition:width 0.8s cubic-bezier(0.4,0,0.2,1);"></div>
                     </div>
-                    <div style="width:22px;min-width:22px;font-size:0.71rem;color:#2c3e50;font-weight:bold;text-align:right;">${val}</div>
+                    <div style="width:40px;min-width:40px;font-size:0.71rem;color:#2c3e50;font-weight:bold;text-align:right;">${val}${unit ? '<span style="font-size:0.6rem;color:#64748b;font-weight:normal;margin-left:2px;">' + unit + '</span>' : ''}</div>
                 </div>`;
 
-            const renderGroup = (containerId, entries, colors) => {
+            const renderGroup = (containerId, entries, colors, unit = '') => {
                 const el = document.getElementById(containerId);
                 if (!el) return;
                 if (!entries.length) {
-                    el.innerHTML = '<div style="padding:20px;text-align:center;color:#bbb;font-size:0.78rem;">Không có dữ liệu</div>';
+                    el.innerHTML = '<div style="padding:25px;text-align:center;color:#94a3b8;font-size:0.78rem;">Không có dữ liệu</div>';
                     return;
                 }
                 const max = entries[0][1] || 1;
-                el.innerHTML = entries.map((e, i) => barRow(e[0], e[1], max, colors[i % colors.length])).join('');
+                el.innerHTML = entries.map((e, i) => barRow(e[0], e[1], max, colors[i % colors.length], unit)).join('');
             };
 
             renderGroup('staffLoadChart-bs',   Object.entries(staffLoadBS).sort((a,b)=>b[1]-a[1]).slice(0,10),   colorsBS);
             renderGroup('staffLoadChart-ktv',  Object.entries(staffLoadKTV).sort((a,b)=>b[1]-a[1]).slice(0,10),  colorsKTV);
             renderGroup('procDistChart-yhct',  Object.entries(procCountYHCT).sort((a,b)=>b[1]-a[1]).slice(0,10), colorsYHCT);
             renderGroup('procDistChart-phcn',  Object.entries(procCountPHCN).sort((a,b)=>b[1]-a[1]).slice(0,10), colorsPHCN);
+
+            // Render Thống kê bệnh nhân theo từng phòng
+            const roomEntries = Object.entries(roomPatientsMap)
+                .map(([rm, set]) => [rm, set.size])
+                .sort((a,b) => b[1] - a[1]);
+            const totalRoomsWithBN = roomEntries.filter(e => e[1] > 0).length;
+            const totalRoomsBadge = document.getElementById('dash-total-rooms-badge');
+            if (totalRoomsBadge) totalRoomsBadge.textContent = `${totalRoomsWithBN} phòng có BN`;
+            renderGroup('roomPatientsChart', roomEntries, colorsRoom, 'BN');
+
+            // Render Thống kê số lượt sử dụng máy móc
+            const machineEntries = Object.entries(machineUsageMap)
+                .sort((a,b) => b[1] - a[1]);
+            const totalMachineTurns = machineEntries.reduce((s, e) => s + e[1], 0);
+            const totalMachinesBadge = document.getElementById('dash-total-machines-badge');
+            if (totalMachinesBadge) totalMachinesBadge.textContent = `${totalMachineTurns} lượt`;
+            renderGroup('machineUsageChart', machineEntries, colorsMachine, 'lượt');
 }
         window.loadDashboard = loadDashboard;
         window.refreshDashboard = refreshDashboard;

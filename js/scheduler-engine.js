@@ -43,8 +43,7 @@ var SchedulerEngine = (typeof window !== 'undefined' ? window : (typeof global !
 
   function toVietnameseProperCase(raw) {
     if (_U && typeof _U.toVietnameseProperCase === 'function') return _U.toVietnameseProperCase(raw);
-    const d = decodeVietnameseEncoding(raw);
-    return d ? d.toLowerCase().replace(/(?:^|[\s\-\_\/])\S/g, a => a.toUpperCase()) : '';
+    return String(raw || '').normalize('NFC').trim();
   }
 
   function cleanStaffStr(s) {
@@ -54,27 +53,28 @@ var SchedulerEngine = (typeof window !== 'undefined' ? window : (typeof global !
 
   function cleanAndHealStaffName(rawStaff, candidates = []) {
     if (_U && typeof _U.cleanAndHealStaffName === 'function') return _U.cleanAndHealStaffName(rawStaff, candidates);
-    return toVietnameseProperCase(rawStaff);
+    return String(rawStaff || '').normalize('NFC').trim();
   }
 
   function cleanAndHealPatientName(rawName, candidates = [], forceUpperCase = false) {
     if (_U && typeof _U.cleanAndHealPatientName === 'function') return _U.cleanAndHealPatientName(rawName, candidates, forceUpperCase);
-    return forceUpperCase ? String(rawName || '').toUpperCase() : toVietnameseProperCase(rawName);
+    const n = String(rawName || '').normalize('NFC').trim();
+    return forceUpperCase ? n.toUpperCase() : n;
   }
 
   function cleanAndHealProcedureName(rawProc, candidates = []) {
     if (_U && typeof _U.cleanAndHealProcedureName === 'function') return _U.cleanAndHealProcedureName(rawProc, candidates);
-    return toVietnameseProperCase(rawProc);
+    return String(rawProc || '').normalize('NFC').trim();
   }
 
   function cleanAndHealRoomName(rawRoom, candidates = []) {
     if (_U && typeof _U.cleanAndHealRoomName === 'function') return _U.cleanAndHealRoomName(rawRoom, candidates);
-    return toVietnameseProperCase(rawRoom);
+    return String(rawRoom || '').normalize('NFC').trim();
   }
 
   function cleanAndHealMachineName(rawMachine, candidates = []) {
     if (_U && typeof _U.cleanAndHealMachineName === 'function') return _U.cleanAndHealMachineName(rawMachine, candidates);
-    return toVietnameseProperCase(rawMachine);
+    return String(rawMachine || '').normalize('NFC').trim();
   }
 
 function normalizeScheduleItem(row) {
