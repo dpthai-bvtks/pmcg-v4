@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev7",
+    "version": "4.1.8-rev8",
     "releaseDate": "30/09/2026",
-    "releaseTime": "10:58 30/09/2026",
-    "notes": "Tối ưu hóa Dashboard responsive co giãn đa dạng mọi kích thước màn hình (chống tràn bảng) và mở rộng hiển thị trọn vẹn tên thiết bị máy móc."
+    "releaseTime": "11:20 30/09/2026",
+    "notes": "Khắc phục triệt để che mất số liệu thống kê Dashboard: tối ưu tỷ lệ cột grid, thanh cuộn siêu mảnh, cấu hình độ rộng số liệu theo đơn vị không bị ép lề."
 }

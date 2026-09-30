@@ -6311,3 +6311,39 @@ ormalizeScheduleItem.
 - sw.js
 - version.json
 - PM-xeplich-v4.md
+
+### Khắc Phục Triệt Để Hiện Tượng Che Mất Số Liệu Thống Kê Dashboard (30/09/2026 - v4.1.8-rev8)
+
+**Yêu cầu của người dùng:**
+- Trong bảng Dashboard (đặc biệt là cột Tải trọng nhân viên và Phân bố thủ thuật), phần số liệu bên phải bị cắt mất 1 phần (ví dụ "37" bị che thành "3", "48" bị che thành "4").
+
+**Nguyên nhân gốc rễ:**
+1. **Thiết lập chiều rộng cứng `min-width: 44px`:** Trước đó hàm `barRow` dùng chung `min-width: 44px` cho mọi ô hiển thị giá trị. Với các số liệu 2 chữ số không kèm đơn vị (như tải trọng bác sĩ, KTV, số ca YHCT, PHCN), việc giữ chỗ 44px chiếm dụng quá nhiều không gian ngang, đẩy phần tử ra mép phải.
+2. **Ảnh hưởng của thanh cuộn mặc định Windows (17px):** Khi danh sách dài quá 220px (như cột KTV hoặc PHCN), thanh cuộn mặc định xuất hiện đè lên phần lề phải (padding-right chỉ 2px), che lấp một nửa số liệu.
+3. **Phân bổ tỷ lệ cột trong lưới `.dashboard-5col`:** Cột 2 (Tải trọng nhân viên) và Cột 3 (Phân bố thủ thuật) đều chứa tới 2 danh sách con song song (BS | KTV và YHCT | PHCN) nhưng lại nhận tỷ lệ tương đương các cột đơn.
+
+**Phân tích & Triển khai giải pháp:**
+1. **Động lực hóa độ rộng số liệu theo loại đơn vị (js/app.js):**
+   - Với số liệu thông thường không có đơn vị: Giảm `valWidth` xuống **22px** (đủ rộng rãi cho số 2 chữ số chỉ ~13px), giải phóng 22px quý giá cho thanh tiến trình và nhãn.
+   - Với đơn vị phòng (`'BN'`): Cố định `36px`.
+   - Với đơn vị máy móc (`'lượt'`): Cố định `46px`.
+   - Giảm khoảng cách lề `gap` từ 6px xuống **4px** cho các bảng chia đôi.
+   - Cân chỉnh `labelWidth` chuẩn 58px cho Bác sĩ, KTV, YHCT, PHCN.
+2. **Trang bị thanh cuộn siêu mảnh `.dash-chart-scroll` (css/style.css):**
+   - Áp dụng thanh cuộn mỏng tinh tế (`scrollbar-width: thin; width: 4px; border-radius: 4px;`), nền trong suốt.
+   - Tăng `padding-right: 4px` cho toàn bộ các khung cuộn `staffLoadChart-bs`, `staffLoadChart-ktv`, `procDistChart-yhct`, `procDistChart-phcn`, `roomPatientsChart`, `machineUsageChart`.
+   - Loại bỏ hoàn toàn việc thanh cuộn đè lên số liệu.
+3. **Tái cấu trúc lưới chia đôi & Tăng tỷ lệ không gian (index.html & css/style.css):**
+   - Thay thế `display: flex` bằng `display: grid; grid-template-columns: 1fr 1fr; gap: 8px;` có `min-width: 0` cho cả hai cột con trong Panel 2 và Panel 3, đảm bảo chia đều 50-50 hoàn hảo.
+   - Nâng tỷ lệ cột trong `.dashboard-5col`: `0.72fr 1.48fr 1.48fr 0.88fr 1.15fr`. Cột Tải trọng và Phân bố thủ thuật nhận tới **26%** chiều rộng mỗi cột, tăng mạnh không gian hiển thị.
+4. **Quy chuẩn phiên bản theo RULES.md:**
+   - Nâng phiên bản cache buster lên `4.1.8-rev8`, timestamp: `11:20 30/09/2026`.
+   - Đồng bộ `version.json`, `sw.js` (`pmcg-v4-cache-4.1.8-rev8`), `index.html`, `css/style.css`, `js/app.js`.
+
+**File sửa đổi:**
+- css/style.css
+- index.html
+- js/app.js
+- sw.js
+- version.json
+- PM-xeplich-v4.md

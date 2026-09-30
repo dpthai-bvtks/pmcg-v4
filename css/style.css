@@ -1256,8 +1256,8 @@
 
         .dashboard-5col {
             display: grid;
-            grid-template-columns: minmax(170px, 0.82fr) minmax(270px, 1.25fr) minmax(270px, 1.25fr) minmax(190px, 0.95fr) minmax(240px, 1.2fr);
-            gap: 12px;
+            grid-template-columns: minmax(160px, 0.72fr) minmax(280px, 1.48fr) minmax(280px, 1.48fr) minmax(180px, 0.88fr) minmax(230px, 1.15fr);
+            gap: 10px;
             align-items: stretch;
             width: 100%;
             max-width: 100%;
@@ -1265,7 +1265,7 @@
         }
 
         .dashboard-5col .dash-panel {
-            padding: 14px 12px;
+            padding: 12px 10px;
             display: flex;
             flex-direction: column;
             min-width: 0; /* Ngăn chặn triệt để con grid ép tràn khung */
@@ -1273,10 +1273,26 @@
             overflow: hidden;
         }
 
-        /* Khi màn hình siêu rộng (>= 1500px): Dàn phẳng 5 cột rộng rãi */
+        /* Thanh cuộn siêu mảnh cho các danh sách biểu đồ trên dashboard */
+        .dash-chart-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 transparent;
+        }
+        .dash-chart-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .dash-chart-scroll::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 4px;
+        }
+        .dash-chart-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        /* Khi màn hình siêu rộng (>= 1500px): Dàn phẳng 5 cột rộng rãi với tỷ lệ ưu tiên 2 bảng tải trọng & thủ thuật */
         @media (min-width: 1500px) {
             .dashboard-5col {
-                grid-template-columns: 0.85fr 1.3fr 1.3fr 0.95fr 1.3fr;
+                grid-template-columns: 0.72fr 1.48fr 1.48fr 0.88fr 1.15fr;
             }
         }
 

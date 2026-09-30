@@ -11613,16 +11613,20 @@ var dataCache = window.dataCache;
             const colorsRoom    = ['#0f766e', '#14b8a6', '#0284c7', '#38bdf8', '#2563eb', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899'];
             const colorsMachine = ['#b45309', '#d97706', '#f59e0b', '#ea580c', '#e11d48', '#be123c', '#4338ca', '#6d28d9', '#7c3aed', '#059669'];
 
-            const barRow = (label, val, max, color, unit = '', labelWidth = 72) => `
-                <div class="dash-chart-row" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;width:100%;box-sizing:border-box;">
+            const barRow = (label, val, max, color, unit = '', labelWidth = 58) => {
+                const valWidth = unit ? (unit === 'lượt' ? '46px' : '36px') : '22px';
+                const gap = unit ? 5 : 4;
+                return `
+                <div class="dash-chart-row" style="display:flex;align-items:center;gap:${gap}px;margin-bottom:5px;width:100%;box-sizing:border-box;">
                     <div style="width:${labelWidth}px;min-width:${labelWidth}px;max-width:${labelWidth}px;font-size:0.71rem;color:#2c3e50;font-weight:600;text-align:left;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;" title="${label}">${label}</div>
-                    <div style="flex:1;min-width:20px;height:10px;background:#f1f3f5;border-radius:5px;overflow:hidden;">
+                    <div style="flex:1;min-width:14px;height:9px;background:#f1f3f5;border-radius:5px;overflow:hidden;">
                         <div style="width:${Math.max(2, Math.round(val / max * 100))}%;height:100%;background:linear-gradient(90deg,${color}cc,${color});border-radius:5px;transition:width 0.8s cubic-bezier(0.4,0,0.2,1);"></div>
                     </div>
-                    <div style="min-width:44px;font-size:0.71rem;color:#2c3e50;font-weight:700;text-align:right;white-space:nowrap;flex-shrink:0;">${val}${unit ? '<span style="font-size:0.6rem;color:#64748b;font-weight:normal;margin-left:2px;">' + unit + '</span>' : ''}</div>
+                    <div style="width:${valWidth};min-width:${valWidth};font-size:0.71rem;color:#2c3e50;font-weight:700;text-align:right;white-space:nowrap;flex-shrink:0;">${val}${unit ? '<span style="font-size:0.6rem;color:#64748b;font-weight:normal;margin-left:2px;">' + unit + '</span>' : ''}</div>
                 </div>`;
+            };
 
-            const renderGroup = (containerId, entries, colors, unit = '', labelWidth = 72) => {
+            const renderGroup = (containerId, entries, colors, unit = '', labelWidth = 58) => {
                 const el = document.getElementById(containerId);
                 if (!el) return;
                 if (!entries.length) {
@@ -11633,10 +11637,10 @@ var dataCache = window.dataCache;
                 el.innerHTML = entries.map((e, i) => barRow(e[0], e[1], max, colors[i % colors.length], unit, labelWidth)).join('');
             };
 
-            renderGroup('staffLoadChart-bs',   Object.entries(staffLoadBS).sort((a,b)=>b[1]-a[1]).slice(0,10),   colorsBS, '', 75);
-            renderGroup('staffLoadChart-ktv',  Object.entries(staffLoadKTV).sort((a,b)=>b[1]-a[1]).slice(0,10),  colorsKTV, '', 75);
-            renderGroup('procDistChart-yhct',  Object.entries(procCountYHCT).sort((a,b)=>b[1]-a[1]).slice(0,10), colorsYHCT, '', 75);
-            renderGroup('procDistChart-phcn',  Object.entries(procCountPHCN).sort((a,b)=>b[1]-a[1]).slice(0,10), colorsPHCN, '', 75);
+            renderGroup('staffLoadChart-bs',   Object.entries(staffLoadBS).sort((a,b)=>b[1]-a[1]).slice(0,10),   colorsBS, '', 58);
+            renderGroup('staffLoadChart-ktv',  Object.entries(staffLoadKTV).sort((a,b)=>b[1]-a[1]).slice(0,10),  colorsKTV, '', 58);
+            renderGroup('procDistChart-yhct',  Object.entries(procCountYHCT).sort((a,b)=>b[1]-a[1]).slice(0,10), colorsYHCT, '', 58);
+            renderGroup('procDistChart-phcn',  Object.entries(procCountPHCN).sort((a,b)=>b[1]-a[1]).slice(0,10), colorsPHCN, '', 58);
 
             // Render Thống kê bệnh nhân theo từng phòng
             const roomEntries = Object.entries(roomPatientsMap)
@@ -11645,15 +11649,15 @@ var dataCache = window.dataCache;
             const totalRoomsWithBN = roomEntries.filter(e => e[1] > 0).length;
             const totalRoomsBadge = document.getElementById('dash-total-rooms-badge');
             if (totalRoomsBadge) totalRoomsBadge.textContent = `${totalRoomsWithBN} phòng`;
-            renderGroup('roomPatientsChart', roomEntries, colorsRoom, 'BN', 90);
+            renderGroup('roomPatientsChart', roomEntries, colorsRoom, 'BN', 72);
 
-            // Render Thống kê số lượt sử dụng máy móc (labelWidth 135px cho tên máy hiển thị trọn vẹn)
+            // Render Thống kê số lượt sử dụng máy móc (labelWidth 115px cho tên máy hiển thị trọn vẹn)
             const machineEntries = Object.entries(machineUsageMap)
                 .sort((a,b) => b[1] - a[1]);
             const totalMachineTurns = machineEntries.reduce((s, e) => s + e[1], 0);
             const totalMachinesBadge = document.getElementById('dash-total-machines-badge');
             if (totalMachinesBadge) totalMachinesBadge.textContent = `${totalMachineTurns} lượt`;
-            renderGroup('machineUsageChart', machineEntries, colorsMachine, 'lượt', 135);
+            renderGroup('machineUsageChart', machineEntries, colorsMachine, 'lượt', 115);
 }
         window.loadDashboard = loadDashboard;
         window.refreshDashboard = refreshDashboard;
