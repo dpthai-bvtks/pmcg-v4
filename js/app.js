@@ -5361,8 +5361,8 @@ var dataCache = window.dataCache;
                 return `<tr class="editable-row" data-pat-index="${idx}" onclick="editPatient(parseInt(this.dataset.patIndex))" style="${item.gioRa ? 'background:#f8d7da;opacity:0.8;' : ''}" title="Bấm sửa (Phím Delete để xóa)">
             <td>${i + 1}</td>
             <td><strong>${escapeHtml(item.ten)}</strong> ${nhanTrangThai}</td>
-            <td style="text-align:center;">${maBNCell}</td>
             <td>${escapeHtml(item.namSinh || '')}</td>
+            <td style="text-align:center;">${maBNCell}</td>
             <td style="text-align:center;">${item.loai_bn === 'NgoaiTru' ? '<span style="color:#d35400;font-weight:bold;font-size:11px;">Ngoại trú</span>' : '<span style="color:#27ae60;font-weight:bold;font-size:11px;">Nội trú</span>'}</td>
             <td>${escapeHtml(item.ngayVao || '')}</td>
             <td style="text-align:center;">${displayGioYLenh ? `<strong style="color:#e67e22">${escapeHtml(displayGioYLenh)}</strong>` : ''}</td>

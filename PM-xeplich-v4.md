@@ -6512,3 +6512,21 @@ ormalizeScheduleItem.
 - version.json
 - PM-xeplich-v4.md
 
+### Đồng Bộ Thứ Tự: Tên Bệnh Nhân -> Năm Sinh -> Mã Bệnh Nhân (30/09/2026 - v4.1.8-rev13)
+
+**Chi tiết điều chỉnh:**
+1. **Form Sidebar Bệnh Nhân (`index.html`):**
+   - Hàng 1: **Tên BN** (`pat-name`)
+   - Hàng 2: **Năm sinh** (`pat-year`)
+   - Hàng 3: **Mã BN** (`pat-code`)
+2. **Bảng Bệnh Nhân (`#patients-table` trong `index.html` & `js/app.js`):**
+   - Cột 1: STT
+   - Cột 2: **Tên BN**
+   - Cột 3: **Năm Sinh**
+   - Cột 4: **Mã BN**
+   - Cột 5: Loại ĐT ...
+   - Đồng bộ hoàn hảo với thứ tự các cột khi xuất file Excel (`exportPatients`).
+3. **Đồng bộ phiên bản:**
+   - Phiên bản: `4.1.8-rev13`, timestamp: `19:05 30/09/2026`.
+
+

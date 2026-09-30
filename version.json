@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev12",
+    "version": "4.1.8-rev13",
     "releaseDate": "30/09/2026",
-    "releaseTime": "18:45 30/09/2026",
-    "notes": "Hiển thị đầy đủ ô nhập Mã BN trên form Bệnh nhân, bổ sung cột Mã BN trên bảng bệnh nhân, nâng cấp thuật toán so khớp nạp file HIS cập nhật thông tin bệnh nhân cũ mà không bị tạo trùng lặp."
+    "releaseTime": "19:05 30/09/2026",
+    "notes": "Đồng bộ thứ tự trường form và cột bảng: Tên bệnh nhân -> Năm sinh -> Mã bệnh nhân."
 }
