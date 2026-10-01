@@ -686,23 +686,36 @@
             }
 
             // Cấu hình khung giờ và độ rộng mỗi slot (30 phút)
+            const isWinter = (typeof window !== 'undefined' && typeof window.getCurrentStaffSeason === 'function' && window.getCurrentStaffSeason() === 'winter') ||
+                (Array.isArray(safeSched) && safeSched.some(r => {
+                    const e = timeToMinutes(r.gioKetThuc);
+                    return e > 690 && e <= 750;
+                })) ||
+                (Array.isArray(window.dataCache?.staff) && window.dataCache.staff.some(s => (s.thoiGianLam || '').includes('12:00')));
+
+            const morningLimitMin = isWinter ? 720 : 690;
+            const morningTicks = isWinter 
+                ? ['07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30']
+                : ['07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00'];
+            const afternoonTicks = ['13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00'];
+
             let slotTicks = [];
             let slotWidth = 95; // px mỗi 30 phút
-            let morningSlotCount = 8; // 07:30, 08:00, 08:30, 09:00, 09:30, 10:00, 10:30, 11:00 (kết thúc 11:30)
-            let afternoonSlotCount = 7; // 13:00, 13:30, 14:00, 14:30, 15:00, 15:30, 16:00 (kết thúc 16:30)
+            let morningSlotCount = morningTicks.length;
+            let afternoonSlotCount = afternoonTicks.length;
             let totalCanvasWidth = 0;
 
             if (timelineShift === 'morning') {
-                slotTicks = ['07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00'];
-                slotWidth = 130;
+                slotTicks = morningTicks;
+                slotWidth = isWinter ? 115 : 130;
                 totalCanvasWidth = slotTicks.length * slotWidth;
             } else if (timelineShift === 'afternoon') {
-                slotTicks = ['13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00'];
+                slotTicks = afternoonTicks;
                 slotWidth = 140;
                 totalCanvasWidth = slotTicks.length * slotWidth;
             } else {
-                slotTicks = ['07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00'];
-                slotWidth = 95;
+                slotTicks = [...morningTicks, ...afternoonTicks];
+                slotWidth = isWinter ? 88 : 95;
                 totalCanvasWidth = slotTicks.length * slotWidth;
             }
 
@@ -716,9 +729,9 @@
             // Hàm tính toán pixel Left và Width chính xác
             function calcCardPixel(startMin, endMin) {
                 if (timelineShift === 'morning') {
-                    if (startMin >= 690 || endMin <= 450) return null;
+                    if (startMin >= morningLimitMin || endMin <= 450) return null;
                     const s = Math.max(450, startMin);
-                    const e = Math.min(690, endMin);
+                    const e = Math.min(morningLimitMin, endMin);
                     const left = ((s - 450) / 30) * slotWidth;
                     const width = Math.max(65, ((e - s) / 30) * slotWidth - 3);
                     return { left, width };
@@ -731,9 +744,9 @@
                     return { left, width };
                 } else {
                     // Cả ngày
-                    if (startMin < 690) {
+                    if (startMin < morningLimitMin) {
                         const s = Math.max(450, startMin);
-                        const e = Math.min(690, endMin);
+                        const e = Math.min(morningLimitMin, endMin);
                         const left = ((s - 450) / 30) * slotWidth;
                         const width = Math.max(55, ((e - s) / 30) * slotWidth - 3);
                         return { left, width };
@@ -848,7 +861,8 @@
                 // Đường phân cách giờ nghỉ trưa (nếu xem cả ngày)
                 if (timelineShift === 'all') {
                     const morningBoundary = morningSlotCount * slotWidth;
-                    html += `<div class="timeline-lunch-divider" style="left: ${morningBoundary}px;" title="Nghỉ trưa (11:30 - 13:00)"></div>`;
+                    const lunchStartText = isWinter ? '12:00' : '11:30';
+                    html += `<div class="timeline-lunch-divider" style="left: ${morningBoundary}px;" title="Nghỉ trưa (${lunchStartText} - 13:00)"></div>`;
                 }
 
                 // Render từng Card với tọa độ Left, Width và Top (theo Lane)

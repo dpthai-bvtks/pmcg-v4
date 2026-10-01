@@ -396,11 +396,22 @@
       const info = db.thuThuatInfo ? (db.thuThuatInfo[String(tt).toLowerCase()] || []) : [];
       return String(info[3] || '').trim().toUpperCase() === 'YHCT';
     };
+    const isWinterCp = (typeof window !== 'undefined' && typeof window.getCurrentStaffSeason === 'function' && window.getCurrentStaffSeason() === 'winter') ||
+      (Array.isArray(db?.rawStaff) && db.rawStaff.some(s => s[3] && (s[3].includes('12:00') || s[3].includes('08:00-12:00'))));
+    let baseMorningEnd = isWinterCp ? 720 : 690;
+    let baseMorningStart = isWinterCp ? 480 : 450;
+    if (Array.isArray(db?.rawStaff)) {
+      const mEnds = db.rawStaff.map(s => {
+        const ca1 = (s[3] || '').split(',')[0];
+        return (ca1 && ca1.includes('-')) ? t2m(ca1.split('-')[1].trim()) : 0;
+      }).filter(m => m >= 660 && m <= 780);
+      if (mEnds.length > 0) baseMorningEnd = Math.max(...mEnds);
+    }
     const yhctLunchMins = Math.max(0, parseInt(db.settings?.yhctLunch ?? 0) || 0);
     const yhctEndMins = Math.max(0, parseInt(db.settings?.yhctEnd ?? 0) || 0);
-    const morningShiftEnd = 690 + yhctLunchMins;
+    const morningShiftEnd = baseMorningEnd + yhctLunchMins;
     const afternoonShiftEnd = 990 + yhctEndMins;
-    const availableShifts = [[450, morningShiftEnd], [780, afternoonShiftEnd]];
+    const availableShifts = [[baseMorningStart, morningShiftEnd], [780, afternoonShiftEnd]];
     const timeStep = 5; // Quét từng bước 5 phút chính xác
 
     // Lặp qua từng ca rớt để tìm vị trí cứu ca
@@ -497,8 +508,8 @@
           // Ràng buộc 0: Giờ vào viện & giờ ra viện của bệnh nhân
           if (candStart < arriveTime || candEnd > leaveTime) continue;
           const isYHCT = isProcYhctGlobal(tenTT);
-          if (candStart < 690 && candEnd > (690 + (isYHCT ? yhctLunchMins : 0))) continue;
-          if (candStart >= 690 && candStart < 780) continue;
+          if (candStart < baseMorningEnd && candEnd > (baseMorningEnd + (isYHCT ? yhctLunchMins : 0))) continue;
+          if (candStart >= baseMorningEnd && candStart < 780) continue;
           if (candEnd > (990 + (isYHCT ? yhctEndMins : 0))) continue;
           if (loaiBN === 'NgoaiTru') {
             if (buoiDieuTri === 'Sang' && candEnd > morningShiftEnd) continue;

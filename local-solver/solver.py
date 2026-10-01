@@ -118,13 +118,15 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
     yhct_lunch = max(0, int(settings.get("yhctLunch", 0) or 0))
     yhct_end = max(0, int(settings.get("yhctEnd", 0) or 0))
 
-    morning_end = 690 + yhct_lunch
-    afternoon_end = 990 + yhct_end
-    lunch_start = 690
-    lunch_end = 780
-
-    thu_thuat_info = db.get("thuThuatInfo", {})
     raw_staff = db.get("rawStaff", [])
+    # Tự động nhận diện mùa đông nếu có nhân sự làm việc đến 12:00 hoặc cấu hình mùa
+    is_winter = any("12:00" in str(r[3] if len(r) > 3 else "") for r in raw_staff)
+    morning_base_end = 720 if is_winter else 690
+
+    morning_end = morning_base_end + yhct_lunch
+    afternoon_end = 990 + yhct_end
+    lunch_start = morning_base_end
+    lunch_end = 780
     raw_patients = db.get("rawPatients", [])
     room_beds = db.get("roomBeds", {})
     room_machines = db.get("roomMachines", {})

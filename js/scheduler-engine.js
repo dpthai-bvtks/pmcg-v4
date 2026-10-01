@@ -293,8 +293,37 @@ function mutate(rawPatients, randFn, droppedNames) {
 function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 1, crowdedOverride = -1, weights = { drop: 10000, overtime: 2, imbalance: 0.1 }) {
   const rand = createSeededRandom(seedVal);
   const OVERTIME_ALLOWANCE = 5;
-  const defaultShift = [[450, 690], [780, 1014]];
-  let startOfDay = 450, endOfDay = 1014;
+  // ❄️ TỰ ĐỘNG NHẬN DIỆN MÙA ĐÔNG / MÙA HÈ HOẶC CA LÀM VIỆC THỰC TẾ CỦA KHOA
+  const isWinterSeason = (typeof window !== 'undefined' && typeof window.getCurrentStaffSeason === 'function' && window.getCurrentStaffSeason() === 'winter') ||
+    (Array.isArray(db?.rawStaff) && db.rawStaff.some(s => s[3] && (s[3].includes('12:00') || s[3].includes('08:00-12:00'))));
+
+  let morningShiftStart = isWinterSeason ? 480 : 450; // 08:00 hoặc 07:30
+  let morningShiftEnd = isWinterSeason ? 720 : 690;   // 12:00 hoặc 11:30
+  const lunchEnd = 780; // 13:00
+
+  if (Array.isArray(db?.rawStaff)) {
+    const mEnds = [];
+    const mStarts = [];
+    db.rawStaff.forEach(s => {
+      const shiftStr = s[3];
+      if (shiftStr && shiftStr.includes('-')) {
+        const ca1 = shiftStr.split(',')[0];
+        if (ca1 && ca1.includes('-')) {
+          const [sStr, eStr] = ca1.split('-');
+          const sMin = t2m(sStr.trim());
+          const eMin = t2m(eStr.trim());
+          if (sMin > 0 && sMin < 600) mStarts.push(sMin);
+          if (eMin >= 660 && eMin <= 780) mEnds.push(eMin);
+        }
+      }
+    });
+    if (mEnds.length > 0) morningShiftEnd = Math.max(...mEnds);
+    if (mStarts.length > 0) morningShiftStart = Math.min(...mStarts);
+  }
+
+  const defaultShift = [[morningShiftStart, morningShiftEnd], [lunchEnd, 1014]];
+  let startOfDay = Math.min(450, morningShiftStart);
+  let endOfDay = 1014;
   let isBackfill = false;
 
   const reservedMachines = new Set();
@@ -695,11 +724,11 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
       // TuDong: hệ thống tự chọn buổi - không giới hạn, chỉ cần trong giờ làm
       if (buoiDieuTri === 'Sang') {
-        if (tNow < 450 || gioKetThuc > (690 + allowedOvertimeAtLunch)) {
+        if (tNow < morningShiftStart || gioKetThuc > (morningShiftEnd + allowedOvertimeAtLunch)) {
           return false;
         }
       } else if (buoiDieuTri === 'Chieu') {
-        if (tNow < 780 || gioKetThuc > (endOfDay + allowedOvertimeAtEnd)) {
+        if (tNow < lunchEnd || gioKetThuc > (endOfDay + allowedOvertimeAtEnd)) {
           return false;
         }
       }
@@ -792,8 +821,8 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       const subNeedsTeardown = hasTeardown && (isDienChamProc || isHaoChamProc || isThuyChamProc);
 
       // 🔒 RÀNG BUỘC CHẶN GIỜ NGHỈ TRƯA VÀ HẾT CA: Tuân thủ tuyệt đối cài đặt yhctLunch và yhctEnd
-      if (tNow < 690 && gioKetThuc > (690 + allowedOvertimeAtLunch)) continue;
-      if (tNow >= 690 && tNow < 780) continue;
+      if (tNow < morningShiftEnd && gioKetThuc > (morningShiftEnd + allowedOvertimeAtLunch)) continue;
+      if (tNow >= morningShiftEnd && tNow < lunchEnd) continue;
       if (gioKetThuc > (endOfDay + allowedOvertimeAtEnd)) continue;
       if (patient.leave !== 9999 && gioKetThuc > patient.leave) continue;
       if (patient.busy.some(b => is_overlap(tNow, gioKetThuc, b[0], b[1]))) continue;
@@ -1491,8 +1520,18 @@ function getPatientSignature(pat) {
       });
     }
 
+    const isWinterComp = (typeof window !== 'undefined' && typeof window.getCurrentStaffSeason === 'function' && window.getCurrentStaffSeason() === 'winter') ||
+      (Array.isArray(db?.rawStaff) && db.rawStaff.some(s => s[3] && (s[3].includes('12:00') || s[3].includes('08:00-12:00'))));
+    let morningBaseEnd = isWinterComp ? 720 : 690;
+    if (Array.isArray(db?.rawStaff)) {
+      const mEnds = db.rawStaff.map(s => {
+        const ca1 = (s[3] || '').split(',')[0];
+        return (ca1 && ca1.includes('-')) ? t2m(ca1.split('-')[1].trim()) : 0;
+      }).filter(m => m >= 660 && m <= 780);
+      if (mEnds.length > 0) morningBaseEnd = Math.max(...mEnds);
+    }
     const yhctLunchMins = Math.max(0, parseInt(db?.settings?.yhctLunch ?? 0) || 0);
-    const LUNCH_START = 690 + yhctLunchMins; // 11:30 + yhctLunch
+    const LUNCH_START = morningBaseEnd + yhctLunchMins; // 12:00 hoặc 11:30 + yhctLunch
     const LUNCH_END = 780;   // 13:00
 
     // 1. Helper: Kiểm tra năng lực chuyên môn của nhân sự đối với thủ thuật
@@ -3337,14 +3376,15 @@ const UnscheduledDiagnosticEngine = (function () {
     }
 
     if (loaiBN === 'NgoaiTru' && causeCode !== 'BOTTLENECK_MACHINE') {
+      const mEndText = isWinterSeason ? '12:00' : '11:30';
       if (buoiDieuTri === 'Sang') {
         causeCode = 'OUTPATIENT_SESSION_LIMIT';
         causeTitle = '🟠 Xung đột ca Sáng Ngoại trú';
-        causeDetail = `Bệnh nhân Ngoại trú được đăng ký đi ca Sáng (07:00 - 11:30) nhưng các tài nguyên Sáng đã kín chỗ. Buổi Chiều (13:00 - 16:30) còn khoảng trống khả thi.`;
+        causeDetail = `Bệnh nhân Ngoại trú được đăng ký đi ca Sáng (kết thúc ${mEndText}) nhưng các tài nguyên Sáng đã kín chỗ. Buổi Chiều (13:00 - 16:30) còn khoảng trống khả thi.`;
       } else if (buoiDieuTri === 'Chieu') {
         causeCode = 'OUTPATIENT_SESSION_LIMIT';
         causeTitle = '🟠 Xung đột ca Chiều Ngoại trú';
-        causeDetail = `Bệnh nhân Ngoại trú được đăng ký đi ca Chiều (13:00 - 16:30) nhưng các tài nguyên Chiều đã kín chỗ. Buổi Sáng (07:00 - 11:30) còn khoảng trống khả thi.`;
+        causeDetail = `Bệnh nhân Ngoại trú được đăng ký đi ca Chiều (13:00 - 16:30) nhưng các tài nguyên Chiều đã kín chỗ. Buổi Sáng (kết thúc ${mEndText}) còn khoảng trống khả thi.`;
       }
     }
 
@@ -3429,10 +3469,10 @@ const UnscheduledDiagnosticEngine = (function () {
     const scanWindows = [
       { label: 'Sáng sớm (07:15 - 08:30)', from: 435, to: 510, overtime: false },
       { label: 'Giữa ca sáng (08:30 - 10:30)', from: 510, to: 630, overtime: false },
-      { label: 'Cuối ca sáng (10:30 - 11:30)', from: 630, to: 690, overtime: false },
+      { label: `Cuối ca sáng (10:30 - ${m2t(morningShiftEnd)})`, from: 630, to: morningShiftEnd, overtime: false },
       { label: 'Đầu ca chiều (13:00 - 14:30)', from: 780, to: 870, overtime: false },
       { label: 'Giữa ca chiều (14:30 - 16:30)', from: 870, to: 990, overtime: false },
-      { label: 'Làm lố cuối ca sáng (11:15 - 11:45)', from: 675, to: 705, overtime: true }
+      { label: `Làm lố cuối ca sáng (${m2t(morningShiftEnd - 15)} - ${m2t(morningShiftEnd + 15)})`, from: morningShiftEnd - 15, to: morningShiftEnd + 15, overtime: true }
     ];
 
     // Ưu tiên thứ tự quét theo buổi điều trị của bệnh nhân

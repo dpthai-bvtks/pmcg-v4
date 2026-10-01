@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev22",
+    "version": "4.1.8-rev23",
     "releaseDate": "01/10/2026",
-    "releaseTime": "10:45 01/10/2026",
-    "notes": "Khắc phục triệt để lỗi mất con trỏ chuột khi nhập Bảng Chấm Công: bảo toàn focus khi re-render nền, đồng bộ 100% ô ngày thành input (placeholder Nghỉ thông minh cho Chủ Nhật), tự bôi đen khi click, hỗ trợ phím mũi tên và Enter điều hướng liên tục không cần chạm chuột."
+    "releaseTime": "11:30 01/10/2026",
+    "notes": "Mở rộng toàn diện khung giờ ca sáng đến 12:00 khi chuyển sang Mùa đông: Tự động nhận diện ca làm việc 12:00 cho cả Scheduler Engine, CP Solver và Mini PC Solver; cho phép xếp thủ thuật bình thường trong khung 11:30 - 12:00; điều chỉnh giờ nghỉ trưa thành 12:00 - 13:00; mở rộng biểu đồ Timeline thêm slot 11:30 - 12:00 với vạch phân cách trưa và tọa độ card chuẩn xác."
 }

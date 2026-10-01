@@ -6845,3 +6845,56 @@ ormalizeScheduleItem.
 - `sw.js`
 - `version.json`
 - `PM-xeplich-v4.md`
+
+---
+
+### [v4.1.8-rev23] - 11:30 01/10/2026: Mở Rộng Toàn Diện Ca Sáng Đến 12:00 Khi Chuyển Sang Mùa Đông Cho Tất Cả Bộ Xếp Lịch & Biểu Đồ Timeline
+
+**Hiện tượng & Phản hồi người dùng:**
+- Người dùng phản ánh: *"vì đổi giờ làm việc từ mùa hè sang mùa đông (ca sáng làm đến 12:00) nhưng lại chỉ xếp thủ thuật đến 11:30 là hết cỡ, xem lại đi"*.
+- Khi chuyển đổi lịch làm việc mùa hè (07:30 - 11:30, 13:00 - 16:30) sang mùa đông (08:00 - 12:00, 13:00 - 16:30), ca sáng của nhân sự làm việc đến 12:00 nhưng thuật toán xếp lịch và biểu đồ Timeline chỉ cho phép xếp thủ thuật tối đa đến 11:30. Khung giờ 11:30 - 12:00 bị bỏ trống và bị coi là giờ nghỉ trưa, bệnh nhân đăng ký đi ca sáng cũng bị chặn không xếp được sau 11:30.
+
+**Nguyên nhân gốc rễ (Root Cause):**
+1. **Thuật toán xếp lịch chính (`js/scheduler-engine.js`) bị giới hạn cứng:**
+   - Hằng số mặc định `defaultShift` và biến ranh giới ca sáng bị gán cứng `690` (11:30).
+   - Hàm `tryScheduleOne` có điều kiện kiểm tra cứng: `if (tNow < 690 && gioKetThuc > (690 + allowedOvertimeAtLunch)) continue;` và `if (tNow >= 690 && tNow < 780) continue;`. Toàn bộ khung giờ từ 11:30 đến 13:00 bị mặc định là giờ nghỉ trưa, chặn đứng mọi thủ thuật bắt đầu hoặc kết thúc trong khung này.
+   - Bệnh nhân ngoại trú đăng ký ca Sáng (`buoiDieuTri === 'Sang'`) bị ép điều kiện `cEnd <= 690`, không được phép xếp tới 12:00.
+   - Các thuật toán dồn lịch (`compactTimelineGaps`) và quét cửa sổ (`scanWindows`) đặt `LUNCH_START = 690`.
+2. **Bộ giải toán CP Solver (`js/cp-solver.js` & `local-solver/solver.py`) cũng giới hạn 690:**
+   - Trong CP Solver trên web và Mini PC solver bằng Python, `morning_end` và `lunch_start` đều đặt bằng `690` (11:30), khiến mô hình toán coi bất kỳ thủ thuật nào chạy qua 11:30 là phạm quy định nghỉ trưa.
+3. **Biểu đồ Timeline (`js/modules/app-export-reports.js`) thiếu slot 11:30 - 12:00:**
+   - Mảng `morningTicks` chỉ render đến 11:00 (slot cuối 11:00 - 11:30). Hàm `calcCardPixel` trả về `null` cho bất kỳ ca nào có thời gian bắt đầu >= 690, khiến thẻ thủ thuật bị biến mất khỏi biểu đồ.
+   - Vạch phân cách nghỉ trưa (`timeline-lunch-divider`) bị cố định ở mốc 11:30.
+
+**Giải pháp & Khắc phục triệt để:**
+1. **Cơ chế Nhận Diện Động Mùa Làm Việc (Dynamic Winter Season Detection):**
+   - Tự động nhận diện linh hoạt dựa trên cấu hình mùa hiện tại (`window.getCurrentStaffSeason() === 'winter'`), hoặc phân tích trực tiếp từ dữ liệu ca làm việc thực tế của nhân sự (`thoiGianLam` chứa `12:00` hoặc ca sáng kết thúc >= 720 phút).
+   - Khi phát hiện ca mùa đông:
+     + Ranh giới kết thúc ca sáng (`morningShiftEnd`) tự động mở rộng từ **690 (11:30)** lên **720 (12:00)**.
+     + Giờ nghỉ trưa mùa đông tự động chuyển thành **12:00 - 13:00** (thay vì 11:30 - 13:00).
+     + Khi ở ca mùa hè, hệ thống tự động giữ nguyên mốc 11:30 và nghỉ trưa 11:30 - 13:00, bảo đảm tương thích hai chiều 100%.
+2. **Cập nhật Thuật Toán Xếp Lịch Chính (`js/scheduler-engine.js`):**
+   - Tính toán động `morningShiftEnd` và `morningBaseEnd`: nếu mùa đông thì lấy 720, mùa hè lấy 690.
+   - Cho phép thủ thuật ca sáng xếp bình thường từ 07:30 / 08:00 tới 12:00 (và lố trưa theo `allowedOvertimeAtLunch` nếu có cấu hình).
+   - Bệnh nhân ngoại trú đăng ký ca Sáng (`Sang`) được phép xếp kéo dài tối đa tới `morningShiftEnd` (12:00 vào mùa đông).
+   - Đồng bộ trong thuật toán dồn chỗ (`compactTimelineGaps`) và quét khoảng trống (`scanWindows`).
+3. **Cập nhật Bộ Giải Toán CP Solver Web & Python Mini PC (`js/cp-solver.js`, `local-solver/solver.py`):**
+   - Đọc động `isWinter` từ `rawStaff` hoặc thiết lập mùa.
+   - Đặt `morning_base_end = 720` và `lunch_start = 720` khi vào mùa đông.
+   - Ràng buộc phân tách buổi sáng/chiều của bệnh nhân ngoại trú và ca sáng được mở rộng an toàn đến 12:00.
+4. **Nâng cấp Biểu Đồ Timeline Trực Quan (`js/modules/app-export-reports.js`):**
+   - Khi phát hiện mùa đông hoặc có ca 12:00: tự động bổ sung slot `11:30` vào trục thời gian ca sáng (tổng cộng 9 slots sáng: 07:30 đến 12:00).
+   - Hàm `calcCardPixel` nhận diện `morningLimitMin = 720`, tính toán tọa độ `left` và `width` chuẩn xác cho các ca thực hiện trong khung giờ 11:30 - 12:00.
+   - Vạch phân cách nghỉ trưa (`timeline-lunch-divider`) tự động dời sang vị trí 12:00 với tooltip `Nghỉ trưa (12:00 - 13:00)`.
+5. **Cập nhật Giao diện & Form Nhập Liệu (`index.html`):**
+   - Sửa đổi nhãn chọn ca ngoại trú thành `☀️ Buổi Sáng (Theo ca sáng)` và `🌙 Buổi Chiều (Theo ca chiều)` để luôn đúng ngữ cảnh ở cả 2 mùa.
+
+**File sửa đổi:**
+- `js/scheduler-engine.js`
+- `js/cp-solver.js`
+- `local-solver/solver.py`
+- `js/modules/app-export-reports.js`
+- `index.html`
+- `sw.js`
+- `version.json`
+- `PM-xeplich-v4.md`
