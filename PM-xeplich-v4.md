@@ -6898,3 +6898,39 @@ ormalizeScheduleItem.
 - `sw.js`
 - `version.json`
 - `PM-xeplich-v4.md`
+
+---
+
+### [v4.1.8-rev24] - 15:25 01/10/2026: Tối Ưu Hóa Độ Rộng Hiển Thị Tên Nhân Sự & Thủ Thuật Trên Dashboard Ngày
+
+**Hiện tượng & Phản hồi người dùng:**
+- Người dùng phản ánh kèm ảnh chụp màn hình: *"tên nhân sự và tên thủ thuật hiển thị không hết, chỉnh lại đi"*.
+- Trong khối Dashboard ngày:
+  + Cột **Kỹ thuật viên**: Tên các nhân viên có độ dài trung bình như "KTV Hà Phương", "KTV Phan Huệ", "KTV Lê Hường" bị cắt cụt thành "KTV Hà c....", "KTV Pha...", "KTV Lê H...".
+  + Cột **Hệ PHCN**: Tên các thủ thuật thường gặp như "tập trợ giúp", "hồng ngoại", "xoa bóp bấm huyệt", "tập kháng trở" bị cắt cụt thành "tập trợ gi...", "hồng ng...", "xoa bóp ...", "tập khán...".
+
+**Nguyên nhân gốc rễ (Root Cause):**
+1. **Độ rộng nhãn bị giới hạn cứng ở mức quá nhỏ (58px):**
+   - Trong hàm render đồ thị thanh (`renderCharts` tại `js/app.js`), tham số `labelWidth` của hàm `barRow` được gán mặc định và gọi cứng là `58` cho cả 4 khối: `staffLoadChart-bs`, `staffLoadChart-ktv`, `procDistChart-yhct`, `procDistChart-phcn`.
+   - Với mức 58px và font-size ~11px, chỉ đủ hiển thị tối đa 6 - 8 ký tự, trong khi tên nhân viên và tên thủ thuật tiếng Việt thường dài từ 10 - 18 ký tự.
+2. **Tỷ lệ phân chia cột trong lưới 5 cột chưa ưu tiên đủ không gian cho 2 panel giữa:**
+   - Panel 2 (Tải trọng nhân viên) và Panel 3 (Phân bố thủ thuật) đều chia đôi thành 2 cột con (Bác sĩ/KTV và YHCT/PHCN). Tỷ lệ lưới cũ `0.72fr 1.48fr 1.48fr 0.88fr 1.15fr` khiến mỗi cột con chỉ nhận được khoảng 140px - 170px, trong đó thanh progress bar chiếm phần lớn diện tích không cần thiết trong khi text bị chèn ép.
+
+**Giải pháp & Khắc phục triệt để:**
+1. **Mở rộng `labelWidth` cho từng danh mục thống kê trong `js/app.js`:**
+   - Tăng `labelWidth` của **Kỹ thuật viên** từ `58px` lên **`98px`** (đảm bảo hiển thị trọn vẹn "KTV Hà Phương", "KTV Phan Huệ", "KTV Lê Hường"...).
+   - Tăng `labelWidth` của **Bác sĩ** từ `58px` lên **`85px`**.
+   - Tăng `labelWidth` của **Hệ PHCN** từ `58px` lên **`98px`** (hiển thị trọn vẹn "tập trợ giúp", "hồng ngoại", "xoa bóp bấm huyệt", "tập kháng trở"...).
+   - Tăng `labelWidth` của **Hệ YHCT** từ `58px` lên **`90px`**.
+   - Bổ sung `letter-spacing: -0.15px` tinh tế giúp chữ tiếng Việt hiển thị vừa vặn, thanh thoát mà không bị tràn hay rớt dòng.
+2. **Tối ưu hóa tỷ lệ phân bổ lưới 5 cột trên Dashboard (`css/style.css`):**
+   - Điều chỉnh tỷ lệ lưới `.dashboard-5col` trên màn hình rộng (`min-width: 1500px`) thành `0.65fr 1.65fr 1.65fr 0.8fr 1.05fr`.
+   - Tăng tỷ trọng cho 2 Panel ở giữa lên **1.65fr**, giảm nhẹ các panel danh sách phòng và tổng quan, giúp mỗi cột con có không gian rộng rãi trên 200px, đảm bảo cả tên và thanh đo tỉ lệ đều hiển thị sang trọng, cân đối và trực quan.
+
+**File sửa đổi:**
+- `css/style.css`
+- `js/app.js`
+- `index.html`
+- `sw.js`
+- `version.json`
+- `PM-xeplich-v4.md`

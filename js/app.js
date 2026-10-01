@@ -12131,20 +12131,20 @@ var dataCache = window.dataCache;
             const colorsRoom    = ['#0f766e', '#14b8a6', '#0284c7', '#38bdf8', '#2563eb', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899'];
             const colorsMachine = ['#b45309', '#d97706', '#f59e0b', '#ea580c', '#e11d48', '#be123c', '#4338ca', '#6d28d9', '#7c3aed', '#059669'];
 
-            const barRow = (label, val, max, color, unit = '', labelWidth = 58) => {
-                const valWidth = unit ? (unit === 'lượt' ? '46px' : '36px') : '22px';
-                const gap = unit ? 5 : 4;
+            const barRow = (label, val, max, color, unit = '', labelWidth = 92) => {
+                const valWidth = unit ? (unit === 'lượt' ? '44px' : '34px') : '22px';
+                const gap = unit ? 4 : 3;
                 return `
                 <div class="dash-chart-row" style="display:flex;align-items:center;gap:${gap}px;margin-bottom:5px;width:100%;box-sizing:border-box;">
-                    <div style="width:${labelWidth}px;min-width:${labelWidth}px;max-width:${labelWidth}px;font-size:0.71rem;color:#2c3e50;font-weight:600;text-align:left;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;" title="${label}">${label}</div>
+                    <div style="width:${labelWidth}px;min-width:${labelWidth}px;max-width:${labelWidth}px;font-size:0.71rem;color:#2c3e50;font-weight:600;text-align:left;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;letter-spacing:-0.15px;" title="${label}">${label}</div>
                     <div style="flex:1;min-width:14px;height:9px;background:#f1f3f5;border-radius:5px;overflow:hidden;">
                         <div style="width:${Math.max(2, Math.round(val / max * 100))}%;height:100%;background:linear-gradient(90deg,${color}cc,${color});border-radius:5px;transition:width 0.8s cubic-bezier(0.4,0,0.2,1);"></div>
                     </div>
-                    <div style="width:${valWidth};min-width:${valWidth};font-size:0.71rem;color:#2c3e50;font-weight:700;text-align:right;white-space:nowrap;flex-shrink:0;">${val}${unit ? '<span style="font-size:0.6rem;color:#64748b;font-weight:normal;margin-left:2px;">' + unit + '</span>' : ''}</div>
+                    <div style="width:${valWidth};min-width:${valWidth};font-size:0.71rem;color:#2c3e50;font-weight:700;text-align:right;white-space:nowrap;flex-shrink:0;">${val}${unit ? '<span style="font-size:0.6rem;color:#64748b;font-weight:normal;margin-left:1px;">' + unit + '</span>' : ''}</div>
                 </div>`;
             };
 
-            const renderGroup = (containerId, entries, colors, unit = '', labelWidth = 58) => {
+            const renderGroup = (containerId, entries, colors, unit = '', labelWidth = 92) => {
                 const el = document.getElementById(containerId);
                 if (!el) return;
                 if (!entries.length) {
@@ -12155,10 +12155,10 @@ var dataCache = window.dataCache;
                 el.innerHTML = entries.map((e, i) => barRow(e[0], e[1], max, colors[i % colors.length], unit, labelWidth)).join('');
             };
 
-            renderGroup('staffLoadChart-bs',   Object.entries(staffLoadBS).sort((a,b)=>b[1]-a[1]).slice(0,10),   colorsBS, '', 58);
-            renderGroup('staffLoadChart-ktv',  Object.entries(staffLoadKTV).sort((a,b)=>b[1]-a[1]).slice(0,10),  colorsKTV, '', 58);
-            renderGroup('procDistChart-yhct',  Object.entries(procCountYHCT).sort((a,b)=>b[1]-a[1]).slice(0,10), colorsYHCT, '', 58);
-            renderGroup('procDistChart-phcn',  Object.entries(procCountPHCN).sort((a,b)=>b[1]-a[1]).slice(0,10), colorsPHCN, '', 58);
+            renderGroup('staffLoadChart-bs',   Object.entries(staffLoadBS).sort((a,b)=>b[1]-a[1]).slice(0,10),   colorsBS, '', 85);
+            renderGroup('staffLoadChart-ktv',  Object.entries(staffLoadKTV).sort((a,b)=>b[1]-a[1]).slice(0,10),  colorsKTV, '', 98);
+            renderGroup('procDistChart-yhct',  Object.entries(procCountYHCT).sort((a,b)=>b[1]-a[1]).slice(0,10), colorsYHCT, '', 90);
+            renderGroup('procDistChart-phcn',  Object.entries(procCountPHCN).sort((a,b)=>b[1]-a[1]).slice(0,10), colorsPHCN, '', 98);
 
             // Render Thống kê bệnh nhân theo từng phòng
             const roomEntries = Object.entries(roomPatientsMap)
