@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev20",
+    "version": "4.1.8-rev21",
     "releaseDate": "01/10/2026",
-    "releaseTime": "08:26 01/10/2026",
-    "notes": "Sửa triệt để lỗi thứ tự nhân sự Bảng Chấm Công bị quay về ban đầu: mở quyền lưu cho tài khoản đơn vị, bảo vệ thứ tự cục bộ và thêm nút đồng bộ theo thứ tự Khoa. Làm sạch hoàn toàn dữ liệu chấm công mock ngày 1, 2 tháng 10/2026 bị điền nhầm LỄ."
+    "releaseTime": "09:30 01/10/2026",
+    "notes": "Cho phép nhập hệ số lẻ < 1 (ví dụ 0.5, 0.3) linh hoạt bằng bàn phím số/chấm/phẩy không bị nhảy về 1, hỗ trợ phím điều hướng, tự bôi đen khi click và tích hợp trường Hệ số vào modal Sửa Nhân Sự."
 }

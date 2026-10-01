@@ -6754,3 +6754,43 @@ ormalizeScheduleItem.
 - `sw.js`
 - `version.json`
 - `PM-xeplich-v4.md`
+
+
+### Khắc Phục Lỗi Không Nhập Được Hệ Số Nhỏ Hơn 1 (0.5, 0.3) Trên Bảng Chấm Công (01/10/2026 - v4.1.8-rev21)
+
+**Hiện tượng & Phản hồi người dùng:**
+- Người dùng không thể nhập số thập phân nhỏ hơn 1 (ví dụ `0.5`, `0.3`) vào cột **HỆ SỐ** trên Bảng Chấm Công. Khi click vào ô để gõ thì số lập tức bị nhảy ngược về `1`. Đồng thời ảnh chụp màn hình cho thấy các nhân sự hưởng hệ số bán thời gian (Lê Thị Thu Hiền, Nguyễn Văn Khính, Trần Thị Duyên) đều đang hiển thị hệ số 1.0.
+
+**Nguyên nhân gốc rễ (Root Cause):**
+1. **Thẻ `<input type="number">` và sự kiện `input` phá vỡ thao tác gõ phím:**
+   - Cột hệ số sử dụng `<input type="number" min="0" max="1" step="0.1">`.
+   - Lắng nghe trực tiếp sự kiện `input`: Khi người dùng bấm xóa (Backspace) hoặc vừa gõ `0.`, `parseFloat("")` trả về `NaN`. Code cũ xử lý: `if (isNaN(val) || val < 0) val = 1.0; input.value = val;`.
+   - Kết quả: Giá trị lập tức bị ép ngược về `1` ngay khi người dùng bấm phím đầu tiên!
+   - Ngoài ra, khi người dùng gõ dấu phẩy thập phân (`0,5` theo kiểu gõ bàn phím tiếng Việt/Unikey), trình duyệt coi ô số là *invalid state* và trả về rỗng `""`, dẫn đến bị ép về `1` không thể sửa được.
+2. **Fallback cứng về `1.0` khi tháng chưa có dữ liệu:**
+   - Trong `renderChamCongTable`: khi một tháng mới chưa có bản ghi chấm công, hệ thống gán mặc định `heSo = 1.0` cho toàn bộ nhân sự mà không đọc cấu hình hệ số mặc định từ danh sách cấu hình nhân sự (`adminChamCongStaffConfig` / `DEFAULT_CHAMCONG_STAFF`).
+3. **Modal Sửa Nhân Sự thiếu trường nhập Hệ Số:**
+   - Trong Subtab "Danh Sách Nhân Sự", modal sửa nhân sự chỉ có Tên, Vai Trò, Ký Hiệu Lịch, Kỹ Năng mà thiếu trường Hệ Số Chấm Công.
+
+**Giải pháp & Khắc phục triệt để:**
+1. **Chuyển đổi thẻ Input và tối ưu trải nghiệm nhập liệu (`js/thongke.js`):**
+   - Đổi thẻ sang `<input type="text" inputmode="decimal">` kết hợp class `.chamcong-heso-input`.
+   - **Tự động bôi đen khi chọn (`focus`):** Khi click hoặc Tab vào ô, toàn bộ giá trị được `.select()` bôi đen tức thì, người dùng có thể gõ đè ngay số mới mà không cần xóa từng ký tự.
+   - **Hỗ trợ gõ linh hoạt cả dấu chấm `.` và dấu phẩy `,`:** Người dùng gõ `0.5` hay `0,5` hệ thống đều xử lý chuyển đổi mượt mà.
+   - **Không can thiệp vào `input.value` khi đang gõ:** Sự kiện `input` chỉ tính toán tạm thời để cập nhật Tổng công và đổi màu badge (`.heso-fraction`), chỉ khi rời ô (`blur` / `change`) mới chuẩn hóa hiển thị (`commitHeSoCell`).
+   - **Hỗ trợ phím điều hướng:** Bấm `Enter` hoặc `Mũi tên xuống` tự động nhảy xuống ô nhân viên bên dưới; `Mũi tên lên` nhảy lên ô trên.
+2. **Đồng bộ hệ số nhân viên vào cấu hình chung:**
+   - Cập nhật `DEFAULT_CHAMCONG_STAFF` với hệ số chuẩn: *Lê Thị Thu Hiền (0.5)*, *Nguyễn Văn Khính (0.5)*, *Trần Thị Duyên (0.3)*.
+   - Khi chỉnh sửa hệ số trực tiếp trên Bảng Chấm Công, hệ thống tự động lưu vào `adminChamCongStaffConfig[emp].heSo` để ghi nhớ sang các tháng tiếp theo.
+3. **Bổ sung trường Hệ Số vào Modal Quản Lý Nhân Sự:**
+   - Thêm ô nhập Hệ Số Chấm Công vào modal `#modal-admin-employee` trong `index.html`.
+   - Cập nhật hàm `openAddAdminEmployeeModal`, `openEditAdminEmployeeModal` và `saveAdminEmployee` để quản trị viên có thể xem và sửa hệ số trực tiếp.
+4. **Style trực quan:**
+   - Thêm CSS class `.heso-fraction` làm nổi bật các nhân sự có hệ số khác 1 bằng màu cam vàng (`#b45309`, nền `#fef3c7`), giúp dễ dàng nhận biết và kiểm tra.
+
+**File sửa đổi:**
+- `index.html`
+- `js/thongke.js`
+- `sw.js`
+- `version.json`
+- `PM-xeplich-v4.md`

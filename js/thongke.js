@@ -24,10 +24,10 @@ var callApi = (typeof window !== 'undefined' && typeof window.callApi === 'funct
             'Nguyễn Thị Xuân Lương': { keys: ['nguyễn thị xuân lương', 'ktv lương', 'xuân lương', 'lương'], skills: 'PHCN', role: 'KTV', heSo: 1.0 },
             'Nguyễn Thị Hà': { keys: ['nguyễn thị hà', 'ktv hà chip', 'ktv hà', 'hà chip', 'hà'], skills: 'PHCN', role: 'KTV', heSo: 1.0 },
             'Phan Thị Thu Hiền': { keys: ['phan thị thu hiền', 'ktv phan hiền', 'phan hiền'], skills: 'PHCN', role: 'KTV', heSo: 1.0 },
-            'Lê Thị Thu Hiền': { keys: ['lê thị thu hiền', 'ktv lê hiền', 'ltv lê hiền', 'lê hiền'], skills: 'PHCN', role: 'KTV', heSo: 1.0 },
-            'Nguyễn Văn Khính': { keys: ['nguyễn văn khính', 'ktv khính', 'khính'], skills: 'PHCN', role: 'KTV', heSo: 1.0 },
+            'Lê Thị Thu Hiền': { keys: ['lê thị thu hiền', 'ktv lê hiền', 'ltv lê hiền', 'lê hiền'], skills: 'PHCN', role: 'KTV', heSo: 0.5 },
+            'Nguyễn Văn Khính': { keys: ['nguyễn văn khính', 'ktv khính', 'khính'], skills: 'PHCN', role: 'KTV', heSo: 0.5 },
             'Phạm Thị Thuyến': { keys: ['phạm thị thuyến', 'đd thuyến', 'ktv thuyến', 'thuyến'], skills: 'PHCN', role: 'Điều dưỡng', heSo: 1.0 },
-            'Trần Thị Duyên': { keys: ['trần thị duyên', 'đd duyên', 'ktv duyên', 'duyên'], skills: 'PHCN', role: 'Điều dưỡng', heSo: 1.0 }
+            'Trần Thị Duyên': { keys: ['trần thị duyên', 'đd duyên', 'ktv duyên', 'duyên'], skills: 'PHCN', role: 'Điều dưỡng', heSo: 0.3 }
         };
 
         function getEmployeeRole(empName) {
@@ -742,6 +742,7 @@ function openAddAdminEmployeeModal() {
     document.getElementById('modal-admin-emp-title').innerText = "Thêm Nhân Sự Mới";
     document.getElementById('admin-emp-name').value = "";
     document.getElementById('admin-emp-role').value = "KTV";
+    if (document.getElementById('admin-emp-heso')) document.getElementById('admin-emp-heso').value = "1.0";
     document.getElementById('admin-emp-keys').value = "";
     document.getElementById('admin-emp-skills').value = "PHCN";
     document.getElementById('modal-admin-employee').style.display = 'flex';
@@ -752,10 +753,12 @@ function openEditAdminEmployeeModal(index) {
     editAdminEmployeeIndex = index;
     const empName = adminChamCongEmployees[index];
     const staff = adminChamCongStaffConfig[empName] || { keys: [empName.toLowerCase()], skills: 'PHCN' };
+    const curHeSo = staff.heSo !== undefined ? staff.heSo : (DEFAULT_CHAMCONG_STAFF[empName]?.heSo ?? 1.0);
     
     document.getElementById('modal-admin-emp-title').innerText = "Sửa Thông Tin Nhân Sự";
     document.getElementById('admin-emp-name').value = empName;
     document.getElementById('admin-emp-role').value = getEmployeeRole(empName);
+    if (document.getElementById('admin-emp-heso')) document.getElementById('admin-emp-heso').value = curHeSo;
     document.getElementById('admin-emp-keys').value = staff.keys ? staff.keys.join(', ') : empName.toLowerCase();
     document.getElementById('admin-emp-skills').value = staff.skills || 'PHCN';
     
@@ -776,6 +779,10 @@ function deleteAdminChamCongEmployee(index) {
 function saveAdminEmployee() {
     const newName = document.getElementById('admin-emp-name').value.trim();
     const roleVal = document.getElementById('admin-emp-role').value;
+    const heSoRaw = (document.getElementById('admin-emp-heso')?.value || "1.0").toString().replace(',', '.').trim();
+    let heSoVal = parseFloat(heSoRaw);
+    if (isNaN(heSoVal) || heSoVal <= 0) heSoVal = 1.0;
+    heSoVal = Math.round(heSoVal * 100) / 100;
     const keysVal = document.getElementById('admin-emp-keys').value.trim();
     const skillsVal = document.getElementById('admin-emp-skills').value;
     
@@ -796,6 +803,7 @@ function saveAdminEmployee() {
     const keysArr = keysVal.split(',').map(s => s.trim().toLowerCase()).filter(s => s.length > 0);
     if (keysArr.length === 0) keysArr.push(newName.toLowerCase());
     
+    const prevConfig = (oldName && adminChamCongStaffConfig[oldName]) || adminChamCongStaffConfig[newName] || {};
     if (editAdminEmployeeIndex > -1) {
         adminChamCongEmployees[editAdminEmployeeIndex] = newName;
         if (oldName !== newName) {
@@ -805,7 +813,13 @@ function saveAdminEmployee() {
         adminChamCongEmployees.push(newName);
     }
     
-    adminChamCongStaffConfig[newName] = { keys: keysArr, skills: skillsVal, role: roleVal, heSo: 1.0 };
+    adminChamCongStaffConfig[newName] = {
+        ...prevConfig,
+        keys: keysArr,
+        skills: skillsVal,
+        role: roleVal,
+        heSo: heSoVal
+    };
     
     saveAdminChamCongData();
     closeAdminEmployeeModal();
@@ -1320,9 +1334,13 @@ window.switchAdminSection = function(sectionId, btn) {
             if (!input) return;
             const emp = input.getAttribute('data-emp');
             if (!emp) return;
-            let val = parseFloat(input.value);
-            if (isNaN(val) || val < 0) val = 1.0;
-            if (val > 1) val = 1.0;
+
+            let rawStr = String(input.value || '').trim().replace(',', '.');
+            let val = parseFloat(rawStr);
+            if (isNaN(val) || val <= 0) val = 1.0;
+            if (val > 3.0) val = 3.0; // Giới hạn tối đa 3.0
+            val = Math.round(val * 100) / 100; // Làm tròn 2 chữ số thập phân nếu cần
+
             input.value = val;
             input.title = `Hệ số chấm công: ${val}`;
             if (val < 1) {
@@ -1333,6 +1351,16 @@ window.switchAdminSection = function(sectionId, btn) {
 
             if (!chamCongData[emp]) chamCongData[emp] = {};
             const oldHeSo = (chamCongData[emp].heSo !== undefined) ? parseFloat(chamCongData[emp].heSo) : 1.0;
+
+            // Đồng bộ luôn vào cấu hình nhân sự để ghi nhớ tự động cho các tháng tiếp theo
+            if (!adminChamCongStaffConfig[emp]) {
+                adminChamCongStaffConfig[emp] = { keys: [emp.toLowerCase()], skills: 'PHCN', role: getEmployeeRole(emp), heSo: val };
+            } else {
+                adminChamCongStaffConfig[emp].heSo = val;
+            }
+            try {
+                localStorage.setItem(getChamCongStorageKey('med_chamcong_staff_config'), JSON.stringify(adminChamCongStaffConfig));
+            } catch(e){}
 
             // NẾU HỆ SỐ KHÔNG THAY ĐỔI -> THOÁT NGAY!
             if (val === oldHeSo) {
@@ -1674,12 +1702,16 @@ window.switchAdminSection = function(sectionId, btn) {
             adminChamCongEmployees.forEach(emp => {
                 if (!chamCongData[emp]) chamCongData[emp] = {};
                 const tr = document.createElement('tr');
-                const heSo = (chamCongData[emp] && chamCongData[emp].heSo !== undefined) ? parseFloat(chamCongData[emp].heSo) : 1.0;
+                const defaultEmpHeSo = (adminChamCongStaffConfig && adminChamCongStaffConfig[emp] && adminChamCongStaffConfig[emp].heSo !== undefined) 
+                    ? parseFloat(adminChamCongStaffConfig[emp].heSo) 
+                    : ((DEFAULT_CHAMCONG_STAFF[emp] && DEFAULT_CHAMCONG_STAFF[emp].heSo !== undefined) ? DEFAULT_CHAMCONG_STAFF[emp].heSo : 1.0);
+
+                const heSo = (chamCongData[emp] && chamCongData[emp].heSo !== undefined) ? parseFloat(chamCongData[emp].heSo) : defaultEmpHeSo;
                 
                 const isFraction = heSo < 1;
                 let rowHtml = `<td>${emp}</td>
                                <td>
-                                 <input type="number" class="heso-input ${isFraction ? 'heso-fraction' : ''}" data-emp="${emp}" value="${heSo}" min="0" max="1" step="0.1" title="Hệ số chấm công: ${heSo}">
+                                 <input type="text" inputmode="decimal" class="heso-input ${isFraction ? 'heso-fraction' : ''}" data-emp="${emp}" value="${heSo}" title="Hệ số chấm công: ${heSo}">
                                </td>`;
 
                 let tongCong = 0;
@@ -1803,10 +1835,71 @@ window.switchAdminSection = function(sectionId, btn) {
             });
 
             document.querySelectorAll('.heso-input').forEach(input => {
-                ['input', 'change', 'blur'].forEach(evtType => {
+                // Tự động bôi đen toàn bộ số khi click/focus để người dùng gõ đè ngay số mới (ví dụ 0.5) cực nhanh
+                input.addEventListener('focus', (e) => {
+                    setTimeout(() => {
+                        try { e.target.select(); } catch(err){}
+                    }, 50);
+                });
+
+                // Khi đang gõ: CHỈ CẬP NHẬT GIAO DIỆN TẠM, TUYỆT ĐỐI KHÔNG GÁN ĐÈ VALUE ĐỂ NGƯỜI DÙNG GÕ THOẢI MÁI
+                input.addEventListener('input', (e) => {
+                    const rawStr = String(e.target.value || '').trim().replace(',', '.');
+                    const num = parseFloat(rawStr);
+                    if (!isNaN(num) && num > 0) {
+                        if (num < 1) {
+                            e.target.classList.add('heso-fraction');
+                        } else {
+                            e.target.classList.remove('heso-fraction');
+                        }
+                        const emp = e.target.getAttribute('data-emp');
+                        if (emp && chamCongData[emp]) {
+                            chamCongData[emp].heSo = num;
+                            recalculateRowTotal(emp, daysInMonth);
+                        }
+                    }
+                });
+
+                // Chỉ commit và chuẩn hóa khi kết thúc nhập liệu (blur, change)
+                ['change', 'blur'].forEach(evtType => {
                     input.addEventListener(evtType, (e) => {
                         commitHeSoCell(e.target, daysInMonth, true);
                     });
+                });
+
+                // Hỗ trợ phím Enter, Mũi tên Lên / Xuống để chuyển dòng nhanh
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        commitHeSoCell(e.target, daysInMonth, true);
+                        const currentEmp = e.target.getAttribute('data-emp');
+                        const empIndex = adminChamCongEmployees.indexOf(currentEmp);
+                        if (empIndex < adminChamCongEmployees.length - 1) {
+                            const nextEmp = adminChamCongEmployees[empIndex + 1];
+                            const nextInput = document.querySelector(`.heso-input[data-emp="${nextEmp}"]`);
+                            if (nextInput) { nextInput.focus(); nextInput.select(); }
+                        } else {
+                            e.target.blur();
+                        }
+                    } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        const currentEmp = e.target.getAttribute('data-emp');
+                        const empIndex = adminChamCongEmployees.indexOf(currentEmp);
+                        if (empIndex < adminChamCongEmployees.length - 1) {
+                            const nextEmp = adminChamCongEmployees[empIndex + 1];
+                            const nextInput = document.querySelector(`.heso-input[data-emp="${nextEmp}"]`);
+                            if (nextInput) { nextInput.focus(); nextInput.select(); }
+                        }
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        const currentEmp = e.target.getAttribute('data-emp');
+                        const empIndex = adminChamCongEmployees.indexOf(currentEmp);
+                        if (empIndex > 0) {
+                            const prevEmp = adminChamCongEmployees[empIndex - 1];
+                            const prevInput = document.querySelector(`.heso-input[data-emp="${prevEmp}"]`);
+                            if (prevInput) { prevInput.focus(); prevInput.select(); }
+                        }
+                    }
                 });
             });
         }
@@ -1817,7 +1910,10 @@ window.switchAdminSection = function(sectionId, btn) {
             for (let d = 1; d <= daysInMonth; d++) {
                 tongCong += calcDayValue(data[d]);
             }
-            const heSo = data.heSo !== undefined ? parseFloat(data.heSo) : 1.0;
+            const defaultEmpHeSo = (adminChamCongStaffConfig && adminChamCongStaffConfig[emp] && adminChamCongStaffConfig[emp].heSo !== undefined) 
+                ? parseFloat(adminChamCongStaffConfig[emp].heSo) 
+                : ((DEFAULT_CHAMCONG_STAFF[emp] && DEFAULT_CHAMCONG_STAFF[emp].heSo !== undefined) ? DEFAULT_CHAMCONG_STAFF[emp].heSo : 1.0);
+            const heSo = data.heSo !== undefined ? parseFloat(data.heSo) : defaultEmpHeSo;
             const totalHeso = Math.round((tongCong * heSo) * 100) / 100;
             
             const totalCell = document.querySelector(`.tong-cong-cell[data-emp-total="${emp}"]`);
