@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev15",
-    "releaseDate": "30/09/2026",
-    "releaseTime": "20:30 30/09/2026",
-    "notes": "Đồng bộ nhận diện Mã BN (patientCode/maBN) vào Bộ kiểm tra lỗi (Tab Kiểm Tra Lỗi) và thuật toán xếp lịch để loại bỏ triệt để cảnh báo trùng lịch oan khi trùng tên."
+    "version": "4.1.8-rev16",
+    "releaseDate": "01/10/2026",
+    "releaseTime": "07:35 01/10/2026",
+    "notes": "Khắc phục triệt để lỗi tự động tải mới dữ liệu làm mất tick chọn phòng, bác sĩ, KTV, máy móc khi đang thao tác ở tab-rooms và các tab tài nguyên."
 }

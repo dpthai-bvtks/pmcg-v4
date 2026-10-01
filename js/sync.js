@@ -170,21 +170,39 @@
     // Reload dữ liệu bị thay đổi có bảo vệ toàn bộ form đang nhập dở
     function syncRefreshData() {
         try {
-            // 🛡️ Kiểm tra người dùng có đang thực sự gõ phím trên form không
-            const patFormActive = typeof window.isPatientFormActive === 'function' ? window.isPatientFormActive() : false;
-            const isSaveLocked = !!window._savePatientLock;
+            // 🛡️ Kiểm tra người dùng có đang thực sự thao tác trên bất kỳ form nào không (Phòng, Bệnh nhân, Nhân sự, v.v.)
+            const isFormActive = (typeof window.isAnyFormActive === 'function')
+                ? window.isAnyFormActive()
+                : ((typeof window.isPatientFormActive === 'function') ? window.isPatientFormActive() : false);
+            const isSaveLocked = !!window._savePatientLock || !!window._saveLock || !!window._isSavingEntity;
             
-            // Nếu người dùng đang bấm Lưu hoặc đang gõ dở dữ liệu thì tạm hoãn để bảo toàn
-            if (isSaveLocked || patFormActive) {
-                console.log('[RealtimeSync]: Người dùng đang thao tác trên form nhập liệu, tạm hoãn nạp lại để bảo toàn dữ liệu.');
+            // Nếu người dùng đang bấm Lưu hoặc đang gõ dở dữ liệu/tick chọn thì tạm hoãn để bảo toàn
+            if (isSaveLocked || isFormActive) {
+                console.log('[RealtimeSync]: Người dùng đang thao tác trên form nhập liệu / chọn checkbox, tạm hoãn nạp lại để bảo toàn dữ liệu.');
                 return false; // Trả về false để doPoll KHÔNG nuốt version và sẽ thử lại ở chu kỳ tiếp theo!
             }
 
-            // Bảo lưu giá trị các ô input form bệnh nhân phòng trường hợp đang có dữ liệu tạm
+            // Bảo lưu giá trị các ô input form phòng trường hợp đang có dữ liệu tạm
             const savedFormData = {};
-            ['pat-name', 'pat-year', 'pat-code', 'pat-time', 'busy-start', 'busy-end', 'pat-leave', 'pat-room'].forEach(id => {
+            [
+                'pat-name', 'pat-year', 'pat-code', 'pat-time', 'busy-start', 'busy-end', 'pat-leave', 'pat-room',
+                'room-name', 'room-beds',
+                'staff-name', 'staff-phone',
+                'proc-name',
+                'machine-name', 'machine-code'
+            ].forEach(id => {
                 const el = document.getElementById(id);
                 if (el && el.value) savedFormData[id] = el.value;
+            });
+
+            // Bảo lưu các checkbox phòng & máy móc
+            const savedRoomDocs = Array.from(document.querySelectorAll('.room-doc-cb:checked')).map(cb => cb.value);
+            const savedRoomKtvs = Array.from(document.querySelectorAll('.room-ktv-cb:checked, .room-stf-cb:checked')).map(cb => cb.value);
+            const savedRoomDds = Array.from(document.querySelectorAll('.room-dd-cb:checked')).map(cb => cb.value);
+            const savedRoomMachines = {};
+            document.querySelectorAll('.room-machine-input').forEach(inp => {
+                const dt = inp.getAttribute('data-type');
+                if (dt && inp.value) savedRoomMachines[dt] = inp.value;
             });
 
             // Xóa cache time cho các danh mục cần làm mới
@@ -222,6 +240,29 @@
                         el.value = savedFormData[id];
                     }
                 }
+                // Khôi phục checkbox phòng
+                if (savedRoomDocs.length > 0) {
+                    savedRoomDocs.forEach(val => {
+                        const cb = document.querySelector(`.room-doc-cb[value="${val}"]`);
+                        if (cb) cb.checked = true;
+                    });
+                }
+                if (savedRoomKtvs.length > 0) {
+                    savedRoomKtvs.forEach(val => {
+                        const cb = document.querySelector(`.room-ktv-cb[value="${val}"], .room-stf-cb[value="${val}"]`);
+                        if (cb) cb.checked = true;
+                    });
+                }
+                if (savedRoomDds.length > 0) {
+                    savedRoomDds.forEach(val => {
+                        const cb = document.querySelector(`.room-dd-cb[value="${val}"]`);
+                        if (cb) cb.checked = true;
+                    });
+                }
+                for (let dt in savedRoomMachines) {
+                    const inp = document.querySelector(`.room-machine-input[data-type="${dt}"]`);
+                    if (inp && !inp.value) inp.value = savedRoomMachines[dt];
+                }
             }, 300);
 
             return true;
@@ -235,8 +276,10 @@
     if (typeof OfflineSyncEngine !== 'undefined' && OfflineSyncEngine.registerLiveListener) {
         OfflineSyncEngine.registerLiveListener(function(type, payload, timestamp) {
             if (type === 'PATIENTS_UPDATED' || type === 'CACHE_UPDATED' || type === 'SCHEDULE_GENERATED') {
-                const patFormActive = typeof window.isPatientFormActive === 'function' ? window.isPatientFormActive() : false;
-                if (!patFormActive) {
+                const isFormActive = (typeof window.isAnyFormActive === 'function')
+                    ? window.isAnyFormActive()
+                    : ((typeof window.isPatientFormActive === 'function') ? window.isPatientFormActive() : false);
+                if (!isFormActive && !window._savePatientLock && !window._saveLock) {
                     syncRefreshData();
                     showSyncToast('⚡ Đã đồng bộ tức thì từ cửa sổ làm việc khác!');
                 }

@@ -5022,6 +5022,11 @@ var dataCache = window.dataCache;
             const ddGrid = document.getElementById('room-dd-grid');
             const staffGrid = document.getElementById('room-staff-grid');
             if (docGrid && (ktvGrid || staffGrid)) {
+                // 🛡️ BẢO VỆ CHỐNG MẤT TÍCH CHỌN PHÒNG KHI ĐỒNG BỘ / TẢI LẠI
+                const checkedDocs = new Set(Array.from(document.querySelectorAll('.room-doc-cb:checked')).map(cb => cb.value.trim().toLowerCase()));
+                const checkedKtvs = new Set(Array.from(document.querySelectorAll('.room-ktv-cb:checked')).map(cb => cb.value.trim().toLowerCase()));
+                const checkedDds = new Set(Array.from(document.querySelectorAll('.room-dd-cb:checked')).map(cb => cb.value.trim().toLowerCase()));
+
                 let docHtml = '<div class="skills-col">', ktvHtml = '<div class="skills-col">', ddHtml = '<div class="skills-col">';
                 staffList.forEach(s => {
                     if (!s || !s.ten) return;
@@ -5042,6 +5047,23 @@ var dataCache = window.dataCache;
                 if (ktvGrid) ktvGrid.innerHTML = ktvHtml + '</div>';
                 if (ddGrid) ddGrid.innerHTML = ddHtml + '</div>';
                 if (staffGrid) staffGrid.innerHTML = ktvHtml + ddHtml + '</div>';
+
+                // 🛡️ Khôi phục lại toàn bộ checkbox đã tick
+                if (checkedDocs.size > 0) {
+                    docGrid.querySelectorAll('.room-doc-cb').forEach(cb => {
+                        if (checkedDocs.has(cb.value.trim().toLowerCase())) cb.checked = true;
+                    });
+                }
+                if (checkedKtvs.size > 0 && ktvGrid) {
+                    ktvGrid.querySelectorAll('.room-ktv-cb').forEach(cb => {
+                        if (checkedKtvs.has(cb.value.trim().toLowerCase())) cb.checked = true;
+                    });
+                }
+                if (checkedDds.size > 0 && ddGrid) {
+                    ddGrid.querySelectorAll('.room-dd-cb').forEach(cb => {
+                        if (checkedDds.has(cb.value.trim().toLowerCase())) cb.checked = true;
+                    });
+                }
             }
 
             const tbody = document.getElementById('staff-list');
@@ -10650,10 +10672,119 @@ var dataCache = window.dataCache;
         }
         window.isBusyFormActive = isBusyFormActive;
 
+        function isRoomFormActive() {
+            const tabRooms = document.getElementById('tab-rooms');
+            if (!tabRooms) return false;
+
+            // 1. Con trỏ đang nằm trong bất kỳ ô input / textarea / select / checkbox nào của tab-rooms
+            const activeEl = document.activeElement;
+            const formContainer = tabRooms.querySelector('.sidebar-form');
+            if (activeEl && formContainer && formContainer.contains(activeEl)) {
+                if (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT' || activeEl.tagName === 'TEXTAREA') {
+                    if (activeEl.id !== 'room-search-input') return true;
+                }
+            }
+
+            // 2. Đang ở chế độ chỉnh sửa phòng (editIndex.room > -1 hoặc nút Hủy đang hiện)
+            const btnCancel = document.getElementById('btn-cancel-room');
+            if ((btnCancel && btnCancel.style.display !== 'none') || (typeof editIndex !== 'undefined' && editIndex.room > -1)) {
+                return true;
+            }
+
+            // 3. Tên phòng đã được nhập hoặc có ít nhất 1 checkbox bác sĩ / KTV / điều dưỡng được tích
+            const nameEl = document.getElementById('room-name');
+            if (nameEl && nameEl.value.trim().length > 0) return true;
+
+            const hasChecked = tabRooms.querySelector('.room-doc-cb:checked, .room-ktv-cb:checked, .room-stf-cb:checked, .room-dd-cb:checked');
+            if (hasChecked) return true;
+
+            // 4. Có nhập số máy móc nào > 0
+            const hasMachine = Array.from(tabRooms.querySelectorAll('.room-machine-input')).some(inp => (parseInt(inp.value) || 0) > 0);
+            if (hasMachine) return true;
+
+            return false;
+        }
+        window.isRoomFormActive = isRoomFormActive;
+
+        function isStaffFormActive() {
+            const tabStaff = document.getElementById('tab-staff');
+            if (!tabStaff) return false;
+            const activeEl = document.activeElement;
+            const formContainer = tabStaff.querySelector('.sidebar-form');
+            if (activeEl && formContainer && formContainer.contains(activeEl)) {
+                if (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT' || activeEl.tagName === 'TEXTAREA') {
+                    if (activeEl.id !== 'staff-search-input') return true;
+                }
+            }
+            const btnCancel = document.getElementById('btn-cancel-staff');
+            if ((btnCancel && btnCancel.style.display !== 'none') || (typeof editIndex !== 'undefined' && editIndex.staff > -1)) {
+                return true;
+            }
+            const nameEl = document.getElementById('staff-name');
+            if (nameEl && nameEl.value.trim().length > 0) return true;
+            const hasSkill = tabStaff.querySelector('.skill-checkbox:checked');
+            if (hasSkill) return true;
+            return false;
+        }
+        window.isStaffFormActive = isStaffFormActive;
+
+        function isProcedureFormActive() {
+            const tabProc = document.getElementById('tab-procedures');
+            if (!tabProc) return false;
+            const activeEl = document.activeElement;
+            const formContainer = tabProc.querySelector('.sidebar-form');
+            if (activeEl && formContainer && formContainer.contains(activeEl)) {
+                if (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT' || activeEl.tagName === 'TEXTAREA') {
+                    if (activeEl.id !== 'proc-search-input') return true;
+                }
+            }
+            const btnCancel = document.getElementById('btn-cancel-proc');
+            if ((btnCancel && btnCancel.style.display !== 'none') || (typeof editIndex !== 'undefined' && editIndex.proc > -1)) {
+                return true;
+            }
+            const nameEl = document.getElementById('proc-name');
+            if (nameEl && nameEl.value.trim().length > 0) return true;
+            return false;
+        }
+        window.isProcedureFormActive = isProcedureFormActive;
+
+        function isMachineFormActive() {
+            const tabMach = document.getElementById('tab-machines');
+            if (!tabMach) return false;
+            const activeEl = document.activeElement;
+            const formContainer = tabMach.querySelector('.sidebar-form');
+            if (activeEl && formContainer && formContainer.contains(activeEl)) {
+                if (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT' || activeEl.tagName === 'TEXTAREA') {
+                    if (activeEl.id !== 'machine-search-input') return true;
+                }
+            }
+            const btnCancel = document.getElementById('btn-cancel-machine');
+            if ((btnCancel && btnCancel.style.display !== 'none') || (typeof editIndex !== 'undefined' && editIndex.machine > -1)) {
+                return true;
+            }
+            const nameEl = document.getElementById('machine-name') || document.getElementById('machine-type');
+            if (nameEl && nameEl.value.trim().length > 0) return true;
+            return false;
+        }
+        window.isMachineFormActive = isMachineFormActive;
+
         function isAnyFormActive() {
-            if (isPatientFormActive()) return true;
+            if (window._savePatientLock || window._saveLock || window._isSavingEntity) return true;
+            if (typeof isPatientFormActive === 'function' && isPatientFormActive()) return true;
+            if (typeof isRoomFormActive === 'function' && isRoomFormActive()) return true;
+            if (typeof isStaffFormActive === 'function' && isStaffFormActive()) return true;
+            if (typeof isProcedureFormActive === 'function' && isProcedureFormActive()) return true;
+            if (typeof isMachineFormActive === 'function' && isMachineFormActive()) return true;
             if (typeof isBusyFormActive === 'function' && isBusyFormActive()) return true;
-            if (window._savePatientLock) return true;
+
+            // Kiểm tra con trỏ chuột bất kỳ đang focus vào ô nhập liệu của form (trừ ô tìm kiếm)
+            const activeEl = document.activeElement;
+            if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT' || activeEl.tagName === 'TEXTAREA')) {
+                if (activeEl.closest('.sidebar-form, form, .modal-content') && !activeEl.classList.contains('search-input') && !activeEl.id.includes('search')) {
+                    return true;
+                }
+            }
+
             return false;
         }
         window.isAnyFormActive = isAnyFormActive;

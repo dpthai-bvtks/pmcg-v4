@@ -6590,3 +6590,41 @@ ormalizeScheduleItem.
 - sw.js
 - version.json
 - PM-xeplich-v4.md
+
+### Khắc Phục Lỗi Mất Trạng Thái Tick Chọn / Đang Nhập Liệu Ở Tab Phòng Và Các Tab Tài Nguyên (01/10/2026 - v4.1.8-rev16)
+
+**Hiện tượng người dùng phản ánh:**
+- Khi người dùng đang thao tác tại tab phòng (`#tab-rooms`) hoặc các tab tài nguyên, đang tích chọn các ô (Bác sĩ, KTV, Điều dưỡng, hoặc nhập số lượng máy móc) thì hệ thống bất ngờ tự động tải mới dữ liệu (Real-time polling / Live sync), làm mất hết các ô vừa tích chọn và người dùng phải chọn lại từ đầu.
+
+**Nguyên nhân kỹ thuật gốc rễ:**
+1. **Bảo vệ form trong Real-time Polling (`js/sync.js`) quá hạn hẹp:**
+   - Hàm `syncRefreshData()` trước đây chỉ kiểm tra duy nhất `isPatientFormActive()` (chỉ bảo vệ khi con trỏ chuột đang nằm trên form của `#tab-patients`).
+   - Khi người dùng đang thao tác ở `tab-rooms`, `tab-staff`, `tab-procedures`, `tab-machines`, biến `patFormActive` trả về `false`. Do đó khi chu kỳ kiểm tra dữ liệu ngầm (polling mỗi 8s) hoặc sự kiện LiveBus phát hiện phiên bản mới, hệ thống tự động gọi `loadBootstrapData(true)` làm nạp đè lại dữ liệu.
+2. **Hàm vẽ lại bảng nhân sự (`renderStaffTable` trong `js/app.js`) hủy và gán mới innerHTML của checkbox phòng mà không ghi nhớ:**
+   - Các hộp checkbox Bác sĩ (`#room-doctors-grid`), KTV (`#room-ktv-grid`), Điều dưỡng (`#room-dd-grid`) thuộc form của Tab Phòng được sinh lại bởi `renderStaffTable()`.
+   - Mỗi lần `renderStaffTable()` chạy, nó gán trực tiếp chuỗi HTML un-checked vào `.innerHTML`, xóa sạch mọi checkbox người dùng vừa tích chọn mà không có cơ chế khôi phục (khác với `renderProcedureCheckboxes` đã có cơ chế lưu Set).
+3. **Hàm vẽ lại số máy móc (`renderDynamicMachineInputs` trong `js/modules/app-resources.js`) xóa sạch giá trị input đang nhập:**
+   - Gán lại `container.innerHTML` của `dynamic-machine-inputs` bằng các input trống, làm mất số lượng máy người dùng vừa điền.
+
+**Giải pháp & Triển khai Kỹ thuật:**
+1. **Xây dựng bộ kiểm tra trạng thái form toàn diện (`js/app.js`):**
+   - Bổ sung `isRoomFormActive()`: Phát hiện người dùng đang thao tác trên form phòng (con trỏ đang ở input, `editIndex.room > -1`, tên phòng đã điền, hoặc đã tích ít nhất 1 checkbox bác sĩ/KTV/điều dưỡng, hoặc có số máy > 0).
+   - Bổ sung `isStaffFormActive()`, `isProcedureFormActive()`, `isMachineFormActive()`.
+   - Nâng cấp `isAnyFormActive()` kiểm tra tổng thể tất cả các form và bất kỳ ô input/select/textarea nào đang được focus trong toàn bộ hệ thống.
+2. **Nâng cấp Real-time Sync (`js/sync.js`):**
+   - `syncRefreshData()` và trình lắng nghe `OfflineSyncEngine` sử dụng `isAnyFormActive()`: Nếu người dùng đang thao tác trên bất kỳ form nào (đặc biệt là `tab-rooms`), hệ thống tạm hoãn đồng bộ và giữ nguyên phiên bản để thử lại sau.
+   - Thêm cơ chế bảo lưu và khôi phục tự động các trường của phòng (`room-name`, `room-beds`, các checkbox bác sĩ/KTV/điều dưỡng đã tick, số lượng máy đã nhập) trước và sau khi làm mới dữ liệu.
+3. **Cơ chế ghi nhớ DOM thông minh trong `renderStaffTable` (`js/app.js`):**
+   - Thu thập `checkedDocs`, `checkedKtvs`, `checkedDds` từ DOM hiện tại trước khi tạo HTML mới.
+   - Ngay sau khi cập nhật `.innerHTML`, tự động re-check lại chính xác toàn bộ các checkbox người dùng đã chọn.
+4. **Cơ chế ghi nhớ giá trị máy móc trong `renderDynamicMachineInputs` (`js/modules/app-resources.js`):**
+   - Thu thập `prevVals` theo `data-type` trước khi render lại, sau đó gán lại đầy đủ vào các input mới.
+
+**File sửa đổi:**
+- `js/app.js`
+- `js/modules/app-resources.js`
+- `js/sync.js`
+- `index.html`
+- `sw.js`
+- `version.json`
+- `PM-xeplich-v4.md`

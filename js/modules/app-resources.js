@@ -263,6 +263,13 @@
         const container = document.getElementById('dynamic-machine-inputs');
         if (!container) return;
 
+        // 🛡️ BẢO VỆ CHỐNG MẤT SỐ LƯỢNG MÁY ĐANG NHẬP TRONG TAB PHÒNG
+        const prevVals = {};
+        container.querySelectorAll('.room-machine-input').forEach(inp => {
+            const dt = (inp.getAttribute('data-type') || '').toLowerCase().trim();
+            if (dt && inp.value) prevVals[dt] = inp.value;
+        });
+
         const cache = getCache();
         if (!cache.machine || !Array.isArray(cache.machine) || cache.machine.length === 0) {
             container.innerHTML = '<div style="color:#7f8c8d; font-style:italic; grid-column:span 2;">Chưa có loại máy trong kho</div>';
@@ -296,6 +303,12 @@
                 <input type="number" class="room-machine-input" data-type="${safeEscape(type.toLowerCase().trim())}" min="0" style="width:40px; padding:2px">
             </div>
         `).join('');
+
+        // 🛡️ Khôi phục lại các giá trị máy người dùng đang nhập
+        for (const dt in prevVals) {
+            const inp = container.querySelector(`.room-machine-input[data-type="${dt}"]`);
+            if (inp) inp.value = prevVals[dt];
+        }
     }
 
     // ============================================================
