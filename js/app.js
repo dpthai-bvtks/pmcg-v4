@@ -5025,22 +5025,22 @@ var dataCache = window.dataCache;
         window.getCurrentStaffSeason = getCurrentStaffSeason;
 
         function applyStaffShiftPreset(season) {
-            const btnSummer = document.getElementById('btn-preset-summer');
-            const btnWinter = document.getElementById('btn-preset-winter');
+            const rSummer = document.getElementById('radio-season-summer');
+            const rWinter = document.getElementById('radio-season-winter');
             if (season === 'winter') {
                 if (document.getElementById('staff-ms')) document.getElementById('staff-ms').value = '08:00';
                 if (document.getElementById('staff-me')) document.getElementById('staff-me').value = '12:00';
                 if (document.getElementById('staff-as')) document.getElementById('staff-as').value = '13:00';
                 if (document.getElementById('staff-ae')) document.getElementById('staff-ae').value = '16:30';
-                if (btnSummer) btnSummer.classList.remove('active');
-                if (btnWinter) btnWinter.classList.add('active');
+                if (rSummer) rSummer.checked = false;
+                if (rWinter) rWinter.checked = true;
             } else {
                 if (document.getElementById('staff-ms')) document.getElementById('staff-ms').value = '07:30';
                 if (document.getElementById('staff-me')) document.getElementById('staff-me').value = '11:30';
                 if (document.getElementById('staff-as')) document.getElementById('staff-as').value = '13:00';
                 if (document.getElementById('staff-ae')) document.getElementById('staff-ae').value = '16:30';
-                if (btnSummer) btnSummer.classList.add('active');
-                if (btnWinter) btnWinter.classList.remove('active');
+                if (rSummer) rSummer.checked = true;
+                if (rWinter) rWinter.checked = false;
             }
         }
         window.applyStaffShiftPreset = applyStaffShiftPreset;
@@ -5052,17 +5052,19 @@ var dataCache = window.dataCache;
             const ae = (document.getElementById('staff-ae')?.value || '').trim();
             const currentShift = `${ms}-${me}, ${as}-${ae}`;
 
-            const btnSummer = document.getElementById('btn-preset-summer');
-            const btnWinter = document.getElementById('btn-preset-winter');
-            if (!btnSummer || !btnWinter) return;
-
-            btnSummer.classList.remove('active');
-            btnWinter.classList.remove('active');
+            const rSummer = document.getElementById('radio-season-summer');
+            const rWinter = document.getElementById('radio-season-winter');
+            if (!rSummer || !rWinter) return;
 
             if (currentShift === '07:30-11:30, 13:00-16:30') {
-                btnSummer.classList.add('active');
+                rSummer.checked = true;
+                rWinter.checked = false;
             } else if (currentShift === '08:00-12:00, 13:00-16:30') {
-                btnWinter.classList.add('active');
+                rSummer.checked = false;
+                rWinter.checked = true;
+            } else {
+                rSummer.checked = false;
+                rWinter.checked = false;
             }
         }
         window.updateStaffSeasonPresetHighlight = updateStaffSeasonPresetHighlight;

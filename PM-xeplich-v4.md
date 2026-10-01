@@ -6668,3 +6668,28 @@ ormalizeScheduleItem.
 - `sw.js`
 - `PM-xeplich-v4.md`
 
+### Tinh Gọn Bộ Chọn Ca Làm Việc Mùa Hè / Mùa Đông Thành Ô Tick Chọn Trên Form Nhân Sự (01/10/2026 - v4.1.8-rev18)
+
+**Yêu cầu người dùng:**
+- Tại khung nhập liệu nhân sự bên trái (`tab-staff`), chuyển đổi 2 nút bấm mùa hè / mùa đông thành các ô tick chọn (radio buttons) nhỏ gọn, liền mạch trên cùng một hàng ngang với nhãn `Ca làm việc:` để tiết kiệm không gian và đồng bộ phong cách giao diện với các trường khác.
+
+**Giải pháp & Triển khai Kỹ thuật:**
+- **Giao diện HTML (`index.html`):**
+  - Chuyển `Ca làm việc:` thành một `.form-group` chuẩn: Nhãn `Ca làm việc:` bên trái, bên phải là 2 ô tick chọn dạng Radio:
+    `🔘 ☀️ Mùa hè` (accent color màu cam ấm `#ea580c`) và `⚪ ❄️ Mùa đông` (accent color màu xanh `#0284c7`).
+  - Loại bỏ hoàn toàn nút bấm to và dòng chú thích phụ, giúp form gọn nhẹ, các trường thẳng hàng tắp.
+- **Xử lý sự kiện (`js/app.js`):**
+  - Cập nhật hàm `applyStaffShiftPreset(season)` điều khiển trạng thái `.checked` của 2 radio `radio-season-summer` và `radio-season-winter`.
+  - Cập nhật `updateStaffSeasonPresetHighlight()`: Khi người dùng chọn nhân sự cũ hoặc gõ tay đổi giờ, nếu trùng với mốc giờ chuẩn của mùa nào thì radio mùa đó tự động được tick chọn; nếu người dùng tùy biến giờ cá nhân khác biệt thì tự động nhả bỏ tick cả hai.
+- **Hỗ trợ Dark Mode (`css/style.css`):**
+  - Bổ sung màu chữ tương phản cao cho nhãn radio khi ở giao diện Dark Mode (`[data-theme="dark"] .staff-season-radios label`).
+
+**File sửa đổi:**
+- `index.html`
+- `js/app.js`
+- `css/style.css`
+- `version.json`
+- `sw.js`
+- `PM-xeplich-v4.md`
+
+

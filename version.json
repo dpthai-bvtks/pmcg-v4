@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev17",
+    "version": "4.1.8-rev18",
     "releaseDate": "01/10/2026",
-    "releaseTime": "07:50 01/10/2026",
-    "notes": "Tích hợp chọn nhanh mốc thời gian Mùa hè / Mùa đông cho từng nhân sự và bộ chuyển đổi ca làm việc hàng loạt cho toàn khoa ở tab-staff."
+    "releaseTime": "07:58 01/10/2026",
+    "notes": "Tinh gọn bộ chọn ca làm việc mùa hè / mùa đông ở tab-staff thành các ô tick chọn (radio buttons) thẳng hàng, gọn gàng và trực quan."
 }

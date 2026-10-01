@@ -8693,6 +8693,9 @@ transition: box-shadow 0.3s;
     color: #f8fafc;
     border-color: #475569;
 }
+[data-theme="dark"] .staff-season-radios label {
+    color: #cbd5e1 !important;
+}
 
 
 
