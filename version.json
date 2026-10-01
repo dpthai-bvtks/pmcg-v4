@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev24",
+    "version": "4.1.8-rev25",
     "releaseDate": "01/10/2026",
-    "releaseTime": "15:25 01/10/2026",
-    "notes": "Tối ưu hóa hiển thị Dashboard Ngày: Mở rộng toàn diện khung độ rộng tên nhân sự (Bác sĩ, KTV lên 85-98px) và tên thủ thuật (YHCT, PHCN lên 90-98px), tối ưu tỷ lệ lưới 5 cột (1.65fr cho 2 panel Tải Trọng & Phân Bố), khắc phục triệt để lỗi tên bị cắt bớt bằng dấu chấm lửng."
+    "releaseTime": "15:35 01/10/2026",
+    "notes": "Bổ sung dòng tính Tổng số lượng cố định dưới mỗi danh mục trên Dashboard Ngày: Thêm dòng Tổng số lượng cho Bác Sĩ (ca), Kỹ Thuật Viên (ca), Hệ YHCT (ca), Hệ PHCN (ca), BN theo Phòng (BN) và Lượt Sử Dụng Máy (lượt); hỗ trợ Dark Mode và bảo toàn cấu trúc lưới phẳng 5 cột."
 }

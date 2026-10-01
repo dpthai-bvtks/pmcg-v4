@@ -1289,6 +1289,42 @@
             background: transparent;
         }
 
+        /* Dòng tính Tổng số lượng dưới mỗi danh mục Dashboard */
+        .dash-total-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 5px;
+            padding-top: 5px;
+            border-top: 1.5px dashed #cbd5e1;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #1e3d2b;
+            box-sizing: border-box;
+            flex-shrink: 0;
+        }
+        .dash-total-footer .total-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: #64748b;
+            font-weight: 700;
+            font-size: 0.69rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .dash-total-footer .total-badge {
+            color: #0f172a;
+            font-size: 0.75rem;
+            font-weight: 800;
+            background: #f1f5f9;
+            padding: 1px 7px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            min-width: 24px;
+            text-align: center;
+        }
+
         /* Khi màn hình siêu rộng (>= 1500px): Dàn phẳng 5 cột rộng rãi với tỷ lệ ưu tiên 2 bảng tải trọng & thủ thuật */
         @media (min-width: 1500px) {
             .dashboard-5col {
@@ -6515,6 +6551,19 @@ transition: box-shadow 0.3s;
 
 [data-theme="dark"] .dash-chart-row > div:nth-child(3) {
     color: #f8fafc !important;
+}
+
+[data-theme="dark"] .dash-total-footer {
+    border-top-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+[data-theme="dark"] .dash-total-footer .total-label {
+    color: #94a3b8 !important;
+}
+[data-theme="dark"] .dash-total-footer .total-badge {
+    background: #0f172a !important;
+    color: #38bdf8 !important;
+    border-color: #334155 !important;
 }
 
 /* Monthly chart cards */

@@ -12160,14 +12160,36 @@ var dataCache = window.dataCache;
             renderGroup('procDistChart-yhct',  Object.entries(procCountYHCT).sort((a,b)=>b[1]-a[1]).slice(0,10), colorsYHCT, '', 90);
             renderGroup('procDistChart-phcn',  Object.entries(procCountPHCN).sort((a,b)=>b[1]-a[1]).slice(0,10), colorsPHCN, '', 98);
 
+            const renderTotalFooter = (totalId, totalVal, unit = '') => {
+                const el = document.getElementById(totalId);
+                if (!el) return;
+                const formatted = Number(totalVal || 0).toLocaleString('vi-VN');
+                el.innerHTML = `
+                    <span class="total-label">∑ Tổng:</span>
+                    <span class="total-badge">${formatted}${unit ? '<span style="font-size:0.6rem;font-weight:normal;margin-left:2px;color:#64748b;">' + unit + '</span>' : ''}</span>
+                `;
+            };
+
+            const totalLoadBS = Object.values(staffLoadBS).reduce((s, v) => s + v, 0);
+            const totalLoadKTV = Object.values(staffLoadKTV).reduce((s, v) => s + v, 0);
+            const totalProcYHCT = Object.values(procCountYHCT).reduce((s, v) => s + v, 0);
+            const totalProcPHCN = Object.values(procCountPHCN).reduce((s, v) => s + v, 0);
+
+            renderTotalFooter('staffLoadTotal-bs', totalLoadBS, 'ca');
+            renderTotalFooter('staffLoadTotal-ktv', totalLoadKTV, 'ca');
+            renderTotalFooter('procDistTotal-yhct', totalProcYHCT, 'ca');
+            renderTotalFooter('procDistTotal-phcn', totalProcPHCN, 'ca');
+
             // Render Thống kê bệnh nhân theo từng phòng
             const roomEntries = Object.entries(roomPatientsMap)
                 .map(([rm, set]) => [rm, set.size])
                 .sort((a,b) => b[1] - a[1]);
             const totalRoomsWithBN = roomEntries.filter(e => e[1] > 0).length;
+            const totalRoomBN = roomEntries.reduce((s, e) => s + e[1], 0);
             const totalRoomsBadge = document.getElementById('dash-total-rooms-badge');
             if (totalRoomsBadge) totalRoomsBadge.textContent = `${totalRoomsWithBN} phòng`;
             renderGroup('roomPatientsChart', roomEntries, colorsRoom, 'BN', 72);
+            renderTotalFooter('roomPatientsTotal', totalRoomBN, 'BN');
 
             // Render Thống kê số lượt sử dụng máy móc (labelWidth 115px cho tên máy hiển thị trọn vẹn)
             const machineEntries = Object.entries(machineUsageMap)
@@ -12176,6 +12198,7 @@ var dataCache = window.dataCache;
             const totalMachinesBadge = document.getElementById('dash-total-machines-badge');
             if (totalMachinesBadge) totalMachinesBadge.textContent = `${totalMachineTurns} lượt`;
             renderGroup('machineUsageChart', machineEntries, colorsMachine, 'lượt', 115);
+            renderTotalFooter('machineUsageTotal', totalMachineTurns, 'lượt');
 }
         window.loadDashboard = loadDashboard;
         window.refreshDashboard = refreshDashboard;

@@ -6934,3 +6934,39 @@ ormalizeScheduleItem.
 - `sw.js`
 - `version.json`
 - `PM-xeplich-v4.md`
+
+---
+
+### [v4.1.8-rev25] - 15:35 01/10/2026: Bổ Sung Dòng Tính Tổng Số Lượng Cố Định Dưới Mỗi Phần Trên Dashboard Ngày
+
+**Hiện tượng & Yêu cầu của người dùng:**
+- Người dùng yêu cầu: *"làm thêm 1 dòng tỉnh Tổng số lượng dưới mỗi phần đi"*.
+- Trên giao diện Dashboard ngày, người dùng muốn có một dòng tính tổng số lượng cố định ngay bên dưới mỗi danh mục thống kê thanh ngang để dễ dàng đối chiếu số ca khám, số bệnh nhân và lượt dùng thiết bị mà không cần phải tự cộng nhẩm.
+
+**Giải pháp & Khắc phục triệt để:**
+1. **Thiết kế & Bổ sung dòng Tổng số lượng (`.dash-total-footer`) trong `css/style.css`:**
+   - Dòng tổng được đặt cố định ở chân mỗi khối danh mục: nhãn `∑ TỔNG:` màu xám tro trang nhã (`#64748b`) và giá trị tổng hiển thị dưới dạng badge số nổi bật (`#0f172a` trên nền `#f1f5f9` viền `#e2e8f0`).
+   - Tối ưu hóa hoàn toàn cho cả Chế độ Sáng và Chế độ Tối (Dark Mode: chữ xanh ngọc cyan `#38bdf8`, nền tối `#0f172a`, đường viền `#334155`).
+2. **Cập nhật Cấu trúc HTML & Chiều cao Container (`index.html`):**
+   - Điều chỉnh chiều cao danh sách cuộn `.dash-chart-scroll` từ `220px` thành `190px` để kết hợp cùng dòng tổng cao `26px`, giữ nguyên tổng chiều cao của toàn bộ hàng 1 Dashboard chuẩn mực, không làm xô lệch bất kỳ panel nào.
+   - Bổ sung 6 thẻ hiển thị tổng cố định:
+     + `#staffLoadTotal-bs`: Tổng số ca của Bác sĩ (ca).
+     + `#staffLoadTotal-ktv`: Tổng số ca của Kỹ thuật viên (ca).
+     + `#procDistTotal-yhct`: Tổng số thủ thuật Hệ YHCT (ca).
+     + `#procDistTotal-phcn`: Tổng số thủ thuật Hệ PHCN (ca).
+     + `#roomPatientsTotal`: Tổng số bệnh nhân theo các phòng (BN).
+     + `#machineUsageTotal`: Tổng số lượt sử dụng máy móc (lượt).
+3. **Cập nhật Thuật toán Tổng hợp & Render trong `js/app.js`:**
+   - Xây dựng hàm `renderTotalFooter(totalId, totalVal, unit)`: tự động định dạng số tiếng Việt (`toLocaleString('vi-VN')`) và hiển thị kèm đơn vị tương ứng (`ca`, `BN`, `lượt`).
+   - Tự động cộng tổng chính xác 100% từ dữ liệu thực tế đã xếp lịch hoặc realtime fallback:
+     + Tổng Bác Sĩ + Tổng KTV = Đúng bằng "Tổng số ca / Đã xếp lịch".
+     + Tổng YHCT + Tổng PHCN = Đúng bằng "Tổng số ca".
+     + Tổng Phòng và Tổng Lượt Máy được hiển thị trực quan và tức thì.
+
+**File sửa đổi:**
+- `css/style.css`
+- `index.html`
+- `js/app.js`
+- `sw.js`
+- `version.json`
+- `PM-xeplich-v4.md`

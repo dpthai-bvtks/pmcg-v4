@@ -182,32 +182,32 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=4.1.8-rev24">
+    <link rel="stylesheet" href="css/style.css?v=4.1.8-rev25">
     <!-- PWA & Mobile Web App Meta Tags -->
-    <link rel="manifest" href="manifest.json?v=4.1.8-rev24">
+    <link rel="manifest" href="manifest.json?v=4.1.8-rev25">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.1.8-rev24">
+    <link rel="stylesheet" href="css/mobile.css?v=4.1.8-rev25">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
-    <script src="js/dexie.min.js?v=4.1.8-rev24"></script>
+    <script src="js/dexie.min.js?v=4.1.8-rev25"></script>
     <!-- JS Thư viện Bảo mật DOMPurify & Tìm kiếm mờ thông minh Fuse.js -->
-    <script src="js/purify.min.js?v=4.1.8-rev24"></script>
-    <script src="js/fuse.min.js?v=4.1.8-rev24"></script>
+    <script src="js/purify.min.js?v=4.1.8-rev25"></script>
+    <script src="js/fuse.min.js?v=4.1.8-rev25"></script>
     <!-- JS Thư viện Biểu đồ Thống Kê Chart.js & Validation Schema Zod -->
-    <script src="js/chart.min.js?v=4.1.8-rev24"></script>
-    <script src="js/zod.min.js?v=4.1.8-rev24"></script>
+    <script src="js/chart.min.js?v=4.1.8-rev25"></script>
+    <script src="js/zod.min.js?v=4.1.8-rev25"></script>
     <!-- JS Thư viện kéo thả nội bộ -->
-    <script src="js/sortable.min.js?v=4.1.8-rev24"></script>
+    <script src="js/sortable.min.js?v=4.1.8-rev25"></script>
     <!-- Thư viện Dòng thời gian Timeline Frappe Gantt -->
-    <link rel="stylesheet" href="css/frappe-gantt.css?v=4.1.8-rev24">
-    <script src="js/frappe-gantt.min.js?v=4.1.8-rev24"></script>
+    <link rel="stylesheet" href="css/frappe-gantt.css?v=4.1.8-rev25">
+    <script src="js/frappe-gantt.min.js?v=4.1.8-rev25"></script>
     <!-- Thư viện Xuất PDF pdfmake tiếng Việt -->
-    <script src="js/pdfmake.min.js?v=4.1.8-rev24"></script>
-    <script src="js/vfs_fonts.js?v=4.1.8-rev24"></script>
+    <script src="js/pdfmake.min.js?v=4.1.8-rev25"></script>
+    <script src="js/vfs_fonts.js?v=4.1.8-rev25"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 </head>
 
@@ -623,16 +623,18 @@
                         <!-- Panel 2: TẢI TRỌNG NHÂN VIÊN -->
                         <div class="dash-panel">
                             <h3 class="dash-panel-title">👥 TẢI TRỌNG NHÂN VIÊN</h3>
-                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
                                 <div style="min-width:0; border-right:1px solid #eef2f6; padding-right:4px;">
                                     <div style="font-size:0.72rem; font-weight:700; color:#1e3d2b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; padding-bottom:4px; border-bottom:2px solid #2d5a3d;">
                                         🩺 Bác sĩ</div>
-                                    <div id="staffLoadChart-bs" class="dash-chart-scroll" style="height:220px; overflow-y:auto; padding-right:4px;"></div>
+                                    <div id="staffLoadChart-bs" class="dash-chart-scroll" style="height:190px; overflow-y:auto; padding-right:4px;"></div>
+                                    <div id="staffLoadTotal-bs" class="dash-total-footer"></div>
                                 </div>
                                 <div style="min-width:0;">
                                     <div style="font-size:0.72rem; font-weight:700; color:#1e3d2b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; padding-bottom:4px; border-bottom:2px solid #5a8d70;">
                                         🔧 Kỹ thuật viên</div>
-                                    <div id="staffLoadChart-ktv" class="dash-chart-scroll" style="height:220px; overflow-y:auto; padding-right:4px;"></div>
+                                    <div id="staffLoadChart-ktv" class="dash-chart-scroll" style="height:190px; overflow-y:auto; padding-right:4px;"></div>
+                                    <div id="staffLoadTotal-ktv" class="dash-total-footer"></div>
                                 </div>
                             </div>
                         </div>
@@ -640,16 +642,18 @@
                         <!-- Panel 3: PHÂN BỐ THỦ THUẬT -->
                         <div class="dash-panel">
                             <h3 class="dash-panel-title">📈 PHÂN BỐ THỦ THUẬT</h3>
-                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
                                 <div style="min-width:0; border-right:1px solid #eef2f6; padding-right:4px;">
                                     <div style="font-size:0.72rem; font-weight:700; color:#1e3d2b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; padding-bottom:4px; border-bottom:2px solid #2d5a3d;">
                                         🌿 Hệ YHCT</div>
-                                    <div id="procDistChart-yhct" class="dash-chart-scroll" style="height:220px; overflow-y:auto; padding-right:4px;"></div>
+                                    <div id="procDistChart-yhct" class="dash-chart-scroll" style="height:190px; overflow-y:auto; padding-right:4px;"></div>
+                                    <div id="procDistTotal-yhct" class="dash-total-footer"></div>
                                 </div>
                                 <div style="min-width:0;">
                                     <div style="font-size:0.72rem; font-weight:700; color:#1e3d2b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; padding-bottom:4px; border-bottom:2px solid #5a8d70;">
                                         💪 Hệ PHCN</div>
-                                    <div id="procDistChart-phcn" class="dash-chart-scroll" style="height:220px; overflow-y:auto; padding-right:4px;"></div>
+                                    <div id="procDistChart-phcn" class="dash-chart-scroll" style="height:190px; overflow-y:auto; padding-right:4px;"></div>
+                                    <div id="procDistTotal-phcn" class="dash-total-footer"></div>
                                 </div>
                             </div>
                         </div>
@@ -660,7 +664,8 @@
                                 <h3 class="dash-panel-title" style="margin: 0; font-size: 0.8rem; font-weight: 800; color: #1e3d2b;">🏥 BN THEO PHÒNG</h3>
                                 <span id="dash-total-rooms-badge" style="font-size: 0.65rem; font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 2px 6px; border-radius: 10px;">0 phòng</span>
                             </div>
-                            <div id="roomPatientsChart" class="dash-chart-scroll" style="height: 220px; overflow-y: auto; padding-right: 4px;"></div>
+                            <div id="roomPatientsChart" class="dash-chart-scroll" style="height: 190px; overflow-y: auto; padding-right: 4px;"></div>
+                            <div id="roomPatientsTotal" class="dash-total-footer"></div>
                         </div>
 
                         <!-- Panel 5: LƯỢT SỬ DỤNG MÁY MÓC -->
@@ -669,7 +674,8 @@
                                 <h3 class="dash-panel-title" style="margin: 0; font-size: 0.8rem; font-weight: 800; color: #1e3d2b;">⚡ SỬ DỤNG MÁY</h3>
                                 <span id="dash-total-machines-badge" style="font-size: 0.65rem; font-weight: 700; color: #d97706; background: #fef3c7; padding: 2px 6px; border-radius: 10px;">0 lượt</span>
                             </div>
-                            <div id="machineUsageChart" class="dash-chart-scroll" style="height: 220px; overflow-y: auto; padding-right: 4px;"></div>
+                            <div id="machineUsageChart" class="dash-chart-scroll" style="height: 190px; overflow-y: auto; padding-right: 4px;"></div>
+                            <div id="machineUsageTotal" class="dash-total-footer"></div>
                         </div>
 
                     </div>
@@ -4510,28 +4516,28 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/schedule-utils.js?v=4.1.8-rev24"></script>
-    <script src="js/schedule-strategies.js?v=4.1.8-rev24"></script>
-    <script src="js/modules/export-service.js?v=4.1.8-rev24"></script>
-    <script src="js/modules/history-manager.js?v=4.1.8-rev24"></script>
-    <script src="js/offline-sync-engine.js?v=4.1.8-rev24"></script>
-    <script src="js/ai-scheduler.js?v=4.1.8-rev24"></script>
-    <script src="js/cp-solver.js?v=4.1.8-rev24"></script>
-    <script src="js/scheduler-engine.js?v=4.1.8-rev24"></script>
-    <script src="js/modules/app-resources.js?v=4.1.8-rev24"></script>
-    <script src="js/app.js?v=4.1.8-rev24"></script>
-    <script src="js/modules/app-export-reports.js?v=4.1.8-rev24"></script>
-    <script src="js/modules/app-error-checker.js?v=4.1.8-rev24"></script>
-    <script src="js/modules/app-backup-restore.js?v=4.1.8-rev24"></script>
-    <script src="js/modules/app-doc-lookup.js?v=4.1.8-rev24"></script>
-    <script src="js/modules/app-tenant-admin.js?v=4.1.8-rev24"></script>
-    <script src="js/init.js?v=4.1.8-rev24"></script>
-    <script src="js/sync.js?v=4.1.8-rev24"></script>
-    <script src="js/thongke.js?v=4.1.8-rev24"></script>
+    <script src="js/schedule-utils.js?v=4.1.8-rev25"></script>
+    <script src="js/schedule-strategies.js?v=4.1.8-rev25"></script>
+    <script src="js/modules/export-service.js?v=4.1.8-rev25"></script>
+    <script src="js/modules/history-manager.js?v=4.1.8-rev25"></script>
+    <script src="js/offline-sync-engine.js?v=4.1.8-rev25"></script>
+    <script src="js/ai-scheduler.js?v=4.1.8-rev25"></script>
+    <script src="js/cp-solver.js?v=4.1.8-rev25"></script>
+    <script src="js/scheduler-engine.js?v=4.1.8-rev25"></script>
+    <script src="js/modules/app-resources.js?v=4.1.8-rev25"></script>
+    <script src="js/app.js?v=4.1.8-rev25"></script>
+    <script src="js/modules/app-export-reports.js?v=4.1.8-rev25"></script>
+    <script src="js/modules/app-error-checker.js?v=4.1.8-rev25"></script>
+    <script src="js/modules/app-backup-restore.js?v=4.1.8-rev25"></script>
+    <script src="js/modules/app-doc-lookup.js?v=4.1.8-rev25"></script>
+    <script src="js/modules/app-tenant-admin.js?v=4.1.8-rev25"></script>
+    <script src="js/init.js?v=4.1.8-rev25"></script>
+    <script src="js/sync.js?v=4.1.8-rev25"></script>
+    <script src="js/thongke.js?v=4.1.8-rev25"></script>
 
     <!-- PWA Service Worker Registration + Instant Auto-Update Detection & Blocking Modal -->
     <script>
-    const APP_VERSION = '4.1.8-rev24';
+    const APP_VERSION = '4.1.8-rev25';
 
     (function registerAndAutoUpdate() {
         // 1. Kênh BroadcastChannel đồng bộ tức thì mọi tab đang mở trên cùng một máy
@@ -4992,7 +4998,7 @@
                 <div style="color: #3b82f6; font-size: 18px; font-weight: bold;">➜</div>
                 <div style="text-align: center;">
                     <div style="font-size: 11px; font-weight: 700; color: #16a34a; text-transform: uppercase; margin-bottom: 2px;">Phiên bản mới</div>
-                    <div id="force-update-new-ver" style="font-weight: 800; color: #15803d; font-family: monospace; font-size: 14.5px; background: #dcfce7; padding: 2px 10px; border-radius: 6px;">4.1.8-rev24</div>
+                    <div id="force-update-new-ver" style="font-weight: 800; color: #15803d; font-family: monospace; font-size: 14.5px; background: #dcfce7; padding: 2px 10px; border-radius: 6px;">4.1.8-rev25</div>
                 </div>
             </div>
 
