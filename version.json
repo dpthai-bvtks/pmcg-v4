@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev19",
+    "version": "4.1.8-rev20",
     "releaseDate": "01/10/2026",
-    "releaseTime": "08:04 01/10/2026",
-    "notes": "Đồng bộ kích thước ô tick chọn ca làm việc mùa hè / mùa đông thành ô checkbox vuông chuẩn mực (17px), loại bỏ hoàn toàn lỗi phồng to kích thước."
+    "releaseTime": "08:26 01/10/2026",
+    "notes": "Sửa triệt để lỗi thứ tự nhân sự Bảng Chấm Công bị quay về ban đầu: mở quyền lưu cho tài khoản đơn vị, bảo vệ thứ tự cục bộ và thêm nút đồng bộ theo thứ tự Khoa. Làm sạch hoàn toàn dữ liệu chấm công mock ngày 1, 2 tháng 10/2026 bị điền nhầm LỄ."
 }

@@ -50,15 +50,51 @@ var callApi = (typeof window !== 'undefined' && typeof window.callApi === 'funct
             return key + '_' + u;
         }
 
+        // Hàm kiểm tra và nhận diện dữ liệu chấm công giả lập / mock test bị clone nhầm từ tháng 9 (1/9, 2/9 là LỄ)
+        function isMockChamCongData(my, data) {
+            if (!data || typeof data !== 'object') return false;
+            if (my === '2026-10' || my === '2026-11' || my === '2026-12') {
+                let fakeHolidayCount = 0;
+                const emps = Object.keys(data);
+                for (const emp of emps) {
+                    const row = data[emp];
+                    if (row && typeof row === 'object') {
+                        const d1 = String(row['1'] || row[1] || '').toUpperCase();
+                        const d2 = String(row['2'] || row[2] || '').toUpperCase();
+                        if ((d1 === 'LỄ' || d1 === 'LE') && (d2 === 'LỄ' || d2 === 'LE')) {
+                            fakeHolidayCount++;
+                        }
+                    }
+                }
+                if (fakeHolidayCount >= 3) return true;
+            }
+            return false;
+        }
+        window.isMockChamCongData = isMockChamCongData;
+
         // Tự động dọn dẹp cache cũ bị ô nhiễm từ các phiên bản trước
         try {
-            if (typeof localStorage !== 'undefined' && localStorage.getItem('pm_cleaned_cache_ver') !== '4.0.3-rev6') {
-                Object.keys(localStorage).forEach(k => {
-                    if (k.startsWith('pm_cache_cc_') || k.startsWith('pm_cache_tk_')) {
-                        localStorage.removeItem(k);
+            if (typeof localStorage !== 'undefined') {
+                if (localStorage.getItem('pm_cleaned_cache_ver') !== '4.1.8-rev20') {
+                    Object.keys(localStorage).forEach(k => {
+                        if (k.startsWith('pm_cache_cc_') || k.startsWith('pm_cache_tk_')) {
+                            localStorage.removeItem(k);
+                        }
+                    });
+                    localStorage.setItem('pm_cleaned_cache_ver', '4.1.8-rev20');
+                }
+                // Dọn sạch riêng các key tháng 10, 11, 12 nếu còn vướng dữ liệu LỄ giả
+                ['2026-10', '2026-11', '2026-12'].forEach(m => {
+                    const ck = getLocalCCKey(m);
+                    const raw = localStorage.getItem(ck);
+                    if (raw) {
+                        try {
+                            if (isMockChamCongData(m, JSON.parse(raw))) {
+                                localStorage.removeItem(ck);
+                            }
+                        } catch(e) { localStorage.removeItem(ck); }
                     }
                 });
-                localStorage.setItem('pm_cleaned_cache_ver', '4.0.3-rev6');
             }
         } catch(e) {}
 
@@ -73,13 +109,24 @@ var callApi = (typeof window !== 'undefined' && typeof window.callApi === 'funct
         function getCachedChamCong(my) {
             try {
                 const raw = localStorage.getItem(getLocalCCKey(my));
-                if (raw) return JSON.parse(raw);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (isMockChamCongData(my, parsed)) {
+                        localStorage.removeItem(getLocalCCKey(my));
+                        return {};
+                    }
+                    return parsed;
+                }
             } catch(e) {}
             return null;
         }
         function setCachedChamCong(my, data) {
             try {
                 if (data && typeof data === 'object') {
+                    if (isMockChamCongData(my, data)) {
+                        localStorage.removeItem(getLocalCCKey(my));
+                        return;
+                    }
                     localStorage.setItem(getLocalCCKey(my), JSON.stringify(data));
                 }
             } catch(e) {}
@@ -404,6 +451,11 @@ var callApi = (typeof window !== 'undefined' && typeof window.callApi === 'funct
             }
 
             if (list && list.length > 0) {
+                // 🛡️ Bảo vệ: Nếu người dùng vừa đổi thứ tự cục bộ gần đây (trong vòng 30s) thì không để server cũ đè lại
+                if (window._lastChamCongReorderTime && (Date.now() - window._lastChamCongReorderTime < 30000)) {
+                    console.log('[ChamCong] Thứ tự nhân sự vừa được sắp xếp cục bộ, bỏ qua ghi đè từ server.');
+                    return;
+                }
                 adminChamCongEmployees = cleanseAdminChamCongEmployees(list);
                 ensureStaffConfigForEmployees();
                 try { localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees)); } catch(e){}
@@ -431,7 +483,12 @@ var callApi = (typeof window !== 'undefined' && typeof window.callApi === 'funct
                 } else if (res && typeof res === 'object') {
                     list = Object.keys(res);
                 }
-                adminChamCongEmployees = cleanseAdminChamCongEmployees(list);
+                // 🛡️ Nếu người dùng vừa sắp xếp nhân sự trong 30s qua thì giữ nguyên thứ tự cục bộ, không đè từ máy chủ
+                if (window._lastChamCongReorderTime && (Date.now() - window._lastChamCongReorderTime < 30000)) {
+                    console.log('[ChamCong] Giữ nguyên thứ tự vừa sắp xếp, không đè từ máy chủ');
+                } else if (list && list.length > 0) {
+                    adminChamCongEmployees = cleanseAdminChamCongEmployees(list);
+                }
                 if (adminChamCongEmployees.length === 0 && isBVTKS_CS2) {
                     adminChamCongEmployees = [...DEFAULT_CHAMCONG_EMPLOYEES];
                 }
@@ -616,6 +673,7 @@ function renderAdminChamCongTable() {
                         if (newOrder.length > 0) {
                             adminChamCongEmployees = newOrder;
                         }
+                        window._lastChamCongReorderTime = Date.now();
 
                         // Cập nhật STT, data-index và onclick handlers trên DOM ngay lập tức
                         rows.forEach((r, idx) => {
@@ -628,8 +686,8 @@ function renderAdminChamCongTable() {
                             if (delBtn) delBtn.setAttribute('onclick', `deleteAdminChamCongEmployee(${idx})`);
                         });
 
-                        // Lưu vào localStorage và đồng bộ lên server ngầm
-                        saveAdminChamCongData(false);
+                        // Lưu vào localStorage và đồng bộ lên server với thông báo rõ ràng
+                        saveAdminChamCongData(true);
                     }
                 }
             });
@@ -642,7 +700,8 @@ window.moveAdminEmployee = function(index, direction) {
     if (newIndex < 0 || newIndex >= adminChamCongEmployees.length) return;
     const item = adminChamCongEmployees.splice(index, 1)[0];
     adminChamCongEmployees.splice(newIndex, 0, item);
-    saveAdminChamCongData(false);
+    window._lastChamCongReorderTime = Date.now();
+    saveAdminChamCongData(true);
 };
 
 window.switchChamCongSubTab = function(tabName) {
@@ -753,6 +812,7 @@ function saveAdminEmployee() {
 }
 
 function saveAdminChamCongData(showAlert = true) {
+    window._lastChamCongReorderTime = Date.now();
     // 1. Lưu ngay tức thì vào LocalStorage để tránh bị reset khi nạp lại
     try {
         localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees));
@@ -760,24 +820,61 @@ function saveAdminChamCongData(showAlert = true) {
     } catch(e){}
 
     // 2. Gửi API lưu lên CSDL
-    callApi('saveEmployees', [adminChamCongEmployees]).then(() => {
-        return callApi('saveErrorConfig', [{ staff: adminChamCongStaffConfig }]);
+    const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
+    if (!apiFn) return;
+
+    apiFn('saveEmployees', [adminChamCongEmployees]).then(() => {
+        return apiFn('saveErrorConfig', [{ staff: adminChamCongStaffConfig }]);
     }).then(() => {
         if (showAlert) {
-            notify("Đã lưu danh sách nhân sự chấm công lên máy chủ!", "success");
+            notify("✅ Đã lưu thứ tự nhân sự chấm công lên máy chủ!", "success");
             try { renderAdminChamCongTable(); } catch(e) { console.error(e); }
         }
         // Luôn cập nhật Bảng Chấm Công (31 ngày) để đồng bộ theo thứ tự mới sắp xếp
         try { renderChamCongTable(); } catch(e) { console.error(e); }
     }).catch(err => {
-        if (showAlert) {
-            console.error(err);
-            notify('Lỗi khi lưu nhân sự: ' + (err.message || err), 'error');
-        } else {
-            console.error('[ChamCong] saveAdminChamCongData error:', err);
-        }
+        console.error('[ChamCong] saveAdminChamCongData error:', err);
+        notify('⚠️ Lỗi khi lưu thứ tự nhân sự lên máy chủ: ' + (err.message || err), 'error');
     });
 }
+window.saveAdminChamCongData = saveAdminChamCongData;
+
+// 🔄 Hàm hỗ trợ đồng bộ thứ tự nhân sự Bảng Chấm Công theo danh sách nhân sự khoa (Tab Nhân Sự)
+window.syncChamCongOrderFromStaffList = function() {
+    let mainStaff = [];
+    if (typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff) && dataCache.staff.length > 0) {
+        mainStaff = dataCache.staff;
+    } else if (window.dataCache && Array.isArray(window.dataCache.staff)) {
+        mainStaff = window.dataCache.staff;
+    }
+    if (!mainStaff || mainStaff.length === 0) {
+        return alert("Chưa có danh sách nhân sự khoa để đồng bộ!");
+    }
+    if (!confirm("Bác sĩ có chắc muốn sắp xếp lại thứ tự nhân sự Bảng Chấm Công theo đúng thứ tự trong Danh Sách Nhân Sự Khoa?")) return;
+
+    const orderedNames = [];
+    mainStaff.forEach(s => {
+        const name = String(s.ten || s.name || s.his_name || '').trim();
+        const canon = getCanonicalStaffName(name);
+        if (canon && !orderedNames.includes(canon)) {
+            orderedNames.push(canon);
+        }
+    });
+
+    // Bổ sung các nhân sự còn lại trong adminChamCongEmployees nếu chưa có trong orderedNames
+    adminChamCongEmployees.forEach(emp => {
+        if (!orderedNames.includes(emp)) {
+            orderedNames.push(emp);
+        }
+    });
+
+    adminChamCongEmployees = cleanseAdminChamCongEmployees(orderedNames);
+    ensureStaffConfigForEmployees();
+    window._lastChamCongReorderTime = Date.now();
+    saveAdminChamCongData(true);
+    renderAdminChamCongTable();
+    renderChamCongTable();
+};
 
 // Auto load when opening Admin Tab
 const originalSwitchAdminSection = window.switchAdminSection || function(s, b) {};
@@ -1355,6 +1452,12 @@ window.switchAdminSection = function(sectionId, btn) {
                             raw = res;
                         }
 
+                        // 🛡️ Lọc triệt để nếu máy chủ trả về dữ liệu mock tháng 10, 11, 12 bị clone nhầm
+                        if (isMockChamCongData(my, raw)) {
+                            raw = {};
+                            try { apiFn('saveChamCong', [my, {}]); } catch(e){}
+                        }
+
                         // BẢO VỆ DỮ LIỆU CỤC BỘ (Safe Merge on Client):
                         const hasLocalData = chamCongData && Object.keys(chamCongData).some(k => Object.keys(chamCongData[k] || {}).length > 0);
                         const isRecentlyEdited = (Date.now() - chamCongLastEditedTime < 8000) && chamCongIsDirty && (activeChamCongMonthYear === my);
@@ -1378,6 +1481,13 @@ window.switchAdminSection = function(sectionId, btn) {
                         } else if (hasLocalData && isRecentlyEdited) {
                             setCachedChamCong(my, chamCongData);
                             triggerAutoSaveChamCong();
+                        } else {
+                            // Khi máy chủ chưa có dữ liệu chấm công cho tháng này (hoặc đã làm sạch):
+                            // Trả về bảng chấm công sạch hoàn toàn cho tháng
+                            chamCongData = {};
+                            window.chamCongData = chamCongData;
+                            try { localStorage.removeItem(getLocalCCKey(my)); } catch(e){}
+                            renderChamCongTable();
                         }
                     }).catch(err => {
                         isLoadingChamCong = false;

@@ -745,9 +745,6 @@ async function processApiRequest(c) {
       "deleteAccount",
       "saveSystemSettings",
       "saveGeneralSettings",
-      "saveEmployees",
-      "saveErrorConfig",
-      "saveChamCongSymbols",
       "saveQuickLinks",
       "saveDocuments",
       "saveGoogleDriveSettings"
