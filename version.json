@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev26",
+    "version": "4.1.8-rev27",
     "releaseDate": "01/10/2026",
-    "releaseTime": "16:15 01/10/2026",
-    "notes": "Khắc phục triệt để lỗi đếm sai tổng số bệnh nhân trên Dashboard Ngày (lệch 53 vs 54): Nâng cấp cơ chế thống kê Bệnh nhân theo Phòng bằng định danh duy nhất (Unique ID) từ danh sách bệnh nhân thực tế của ngày, xử lý triệt để trường hợp 2 bệnh nhân trùng họ tên và năm sinh ở cùng một phòng (Phòng 1+2+3 có 13 BN thay vì bị gộp thành 12 BN), đảm bảo tổng số bệnh nhân các phòng luôn khớp 100% với thẻ Tổng quan (54 BN)."
+    "releaseTime": "16:25 01/10/2026",
+    "notes": "Loại bỏ các badge đếm phụ trên tiêu đề Panel 'BN Theo Phòng' và 'Sử Dụng Máy' trên Dashboard Ngày: Do đã có dòng Tổng số lượng cố định ở chân cột (∑ TỔNG), việc gỡ bỏ các badge trên header giúp loại bỏ hoàn toàn hiện tượng rớt dòng tiêu đề, đồng nhất giao diện 5 panel phẳng, gọn gàng và thoáng đãng."
 }

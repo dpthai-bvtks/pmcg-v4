@@ -7017,3 +7017,26 @@ ormalizeScheduleItem.
 - `sw.js`
 - `version.json`
 - `PM-xeplich-v4.md`
+
+---
+
+### [v4.1.8-rev27] - 16:25 01/10/2026: Loại Bỏ Các Badge Đếm Dư Thừa Trên Header Panel (BN Theo Phòng & Sử Dụng Máy)
+
+**Hiện tượng & Yêu cầu của người dùng:**
+- Người dùng gửi ảnh khoanh tròn 2 badge `[4 phòng]` và `[0 lượt]` trên tiêu đề Panel 4 và Panel 5, yêu cầu: *"vì đã có tôingr phía dưới rồi nên những số này không cần nữa"*.
+- Sau khi đã bổ sung dòng `∑ TỔNG: 54 BN` và `∑ TỔNG: 123 lượt` cố định ở chân mỗi panel, việc đặt thêm badge trên thanh tiêu đề trở nên dư thừa thông tin. Đồng thời, do diện tích bề ngang bị badge chiếm một góc, chữ *"PHÒNG"* trong tiêu đề *"🏥 BN THEO PHÒNG"* bị ép rớt xuống dòng thứ 2, làm mất đi tính thẩm mỹ của Dashboard.
+
+**Giải pháp & Khắc phục triệt để:**
+1. **Loại bỏ badge và đơn giản hóa tiêu đề Panel trong `index.html`:**
+   - Gỡ bỏ hoàn toàn thẻ `<span id="dash-total-rooms-badge">` và `<span id="dash-total-machines-badge">`.
+   - Bỏ lớp bao bọc flex không cần thiết, đưa tiêu đề Panel 4 và Panel 5 về dạng thẻ chuẩn `<h3 class="dash-panel-title">` đồng nhất 100% với Panel 1, 2, 3.
+   - Tiêu đề *"🏥 BN THEO PHÒNG"* và *"⚡ SỬ DỤNG MÁY"* giờ đây trải dài thẳng thớm trên 1 dòng duy nhất, không còn bị rớt dòng.
+2. **Dọn dẹp code JavaScript tương ứng trong `js/app.js`:**
+   - Loại bỏ các câu lệnh gán text vào badge đã bị gỡ bỏ, giữ cho luồng render biểu đồ tinh gọn, nhanh và mượt mà.
+
+**File sửa đổi:**
+- `index.html`
+- `js/app.js`
+- `sw.js`
+- `version.json`
+- `PM-xeplich-v4.md`

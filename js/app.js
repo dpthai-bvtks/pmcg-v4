@@ -12196,10 +12196,7 @@ var dataCache = window.dataCache;
             const roomEntries = Object.entries(roomPatientsMap)
                 .map(([rm, set]) => [rm, set.size])
                 .sort((a,b) => b[1] - a[1]);
-            const totalRoomsWithBN = roomEntries.filter(e => e[1] > 0).length;
             const totalRoomBN = roomEntries.reduce((s, e) => s + e[1], 0);
-            const totalRoomsBadge = document.getElementById('dash-total-rooms-badge');
-            if (totalRoomsBadge) totalRoomsBadge.textContent = `${totalRoomsWithBN} phòng`;
             renderGroup('roomPatientsChart', roomEntries, colorsRoom, 'BN', 72);
             renderTotalFooter('roomPatientsTotal', totalRoomBN, 'BN');
 
@@ -12207,8 +12204,6 @@ var dataCache = window.dataCache;
             const machineEntries = Object.entries(machineUsageMap)
                 .sort((a,b) => b[1] - a[1]);
             const totalMachineTurns = machineEntries.reduce((s, e) => s + e[1], 0);
-            const totalMachinesBadge = document.getElementById('dash-total-machines-badge');
-            if (totalMachinesBadge) totalMachinesBadge.textContent = `${totalMachineTurns} lượt`;
             renderGroup('machineUsageChart', machineEntries, colorsMachine, 'lượt', 115);
             renderTotalFooter('machineUsageTotal', totalMachineTurns, 'lượt');
 }
