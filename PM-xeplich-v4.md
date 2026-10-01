@@ -6970,3 +6970,50 @@ ormalizeScheduleItem.
 - `sw.js`
 - `version.json`
 - `PM-xeplich-v4.md`
+
+---
+
+### [v4.1.8-rev26] - 16:15 01/10/2026: Khắc Phục Triệt Để Lỗi Đếm Sai Lệch Tổng Số Bệnh Nhân Trên Dashboard Ngày (Khớp Tuyệt Đối 54 BN)
+
+**Hiện tượng & Phản hồi người dùng:**
+- Người dùng phản ánh kèm ảnh chụp màn hình: *"đang đếm tổng số bệnh nhân sai kìa"*.
+- Trên cùng một giao diện Dashboard ngày 01/10/2026:
+  + Thẻ **TỔNG QUAN** bên trái hiển thị: **🏥 Bệnh nhân: 54**.
+  + Thẻ **BN THEO PHÒNG** bên phải hiển thị:
+    * Phòng 4: 19 BN
+    * Phòng C118: 15 BN
+    * Phòng 1+2+3: 12 BN
+    * Phòng TT1: 7 BN
+    * Dòng tổng kết phía dưới: **∑ TỔNG: 53 BN**.
+  + Hai số liệu **54** và **53** bị lệch nhau 1 bệnh nhân, gây hiểu lầm và mất tính nhất quán của dữ liệu.
+
+**Nguyên nhân gốc rễ (Root Cause):**
+1. **Lỗi gộp trùng bệnh nhân trùng họ tên và năm sinh:**
+   - Trong danh sách bệnh nhân thực tế của ngày hôm đó, có 2 bệnh nhân cùng tên là **"Nguyễn Văn Cương"**, cùng sinh năm **1989** tại **Phòng 1+2+3** (ID `6476` và ID `6512`, một hồ sơ điều trị YHCT gồm điện châm, thủy châm, điện xung; hồ sơ còn lại điều trị PHCN gồm tập trợ giúp, hồng ngoại).
+   - Hàm thống kê biểu đồ phòng (`renderCharts` trong `js/app.js`) trước đây duyệt qua danh sách thủ thuật và tạo khóa nhận diện dạng chuỗi: `pKey = (r[1] || '') + '|' + (r[2] || '')` (tức `"Nguyễn Văn Cương|1989"`).
+   - Cấu trúc `Set` trong JavaScript tự động loại bỏ giá trị trùng lặp khi thêm cùng một chuỗi `pKey`, khiến 2 bệnh nhân có tên và năm sinh giống nhau bị gộp thành 1 người duy nhất!
+   - Hệ quả là Phòng 1+2+3 bị đếm thiếu từ 13 BN xuống còn 12 BN, kéo theo tổng số bệnh nhân các phòng bị tụt từ 54 xuống 53.
+2. **Nguồn dữ liệu thống kê phòng chưa đồng bộ với thẻ Tổng quan:**
+   - Thẻ Tổng quan lấy trực tiếp độ dài mảng bệnh nhân thực tế `dataCache.pat.length = 54`.
+   - Trong khi thẻ BN Theo Phòng lại đi trích xuất gián tiếp từ các ca thủ thuật trong bảng xếp lịch `valid` thay vì phân bổ từ danh sách bệnh nhân gốc.
+
+**Giải pháp & Khắc phục triệt để:**
+1. **Chuyển đổi nguồn thống kê phòng về danh sách bệnh nhân thực tế (`patSource`):**
+   - Thay vì trích xuất từ các ca thủ thuật, hệ thống đọc trực tiếp từ danh mục bệnh nhân thực tế của ngày (`dataCache.pat` ở chế độ Live hoặc `history.patients` ở chế độ xem lịch sử).
+2. **Cơ chế định danh duy nhất (Unique Patient Identifier):**
+   - Đổi khóa nhận diện bệnh nhân sang định danh duy nhất: `p.id` (hoặc `p.pId`, `p.maBN`, hoặc kết hợp chỉ mục `idx`):
+     `const pKey = p.id != null ? 'id_' + p.id : (p.pId != null ? 'pid_' + p.pId : 'idx_' + p.ten + '_' + p.namSinh + '_' + idx);`
+   - Đảm bảo 2 bệnh nhân trùng họ tên và năm sinh vẫn được phân biệt độc lập và ghi nhận chuẩn xác 100%.
+3. **Kết quả hiển thị sau khi sửa đổi:**
+   - Phòng 4: **19 BN**
+   - Phòng C118: **15 BN**
+   - Phòng 1+2+3: **13 BN** (khôi phục đầy đủ 13 người)
+   - Phòng TT1: **7 BN**
+   - **∑ TỔNG: 54 BN** (19 + 15 + 13 + 7 = 54), khớp chính xác tuyệt đối 100% với thẻ Tổng quan **Bệnh nhân: 54**.
+
+**File sửa đổi:**
+- `js/app.js`
+- `index.html`
+- `sw.js`
+- `version.json`
+- `PM-xeplich-v4.md`

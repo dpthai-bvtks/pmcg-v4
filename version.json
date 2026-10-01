@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev25",
+    "version": "4.1.8-rev26",
     "releaseDate": "01/10/2026",
-    "releaseTime": "15:35 01/10/2026",
-    "notes": "Bổ sung dòng tính Tổng số lượng cố định dưới mỗi danh mục trên Dashboard Ngày: Thêm dòng Tổng số lượng cho Bác Sĩ (ca), Kỹ Thuật Viên (ca), Hệ YHCT (ca), Hệ PHCN (ca), BN theo Phòng (BN) và Lượt Sử Dụng Máy (lượt); hỗ trợ Dark Mode và bảo toàn cấu trúc lưới phẳng 5 cột."
+    "releaseTime": "16:15 01/10/2026",
+    "notes": "Khắc phục triệt để lỗi đếm sai tổng số bệnh nhân trên Dashboard Ngày (lệch 53 vs 54): Nâng cấp cơ chế thống kê Bệnh nhân theo Phòng bằng định danh duy nhất (Unique ID) từ danh sách bệnh nhân thực tế của ngày, xử lý triệt để trường hợp 2 bệnh nhân trùng họ tên và năm sinh ở cùng một phòng (Phòng 1+2+3 có 13 BN thay vì bị gộp thành 12 BN), đảm bảo tổng số bệnh nhân các phòng luôn khớp 100% với thẻ Tổng quan (54 BN)."
 }

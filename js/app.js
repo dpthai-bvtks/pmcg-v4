@@ -12059,6 +12059,21 @@ var dataCache = window.dataCache;
             const roomPatientsMap = {}; // phong -> Set(patientKey)
             const machineUsageMap = {}; // may -> count
 
+            // Thống kê bệnh nhân theo từng phòng từ danh sách bệnh nhân thực tế của ngày
+            // Đảm bảo không bị nuốt mất bệnh nhân trùng tên + năm sinh và luôn khớp 100% với thẻ Tổng quan (statBN)
+            const patSource = (window._viewingHistoryDate && window._historyCache?.[window._viewingHistoryDate]?.patients?.length)
+                ? window._historyCache[window._viewingHistoryDate].patients
+                : (dataCache.pat || []);
+
+            if (patSource.length > 0) {
+                patSource.forEach((p, idx) => {
+                    const room = String(p.phong || p.room || 'Chưa xếp phòng').trim() || 'Chưa xếp phòng';
+                    if (!roomPatientsMap[room]) roomPatientsMap[room] = new Set();
+                    const pKey = p.id != null ? `id_${p.id}` : (p.pId != null ? `pid_${p.pId}` : `idx_${p.ten || p.name || ''}_${p.namSinh || p.ns || ''}_${idx}`);
+                    roomPatientsMap[room].add(pKey);
+                });
+            }
+
             if (valid.length > 0) {
                 valid.forEach(r => {
                     const nvChinh = (r[7] || '').trim();
@@ -12066,10 +12081,12 @@ var dataCache = window.dataCache;
                     const room = (r[3] || 'Chưa xếp phòng').trim();
                     const may = (r[9] || '').trim();
 
-                    // 1. Thống kê bệnh nhân theo từng phòng
-                    const pKey = (r[1] || '') + '|' + (r[2] || '');
-                    if (!roomPatientsMap[room]) roomPatientsMap[room] = new Set();
-                    if (r[1]) roomPatientsMap[room].add(pKey);
+                    // Fallback thống kê phòng nếu patSource hoàn toàn rỗng
+                    if (patSource.length === 0) {
+                        const pKey = (r[1] || '') + '|' + (r[2] || '');
+                        if (!roomPatientsMap[room]) roomPatientsMap[room] = new Set();
+                        if (r[1]) roomPatientsMap[room].add(pKey);
+                    }
 
                     // 2. Thống kê lượt sử dụng máy móc
                     if (may && may !== '--' && may !== 'Thủ công' && !may.toLowerCase().includes('không')) {
@@ -12106,13 +12123,8 @@ var dataCache = window.dataCache;
                     else staffLoadKTV[nvChinh] = (staffLoadKTV[nvChinh] || 0) + 1;
                 });
             } else {
-                // Fallback: Khi chưa xếp lịch, tính phân bổ thủ thuật & phòng từ danh sách bệnh nhân hiện tại (realtime)
+                // Fallback: Khi chưa xếp lịch, tính phân bổ thủ thuật từ danh sách bệnh nhân hiện tại (realtime)
                 (dataCache.pat || []).forEach(p => {
-                    const room = (p.phong || p.room || 'Chưa xếp phòng').trim();
-                    const pKey = (p.ten || p.name || '') + '|' + (p.namSinh || '');
-                    if (!roomPatientsMap[room]) roomPatientsMap[room] = new Set();
-                    if (p.ten || p.name) roomPatientsMap[room].add(pKey);
-
                     if (p.thuThuat) {
                         const procs = String(p.thuThuat).split(',').map(x => x.trim()).filter(x => x);
                         procs.forEach(thuThuat => {
