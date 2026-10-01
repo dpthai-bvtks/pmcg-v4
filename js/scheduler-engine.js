@@ -2020,7 +2020,8 @@ function getSafeCache() {
 
       if (trangThai !== "Nghỉ cả ngày" && ten) {
         const skills = Array.isArray(s.kyNang) ? s.kyNang.join(", ") : (s.kyNang || s[5] || "");
-        const shifts = s.thoiGianLam || s[4] || "07:30-11:30, 13:00-16:30";
+        const defaultSeasonalShift = (typeof window !== 'undefined' && typeof window.getCurrentStaffSeason === 'function' && window.getCurrentStaffSeason() === 'winter') ? "08:00-12:00, 13:00-16:30" : "07:30-11:30, 13:00-16:30";
+        const shifts = s.thoiGianLam || s[4] || defaultSeasonalShift;
         const busy = fixBusyString(s.gioBan || s[6] || "");
         const quyen = s.quyen || s.system || s.he || (Array.isArray(s) ? (s[8] || s[7] || "") : "") || (vaiTro === "Bác sĩ" ? "YHCT" : "Cả hai");
         database.rawStaff.push([ten, vaiTro, skills, shifts, busy, trangThai, quyen]);

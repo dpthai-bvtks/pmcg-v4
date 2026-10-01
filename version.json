@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev16",
+    "version": "4.1.8-rev17",
     "releaseDate": "01/10/2026",
-    "releaseTime": "07:35 01/10/2026",
-    "notes": "Khắc phục triệt để lỗi tự động tải mới dữ liệu làm mất tick chọn phòng, bác sĩ, KTV, máy móc khi đang thao tác ở tab-rooms và các tab tài nguyên."
+    "releaseTime": "07:50 01/10/2026",
+    "notes": "Tích hợp chọn nhanh mốc thời gian Mùa hè / Mùa đông cho từng nhân sự và bộ chuyển đổi ca làm việc hàng loạt cho toàn khoa ở tab-staff."
 }

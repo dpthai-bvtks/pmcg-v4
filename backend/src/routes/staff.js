@@ -12,6 +12,20 @@ export async function handleStaffAction(action, ctx) {
   const sanitizeInputText = helpers?.sanitizeInputText || ((str) => (typeof str === "string" ? str.replace(/<[^>]*>/g, "") : str));
 
   switch (action) {
+    case "applySeasonalShift":
+    case "updateAllStaffShifts": {
+      const shiftTime = String(args[0] || "").trim();
+      const season = String(args[1] || "").trim();
+      if (!shiftTime) return error("Thiếu thông tin ca làm việc");
+
+      const stmtUpdate = db.prepare("UPDATE nhan_su SET thoi_gian_lam = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ?").bind(shiftTime, unitCode);
+      const stmtSeason = db.prepare("INSERT INTO cai_dat (unit_code, key, value, updated_at) VALUES (?, 'ca_lam_mua', ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP").bind(unitCode, season || (shiftTime.includes("08:00") ? "winter" : "summer"));
+      const stmtDefaultShift = db.prepare("INSERT INTO cai_dat (unit_code, key, value, updated_at) VALUES (?, 'thoi_gian_lam_viec', ?, CURRENT_TIMESTAMP) ON CONFLICT(unit_code, key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP").bind(unitCode, shiftTime);
+
+      await db.batch([stmtUpdate, stmtSeason, stmtDefaultShift, makeBumpDataVersionStmt(db, unitCode)]);
+      return success({ message: "Đã cập nhật ca làm việc theo mùa thành công!", shiftTime, season });
+    }
+
     case "getNhanSu": {
       try {
         await db.prepare("DELETE FROM nhan_su WHERE unit_code = ? AND (name GLOB '[0-9]*' OR name = '' OR name IS NULL)").bind(unitCode).run();

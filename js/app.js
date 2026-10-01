@@ -4106,7 +4106,16 @@ var dataCache = window.dataCache;
                     if (document.getElementById('proc-continuous-cb')) document.getElementById('proc-continuous-cb').checked = false;
                 },
 
-                staff: () => { document.getElementById('btn-save-staff').innerText = "Thêm"; document.getElementById('btn-cancel-staff').style.display = "none"; document.getElementById('staff-quyen').value = 'Cả hai'; document.getElementById('staff-role').value = 'Bác sĩ'; document.getElementById('staff-status').value = 'Đi làm'; },
+                staff: () => { 
+                    document.getElementById('btn-save-staff').innerText = "Thêm"; 
+                    document.getElementById('btn-cancel-staff').style.display = "none"; 
+                    document.getElementById('staff-quyen').value = 'Cả hai'; 
+                    document.getElementById('staff-role').value = 'Bác sĩ'; 
+                    document.getElementById('staff-status').value = 'Đi làm'; 
+                    if (typeof applyStaffShiftPreset === 'function' && typeof getCurrentStaffSeason === 'function') {
+                        applyStaffShiftPreset(getCurrentStaffSeason());
+                    }
+                },
 
                 room: () => { document.getElementById('btn-save-room').innerText = "Thêm"; document.getElementById('btn-cancel-room').style.display = "none"; },
 
@@ -4986,9 +4995,134 @@ var dataCache = window.dataCache;
 
         // ============================================================
 
-        // 👨‍⚕️ 3. NHÂN SỰ
-
         // ============================================================
+        // 👨‍⚕️ 3. NHÂN SỰ
+        // ============================================================
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // ☀️❄️ CA LÀM VIỆC MÙA HÈ / MÙA ĐÔNG (TAB NHÂN SỰ)
+        // Mùa hè: Ca sáng 07:30-11:30, Ca chiều 13:00-16:30
+        // Mùa đông: Ca sáng 08:00-12:00, Ca chiều 13:00-16:30
+        // ═══════════════════════════════════════════════════════════════════════
+        function getCurrentStaffSeason() {
+            const saved = localStorage.getItem('pmcg_staff_season');
+            if (saved === 'summer' || saved === 'winter') return saved;
+
+            if (window.dataCache && Array.isArray(window.dataCache.staff) && window.dataCache.staff.length > 0) {
+                let winterCount = 0, summerCount = 0;
+                window.dataCache.staff.forEach(s => {
+                    const t = s.thoiGianLam || '';
+                    if (t.includes('08:00') || t.includes('12:00')) winterCount++;
+                    else if (t.includes('07:30') || t.includes('11:30')) summerCount++;
+                });
+                if (winterCount > summerCount) return 'winter';
+                if (summerCount > 0) return 'summer';
+            }
+
+            const m = new Date().getMonth() + 1;
+            return (m >= 5 && m <= 10) ? 'summer' : 'winter';
+        }
+        window.getCurrentStaffSeason = getCurrentStaffSeason;
+
+        function applyStaffShiftPreset(season) {
+            const btnSummer = document.getElementById('btn-preset-summer');
+            const btnWinter = document.getElementById('btn-preset-winter');
+            if (season === 'winter') {
+                if (document.getElementById('staff-ms')) document.getElementById('staff-ms').value = '08:00';
+                if (document.getElementById('staff-me')) document.getElementById('staff-me').value = '12:00';
+                if (document.getElementById('staff-as')) document.getElementById('staff-as').value = '13:00';
+                if (document.getElementById('staff-ae')) document.getElementById('staff-ae').value = '16:30';
+                if (btnSummer) btnSummer.classList.remove('active');
+                if (btnWinter) btnWinter.classList.add('active');
+            } else {
+                if (document.getElementById('staff-ms')) document.getElementById('staff-ms').value = '07:30';
+                if (document.getElementById('staff-me')) document.getElementById('staff-me').value = '11:30';
+                if (document.getElementById('staff-as')) document.getElementById('staff-as').value = '13:00';
+                if (document.getElementById('staff-ae')) document.getElementById('staff-ae').value = '16:30';
+                if (btnSummer) btnSummer.classList.add('active');
+                if (btnWinter) btnWinter.classList.remove('active');
+            }
+        }
+        window.applyStaffShiftPreset = applyStaffShiftPreset;
+
+        function updateStaffSeasonPresetHighlight() {
+            const ms = (document.getElementById('staff-ms')?.value || '').trim();
+            const me = (document.getElementById('staff-me')?.value || '').trim();
+            const as = (document.getElementById('staff-as')?.value || '').trim();
+            const ae = (document.getElementById('staff-ae')?.value || '').trim();
+            const currentShift = `${ms}-${me}, ${as}-${ae}`;
+
+            const btnSummer = document.getElementById('btn-preset-summer');
+            const btnWinter = document.getElementById('btn-preset-winter');
+            if (!btnSummer || !btnWinter) return;
+
+            btnSummer.classList.remove('active');
+            btnWinter.classList.remove('active');
+
+            if (currentShift === '07:30-11:30, 13:00-16:30') {
+                btnSummer.classList.add('active');
+            } else if (currentShift === '08:00-12:00, 13:00-16:30') {
+                btnWinter.classList.add('active');
+            }
+        }
+        window.updateStaffSeasonPresetHighlight = updateStaffSeasonPresetHighlight;
+
+        function updateStaffSeasonToolbarHighlight(season) {
+            if (!season) season = getCurrentStaffSeason();
+            const btnSummer = document.getElementById('btn-batch-summer');
+            const btnWinter = document.getElementById('btn-batch-winter');
+            if (!btnSummer || !btnWinter) return;
+
+            if (season === 'winter') {
+                btnSummer.classList.remove('active');
+                btnWinter.classList.add('active');
+            } else {
+                btnSummer.classList.add('active');
+                btnWinter.classList.remove('active');
+            }
+        }
+        window.updateStaffSeasonToolbarHighlight = updateStaffSeasonToolbarHighlight;
+
+        function applySeasonalShiftToAllStaff(season) {
+            const isWinter = season === 'winter';
+            const newShift = isWinter ? '08:00-12:00, 13:00-16:30' : '07:30-11:30, 13:00-16:30';
+            const seasonTitle = isWinter ? '❄️ MÙA ĐÔNG (Sáng 08:00-12:00 | Chiều 13:00-16:30)' : '☀️ MÙA HÈ (Sáng 07:30-11:30 | Chiều 13:00-16:30)';
+            const staffCount = (dataCache.staff && dataCache.staff.length) || 0;
+
+            showCustomConfirm(
+                "Đổi ca làm việc toàn khoa",
+                `Bác sĩ có chắc chắn muốn cập nhật ca làm việc của TOÀN BỘ ${staffCount} nhân sự sang <strong>${seasonTitle}</strong> không?`,
+                function() {
+                    if (dataCache.staff && dataCache.staff.length > 0) {
+                        dataCache.staff.forEach(s => {
+                            s.thoiGianLam = newShift;
+                        });
+                    }
+
+                    localStorage.setItem('pmcg_staff_season', season);
+                    updateStaffSeasonToolbarHighlight(season);
+
+                    if (window.editIndex && window.editIndex.staff === -1) {
+                        applyStaffShiftPreset(season);
+                    }
+
+                    renderStaffTable();
+
+                    callApi('applySeasonalShift', [newShift, season], function() {
+                        notify(`Đã cập nhật toàn bộ nhân sự sang ${seasonTitle}!`, 'success');
+                    }, function(err) {
+                        console.warn("[applySeasonalShift error, trying fallback]:", err);
+                        if (typeof saveReorderedData === 'function') {
+                            saveReorderedData('staff', dataCache.staff);
+                            notify(`Đã lưu ca làm việc ${seasonTitle} cho toàn bộ nhân sự!`, 'success');
+                        } else {
+                            notify(`Lỗi cập nhật: ${err.message || err}`, 'error');
+                        }
+                    });
+                }
+            );
+        }
+        window.applySeasonalShiftToAllStaff = applySeasonalShiftToAllStaff;
 
         function renderStaffTable() {
             const filterSelect = document.getElementById('filter-doc-name');
@@ -5090,6 +5224,13 @@ var dataCache = window.dataCache;
             }
 
             if (typeof filterStaffTable === 'function') filterStaffTable();
+            if (typeof updateStaffSeasonToolbarHighlight === 'function') updateStaffSeasonToolbarHighlight();
+
+            // Nếu ô ca làm việc ở form đang trống, tự động nạp preset theo mùa
+            const msEl = document.getElementById('staff-ms');
+            if (msEl && !msEl.value && (!window.editIndex || window.editIndex.staff === -1)) {
+                applyStaffShiftPreset(getCurrentStaffSeason());
+            }
 
             initTableDragAndDrop('staff-list', staffList, () => {
                 renderStaffTable();
@@ -5101,7 +5242,22 @@ var dataCache = window.dataCache;
             const ten = document.getElementById('staff-name').value.trim();
             const vaiTro = document.getElementById('staff-role').value;
             const trangThai = document.getElementById('staff-status').value;
-            const tgLam = `${document.getElementById('staff-ms').value}-${document.getElementById('staff-me').value}, ${document.getElementById('staff-as').value}-${document.getElementById('staff-ae').value}`;
+            
+            let ms = (document.getElementById('staff-ms').value || '').trim();
+            let me = (document.getElementById('staff-me').value || '').trim();
+            let as = (document.getElementById('staff-as').value || '').trim();
+            let ae = (document.getElementById('staff-ae').value || '').trim();
+
+            if (!ms && !me && !as && !ae) {
+                const curSeason = (typeof getCurrentStaffSeason === 'function') ? getCurrentStaffSeason() : 'summer';
+                if (curSeason === 'winter') {
+                    ms = '08:00'; me = '12:00'; as = '13:00'; ae = '16:30';
+                } else {
+                    ms = '07:30'; me = '11:30'; as = '13:00'; ae = '16:30';
+                }
+            }
+            const tgLam = `${ms}-${me}, ${as}-${ae}`;
+
             const thayThe = document.getElementById('staff-replace').value;
             const quyen = document.getElementById('staff-quyen').value || 'Cả hai';
             const tenHis = document.getElementById('staff-ten-his').value.trim();
@@ -5172,7 +5328,11 @@ var dataCache = window.dataCache;
                 if (caArr[0]) { const sang = caArr[0].split('-'); if (sang[0]) document.getElementById('staff-ms').value = sang[0].trim(); if (sang[1]) document.getElementById('staff-me').value = sang[1].trim(); }
 
                 if (caArr[1]) { const chieu = caArr[1].split('-'); if (chieu[0]) document.getElementById('staff-as').value = chieu[0].trim(); if (chieu[1]) document.getElementById('staff-ae').value = chieu[1].trim(); }
-}
+            }
+
+            if (typeof updateStaffSeasonPresetHighlight === 'function') {
+                updateStaffSeasonPresetHighlight();
+            }
 
             const skillsArr = item.kyNang.split(',').map(s => s.trim().toLowerCase());
 
@@ -5181,7 +5341,7 @@ var dataCache = window.dataCache;
             document.getElementById('btn-save-staff').innerText = "Lưu Sửa";
 
             document.getElementById('btn-cancel-staff').style.display = "inline-block";
-}
+        }
 
         function deleteStaff(i) {
             const s = dataCache.staff[i];

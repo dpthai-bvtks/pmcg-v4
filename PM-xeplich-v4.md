@@ -6628,3 +6628,43 @@ ormalizeScheduleItem.
 - `sw.js`
 - `version.json`
 - `PM-xeplich-v4.md`
+
+### Tích Hợp Chọn Nhanh Ca Làm Việc Mùa Hè / Mùa Đông & Chuyển Đổi Ca Toàn Khoa Ở Tab Nhân Sự (01/10/2026 - v4.1.8-rev17)
+
+**Bối cảnh & Nhu cầu người dùng:**
+- Ở bệnh viện / khoa phòng thực tế, thời gian làm việc có 2 mốc thời gian quy định theo mùa:
+  - **Mùa hè**: Ca sáng `07:30 - 11:30`, Ca chiều `13:00 - 16:30`.
+  - **Mùa đông**: Ca sáng `08:00 - 12:00`, Ca chiều `13:00 - 16:30`.
+- Mỗi khi chuyển mùa (2 lần/năm), toàn bộ nhân sự trong khoa (15–25 nhân sự) đều đổi giờ làm việc đồng loạt theo quyết định của ban giám đốc. Nếu phải bấm sửa và lưu từng nhân sự một sẽ mất rất nhiều thao tác và dễ thiếu sót.
+- Khi thêm mới nhân sự, người quản lý cũng phải gõ tay 4 ô giờ làm việc thay vì chọn nhanh theo mùa hiện hành.
+
+**Giải pháp & Thiết kế UI/UX Tiện Lợi:**
+1. **Cấp độ Từng Nhân sự (Preset 1-Click trên Sidebar Form):**
+   - Bổ sung nhóm nút preset chọn nhanh: `[ ☀️ Mùa Hè ]` và `[ ❄️ Mùa Đông ]` ngay trên form nhân sự.
+   - Khi bấm vào nút mùa, 4 ô giờ (`#staff-ms`, `#staff-me`, `#staff-as`, `#staff-ae`) tự động điền giá trị chuẩn của mùa đó tức thì và highlight trạng thái đang chọn.
+   - Vẫn giữ nguyên 4 ô input để người dùng hoàn toàn có thể tự gõ điều chỉnh riêng cho các trường hợp cá biệt (đi muộn, về sớm, trực bù...).
+   - Tự động nhận diện và cập nhật highlight nút preset khi người dùng gõ tay hoặc khi bấm sửa một nhân sự cũ.
+   - Khi mở form thêm mới nhân sự hoặc bấm Hủy sửa (`cancelEdit('staff')`), form tự động điền sẵn giờ theo mùa hiện hành của khoa (không để trống, tiết kiệm tối đa thao tác).
+2. **Cấp độ Toàn Khoa (Bộ Chuyển Đổi Ca Toàn Khoa Hàng Loạt trên Toolbar):**
+   - Đặt ngay trên thanh công cụ phía trên bảng nhân sự (cạnh thanh tìm kiếm `#staff-search-input`):
+     - `🕒 Ca làm toàn khoa: [ ☀️ Mùa Hè ] [ ❄️ Mùa Đông ]`
+   - Khi bấm chuyển mùa (ví dụ bấm sang ❄️ Mùa Đông):
+     - Hiện hộp thoại xác nhận chuyên nghiệp: *"Bác sĩ có chắc chắn muốn cập nhật ca làm việc của TOÀN BỘ [N] nhân sự sang ❄️ MÙA ĐÔNG (Sáng 08:00-12:00 | Chiều 13:00-16:30) không?"*
+     - Khi đồng ý: Tự động cập nhật `thoiGianLam` của toàn bộ nhân sự trong danh sách, lưu cài đặt mùa hiện hành vào hệ thống, render lại bảng ngay lập tức và gửi API cập nhật đồng bộ.
+3. **Backend & Scheduler Engine Đồng Bộ:**
+   - Bổ sung API `applySeasonalShift` / `updateAllStaffShifts` trong `backend/src/routes/staff.js` và `backend/src/index.js` (MUTATION_ACTIONS) chạy atomic batch UPDATE trên Database, lưu `ca_lam_mua` và `thoi_gian_lam_viec` vào `cai_dat`, đồng thời tự động bump data version để mọi máy client khác đồng bộ ngay.
+   - Bổ sung hàm dự phòng theo mùa trong thuật toán xếp lịch `js/scheduler-engine.js`.
+4. **Hỗ Trợ Toàn Diện Cả Light Mode & Dark Mode (`css/style.css`):**
+   - Thiết kế các nút bấm dạng pill/chip hiện đại, màu cam ấm rực rỡ cho ☀️ Mùa Hè và màu xanh băng tuyết sang trọng cho ❄️ Mùa Đông, tương thích hoàn hảo cả giao diện sáng lẫn tối.
+
+**File sửa đổi:**
+- `index.html`
+- `css/style.css`
+- `js/app.js`
+- `js/scheduler-engine.js`
+- `backend/src/routes/staff.js`
+- `backend/src/index.js`
+- `version.json`
+- `sw.js`
+- `PM-xeplich-v4.md`
+

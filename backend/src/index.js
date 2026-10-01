@@ -1261,7 +1261,7 @@ function dispatchBackgroundSync(action, args, env, ctx, unitCode = "bvtks-cs2") 
   const MUTATION_ACTIONS = [
     "addBenhNhan", "editBenhNhan", "deleteBenhNhan", "bulkUpdateBenhNhan",
     "saveSchedule", "chotSo", "chuyenNgayMoi", "saveGioBan", "saveChamCong", "deduplicateHistory",
-    "addNhanSu", "editNhanSu", "deleteNhanSu",
+    "addNhanSu", "editNhanSu", "deleteNhanSu", "applySeasonalShift", "updateAllStaffShifts",
     "addMayMoc", "editMayMoc", "deleteMayMoc",
     "addPhong", "editPhong", "deletePhong",
     "addThuThuat", "editThuThuat", "deleteThuThuat",
