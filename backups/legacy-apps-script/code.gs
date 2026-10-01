@@ -204,6 +204,31 @@ function handleApiRequest(action, args) {
       case 'loadAccounts':
         return { status: 'success', data: readSheetData(ss, 'TaiKhoan') };
 
+      case 'saveTable':
+      case 'syncTable':
+        var tblName = args && args[0] ? args[0] : '';
+        var tblRows = args && args[1] ? args[1] : [];
+        if (tblName && Array.isArray(tblRows)) {
+          writeListToSheet(ss, tblName, tblRows);
+        }
+        return { status: 'success', data: 'Đã lưu ' + tblRows.length + ' dòng vào sheet ' + tblName };
+
+      case 'appendTable':
+        var apTblName = args && args[0] ? args[0] : '';
+        var apTblRows = args && args[1] ? args[1] : [];
+        if (apTblName && Array.isArray(apTblRows)) {
+          appendListToSheet(ss, apTblName, apTblRows);
+        }
+        return { status: 'success', data: 'Đã bổ sung ' + apTblRows.length + ' dòng vào sheet ' + apTblName };
+
+      case 'listSheets':
+        var sheets = ss.getSheets();
+        var sheetNames = [];
+        for (var s = 0; s < sheets.length; s++) {
+          sheetNames.push({ name: sheets[s].getName(), rows: sheets[s].getLastRow() });
+        }
+        return { status: 'success', data: sheetNames };
+
       default:
         return { status: 'error', error: 'Action không hỗ trợ: ' + action };
     }
@@ -353,29 +378,39 @@ function saveScheduleToSheet(ss, dateVal, schedList) {
 function saveAllBootstrapToSheets(ss, dataObj) {
   if (!dataObj) return;
 
-  var pat = dataObj.pat || dataObj.benh_nhan || [];
-  var staff = dataObj.staff || dataObj.nhan_su || [];
-  var machines = dataObj.machines || dataObj.may_moc || [];
-  var rooms = dataObj.rooms || dataObj.phong || [];
-  var procs = dataObj.procedures || dataObj.thu_thuat || [];
-  var sched = dataObj.schedule || dataObj.lich_trinh || [];
-  var hist = dataObj.history || dataObj.lich_su || [];
-  var accs = dataObj.accounts || dataObj.tai_khoan || [];
-  var cc = dataObj.chamCong || dataObj.cham_cong || [];
-  var tk = dataObj.thongKe || dataObj.thong_ke || [];
-  var cd = dataObj.caiDat || dataObj.cai_dat || [];
+  // 1. DUYỆT TỰ ĐỘNG LƯU TOÀN BỘ 21 BẢNG ĐỘNG (MỖI BẢNG TẠO 1 SHEET RIÊNG)
+  for (var tableKey in dataObj) {
+    var rows = dataObj[tableKey];
+    if (Array.isArray(rows) && rows.length > 0) {
+      writeListToSheet(ss, tableKey, rows);
+    }
+  }
 
-  if (pat.length > 0) writeListToSheet(ss, 'BenhNhan', pat);
-  if (staff.length > 0) writeListToSheet(ss, 'NhanSu', staff);
-  if (machines.length > 0) writeListToSheet(ss, 'MayMoc', machines);
-  if (rooms.length > 0) writeListToSheet(ss, 'Phong', rooms);
-  if (procs.length > 0) writeListToSheet(ss, 'ThuThuat', procs);
-  if (sched.length > 0) saveScheduleToSheet(ss, '', sched);
-  if (hist.length > 0) writeListToSheet(ss, 'LichSu', hist);
-  if (accs.length > 0) writeListToSheet(ss, 'TaiKhoan', accs);
-  if (cc.length > 0) writeListToSheet(ss, 'ChamCong', Array.isArray(cc) ? cc : [cc]);
-  if (tk.length > 0) writeListToSheet(ss, 'ThongKe', Array.isArray(tk) ? tk : [tk]);
-  if (cd.length > 0) writeListToSheet(ss, 'CaiDat', Array.isArray(cd) ? cd : [cd]);
+  // 2. ĐỒNG BỘ CẢ CÁC SHEET CHUẨN CỦA HỆ THỐNG PMCG (PascalCase) ĐỂ TƯƠNG THÍCH HOÀN TOÀN
+  var pat = dataObj.pat || dataObj.benh_nhan;
+  if (pat && pat.length > 0) writeListToSheet(ss, 'BenhNhan', pat);
+  var staff = dataObj.staff || dataObj.nhan_su;
+  if (staff && staff.length > 0) writeListToSheet(ss, 'NhanSu', staff);
+  var machines = dataObj.machines || dataObj.may_moc;
+  if (machines && machines.length > 0) writeListToSheet(ss, 'MayMoc', machines);
+  var rooms = dataObj.rooms || dataObj.phong;
+  if (rooms && rooms.length > 0) writeListToSheet(ss, 'Phong', rooms);
+  var procs = dataObj.procedures || dataObj.thu_thuat;
+  if (procs && procs.length > 0) writeListToSheet(ss, 'ThuThuat', procs);
+  var sched = dataObj.schedule || dataObj.lich_trinh;
+  if (sched && sched.length > 0) saveScheduleToSheet(ss, '', sched);
+  var hist = dataObj.history || dataObj.lich_su;
+  if (hist && hist.length > 0) writeListToSheet(ss, 'LichSu', hist);
+  var accs = dataObj.accounts || dataObj.tai_khoan;
+  if (accs && accs.length > 0) writeListToSheet(ss, 'TaiKhoan', accs);
+  var cc = dataObj.chamCong || dataObj.cham_cong;
+  if (cc && cc.length > 0) writeListToSheet(ss, 'ChamCong', Array.isArray(cc) ? cc : [cc]);
+  var tk = dataObj.thongKe || dataObj.thong_ke;
+  if (tk && tk.length > 0) writeListToSheet(ss, 'ThongKe', Array.isArray(tk) ? tk : [tk]);
+  var cd = dataObj.caiDat || dataObj.cai_dat;
+  if (cd && cd.length > 0) writeListToSheet(ss, 'CaiDat', Array.isArray(cd) ? cd : [cd]);
+  var gbc = dataObj.gio_ban_chung_cu || dataObj.GioBanChungCu;
+  if (gbc && gbc.length > 0) writeListToSheet(ss, 'GioBanChungCu', gbc);
 }
 
 function writeListToSheet(ss, sheetName, list) {
@@ -410,6 +445,48 @@ function writeListToSheet(ss, sheetName, list) {
 
   if (matrix.length > 0 && matrix[0].length > 0) {
     var range = sheet.getRange(1, 1, matrix.length, matrix[0].length);
+    range.setNumberFormat('@');
+    range.setValues(matrix);
+  }
+}
+
+function appendListToSheet(ss, sheetName, list) {
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    writeListToSheet(ss, sheetName, list);
+    return;
+  }
+  if (!list || list.length === 0) return;
+  var lastRow = sheet.getLastRow();
+  if (lastRow === 0) {
+    writeListToSheet(ss, sheetName, list);
+    return;
+  }
+
+  var firstItem = list[0];
+  var matrix = [];
+  if (!Array.isArray(firstItem) && typeof firstItem === 'object') {
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    for (var i = 0; i < list.length; i++) {
+      var item = list[i] || {};
+      var row = [];
+      for (var h = 0; h < headers.length; h++) {
+        var val = item[headers[h]];
+        if (val === null || val === undefined) val = '';
+        else if (typeof val === 'object') val = JSON.stringify(val);
+        row.push(String(val));
+      }
+      matrix.push(row);
+    }
+  } else if (Array.isArray(firstItem)) {
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i] || [];
+      matrix.push(r.map(function(v) { return String(v || ''); }));
+    }
+  }
+
+  if (matrix.length > 0 && matrix[0].length > 0) {
+    var range = sheet.getRange(lastRow + 1, 1, matrix.length, matrix[0].length);
     range.setNumberFormat('@');
     range.setValues(matrix);
   }
