@@ -1894,7 +1894,7 @@
             min-height: auto;
         }
 
-        .sidebar-form .form-group input,
+        .sidebar-form .form-group input:not([type="checkbox"]):not([type="radio"]),
         .sidebar-form .form-group select,
         .sidebar-form .form-group textarea {
             flex: 1;
@@ -1905,6 +1905,18 @@
             font-size: 12px;
             background: #ffffff;
             color: #1f2937;
+        }
+
+        .sidebar-form .form-group input[type="checkbox"],
+        .sidebar-form .form-group input[type="radio"] {
+            width: 17px !important;
+            height: 17px !important;
+            min-height: unset !important;
+            flex: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border-radius: 3px !important;
+            cursor: pointer !important;
         }
 
         .main-table {
@@ -1996,7 +2008,7 @@
 
         }
 
-        .sidebar-form .form-group input,
+        .sidebar-form .form-group input:not([type="checkbox"]):not([type="radio"]),
         .sidebar-form .form-group select,
         .sidebar-form .form-group textarea {
             padding: 2px 4px;

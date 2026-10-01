@@ -182,32 +182,32 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=4.1.8-rev18">
+    <link rel="stylesheet" href="css/style.css?v=4.1.8-rev19">
     <!-- PWA & Mobile Web App Meta Tags -->
-    <link rel="manifest" href="manifest.json?v=4.1.8-rev18">
+    <link rel="manifest" href="manifest.json?v=4.1.8-rev19">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.1.8-rev18">
+    <link rel="stylesheet" href="css/mobile.css?v=4.1.8-rev19">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
-    <script src="js/dexie.min.js?v=4.1.8-rev18"></script>
+    <script src="js/dexie.min.js?v=4.1.8-rev19"></script>
     <!-- JS Thư viện Bảo mật DOMPurify & Tìm kiếm mờ thông minh Fuse.js -->
-    <script src="js/purify.min.js?v=4.1.8-rev18"></script>
-    <script src="js/fuse.min.js?v=4.1.8-rev18"></script>
+    <script src="js/purify.min.js?v=4.1.8-rev19"></script>
+    <script src="js/fuse.min.js?v=4.1.8-rev19"></script>
     <!-- JS Thư viện Biểu đồ Thống Kê Chart.js & Validation Schema Zod -->
-    <script src="js/chart.min.js?v=4.1.8-rev18"></script>
-    <script src="js/zod.min.js?v=4.1.8-rev18"></script>
+    <script src="js/chart.min.js?v=4.1.8-rev19"></script>
+    <script src="js/zod.min.js?v=4.1.8-rev19"></script>
     <!-- JS Thư viện kéo thả nội bộ -->
-    <script src="js/sortable.min.js?v=4.1.8-rev18"></script>
+    <script src="js/sortable.min.js?v=4.1.8-rev19"></script>
     <!-- Thư viện Dòng thời gian Timeline Frappe Gantt -->
-    <link rel="stylesheet" href="css/frappe-gantt.css?v=4.1.8-rev18">
-    <script src="js/frappe-gantt.min.js?v=4.1.8-rev18"></script>
+    <link rel="stylesheet" href="css/frappe-gantt.css?v=4.1.8-rev19">
+    <script src="js/frappe-gantt.min.js?v=4.1.8-rev19"></script>
     <!-- Thư viện Xuất PDF pdfmake tiếng Việt -->
-    <script src="js/pdfmake.min.js?v=4.1.8-rev18"></script>
-    <script src="js/vfs_fonts.js?v=4.1.8-rev18"></script>
+    <script src="js/pdfmake.min.js?v=4.1.8-rev19"></script>
+    <script src="js/vfs_fonts.js?v=4.1.8-rev19"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 </head>
 
@@ -986,14 +986,14 @@
 
                                 <div class="form-group">
                                     <label>Ca làm việc:</label>
-                                    <div class="staff-season-radios" style="display: flex; align-items: center; gap: 14px; flex: 1;">
-                                        <label style="display: inline-flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12.5px; font-weight: 500; margin: 0; color: inherit;" title="Ca sáng 07:30-11:30, Ca chiều 13:00-16:30">
-                                            <input type="radio" name="staff_season_choice" id="radio-season-summer" value="summer" onchange="applyStaffShiftPreset('summer')" style="margin: 0; cursor: pointer; accent-color: #ea580c;">
-                                            ☀️ Mùa hè
+                                    <div class="staff-season-checks" style="display: flex; align-items: center; gap: 14px; flex: 1;">
+                                        <label class="checkbox-item" style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12.5px; margin: 0; color: inherit;" title="Ca sáng 07:30-11:30, Ca chiều 13:00-16:30">
+                                            <input type="checkbox" id="check-season-summer" class="season-shift-checkbox" onchange="handleStaffSeasonCheckboxChange('summer')" style="width: 17px; height: 17px; min-height: unset; flex: none; margin: 0; cursor: pointer; accent-color: #ea580c;">
+                                            <span>☀️ Mùa hè</span>
                                         </label>
-                                        <label style="display: inline-flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12.5px; font-weight: 500; margin: 0; color: inherit;" title="Ca sáng 08:00-12:00, Ca chiều 13:00-16:30">
-                                            <input type="radio" name="staff_season_choice" id="radio-season-winter" value="winter" onchange="applyStaffShiftPreset('winter')" style="margin: 0; cursor: pointer; accent-color: #0284c7;">
-                                            ❄️ Mùa đông
+                                        <label class="checkbox-item" style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12.5px; margin: 0; color: inherit;" title="Ca sáng 08:00-12:00, Ca chiều 13:00-16:30">
+                                            <input type="checkbox" id="check-season-winter" class="season-shift-checkbox" onchange="handleStaffSeasonCheckboxChange('winter')" style="width: 17px; height: 17px; min-height: unset; flex: none; margin: 0; cursor: pointer; accent-color: #0284c7;">
+                                            <span>❄️ Mùa đông</span>
                                         </label>
                                     </div>
                                 </div>
@@ -4499,28 +4499,28 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/schedule-utils.js?v=4.1.8-rev18"></script>
-    <script src="js/schedule-strategies.js?v=4.1.8-rev18"></script>
-    <script src="js/modules/export-service.js?v=4.1.8-rev18"></script>
-    <script src="js/modules/history-manager.js?v=4.1.8-rev18"></script>
-    <script src="js/offline-sync-engine.js?v=4.1.8-rev18"></script>
-    <script src="js/ai-scheduler.js?v=4.1.8-rev18"></script>
-    <script src="js/cp-solver.js?v=4.1.8-rev18"></script>
-    <script src="js/scheduler-engine.js?v=4.1.8-rev18"></script>
-    <script src="js/modules/app-resources.js?v=4.1.8-rev18"></script>
-    <script src="js/app.js?v=4.1.8-rev18"></script>
-    <script src="js/modules/app-export-reports.js?v=4.1.8-rev18"></script>
-    <script src="js/modules/app-error-checker.js?v=4.1.8-rev18"></script>
-    <script src="js/modules/app-backup-restore.js?v=4.1.8-rev18"></script>
-    <script src="js/modules/app-doc-lookup.js?v=4.1.8-rev18"></script>
-    <script src="js/modules/app-tenant-admin.js?v=4.1.8-rev18"></script>
-    <script src="js/init.js?v=4.1.8-rev18"></script>
-    <script src="js/sync.js?v=4.1.8-rev18"></script>
-    <script src="js/thongke.js?v=4.1.8-rev18"></script>
+    <script src="js/schedule-utils.js?v=4.1.8-rev19"></script>
+    <script src="js/schedule-strategies.js?v=4.1.8-rev19"></script>
+    <script src="js/modules/export-service.js?v=4.1.8-rev19"></script>
+    <script src="js/modules/history-manager.js?v=4.1.8-rev19"></script>
+    <script src="js/offline-sync-engine.js?v=4.1.8-rev19"></script>
+    <script src="js/ai-scheduler.js?v=4.1.8-rev19"></script>
+    <script src="js/cp-solver.js?v=4.1.8-rev19"></script>
+    <script src="js/scheduler-engine.js?v=4.1.8-rev19"></script>
+    <script src="js/modules/app-resources.js?v=4.1.8-rev19"></script>
+    <script src="js/app.js?v=4.1.8-rev19"></script>
+    <script src="js/modules/app-export-reports.js?v=4.1.8-rev19"></script>
+    <script src="js/modules/app-error-checker.js?v=4.1.8-rev19"></script>
+    <script src="js/modules/app-backup-restore.js?v=4.1.8-rev19"></script>
+    <script src="js/modules/app-doc-lookup.js?v=4.1.8-rev19"></script>
+    <script src="js/modules/app-tenant-admin.js?v=4.1.8-rev19"></script>
+    <script src="js/init.js?v=4.1.8-rev19"></script>
+    <script src="js/sync.js?v=4.1.8-rev19"></script>
+    <script src="js/thongke.js?v=4.1.8-rev19"></script>
 
     <!-- PWA Service Worker Registration + Instant Auto-Update Detection & Blocking Modal -->
     <script>
-    const APP_VERSION = '4.1.8-rev18';
+    const APP_VERSION = '4.1.8-rev19';
 
     (function registerAndAutoUpdate() {
         // 1. Kênh BroadcastChannel đồng bộ tức thì mọi tab đang mở trên cùng một máy
@@ -4964,7 +4964,7 @@
                 <div style="color: #3b82f6; font-size: 18px; font-weight: bold;">➜</div>
                 <div style="text-align: center;">
                     <div style="font-size: 11px; font-weight: 700; color: #16a34a; text-transform: uppercase; margin-bottom: 2px;">Phiên bản mới</div>
-                    <div id="force-update-new-ver" style="font-weight: 800; color: #15803d; font-family: monospace; font-size: 14.5px; background: #dcfce7; padding: 2px 10px; border-radius: 6px;">4.1.8-rev18</div>
+                    <div id="force-update-new-ver" style="font-weight: 800; color: #15803d; font-family: monospace; font-size: 14.5px; background: #dcfce7; padding: 2px 10px; border-radius: 6px;">4.1.8-rev19</div>
                 </div>
             </div>
 

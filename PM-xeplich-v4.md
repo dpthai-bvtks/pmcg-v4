@@ -6692,4 +6692,29 @@ ormalizeScheduleItem.
 - `sw.js`
 - `PM-xeplich-v4.md`
 
+### Khắc Phục Lỗi Ô Tick Mùa Hè Bị Phồng To & Đồng Bộ Ô Tick Vuông Đều Nhau (01/10/2026 - v4.1.8-rev19)
+
+**Hiện tượng & Yêu cầu người dùng:**
+- Tại dòng `Ca làm việc:`, ô tick chọn mùa hè bị to bất thường (gấp đôi kích thước chuẩn) do bị dính các thuộc tính CSS `min-height: 28px` và `flex: 1` của nhóm input `.sidebar-form .form-group input`.
+- Người dùng yêu cầu chỉnh lại cho ô tick đều nhau và chuẩn form như các ô chọn thủ thuật phía dưới (`[ ] điện châm`, `[ ] điện xung`...).
+
+**Nguyên nhân kỹ thuật & Giải pháp khắc phục:**
+1. **Nguyên nhân:**
+   - Bộ chọn `.sidebar-form .form-group input` trong `css/style.css` áp dụng chung `flex: 1`, `min-height: 28px`, `padding: 4px 8px`, `border: 1px solid #d1d5db` lên mọi thẻ input (kể cả type radio/checkbox), làm cho input bị biến dạng phồng to.
+2. **Khắc phục CSS (`css/style.css`):**
+   - Bổ sung bộ lọc phủ định `:not([type="checkbox"]):not([type="radio"])` cho các bộ chọn `.sidebar-form .form-group input`.
+   - Khai báo rõ ràng kích thước chuẩn cho checkbox/radio trong sidebar form: `width: 17px !important; height: 17px !important; min-height: unset !important; flex: none !important; padding: 0 !important; margin: 0 !important; border-radius: 3px !important;`.
+3. **Đồng bộ ô tick vuông (`index.html` & `js/app.js`):**
+   - Chuyển hẳn sang thẻ `<input type="checkbox">` vuông chuẩn mực với class `.checkbox-item` và `accent-color` đồng bộ.
+   - Thêm hàm `handleStaffSeasonCheckboxChange(season)` và đồng bộ trạng thái `.checked` độc quyền giữa 2 mùa (chọn mùa này tự bỏ chọn mùa kia).
+
+**File sửa đổi:**
+- `css/style.css`
+- `index.html`
+- `js/app.js`
+- `version.json`
+- `sw.js`
+- `PM-xeplich-v4.md`
+
+
 

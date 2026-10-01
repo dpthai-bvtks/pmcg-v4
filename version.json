@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev18",
+    "version": "4.1.8-rev19",
     "releaseDate": "01/10/2026",
-    "releaseTime": "07:58 01/10/2026",
-    "notes": "Tinh gọn bộ chọn ca làm việc mùa hè / mùa đông ở tab-staff thành các ô tick chọn (radio buttons) thẳng hàng, gọn gàng và trực quan."
+    "releaseTime": "08:04 01/10/2026",
+    "notes": "Đồng bộ kích thước ô tick chọn ca làm việc mùa hè / mùa đông thành ô checkbox vuông chuẩn mực (17px), loại bỏ hoàn toàn lỗi phồng to kích thước."
 }

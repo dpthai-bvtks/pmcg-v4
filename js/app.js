@@ -5024,23 +5024,42 @@ var dataCache = window.dataCache;
         }
         window.getCurrentStaffSeason = getCurrentStaffSeason;
 
+        function handleStaffSeasonCheckboxChange(season) {
+            const cbSummer = document.getElementById('check-season-summer');
+            const cbWinter = document.getElementById('check-season-winter');
+            if (season === 'summer') {
+                if (cbSummer && cbSummer.checked) {
+                    applyStaffShiftPreset('summer');
+                } else if (cbSummer && !cbSummer.checked && (!cbWinter || !cbWinter.checked)) {
+                    // Nếu bỏ tick thì giữ nguyên giờ hiện tại
+                }
+            } else if (season === 'winter') {
+                if (cbWinter && cbWinter.checked) {
+                    applyStaffShiftPreset('winter');
+                } else if (cbWinter && !cbWinter.checked && (!cbSummer || !cbSummer.checked)) {
+                    // Nếu bỏ tick thì giữ nguyên giờ hiện tại
+                }
+            }
+        }
+        window.handleStaffSeasonCheckboxChange = handleStaffSeasonCheckboxChange;
+
         function applyStaffShiftPreset(season) {
-            const rSummer = document.getElementById('radio-season-summer');
-            const rWinter = document.getElementById('radio-season-winter');
+            const cbSummer = document.getElementById('check-season-summer');
+            const cbWinter = document.getElementById('check-season-winter');
             if (season === 'winter') {
                 if (document.getElementById('staff-ms')) document.getElementById('staff-ms').value = '08:00';
                 if (document.getElementById('staff-me')) document.getElementById('staff-me').value = '12:00';
                 if (document.getElementById('staff-as')) document.getElementById('staff-as').value = '13:00';
                 if (document.getElementById('staff-ae')) document.getElementById('staff-ae').value = '16:30';
-                if (rSummer) rSummer.checked = false;
-                if (rWinter) rWinter.checked = true;
+                if (cbSummer) cbSummer.checked = false;
+                if (cbWinter) cbWinter.checked = true;
             } else {
                 if (document.getElementById('staff-ms')) document.getElementById('staff-ms').value = '07:30';
                 if (document.getElementById('staff-me')) document.getElementById('staff-me').value = '11:30';
                 if (document.getElementById('staff-as')) document.getElementById('staff-as').value = '13:00';
                 if (document.getElementById('staff-ae')) document.getElementById('staff-ae').value = '16:30';
-                if (rSummer) rSummer.checked = true;
-                if (rWinter) rWinter.checked = false;
+                if (cbSummer) cbSummer.checked = true;
+                if (cbWinter) cbWinter.checked = false;
             }
         }
         window.applyStaffShiftPreset = applyStaffShiftPreset;
@@ -5052,19 +5071,19 @@ var dataCache = window.dataCache;
             const ae = (document.getElementById('staff-ae')?.value || '').trim();
             const currentShift = `${ms}-${me}, ${as}-${ae}`;
 
-            const rSummer = document.getElementById('radio-season-summer');
-            const rWinter = document.getElementById('radio-season-winter');
-            if (!rSummer || !rWinter) return;
+            const cbSummer = document.getElementById('check-season-summer');
+            const cbWinter = document.getElementById('check-season-winter');
+            if (!cbSummer || !cbWinter) return;
 
             if (currentShift === '07:30-11:30, 13:00-16:30') {
-                rSummer.checked = true;
-                rWinter.checked = false;
+                cbSummer.checked = true;
+                cbWinter.checked = false;
             } else if (currentShift === '08:00-12:00, 13:00-16:30') {
-                rSummer.checked = false;
-                rWinter.checked = true;
+                cbSummer.checked = false;
+                cbWinter.checked = true;
             } else {
-                rSummer.checked = false;
-                rWinter.checked = false;
+                cbSummer.checked = false;
+                cbWinter.checked = false;
             }
         }
         window.updateStaffSeasonPresetHighlight = updateStaffSeasonPresetHighlight;
