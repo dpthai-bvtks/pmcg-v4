@@ -1644,6 +1644,20 @@ window.switchAdminSection = function(sectionId, btn) {
             const tbody = document.getElementById('chamcong-body');
             if (!thead || !tbody) return;
 
+            // 🛡️ BẢO VỆ CON TRỎ CHUỘT: Ghi nhớ ô đang nhập liệu và vị trí con trỏ trước khi re-render
+            const activeEl = document.activeElement;
+            let savedFocus = null;
+            if (activeEl && activeEl.closest('#table-chamcong-container')) {
+                savedFocus = {
+                    emp: activeEl.getAttribute('data-emp'),
+                    day: activeEl.getAttribute('data-day'),
+                    isHeso: activeEl.classList.contains('heso-input'),
+                    selStart: activeEl.selectionStart,
+                    selEnd: activeEl.selectionEnd,
+                    val: activeEl.value
+                };
+            }
+
             const now = new Date();
             const currentYear = now.getFullYear();
             const currentMonth = now.getMonth() + 1;
@@ -1724,22 +1738,17 @@ window.switchAdminSection = function(sectionId, btn) {
                     const isToday = isCurrentMonthView && (d === currentDay);
                     const bgClass = isOff ? 'bg-holiday' : '';
                     const todayClass = isToday ? 'col-today' : '';
+                    const sundayClass = isSundayOnly ? 'cc-sunday-input' : '';
+                    const sundayPlaceholder = isSundayOnly ? 'placeholder="Nghỉ"' : '';
                     const displayVal = formatDisplayValue(rawVal);
 
-                    if (isSundayOnly && !displayVal) {
-                        rowHtml += `
-                            <td class="${bgClass} ${todayClass}" onclick="enableHolidayCell(this, '${emp}', ${d})">
-                                <div style="color: #a16207; font-style: italic; font-size: 10px; font-weight: 600; cursor: pointer; line-height: 20px; user-select: none;">Nghỉ</div>
-                            </td>
-                        `;
-                    } else {
-                        rowHtml += `
-                            <td class="${bgClass} ${todayClass}">
-                                <input type="text" class="cc-input-text" data-emp="${emp}" data-day="${d}" 
-                                       value="${displayVal}">
-                            </td>
-                        `;
-                    }
+                    // MỌI Ô TRÊN BẢNG ĐỀU LÀ THẺ INPUT ĐỒNG NHẤT - KHÔNG BAO GIỜ BỊ ĐỨT ĐOẠN CON TRỎ
+                    rowHtml += `
+                        <td class="${bgClass} ${todayClass}">
+                            <input type="text" class="cc-input-text ${sundayClass}" data-emp="${emp}" data-day="${d}" 
+                                   value="${displayVal}" ${sundayPlaceholder}>
+                        </td>
+                    `;
                 }
                 const tongCongHeso = Math.round((tongCong * heSo) * 100) / 100;
                 grandTotalChamCong += tongCongHeso;
@@ -1767,63 +1776,124 @@ window.switchAdminSection = function(sectionId, btn) {
 
             attachChamCongEvents(daysInMonth);
 
-            // Tự động cuộn theo thứ tự: [Cột Hệ số] -> [Cột Ngày trước] -> [Cột Ngày hiện tại]
-            setTimeout(() => {
-                const container = document.getElementById('table-chamcong-container');
-                if (container) {
-                    if (isCurrentMonthView && currentDay >= 1 && currentDay <= daysInMonth) {
-                        const targetDay = (currentDay > 1) ? (currentDay - 1) : currentDay;
-                        const targetTh = document.getElementById(`chamcong-day-${targetDay}-th`);
-                        if (targetTh) {
-                            const isMobileView = window.innerWidth <= 768;
-                            const stickyOffset = isMobileView ? 208 : 238; // 160px/190px Họ tên + 48px Hệ số
-                            const targetLeft = Math.max(0, targetTh.offsetLeft - stickyOffset);
-                            container.scrollTo({ left: targetLeft, behavior: 'smooth' });
-                        }
-                    } else {
-                        container.scrollTo({ left: 0, behavior: 'smooth' });
-                    }
+            // 🛡️ KHÔI PHỤC CON TRỎ CHUỘT: Tìm lại đúng ô vừa focus và đặt con trỏ chuột chính xác
+            if (savedFocus && savedFocus.emp) {
+                let targetInput = null;
+                if (savedFocus.isHeso) {
+                    targetInput = tbody.querySelector(`.heso-input[data-emp="${savedFocus.emp}"]`);
+                } else if (savedFocus.day) {
+                    targetInput = tbody.querySelector(`.cc-input-text[data-emp="${savedFocus.emp}"][data-day="${savedFocus.day}"]`);
                 }
-            }, 100);
+                if (targetInput) {
+                    try {
+                        targetInput.focus();
+                        if (typeof savedFocus.selStart === 'number' && typeof savedFocus.selEnd === 'number') {
+                            targetInput.setSelectionRange(savedFocus.selStart, savedFocus.selEnd);
+                        } else {
+                            targetInput.select();
+                        }
+                    } catch(err){}
+                }
+            } else {
+                // Tự động cuộn theo thứ tự khi mở bảng lần đầu: [Cột Hệ số] -> [Cột Ngày trước] -> [Cột Ngày hiện tại]
+                setTimeout(() => {
+                    const container = document.getElementById('table-chamcong-container');
+                    if (container && !document.activeElement?.closest('#table-chamcong-container')) {
+                        if (isCurrentMonthView && currentDay >= 1 && currentDay <= daysInMonth) {
+                            const targetDay = (currentDay > 1) ? (currentDay - 1) : currentDay;
+                            const targetTh = document.getElementById(`chamcong-day-${targetDay}-th`);
+                            if (targetTh) {
+                                const isMobileView = window.innerWidth <= 768;
+                                const stickyOffset = isMobileView ? 208 : 238; // 160px/190px Họ tên + 48px Hệ số
+                                const targetLeft = Math.max(0, targetTh.offsetLeft - stickyOffset);
+                                container.scrollTo({ left: targetLeft, behavior: 'smooth' });
+                            }
+                        } else {
+                            container.scrollTo({ left: 0, behavior: 'smooth' });
+                        }
+                    }
+                }, 100);
+            }
         }
 
         function attachChamCongEvents(daysInMonth) {
             document.querySelectorAll('.cc-input-text').forEach(input => {
                 applySymbolStyleToInput(input, input.value);
-                ['input', 'change', 'blur'].forEach(evtType => {
+
+                // 1. Click / Tab vào ô: TỰ ĐỘNG BÔI ĐEN TOÀN BỘ ĐỂ GÕ ĐÈ NGAY
+                input.addEventListener('focus', (e) => {
+                    setTimeout(() => {
+                        try { e.target.select(); } catch(err){}
+                    }, 50);
+                });
+
+                // 2. Khi đang gõ: TUYỆT ĐỐI KHÔNG GÁN ĐÈ VALUE ĐỂ KHÔNG PHÁ VỠ BỘ GÕ TIẾNG VIỆT & KHÔNG LỆCH CON TRỎ
+                input.addEventListener('input', (e) => {
+                    const rawVal = e.target.value;
+                    applySymbolStyleToInput(e.target, rawVal);
+                    const currentEmp = e.target.getAttribute('data-emp');
+                    const currentDay = parseInt(e.target.getAttribute('data-day'));
+                    if (currentEmp && currentDay) {
+                        if (!chamCongData[currentEmp]) chamCongData[currentEmp] = {};
+                        if (rawVal && rawVal.trim()) {
+                            chamCongData[currentEmp][currentDay] = rawVal.trim();
+                        } else {
+                            delete chamCongData[currentEmp][currentDay];
+                        }
+                        recalculateRowTotal(currentEmp, daysInMonth);
+                    }
+                });
+
+                // 3. Chỉ commit và chuẩn hóa khi kết thúc nhập liệu (blur, change)
+                ['change', 'blur'].forEach(evtType => {
                     input.addEventListener(evtType, (e) => {
                         commitChamCongCell(e.target, daysInMonth, true);
                     });
                 });
 
+                // 4. ĐIỀU HƯỚNG BÀN PHÍM SIÊU MƯỢT KHÔNG CẦN CHẠM CHUỘT
                 input.addEventListener('keydown', (e) => {
                     let nextInput = null;
                     const currentDay = parseInt(e.target.getAttribute('data-day'));
                     const currentEmp = e.target.getAttribute('data-emp');
                     const empIndex = adminChamCongEmployees.indexOf(currentEmp);
 
-                    if (e.key === 'ArrowUp' && empIndex > 0) {
+                    if (e.key === 'ArrowUp') {
                         e.preventDefault();
-                        const prevEmp = adminChamCongEmployees[empIndex - 1];
-                        nextInput = document.querySelector(`.cc-input-text[data-emp="${prevEmp}"][data-day="${currentDay}"]`);
-                    } else if ((e.key === 'ArrowDown' || e.key === 'Enter') && empIndex < adminChamCongEmployees.length - 1) {
+                        if (empIndex > 0) {
+                            const prevEmp = adminChamCongEmployees[empIndex - 1];
+                            nextInput = document.querySelector(`.cc-input-text[data-emp="${prevEmp}"][data-day="${currentDay}"]`);
+                        } else if (currentDay > 1) {
+                            // Nếu đang ở nhân viên đầu tiên: nhảy về nhân viên cuối cùng ngày trước đó
+                            const lastEmp = adminChamCongEmployees[adminChamCongEmployees.length - 1];
+                            nextInput = document.querySelector(`.cc-input-text[data-emp="${lastEmp}"][data-day="${currentDay - 1}"]`);
+                        }
+                    } else if (e.key === 'ArrowDown' || e.key === 'Enter') {
                         e.preventDefault();
-                        const nextEmp = adminChamCongEmployees[empIndex + 1];
-                        nextInput = document.querySelector(`.cc-input-text[data-emp="${nextEmp}"][data-day="${currentDay}"]`);
-                    } else if (e.key === 'ArrowLeft' && currentDay > 1) {
-                        if (e.target.selectionStart === 0) {
+                        commitChamCongCell(e.target, daysInMonth, true);
+                        if (empIndex < adminChamCongEmployees.length - 1) {
+                            const nextEmp = adminChamCongEmployees[empIndex + 1];
+                            nextInput = document.querySelector(`.cc-input-text[data-emp="${nextEmp}"][data-day="${currentDay}"]`);
+                        } else if (currentDay < daysInMonth) {
+                            // Nếu đang ở nhân viên cuối cùng: Enter/Mũi tên xuống tự động nhảy sang nhân viên đầu tiên ngày kế tiếp!
+                            const firstEmp = adminChamCongEmployees[0];
+                            nextInput = document.querySelector(`.cc-input-text[data-emp="${firstEmp}"][data-day="${currentDay + 1}"]`);
+                        }
+                    } else if (e.key === 'ArrowLeft') {
+                        if (e.target.selectionStart === 0 || !e.target.value) {
                             e.preventDefault();
-                            for (let prevD = currentDay - 1; prevD >= 1; prevD--) {
-                                const target = document.querySelector(`.cc-input-text[data-emp="${currentEmp}"][data-day="${prevD}"]`);
-                                if (target) { nextInput = target; break; }
+                            if (currentDay > 1) {
+                                nextInput = document.querySelector(`.cc-input-text[data-emp="${currentEmp}"][data-day="${currentDay - 1}"]`);
+                            } else {
+                                // Nếu ở ngày 1 bấm sang trái: tự động nhảy vào ô Hệ số!
+                                nextInput = document.querySelector(`.heso-input[data-emp="${currentEmp}"]`);
                             }
                         }
-                    } else if (e.key === 'ArrowRight' && currentDay < daysInMonth) {
-                        if (e.target.selectionEnd === e.target.value.length) {
+                    } else if (e.key === 'ArrowRight') {
+                        if (e.target.selectionEnd === e.target.value.length || !e.target.value) {
                             e.preventDefault();
-                            for (let nextD = currentDay + 1; nextD <= daysInMonth; nextD++) {
-                                const target = document.querySelector(`.cc-input-text[data-emp="${currentEmp}"][data-day="${nextD}"]`);
-                                if (target) { nextInput = target; break; }
+                            if (currentDay < daysInMonth) {
+                                nextInput = document.querySelector(`.cc-input-text[data-emp="${currentEmp}"][data-day="${currentDay + 1}"]`);
                             }
                         }
                     }
@@ -1867,13 +1937,14 @@ window.switchAdminSection = function(sectionId, btn) {
                     });
                 });
 
-                // Hỗ trợ phím Enter, Mũi tên Lên / Xuống để chuyển dòng nhanh
+                // Hỗ trợ phím Enter, Mũi tên Lên / Xuống / Phải để chuyển dòng và sang ngày 1
                 input.addEventListener('keydown', (e) => {
+                    const currentEmp = e.target.getAttribute('data-emp');
+                    const empIndex = adminChamCongEmployees.indexOf(currentEmp);
+
                     if (e.key === 'Enter') {
                         e.preventDefault();
                         commitHeSoCell(e.target, daysInMonth, true);
-                        const currentEmp = e.target.getAttribute('data-emp');
-                        const empIndex = adminChamCongEmployees.indexOf(currentEmp);
                         if (empIndex < adminChamCongEmployees.length - 1) {
                             const nextEmp = adminChamCongEmployees[empIndex + 1];
                             const nextInput = document.querySelector(`.heso-input[data-emp="${nextEmp}"]`);
@@ -1883,8 +1954,6 @@ window.switchAdminSection = function(sectionId, btn) {
                         }
                     } else if (e.key === 'ArrowDown') {
                         e.preventDefault();
-                        const currentEmp = e.target.getAttribute('data-emp');
-                        const empIndex = adminChamCongEmployees.indexOf(currentEmp);
                         if (empIndex < adminChamCongEmployees.length - 1) {
                             const nextEmp = adminChamCongEmployees[empIndex + 1];
                             const nextInput = document.querySelector(`.heso-input[data-emp="${nextEmp}"]`);
@@ -1892,13 +1961,16 @@ window.switchAdminSection = function(sectionId, btn) {
                         }
                     } else if (e.key === 'ArrowUp') {
                         e.preventDefault();
-                        const currentEmp = e.target.getAttribute('data-emp');
-                        const empIndex = adminChamCongEmployees.indexOf(currentEmp);
                         if (empIndex > 0) {
                             const prevEmp = adminChamCongEmployees[empIndex - 1];
                             const prevInput = document.querySelector(`.heso-input[data-emp="${prevEmp}"]`);
                             if (prevInput) { prevInput.focus(); prevInput.select(); }
                         }
+                    } else if (e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        commitHeSoCell(e.target, daysInMonth, true);
+                        const day1Input = document.querySelector(`.cc-input-text[data-emp="${currentEmp}"][data-day="1"]`);
+                        if (day1Input) { day1Input.focus(); day1Input.select(); }
                     }
                 });
             });

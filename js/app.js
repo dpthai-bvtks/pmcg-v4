@@ -10958,13 +10958,16 @@ var dataCache = window.dataCache;
             if (typeof isMachineFormActive === 'function' && isMachineFormActive()) return true;
             if (typeof isBusyFormActive === 'function' && isBusyFormActive()) return true;
 
-            // Kiểm tra con trỏ chuột bất kỳ đang focus vào ô nhập liệu của form (trừ ô tìm kiếm)
+            // Kiểm tra con trỏ chuột bất kỳ đang focus vào ô nhập liệu của form (trừ ô tìm kiếm) hoặc bảng chấm công
             const activeEl = document.activeElement;
             if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT' || activeEl.tagName === 'TEXTAREA')) {
-                if (activeEl.closest('.sidebar-form, form, .modal-content') && !activeEl.classList.contains('search-input') && !activeEl.id.includes('search')) {
+                if (activeEl.closest('.sidebar-form, form, .modal-content, #table-chamcong-container, #tab-chamcong') && !activeEl.classList.contains('search-input') && !activeEl.id.includes('search')) {
                     return true;
                 }
             }
+
+            // Bảng chấm công đang có sửa đổi chưa lưu xong
+            if (window.chamCongIsDirty) return true;
 
             return false;
         }

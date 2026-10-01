@@ -4616,6 +4616,23 @@ transition: box-shadow 0.3s;
             box-shadow: 0 0 0 1px rgba(37,99,235,0.4);
             background: #eff6ff;
         }
+        #table-chamcong .cc-input-text.cc-sunday-input {
+            border-color: #fef08a !important;
+            background: #fffbeb !important;
+        }
+        #table-chamcong .cc-input-text.cc-sunday-input::placeholder {
+            color: #a16207 !important;
+            font-style: italic !important;
+            font-size: 9.5px !important;
+            font-weight: 700 !important;
+            opacity: 0.9 !important;
+            text-transform: none !important;
+        }
+        #table-chamcong .cc-input-text.cc-sunday-input:focus {
+            border-color: #d97706 !important;
+            box-shadow: 0 0 0 1.5px rgba(217, 119, 6, 0.4) !important;
+            background: #ffffff !important;
+        }
         /* Ký hiệu Lễ, Tết (Màu đỏ tươi lễ hội) */
         #table-chamcong .cc-input-text[value="LỄ"],
         #table-chamcong .cc-input-text[value="LE"],

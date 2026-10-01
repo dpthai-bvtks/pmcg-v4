@@ -6794,3 +6794,54 @@ ormalizeScheduleItem.
 - `sw.js`
 - `version.json`
 - `PM-xeplich-v4.md`
+
+
+### Khắc Phục Triệt Để Lỗi Mất Con Trỏ Chuột Khi Nhập Dữ Liệu Bảng Chấm Công (01/10/2026 - v4.1.8-rev22)
+
+**Hiện tượng & Phản hồi người dùng:**
+- Người dùng phản ánh: *"cứ đang nhập dữ liệu bảng chấm công thì bị mất con trỏ chuột, lại phải dùng chuột để chỉnh"*.
+- Người dùng đang gõ ký hiệu hoặc số trong ô chấm công thì bất ngờ ô bị mất focus (unfocused/blur), con trỏ chuột biến mất, bàn phím không còn tác dụng và phải dùng chuột click lại vào ô để tiếp tục nhập.
+
+**Nguyên nhân gốc rễ (Root Cause):**
+1. **Tiến trình nạp ngầm từ máy chủ xóa sạch DOM bảng (Destructive Background Re-render):**
+   - Khi người dùng mở tab Chấm Công, dữ liệu từ cache hiển thị tức thì. Người dùng click vào một ô để nhập ngay.
+   - Khoảng 300ms - 1500ms sau, các hàm nạp ngầm `getOrLoadChamCongEmployees` (`apiFn('getEmployees')`) và `apiFn('getChamCong')` nhận được response từ máy chủ và gọi `renderChamCongTable()`.
+   - `renderChamCongTable()` thực hiện `tbody.innerHTML = ''` để vẽ lại toàn bộ bảng.
+   - Thẻ `<input>` mà người dùng đang gõ bị xóa bỏ khỏi DOM, khiến trình duyệt tự động chuyển focus về `document.body`, làm mất sạch con trỏ chuột!
+2. **Cấu trúc ô Chủ Nhật dạng thẻ `<div>` phá vỡ luồng điều hướng:**
+   - Các ngày Chủ Nhật (ví dụ ngày 4, 11, 18, 25 của Tháng 10/2026) được render dưới dạng thẻ `<td><div onclick="enableHolidayCell">Nghỉ</div></td>` thay vì thẻ `<input>`.
+   - Khi người dùng dùng phím mũi tên Trái/Phải di chuyển qua các ngày hoặc bấm mũi tên Lên/Xuống ở các ngày khác, ô Chủ Nhật không có thẻ `.cc-input-text`, khiến hàm tìm `nextInput` trả về `null`, làm con trỏ chuột biến mất và không thể điều hướng tiếp.
+   - Khi click vào ô Chủ Nhật, hàm `enableHolidayCell` thay đổi `innerHTML`. Khi nhấn `Enter`, hàm cũ gọi `input.blur()` làm con trỏ chuột bị ngắt hoàn toàn.
+3. **Gán đè `input.value` ngay trong sự kiện `input`:**
+   - Trong `attachChamCongEvents`, cả 3 sự kiện `['input', 'change', 'blur']` đều gọi trực tiếp `commitChamCongCell()`.
+   - Trong `commitChamCongCell`, dòng `input.value = val` được gọi liên tục mỗi khi nhấn 1 phím. Việc gán đè thuộc tính `value` trong lúc sự kiện `input` đang diễn ra làm ngắt kết nối bộ gõ tiếng Việt (Unikey/Telex), nhảy caret hoặc làm mất focus trên một số trình duyệt.
+4. **Hàm `isAnyFormActive()` bỏ quên Bảng Chấm Công:**
+   - Bộ lắng nghe `OfflineSyncEngine` và `sync.js` tự động gọi `syncRefreshData()` khi có cập nhật. Do `isAnyFormActive()` trước đó chỉ kiểm tra các form trong `.sidebar-form, form, .modal-content`, các ô input trong Bảng Chấm Công không được tính là đang thao tác form, dẫn đến đồng bộ ngầm kích hoạt và làm gián đoạn nhập liệu.
+
+**Giải pháp & Khắc phục triệt để:**
+1. **Cơ chế Bảo toàn Con trỏ Chuột (Cursor & Focus Preservation) trong `renderChamCongTable`:**
+   - Trước khi làm trống `tbody`, hệ thống tự động ghi nhớ ô đang active: nhân viên (`data-emp`), ngày (`data-day`), loại ô (hệ số hay ngày công) cùng vị trí chọn con trỏ (`selectionStart`, `selectionEnd`).
+   - Ngay sau khi vẽ xong bảng và gắn sự kiện, hệ thống tự động tìm lại đúng thẻ `<input>` đó, gọi `.focus()` và khôi phục `setSelectionRange()` chính xác đến từng ký tự. Người dùng gõ phím liên tục mà không hề bị mất con trỏ dù có bất kỳ tiến trình nạp ngầm nào chạy.
+   - Khi người dùng đang focus trong bảng, vô hiệu hóa việc tự động cuộn bảng `container.scrollTo` để tránh làm giật màn hình.
+2. **Đồng bộ 100% tất cả các ngày thành thẻ `<input>` với Placeholder thông minh:**
+   - Loại bỏ cơ chế tráo đổi thẻ `enableHolidayCell`. Tất cả 31 ngày của toàn bộ nhân viên đều là thẻ `<input class="cc-input-text ...">`.
+   - Với các ngày Chủ Nhật: gắn class `.cc-sunday-input` và thuộc tính `placeholder="Nghỉ"`. Khi ô trống, chữ *"Nghỉ"* màu vàng cam nghiêng hiển thị tự nhiên. Khi click hoặc dùng phím di chuyển vào, người dùng có thể gõ ngay công trực nhật/làm thêm mà không bị gián đoạn DOM.
+3. **Tối ưu hóa sự kiện `input` & Tự động bôi đen (`focus`):**
+   - Thêm sự kiện `focus`: tự động `.select()` bôi đen toàn bộ giá trị trong ô, người dùng chỉ cần gõ ký hiệu mới là ghi đè ngay lập tức.
+   - Tách biệt sự kiện `input`: chỉ áp dụng màu sắc trực quan và tính toán tạm thời cho hàng tổng, TUYỆT ĐỐI KHÔNG can thiệp gán lại `input.value` khi đang gõ, bảo đảm bộ gõ tiếng Việt và con trỏ chuột mượt mà 100%.
+   - Chỉ khi rời ô (`blur` / `change`) hoặc bấm phím điều hướng mới tiến hành chuẩn hóa ký hiệu (`commitChamCongCell`).
+4. **Hệ thống phím điều hướng toàn diện không cần chạm chuột:**
+   - **`Enter` / `Mũi tên Xuống (↓)`**: Lưu ô hiện tại và chuyển xuống nhân viên bên dưới cùng ngày. Khi ở nhân viên cuối cùng, tự động nhảy sang nhân viên đầu tiên của ngày tiếp theo (`d + 1`).
+   - **`Mũi tên Lên (↑)`**: Chuyển lên nhân viên bên trên cùng ngày. Khi ở nhân viên đầu tiên, nhảy về nhân viên cuối cùng của ngày trước (`d - 1`).
+   - **`Mũi tên Trái (←)`**: Chuyển sang ngày trước (`d - 1`). Nếu ở ngày 1 bấm sang trái, tự động nhảy vào ô Hệ Số của nhân viên đó.
+   - **`Mũi tên Phải (→)`**: Chuyển sang ngày sau (`d + 1`). Tại ô Hệ Số bấm sang phải, tự động nhảy vào ô ngày 1.
+5. **Cập nhật `isAnyFormActive()` trong `js/app.js`:**
+   - Bổ sung `#table-chamcong-container, #tab-chamcong` và biến cờ `window.chamCongIsDirty`. Khi người dùng đang thao tác trên Bảng Chấm Công, mọi tiến trình làm mới nền đều tự động tạm hoãn để bảo vệ phiên làm việc của người dùng.
+
+**File sửa đổi:**
+- `css/style.css`
+- `js/app.js`
+- `js/thongke.js`
+- `sw.js`
+- `version.json`
+- `PM-xeplich-v4.md`

@@ -1,6 +1,6 @@
 {
-    "version": "4.1.8-rev21",
+    "version": "4.1.8-rev22",
     "releaseDate": "01/10/2026",
-    "releaseTime": "09:30 01/10/2026",
-    "notes": "Cho phép nhập hệ số lẻ < 1 (ví dụ 0.5, 0.3) linh hoạt bằng bàn phím số/chấm/phẩy không bị nhảy về 1, hỗ trợ phím điều hướng, tự bôi đen khi click và tích hợp trường Hệ số vào modal Sửa Nhân Sự."
+    "releaseTime": "10:45 01/10/2026",
+    "notes": "Khắc phục triệt để lỗi mất con trỏ chuột khi nhập Bảng Chấm Công: bảo toàn focus khi re-render nền, đồng bộ 100% ô ngày thành input (placeholder Nghỉ thông minh cho Chủ Nhật), tự bôi đen khi click, hỗ trợ phím mũi tên và Enter điều hướng liên tục không cần chạm chuột."
 }
