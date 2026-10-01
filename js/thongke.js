@@ -50,23 +50,57 @@ var callApi = (typeof window !== 'undefined' && typeof window.callApi === 'funct
             return key + '_' + u;
         }
 
+        // Hàm thanh lọc triệt để dữ liệu chấm công rác bị clone nhầm từ tháng 9 sang tháng 10, 11, 12
+        function cleanseChamCongGarbage(my, data) {
+            if (!data || typeof data !== 'object') return data;
+            if (my === '2026-10') {
+                for (const emp in data) {
+                    if (data[emp] && typeof data[emp] === 'object') {
+                        const d2 = String(data[emp]['2'] || data[emp][2] || '').toUpperCase();
+                        const d3 = String(data[emp]['3'] || data[emp][3] || '').toUpperCase();
+                        const d7 = String(data[emp]['7'] || data[emp][7] || '').toUpperCase();
+                        // Dấu hiệu đặc trưng của dữ liệu clone tháng 9: ngày 2 là LỄ hoặc (ngày 3=X và ngày 7=X)
+                        if (d2 === 'LỄ' || d2 === 'LE' || (d3 === 'X' && d7 === 'X')) {
+                            for (const dKey in data[emp]) {
+                                if (dKey !== '1' && dKey !== 1 && dKey !== 'heSo') {
+                                    delete data[emp][dKey];
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (my === '2026-11' || my === '2026-12') {
+                for (const emp in data) {
+                    if (data[emp] && typeof data[emp] === 'object') {
+                        for (const dKey in data[emp]) {
+                            if (dKey !== 'heSo') {
+                                delete data[emp][dKey];
+                            }
+                        }
+                    }
+                }
+            }
+            return data;
+        }
+        window.cleanseChamCongGarbage = cleanseChamCongGarbage;
+
         // Hàm kiểm tra và nhận diện dữ liệu chấm công giả lập / mock test bị clone nhầm từ tháng 9 (1/9, 2/9 là LỄ)
         function isMockChamCongData(my, data) {
             if (!data || typeof data !== 'object') return false;
             if (my === '2026-10' || my === '2026-11' || my === '2026-12') {
-                let fakeHolidayCount = 0;
+                let fakeCount = 0;
                 const emps = Object.keys(data);
                 for (const emp of emps) {
                     const row = data[emp];
                     if (row && typeof row === 'object') {
-                        const d1 = String(row['1'] || row[1] || '').toUpperCase();
                         const d2 = String(row['2'] || row[2] || '').toUpperCase();
-                        if ((d1 === 'LỄ' || d1 === 'LE') && (d2 === 'LỄ' || d2 === 'LE')) {
-                            fakeHolidayCount++;
+                        const d7 = String(row['7'] || row[7] || '').toUpperCase();
+                        if (d2 === 'LỄ' || d2 === 'LE' || d7 === 'X') {
+                            fakeCount++;
                         }
                     }
                 }
-                if (fakeHolidayCount >= 3) return true;
+                if (fakeCount >= 3) return true;
             }
             return false;
         }
@@ -75,13 +109,13 @@ var callApi = (typeof window !== 'undefined' && typeof window.callApi === 'funct
         // Tự động dọn dẹp cache cũ bị ô nhiễm từ các phiên bản trước
         try {
             if (typeof localStorage !== 'undefined') {
-                if (localStorage.getItem('pm_cleaned_cache_ver') !== '4.1.8-rev20') {
+                if (localStorage.getItem('pm_cleaned_cache_ver') !== '4.1.8-rev28') {
                     Object.keys(localStorage).forEach(k => {
                         if (k.startsWith('pm_cache_cc_') || k.startsWith('pm_cache_tk_')) {
                             localStorage.removeItem(k);
                         }
                     });
-                    localStorage.setItem('pm_cleaned_cache_ver', '4.1.8-rev20');
+                    localStorage.setItem('pm_cleaned_cache_ver', '4.1.8-rev28');
                 }
                 // Dọn sạch riêng các key tháng 10, 11, 12 nếu còn vướng dữ liệu LỄ giả
                 ['2026-10', '2026-11', '2026-12'].forEach(m => {
@@ -89,8 +123,12 @@ var callApi = (typeof window !== 'undefined' && typeof window.callApi === 'funct
                     const raw = localStorage.getItem(ck);
                     if (raw) {
                         try {
-                            if (isMockChamCongData(m, JSON.parse(raw))) {
+                            const parsed = JSON.parse(raw);
+                            if (isMockChamCongData(m, parsed)) {
                                 localStorage.removeItem(ck);
+                            } else if (m === '2026-10') {
+                                cleanseChamCongGarbage(m, parsed);
+                                localStorage.setItem(ck, JSON.stringify(parsed));
                             }
                         } catch(e) { localStorage.removeItem(ck); }
                     }
@@ -115,6 +153,7 @@ var callApi = (typeof window !== 'undefined' && typeof window.callApi === 'funct
                         localStorage.removeItem(getLocalCCKey(my));
                         return {};
                     }
+                    cleanseChamCongGarbage(my, parsed);
                     return parsed;
                 }
             } catch(e) {}
@@ -1406,7 +1445,7 @@ window.switchAdminSection = function(sectionId, btn) {
                 chamCongIsDirty = false;
                 const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
                 if (apiFn && chamCongData) {
-                    apiFn('saveChamCong', [my, chamCongData]).then(() => {
+                    apiFn('saveChamCong', [my, chamCongData, true]).then(() => {
                         const thead = document.getElementById('chamcong-thead');
                         if (thead) thead.style.opacity = '1';
                     }).catch(err => {
@@ -1433,7 +1472,7 @@ window.switchAdminSection = function(sectionId, btn) {
                     const prevData = JSON.parse(JSON.stringify(chamCongData));
                     const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
                     if (apiFn) {
-                        apiFn('saveChamCong', [prevMy, prevData]);
+                        apiFn('saveChamCong', [prevMy, prevData, true]);
                     }
                     setCachedChamCong(prevMy, prevData);
                 }
@@ -1480,10 +1519,13 @@ window.switchAdminSection = function(sectionId, btn) {
                             raw = res;
                         }
 
+                        // Tự động thanh lọc các ngày rác (ngày 2, 3, 4, 7 bị clone nhầm từ tháng 9)
+                        cleanseChamCongGarbage(my, raw);
+
                         // 🛡️ Lọc triệt để nếu máy chủ trả về dữ liệu mock tháng 10, 11, 12 bị clone nhầm
                         if (isMockChamCongData(my, raw)) {
                             raw = {};
-                            try { apiFn('saveChamCong', [my, {}]); } catch(e){}
+                            try { apiFn('saveChamCong', [my, {}, true]); } catch(e){}
                         }
 
                         // BẢO VỆ DỮ LIỆU CỤC BỘ (Safe Merge on Client):
@@ -2029,7 +2071,7 @@ window.switchAdminSection = function(sectionId, btn) {
                     if (thead) thead.style.opacity = '1';
                     return;
                 }
-                apiFn('saveChamCong', [targetMy, targetData]).then(() => {
+                apiFn('saveChamCong', [targetMy, targetData, true]).then(() => {
                     chamCongIsDirty = false;
                     if (thead) thead.style.opacity = '1';
                 }).catch(err => {

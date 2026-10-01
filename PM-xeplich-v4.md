@@ -7040,3 +7040,43 @@ ormalizeScheduleItem.
 - `sw.js`
 - `version.json`
 - `PM-xeplich-v4.md`
+
+---
+
+### [v4.1.8-rev28] - 16:45 01/10/2026: Khắc Phục Triệt Để Lỗi Tổng Số Công Tháng 10/2026 Bị Cao Bất Thường (35.45 Công Khi Mới Ngày 01/10)
+
+**Hiện tượng & Thắc mắc của người dùng:**
+- Người dùng phản ánh kèm ảnh chụp màn hình: *"xem bảng công tháng 10 sao lại nhiều thế này, hôm nay mới ngày 01/10 mà tổng số công của từng người lại cao vậy"*.
+- Mặc dù mới bắt đầu tháng 10 và người dùng mới chỉ chấm công ngày 01/10 (cột 1 có ký hiệu, các cột từ ngày 2 đến ngày 31 đều trống), nhưng cột **TỔNG CÔNG** lại nhảy lên rất cao:
+  + Đặng Phong Thái: **4 công**
+  + Hoàng Đức Đạt: **4.5 công**
+  + Phạm Thạch Khuyến, Nguyễn Thị Xuân Lương, Nguyễn Thị Hà, Phan Thị Thu Hiền: **4 công**
+  + Tổng cộng toàn khoa lên tới **35.45 công** thay vì chỉ khoảng **8.8 công** của ngày 1.
+
+**Nguyên nhân gốc rễ (Root Cause):**
+1. **Dữ liệu chấm công rác bị clone từ tháng 9 sang tháng 10, 11, 12:**
+   - Trong CSDL (`cham_cong` bản ghi tháng `2026-10`), trước đây từng bị lưu dữ liệu mock clone từ tháng 9 sang với các ngày: Ngày 2 là `LỄ`, Ngày 3 là `X`, Ngày 4 là `X`, Ngày 5 là `S`, Ngày 7 là `X` (đặc trưng của kỳ nghỉ lễ Quốc khánh 2/9).
+2. **Cơ chế Safe Merge vô tình bảo toàn các ngày rác:**
+   - Khi người dùng nhập ngày 1/10, hàm `saveChamCong` trên server đọc bản ghi cũ và tự động hợp nhất (`safe merge`), giữ nguyên các ngày 2, 3, 4, 5, 7 từ dữ liệu cũ.
+3. **Điều kiện nhận diện dữ liệu mock cũ bị vô hiệu hóa:**
+   - Hàm `isMockChamCongData` trước đây yêu cầu cả ngày 1 và ngày 2 đều là `LỄ`. Khi người dùng gõ chữ `x` vào ngày 1/10, điều kiện này không còn thỏa mãn, khiến client không tự động xóa rác nữa.
+   - Khi tính tổng công, hàm `recalculateRowTotal` cộng dồn tất cả các ngày 1, 3, 4, 5, 7 làm cho công của nhân viên bị nhân lên thành 4 hoặc 4.5 công!
+
+**Giải pháp & Khắc phục triệt để:**
+1. **Dọn sạch trực tiếp dữ liệu trong CSDL (`cham_cong`):**
+   - Đã xử lý bản ghi tháng `2026-10`: **Chỉ giữ lại duy nhất ngày 1/10** (đúng những gì người dùng đã chấm hôm nay gồm `x`, `b`, `ts`, `h` và hệ số của từng nhân sự), xóa bỏ hoàn toàn tất cả các ngày rác từ ngày 2 trở đi.
+   - Đã làm sạch các tháng tương lai `2026-11` và `2026-12` về `{}` để không bao giờ bị dính rác.
+2. **Bổ sung hàm thanh lọc tự động (`cleanseChamCongGarbage`) trong `js/thongke.js`:**
+   - Tự động phát hiện và xóa sạch mẫu dữ liệu clone từ tháng 9 (ngày 2=LỄ, ngày 7=X) cho tháng 10/2026, chỉ giữ lại ngày 1 và hệ số.
+3. **Kích hoạt cờ `replaceWhole = true` khi lưu chấm công:**
+   - Khi lưu bảng chấm công, client gửi tham số `true` để server thực hiện ghi đè toàn vẹn trạng thái thực tế của bảng, không để cơ chế merge tự ý phục hồi lại các ô đã bị xóa hoặc không tồn tại.
+4. **Nâng cấp phiên bản dọn sạch Cache (`pm_cleaned_cache_ver = '4.1.8-rev28'`):**
+   - Tự động xóa sạch LocalStorage cache bị ô nhiễm trên trình duyệt của người dùng ngay khi tải lại trang, đảm bảo số công hiển thị chính xác tuyệt đối ngay lập tức.
+   - Tổng công ngày 01/10 của toàn khoa trở về đúng **8.8 công** (mỗi người đi làm được tính đúng 1 công theo hệ số).
+
+**File sửa đổi:**
+- `js/thongke.js`
+- `sw.js`
+- `version.json`
+- `index.html`
+- `PM-xeplich-v4.md`
