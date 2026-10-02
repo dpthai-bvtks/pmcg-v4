@@ -7112,3 +7112,33 @@ ormalizeScheduleItem.
 - `sw.js`
 - `version.json`
 - `PM-xeplich-v4.md`
+
+---
+
+### [v4.1.9-rev2] - 12:55 02/10/2026: Khắc Phục Triệt Để Lỗi "Uncaught ReferenceError: exportSchedule is not defined"
+
+**Hiện tượng & Báo cáo lỗi của người dùng:**
+- Người dùng bấm nút Xuất Excel lịch trình thì console báo lỗi:
+  `app.js:830 JS ERROR: Uncaught ReferenceError: exportSchedule is not defined at https://xeplichthuthuat.io.vn/#tab-schedule line 1911`
+  `ReferenceError: exportSchedule is not defined at HTMLButtonElement.onclick`
+- Chức năng Xuất Excel và Xuất PDF không hoạt động khi bấm nút.
+
+**Nguyên nhân gốc rễ (Root Cause):**
+- Trong quá trình chỉnh sửa trước đó, một chuỗi ký tự vô tình (`tn nha/**`) đã bị chèn vào ngay dòng 1 của tệp `js/modules/app-export-reports.js`.
+- Chuỗi ký tự này tạo ra lỗi `SyntaxError: Unexpected identifier 'nha'` khiến trình duyệt dừng biên dịch và không thể thực thi toàn bộ tệp module `app-export-reports.js`.
+- Hệ quả là các hàm toàn cục `window.exportSchedule` và `window.exportSchedulePDF` không được đăng ký vào môi trường runtime.
+
+**Giải pháp & Khắc phục triệt để:**
+1. **Làm sạch cú pháp dòng 1 của `js/modules/app-export-reports.js`:**
+   - Xóa bỏ chuỗi ký tự lỗi, khôi phục khối comment chuẩn mở đầu module `/**`.
+   - Kiểm tra cú pháp bằng `node -c js/modules/app-export-reports.js` đạt chuẩn hoàn toàn.
+2. **Tuân thủ toàn diện RULES.md:**
+   - Kiểm tra cú pháp toàn bộ hệ thống bằng `node -c` tất cả các file liên quan (Rule 1).
+   - Tăng revision trong ngày lên `4.1.9-rev2`, cập nhật timestamp `12:55 02/10/2026`, đồng bộ Cache Buster và Service Worker (Rule 3).
+
+**File sửa đổi:**
+- `js/modules/app-export-reports.js`
+- `index.html`
+- `sw.js`
+- `version.json`
+- `PM-xeplich-v4.md`

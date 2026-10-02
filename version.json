@@ -1,6 +1,6 @@
 {
-    "version": "4.1.9-rev1",
+    "version": "4.1.9-rev2",
     "releaseDate": "02/10/2026",
-    "releaseTime": "08:15 02/10/2026",
-    "notes": "Khắc phục triệt để lỗi 'Lỗi xếp lịch: morningShiftEnd is not defined': Khai báo đầy đủ morningShiftStart, morningShiftEnd và isWinterSeason trong phạm vi hàm diagnose của bộ chẩn đoán ca rớt UnscheduledDiagnosticEngine."
+    "releaseTime": "12:55 02/10/2026",
+    "notes": "Khắc phục triệt để lỗi 'Uncaught ReferenceError: exportSchedule is not defined': Sửa lỗi cú pháp do ký tự thừa vô tình chèn vào dòng 1 của tệp js/modules/app-export-reports.js, khôi phục hoạt động xuất Excel, xuất PDF và báo cáo lịch trình."
 }
