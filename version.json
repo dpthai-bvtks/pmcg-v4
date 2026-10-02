@@ -1,6 +1,6 @@
 {
-    "version": "4.1.9-rev2",
+    "version": "4.1.9-rev3",
     "releaseDate": "02/10/2026",
-    "releaseTime": "12:55 02/10/2026",
-    "notes": "Khắc phục triệt để lỗi 'Uncaught ReferenceError: exportSchedule is not defined': Sửa lỗi cú pháp do ký tự thừa vô tình chèn vào dòng 1 của tệp js/modules/app-export-reports.js, khôi phục hoạt động xuất Excel, xuất PDF và báo cáo lịch trình."
+    "releaseTime": "13:15 02/10/2026",
+    "notes": "Rà soát toàn diện 100% các nút chức năng trên toàn hệ thống: Bổ sung window.printSchedule cho nút In Lịch, chuẩn hóa gắn window cho saveStaffBusy, savePatBusy, savePatLeave và các hàm thao tác giờ bận/ra viện."
 }

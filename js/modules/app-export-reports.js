@@ -908,6 +908,7 @@
         window.renderScheduleGanttTimeline = renderScheduleGanttTimeline;
     // Expose all report & timeline functions to window
     window.exportSchedule = exportSchedule;
+    window.printSchedule = printSchedule;
     window.exportSchedulePDF = exportSchedulePDF;
     window.toggleScheduleViewMode = toggleScheduleViewMode;
     window.setTimelineGroupBy = setTimelineGroupBy;

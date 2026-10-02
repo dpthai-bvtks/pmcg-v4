@@ -6238,6 +6238,10 @@ var dataCache = window.dataCache;
                 ], true);
             });
         }
+        window.savePatBusy = savePatBusy;
+        window.deleteSinglePatBusy = deleteSinglePatBusy;
+        window.clearPatBusy = clearPatBusy;
+        window.editBusyPat = editBusyPat;
 
         // ============================================================
 
@@ -6398,6 +6402,9 @@ var dataCache = window.dataCache;
                 ], true);
             });
         }
+        window.savePatLeave = savePatLeave;
+        window.cancelLeavePat = cancelLeavePat;
+        window.editLeavePat = editLeavePat;
 
         // ============================================================
 
@@ -6637,6 +6644,10 @@ var dataCache = window.dataCache;
                 ], true);
             });
         }
+        window.saveStaffBusy = saveStaffBusy;
+        window.deleteSingleStaffBusy = deleteSingleStaffBusy;
+        window.clearStaffBusy = clearStaffBusy;
+        window.editBusyStaff = editBusyStaff;
 
         // ============================================================
 
