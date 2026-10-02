@@ -1,6 +1,6 @@
 {
-    "version": "4.1.9-rev6",
+    "version": "4.1.9-rev7",
     "releaseDate": "02/10/2026",
-    "releaseTime": "16:25 02/10/2026",
-    "notes": "Tối ưu hóa gom nhóm batch toàn bộ thao tác SQL trong editThuThuat và deleteThuThuat, loại bỏ truy vấn lặp subrequest và lọc trùng lịch sử định mức, khắc phục triệt để lỗi Too many subrequests."
+    "releaseTime": "16:45 02/10/2026",
+    "notes": "Thống nhất 100% tên phòng xếp lịch Thứ 7 thành PHONG_T7 cho cả ca xếp thành công và ca rớt, tránh chia cọc cạch về các phòng nội trú."
 }

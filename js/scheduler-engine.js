@@ -2793,10 +2793,13 @@ function getSafeCache() {
       const beds = (bedStr && bedStr !== 'None') ? bedStr.split(",").map(x => x.trim()).filter(Boolean) : Array.from({ length: soGiuong }, (_, i) => `Giường ${i + 1}`);
       beds.forEach(b => allBeds.push(`${roomName}|${b}`));
     });
+    baseDb.roomBeds["PHONG_T7"] = allBeds;
     baseDb.roomBeds["PHONG_CHUNG_T7"] = allBeds;
+    baseDb.roomStaff["PHONG_T7"] = [];
     baseDb.roomStaff["PHONG_CHUNG_T7"] = [];
     baseDb.isSaturday = true;
     if (!baseDb.roomMachines) baseDb.roomMachines = {};
+    baseDb.roomMachines["PHONG_T7"] = baseDb.machineTypes || {};
     baseDb.roomMachines["PHONG_CHUNG_T7"] = baseDb.machineTypes || {};
 
     // ⚡ FIX CRITICAL: Xóa precomputed cache để force rebuild staffBySkill + staffMyRooms
@@ -2988,7 +2991,7 @@ function getSafeCache() {
         name: pName,
         ns: pNs,
         ngayVao: bn.ngayVao || "",
-        room: "PHONG_CHUNG_T7",
+        room: "PHONG_T7",
         arrive: readyTime,
         leave: 9999,
         busy: [[0, readyTime]],
@@ -3002,11 +3005,12 @@ function getSafeCache() {
 
     const best = runBestIteration(baseDb, targetDate, [], 2, -1);
     const decodeRoom = item => {
-      if (item.PHONG === "PHONG_CHUNG_T7" && item.GIUONG?.includes("|")) {
-        const parts = item.GIUONG.split("|");
-        return { realRoom: parts[0], realBed: parts[1] };
+      let bedName = item.GIUONG || "";
+      if (bedName.includes("|")) {
+        const parts = bedName.split("|");
+        bedName = parts[1] || parts[0];
       }
-      return { realRoom: item.PHONG, realBed: item.GIUONG };
+      return { realRoom: "PHONG_T7", realBed: bedName };
     };
 
     if (!best) {
@@ -3014,12 +3018,7 @@ function getSafeCache() {
     }
 
     const rawRot = (best.rot || []).map(u => {
-      const uName = String(u.bn || u.tenBN || u.name || '').toUpperCase().trim();
-      if (u.phong === "PHONG_CHUNG_T7" || u.room === "PHONG_CHUNG_T7") {
-        const orig = (payload.final_pats || []).find(p => String(p.ten || p.name || '').toUpperCase().trim() === uName);
-        if (orig) { u.phong = orig.phong || orig.room || u.phong; u.room = orig.phong || orig.room || u.room; }
-      }
-      return { ...u, ngay: u.ngay || targetDate };
+      return { ...u, phong: "PHONG_T7", room: "PHONG_T7", ngay: u.ngay || targetDate };
     });
 
     const formattedSched = (best.sched || []).map(item => {
@@ -3028,7 +3027,7 @@ function getSafeCache() {
         ngay: item.NGAY || targetDate,
         tenBN: item.HOTEN,
         namSinh: item.NAMSINH,
-        phong: realRoom,
+        phong: "PHONG_T7",
         thuThuat: item.DICHVU,
         gioDienRa: item.GIODIENRA,
         gioKetThuc: item.GIOKETTHUC,

@@ -7310,4 +7310,44 @@ ormalizeScheduleItem.
 - `version.json`
 - `PM-xeplich-v4.md`
 
+---
+
+### [v4.1.9-rev7] - 16:45 02/10/2026: Đồng Bộ Tên Phòng Xếp Lịch Thứ 7 Thành PHONG_T7 (Khắc Phục Lỗi Hiển Thị Chia Phòng Lẫn Lộn)
+
+**Hiện tượng & Báo lỗi:**
+- Người dùng phản ánh kèm ảnh chụp màn hình lịch Thứ 7 (03/10): *"vẫn chia về các phòng khi xếp lịch thứ 7 là sao?"*.
+- Trên bảng lịch trình, các ca xếp thành công (dòng 81-89) hiển thị `Phòng 1+2+3`, nhưng ca rớt (dòng 91 của bệnh nhân Vũ Công Trứ) lại hiển thị `Phòng C118`, trong khi các ca rớt khác (dòng 90 Phạm Văn Ngọc, dòng 92 Lê Đình Đức) lại hiển thị `Phòng 1+2+3`.
+
+**Phân tích nguyên nhân:**
+1. **Lệch cơ chế hiển thị phòng giữa ca xếp được và ca rớt**:
+   - Khi xếp lịch Thứ 7, thuật toán đưa tất cả bệnh nhân về phòng tập trung `PHONG_CHUNG_T7`, nhưng gom giường từ tất cả các phòng `Phòng 1+2+3|G1..G15`, `Phòng C118|G46..G60`...
+   - Ca xếp được: hàm `decodeRoom` tách chuỗi giường và lấy phần tên phòng của giường (`parts[0]`), nên các ca được xếp vào giường G1-G15 bị đổi thành `Phòng 1+2+3` (kể cả bệnh nhân nội trú vốn ở Phòng C118 như Tuấn, Thành, Giang, Căn...).
+   - Ca bị rớt (như Vũ Công Trứ): do không có giường nên hàm chẩn đoán rớt `rawRot` đã lấy lại phòng bệnh nội trú ban đầu trong hồ sơ bệnh nhân (`orig.phong = 'Phòng C118'`).
+   - Điều này tạo ra sự không đồng nhất trên giao diện: ca thì ghi `Phòng 1+2+3`, ca thì ghi `Phòng C118`, gây hiểu nhầm là thuật toán Thứ 7 vẫn chia về các phòng.
+2. **Quy định hoạt động ngày Thứ 7**:
+   - Ngày Thứ 7 toàn bộ khoa làm tập trung tại một phòng chung, không chia phòng riêng. Người dùng chỉ định thống nhất tên phòng hiển thị là **`PHONG_T7`**.
+
+**Giải pháp & Khắc phục triệt để:**
+1. **Chuẩn hóa `PHONG_T7` trong `js/scheduler-engine.js`**:
+   - Khởi tạo phòng Thứ 7: gán `baseDb.roomBeds["PHONG_T7"]`, `roomStaff["PHONG_T7"] = []`, `roomMachines["PHONG_T7"]` (và giữ alias `PHONG_CHUNG_T7` để tương thích).
+   - Đặt `room: "PHONG_T7"` cho tất cả bệnh nhân Thứ 7 trong `rawPatients`.
+   - Cập nhật `decodeRoom`: Trả về `realRoom = "PHONG_T7"`, tách sạch tiền tố để `realBed` chỉ còn mã giường gọn gàng (`G1`, `G2`...).
+   - Cập nhật `rawRot`: 100% các ca rớt đều được gán `phong = "PHONG_T7"`, `room = "PHONG_T7"`.
+   - Cập nhật `formattedSched`: 100% các ca xếp thành công đều mang `phong = "PHONG_T7"`.
+2. **Đồng bộ cơ sở dữ liệu Hot DB (`pmcg.db`)**:
+   - Cập nhật 89 dòng lịch trình Thứ 7 ngày `2026-10-03` trong bảng `lich_trinh` sang `room = 'PHONG_T7'`.
+3. **Kiểm thử & Đóng gói phiên bản theo RULES.md**:
+   - `node scripts/verify-build.mjs` đạt `100% PASS`.
+   - Nâng phiên bản: `4.1.9-rev7` (Footer giữ `Phiên bản: 4.1.9`, `#sys-last-update` $\rightarrow$ `16:45 02/10/2026`).
+   - Cập nhật Service Worker: `CACHE_NAME = 'pmcg-v4-cache-4.1.9-rev7'`.
+   - Deploy thành công lên Cloudflare Worker `pmcg-api` và Cloudflare Pages.
+
+**File sửa đổi:**
+- `js/scheduler-engine.js`
+- `index.html`
+- `sw.js`
+- `version.json`
+- `PM-xeplich-v4.md`
+
+
 
