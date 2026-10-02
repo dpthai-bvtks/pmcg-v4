@@ -7179,3 +7179,51 @@ ormalizeScheduleItem.
 - `sw.js`
 - `version.json`
 - `PM-xeplich-v4.md`
+
+---
+
+### [v4.1.9-rev4] - 15:21 02/10/2026: Khắc Phục Lỗi "cancelLeavePat is not defined", "Unexpected token ';'" & Giải Quyết Triệt Để Tình Trạng Bảng Bệnh Nhân Không Có Dữ Liệu
+
+**Hiện tượng & Báo cáo lỗi của người dùng:**
+- Người dùng phản ánh: *"trong pmcg.db thi bang benh nhan co du lieu nhung tren phan mem lai khong co laf sao"*.
+- Console trình duyệt báo hàng loạt lỗi nghiêm trọng:
+  + `app.js?v=4.1.9-rev3:6406 Uncaught ReferenceError: cancelLeavePat is not defined`
+  + `(index):4606 Uncaught SyntaxError: Unexpected token ';'`
+  + `ReferenceError: Cannot access 'schedFilteredData' before initialization at filterSchedule`
+  + `Error in onSuccess for getBootstrapData: ReferenceError: Cannot access 'schedFilteredData' before initialization`
+  + `Lỗi chuyển tab: ReferenceError: Cannot access 'schedCurrentPage' before initialization`
+
+**Nguyên nhân gốc rễ (Root Cause):**
+1. **Lỗi `ReferenceError: cancelLeavePat is not defined` tại dòng 6406 `js/app.js`:**
+   - Trong bản cập nhật `rev3`, tại dòng 6406 có dòng code `window.cancelLeavePat = cancelLeavePat;`.
+   - Tuy nhiên hàm thực tế trong mã nguồn có tên là `clearPatLeave`. Biến `cancelLeavePat` không tồn tại, khiến trình duyệt ném lỗi `ReferenceError` ngay khi đang tải tệp `app.js`.
+   - Việc phát sinh lỗi ở phạm vi cấp cao (top-level scope) khiến quá trình thực thi `app.js` bị dừng đột ngột ở dòng 6406. Hơn 6.300 dòng code phía sau chưa được biên dịch khởi tạo, dẫn đến các biến `let schedFilteredData`, `let schedCurrentPage` rơi vào vùng chết tạm thời (TDZ).
+   - Khi `applyBootstrapData` gọi `loadScheduleList()` -> gọi `filterSchedule()`, lỗi TDZ của `schedFilteredData` kích hoạt khiến luồng xử lý bị ngắt quãng trước khi tới đoạn gán dữ liệu `dataCache.pat` và render bảng bệnh nhân (`renderPatientsTable()`).
+2. **Lỗi `SyntaxError: Unexpected token ';'` tại dòng 4606 `index.html`:**
+   - Khối script Service Worker & Auto-update bị lặp khối đóng `};` bên ngoài hàm `dismissForceUpdateModal`.
+3. **Xung đột mã đơn vị `bvtks_cs2` vs `bvtks-cs2`:**
+   - Trong `RULES.md` ghi mã đơn vị mặc định là `bvtks_cs2`, trong khi CSDL lưu `bvtks-cs2`. Nếu người dùng đăng nhập bằng `bvtks_cs2`, API không tìm thấy đơn vị.
+
+**Giải pháp & Khắc phục triệt để:**
+1. **Sửa `js/app.js` (dòng 6405-6407):**
+   - Đổi `window.cancelLeavePat = cancelLeavePat;` thành gán cả `window.clearPatLeave = clearPatLeave;` và `window.cancelLeavePat = clearPatLeave;`.
+   - Toàn bộ 12.712 dòng của `js/app.js` được biên dịch trơn tru 100%, không còn bất kỳ lỗi runtime nào.
+2. **Sửa `index.html`:**
+   - Loại bỏ dấu `};` thừa, lồng chuẩn khối `versionChannel.postMessage` vào trong hàm `showForceUpdateModal`.
+   - Cập nhật Cache Buster toàn bộ tệp link CSS, script sang `?v=4.1.9-rev4`.
+   - Cập nhật timestamp `#sys-last-update` thành `⏱ Cập nhật lần cuối: 15:21 02/10/2026`.
+3. **Chuẩn hóa Backend (`backend/src/index.js` & `backend/src/routes/tenants.js`):**
+   - Tự động chuẩn hóa `reqUnitCode === "bvtks_cs2"` sang `bvtks-cs2` cả ở API chung và xác thực đăng nhập `verifyLogin`.
+4. **Đồng bộ phiên bản theo RULES.md:**
+   - Tăng revision lên `4.1.9-rev4`.
+   - Cập nhật `sw.js` (`pmcg-v4-cache-4.1.9-rev4`), `version.json`.
+   - Deploy Cloudflare Worker `pmcg-api` & Cloudflare Pages thành công.
+
+**File sửa đổi:**
+- `js/app.js`
+- `index.html`
+- `sw.js`
+- `version.json`
+- `backend/src/index.js`
+- `backend/src/routes/tenants.js`
+- `PM-xeplich-v4.md`

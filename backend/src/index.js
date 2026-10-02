@@ -645,6 +645,7 @@ async function processApiRequest(c) {
   }
 
   reqUnitCode = String(reqUnitCode || "bvtks-cs2").trim().toLowerCase();
+  if (reqUnitCode === "bvtks_cs2") reqUnitCode = "bvtks-cs2";
 
   if (!action || action === "ping") {
     return success({

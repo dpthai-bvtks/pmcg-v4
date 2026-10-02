@@ -6403,7 +6403,8 @@ var dataCache = window.dataCache;
             });
         }
         window.savePatLeave = savePatLeave;
-        window.cancelLeavePat = cancelLeavePat;
+        window.clearPatLeave = clearPatLeave;
+        window.cancelLeavePat = clearPatLeave;
         window.editLeavePat = editLeavePat;
 
         // ============================================================

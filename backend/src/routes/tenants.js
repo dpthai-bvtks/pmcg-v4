@@ -1107,7 +1107,7 @@ export async function handleTenantsAction(action, ctx) {
 
       if (!username) return error("Vui lòng nhập tên đăng nhập!", 400);
       if (!password) return error("Vui lòng nhập mật khẩu!", 400);
-      if (!reqUnit) reqUnit = "bvtks-cs2";
+      if (!reqUnit || reqUnit === "bvtks_cs2") reqUnit = "bvtks-cs2";
 
       // 🛡️ Chống Brute-force: Kiểm tra giới hạn số lần thử theo IP và tài khoản
       const clientIp = (request && request.headers && typeof request.headers.get === "function") 
