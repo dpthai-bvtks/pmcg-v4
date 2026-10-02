@@ -7080,3 +7080,35 @@ ormalizeScheduleItem.
 - `version.json`
 - `index.html`
 - `PM-xeplich-v4.md`
+
+---
+
+### [v4.1.9-rev1] - 08:15 02/10/2026: Khắc Phục Triệt Để Lỗi "Lỗi xếp lịch: morningShiftEnd is not defined"
+
+**Hiện tượng & Yêu cầu của người dùng:**
+- Người dùng yêu cầu: *"doc rule.md va xem xem sua loi Lỗi xếp lịch: morningShiftEnd is not defined"*.
+- Khi thực hiện thuật toán xếp lịch tự động, nếu có ca chưa xếp được hoặc cần chẩn đoán ca rớt, hệ thống bị gián đoạn và ném ra ngoại lệ: `Lỗi xếp lịch: morningShiftEnd is not defined`.
+
+**Nguyên nhân gốc rễ (Root Cause):**
+- Trong đợt nâng cấp mở rộng ca sáng đến 12:00 mùa đông trước đó, biến `morningShiftEnd` đã được đưa vào các khung giờ khảo sát linh hoạt (`scanWindows`) bên trong hàm `diagnose` của bộ chẩn đoán `UnscheduledDiagnosticEngine` trong file `js/scheduler-engine.js`.
+- Tuy nhiên, `UnscheduledDiagnosticEngine` được viết dưới dạng một IIFE độc lập nằm ngoài phạm vi hàm `optimizeSchedule`. Khi hàm `diagnose` được gọi, biến `morningShiftEnd`, `morningShiftStart` và `isWinterSeason` chưa hề được khai báo trong scope của nó.
+- Do đó, khi scheduler gọi `UnscheduledDiagnosticEngine.diagnose(item, ...)` để phân tích ca rớt, JavaScript lập tức ném lỗi `ReferenceError: morningShiftEnd is not defined`, làm hỏng toàn bộ chu trình xếp lịch.
+
+**Giải pháp & Khắc phục triệt để:**
+1. **Khai báo và tính toán động `morningShiftStart`, `morningShiftEnd` trong `diagnose` (`js/scheduler-engine.js`):**
+   - Đã bổ sung bộ nhận diện động mùa làm việc và ca thực tế của nhân sự ngay tại đầu hàm `diagnose`:
+     + `isWinterSeason`: tự động phát hiện mùa đông hoặc nhân sự có ca kết thúc 12:00.
+     + `morningShiftStart`: 480 phút (08:00) mùa đông hoặc 450 phút (07:30) mùa hè.
+     + `morningShiftEnd`: 720 phút (12:00) mùa đông hoặc 690 phút (11:30) mùa hè, tự động lấy max từ ca làm việc thực tế của nhân sự.
+2. **Đồng bộ hóa khung giờ khảo sát (`scanWindows`):**
+   - Cập nhật các nhãn và mốc thời gian trong `scanWindows` sử dụng `m2t(morningShiftStart - 15)` và `m2t(morningShiftEnd)`, đảm bảo chẩn đoán chính xác tuyệt đối theo đúng mùa làm việc.
+3. **Tuân thủ toàn diện RULES.md:**
+   - Kiểm tra cú pháp bằng `node -c` tất cả các file liên quan (Rule 1).
+   - Tăng phiên bản theo ngày mới sang `4.1.9` (Rule 3), revision `4.1.9-rev1`, cập nhật timestamp `08:15 02/10/2026`, đồng bộ Cache Buster và Service Worker.
+
+**File sửa đổi:**
+- `js/scheduler-engine.js`
+- `index.html`
+- `sw.js`
+- `version.json`
+- `PM-xeplich-v4.md`

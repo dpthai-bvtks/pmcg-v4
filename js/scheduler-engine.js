@@ -3196,6 +3196,22 @@ const UnscheduledDiagnosticEngine = (function () {
     const loaiBN = (patientObj && patientObj.loaiBN) || 'NoiTru';
     const buoiDieuTri = (patientObj && patientObj.buoiDieuTri) || 'Sang';
 
+    const isWinterSeason = (typeof window !== 'undefined' && typeof window.getCurrentStaffSeason === 'function' && window.getCurrentStaffSeason() === 'winter') ||
+      (db && db.rawStaff && db.rawStaff.some(st => String(st[3] || '').includes('12:00')));
+    let morningShiftStart = isWinterSeason ? 480 : 450;
+    let morningShiftEnd = isWinterSeason ? 720 : 690;
+    if (db && db.rawStaff) {
+      const mEnds = [];
+      db.rawStaff.forEach(st => {
+        const shifts = String(st[3] || '').split(',').map(s => s.trim());
+        if (shifts[0] && shifts[0].includes('-')) {
+          const endStr = shifts[0].split('-')[1]?.trim();
+          if (endStr) mEnds.push(t2m(endStr));
+        }
+      });
+      if (mEnds.length > 0) morningShiftEnd = Math.max(...mEnds);
+    }
+
     const loaiMayKey = loaiMay.toLowerCase();
     const roomSpecific = (db && db.roomMachines && (db.roomMachines[room]?.[loaiMayKey] || db.roomMachines[room]?.[loaiMay])) || [];
     const machinesOfCategory = roomSpecific.length > 0 ? roomSpecific : ((db && db.machineTypes && db.machineTypes[loaiMay]) || []);
@@ -3376,7 +3392,7 @@ const UnscheduledDiagnosticEngine = (function () {
     }
 
     if (loaiBN === 'NgoaiTru' && causeCode !== 'BOTTLENECK_MACHINE') {
-      const mEndText = isWinterSeason ? '12:00' : '11:30';
+      const mEndText = m2t(morningShiftEnd);
       if (buoiDieuTri === 'Sang') {
         causeCode = 'OUTPATIENT_SESSION_LIMIT';
         causeTitle = '🟠 Xung đột ca Sáng Ngoại trú';
@@ -3467,7 +3483,7 @@ const UnscheduledDiagnosticEngine = (function () {
 
     // Các khung giờ khảo sát linh hoạt:
     const scanWindows = [
-      { label: 'Sáng sớm (07:15 - 08:30)', from: 435, to: 510, overtime: false },
+      { label: `Sáng sớm (${m2t(morningShiftStart - 15)} - 08:30)`, from: morningShiftStart - 15, to: 510, overtime: false },
       { label: 'Giữa ca sáng (08:30 - 10:30)', from: 510, to: 630, overtime: false },
       { label: `Cuối ca sáng (10:30 - ${m2t(morningShiftEnd)})`, from: 630, to: morningShiftEnd, overtime: false },
       { label: 'Đầu ca chiều (13:00 - 14:30)', from: 780, to: 870, overtime: false },
