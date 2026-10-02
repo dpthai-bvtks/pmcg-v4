@@ -1,6 +1,6 @@
 {
-    "version": "4.1.9-rev5",
+    "version": "4.1.9-rev6",
     "releaseDate": "02/10/2026",
-    "releaseTime": "15:33 02/10/2026",
-    "notes": "Thiết lập hệ thống kiểm tra toàn diện 4 tầng scripts/verify-build.mjs, cô lập an toàn các khối xử lý dữ liệu trong applyBootstrapData và restoreOfflineCache, cập nhật RULES.md chống tái diễn lỗi runtime."
+    "releaseTime": "16:25 02/10/2026",
+    "notes": "Tối ưu hóa gom nhóm batch toàn bộ thao tác SQL trong editThuThuat và deleteThuThuat, loại bỏ truy vấn lặp subrequest và lọc trùng lịch sử định mức, khắc phục triệt để lỗi Too many subrequests."
 }

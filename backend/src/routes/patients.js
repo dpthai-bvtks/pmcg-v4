@@ -126,6 +126,7 @@ export async function handlePatientsAction(action, ctx) {
         if (!cntLsdm || cntLsdm.total === 0) {
           const allProcs = await db.prepare("SELECT * FROM thu_thuat WHERE unit_code = ?").bind(unitCode).all().catch(() => ({ results: [] }));
           if (allProcs && allProcs.results && allProcs.results.length > 0) {
+            const seedStmts = [];
             for (const p of allProcs.results) {
               const thMin = p.tg_thuc_hien || 0;
               const thMax = (p.tg_thuc_hien_max && p.tg_thuc_hien_max > 0) ? p.tg_thuc_hien_max : thMin;
@@ -141,10 +142,13 @@ export async function handlePatientsAction(action, ctx) {
               const pl = p.phan_loai || '';
               const may = p.may || '';
 
-              await db.prepare(`
+              seedStmts.push(db.prepare(`
                 INSERT INTO lich_su_dinh_muc (unit_code, ten_thu_thuat, tu_ngay, den_ngay, tg_thuc_hien_min, tg_thuc_hien_max, tg_thu_thuat_min, tg_thu_thuat_max, khoang_cach, lien_tuc, can_rut_may, can_nguoi_phu, ds_nguoi_phu, viet_tat, he, phan_loai, may, created_at, updated_at)
                 VALUES (?, ?, '2026-01-01', '2026-09-20', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-              `).bind(unitCode, p.ten_thu_thuat, thMin, thMax, ttMin, ttMax, kc, isLt, rut, phu, dsPhu, vt, he, pl, may).run().catch(() => {});
+              `).bind(unitCode, p.ten_thu_thuat, thMin, thMax, ttMin, ttMax, kc, isLt, rut, phu, dsPhu, vt, he, pl, may));
+            }
+            if (seedStmts.length > 0) {
+              await db.batch(seedStmts).catch(() => {});
             }
           }
         }
@@ -159,26 +163,31 @@ export async function handlePatientsAction(action, ctx) {
       (histRes.results || []).forEach(h => {
         const key = String(h.ten_thu_thuat || '').trim().toLowerCase();
         if (!historyMap[key]) historyMap[key] = [];
-        historyMap[key].push({
-          id: h.id,
-          tuNgay: h.tu_ngay,
-          denNgay: h.den_ngay,
-          from: h.tu_ngay,
-          to: h.den_ngay,
-          thoiGianThucHienMin: h.tg_thuc_hien_min,
-          thoiGianThucHienMax: h.tg_thuc_hien_max,
-          thoiGianThuThuatMin: h.tg_thu_thuat_min,
-          thoiGianThuThuatMax: h.tg_thu_thuat_max,
-          khoangCach: h.khoang_cach ?? 0,
-          canRutMay: h.can_rut_may || 'Không',
-          canNguoiPhu: h.can_nguoi_phu || 'Không',
-          dsNguoiPhu: h.ds_nguoi_phu || '',
-          vietTat: h.viet_tat || '',
-          he: h.he || 'PHCN',
-          phanLoai: h.phan_loai || '',
-          may: h.may || '',
-          lienTuc: h.lien_tuc || 'Không'
-        });
+        const tu = String(h.tu_ngay || '2026-01-01').trim();
+        const den = String(h.den_ngay || '2026-12-31').trim();
+        const dup = historyMap[key].some(item => item.tuNgay === tu && item.denNgay === den);
+        if (!dup) {
+          historyMap[key].push({
+            id: h.id,
+            tuNgay: tu,
+            denNgay: den,
+            from: tu,
+            to: den,
+            thoiGianThucHienMin: h.tg_thuc_hien_min,
+            thoiGianThucHienMax: h.tg_thuc_hien_max,
+            thoiGianThuThuatMin: h.tg_thu_thuat_min,
+            thoiGianThuThuatMax: h.tg_thu_thuat_max,
+            khoangCach: h.khoang_cach ?? 0,
+            canRutMay: h.can_rut_may || 'Không',
+            canNguoiPhu: h.can_nguoi_phu || 'Không',
+            dsNguoiPhu: h.ds_nguoi_phu || '',
+            vietTat: h.viet_tat || '',
+            he: h.he || 'PHCN',
+            phanLoai: h.phan_loai || '',
+            may: h.may || '',
+            lienTuc: h.lien_tuc || 'Không'
+          });
+        }
       });
 
       return success((procRes.results || []).map(p => {
@@ -339,35 +348,23 @@ export async function handlePatientsAction(action, ctx) {
         }
       }
 
-      // Lưu các dòng lịch sử vào bảng riêng lich_su_dinh_muc
-      if (historyList && historyList.length > 0) {
+      // Deduplicate history items by (tuNgay, denNgay) to avoid duplicate records accumulating
+      const cleanHistory = [];
+      const seenPeriods = new Set();
+      if (Array.isArray(historyList)) {
         for (const h of historyList) {
-          const hTu = String(h.tuNgay || h.from || '2026-01-01').trim();
-          const hDen = String(h.denNgay || h.to || '2026-12-31').trim();
-          const hThMin = parseInt(h.thoiGianThucHienMin || h.thoiGianThucHien || 0) || 0;
-          const hThMax = parseInt(h.thoiGianThucHienMax || hThMin) || hThMin;
-          const hTtMin = parseInt(h.thoiGianThuThuatMin || h.thoiGianThuThuat || 0) || 0;
-          const hTtMax = parseInt(h.thoiGianThuThuatMax || hTtMin) || hTtMin;
-          const hLt = String(h.lienTuc || 'Không');
-          const hKc = h.khoangCach !== undefined ? parseInt(h.khoangCach) || 0 : (payload.khoangCach !== undefined ? parseInt(payload.khoangCach) || 0 : 0);
-          const hCrm = String(h.canRutMay || payload.canRutMay || 'Không');
-          const hCnp = String(h.canNguoiPhu || payload.canNguoiPhu || 'Không');
-          const hDsnp = String(h.dsNguoiPhu || payload.dsNguoiPhu || '');
-          const hVt = String(h.vietTat || payload.vietTat || '');
-          const hHe = String(h.he || payload.he || 'PHCN');
-          const hPl = String(h.phanLoai || payload.phanLoai || '');
-          const hMay = String(h.may || payload.may || '');
-
-          try {
-            await db.prepare(`
-              INSERT INTO lich_su_dinh_muc (unit_code, ten_thu_thuat, tu_ngay, den_ngay, tg_thuc_hien_min, tg_thuc_hien_max, tg_thu_thuat_min, tg_thu_thuat_max, khoang_cach, lien_tuc, can_rut_may, can_nguoi_phu, ds_nguoi_phu, viet_tat, he, phan_loai, may, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-            `).bind(unitCode, ten, hTu, hDen, hThMin, hThMax, hTtMin, hTtMax, hKc, hLt, hCrm, hCnp, hDsnp, hVt, hHe, hPl, hMay).run().catch(() => {});
-          } catch(eH) {}
+          if (!h) continue;
+          const tu = String(h.tuNgay || h.from || '2026-01-01').trim();
+          const den = String(h.denNgay || h.to || '2026-12-31').trim();
+          const pKey = `${tu}_${den}`;
+          if (!seenPeriods.has(pKey)) {
+            seenPeriods.add(pKey);
+            cleanHistory.push(h);
+          }
         }
       }
 
-      const lichSuStr = JSON.stringify(historyList);
+      const lichSuStr = JSON.stringify(cleanHistory);
 
       let stmt;
       if (existing && existing.id) {
@@ -385,8 +382,50 @@ export async function handlePatientsAction(action, ctx) {
           .bind(unitCode, ten, vietTat, he, phanLoai, may, tgThMin, tgThMax, tgTtMin, tgTtMax, kc, rut, phu, dsPhu, isLt, lichSuStr);
       }
 
+      // Đóng gói tất cả các thao tác (DELETE cũ, INSERT mới, UPDATE/INSERT thủ thuật, bumpDataVersion)
+      // vào duy nhất 1 mảng batch statements để gửi qua 1 HTTP Pipeline (tránh lỗi Too many subrequests trên Cloudflare Worker)
+      const batchStmts = [stmt];
+
+      // Xóa các dòng lịch sử cũ của thủ thuật này
+      batchStmts.push(
+        db.prepare("DELETE FROM lich_su_dinh_muc WHERE unit_code = ? AND (ten_thu_thuat = ? OR LOWER(ten_thu_thuat) = LOWER(?))").bind(unitCode, ten, ten)
+      );
+      if (oldTen && oldTen.toLowerCase() !== ten.toLowerCase()) {
+        batchStmts.push(
+          db.prepare("DELETE FROM lich_su_dinh_muc WHERE unit_code = ? AND (ten_thu_thuat = ? OR LOWER(ten_thu_thuat) = LOWER(?))").bind(unitCode, oldTen, oldTen)
+        );
+      }
+
+      // Thêm các dòng lịch sử sạch vào batch
+      for (const h of cleanHistory) {
+        const hTu = String(h.tuNgay || h.from || '2026-01-01').trim();
+        const hDen = String(h.denNgay || h.to || '2026-12-31').trim();
+        const hThMin = parseInt(h.thoiGianThucHienMin || h.thoiGianThucHien || 0) || 0;
+        const hThMax = parseInt(h.thoiGianThucHienMax || hThMin) || hThMin;
+        const hTtMin = parseInt(h.thoiGianThuThuatMin || h.thoiGianThuThuat || 0) || 0;
+        const hTtMax = parseInt(h.thoiGianThuThuatMax || hTtMin) || hTtMin;
+        const hLt = String(h.lienTuc || 'Không');
+        const hKc = h.khoangCach !== undefined ? parseInt(h.khoangCach) || 0 : (payload.khoangCach !== undefined ? parseInt(payload.khoangCach) || 0 : 0);
+        const hCrm = String(h.canRutMay || payload.canRutMay || 'Không');
+        const hCnp = String(h.canNguoiPhu || payload.canNguoiPhu || 'Không');
+        const hDsnp = String(h.dsNguoiPhu || payload.dsNguoiPhu || '');
+        const hVt = String(h.vietTat || payload.vietTat || '');
+        const hHe = String(h.he || payload.he || 'PHCN');
+        const hPl = String(h.phanLoai || payload.phanLoai || '');
+        const hMay = String(h.may || payload.may || '');
+
+        batchStmts.push(
+          db.prepare(`
+            INSERT INTO lich_su_dinh_muc (unit_code, ten_thu_thuat, tu_ngay, den_ngay, tg_thuc_hien_min, tg_thuc_hien_max, tg_thu_thuat_min, tg_thu_thuat_max, khoang_cach, lien_tuc, can_rut_may, can_nguoi_phu, ds_nguoi_phu, viet_tat, he, phan_loai, may, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          `).bind(unitCode, ten, hTu, hDen, hThMin, hThMax, hTtMin, hTtMax, hKc, hLt, hCrm, hCnp, hDsnp, hVt, hHe, hPl, hMay)
+        );
+      }
+
+      batchStmts.push(makeBumpDataVersionStmt(db, unitCode));
+
       try {
-        await db.batch([stmt, makeBumpDataVersionStmt(db, unitCode)]);
+        await db.batch(batchStmts);
       } catch(errBatch) {
         if (String(errBatch.message || errBatch).includes("lich_su_dinh_muc")) {
           let fallbackStmt;
@@ -418,20 +457,22 @@ export async function handlePatientsAction(action, ctx) {
       let offset = (typeof args[0] === "number" || (typeof args[0] === "string" && /^\d+$/.test(args[0]))) ? 1 : 0;
       const targetId = payload.id || null;
       const ten = String(payload.ten || payload.name || args[offset] || args[0] || "").trim();
+      const delStmts = [];
       if (targetId) {
         const oldProc = await db.prepare("SELECT ten_thu_thuat FROM thu_thuat WHERE unit_code = ? AND id = ?").bind(unitCode, targetId).first().catch(() => null);
         const oldProcName = oldProc?.ten_thu_thuat || ten;
-        await db.prepare("DELETE FROM thu_thuat WHERE unit_code = ? AND id = ?").bind(unitCode, targetId).run();
+        delStmts.push(db.prepare("DELETE FROM thu_thuat WHERE unit_code = ? AND id = ?").bind(unitCode, targetId));
         if (oldProcName) {
-          await db.prepare("DELETE FROM lich_su_dinh_muc WHERE unit_code = ? AND (ten_thu_thuat = ? OR LOWER(ten_thu_thuat) = LOWER(?))").bind(unitCode, oldProcName, oldProcName).run().catch(() => {});
+          delStmts.push(db.prepare("DELETE FROM lich_su_dinh_muc WHERE unit_code = ? AND (ten_thu_thuat = ? OR LOWER(ten_thu_thuat) = LOWER(?))").bind(unitCode, oldProcName, oldProcName));
         }
       } else {
-        await db.prepare("DELETE FROM thu_thuat WHERE unit_code = ? AND (ten_thu_thuat = ? OR LOWER(ten_thu_thuat) = LOWER(?) OR id = ?)").bind(unitCode, ten, ten, ten).run();
+        delStmts.push(db.prepare("DELETE FROM thu_thuat WHERE unit_code = ? AND (ten_thu_thuat = ? OR LOWER(ten_thu_thuat) = LOWER(?) OR id = ?)").bind(unitCode, ten, ten, ten));
         if (ten) {
-          await db.prepare("DELETE FROM lich_su_dinh_muc WHERE unit_code = ? AND (ten_thu_thuat = ? OR LOWER(ten_thu_thuat) = LOWER(?))").bind(unitCode, ten, ten).run().catch(() => {});
+          delStmts.push(db.prepare("DELETE FROM lich_su_dinh_muc WHERE unit_code = ? AND (ten_thu_thuat = ? OR LOWER(ten_thu_thuat) = LOWER(?))").bind(unitCode, ten, ten));
         }
       }
-      await bumpDataVersion(db, unitCode);
+      delStmts.push(makeBumpDataVersionStmt(db, unitCode));
+      await db.batch(delStmts);
       return success({ message: "Xóa thủ thuật thành công" });
     }
 

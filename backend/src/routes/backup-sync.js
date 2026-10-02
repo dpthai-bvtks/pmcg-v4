@@ -247,26 +247,31 @@ export async function handleBackupSyncAction(action, ctx) {
         (histRes.results || []).forEach(h => {
           const key = String(h.ten_thu_thuat || '').trim().toLowerCase();
           if (!historyMap[key]) historyMap[key] = [];
-          historyMap[key].push({
-            id: h.id,
-            tuNgay: h.tu_ngay,
-            denNgay: h.den_ngay,
-            from: h.tu_ngay,
-            to: h.den_ngay,
-            thoiGianThucHienMin: h.tg_thuc_hien_min,
-            thoiGianThucHienMax: h.tg_thuc_hien_max,
-            thoiGianThuThuatMin: h.tg_thu_thuat_min,
-            thoiGianThuThuatMax: h.tg_thu_thuat_max,
-            khoangCach: h.khoang_cach ?? 0,
-            canRutMay: h.can_rut_may || 'Không',
-            canNguoiPhu: h.can_nguoi_phu || 'Không',
-            dsNguoiPhu: h.ds_nguoi_phu || '',
-            vietTat: h.viet_tat || '',
-            he: h.he || 'PHCN',
-            phanLoai: h.phan_loai || '',
-            may: h.may || '',
-            lienTuc: h.lien_tuc || 'Không'
-          });
+          const tu = String(h.tu_ngay || '2026-01-01').trim();
+          const den = String(h.den_ngay || '2026-12-31').trim();
+          const dup = historyMap[key].some(item => item.tuNgay === tu && item.denNgay === den);
+          if (!dup) {
+            historyMap[key].push({
+              id: h.id,
+              tuNgay: tu,
+              denNgay: den,
+              from: tu,
+              to: den,
+              thoiGianThucHienMin: h.tg_thuc_hien_min,
+              thoiGianThucHienMax: h.tg_thuc_hien_max,
+              thoiGianThuThuatMin: h.tg_thu_thuat_min,
+              thoiGianThuThuatMax: h.tg_thu_thuat_max,
+              khoangCach: h.khoang_cach ?? 0,
+              canRutMay: h.can_rut_may || 'Không',
+              canNguoiPhu: h.can_nguoi_phu || 'Không',
+              dsNguoiPhu: h.ds_nguoi_phu || '',
+              vietTat: h.viet_tat || '',
+              he: h.he || 'PHCN',
+              phanLoai: h.phan_loai || '',
+              may: h.may || '',
+              lienTuc: h.lien_tuc || 'Không'
+            });
+          }
         });
       } catch(eHist) {}
 

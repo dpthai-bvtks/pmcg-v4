@@ -7266,3 +7266,48 @@ ormalizeScheduleItem.
 - `version.json`
 - `PM-xeplich-v4.md`
 
+---
+
+### [v4.1.9-rev6] - 16:25 02/10/2026: Khắc Phục Lỗi "Too many subrequests" Khi Lưu Thủ Thuật (editThuThuat)
+
+**Hiện tượng & Báo lỗi:**
+- Người dùng gặp lỗi khi lưu thủ thuật:
+  `Lỗi lưu thủ thuật lên máy chủ: [Router Error - editThuThuat]: Too many subrequests by single Worker invocation. To configure this limit, refer to https://developers.cloudflare.com/workers/wrangler/configuration/#limits`
+
+**Phân tích nguyên nhân:**
+1. **Cloudflare Worker Subrequest Limit (Giới hạn 50 subrequests):**
+   - Cloudflare Worker có giới hạn tối đa 50 cuộc gọi HTTP ra ngoài (subrequests) trong 1 lần kích hoạt (invocation).
+   - Hệ thống sử dụng `createTursoAdapter`, mỗi câu truy vấn đơn lẻ (`.run()`, `.all()`, `.first()`) đều thực hiện 1 cuộc gọi `fetch()` tới MiniPC Primary URL và thêm 1 cuộc gọi nhân bản ngầm (`ctx.waitUntil`) sang Turso Cloud (Dual-write). Như vậy mỗi thao tác ghi đơn lẻ tốn đến 2 subrequests.
+2. **Vòng lặp ghi đơn lẻ tích lũy trong `editThuThuat`:**
+   - Trong `backend/src/routes/patients.js` (case `editThuThuat`), khi lưu thông tin thủ thuật kèm lịch sử định mức `historyList`, hàm duyệt qua từng dòng `for (const h of historyList)` và thực hiện `await db.prepare('INSERT INTO lich_su_dinh_muc ...').run()`.
+   - Do không có thao tác xóa sạch các dòng cũ của thủ thuật trước khi ghi, mỗi lần người dùng bấm Lưu thủ thuật thì danh sách lịch sử lại được nhân bản và phình to. Khi số bản ghi lịch sử vượt quá 20-25 dòng, số subrequest lập tức vượt quá giới hạn 50 của Cloudflare Worker, làm Worker bị chặn ngang và báo lỗi `Too many subrequests`.
+3. **Hiện tượng tương tự trong `getThuThuat` (Seeding loop) và `deleteThuThuat`:**
+   - Trong `getThuThuat`, đoạn tự động nạp mốc lịch sử ban đầu cũng duyệt `for (const p of allProcs.results)` với `await db.prepare(...).run()`.
+   - Trong `deleteThuThuat`, các lệnh xóa `thu_thuat`, xóa `lich_su_dinh_muc` và `bumpDataVersion` cũng được gọi rời rạc.
+
+**Giải pháp & Khắc phục triệt để:**
+1. **Gom nhóm toàn bộ thao tác SQL thành 1 Batch Pipeline duy nhất (`db.batch`):**
+   - `createTursoAdapter` đã hỗ trợ sẵn hàm `db.batch([stmt1, stmt2, ...])`, gom toàn bộ các câu lệnh SQL vào một mảng pipeline gửi trong **đúng 1 HTTP request** duy nhất (chỉ tốn 1 subrequest tới Primary + 1 subrequest tới Dual-Write).
+   - Trong `editThuThuat`:
+     + Tự động lọc trùng các khoảng thời gian (`tuNgay`, `denNgay`) trong `cleanHistory`.
+     + Đóng gói lệnh cập nhật thủ thuật (`UPDATE/INSERT thu_thuat`), lệnh xóa sạch lịch sử cũ (`DELETE FROM lich_su_dinh_muc WHERE unit_code = ? AND ten_thu_thuat = ?`), các lệnh chèn lịch sử sạch (`INSERT INTO lich_su_dinh_muc`) và lệnh `bumpDataVersion` vào chung **1 mảng `batchStmts`**.
+     + Thực thi toàn bộ qua `await db.batch(batchStmts)`. Số subrequest giảm từ 60+ xuống còn đúng **1**.
+2. **Tối ưu hóa `getThuThuat`, `deleteThuThuat` và `getBootstrapData`:**
+   - Trong `getThuThuat`: Thay thế vòng lặp đơn lẻ bằng gom mảng `seedStmts` và thực thi qua `await db.batch(seedStmts)`.
+   - Bổ sung cơ chế loại trừ bản ghi trùng lặp khi ánh xạ `historyMap` ở cả `getThuThuat` và `getBootstrapData` (`backup-sync.js`).
+   - Trong `deleteThuThuat`: Gom các lệnh xóa thủ thuật, xóa lịch sử và tăng data_version vào `await db.batch(delStmts)`.
+3. **Kiểm thử & Đóng gói phiên bản theo RULES.md:**
+   - Chạy kiểm thử tự động 4 tầng: `node scripts/verify-build.mjs` đạt `100% PASS`.
+   - Nâng phiên bản: `4.1.9-rev6` (Footer hiển thị `Phiên bản: 4.1.9`, `#sys-last-update` $\rightarrow$ `16:25 02/10/2026`).
+   - Cập nhật Service Worker: `CACHE_NAME = 'pmcg-v4-cache-4.1.9-rev6'`.
+   - Deploy thành công lên Cloudflare Worker `pmcg-api` và Cloudflare Pages.
+
+**File sửa đổi:**
+- `backend/src/routes/patients.js`
+- `backend/src/routes/backup-sync.js`
+- `index.html`
+- `sw.js`
+- `version.json`
+- `PM-xeplich-v4.md`
+
+
