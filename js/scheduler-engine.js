@@ -2975,10 +2975,14 @@ function getSafeCache() {
       baseDb.rawStaff.push([tenNhanVien, role, skillsStr, shiftStr, "", "Đi làm"]);
     });
 
+    const isSatWinter = payload.season === 'winter' ||
+      (typeof window !== 'undefined' && typeof window.getCurrentStaffSeason === 'function' && window.getCurrentStaffSeason() === 'winter');
+    const defaultReadyMin = isSatWinter ? 480 : 450; // 08:00 (mùa đông) hoặc 07:30 (mùa hè)
+
     baseDb.rawPatients = [];
     (payload.final_pats || []).forEach((bn, idx) => {
-      // FIX: Mặc định 07:30 (450 phút) nếu không có giờ vào, tránh arrive = 1 (00:01)
-      const rawReadyTime = bn.gioVao ? t2m(bn.gioVao) : 450;
+      // FIX: Mặc định 08:00 (480 phút) mùa đông hoặc 07:30 (450 phút) mùa hè nếu không có giờ vào, tránh arrive = 1 (00:01)
+      const rawReadyTime = bn.gioVao ? t2m(bn.gioVao) : defaultReadyMin;
       const readyTime = rawReadyTime + 1;
       const pName = String(bn.ten).toUpperCase();
       const pNs = bn.ns || "";

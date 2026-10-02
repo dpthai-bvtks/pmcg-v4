@@ -8999,6 +8999,18 @@ var dataCache = window.dataCache;
 
                 t8_ns_vars = {}; satStaffIndices = {};
 
+                // ☀️❄️ Đồng bộ radio mùa theo cấu hình hoặc nhân sự nếu chưa chọn
+                const savedSatSeason = localStorage.getItem('pmcg_sat_season') || (typeof getCurrentStaffSeason === 'function' ? getCurrentStaffSeason() : 'winter');
+                const rWinter = document.querySelector('input[name="sat-season"][value="winter"]');
+                const rSummer = document.querySelector('input[name="sat-season"][value="summer"]');
+                if (rWinter && rSummer && !localStorage.getItem('pmcg_sat_season_user_override')) {
+                    if (savedSatSeason === 'winter') {
+                        rWinter.checked = true;
+                    } else {
+                        rSummer.checked = true;
+                    }
+                }
+
                 const isSummerVal = (document.querySelector('input[name="sat-season"]:checked')?.value ===
 
                     'summer');
@@ -9006,6 +9018,8 @@ var dataCache = window.dataCache;
                 const s1_val = isSummerVal ? "07:00" : "07:30", s2_val = isSummerVal ? "11:30" : "12:00";
 
                 const c1_val = "13:00", c2_val = "16:30";
+
+                const defaultSatReadyTime = isSummerVal ? "07:30" : "08:00";
 
                 // 🛡️ Lấy toàn bộ nhân sự từ backend getSatData kết hợp với dataCache.staff (từ tab-staff)
                 let allStaff = (data && Array.isArray(data.staff) && data.staff.length > 0) ? [...data.staff] : [];
@@ -9214,11 +9228,13 @@ var dataCache = window.dataCache;
                     readyLabel.style.cssText = 'font-size:11px; font-weight:bold; margin:0;';
 
                     const readyInput = document.createElement('input');
-                    readyInput.type = 'time'; readyInput.value = '07:30';
+                    readyInput.type = 'time'; readyInput.value = defaultSatReadyTime;
+                    readyInput.dataset.defaultTime = defaultSatReadyTime;
                     readyInput.className = 'input-ready-time';
                     readyInput.style.cssText = 'padding:1px 3px; border-radius:3px; font-size:12px; outline:none; cursor:pointer;';
 
                     readyInput.onchange = function () {
+                        this.dataset.custom = 'true';
                         this.style.color = '#c0392b';
                         this.style.fontWeight = 'bold';
                         this.style.borderColor = '#c0392b';
@@ -9359,11 +9375,13 @@ var dataCache = window.dataCache;
                 if (chosen.length > 0) {
                     const r = satCache[bid].info;
 
-                    // Lấy giờ sẵn sàng hiện tại trên giao diện
+                    // Lấy giờ sẵn sàng hiện tại trên giao diện (mùa đông: 08:00, mùa hè: 07:30)
 
+                    const isSummerSat = document.querySelector('input[name="sat-season"]:checked')?.value === 'summer';
+                    const fallbackSatReady = isSummerSat ? "07:30" : "08:00";
                     const readyInput = document.querySelector(`#${satCache[bid].frameId} .input-ready-time`);
 
-                    const readyTime = readyInput ? readyInput.value : "07:30";
+                    const readyTime = (readyInput && readyInput.value) ? readyInput.value : fallbackSatReady;
 
                     // Thêm readyTime làm cột thứ 4
 
@@ -9772,6 +9790,7 @@ var dataCache = window.dataCache;
                                 const readyInput = document.querySelector(`#${satCache[targetBid].frameId} .input-ready-time`);
                                 if (readyInput) {
                                     readyInput.value = String(importedTime).trim();
+                                    readyInput.dataset.custom = 'true';
                                     readyInput.style.color = '#c0392b';
                                     readyInput.style.fontWeight = 'bold';
                                     readyInput.style.backgroundColor = '#fff';
@@ -9838,9 +9857,10 @@ var dataCache = window.dataCache;
 
                 const readyInput = document.querySelector(`#${satCache[bid].frameId} .input-ready-time`);
 
-                // 🔥 Đã sửa: Gán giờ sẵn sàng vào biến gioVao để thuật toán Code.gs đọc được
-
-                const timeToRun = readyInput ? readyInput.value : "07:30";
+                // 🔥 Đã sửa: Gán giờ sẵn sàng vào biến gioVao (Mùa đông: 08:00, Mùa hè: 07:30)
+                const isSummerSat = document.querySelector('input[name="sat-season"]:checked')?.value === 'summer';
+                const fallbackSatReady = isSummerSat ? "07:30" : "08:00";
+                const timeToRun = (readyInput && readyInput.value) ? readyInput.value : fallbackSatReady;
 
                 final_pats.push({
                     id: r.id, ten: r.ten, ns: r.namSinh, tt: chosen.join(", "),
@@ -9849,7 +9869,8 @@ var dataCache = window.dataCache;
                 });
             }
 
-            return { allowed_staff, staff_shifts_dict, staff_details, final_pats };
+            const isSummerSat = document.querySelector('input[name="sat-season"]:checked')?.value === 'summer';
+            return { allowed_staff, staff_shifts_dict, staff_details, final_pats, season: isSummerSat ? 'summer' : 'winter' };
         }
 
         function xepLichSat() {
@@ -9949,9 +9970,11 @@ var dataCache = window.dataCache;
 }
 
         function updateSatDefaultTime() {
-            const isSummer = document.querySelector('input[name="sat-season"]:checked').value ===
+            const isSummer = document.querySelector('input[name="sat-season"]:checked')?.value ===
 
                 'summer';
+            localStorage.setItem('pmcg_sat_season_user_override', 'true');
+            localStorage.setItem('pmcg_sat_season', isSummer ? 'summer' : 'winter');
 
             const vals = isSummer ? ["07:00", "11:30", "13:00", "16:30"] :
 
@@ -9962,9 +9985,28 @@ var dataCache = window.dataCache;
 
                 ['sat-s1', 'sat-s2', 'sat-c1', 'sat-c2'].forEach((prefix, i) => {
                     const el = document.getElementById(`${prefix}-${idx}`); if (el) el.value = vals[i];
-});
-}
-}
+                });
+            }
+
+            // 🕒 Tự động cập nhật Giờ Sẵn Sàng (Giờ SS) cho bệnh nhân Thứ 7:
+            // Mùa đông: 08:00, Mùa hè: 07:30
+            const newDefaultReady = isSummer ? "07:30" : "08:00";
+            const oldDefaultReady = isSummer ? "08:00" : "07:30";
+
+            const readyInputs = document.querySelectorAll('.input-ready-time');
+            readyInputs.forEach(input => {
+                const isCustom = input.dataset.custom === 'true';
+                if (!isCustom || input.value === oldDefaultReady || !input.value) {
+                    input.value = newDefaultReady;
+                    input.dataset.defaultTime = newDefaultReady;
+                    input.dataset.custom = 'false';
+                    input.style.color = '';
+                    input.style.fontWeight = '';
+                    input.style.borderColor = '';
+                    input.style.backgroundColor = '';
+                }
+            });
+        }
 
         // ============================================================
 

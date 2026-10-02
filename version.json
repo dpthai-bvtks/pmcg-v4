@@ -1,6 +1,6 @@
 {
-    "version": "4.1.9-rev7",
+    "version": "4.1.9-rev8",
     "releaseDate": "02/10/2026",
-    "releaseTime": "16:45 02/10/2026",
-    "notes": "Thống nhất 100% tên phòng xếp lịch Thứ 7 thành PHONG_T7 cho cả ca xếp thành công và ca rớt, tránh chia cọc cạch về các phòng nội trú."
+    "releaseTime": "16:55 02/10/2026",
+    "notes": "Hỗ trợ chuẩn hóa Giờ Sẵn Sàng (Giờ SS) trên Tab Thứ 7 theo lịch mùa: Mùa đông mặc định 08:00, Mùa hè mặc định 07:30. Tự động đồng bộ khi chuyển đổi mùa và nạp dữ liệu."
 }

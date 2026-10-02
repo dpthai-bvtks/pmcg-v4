@@ -7349,5 +7349,45 @@ ormalizeScheduleItem.
 - `version.json`
 - `PM-xeplich-v4.md`
 
+---
+
+### [v4.1.9-rev8] - 16:55 02/10/2026: Tự Động Điều Chỉnh Giờ Sẵn Sàng (Giờ SS) Tab Thứ 7 Theo Mùa: Mùa Đông 08:00, Mùa Hè 07:30
+
+**Yêu cầu người dùng:**
+- *"đổi lịch mùa đông nên giờ sẵn sàng bên tab thứ 7 đổi thành 08:00 được không, còn mùa hè là 07:30"*
+
+**Phân tích & Hiện trạng:**
+1. **Lệch giờ sẵn sàng mặc định trên Tab Thứ 7**:
+   - Trước đây trong `taiDsSat()` (`js/app.js`), ô giờ sẵn sàng (`input.input-ready-time`) luôn bị gán cứng giá trị `07:30`, bất kể người dùng đang chọn "Mùa hè" hay "Mùa đông".
+   - Khi người dùng bấm chuyển đổi qua lại giữa `🌞 Mùa hè` và `❄️ Mùa đông` (`updateSatDefaultTime`), hàm chỉ cập nhật khung giờ làm việc của nhân sự (`sat-s1`, `sat-s2`, `sat-c1`, `sat-c2`) mà không cập nhật các ô Giờ SS của bệnh nhân.
+   - Khi lưu danh sách (`saveDsSat`) hoặc lấy payload xếp lịch (`getSatPayload`), fallback giờ rỗng bị gán cứng `"07:30"`.
+   - Trong `js/scheduler-engine.js`, fallback `rawReadyTime` cũng bị cố định ở phút 450 (07:30) thay vì nhận biết mùa đông là phút 480 (08:00).
+
+**Giải pháp & Khắc phục triệt để:**
+1. **Đồng bộ hóa Giờ SS theo mùa trong `js/app.js`**:
+   - `taiDsSat()`: Tự động phát hiện mùa (dựa trên cấu hình mùa khoa hoặc lựa chọn radio). Gán mặc định Giờ SS là `08:00` (Mùa đông) hoặc `07:30` (Mùa hè) cho toàn bộ thẻ bệnh nhân khi nạp mới hoặc bấm `🔄 LÀM MỚI BN`.
+   - `updateSatDefaultTime()`: Khi người dùng chuyển đổi radio giữa `🌞 Mùa hè` và `❄️ Mùa đông`, hệ thống tự động quét toàn bộ các ô `.input-ready-time` trên giao diện:
+     + Chuyển từ Mùa hè sang Mùa đông: tự động nâng các ô `07:30` (hoặc chưa tùy biến) lên `08:00`.
+     + Chuyển từ Mùa đông sang Mùa hè: tự động hạ các ô `08:00` (hoặc chưa tùy biến) về `07:30`.
+     + Giữ nguyên các ô giờ mà người dùng đã chủ động tùy biến giờ riêng biệt (ví dụ `09:15`).
+   - `saveDsSat()` & `getSatPayload()`: Cập nhật fallback giờ chạy theo mùa hiện hành (`08:00` nếu mùa đông, `07:30` nếu mùa hè). Bổ sung thuộc tính `season` vào payload gửi tới engine.
+2. **Cập nhật thuật toán xếp lịch trong `js/scheduler-engine.js`**:
+   - `runSaturdayScheduling`: Tự động nhận diện mùa từ `payload.season` hoặc `getCurrentStaffSeason()`.
+   - Đặt mốc giờ sẵn sàng dự phòng (`defaultReadyMin`) chuẩn xác: `480` phút (08:00) cho mùa đông và `450` phút (07:30) cho mùa hè.
+3. **Kiểm thử & Đóng gói phiên bản theo RULES.md**:
+   - `node scripts/verify-build.mjs` đạt `100% PASS`.
+   - Nâng phiên bản: `4.1.9-rev8` (Footer giữ `Phiên bản: 4.1.9`, `#sys-last-update` $\rightarrow$ `16:55 02/10/2026`).
+   - Cập nhật Service Worker: `CACHE_NAME = 'pmcg-v4-cache-4.1.9-rev8'`.
+   - Deploy thành công lên Cloudflare Worker `pmcg-api` và Cloudflare Pages.
+
+**File sửa đổi:**
+- `js/app.js`
+- `js/scheduler-engine.js`
+- `index.html`
+- `sw.js`
+- `version.json`
+- `PM-xeplich-v4.md`
+
+
 
 
