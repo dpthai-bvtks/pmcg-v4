@@ -3519,7 +3519,11 @@ var dataCache = window.dataCache;
                             dataCache.schedule = [];
                             window.currentScheduleData = [];
                         }
-                        if (typeof loadScheduleList === 'function') loadScheduleList();
+                        try {
+                            if (typeof loadScheduleList === 'function') loadScheduleList();
+                        } catch (eSched) {
+                            console.warn('[Offline Cache] Lỗi nạp danh sách lịch trình (cô lập an toàn):', eSched);
+                        }
 
                         if (b && Array.isArray(b.patients)) {
                             let cacheHasCorruptedName = false;
@@ -3780,16 +3784,24 @@ var dataCache = window.dataCache;
                     localStorage.removeItem('meds_unscheduled');
                     localStorage.removeItem('meds_schedule_unit');
                 }
-                if (typeof loadScheduleList === 'function') loadScheduleList();
-
-                const rawFinalPats = b.patients || b.pat || b.benh_nhan || [];
-                if (Array.isArray(rawFinalPats)) {
-                    dataCache.pat = rawFinalPats.filter(pt => pt && (pt.ten || pt.name));
-                    b.patients = dataCache.pat;
-                } else {
-                    dataCache.pat = [];
+                try {
+                    if (typeof loadScheduleList === 'function') loadScheduleList();
+                } catch (eSched) {
+                    console.warn('[Bootstrap] Lỗi nạp danh sách lịch trình (cô lập an toàn):', eSched);
                 }
-                if (typeof renderPatientsTable === 'function') renderPatientsTable();
+
+                try {
+                    const rawFinalPats = b.patients || b.pat || b.benh_nhan || [];
+                    if (Array.isArray(rawFinalPats)) {
+                        dataCache.pat = rawFinalPats.filter(pt => pt && (pt.ten || pt.name));
+                        b.patients = dataCache.pat;
+                    } else {
+                        dataCache.pat = [];
+                    }
+                    if (typeof renderPatientsTable === 'function') renderPatientsTable();
+                } catch (ePat) {
+                    console.warn('[Bootstrap] Lỗi nạp danh sách bệnh nhân (cô lập an toàn):', ePat);
+                }
 
                 // 📜 Đồng bộ và lưu trữ lịch sử điều trị từ Google Sheets / Cloudflare
                 const rawHist = b.history || b.lich_su || [];

@@ -7227,3 +7227,42 @@ ormalizeScheduleItem.
 - `backend/src/index.js`
 - `backend/src/routes/tenants.js`
 - `PM-xeplich-v4.md`
+
+---
+
+### [v4.1.9-rev5] - 15:33 02/10/2026: Thiết Lập Hệ Thống Kiểm Thử 4 Tầng Tự Động & Cơ Chế Phòng Thủ Cách Ly Dữ Liệu Chống Tái Diễn Lỗi Runtime
+
+**Hiện tượng & Bối cảnh:**
+- Người dùng yêu cầu điều tra chuyên sâu: *"Tại sao lại xảy ra vấn đề này, trước đây chưa từng xảy ra, tìm hiểu và ngăn chặn việc này tái diễn trong tương lai"*.
+
+**Phân tích nguyên nhân lịch sử:**
+1. **Lỗi mới phát sinh từ đợt audit nút bấm trưa nay (commit `7f4a442` lúc 13:16):**
+   - Khi chuẩn hóa scope gắn các hàm vào `window.*`, việc gán nhầm tên hàm không tồn tại (`window.cancelLeavePat = cancelLeavePat;` thay vì `clearPatLeave`) đã xảy ra ở cấp độ toàn cục (top-level).
+   - Trước commit này, `cancelLeavePat` chưa từng tồn tại trong codebase, đó là lý do trước đây hệ thống chưa bao giờ bị lỗi này.
+2. **Lỗ hổng của quy trình kiểm tra cũ:**
+   - Lệnh `node -c` chỉ kiểm tra tính hợp lệ cú pháp (Syntax checking). `window.cancelLeavePat = cancelLeavePat;` hoàn toàn đúng cú pháp nên `node -c` bỏ lọt 100%. Lỗi chỉ bùng phát khi trình duyệt thực thi đến dòng code đó (Runtime ReferenceError).
+   - Thẻ `<script>` inline trong `index.html` trước đây không có bất kỳ lệnh test nào quét qua.
+3. **Thiếu cơ chế cô lập lỗi trong `applyBootstrapData` và `restoreOfflineCache`:**
+   - Dòng lệnh nạp lịch trình `loadScheduleList()` nằm trước `renderPatientsTable()`. Khi lịch trình bị vỡ, nó kéo sập luôn cả bảng bệnh nhân.
+
+**Các biện pháp phòng thủ đã triển khai để triệt tiêu vĩnh viễn nguy cơ tái diễn:**
+1. **Phát triển công cụ kiểm thử toàn diện `scripts/verify-build.mjs` (4 tầng bảo vệ):**
+   - *Tầng 1:* Chạy `node -c` kiểm tra cú pháp toàn bộ các tệp JS client và backend.
+   - *Tầng 2:* Tự động trích xuất và kiểm tra cú pháp tất cả các thẻ inline `<script>` trong `index.html` và `hdsd.html`.
+   - *Tầng 3:* Quét tĩnh regex toàn bộ các lệnh gán `window.xxx = xxx;` để đảm bảo 100% biến đích đã được định nghĩa trong file.
+   - *Tầng 4:* Mô phỏng thực thi Runtime trong Node VM Sandbox để phát hiện biến trong vùng chết tạm thời (TDZ) hoặc lỗi runtime top-level.
+2. **Cập nhật Quy tắc bắt buộc trong `RULES.md` (Rule 1 & Rule 2):**
+   - Thay thế lệnh cũ bằng: `node scripts/verify-build.mjs`. Mọi AI trong tương lai bắt buộc phải chạy script này và đạt kết quả `100% PASS` mới được deploy.
+   - Chuẩn hóa quy định mã đơn vị `bvtks-cs2` và hỗ trợ bí danh `bvtks_cs2`.
+3. **Cô lập an toàn (Defensive Isolation) trong `js/app.js`:**
+   - Bọc `loadScheduleList()` và `renderPatientsTable()` trong các khối `try...catch` riêng biệt trong cả `applyBootstrapData()` và `restoreOfflineCache()`. Một thành phần bị lỗi sẽ không bao giờ kéo sập các thành phần còn lại.
+
+**File sửa đổi:**
+- `scripts/verify-build.mjs` (Mới)
+- `RULES.md`
+- `js/app.js`
+- `index.html`
+- `sw.js`
+- `version.json`
+- `PM-xeplich-v4.md`
+

@@ -1,6 +1,6 @@
 {
-    "version": "4.1.9-rev4",
+    "version": "4.1.9-rev5",
     "releaseDate": "02/10/2026",
-    "releaseTime": "15:21 02/10/2026",
-    "notes": "Sửa lỗi cú pháp SyntaxError trong index.html và ReferenceError cancelLeavePat trong js/app.js khiến quá trình nạp dữ liệu bệnh nhân và chuyển tab bị gián đoạn; Chuẩn hóa bí danh bvtks_cs2 về bvtks-cs2 trên toàn hệ thống."
+    "releaseTime": "15:33 02/10/2026",
+    "notes": "Thiết lập hệ thống kiểm tra toàn diện 4 tầng scripts/verify-build.mjs, cô lập an toàn các khối xử lý dữ liệu trong applyBootstrapData và restoreOfflineCache, cập nhật RULES.md chống tái diễn lỗi runtime."
 }

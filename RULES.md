@@ -6,14 +6,16 @@
 
 ## 1. 🧪 Kiểm tra trước khi đẩy code (Test Before Push)
 - **Tuyệt đối không push code mù.** 
-- Trước khi đẩy code lên Github hay Cloudflare, AI phải tự rà soát cú pháp bằng lệnh:
-  `node -c js/init.js && node -c js/app.js && node -c js/scheduler-engine.js && node -c backend/src/index.js`
+- Trước khi đẩy code lên Github hay Cloudflare, AI **bắt buộc chạy bộ kiểm tra toàn diện 4 tầng**:
+  `node scripts/verify-build.mjs`
+  *(Bộ kiểm tra bao gồm: 1. Kiểm tra cú pháp tất cả tệp JS; 2. Trích xuất & kiểm tra cú pháp toàn bộ inline <script> trong HTML; 3. Quét tĩnh các lệnh gán top-level `window.x = x` tránh biến undefined; 4. Mô phỏng thực thi Runtime trong Node VM Sandbox để phát hiện TDZ và ReferenceError).*
+- Chỉ khi lệnh trên trả về exit code `0` (`TẤT CẢ CÁC BÀI TEST ĐÃ VƯỢT QUA 100%!`) mới được phép tiến hành deploy và commit Git.
 - Đảm bảo logic xếp lịch và tính toán của 3 bộ giải thuật (`cp-solver.js`, `scheduler-engine.js`, `ai-scheduler.js`) không bị xung đột hoặc phát sinh lỗi cú pháp.
 
 ---
 
 ## 2. 🏢 Quy tắc Kiến trúc Đa Đơn Vị (Multi-Tenant SaaS Architecture Rules)
-- **Mã đơn vị mặc định:** `bvtks_cs2` (*Bệnh viện Than - Khoáng sản Cơ sở 2*).
+- **Mã đơn vị mặc định:** `bvtks-cs2` (*Bệnh viện Than - Khoáng sản Cơ sở 2*, hệ thống tự động hỗ trợ bí danh `bvtks_cs2`).
 - **Cách ly dữ liệu 100% (Tenant Clamping):** Mọi truy vấn SQL CRUD trong `backend/src/index.js` **bắt buộc** phải có ràng buộc `WHERE unit_code = ?`. Tuyệt đối không query dữ liệu không kèm `unit_code`.
 - **Đính kèm context trong API Calls:** Mọi lời gọi API từ Frontend qua `callApi` / `executeApiTask` bắt buộc gửi header `x-unit-code` và trường `unit_code` trong body payload.
 - **Phân tách Cache & LocalStorage:** Khóa lưu trữ Offline / Cache / Flatpickr / Session phải phân tách theo `unit_code` (ví dụ: `pm_unit_code`, `times_bootstrap_cache_${unit_code}`).
