@@ -232,6 +232,30 @@
                 else if (typeof filterSchedule === 'function') filterSchedule();
             }
 
+            // 🔄 Tự động đồng bộ Realtime Bảng Chấm Công & Thống Kê
+            const isChamCongActive = !!document.getElementById('tab-chamcong')?.classList.contains('active');
+            const isThongKeActive = !!document.getElementById('tab-thongke')?.classList.contains('active');
+
+            if (isChamCongActive && typeof loadChamCongData === 'function') {
+                const activeEl = document.activeElement;
+                const isEditingCell = activeEl && (activeEl.classList?.contains('cc-input-text') || activeEl.classList?.contains('heso-input'));
+                if (!isEditingCell) {
+                    if (typeof getOrLoadChamCongEmployees === 'function') {
+                        getOrLoadChamCongEmployees(() => {
+                            loadChamCongData(true);
+                        }, true);
+                    } else {
+                        loadChamCongData(true);
+                    }
+                }
+            } else if (typeof getOrLoadChamCongEmployees === 'function') {
+                getOrLoadChamCongEmployees(null, true);
+            }
+
+            if (isThongKeActive && typeof loadThongKeData === 'function') {
+                loadThongKeData(true);
+            }
+
             // Khôi phục lại giá trị form nếu người dùng trước đó đã nhập mà chưa lưu
             setTimeout(() => {
                 for (let id in savedFormData) {
@@ -275,7 +299,7 @@
     // ⚡ Lắng nghe BroadcastChannel từ OfflineSyncEngine để đồng bộ tức thì giữa các tab (0ms)
     if (typeof OfflineSyncEngine !== 'undefined' && OfflineSyncEngine.registerLiveListener) {
         OfflineSyncEngine.registerLiveListener(function(type, payload, timestamp) {
-            if (type === 'PATIENTS_UPDATED' || type === 'CACHE_UPDATED' || type === 'SCHEDULE_GENERATED') {
+            if (type === 'PATIENTS_UPDATED' || type === 'CACHE_UPDATED' || type === 'SCHEDULE_GENERATED' || type === 'CHAMCONG_UPDATED') {
                 const isFormActive = (typeof window.isAnyFormActive === 'function')
                     ? window.isAnyFormActive()
                     : ((typeof window.isPatientFormActive === 'function') ? window.isPatientFormActive() : false);
@@ -316,17 +340,26 @@
                     lastKnownVersion = v;
                     showSyncToast('🔄 Đã đồng bộ dữ liệu mới');
                 } else {
-                    console.log('[RealtimeSync]: Tạm hoãn cập nhật version, sẽ tự động thử lại sau ' + (POLL_INTERVAL/1000) + 's.');
+                    console.log('[RealtimeSync]: Tạm hoãn cập nhật version, sẽ tự động thử lại sau.');
                 }
             }
         }, function() { isSyncing = false; });
     }
     window.triggerDataSync = doPoll;
 
+    function scheduleNextPoll() {
+        if (syncTimer) clearTimeout(syncTimer);
+        const isChamCongActive = !!document.getElementById('tab-chamcong')?.classList.contains('active');
+        const interval = isChamCongActive ? 4000 : 8000;
+        syncTimer = setTimeout(() => {
+            doPoll();
+            scheduleNextPoll();
+        }, interval);
+    }
+
     function startAutoPolling() {
-        if (syncTimer) return;
         doPoll();
-        syncTimer = setInterval(doPoll, POLL_INTERVAL);
+        scheduleNextPoll();
     }
 
     // Bắt đầu an toàn tuyệt đối bất kể trạng thái nạp của DOM

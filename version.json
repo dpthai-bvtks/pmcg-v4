@@ -1,6 +1,6 @@
 {
-    "version": "4.2.0-rev1",
+    "version": "4.2.0-rev2",
     "releaseDate": "04/10/2026",
-    "releaseTime": "20:20 04/10/2026",
-    "notes": "Đồng bộ hóa toàn diện MiniPC SQLite lên Turso Cloud Tokyo, khắc phục hoàn toàn dữ liệu cũ và lỗi 35.45 công ở tab-thongke khi MiniPC tắt, dọn dẹp và tái lập cấu trúc dữ liệu chuẩn xác trên Google Sheets."
+    "releaseTime": "20:55 04/10/2026",
+    "notes": "Đồng bộ thứ tự nhân sự chuẩn Bảng Chấm Công đa thiết bị (Laptop & MiniPC) từ CSDL máy chủ, bổ sung cơ chế tự động đồng bộ Realtime chấm công và thống kê khi phát hiện thay đổi dữ liệu."
 }

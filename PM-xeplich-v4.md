@@ -7436,6 +7436,52 @@ ormalizeScheduleItem.
 - `scripts/patch-startup-sync.mjs`
 - `PM-xeplich-v4.md`
 
+---
+
+### [v4.2.0-rev2] - 20:55 04/10/2026: Đồng Bộ Thứ Tự Sắp Xếp Nhân Sự Bảng Chấm Công Đa Thiết Bị & Khắc Phục Đồng Bộ Realtime Chấm Công
+
+**Yêu cầu người dùng:**
+- *"Bảng chấm công ở laptop ở nhà không sắp xếp giống với trên trình duyệt của minipc, khi chấm công ở minipc thì laptop ở nhà không đồng bộ theo thời gian thực"*
+
+**Nguyên nhân gốc rễ & Phân tích hiện trạng:**
+1. **Lệch thứ tự sắp xếp nhân sự trên laptop so với MiniPC:**
+   - Người dùng đã kéo thả sắp xếp nhân sự trên MiniPC thành thứ tự: Đạt -> Hoa -> Thảo -> **Thái** -> **Hằng** -> Khuyến -> Lương -> **Phan Hiền** -> **Hà** -> Lê Hiền -> **Thuyến** -> **Khính** -> Duyên. Thứ tự này đã được lưu vào CSDL máy chủ (`cai_dat` với key `chamcong_employees`).
+   - Tuy nhiên, trong `js/thongke.js`, hàm `getOrLoadChamCongEmployees` có cơ chế chặn: `if (!forceRefresh && adminChamCongEmployees && adminChamCongEmployees.length > 0) return adminChamCongEmployees;`. Khi mở trên laptop, mảng này được khởi tạo mặc định bằng `DEFAULT_CHAMCONG_EMPLOYEES` (có độ dài 13) nên nó **luôn thoát ra ngay và không bao giờ gọi API `getEmployees` từ máy chủ**. Kết quả là laptop luôn bị kẹt ở thứ tự cũ hoặc thứ tự mặc định ban đầu.
+   - Danh sách mặc định `DEFAULT_CHAMCONG_STAFF` và hàm `getEmployees` trong `backend/src/routes/staff.js` cũng chứa thứ tự mặc định cũ (Hằng trước Thái, Hà trước Phan Hiền, Khính trước Thuyến).
+2. **Không đồng bộ Realtime khi chấm công ở MiniPC:**
+   - Cơ chế polling tự động `initRealtimeSync` trong `js/sync.js` liên tục kiểm tra `getDataVersion`. Khi MiniPC lưu chấm công, `data_version` trên máy chủ tăng lên, laptop phát hiện `v !== lastKnownVersion` và gọi hàm `syncRefreshData()`.
+   - Tuy nhiên, trong `syncRefreshData()`, hệ thống chỉ tải lại danh mục (bệnh nhân, máy móc, phòng, thủ thuật, lịch trình) mà **hoàn toàn bỏ qua Bảng Chấm Công (`tab-chamcong`) và Bảng Thống Kê (`tab-thongke`)**. Do đó, giao diện bảng công trên laptop vẫn giữ nguyên dữ liệu cũ trong bộ nhớ/cache cục bộ.
+
+**Giải pháp & Khắc phục triệt để:**
+1. **Đồng bộ hóa thứ tự nhân sự chuẩn đa thiết bị:**
+   - Cập nhật `backend/src/routes/staff.js`: chuẩn hóa danh sách `std13` mặc định trong `getEmployees` khớp 100% với thứ tự người dùng đã sắp xếp.
+   - Cập nhật `js/thongke.js`:
+     + Chuẩn hóa thứ tự key trong `DEFAULT_CHAMCONG_STAFF`.
+     + Cải tiến `getOrLoadChamCongEmployees`: không chặn đứng cứng nhắc nữa; nếu dữ liệu đã quá 10 giây hoặc có cờ `forceRefresh`, hàm luôn kích hoạt truy vấn `callApi('getEmployees')` ngầm trong nền. Khi phát hiện thứ tự trên máy chủ khác với máy khách, nó tự động cập nhật `adminChamCongEmployees`, lưu `localStorage` và re-render ngay lập tức.
+     + Kích hoạt đồng bộ ngầm thứ tự nhân sự ngay khi khởi động `initThongKeModule`.
+2. **Kích hoạt đồng bộ Realtime Bảng Chấm Công & Thống Kê:**
+   - Cập nhật `js/sync.js`:
+     + Trong `syncRefreshData()`: tự động kiểm tra nếu đang ở `tab-chamcong` thì gọi `loadChamCongData(true)` để tải dữ liệu chấm công mới nhất từ máy chủ (có bảo vệ ô đang nhập dở con trỏ chuột). Nếu đang ở `tab-thongke` thì gọi `loadThongKeData(true)`.
+     + Điều chỉnh chu kỳ polling linh hoạt: khi người dùng đang mở tab Chấm Công, tăng tần suất kiểm tra lên **4 giây/lần** (thay vì 8 giây) để cập nhật gần như tức thì.
+     + Bổ sung bắt sự kiện `CHAMCONG_UPDATED` qua `BroadcastChannel` (`OfflineSyncEngine`) để đồng bộ 0ms giữa các tab.
+   - Cập nhật `js/thongke.js`:
+     + `saveChamCong` và `saveAdminChamCongData` tự động phát tín hiệu `CHAMCONG_UPDATED`.
+     + `loadChamCongData(forceRefresh)` hỗ trợ cờ ép buộc tải tươi từ mạng, bỏ qua cache cục bộ cũ.
+3. **Kiểm thử & Đóng gói phiên bản theo RULES.md:**
+   - `node scripts/verify-build.mjs`: 100% PASS (4/4 tầng kiểm thử).
+   - Nâng phiên bản: `4.2.0-rev2` (Footer `#app-footer-version` giữ đúng chuẩn `Phiên bản: 4.2.0`, timestamp `#sys-last-update` $\rightarrow$ `⏱ Cập nhật lần cuối: 20:55 04/10/2026`).
+   - Service Worker: `CACHE_NAME = 'pmcg-v4-cache-4.2.0-rev2'`.
+
+**File sửa đổi:**
+- `backend/src/routes/staff.js`
+- `js/thongke.js`
+- `js/sync.js`
+- `index.html`
+- `sw.js`
+- `version.json`
+- `PM-xeplich-v4.md`
+
+
 
 
 

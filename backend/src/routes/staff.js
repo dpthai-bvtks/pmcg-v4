@@ -258,9 +258,9 @@ export async function handleStaffAction(action, ctx) {
             if (cleanList.length > 0) {
               if (isDefault) {
                 const std13 = [
-                  "Hoàng Đức Đạt", "Lê Thị Thu Hoa", "Nguyễn Thị Duyên Thảo", "Nguyễn Thu Hằng",
-                  "Đặng Phong Thái", "Phạm Thạch Khuyến", "Nguyễn Thị Xuân Lương", "Nguyễn Thị Hà",
-                  "Phan Thị Thu Hiền", "Lê Thị Thu Hiền", "Nguyễn Văn Khính", "Phạm Thị Thuyến", "Trần Thị Duyên"
+                  "Hoàng Đức Đạt", "Lê Thị Thu Hoa", "Nguyễn Thị Duyên Thảo", "Đặng Phong Thái", "Nguyễn Thu Hằng",
+                  "Phạm Thạch Khuyến", "Nguyễn Thị Xuân Lương", "Phan Thị Thu Hiền", "Nguyễn Thị Hà",
+                  "Lê Thị Thu Hiền", "Phạm Thị Thuyến", "Nguyễn Văn Khính", "Trần Thị Duyên"
                 ];
                 std13.forEach(s => { if (!cleanList.includes(s)) cleanList.push(s); });
               }
@@ -272,9 +272,9 @@ export async function handleStaffAction(action, ctx) {
       // Đối với đơn vị bvtks-cs2 mặc định thì cung cấp danh sách 13 nhân sự chuẩn đầy đủ
       if (isDefault) {
         return success([
-          "Hoàng Đức Đạt", "Lê Thị Thu Hoa", "Nguyễn Thị Duyên Thảo", "Nguyễn Thu Hằng",
-          "Đặng Phong Thái", "Phạm Thạch Khuyến", "Nguyễn Thị Xuân Lương", "Nguyễn Thị Hà",
-          "Phan Thị Thu Hiền", "Lê Thị Thu Hiền", "Nguyễn Văn Khính", "Phạm Thị Thuyến", "Trần Thị Duyên"
+          "Hoàng Đức Đạt", "Lê Thị Thu Hoa", "Nguyễn Thị Duyên Thảo", "Đặng Phong Thái", "Nguyễn Thu Hằng",
+          "Phạm Thạch Khuyến", "Nguyễn Thị Xuân Lương", "Phan Thị Thu Hiền", "Nguyễn Thị Hà",
+          "Lê Thị Thu Hiền", "Phạm Thị Thuyến", "Nguyễn Văn Khính", "Trần Thị Duyên"
         ]);
       }
       // Các đơn vị khác mới tạo sẽ khởi đầu với danh sách rỗng để tự nhập

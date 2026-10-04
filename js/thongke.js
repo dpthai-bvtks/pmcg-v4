@@ -18,15 +18,15 @@ var callApi = (typeof window !== 'undefined' && typeof window.callApi === 'funct
             'Hoàng Đức Đạt': { keys: ['hoàng đức đạt', 'bs đạt', 'bs dat', 'đạt'], skills: 'Cả hai', role: 'Bác sĩ', heSo: 1.0 },
             'Lê Thị Thu Hoa': { keys: ['lê thị thu hoa', 'bs hoa', 'thu hoa', 'hoa'], skills: 'Cả hai', role: 'Bác sĩ', heSo: 1.0 },
             'Nguyễn Thị Duyên Thảo': { keys: ['nguyễn thị duyên thảo', 'bs thảo', 'bs thảo 2', 'duyên thảo', 'thảo'], skills: 'Cả hai', role: 'Bác sĩ', heSo: 1.0 },
-            'Nguyễn Thu Hằng': { keys: ['nguyễn thu hằng', 'bs hằng', 'thu hằng', 'hằng'], skills: 'Cả hai', role: 'Bác sĩ', heSo: 1.0 },
             'Đặng Phong Thái': { keys: ['đặng phong thái', 'bs thái', 'phong thái', 'thái'], skills: 'YHCT', role: 'Bác sĩ', heSo: 1.0 },
+            'Nguyễn Thu Hằng': { keys: ['nguyễn thu hằng', 'bs hằng', 'thu hằng', 'hằng'], skills: 'Cả hai', role: 'Bác sĩ', heSo: 1.0 },
             'Phạm Thạch Khuyến': { keys: ['phạm thạch khuyến', 'bs khuyến', 'thạch khuyến', 'khuyến'], skills: 'YHCT', role: 'Bác sĩ', heSo: 1.0 },
             'Nguyễn Thị Xuân Lương': { keys: ['nguyễn thị xuân lương', 'ktv lương', 'xuân lương', 'lương'], skills: 'PHCN', role: 'KTV', heSo: 1.0 },
-            'Nguyễn Thị Hà': { keys: ['nguyễn thị hà', 'ktv hà chip', 'ktv hà', 'hà chip', 'hà'], skills: 'PHCN', role: 'KTV', heSo: 1.0 },
             'Phan Thị Thu Hiền': { keys: ['phan thị thu hiền', 'ktv phan hiền', 'phan hiền'], skills: 'PHCN', role: 'KTV', heSo: 1.0 },
+            'Nguyễn Thị Hà': { keys: ['nguyễn thị hà', 'ktv hà chip', 'ktv hà', 'hà chip', 'hà'], skills: 'PHCN', role: 'KTV', heSo: 1.0 },
             'Lê Thị Thu Hiền': { keys: ['lê thị thu hiền', 'ktv lê hiền', 'ltv lê hiền', 'lê hiền'], skills: 'PHCN', role: 'KTV', heSo: 0.5 },
-            'Nguyễn Văn Khính': { keys: ['nguyễn văn khính', 'ktv khính', 'khính'], skills: 'PHCN', role: 'KTV', heSo: 0.5 },
             'Phạm Thị Thuyến': { keys: ['phạm thị thuyến', 'đd thuyến', 'ktv thuyến', 'thuyến'], skills: 'PHCN', role: 'Điều dưỡng', heSo: 1.0 },
+            'Nguyễn Văn Khính': { keys: ['nguyễn văn khính', 'ktv khính', 'khính'], skills: 'PHCN', role: 'KTV', heSo: 0.5 },
             'Trần Thị Duyên': { keys: ['trần thị duyên', 'đd duyên', 'ktv duyên', 'duyên'], skills: 'PHCN', role: 'Điều dưỡng', heSo: 0.3 }
         };
 
@@ -479,12 +479,15 @@ var callApi = (typeof window !== 'undefined' && typeof window.callApi === 'funct
 
         if (callback) callback(adminChamCongEmployees);
 
-        // Nếu đã có danh sách nhân sự chuẩn và không yêu cầu forceRefresh -> trả về ngay
-        if (!forceRefresh && adminChamCongEmployees && adminChamCongEmployees.length > 0) {
+        // Kiểm tra xem có cần đồng bộ ngầm từ máy chủ không (nếu vừa mới lấy trong 10s và không forceRefresh thì thôi)
+        const now = Date.now();
+        const lastFetch = window._lastEmployeesFetchTime || 0;
+        if (!forceRefresh && (now - lastFetch < 10000) && adminChamCongEmployees && adminChamCongEmployees.length > 0) {
             return adminChamCongEmployees;
         }
 
-        // 2. Tải từ API Cloudflare khi chưa có dữ liệu hoặc khi forceRefresh
+        // 2. Tải thứ tự chuẩn mới nhất từ Server trong nền (Background Sync)
+        window._lastEmployeesFetchTime = now;
         callApi('getEmployees', []).then(empRes => {
             let list = [];
             if (empRes && empRes.status === 'success') {
@@ -501,12 +504,18 @@ var callApi = (typeof window !== 'undefined' && typeof window.callApi === 'funct
                     console.log('[ChamCong] Thứ tự nhân sự vừa được sắp xếp cục bộ, bỏ qua ghi đè từ server.');
                     return;
                 }
-                adminChamCongEmployees = cleanseAdminChamCongEmployees(list);
-                ensureStaffConfigForEmployees();
-                try { localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees)); } catch(e){}
-                if (typeof renderChamCongTable === 'function') renderChamCongTable();
-                if (typeof renderThongKeTable === 'function') renderThongKeTable();
-                if (typeof renderAdminChamCongTable === 'function') renderAdminChamCongTable();
+                const cleanList = cleanseAdminChamCongEmployees(list);
+                const hasChanged = JSON.stringify(cleanList) !== JSON.stringify(adminChamCongEmployees);
+                if (hasChanged) {
+                    console.log('[ChamCong] Đã cập nhật thứ tự nhân sự mới từ máy chủ:', cleanList);
+                    adminChamCongEmployees = cleanList;
+                    ensureStaffConfigForEmployees();
+                    try { localStorage.setItem(getChamCongStorageKey('med_chamcong_employees'), JSON.stringify(adminChamCongEmployees)); } catch(e){}
+                    if (typeof renderChamCongTable === 'function') renderChamCongTable();
+                    if (typeof renderThongKeTable === 'function') renderThongKeTable();
+                    if (typeof renderAdminChamCongTable === 'function') renderAdminChamCongTable();
+                    if (callback) callback(adminChamCongEmployees);
+                }
             }
         }).catch(err => {
             console.warn('getEmployees fallback:', err);
@@ -885,6 +894,13 @@ function saveAdminChamCongData(showAlert = true) {
     apiFn('saveEmployees', [adminChamCongEmployees]).then(() => {
         return apiFn('saveErrorConfig', [{ staff: adminChamCongStaffConfig }]);
     }).then(() => {
+        // ⚡ Phát tín hiệu qua BroadcastChannel cho các tab khác trên cùng máy
+        try {
+            if (typeof OfflineSyncEngine !== 'undefined' && OfflineSyncEngine.broadcastLiveEvent) {
+                OfflineSyncEngine.broadcastLiveEvent('CHAMCONG_UPDATED', {});
+            }
+        } catch(e) {}
+
         if (showAlert) {
             notify("✅ Đã lưu thứ tự nhân sự chấm công lên máy chủ!", "success");
             try { renderAdminChamCongTable(); } catch(e) { console.error(e); }
@@ -1468,7 +1484,7 @@ window.switchAdminSection = function(sectionId, btn) {
             if (document.hidden) flushPendingChamCongSave();
         });
 
-        function loadChamCongData() {
+        function loadChamCongData(forceRefresh = false) {
             const my = getChamCongMonthYear();
             
             // Xử lý chuyển đổi tháng: Flush thay đổi dở dang của tháng cũ (nếu có) và reset bộ nhớ tạm
@@ -1490,8 +1506,8 @@ window.switchAdminSection = function(sectionId, btn) {
             activeChamCongMonthYear = my;
             isLoadingChamCong = true;
 
-            // 1. Tải tức thì 0ms từ Local Cache nếu có
-            const cached = getCachedChamCong(my);
+            // 1. Tải tức thì 0ms từ Local Cache nếu có (bỏ qua nếu forceRefresh)
+            const cached = (!forceRefresh) ? getCachedChamCong(my) : null;
             let hasCached = false;
             if (cached && typeof cached === 'object' && Object.keys(cached).length > 0) {
                 chamCongData = normalizeChamCongData(cached);
@@ -2080,6 +2096,11 @@ window.switchAdminSection = function(sectionId, btn) {
                 apiFn('saveChamCong', [targetMy, targetData, true]).then(() => {
                     chamCongIsDirty = false;
                     if (thead) thead.style.opacity = '1';
+                    try {
+                        if (typeof OfflineSyncEngine !== 'undefined' && OfflineSyncEngine.broadcastLiveEvent) {
+                            OfflineSyncEngine.broadcastLiveEvent('CHAMCONG_UPDATED', { my: targetMy });
+                        }
+                    } catch(e) {}
                 }).catch(err => {
                     console.error('[ChamCong] auto-save error:', err);
                     if (thead) thead.style.opacity = '1';
@@ -4034,6 +4055,27 @@ window.resetChamCongForUnit = function(unitCode) {
     if (typeof renderThongKeTable === 'function') {
         renderThongKeTable();
     }
+
+    // ⚡ Đồng bộ tức thì thứ tự nhân sự mới nhất từ CSDL trong nền
+    try {
+        getOrLoadChamCongEmployees(null, true);
+    } catch(e) {}
+};
+
+window.clearChamCongLocalCache = function(targetMy) {
+    try {
+        const u = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
+        if (targetMy) {
+            localStorage.removeItem(`pm_cache_cc_${u}_${targetMy}`);
+            localStorage.removeItem(`pm_cache_tk_${u}_${targetMy}`);
+        } else {
+            Object.keys(localStorage).forEach(k => {
+                if (k.startsWith(`pm_cache_cc_${u}_`) || k.startsWith(`pm_cache_tk_${u}_`)) {
+                    localStorage.removeItem(k);
+                }
+            });
+        }
+    } catch(e) {}
 };
 
 window.loadThongKeData = loadThongKeData;
