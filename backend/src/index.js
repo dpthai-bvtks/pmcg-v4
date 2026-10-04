@@ -21,7 +21,7 @@ function createTursoAdapter(env, ctx) {
   if (!PRIMARY_URL || !PRIMARY_TOKEN) throw new Error("Thiếu TURSO_URL hoặc TURSO_TOKEN trong env");
 
   async function fetchWithTimeout(url, token, requests, timeoutMs = 3500) {
-    const httpUrl     = url.replace('libsql://', 'https://');
+    const httpUrl     = String(url || '').trim().replace('libsql://', 'https://').replace(/\/v2\/pipeline\/?$/, '').replace(/\/$/, '');
     const pipelineUrl = `${httpUrl}/v2/pipeline`;
     const controller  = new AbortController();
     const timer       = setTimeout(() => controller.abort(), timeoutMs);

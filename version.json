@@ -1,6 +1,6 @@
 {
-    "version": "4.1.9-rev8",
-    "releaseDate": "02/10/2026",
-    "releaseTime": "16:55 02/10/2026",
-    "notes": "Hỗ trợ chuẩn hóa Giờ Sẵn Sàng (Giờ SS) trên Tab Thứ 7 theo lịch mùa: Mùa đông mặc định 08:00, Mùa hè mặc định 07:30. Tự động đồng bộ khi chuyển đổi mùa và nạp dữ liệu."
+    "version": "4.2.0-rev1",
+    "releaseDate": "04/10/2026",
+    "releaseTime": "20:20 04/10/2026",
+    "notes": "Đồng bộ hóa toàn diện MiniPC SQLite lên Turso Cloud Tokyo, khắc phục hoàn toàn dữ liệu cũ và lỗi 35.45 công ở tab-thongke khi MiniPC tắt, dọn dẹp và tái lập cấu trúc dữ liệu chuẩn xác trên Google Sheets."
 }

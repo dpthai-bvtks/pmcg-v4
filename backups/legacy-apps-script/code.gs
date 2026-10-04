@@ -229,6 +229,37 @@ function handleApiRequest(action, args) {
         }
         return { status: 'success', data: sheetNames };
 
+      case 'deleteSheet':
+      case 'deleteSheets':
+        var targetSheets = args && args[0] ? (Array.isArray(args[0]) ? args[0] : [args[0]]) : [];
+        var deleted = [];
+        var allS = ss.getSheets();
+        for (var sIdx = 0; sIdx < targetSheets.length; sIdx++) {
+          var sName = targetSheets[sIdx];
+          var sh = ss.getSheetByName(sName);
+          if (sh && allS.length > 1) {
+            ss.deleteSheet(sh);
+            deleted.push(sName);
+            allS = ss.getSheets();
+          }
+        }
+        return { status: 'success', data: { deleted: deleted } };
+
+      case 'cleanupRedundantSheets':
+        var aliasList = ['pat', 'staff', 'machines', 'rooms', 'procedures', 'protocols', 'schedule', 'history'];
+        var cleaned = [];
+        var curSheets = ss.getSheets();
+        for (var aIdx = 0; aIdx < aliasList.length; aIdx++) {
+          var aName = aliasList[aIdx];
+          var ash = ss.getSheetByName(aName);
+          if (ash && curSheets.length > 1) {
+            ss.deleteSheet(ash);
+            cleaned.push(aName);
+            curSheets = ss.getSheets();
+          }
+        }
+        return { status: 'success', data: { cleaned: cleaned } };
+
       default:
         return { status: 'error', error: 'Action không hỗ trợ: ' + action };
     }
@@ -378,8 +409,10 @@ function saveScheduleToSheet(ss, dateVal, schedList) {
 function saveAllBootstrapToSheets(ss, dataObj) {
   if (!dataObj) return;
 
-  // 1. DUYỆT TỰ ĐỘNG LƯU TOÀN BỘ 21 BẢNG ĐỘNG (MỖI BẢNG TẠO 1 SHEET RIÊNG)
+  var ALIAS_KEYS = { pat: 1, staff: 1, machines: 1, rooms: 1, procedures: 1, protocols: 1, schedule: 1, history: 1, accounts: 1, chamCong: 1, thongKe: 1, caiDat: 1, GioBanChungCu: 1 };
+  // 1. DUYỆT TỰ ĐỘNG LƯU TOÀN BỘ 21 BẢNG ĐỘNG (CHỈ LƯU TÊN BẢNG SQLITE CHUẨN)
   for (var tableKey in dataObj) {
+    if (ALIAS_KEYS[tableKey]) continue;
     var rows = dataObj[tableKey];
     if (Array.isArray(rows) && rows.length > 0) {
       writeListToSheet(ss, tableKey, rows);

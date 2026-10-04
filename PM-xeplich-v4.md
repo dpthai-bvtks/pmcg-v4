@@ -7388,6 +7388,55 @@ ormalizeScheduleItem.
 - `version.json`
 - `PM-xeplich-v4.md`
 
+---
+
+### [v4.2.0-rev1] - 20:20 04/10/2026: Đồng Bộ Toàn Diện MiniPC Lên Turso Cloud, Sửa Lỗi 35.45 Công Tab Thống Kê và Dọn Dẹp Google Sheets
+
+**Yêu cầu người dùng:**
+- *"khi minipc tắt, dùng laptop ở nhà xem thì những dữ liệu hôm nay đã chỉnh sửa trên minipc đều không thấy, bảng công ở tab-thongke bị sai. Ngoài ra ggsheet đang có rất nhiều bảng, xem xét xóa đi rồi đẩy lại dữ liệu của các bảng vào cho đúng"*
+
+**Nguyên nhân gốc rễ & Phân tích hiện trạng:**
+1. **Dữ liệu không thấy và bảng công sai (35.45 công) khi MiniPC tắt:**
+   - **Cơ chế Primary - Fallback:** Hệ thống sử dụng SQLite trên MiniPC làm database chính (Primary). Khi MiniPC tắt, Cloudflare Worker chuyển hướng sang Turso Cloud Tokyo làm cơ sở dữ liệu dự phòng (Fallback).
+   - **Turso Cloud bị đóng băng ở thời điểm cũ:** Lần đồng bộ thành công gần nhất lên Turso là ngày 01/10/2026 (sau đó bị chặn do hạn mức Quota cuối tháng 9). Toàn bộ dữ liệu nhập/sửa trên MiniPC ngày 02, 03, 04/10 chưa từng được đồng bộ sang Turso.
+   - **Bảng `cham_cong` tháng 10/2026 trên Turso chứa dữ liệu giả lập (mock):** Bản ghi tháng 10/2026 trên Turso vẫn là bản sao từ tháng 9 gồm các ngày 1 (X), 2 (LỄ), 3 (X), 4 (X), 5 (S), 7 (X), tổng cộng 35.45 công. Khi người dùng xem từ laptop ở nhà (MiniPC tắt), Worker đọc từ Turso và hiển thị 35.45 công thay vì 8.3 công thực tế (chỉ mới chấm ngày 1/10).
+   - **Lệch schema Turso:** Bảng `lich_su_dinh_muc` trên Turso thiếu cột `khoang_cach`, bảng `cai_dat` thiếu composite unique key `(unit_code, key)`.
+   - **Lỗi `startup-sync.mjs` trên MiniPC:** Script khởi động cố gắng đọc các bảng di sản (`danh_muc`, `nhat_ky`, `gio_ban_cu`) không còn trong `pmcg.db`, gây crash và ngắt tiến trình tự động đồng bộ lúc bật máy.
+2. **Google Sheets bị nhân đôi, thừa nhiều bảng rác (40 tab):**
+   - Script `saveAllBootstrapToSheets` trong Google Apps Script vừa ghi các bảng theo mã chuẩn snake_case, vừa ghi alias tiếng Anh cũ (`pat`, `staff`, `machines`, `rooms`, `procedures`, `protocols`, `schedule`, `history`), đồng thời nhân bản thêm dạng PascalCase (`BenhNhan`, `NhanSu`...), dẫn đến 40 sheets lộn xộn.
+
+**Giải pháp & Khắc phục triệt để:**
+1. **Đồng bộ hóa 100% CSDL MiniPC SQLite sang Turso Cloud:**
+   - Viết và chạy `scripts/sync_minipc_to_turso.mjs`: bổ sung cột `khoang_cach` vào `lich_su_dinh_muc`, tạo lại bảng `cai_dat` với composite key `(unit_code, key)`, đồng bộ sạch toàn bộ 20 bảng.
+   - Kiểm tra bằng `scripts/compare-dbs.mjs`: xác nhận 100% các bảng (benh_nhan, nhan_su, cham_cong, thong_ke, cai_dat, lich_su...) khớp tuyệt đối giữa MiniPC và Turso (0 sai lệch). Tháng 10/2026 tại Turso chuẩn xác chỉ có ngày 1 (tổng 8.3 công).
+2. **Khắc phục triệt để tiến trình đồng bộ tự động trên MiniPC:**
+   - Cập nhật `C:\PMCG-System\PMCG-Engine\startup-sync.mjs`: bổ sung kiểm tra bảng tồn tại trong `sqlite_master` trước khi đọc, loại bỏ hoàn toàn các bảng di sản không tồn tại. Đã chạy thử và thoát mã 0 an toàn.
+3. **Dọn dẹp và nạp chuẩn xác toàn bộ dữ liệu vào Google Sheets:**
+   - Viết và chạy `scripts/sync_clean_all_tables_to_sheets.mjs`: làm sạch 8 tab alias thừa (`pat`, `staff`, `machines`, `rooms`, `procedures`, `protocols`, `schedule`, `history`), sau đó đẩy toàn bộ dữ liệu chuẩn xác từ MiniPC cho toàn bộ 21 bảng chính cùng các bản chuẩn hóa PascalCase.
+   - Cập nhật `backups/legacy-apps-script/code.gs`: bổ sung API `deleteSheet`, `deleteSheets`, `cleanupRedundantSheets`, chặn triệt để hành vi sinh bảng alias trùng lặp.
+4. **Bảo vệ phòng thủ nhiều lớp trên giao diện `tab-thongke`:**
+   - Cập nhật `js/thongke.js`: hàm `normalizeChamCongData(raw, targetMy)` tự động chạy `cleanseChamCongGarbage(my, raw)` để lọc bỏ bất kỳ ngày tương lai chưa phát sinh chấm công nếu có cache cũ.
+   - Tăng version dọn dẹp cache: `pm_cleaned_cache_ver = '4.2.0-rev1'`.
+   - Chuẩn hóa URL Turso Cloud trong `backend/src/index.js`.
+5. **Kiểm thử & Đóng gói phiên bản theo RULES.md:**
+   - `node scripts/verify-build.mjs`: 100% PASS (4/4 tầng kiểm thử).
+   - Phiên bản: `4.2.0-rev1` (Footer `#app-footer-version` giữ đúng chuẩn `Phiên bản: 4.2.0`, timestamp `#sys-last-update` $\rightarrow$ `⏱ Cập nhật lần cuối: 20:20 04/10/2026`).
+   - Service Worker: `CACHE_NAME = 'pmcg-v4-cache-4.2.0-rev1'`.
+
+**File sửa đổi:**
+- `backend/src/index.js`
+- `backups/legacy-apps-script/code.gs`
+- `js/thongke.js`
+- `index.html`
+- `sw.js`
+- `version.json`
+- `scripts/sync_minipc_to_turso.mjs`
+- `scripts/sync_clean_all_tables_to_sheets.mjs`
+- `scripts/compare-dbs.mjs`
+- `scripts/patch-startup-sync.mjs`
+- `PM-xeplich-v4.md`
+
+
 
 
 

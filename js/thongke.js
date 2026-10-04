@@ -109,13 +109,13 @@ var callApi = (typeof window !== 'undefined' && typeof window.callApi === 'funct
         // Tự động dọn dẹp cache cũ bị ô nhiễm từ các phiên bản trước
         try {
             if (typeof localStorage !== 'undefined') {
-                if (localStorage.getItem('pm_cleaned_cache_ver') !== '4.1.8-rev28') {
+                if (localStorage.getItem('pm_cleaned_cache_ver') !== '4.2.0-rev1') {
                     Object.keys(localStorage).forEach(k => {
                         if (k.startsWith('pm_cache_cc_') || k.startsWith('pm_cache_tk_')) {
                             localStorage.removeItem(k);
                         }
                     });
-                    localStorage.setItem('pm_cleaned_cache_ver', '4.1.8-rev28');
+                    localStorage.setItem('pm_cleaned_cache_ver', '4.2.0-rev1');
                 }
                 // Dọn sạch riêng các key tháng 10, 11, 12 nếu còn vướng dữ liệu LỄ giả
                 ['2026-10', '2026-11', '2026-12'].forEach(m => {
@@ -372,9 +372,15 @@ var callApi = (typeof window !== 'undefined' && typeof window.callApi === 'funct
     }
     window.findStaffDataByKey = findStaffDataByKey;
 
-    function normalizeChamCongData(raw) {
+    function normalizeChamCongData(raw, targetMy) {
         const res = {};
         if (!raw || typeof raw !== 'object') return res;
+
+        // Tự động thanh lọc dữ liệu rác clone từ tháng 9 cho tháng 10, 11, 12
+        const my = targetMy || (typeof getChamCongMonthYear === 'function' ? getChamCongMonthYear() : '');
+        if (typeof cleanseChamCongGarbage === 'function' && my) {
+            cleanseChamCongGarbage(my, raw);
+        }
 
         // 1. Gom nhóm theo Họ tên đầy đủ chuẩn hóa và loại bỏ Phụ 1..8
         Object.keys(raw).forEach(k => {
@@ -2134,7 +2140,7 @@ window.switchAdminSection = function(sectionId, btn) {
                     const cachedTK = getCachedThongKe(my);
                     let hasCached = false;
                     if (cachedCC || cachedTK) {
-                        if (cachedCC) chamCongData = normalizeChamCongData(cachedCC);
+                        if (cachedCC) chamCongData = normalizeChamCongData(cachedCC, my);
                         if (cachedTK) thongKeData = normalizeThongKeData(cachedTK);
                         renderThongKeTable();
                         hasCached = true;
@@ -2163,7 +2169,7 @@ window.switchAdminSection = function(sectionId, btn) {
 
                     Promise.all([pCC, pTT]).then(([rawCC, rawTT]) => {
                         if (getChamCongMonthYear() !== my) return;
-                        const freshCC = normalizeChamCongData(rawCC);
+                        const freshCC = normalizeChamCongData(rawCC, my);
                         const freshTT = normalizeThongKeData(rawTT);
 
                         chamCongData = freshCC;
@@ -2243,7 +2249,7 @@ window.switchAdminSection = function(sectionId, btn) {
             });
 
             return Promise.all([pCC, pTT]).then(([rawCC, rawTT]) => {
-                const normCC = normalizeChamCongData(rawCC);
+                const normCC = normalizeChamCongData(rawCC, my);
                 const normTT = normalizeThongKeData(rawTT);
                 setCachedChamCong(my, normCC);
                 setCachedThongKe(my, normTT);
