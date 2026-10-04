@@ -1,6 +1,6 @@
 {
-    "version": "4.2.0-rev2",
+    "version": "4.2.0-rev3",
     "releaseDate": "04/10/2026",
-    "releaseTime": "20:55 04/10/2026",
-    "notes": "Đồng bộ thứ tự nhân sự chuẩn Bảng Chấm Công đa thiết bị (Laptop & MiniPC) từ CSDL máy chủ, bổ sung cơ chế tự động đồng bộ Realtime chấm công và thống kê khi phát hiện thay đổi dữ liệu."
+    "releaseTime": "21:15 04/10/2026",
+    "notes": "Khắc phục triệt để lỗi không lưu dữ liệu chấm công và mất dữ liệu khi F5 trên Laptop và MiniPC; vô hiệu hóa logic dọn dẹp mock data xóa nhầm dữ liệu thực tháng 10; bổ sung HTTP keepalive chống hủy request khi F5/reload; bảo vệ bộ nhớ tạm và cache cục bộ thời gian thực."
 }

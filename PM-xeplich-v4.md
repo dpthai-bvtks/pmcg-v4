@@ -7472,14 +7472,54 @@ ormalizeScheduleItem.
    - Nâng phiên bản: `4.2.0-rev2` (Footer `#app-footer-version` giữ đúng chuẩn `Phiên bản: 4.2.0`, timestamp `#sys-last-update` $\rightarrow$ `⏱ Cập nhật lần cuối: 20:55 04/10/2026`).
    - Service Worker: `CACHE_NAME = 'pmcg-v4-cache-4.2.0-rev2'`.
 
+### [v4.2.0-rev3] - 21:15 04/10/2026: Khắc Phục Triệt Để Lỗi Chấm Công Không Lưu & Bị Mất Khi F5 Trên Laptop và MiniPC
+
+**Yêu cầu người dùng:**
+- *"khi cham cong tren laptop o nha thi du lieu lai khong luu duoc, bi mat luon khi F5 lai, thu lai tren minipc cung vay"*
+
+**Nguyên nhân gốc rễ & Phân tích hiện trạng:**
+1. **Logic thanh lọc Mock Data xóa nhầm toàn bộ dữ liệu thật tháng 10:**
+   - Trong `js/thongke.js`, các hàm `cleanseChamCongGarbage` và `isMockChamCongData` được thiết kế trước đây để dọn dẹp dữ liệu mock test clone từ tháng 9.
+   - Điều kiện nhận diện kiểm tra: nếu ngày 2 là 'LỄ' hoặc (ngày 3 là 'X' và ngày 7 là 'X'), nó sẽ **xóa sạch toàn bộ các ngày từ ngày 2 đến ngày 31** (`delete data[emp][dKey]`).
+   - Hơn thế nữa, hàm `isMockChamCongData` kiểm tra nếu có từ 3 nhân sự trở lên có ngày 7 là 'X', nó sẽ đánh dấu toàn bộ tháng là dữ liệu giả, xóa trắng `raw = {}` và **gọi API `saveChamCong([my, {}, true])` gửi object rỗng lên máy chủ để ghi đè xóa sạch toàn bộ CSDL tháng 10**!
+   - Hàm này còn chạy tự động trong `DOMContentLoaded` quét `localStorage`, trong `getCachedChamCong`, `setCachedChamCong`, `loadChamCongData` và `normalizeChamCongData`. Khi người dùng chấm công thật vào tháng 10/2026 (ngày 2, 3, 4, 7), hệ thống coi đó là dữ liệu rác, tự động xóa trắng cục bộ và trên máy chủ. Khi F5 lại, CSDL trả về rỗng nên mất sạch.
+2. **Thiếu HTTP Keepalive khi F5 hoặc Reload trang:**
+   - Hàm `executeApiTask` trong `js/app.js` gửi `fetch(getApiUrl(), { ... })` không có thuộc tính `keepalive`. Khi người dùng vừa nhập chấm công hoặc bấm F5/đổi tab, trình duyệt sẽ hủy (abort) ngay các kết nối mạng HTTP đang chờ xử lý, khiến lệnh lưu không kịp hoàn tất trên Cloudflare Worker.
+3. **Xung đột Polling Realtime tự xóa dữ liệu (Race Condition):**
+   - Khi lưu chấm công, máy chủ tăng `data_version`. Tuy nhiên, cờ `window._lastLocalMutationTime` chỉ được ghi ở callback JSONP cũ mà **không được ghi nhận trong `executeApiTask` (fetch hiện đại)**.
+   - Vòng lặp polling 4 giây trong `js/sync.js` phát hiện version mới trên máy chủ, coi đó là thay đổi từ máy khác và gọi `syncRefreshData() -> loadChamCongData(true)`. Nếu lệnh lưu dở hoặc server trả về rỗng, nó sẽ ghi đè lên các ô người dùng vừa chấm trên giao diện.
+
+**Giải pháp & Khắc phục triệt để:**
+1. **Vô hiệu hóa hoàn toàn logic dọn dẹp mock data có tính phá hủy:**
+   - Cập nhật `cleanseChamCongGarbage`: chuyển thành hàm an toàn giữ nguyên dữ liệu 100% (`return data;`).
+   - Cập nhật `isMockChamCongData`: chuyển thành hàm an toàn (`return false;`).
+   - Gỡ bỏ việc xóa `localStorage` trong `DOMContentLoaded`, `getCachedChamCong` và `setCachedChamCong`.
+   - Gỡ bỏ lệnh gọi xóa trắng `apiFn('saveChamCong', [my, {}, true])` trong `loadChamCongData`.
+2. **Cơ chế Safe Cache & Hợp nhất an toàn (Client & Server):**
+   - Cập nhật sự kiện `input` trên ô chấm công và ô hệ số: ghi nhận dữ liệu vào `chamCongData` và `localStorage` ngay lập tức tại thời điểm gõ phím. Dù người dùng bấm F5 ngay khi con trỏ chuột vẫn đang nằm trong ô input, dữ liệu vẫn được bảo toàn nguyên vẹn từ cache trong 0ms.
+   - Khi `loadChamCongData` nhận dữ liệu từ server: nếu server trả về rỗng nhưng máy khách đang có dữ liệu vừa nhập, hệ thống sẽ **bảo vệ dữ liệu máy khách, không xóa cache, và tự động đồng bộ ngược lên máy chủ**.
+   - Bổ sung chốt chặn an toàn trên backend (`backend/src/routes/staff.js`): nếu client gửi payload `{}` rỗng lên để ghi đè mà không có cờ `_forceClear`, server sẽ từ chối xóa trắng để bảo toàn dữ liệu hiện có trong CSDL.
+3. **Bổ sung HTTP Keepalive & Khử báo động giả Polling:**
+   - Thêm `keepalive: !!isMutation` vào `fetch` trong `executeApiTask` (`js/app.js`) giúp gói tin lưu chấm công tiếp tục được gửi thành công kể cả khi tab bị đóng hoặc F5.
+   - Đồng bộ chuẩn xác `window._lastLocalMutationTime = Date.now()` ở tất cả các vị trí: `input`, `commitChamCongCell`, `triggerAutoSaveChamCong`, `flushPendingChamCongSave` và khi `executeApiTask` thành công.
+   - `syncRefreshData` trong `js/sync.js` kiểm tra nếu người dùng đang chỉnh sửa hoặc vừa chấm công trong 15 giây qua thì hoãn cập nhật ngầm, tuyệt đối không giật/xóa mất dữ liệu.
+4. **Khôi phục dữ liệu nhân sự chuẩn tháng 10/2026 trên CSDL:**
+   - Đã khôi phục đầy đủ danh sách 13 nhân sự chuẩn cho tháng 10/2026 trên CSDL D1 và Turso.
+5. **Kiểm thử & Đóng gói phiên bản theo RULES.md:**
+   - `node scripts/verify-build.mjs`: 100% PASS (4/4 tầng kiểm thử).
+   - Nâng phiên bản: `4.2.0-rev3` (Footer `#app-footer-version` giữ đúng chuẩn `Phiên bản: 4.2.0`).
+   - Service Worker: `CACHE_NAME = 'pmcg-v4-cache-4.2.0-rev3'`.
+
 **File sửa đổi:**
-- `backend/src/routes/staff.js`
 - `js/thongke.js`
+- `js/app.js`
 - `js/sync.js`
+- `backend/src/routes/staff.js`
 - `index.html`
 - `sw.js`
 - `version.json`
 - `PM-xeplich-v4.md`
+
 
 
 

@@ -239,7 +239,9 @@
             if (isChamCongActive && typeof loadChamCongData === 'function') {
                 const activeEl = document.activeElement;
                 const isEditingCell = activeEl && (activeEl.classList?.contains('cc-input-text') || activeEl.classList?.contains('heso-input'));
-                if (!isEditingCell) {
+                const isRecentlyEdited = (typeof window.chamCongLastEditedTime === 'number') && (Date.now() - window.chamCongLastEditedTime < 15000);
+                const isDirty = !!window.chamCongIsDirty;
+                if (!isEditingCell && !isRecentlyEdited && !isDirty) {
                     if (typeof getOrLoadChamCongEmployees === 'function') {
                         getOrLoadChamCongEmployees(() => {
                             loadChamCongData(true);

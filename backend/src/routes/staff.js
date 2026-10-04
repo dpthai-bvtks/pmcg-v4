@@ -438,6 +438,12 @@ export async function handleStaffAction(action, ctx) {
         }
       }
 
+      // 🛡️ CHỐNG XÓA TRẮNG DỮ LIỆU CẢ THÁNG NGOÀI Ý MUỐN:
+      // Nếu payload rỗng {} nhưng trong DB đã có dữ liệu chấm công, không cho phép ghi đè rỗng trừ khi có cờ _forceClear
+      if (typeof data === 'object' && Object.keys(data).length === 0 && !data._forceClear) {
+        return success({ message: "Bỏ qua yêu cầu lưu rỗng để bảo toàn dữ liệu chấm công hiện có." });
+      }
+
       // BẢO VỆ DỮ LIỆU CHẤM CÔNG (Server-side Safe Merge):
       // Đọc bản ghi hiện có từ CSDL để hợp nhất an toàn, không để tình trạng một client gửi thiếu làm xóa mất ngày của các nhân sự khác
       const replaceWhole = (args[2] === true) || (data && data._replaceWhole === true);

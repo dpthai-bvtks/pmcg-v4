@@ -1613,7 +1613,8 @@ var dataCache = window.dataCache;
                         args: args || [],
                         unit_code: currentUnit
                     }),
-                    signal: controller.signal
+                    signal: controller.signal,
+                    keepalive: !!isMutation
                 });
 
                 clearTimeout(timeoutId);
@@ -1635,6 +1636,9 @@ var dataCache = window.dataCache;
 
                 if (result && result.status === 'success') {
                     _consecutiveApiErrors = 0;
+                    if (isMutation) {
+                        window._lastLocalMutationTime = Date.now();
+                    }
                     if (onSuccess) {
                         try { onSuccess(result.data); } catch(e) { console.error(`Error in onSuccess for ${functionName}:`, e); }
                     }
@@ -1924,6 +1928,7 @@ var dataCache = window.dataCache;
                     const origOnError = onError;
 
                     onSuccess = (data) => {
+                        window._lastLocalMutationTime = Date.now();
                         if (origOnSuccess) origOnSuccess(data);
                         resolve(data);
                         // 🔄 Tự động đồng bộ ngầm toàn bộ CSDL sang Google Sheets sau mỗi thay đổi (3.5s debounce)

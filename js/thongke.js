@@ -50,91 +50,16 @@ var callApi = (typeof window !== 'undefined' && typeof window.callApi === 'funct
             return key + '_' + u;
         }
 
-        // Hàm thanh lọc triệt để dữ liệu chấm công rác bị clone nhầm từ tháng 9 sang tháng 10, 11, 12
+        // Hàm hỗ trợ tương thích ngược (không làm biến dạng hay xóa nhầm dữ liệu người dùng nhập)
         function cleanseChamCongGarbage(my, data) {
-            if (!data || typeof data !== 'object') return data;
-            if (my === '2026-10') {
-                for (const emp in data) {
-                    if (data[emp] && typeof data[emp] === 'object') {
-                        const d2 = String(data[emp]['2'] || data[emp][2] || '').toUpperCase();
-                        const d3 = String(data[emp]['3'] || data[emp][3] || '').toUpperCase();
-                        const d7 = String(data[emp]['7'] || data[emp][7] || '').toUpperCase();
-                        // Dấu hiệu đặc trưng của dữ liệu clone tháng 9: ngày 2 là LỄ hoặc (ngày 3=X và ngày 7=X)
-                        if (d2 === 'LỄ' || d2 === 'LE' || (d3 === 'X' && d7 === 'X')) {
-                            for (const dKey in data[emp]) {
-                                if (dKey !== '1' && dKey !== 1 && dKey !== 'heSo') {
-                                    delete data[emp][dKey];
-                                }
-                            }
-                        }
-                    }
-                }
-            } else if (my === '2026-11' || my === '2026-12') {
-                for (const emp in data) {
-                    if (data[emp] && typeof data[emp] === 'object') {
-                        for (const dKey in data[emp]) {
-                            if (dKey !== 'heSo') {
-                                delete data[emp][dKey];
-                            }
-                        }
-                    }
-                }
-            }
             return data;
         }
         window.cleanseChamCongGarbage = cleanseChamCongGarbage;
 
-        // Hàm kiểm tra và nhận diện dữ liệu chấm công giả lập / mock test bị clone nhầm từ tháng 9 (1/9, 2/9 là LỄ)
         function isMockChamCongData(my, data) {
-            if (!data || typeof data !== 'object') return false;
-            if (my === '2026-10' || my === '2026-11' || my === '2026-12') {
-                let fakeCount = 0;
-                const emps = Object.keys(data);
-                for (const emp of emps) {
-                    const row = data[emp];
-                    if (row && typeof row === 'object') {
-                        const d2 = String(row['2'] || row[2] || '').toUpperCase();
-                        const d7 = String(row['7'] || row[7] || '').toUpperCase();
-                        if (d2 === 'LỄ' || d2 === 'LE' || d7 === 'X') {
-                            fakeCount++;
-                        }
-                    }
-                }
-                if (fakeCount >= 3) return true;
-            }
             return false;
         }
         window.isMockChamCongData = isMockChamCongData;
-
-        // Tự động dọn dẹp cache cũ bị ô nhiễm từ các phiên bản trước
-        try {
-            if (typeof localStorage !== 'undefined') {
-                if (localStorage.getItem('pm_cleaned_cache_ver') !== '4.2.0-rev1') {
-                    Object.keys(localStorage).forEach(k => {
-                        if (k.startsWith('pm_cache_cc_') || k.startsWith('pm_cache_tk_')) {
-                            localStorage.removeItem(k);
-                        }
-                    });
-                    localStorage.setItem('pm_cleaned_cache_ver', '4.2.0-rev1');
-                }
-                // Dọn sạch riêng các key tháng 10, 11, 12 nếu còn vướng dữ liệu LỄ giả
-                ['2026-10', '2026-11', '2026-12'].forEach(m => {
-                    const ck = getLocalCCKey(m);
-                    const raw = localStorage.getItem(ck);
-                    if (raw) {
-                        try {
-                            const parsed = JSON.parse(raw);
-                            if (isMockChamCongData(m, parsed)) {
-                                localStorage.removeItem(ck);
-                            } else if (m === '2026-10') {
-                                cleanseChamCongGarbage(m, parsed);
-                                localStorage.setItem(ck, JSON.stringify(parsed));
-                            }
-                        } catch(e) { localStorage.removeItem(ck); }
-                    }
-                });
-            }
-        } catch(e) {}
 
         function getLocalCCKey(my) {
             const u = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
@@ -149,11 +74,6 @@ var callApi = (typeof window !== 'undefined' && typeof window.callApi === 'funct
                 const raw = localStorage.getItem(getLocalCCKey(my));
                 if (raw) {
                     const parsed = JSON.parse(raw);
-                    if (isMockChamCongData(my, parsed)) {
-                        localStorage.removeItem(getLocalCCKey(my));
-                        return {};
-                    }
-                    cleanseChamCongGarbage(my, parsed);
                     return parsed;
                 }
             } catch(e) {}
@@ -162,10 +82,6 @@ var callApi = (typeof window !== 'undefined' && typeof window.callApi === 'funct
         function setCachedChamCong(my, data) {
             try {
                 if (data && typeof data === 'object') {
-                    if (isMockChamCongData(my, data)) {
-                        localStorage.removeItem(getLocalCCKey(my));
-                        return;
-                    }
                     localStorage.setItem(getLocalCCKey(my), JSON.stringify(data));
                 }
             } catch(e) {}
@@ -375,12 +291,6 @@ var callApi = (typeof window !== 'undefined' && typeof window.callApi === 'funct
     function normalizeChamCongData(raw, targetMy) {
         const res = {};
         if (!raw || typeof raw !== 'object') return res;
-
-        // Tự động thanh lọc dữ liệu rác clone từ tháng 9 cho tháng 10, 11, 12
-        const my = targetMy || (typeof getChamCongMonthYear === 'function' ? getChamCongMonthYear() : '');
-        if (typeof cleanseChamCongGarbage === 'function' && my) {
-            cleanseChamCongGarbage(my, raw);
-        }
 
         // 1. Gom nhóm theo Họ tên đầy đủ chuẩn hóa và loại bỏ Phụ 1..8
         Object.keys(raw).forEach(k => {
@@ -1381,8 +1291,9 @@ window.switchAdminSection = function(sectionId, btn) {
                 delete chamCongData[emp][day];
             }
             window.chamCongData = chamCongData;
-            chamCongIsDirty = true;
-            chamCongLastEditedTime = Date.now();
+            window.chamCongIsDirty = chamCongIsDirty = true;
+            window.chamCongLastEditedTime = chamCongLastEditedTime = Date.now();
+            window._lastLocalMutationTime = Date.now();
 
             recalculateRowTotal(emp, daysInMonth);
 
@@ -1430,8 +1341,9 @@ window.switchAdminSection = function(sectionId, btn) {
 
             chamCongData[emp].heSo = val;
             window.chamCongData = chamCongData;
-            chamCongIsDirty = true;
-            chamCongLastEditedTime = Date.now();
+            window.chamCongIsDirty = chamCongIsDirty = true;
+            window.chamCongLastEditedTime = chamCongLastEditedTime = Date.now();
+            window._lastLocalMutationTime = Date.now();
 
             recalculateRowTotal(emp, daysInMonth);
             if (triggerSave && !isLoadingChamCong) {
@@ -1440,6 +1352,7 @@ window.switchAdminSection = function(sectionId, btn) {
         }
 
         function flushPendingChamCongSave() {
+            window._lastLocalMutationTime = Date.now();
             // 1. Commit ngay ô input đang focus (nếu có)
             const activeEl = document.activeElement;
             if (activeEl && activeEl.classList) {
@@ -1464,10 +1377,11 @@ window.switchAdminSection = function(sectionId, btn) {
                     clearTimeout(chamCongSaveTimeout);
                     chamCongSaveTimeout = null;
                 }
-                chamCongIsDirty = false;
+                window.chamCongIsDirty = chamCongIsDirty = false;
                 const apiFn = typeof callApi === 'function' ? callApi : window.callApi;
                 if (apiFn && chamCongData) {
                     apiFn('saveChamCong', [my, chamCongData, true]).then(() => {
+                        window._lastLocalMutationTime = Date.now();
                         const thead = document.getElementById('chamcong-thead');
                         if (thead) thead.style.opacity = '1';
                     }).catch(err => {
@@ -1541,18 +1455,9 @@ window.switchAdminSection = function(sectionId, btn) {
                             raw = res;
                         }
 
-                        // Tự động thanh lọc các ngày rác (ngày 2, 3, 4, 7 bị clone nhầm từ tháng 9)
-                        cleanseChamCongGarbage(my, raw);
-
-                        // 🛡️ Lọc triệt để nếu máy chủ trả về dữ liệu mock tháng 10, 11, 12 bị clone nhầm
-                        if (isMockChamCongData(my, raw)) {
-                            raw = {};
-                            try { apiFn('saveChamCong', [my, {}, true]); } catch(e){}
-                        }
-
                         // BẢO VỆ DỮ LIỆU CỤC BỘ (Safe Merge on Client):
                         const hasLocalData = chamCongData && Object.keys(chamCongData).some(k => Object.keys(chamCongData[k] || {}).length > 0);
-                        const isRecentlyEdited = (Date.now() - chamCongLastEditedTime < 8000) && chamCongIsDirty && (activeChamCongMonthYear === my);
+                        const isRecentlyEdited = (Date.now() - (chamCongLastEditedTime || 0) < 15000) && (activeChamCongMonthYear === my);
                         const serverIsEmpty = !raw || Object.keys(raw).length === 0;
 
                         if (!serverIsEmpty) {
@@ -1570,15 +1475,15 @@ window.switchAdminSection = function(sectionId, btn) {
                             window.chamCongData = chamCongData;
                             setCachedChamCong(my, fresh);
                             renderChamCongTable();
-                        } else if (hasLocalData && isRecentlyEdited) {
+                        } else if (hasLocalData) {
+                            // Máy chủ chưa có bản ghi (ví dụ tháng mới vừa bắt đầu nhập), giữ nguyên dữ liệu cục bộ và kích hoạt lưu lên máy chủ
                             setCachedChamCong(my, chamCongData);
                             triggerAutoSaveChamCong();
+                            renderChamCongTable();
                         } else {
-                            // Khi máy chủ chưa có dữ liệu chấm công cho tháng này (hoặc đã làm sạch):
-                            // Trả về bảng chấm công sạch hoàn toàn cho tháng
+                            // Cả máy chủ và máy khách đều chưa có dữ liệu: khởi tạo cấu trúc rỗng
                             chamCongData = {};
                             window.chamCongData = chamCongData;
-                            try { localStorage.removeItem(getLocalCCKey(my)); } catch(e){}
                             renderChamCongTable();
                         }
                     }).catch(err => {
@@ -1904,6 +1809,12 @@ window.switchAdminSection = function(sectionId, btn) {
                         } else {
                             delete chamCongData[currentEmp][currentDay];
                         }
+                        window.chamCongData = chamCongData;
+                        window.chamCongIsDirty = chamCongIsDirty = true;
+                        window.chamCongLastEditedTime = chamCongLastEditedTime = Date.now();
+                        window._lastLocalMutationTime = Date.now();
+                        const my = activeChamCongMonthYear || getChamCongMonthYear();
+                        setCachedChamCong(my, chamCongData);
                         recalculateRowTotal(currentEmp, daysInMonth);
                     }
                 });
@@ -1989,6 +1900,12 @@ window.switchAdminSection = function(sectionId, btn) {
                         const emp = e.target.getAttribute('data-emp');
                         if (emp && chamCongData[emp]) {
                             chamCongData[emp].heSo = num;
+                            window.chamCongData = chamCongData;
+                            window.chamCongIsDirty = chamCongIsDirty = true;
+                            window.chamCongLastEditedTime = chamCongLastEditedTime = Date.now();
+                            window._lastLocalMutationTime = Date.now();
+                            const my = activeChamCongMonthYear || getChamCongMonthYear();
+                            setCachedChamCong(my, chamCongData);
                             recalculateRowTotal(emp, daysInMonth);
                         }
                     }
@@ -2074,8 +1991,9 @@ window.switchAdminSection = function(sectionId, btn) {
             const my = activeChamCongMonthYear || getChamCongMonthYear();
             // Lưu lạc quan ngay lập tức vào Local Cache để không bị mất khi chuyển tab/reload
             setCachedChamCong(my, chamCongData);
-            chamCongIsDirty = true;
-            chamCongLastEditedTime = Date.now();
+            window.chamCongIsDirty = chamCongIsDirty = true;
+            window.chamCongLastEditedTime = chamCongLastEditedTime = Date.now();
+            window._lastLocalMutationTime = Date.now();
 
             if (chamCongSaveTimeout) clearTimeout(chamCongSaveTimeout);
             const thead = document.getElementById('chamcong-thead');
@@ -2094,7 +2012,8 @@ window.switchAdminSection = function(sectionId, btn) {
                     return;
                 }
                 apiFn('saveChamCong', [targetMy, targetData, true]).then(() => {
-                    chamCongIsDirty = false;
+                    window.chamCongIsDirty = chamCongIsDirty = false;
+                    window._lastLocalMutationTime = Date.now();
                     if (thead) thead.style.opacity = '1';
                     try {
                         if (typeof OfflineSyncEngine !== 'undefined' && OfflineSyncEngine.broadcastLiveEvent) {
