@@ -7517,8 +7517,51 @@ ormalizeScheduleItem.
 - `backend/src/routes/staff.js`
 - `index.html`
 - `sw.js`
-- `version.json`
-- `PM-xeplich-v4.md`
+### [v4.2.1-rev1] - 13:25 05/10/2026: Nâng Cấp Toàn Diện Xếp Lịch Bổ Sung & Động Cơ Cố Vấn Giải Cứu Ca Rớt (Triệt Tiêu Xung Đột Trùng Giờ)
+
+**Yêu cầu người dùng:**
+- *"đọc rules.md và giải quyết vấn đề sau: chức năng xếp lịch bổ sung hay gợi ý cứu ca rớt đang hoạt động không hiệu quả, hoặc là không xếp được, hoặc là xếp vào giờ bị trùng lặp"*
+
+**Nguyên nhân gốc rễ & Phân tích kỹ thuật:**
+1. **Lỗi xếp lịch bổ sung không xếp được (rớt hàng loạt ca):**
+   - Trong `js/scheduler-engine.js`, thuật toán dồn lịch khép kín khoảng trống (`compactTimelineGaps`) khi chạy bước dồn sớm (Left-shift Compaction) chỉ kiểm tra va chạm giữa các ca mới với nhau mà **hoàn toàn bỏ qua danh sách lịch đã xếp trước đó (`existingSched`)**.
+   - Hậu quả: Các ca mới được thuật toán xếp vào các khoảng trống hợp lệ, nhưng khi đi qua `compactTimelineGaps`, chúng bị dồn sớm về các mốc giờ đã có ca của lịch cũ (trùng nhân viên, máy móc hoặc giường).
+   - Ngay sau đó, hàm hậu kiểm `validateNoOverlapWithExisting` phát hiện va chạm với lịch cũ và lập tức loại bỏ các ca này chuyển thành ca rớt (`collisionDrops`). Người dùng thấy thông báo "Xếp bổ sung thành công 0 ca" hoặc rớt ca vô lý.
+2. **Lỗi Trạm MiniPC OR-Tools CP-SAT không nhận diện lịch cũ:**
+   - Khi chạy `runSchedulingAsync`, payload gửi sang MiniPC Solver (`solveWithMiniPC`) chỉ chứa danh sách bệnh nhân chưa xếp mà không truyền `existingSched` để khóa khung giờ đã có. Kết quả solver trả về có thể xung đột trực tiếp với lịch cũ và bị bộ hậu kiểm đẩy vào danh sách rớt.
+3. **Lỗi gợi ý cứu ca rớt xếp vào giờ bị trùng lặp:**
+   - Trong `UnscheduledDiagnosticEngine.diagnose`: Khi không tìm được slot trống thỏa mãn các điều kiện ban đầu, engine rơi vào khối fallback tĩnh, tự động tạo các patch mù vào các mốc giờ cố định (11:15 cuối ca sáng hoặc 13:30 đầu ca chiều). Tương tự trong `js/app.js`, modal advisor cũng có fallback cứng 11:30 và 13:30.
+   - Khi người dùng bấm `⚡ Áp dụng giải cứu ngay`, hàm `executeRescueAdvice` trong `js/app.js` chỉ kiểm tra trùng key định danh chính xác (`_dupKey`) chứ **hoàn toàn không kiểm tra va chạm khung giờ (overlap) với các ca khác của Bệnh nhân, Nhân sự (kèm khoảng đệm/teardown), Máy móc, Giường bệnh**. Do đó, ca giải cứu bị chèn đè lên ca đang diễn ra, gây trùng giờ trầm trọng.
+   - Thêm vào đó, hàm `diagnose` chỉ quét một số mốc giờ cố định và đối chiếu dữ liệu một chiều mà không quét bước mịn 5 phút theo toàn bộ ca trực thực tế của KTV.
+
+**Giải pháp & Khắc phục triệt để:**
+1. **Dồn lịch khép kín có nhận thức lịch cũ (Existing-Aware Compaction):**
+   - Nâng cấp `compactTimelineGaps(scheduleList, db, existingSched = [])` trong `js/scheduler-engine.js`: Nhận diện toàn bộ lịch cũ đã khóa làm vật cản cố định. Kiểm tra va chạm đa chiều (Bệnh nhân, Nhân viên chính/phụ theo khoảng bận thực tế, Máy móc, Giường bệnh). Ca bổ sung chỉ được dồn sớm khi khoảng trống rảnh hoàn toàn ở cả lịch mới lẫn lịch cũ.
+   - Bỏ qua trạm MiniPC khi đang xếp bổ sung (`cleanExistingSched.length > 0`), tự động chuyển sang Turbo-Engine JS để tôn trọng 100% các slot đã khóa của lịch cũ.
+2. **Động cơ Cố vấn giải cứu ca rớt thông minh (Verified-Only Diagnostic Engine):**
+   - Viết lại toàn diện `UnscheduledDiagnosticEngine.diagnose(rotItem, db, currentSched)`:
+     + Quét toàn bộ khung giờ làm việc của nhân sự (bước mịn 5 phút), phân biệt mùa đông (08:00 - 12:00) và mùa hè (07:30 - 11:30).
+     + Xác minh đồng thời 4 chiều tài nguyên: (1) Bệnh nhân rảnh trong giờ y lệnh; (2) KTV chính đủ kỹ năng và rảnh cả pha setup + teardown + khoảng đệm gap; (3) Máy móc chuyên dụng rảnh (đúng máy trong phòng); (4) Giường bệnh trong phòng trống.
+     + Hỗ trợ ca cần người phụ (`canNguoiPhu = 1`): chỉ chấp nhận slot khi cả KTV chính và người phụ đều rảnh.
+     + **Tuyệt đối loại bỏ các đề xuất giả lập/fallback mù**: Chỉ đề xuất những khung giờ đã được xác minh 100% không trùng lặp (`verified: true`). Nếu thực sự không còn chỗ trống, hiển thị chẩn đoán nguyên nhân minh bạch và khuyến nghị quản trị viên nới giờ trực hoặc điều chỉnh y lệnh.
+3. **Chốt chặn an toàn chống trùng giờ khi bấm Giải cứu (`executeRescueAdvice`):**
+   - Tự động gọi `refreshUnscheduledAdvisorData()` mỗi khi mở Modal Cố Vấn để tính toán lại các phương án giải cứu tươi mới nhất dựa trên lịch trình hiện tại.
+   - Trong `executeRescueAdvice`: Trước khi chèn ca vào `currentScheduleData`, bắt buộc chạy qua bộ hậu kiểm va chạm `SchedulerEngine.validateNoOverlapWithExisting`. Nếu phát hiện bất kỳ xung đột nào với Bệnh nhân/Nhân sự/Máy/Giường, hệ thống lập tức chặn lại và cảnh báo chi tiết, bảo đảm 100% không bao giờ có ca giải cứu bị trùng giờ.
+   - Sau khi giải cứu thành công 1 ca, hệ thống tự động cập nhật lại chẩn đoán cho các ca rớt còn lại theo lịch mới để người dùng tiếp tục cứu ca tiếp theo một cách an toàn.
+4. **Kiểm thử & Đóng gói phiên bản theo RULES.md:**
+   - Chạy `node scripts/verify-build.mjs`: 100% PASS (4/4 tầng kiểm thử, cú pháp, inline script, static scope, Node VM sandbox runtime).
+   - Nâng phiên bản theo ngày: `4.2.1-rev1` (Footer `#app-footer-version` giữ đúng chuẩn `Phiên bản: 4.2.1`, timestamp `#sys-last-update` $\rightarrow$ `⏱ Cập nhật lần cuối: 13:25 05/10/2026`).
+   - Service Worker: `CACHE_NAME = 'pmcg-v4-cache-4.2.1-rev1'`.
+   - Deploy Cloudflare Pages `pmcg-v3` thành công (`https://22597c48.pmcg-v3.pages.dev`).
+
+**File sửa đổi:**
+- `js/scheduler-engine.js` (Existing-aware compactTimelineGaps, vô hiệu hóa MiniPC khi xếp bổ sung, viết lại UnscheduledDiagnosticEngine)
+- `js/app.js` (refreshUnscheduledAdvisorData, loại bỏ fallback mù, chốt chặn validateNoOverlapWithExisting trong executeRescueAdvice)
+- `index.html` (cập nhật phiên bản 4.2.1, timestamp footer, cache buster ?v=4.2.1-rev1)
+- `sw.js` (cập nhật CACHE_NAME v4.2.1-rev1)
+- `version.json` (cập nhật version 4.2.1-rev1)
+- `PM-xeplich-v4.md` (nhật ký phát triển)
+
 
 
 

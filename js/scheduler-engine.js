@@ -1502,8 +1502,10 @@ function getPatientSignature(pat) {
    * Tự động phát hiện và co cụm các ca làm việc rải rác, lùi sớm thời gian để xóa bỏ các mốc rảnh lắt nhắt
    * Tuân thủ 100% không vi phạm ràng buộc: Bệnh nhân, NV Chính, NV Phụ, Máy, Giường, Giờ vào, Giờ trưa
    */
-  function compactTimelineGaps(scheduleList, db) {
-    if (!scheduleList || scheduleList.length <= 1) return scheduleList || [];
+  function compactTimelineGaps(scheduleList, db, existingSched = []) {
+    if (!scheduleList || scheduleList.length === 0) return scheduleList || [];
+    const hasExisting = Array.isArray(existingSched) && existingSched.length > 0;
+    if (scheduleList.length <= 1 && !hasExisting) return scheduleList;
 
     const sched = scheduleList.map(item => ({
       ...item,
@@ -1511,6 +1513,31 @@ function getPatientSignature(pat) {
       _e: t2m(item.gioKetThuc),
       _dur: t2m(item.gioKetThuc) - t2m(item.gioDienRa)
     }));
+
+    // 🔒 LỊCH CŨ ĐÃ KHÓA (xếp bổ sung): Các ca này là vật cản cố định, tuyệt đối không được dồn ca mới đè lên
+    const normMay = v => String(v || '').toLowerCase().replace(/\s+/g, '');
+    const normRoom = v => String(v || '').toLowerCase().replace(/\s+/g, '');
+    const normBed = v => String(v || '').toLowerCase().replace(/\s+/g, '').replace(/^giường|^giuong|^g/i, '');
+    const fixedList = (hasExisting ? existingSched : [])
+      .map(normalizeScheduleItem)
+      .filter(r => r && r.gioDienRa && r.gioDienRa !== '--' && !String(r.gioDienRa).includes('Rớt') && !r.__dropped)
+      .map(r => {
+        const s = t2m(r.gioDienRa), e = t2m(r.gioKetThuc);
+        const tt = String(r.thuThuat || '').trim().toLowerCase();
+        const info = db?.thuThuatInfo ? (db.thuThuatInfo[tt] || null) : null;
+        return {
+          s, e,
+          patKey: String(r.tenBN || '').trim().toUpperCase() + '_' + String(r.namSinh || '').trim(),
+          patName: String(r.tenBN || '').trim().toUpperCase(),
+          nv1: cleanStaffStr(r.nvChinh),
+          nv2: cleanStaffStr(r.nvPhu),
+          may: normMay(r.may),
+          phong: normRoom(r.phong),
+          giuong: normBed(r.giuong),
+          staffIntervals: getStaffBusyIntervals(s, e, info)
+        };
+      })
+      .filter(r => !isNaN(r.s) && !isNaN(r.e) && r.e > r.s);
 
     const patInfoMap = new Map();
     if (db && Array.isArray(db.rawPatients)) {
@@ -1655,6 +1682,26 @@ function getPatientSignature(pat) {
         // 5. Giường (vẫn khóa 100% thời gian [testStart, testEnd])
         if (curItem.phong && other.phong && curItem.phong === other.phong && curItem.giuong && other.giuong && curItem.giuong === other.giuong) {
           if (is_overlap(testStart, testEnd, other._s, other._e)) return true;
+        }
+      }
+
+      // 6. Đối chiếu với LỊCH CŨ đã khóa (xếp bổ sung)
+      if (fixedList.length > 0) {
+        const curName = (curItem.tenBN || curItem.HOTEN || '').trim().toUpperCase();
+        const cNv1 = cleanStaffStr(targetStaff);
+        const cNv2 = cleanStaffStr(nvPhu);
+        const cMay = normMay(curItem.may);
+        const cPhong = normRoom(curItem.phong);
+        const cGiuong = normBed(curItem.giuong);
+        for (let k = 0; k < fixedList.length; k++) {
+          const fx = fixedList[k];
+          const timeOverlap = is_overlap(testStart, testEnd, fx.s, fx.e);
+          if (timeOverlap && (fx.patKey === patKey || (curName && fx.patName === curName))) return true;
+          if ((cNv1 && (cNv1 === fx.nv1 || cNv1 === fx.nv2)) || (cNv2 && (cNv2 === fx.nv1 || cNv2 === fx.nv2))) {
+            if (hasStaffIntervalOverlap(curStaffIntervals, fx.staffIntervals)) return true;
+          }
+          if (timeOverlap && cMay && cMay !== 'thủcông' && fx.may && fx.may !== 'thủcông' && cMay === fx.may) return true;
+          if (timeOverlap && cPhong && cGiuong && cPhong === fx.phong && cGiuong === fx.giuong) return true;
         }
       }
 
@@ -2469,14 +2516,14 @@ function getSafeCache() {
       maBN: x.maBN || x.pId || x.id || ''
     }));
 
-    const rawCompactedSched = compactTimelineGaps(formattedSched, db);
+    const rawCompactedSched = compactTimelineGaps(formattedSched, db, cleanExistingSched);
     const { cleanSched: compactedSched, collisionDrops } = validateNoOverlapWithExisting(rawCompactedSched, cleanExistingSched, db);
     const allDrops = finalDropList.concat(collisionDrops);
     const elapsed = Math.round(performance.now() - startTime);
 
     const diagnosedRot = allDrops.map(item => {
       if (typeof UnscheduledDiagnosticEngine !== 'undefined') {
-        const diag = UnscheduledDiagnosticEngine.diagnose(item, db, compactedSched);
+        const diag = UnscheduledDiagnosticEngine.diagnose(item, db, cleanExistingSched.concat(compactedSched));
         if (diag) {
           return {
             ...item,
@@ -2564,7 +2611,8 @@ function getSafeCache() {
 
       // 🧠 MINI PC GOOGLE OR-TOOLS CP-SAT SOLVER INTEGRATION (HYBRID STATION)
       const preferLocalSolver = options.preferLocalSolver !== false;
-      if (preferLocalSolver && (strategyKey === 'opt_math' || strategyKey === 'opt_ortools' || options.forceMiniPC)) {
+      // ⚠️ Trạm Mini PC chưa nhận lịch cũ (existingSched) → khi xếp bổ sung phải dùng Turbo-Engine JS để không trùng giờ
+      if (preferLocalSolver && cleanExistingSched.length === 0 && (strategyKey === 'opt_math' || strategyKey === 'opt_ortools' || options.forceMiniPC)) {
         const isOnline = await checkMiniPCSolverOnline(600);
         if (isOnline) {
           try {
@@ -2614,7 +2662,7 @@ function getSafeCache() {
                 maBN: x.maBN || x.pId || x.id || ''
               }));
 
-              const rawCompactedSched = compactTimelineGaps(formattedSched, db);
+              const rawCompactedSched = compactTimelineGaps(formattedSched, db, cleanExistingSched);
               const { cleanSched: compactedSched, collisionDrops } = validateNoOverlapWithExisting(rawCompactedSched, cleanExistingSched, db);
               let allDrops = finalDropList.concat(collisionDrops);
               let finalSched = compactedSched;
@@ -2640,7 +2688,7 @@ function getSafeCache() {
 
               const diagnosedRot = allDrops.map(item => {
                 if (typeof UnscheduledDiagnosticEngine !== 'undefined') {
-                  const diag = UnscheduledDiagnosticEngine.diagnose(item, db, finalSched);
+                  const diag = UnscheduledDiagnosticEngine.diagnose(item, db, cleanExistingSched.concat(finalSched));
                   if (diag) {
                     return {
                       ...item,
@@ -2734,14 +2782,14 @@ function getSafeCache() {
         maBN: x.maBN || x.pId || x.id || ''
       }));
 
-      const rawCompactedSched = compactTimelineGaps(formattedSched, db);
+      const rawCompactedSched = compactTimelineGaps(formattedSched, db, cleanExistingSched);
       const { cleanSched: compactedSched, collisionDrops } = validateNoOverlapWithExisting(rawCompactedSched, cleanExistingSched, db);
       const allDrops = finalDropList.concat(collisionDrops);
       const elapsed = Math.round(performance.now() - startTime);
 
       const diagnosedRot = allDrops.map(item => {
         if (typeof UnscheduledDiagnosticEngine !== 'undefined') {
-          const diag = UnscheduledDiagnosticEngine.diagnose(item, db, compactedSched);
+          const diag = UnscheduledDiagnosticEngine.diagnose(item, db, cleanExistingSched.concat(compactedSched));
           if (diag) {
             return {
               ...item,
@@ -3166,456 +3214,364 @@ const UnscheduledDiagnosticEngine = (function () {
     return Math.max(s1, s2) < Math.min(e1, e2);
   };
 
+  // ---- Helpers dùng chung với SchedulerEngine (đồng bộ 100% quy tắc chống trùng của bộ hậu kiểm) ----
+  const _SE = () => (typeof SchedulerEngine !== 'undefined' ? SchedulerEngine : (typeof window !== 'undefined' ? window.SchedulerEngine : null));
+  const cleanStaff = (s) => {
+    const eng = _SE();
+    if (eng && typeof eng.cleanStaffStr === 'function') return eng.cleanStaffStr(s);
+    return String(s || '').normalize('NFC').replace(/^(bs|bac si|bác sĩ|ktv|dd|đd)\s*\.?\s*/i, '').trim().toLowerCase();
+  };
+  const staffIntervalsOf = (s, e, info) => {
+    const eng = _SE();
+    if (eng && typeof eng.getStaffBusyIntervals === 'function') return eng.getStaffBusyIntervals(s, e, info);
+    return [[s, e + 1]];
+  };
+  const normKey = v => String(v || '').normalize('NFC').toLowerCase().replace(/\s+/g, '');
+  const normBed = v => normKey(v).replace(/^giường|^giuong|^g/i, '');
+  const NURSE_RE = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i;
+  const DOC_RE = /bác sĩ|bac si|^bs\b/i;
+  const KTV_RE = /kỹ thuật viên|ky thuat vien|^ktv\b/i;
+  const isTruthyFlag = v => v === 1 || v === '1' || v === 'Có' || v === true;
+  const nsCompatible = (a, b) => !a || !b || a === b || (a.length >= 2 && b.length >= 2 && a.slice(-2) === b.slice(-2));
+
   function diagnose(rotItem, db, currentSched = []) {
     if (!rotItem) return null;
     if (Array.isArray(rotItem)) {
       return rotItem.map(item => diagnose(item, db, currentSched));
     }
+    db = db || {};
 
-    const bnName = String(rotItem.bn || rotItem.tenBN || rotItem.HOTEN || '').toUpperCase().trim();
+    const bnName = String(rotItem.bn || rotItem.tenBN || rotItem.HOTEN || '').normalize('NFC').toUpperCase().trim();
     const bnNs = String(rotItem.ns || rotItem.namSinh || rotItem.NAMSINH || '').trim();
     const room = String(rotItem.room || rotItem.phong || rotItem.PHONG || '').trim();
     const tt = String(rotItem.tt || rotItem.thuThuat || rotItem.DICHVU || '').trim();
     const ttLower = tt.toLowerCase();
-    const targetDate = rotItem.ngay || new Date().toISOString().slice(0, 10);
 
-    const info = (db && db.thuThuatInfo && (db.thuThuatInfo[ttLower] || db.thuThuatInfo[tt])) || ["Thủ công", 15, 5, "PHCN", 1, 0, [], 5];
-    const loaiMay = info[0] || "Thủ công";
-    const tgMay = Math.max(info[1] || 15, info[2] || 5);
-    const canPhu = (info && (info[5] === 1 || info[5] === '1' || info[5] === 'Có' || info[5] === true)) ? 1 : 0;
-    const dsPhu = (info && Array.isArray(info[6])) ? info[6] : (info && info[6] ? String(info[6]).split(',').map(s => s.trim()).filter(Boolean) : []);
-
-    let patientObj = null;
-    if (db && db.rawPatients) {
-      patientObj = db.rawPatients.find(p => {
-        const pName = String(p.name || p.ten || '').toUpperCase().trim();
-        const pNs = String(p.ns || p.namSinh || '').trim();
-        return pName === bnName && (!bnNs || !pNs || bnNs === pNs);
-      });
+    // 1. Thông tin thủ thuật
+    const ttInfoMap = db.thuThuatInfo || {};
+    let info = ttInfoMap[ttLower] || ttInfoMap[tt];
+    if (!info) {
+      const eng = _SE();
+      const healed = (eng && typeof eng.cleanAndHealProcedureName === 'function') ? String(eng.cleanAndHealProcedureName(tt) || '').toLowerCase() : '';
+      info = (healed && ttInfoMap[healed]) || Object.values(ttInfoMap).find(v => v && (String(v[8] || '').toLowerCase() === ttLower || String(v[9] || '').toLowerCase() === ttLower));
     }
+    if (!info) info = ["Thủ công", 15, 5, "PHCN", 1, 0, [], 5];
+    const loaiMay = String(info[0] || 'Thủ công').trim();
+    const isManual = !loaiMay || /^thủ công$/i.test(loaiMay);
+    const duration = Math.max(parseInt(info[1]) || 15, parseInt(info[2]) || 5);
+    const canPhu = isTruthyFlag(info[5]) ? 1 : 0;
+    const dsPhu = Array.isArray(info[6]) ? info[6] : (info[6] ? String(info[6]).split(',').map(s => s.trim()).filter(Boolean) : []);
+    const procIntervals = (s, e) => staffIntervalsOf(s, e, info);
 
-    const arriveMins = patientObj ? (patientObj.arrive || 421) : 421;
-    const leaveMins = patientObj ? (patientObj.leave || 1014) : 1014;
+    // 2. Bệnh nhân
+    const patientObj = (db.rawPatients || []).find(p => {
+      const pName = String(p.name || p.ten || '').normalize('NFC').toUpperCase().trim();
+      const pNs = String(p.ns || p.namSinh || '').trim();
+      return pName === bnName && nsCompatible(bnNs, pNs);
+    }) || null;
+    const arriveMins = (patientObj && patientObj.arrive) ? patientObj.arrive : 450;
+    const leaveMins = (patientObj && patientObj.leave && patientObj.leave < 1440) ? patientObj.leave : 1440;
     const loaiBN = (patientObj && patientObj.loaiBN) || 'NoiTru';
     const buoiDieuTri = (patientObj && patientObj.buoiDieuTri) || 'Sang';
 
-    const isWinterSeason = (typeof window !== 'undefined' && typeof window.getCurrentStaffSeason === 'function' && window.getCurrentStaffSeason() === 'winter') ||
-      (db && db.rawStaff && db.rawStaff.some(st => String(st[3] || '').includes('12:00')));
-    let morningShiftStart = isWinterSeason ? 480 : 450;
-    let morningShiftEnd = isWinterSeason ? 720 : 690;
-    if (db && db.rawStaff) {
-      const mEnds = [];
-      db.rawStaff.forEach(st => {
-        const shifts = String(st[3] || '').split(',').map(s => s.trim());
-        if (shifts[0] && shifts[0].includes('-')) {
-          const endStr = shifts[0].split('-')[1]?.trim();
-          if (endStr) mEnds.push(t2m(endStr));
-        }
-      });
-      if (mEnds.length > 0) morningShiftEnd = Math.max(...mEnds);
+    // 3. Phòng / giường
+    const roomKey = Object.keys(db.roomBeds || {}).find(r => normKey(r) === normKey(room)) || room;
+    let roomBeds = (db.roomBeds && db.roomBeds[roomKey]) || [];
+    if ((!roomBeds || roomBeds.length === 0) && db.cache && db.cache.room) {
+      const rObj = db.cache.room.find(r => normKey(r.tenPhong || r.name || r[1]) === normKey(room));
+      const bedStr = rObj ? String(rObj.danhSachGiuong || rObj[6] || '').trim() : '';
+      if (bedStr && bedStr !== 'None') roomBeds = bedStr.split(',').map(x => x.trim()).filter(Boolean);
     }
+    const roomNorm = normKey(roomKey);
 
-    const loaiMayKey = loaiMay.toLowerCase();
-    const roomSpecific = (db && db.roomMachines && (db.roomMachines[room]?.[loaiMayKey] || db.roomMachines[room]?.[loaiMay])) || [];
-    const machinesOfCategory = roomSpecific.length > 0 ? roomSpecific : ((db && db.machineTypes && db.machineTypes[loaiMay]) || []);
+    // 4. Nhân sự
+    const staffRows = db.rawStaff || [];
+    const findStaffRow = (name) => {
+      if (!name) return null;
+      const exact = staffRows.find(r => r[0] === name);
+      if (exact) return exact;
+      const c = cleanStaff(name);
+      return staffRows.find(r => cleanStaff(r[0]) === c) || null;
+    };
+    const isWinterSeason = (typeof window !== 'undefined' && typeof window.getCurrentStaffSeason === 'function' && window.getCurrentStaffSeason() === 'winter');
+    const defaultShifts = isWinterSeason ? [[480, 720], [780, 990]] : [[450, 690], [780, 990]];
+    const getShifts = (row) => {
+      const list = row && row[3] ? String(row[3]).split(',').filter(s => s.includes('-')).map(s => {
+        const pts = s.split('-'); return [t2m(pts[0].trim()), t2m(pts[1].trim())];
+      }).filter(sh => sh[1] > sh[0]) : [];
+      return list.length > 0 ? list : defaultShifts;
+    };
+    const getBusy = (row) => {
+      if (!row || !row[4]) return [];
+      return String(row[4]).split(',').filter(s => s.includes('-')).map(s => {
+        const tp = s.includes(')') ? s.split(')').pop().trim() : s;
+        const pts = tp.split('-');
+        return [t2m(pts[0].trim()), t2m(pts[1].trim())];
+      });
+    };
+    const roleOf = (row) => String((row && row[1]) || '');
+    const isNurseRow = (row) => NURSE_RE.test(roleOf(row));
+    const isDocRow = (row) => DOC_RE.test(roleOf(row)) || /^bs\b/i.test(String(row[0] || ''));
+
+    // 4a. NV chính đủ kỹ năng: ưu tiên bảng kỹ năng chuẩn của engine (staffBySkill)
     const qualifiedStaff = [];
-    if (db && db.rawStaff) {
-      db.rawStaff.forEach(r => {
-        const name = r[0];
-        const roleRaw = r[1] || '';
-        const isDoc = /bác sĩ|bac si|^bs\b/i.test(roleRaw) || /^bs\b/i.test(name);
-        const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(roleRaw);
-        if (isNurse) return;
-        if (!isDoc && !/kỹ thuật viên|ky thuat vien|^ktv\b/i.test(roleRaw) && roleRaw !== '') return;
-
-        const skillsStr = (r[2] || '').toLowerCase();
-        const hasAll = /cả hai|ca hai|toàn bộ|tat ca|all/i.test(skillsStr);
-        const hasYhct = /yhct/i.test(skillsStr);
-        const hasPhcn = /phcn/i.test(skillsStr);
+    const pushQ = n => { const row = findStaffRow(n); if (row && !isNurseRow(row) && !qualifiedStaff.includes(row[0])) qualifiedStaff.push(row[0]); };
+    const sbs = db._precomputed && db._precomputed.staffBySkill;
+    if (sbs) {
+      [ttLower, String(info[8] || '').toLowerCase(), String(info[9] || '').toLowerCase()].filter(Boolean)
+        .forEach(k => (sbs[k] || []).forEach(pushQ));
+    }
+    if (qualifiedStaff.length === 0) {
+      staffRows.forEach(r => {
+        if (isNurseRow(r)) return;
+        const roleRaw = roleOf(r);
+        const isDoc = isDocRow(r);
+        if (!isDoc && !KTV_RE.test(roleRaw) && roleRaw !== '') return;
+        const skillsStr = String(r[2] || '').toLowerCase();
+        const skillsList = skillsStr.split(',').map(x => x.trim()).filter(Boolean);
         const isProcYhct = info[3] === 'YHCT';
         const isProcPhcn = info[3] === 'PHCN';
-
         let ok = false;
-        const skillsList = r[2] ? String(r[2]).toLowerCase().split(",").map(x => x.trim()).filter(Boolean) : [];
-        if (hasAll) ok = true;
-        else if (hasYhct && isProcYhct && skillsList.length === 0) ok = true;
-        else if (hasPhcn && isProcPhcn && skillsList.length === 0) ok = true;
+        if (/cả hai|ca hai|toàn bộ|tat ca|all/i.test(skillsStr)) ok = true;
         else if (isDoc && isProcYhct && skillsList.length === 0) ok = true;
         else if (skillsList.length > 0) {
-          const pName = ttLower;
-          const pVt = (info[9] || "").toLowerCase();
-          const pTenGoc = (info[8] || "").toLowerCase();
-          ok = skillsList.some(sk => sk === pName || (pVt && sk === pVt) || (pTenGoc && sk === pTenGoc) || sk.includes(pName) || pName.includes(sk) || (pVt && (sk.includes(pVt) || pVt.includes(sk))));
+          const pVt = String(info[9] || '').toLowerCase();
+          const pTenGoc = String(info[8] || '').toLowerCase();
+          ok = skillsList.some(sk => sk === ttLower || (pVt && sk === pVt) || (pTenGoc && sk === pTenGoc) ||
+            (sk === 'yhct' && isProcYhct) || (sk === 'phcn' && isProcPhcn) ||
+            (sk.length >= 3 && (sk.includes(ttLower) || ttLower.includes(sk) || (pTenGoc && (sk.includes(pTenGoc) || pTenGoc.includes(sk))))));
         }
-        if (ok) qualifiedStaff.push(name);
+        if (ok) pushQ(r[0]);
       });
     }
+    // Ưu tiên nhân sự thuộc phòng của bệnh nhân
+    const roomStaffList = (db.roomStaff && (db.roomStaff[roomKey] || db.roomStaff[room])) || [];
+    const roomStaffClean = new Set(roomStaffList.map(cleanStaff));
+    qualifiedStaff.sort((a, b) => (roomStaffClean.has(cleanStaff(b)) ? 1 : 0) - (roomStaffClean.has(cleanStaff(a)) ? 1 : 0));
 
-    const staffOccupancy = {};
-    const machineOccupancy = {};
-    const bedOccupancy = {};
+    // 5. Chiếm dụng tài nguyên từ TOÀN BỘ lịch hiện tại (lịch cũ + ca mới)
+    const staffOcc = new Map();
+    const machineOcc = new Map();
+    const bedOcc = new Map();
     const patientOccupancy = [];
-    let patientExistingBed = "";
-    let patientExistingSub = "";
+    let patientExistingBed = '';
+    let patientExistingSub = '';
+    const pushOcc = (map, key, intervals) => {
+      if (!key) return;
+      if (!map.has(key)) map.set(key, []);
+      const arr = map.get(key);
+      intervals.forEach(iv => arr.push(iv));
+    };
 
     (currentSched || []).forEach(slot => {
-      const gStart = t2m(slot.gioDienRa || slot.GIODIENRA);
+      if (!slot) return;
+      const rawStart = String(slot.gioDienRa || slot.GIODIENRA || '');
+      if (!rawStart || rawStart === '--' || rawStart.includes('Rớt') || slot.__dropped) return;
+      const gStart = t2m(rawStart);
       const gEnd = t2m(slot.gioKetThuc || slot.GIOKETTHUC);
       if (!gStart || !gEnd || gEnd <= gStart) return;
 
-      const pName = String(slot.tenBN || slot.HOTEN || '').toUpperCase().trim();
+      const pName = String(slot.tenBN || slot.HOTEN || '').normalize('NFC').toUpperCase().trim();
+      const pNs = String(slot.namSinh || slot.NAMSINH || '').trim();
       const sRoom = String(slot.phong || slot.PHONG || '').trim();
       const sBed = String(slot.giuong || slot.GIUONG || '').trim();
       const nv1 = slot.nvChinh || slot["NV CHÍNH"];
       const nv2 = slot.nvPhu || slot["NV PHỤ"];
       const maySlot = slot.may || slot.MAY;
+      const sTT = String(slot.thuThuat || slot.DICHVU || '').trim().toLowerCase();
+      const sInfo = ttInfoMap[sTT] || null;
+      const sIntervals = staffIntervalsOf(gStart, gEnd, sInfo);
 
-      if (pName === bnName) {
+      if (pName && pName === bnName && nsCompatible(bnNs, pNs)) {
         patientOccupancy.push([gStart, gEnd]);
-        if (sRoom.toLowerCase() === room.toLowerCase() && sBed && sBed !== "Giường 1") {
-          patientExistingBed = sBed;
-        }
-        if (nv2 && !patientExistingSub) {
-          patientExistingSub = nv2;
-        }
+        if (normKey(sRoom) === roomNorm && sBed && !patientExistingBed) patientExistingBed = sBed;
+        if (nv2 && !patientExistingSub) patientExistingSub = nv2;
       }
-      if (sBed) {
-        if (!bedOccupancy[sBed]) bedOccupancy[sBed] = [];
-        bedOccupancy[sBed].push([gStart, gEnd]);
-      }
-      if (nv1) {
-        if (!staffOccupancy[nv1]) staffOccupancy[nv1] = [];
-        staffOccupancy[nv1].push([gStart, gEnd]);
-      }
-      if (nv2) {
-        if (!staffOccupancy[nv2]) staffOccupancy[nv2] = [];
-        staffOccupancy[nv2].push([gStart, gEnd]);
-      }
-      if (maySlot && maySlot !== "Thủ công") {
-        if (!machineOccupancy[maySlot]) machineOccupancy[maySlot] = [];
-        machineOccupancy[maySlot].push([gStart, gEnd]);
-      }
+      if (sBed) pushOcc(bedOcc, normKey(sRoom) + '|' + normBed(sBed), [[gStart, gEnd]]);
+      if (nv1) pushOcc(staffOcc, cleanStaff(nv1), sIntervals);
+      if (nv2) pushOcc(staffOcc, cleanStaff(nv2), sIntervals);
+      if (maySlot && !/^thủ công$/i.test(String(maySlot).trim())) pushOcc(machineOcc, normKey(maySlot), [[gStart, gEnd]]);
     });
 
     if (!patientExistingBed && patientObj && (patientObj.giuong || patientObj.bed)) {
       patientExistingBed = String(patientObj.giuong || patientObj.bed).trim();
     }
 
-    // 🛏️ Hàm chọn giường chuẩn xác: ưu tiên giường BN đang nằm, hoặc giường trống trong phòng
-    function chooseBedForSlot(slotStart, slotEnd) {
-      if (patientExistingBed) return patientExistingBed;
-      let roomBeds = (db && db.roomBeds && db.roomBeds[room]) || [];
-      if (!roomBeds || roomBeds.length === 0) {
-        if (db && db.cache && db.cache.room) {
-          const rObj = db.cache.room.find(r => (r.tenPhong || r.name || r[1] || '').trim().toLowerCase() === room.toLowerCase());
-          if (rObj) {
-            const bedStr = String(rObj.danhSachGiuong || rObj[6] || '').trim();
-            if (bedStr && bedStr !== 'None') {
-              roomBeds = bedStr.split(',').map(x => x.trim()).filter(Boolean);
-            }
-          }
+    // 6. Máy móc khả dụng cho loại máy (ưu tiên máy trong phòng)
+    const candidateMachines = (() => {
+      if (isManual) return ['Thủ công'];
+      const lower = loaiMay.toLowerCase();
+      const typeKeys = new Set([loaiMay, lower, lower.replace(/^(máy|may|đèn|den)\s+/i, '').trim()]);
+      const matchType = k => {
+        const kl = String(k).toLowerCase();
+        return typeKeys.has(k) || typeKeys.has(kl) || typeKeys.has(kl.replace(/^(máy|may|đèn|den)\s+/i, '').trim());
+      };
+      const list = [];
+      const rm = (db.roomMachines && db.roomMachines[roomKey]) || {};
+      Object.keys(rm).forEach(k => { if (matchType(k)) (rm[k] || []).forEach(m => { if (!list.includes(m)) list.push(m); }); });
+      if (list.length === 0) {
+        Object.keys(db.machineTypes || {}).forEach(k => { if (matchType(k)) (db.machineTypes[k] || []).forEach(m => { if (!list.includes(m)) list.push(m); }); });
+      }
+      return list;
+    })();
+
+    // 7. Ứng viên người phụ (chỉ nhận người có trong danh sách nhân sự đi làm để kiểm được ca trực)
+    const candidateSubs = [];
+    const addSub = (name) => {
+      const row = findStaffRow(String(name || '').trim());
+      if (row && !candidateSubs.includes(row[0])) candidateSubs.push(row[0]);
+    };
+    if (canPhu === 1) {
+      if (patientExistingSub) addSub(patientExistingSub);
+      dsPhu.forEach(addSub);
+      staffRows.forEach(r => { if ((isNurseRow(r) || /phụ/i.test(r[0])) && roomStaffClean.has(cleanStaff(r[0]))) addSub(r[0]); });
+      staffRows.forEach(r => { if (isNurseRow(r) || /phụ/i.test(r[0])) addSub(r[0]); });
+      roomStaffList.forEach(addSub);
+      staffRows.forEach(r => { if (!isDocRow(r)) addSub(r[0]); });
+    }
+
+    // 8. Bộ kiểm tra rảnh (cùng quy tắc với bộ hậu kiểm validateNoOverlapWithExisting)
+    const overlapsAny = (ivs, list) => (list || []).some(b => ivs.some(iv => is_overlap(iv[0], iv[1], b[0], b[1])));
+
+    function isStaffFree(sName, slotStart, slotEnd, allowOvertime) {
+      const row = findStaffRow(sName);
+      if (!row) return false;
+      const extra = allowOvertime ? 15 : 0;
+      if (!getShifts(row).some(sh => slotStart >= sh[0] && slotEnd <= sh[1] + extra)) return false;
+      const ivs = procIntervals(slotStart, slotEnd);
+      if (overlapsAny(ivs, getBusy(row))) return false;
+      if (overlapsAny(ivs, staffOcc.get(cleanStaff(row[0])))) return false;
+      return true;
+    }
+    const isMachineFree = (mName, s, e) => {
+      if (!mName || /^thủ công$/i.test(mName)) return true;
+      return !(machineOcc.get(normKey(mName)) || []).some(b => is_overlap(s, e, b[0], b[1]));
+    };
+    const isBedFree = (bName, s, e) => !(bedOcc.get(roomNorm + '|' + normBed(bName)) || []).some(b => is_overlap(s, e, b[0], b[1]));
+    function pickBed(s, e) {
+      if (patientExistingBed && isBedFree(patientExistingBed, s, e)) return patientExistingBed;
+      if (roomBeds && roomBeds.length > 0) return roomBeds.find(b => isBedFree(b, s, e)) || null;
+      return patientExistingBed ? null : ''; // Phòng không cấu hình giường → không ràng buộc giường
+    }
+    function isPatientFree(s, e) {
+      if (s < arriveMins || e > leaveMins) return false;
+      if (patientObj && Array.isArray(patientObj.busy) && patientObj.busy.some(b => is_overlap(s, e, b[0], b[1]))) return false;
+      if (patientOccupancy.some(b => is_overlap(s, e, b[0], b[1]))) return false;
+      return true;
+    }
+
+    // 9. Quét toàn bộ ngày (bước 5 phút) theo ca trực thực tế của nhân sự
+    const allShifts = qualifiedStaff.map(n => getShifts(findStaffRow(n))).flat();
+    const dayStart = Math.max(arriveMins, allShifts.length ? Math.min(...allShifts.map(s => s[0])) : 420);
+    const dayEnd = Math.min(leaveMins, (allShifts.length ? Math.max(...allShifts.map(s => s[1])) : 1020) + 15);
+    const stats = { patient: false, staff: false, machine: false, sub: false, bed: false };
+
+    function tryAt(t, allowOvertime) {
+      const slotEnd = t + duration;
+      if (!isPatientFree(t, slotEnd)) return null;
+      stats.patient = true;
+      const freeStaff = qualifiedStaff.filter(s => isStaffFree(s, t, slotEnd, allowOvertime));
+      if (freeStaff.length === 0) return null;
+      stats.staff = true;
+      const machine = candidateMachines.find(m => isMachineFree(m, t, slotEnd));
+      if (!machine) return null;
+      stats.machine = true;
+      for (const staff of freeStaff) {
+        let sub = '';
+        if (canPhu === 1) {
+          sub = candidateSubs.find(s => cleanStaff(s) !== cleanStaff(staff) && isStaffFree(s, t, slotEnd, allowOvertime)) || '';
+          if (!sub) continue;
+        }
+        stats.sub = true;
+        const bed = pickBed(t, slotEnd);
+        if (bed === null) return null;
+        stats.bed = true;
+        return { time: t, end: slotEnd, staff, subStaff: sub, machine, bed, isOvertime: allowOvertime };
+      }
+      return null;
+    }
+
+    function scan(allowOvertime) {
+      const found = [];
+      const order = [];
+      for (let t = Math.ceil(dayStart / 5) * 5; t + duration <= dayEnd; t += 5) order.push(t);
+      if (buoiDieuTri === 'Chieu') order.sort((a, b) => ((a >= 780 ? 0 : 1) - (b >= 780 ? 0 : 1)) || (a - b));
+      let lastPicked = -9999;
+      for (const t of order) {
+        if (Math.abs(t - lastPicked) < 30) continue; // đa dạng hóa phương án (cách nhau >= 30 phút)
+        const slot = tryAt(t, allowOvertime);
+        if (slot) {
+          found.push(slot);
+          lastPicked = t;
+          if (found.length >= 3) break;
         }
       }
-      if (roomBeds && roomBeds.length > 0) {
-        const freeBed = roomBeds.find(bName => {
-          const occ = bedOccupancy[bName] || [];
-          return !occ.some(b => is_overlap(slotStart, slotEnd, b[0], b[1]));
-        });
-        if (freeBed) return freeBed;
-        return roomBeds[0];
-      }
-      return "G1";
+      return found;
     }
 
-    // 👥 Xây dựng danh sách ứng viên làm người phụ (candidateSubs)
-    const candidateSubs = [];
-    const addedSubs = new Set();
-    function addCandidateSub(name) {
-      const s = String(name || '').trim();
-      if (!s || addedSubs.has(s)) return;
-      addedSubs.add(s);
-      candidateSubs.push(s);
-    }
+    let foundSlots = (qualifiedStaff.length > 0 && candidateMachines.length > 0) ? scan(false) : [];
+    if (foundSlots.length === 0 && qualifiedStaff.length > 0 && candidateMachines.length > 0) foundSlots = scan(true);
 
-    if (patientExistingSub) {
-      addCandidateSub(patientExistingSub);
-    }
-    if (dsPhu && dsPhu.length > 0) {
-      dsPhu.forEach(n => addCandidateSub(n));
-    }
-    const roomStaffList = (db && db.roomStaff && db.roomStaff[room]) || [];
-    if (db && db.rawStaff) {
-      // 1. Điều dưỡng trong phòng
-      db.rawStaff.forEach(r => {
-        const name = r[0];
-        const roleRaw = r[1] || '';
-        const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(roleRaw) || /phụ/i.test(name);
-        if (isNurse && roomStaffList.includes(name)) addCandidateSub(name);
-      });
-      // 2. Tất cả Điều dưỡng / Trợ lý
-      db.rawStaff.forEach(r => {
-        const name = r[0];
-        const roleRaw = r[1] || '';
-        const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(roleRaw) || /phụ/i.test(name);
-        if (isNurse) addCandidateSub(name);
-      });
-      // 3. Nhân sự khác trong phòng
-      roomStaffList.forEach(name => addCandidateSub(name));
-      // 4. Các KTV khác
-      db.rawStaff.forEach(r => {
-        const name = r[0];
-        const roleRaw = r[1] || '';
-        const isDoc = /bác sĩ|bac si|^bs\b/i.test(roleRaw) || /^bs\b/i.test(name);
-        if (!isDoc) addCandidateSub(name);
-      });
-    }
-
+    // 10. Chẩn đoán nguyên nhân dựa trên dữ liệu thực tế
     let causeCode = 'STAFF_UNAVAILABLE';
     let causeTitle = '🟡 Nhân sự quá tải / Thiếu KTV chuyên môn';
-    let causeDetail = `Chưa xếp được ca [${tt}] cho BN ${bnName} do các KTV có kỹ năng (${qualifiedStaff.join(', ') || 'Chưa phân công'}) kín lịch vào khung giờ rảnh của bệnh nhân.`;
-
-    if (loaiMay !== "Thủ công" && machinesOfCategory.length > 0) {
-      let allMachinesBusyInFreeWindow = true;
-      for (let t = arriveMins; t <= leaveMins - tgMay; t += 15) {
-        const slotEnd = t + tgMay;
-        const availableMachine = machinesOfCategory.find(mName => {
-          const occ = machineOccupancy[mName] || [];
-          return !occ.some(b => is_overlap(t, slotEnd, b[0], b[1]));
-        });
-        if (availableMachine) {
-          allMachinesBusyInFreeWindow = false;
-          break;
-        }
-      }
-      if (allMachinesBusyInFreeWindow) {
-        causeCode = 'BOTTLENECK_MACHINE';
-        causeTitle = '🔴 Nghẽn máy móc thiết bị';
-        causeDetail = `Toàn bộ máy [${loaiMay}] (${machinesOfCategory.join(', ')}) bị kín chỗ trong tất cả khung giờ rảnh của bệnh nhân.`;
-      }
+    let causeDetail = '';
+    if (qualifiedStaff.length === 0) {
+      causeDetail = `Không có nhân sự đi làm nào có kỹ năng thực hiện [${tt}]. Cần bổ sung kỹ năng cho KTV/Bác sĩ trong Danh mục nhân sự.`;
+    } else if (!isManual && candidateMachines.length === 0) {
+      causeCode = 'BOTTLENECK_MACHINE';
+      causeTitle = '🔴 Không có máy sẵn sàng';
+      causeDetail = `Không tìm thấy máy loại [${loaiMay}] ở trạng thái Sẵn sàng cho phòng ${room || '(chưa rõ)'}.`;
+    } else if (foundSlots.length > 0) {
+      causeTitle = '🟡 Kẹt tài nguyên lúc xếp tự động';
+      causeDetail = `${rotItem.reason ? rotItem.reason + '. ' : ''}Đã quét lại toàn bộ lịch hiện tại và tìm được ${foundSlots.length} khung giờ trống không trùng BN/NV/Máy/Giường.`;
+    } else if (!stats.patient) {
+      causeCode = patientOccupancy.length > 0 ? 'INTERNAL_PATIENT_CLASH' : 'PATIENT_TIME_WINDOW';
+      causeTitle = patientOccupancy.length > 0 ? '🟣 Trùng lịch thủ thuật BN' : '🔵 Giờ Y lệnh / Giờ vào muộn';
+      causeDetail = `Khung giờ rảnh của BN ${bnName} (${m2t(arriveMins)} - ${m2t(Math.min(leaveMins, dayEnd))}) đã kín bởi ${patientOccupancy.length} thủ thuật khác/giờ bận, không còn đủ ${duration} phút liên tục cho [${tt}].`;
+    } else if (!stats.staff) {
+      causeDetail = `Các nhân sự có kỹ năng (${qualifiedStaff.slice(0, 6).join(', ')}${qualifiedStaff.length > 6 ? '...' : ''}) đều kín lịch trong mọi khung giờ rảnh của bệnh nhân.`;
+    } else if (!stats.machine) {
+      causeCode = 'BOTTLENECK_MACHINE';
+      causeTitle = '🔴 Nghẽn máy móc thiết bị';
+      causeDetail = `Toàn bộ máy [${loaiMay}] (${candidateMachines.join(', ')}) bận ở mọi khung giờ mà BN và KTV cùng rảnh.`;
+    } else if (!stats.sub) {
+      causeTitle = '🟡 Thiếu người phụ';
+      causeDetail = `Thủ thuật [${tt}] cần người phụ nhưng không có người phụ nào rảnh khi BN, KTV và máy cùng rảnh.`;
+    } else {
+      causeCode = 'BOTTLENECK_MACHINE';
+      causeTitle = '🔴 Hết giường trống';
+      causeDetail = `Phòng ${room} không còn giường trống ở các khung giờ khả thi.`;
+    }
+    if (foundSlots.length === 0 && loaiBN === 'NgoaiTru' && stats.patient) {
+      causeCode = 'OUTPATIENT_SESSION_LIMIT';
+      causeTitle = buoiDieuTri === 'Chieu' ? '🟠 Xung đột ca Chiều Ngoại trú' : '🟠 Xung đột ca Sáng Ngoại trú';
     }
 
-    if (loaiBN === 'NgoaiTru' && causeCode !== 'BOTTLENECK_MACHINE') {
-      const mEndText = m2t(morningShiftEnd);
-      if (buoiDieuTri === 'Sang') {
-        causeCode = 'OUTPATIENT_SESSION_LIMIT';
-        causeTitle = '🟠 Xung đột ca Sáng Ngoại trú';
-        causeDetail = `Bệnh nhân Ngoại trú được đăng ký đi ca Sáng (kết thúc ${mEndText}) nhưng các tài nguyên Sáng đã kín chỗ. Buổi Chiều (13:00 - 16:30) còn khoảng trống khả thi.`;
-      } else if (buoiDieuTri === 'Chieu') {
-        causeCode = 'OUTPATIENT_SESSION_LIMIT';
-        causeTitle = '🟠 Xung đột ca Chiều Ngoại trú';
-        causeDetail = `Bệnh nhân Ngoại trú được đăng ký đi ca Chiều (13:00 - 16:30) nhưng các tài nguyên Chiều đã kín chỗ. Buổi Sáng (kết thúc ${mEndText}) còn khoảng trống khả thi.`;
-      }
-    }
-
-    if (arriveMins > 630 || leaveMins < 960) {
-      causeCode = 'PATIENT_TIME_WINDOW';
-      causeTitle = '🔵 Giờ Y lệnh / Giờ vào muộn';
-      causeDetail = `Khung giờ khả dụng của bệnh nhân (${m2t(arriveMins)} - ${m2t(leaveMins)}) quá hẹp, không đủ thời gian trống để xếp thủ thuật kéo dài ${tgMay} phút.`;
-    }
-
-    if (patientOccupancy.length >= 2 && causeCode !== 'BOTTLENECK_MACHINE') {
-      causeCode = 'INTERNAL_PATIENT_CLASH';
-      causeTitle = '🟣 Trùng lịch thủ thuật BN';
-      causeDetail = `Bệnh nhân ${bnName} có nhiều thủ thuật dài kẹp sát nhau trong ngày, chiếm hết khung giờ rảnh để làm thêm [${tt}].`;
-    }
-
-    const targetStaff = qualifiedStaff[0] || (db.roomStaff && db.roomStaff[room] && db.roomStaff[room].find(s => {
-      const r = (db.rawStaff || []).find(st => st[0] === s);
-      const role = r ? r[1] : '';
-      return !/điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(role);
-    })) || "KTV Phụ Trách";
-    const advices = [];
-
-    // 🔍 Tìm slot RẢNH THỰC SỰ theo tài nguyên nhân sự, máy móc và lịch bệnh nhân
-    function getStaffShifts(sName) {
-      const r = (db.rawStaff || []).find(st => st[0] === sName);
-      const rawShifts = r && r[3] ? String(r[3]).split(",").filter(s => s.includes("-")).map(s => {
-        const pts = s.split("-"); return [t2m(pts[0].trim()), t2m(pts[1].trim())];
-      }) : [];
-      return rawShifts.length > 0 ? rawShifts : [[450, 690], [780, 990]];
-    }
-
-    function getStaffBusy(sName) {
-      const r = (db.rawStaff || []).find(st => st[0] === sName);
-      if (!r || !r[4]) return [];
-      return String(r[4]).split(",").filter(s => s.includes("-")).map(s => {
-        const tp = s.includes(")") ? s.split(")").pop().trim() : s;
-        const pts = tp.split("-");
-        return [t2m(pts[0].trim()), t2m(pts[1].trim())];
-      });
-    }
-
-    function isStaffFree(sName, slotStart, slotEnd, allowOvertime = false) {
-      const shifts = getStaffShifts(sName);
-      if (!allowOvertime) {
-        const inShift = shifts.some(sh => slotStart >= sh[0] && slotEnd <= sh[1]);
-        if (!inShift) return false;
-      } else {
-        const inShiftOrOvertime = shifts.some(sh => slotStart >= sh[0] && slotEnd <= (sh[1] + 15));
-        if (!inShiftOrOvertime) return false;
-      }
-      const busyList = getStaffBusy(sName);
-      if (busyList.some(b => is_overlap(slotStart, slotEnd, b[0], b[1]))) return false;
-      const occ = staffOccupancy[sName] || [];
-      if (occ.some(b => is_overlap(slotStart, slotEnd, b[0], b[1]))) return false;
-      return true;
-    }
-
-    function isMachineFree(mName, slotStart, slotEnd) {
-      if (!mName || mName === 'Thủ công') return true;
-      const occ = machineOccupancy[mName] || [];
-      return !occ.some(b => is_overlap(slotStart, slotEnd, b[0], b[1]));
-    }
-
-    function isPatientFree(slotStart, slotEnd) {
-      if (slotStart < arriveMins || slotEnd > leaveMins) return false;
-      if (patientObj && patientObj.busy && patientObj.busy.some(b => is_overlap(slotStart, slotEnd, b[0], b[1]))) {
-        return false;
-      }
-      if (patientOccupancy.some(b => is_overlap(slotStart, slotEnd, b[0], b[1]))) {
-        return false;
-      }
-      return true;
-    }
-
-    const candidateStaff = qualifiedStaff.length > 0
-      ? qualifiedStaff
-      : (targetStaff !== "KTV Phụ Trách" ? [targetStaff] : []);
-
-    const candidateMachines = machinesOfCategory.length > 0 ? machinesOfCategory : ['Thủ công'];
-
-    // Các khung giờ khảo sát linh hoạt:
-    const scanWindows = [
-      { label: `Sáng sớm (${m2t(morningShiftStart - 15)} - 08:30)`, from: morningShiftStart - 15, to: 510, overtime: false },
-      { label: 'Giữa ca sáng (08:30 - 10:30)', from: 510, to: 630, overtime: false },
-      { label: `Cuối ca sáng (10:30 - ${m2t(morningShiftEnd)})`, from: 630, to: morningShiftEnd, overtime: false },
-      { label: 'Đầu ca chiều (13:00 - 14:30)', from: 780, to: 870, overtime: false },
-      { label: 'Giữa ca chiều (14:30 - 16:30)', from: 870, to: 990, overtime: false },
-      { label: `Làm lố cuối ca sáng (${m2t(morningShiftEnd - 15)} - ${m2t(morningShiftEnd + 15)})`, from: morningShiftEnd - 15, to: morningShiftEnd + 15, overtime: true }
-    ];
-
-    // Ưu tiên thứ tự quét theo buổi điều trị của bệnh nhân
-    let orderedWindows = scanWindows;
-    if (buoiDieuTri === 'Chieu') {
-      orderedWindows = [
-        scanWindows[3], scanWindows[4], scanWindows[0], scanWindows[1], scanWindows[2], scanWindows[5]
-      ];
-    }
-
-    const foundSlots = [];
-    for (const win of orderedWindows) {
-      let foundInWindow = false;
-      for (let t = win.from; t <= win.to - tgMay; t += 5) {
-        const slotEnd = t + tgMay;
-        if (!isPatientFree(t, slotEnd)) continue;
-
-        let availStaff = candidateStaff.find(s => isStaffFree(s, t, slotEnd, win.overtime));
-        if (!availStaff && candidateStaff.length === 0) {
-          availStaff = targetStaff;
-        }
-        if (!availStaff) continue;
-
-        let availSub = "";
-        if (canPhu === 1) {
-          availSub = candidateSubs.find(s => s !== availStaff && isStaffFree(s, t, slotEnd, win.overtime));
-          // Nếu thủ thuật yêu cầu người phụ mà có ứng viên nhưng không ai rảnh lúc này thì slot không hợp lệ
-          if (!availSub && candidateSubs.length > 0) {
-            continue;
-          }
-        }
-
-        const availMachine = candidateMachines.find(m => isMachineFree(m, t, slotEnd));
-        if (!availMachine) continue;
-
-        const chosenBed = chooseBedForSlot(t, slotEnd);
-
-        foundSlots.push({
-          time: t,
-          end: slotEnd,
-          staff: availStaff,
-          subStaff: availSub || "",
-          machine: availMachine,
-          bed: chosenBed,
-          windowLabel: win.label,
-          isOvertime: win.overtime
-        });
-        foundInWindow = true;
-        break;
-      }
-      if (foundSlots.length >= 3) break;
-    }
-
-    if (foundSlots.length > 0) {
-      foundSlots.forEach((slot, idx) => {
-        const actionType = slot.isOvertime ? 'OVERTIME' : (slot.time >= 780 && buoiDieuTri === 'Sang' ? 'SWITCH_SESSION' : 'EXACT_SLOT');
-        const subInfo = slot.subStaff ? `, Phụ: ${slot.subStaff}` : '';
-        const bedInfo = slot.bed ? `, Giường: ${slot.bed}` : '';
-        advices.push({
-          id: idx + 1,
-          title: `⚡ [Đã xác minh] ${m2t(slot.time)} – ${m2t(slot.end)} (${slot.staff}${subInfo}${slot.machine !== 'Thủ công' ? ', ' + slot.machine : ''}${bedInfo})`,
-          description: `Khung giờ ${slot.windowLabel} khả dụng: ${slot.staff} rảnh${slot.subStaff ? ', người phụ ' + slot.subStaff + ' rảnh' : ''}, ${slot.machine !== 'Thủ công' ? 'máy ' + slot.machine + ' rảnh, ' : ''}BN rảnh (Giường: ${slot.bed}).`,
-          actionType: actionType,
-          patch: {
-            gioDienRa: m2t(slot.time),
-            gioKetThuc: m2t(slot.end),
-            nvChinh: slot.staff,
-            nvPhu: slot.subStaff || "",
-            may: slot.machine,
-            giuong: slot.bed,
-            phong: room
-          }
-        });
-      });
-    }
-
-    // Fallback: Nếu không tìm thấy slot rảnh hoàn toàn, đề xuất gợi ý có cảnh báo rõ ràng
-    if (advices.length === 0) {
-      const overTimeStart = 675; // 11:15
-      const overTimeEnd = overTimeStart + tgMay;
-      const fallbackSub = (canPhu === 1 && candidateSubs.length > 0) ? (candidateSubs.find(s => s !== targetStaff) || candidateSubs[0] || "") : "";
-      const fallbackBed = chooseBedForSlot(overTimeStart, overTimeEnd);
-      const subInfo = fallbackSub ? `, Phụ: ${fallbackSub}` : '';
-      const bedInfo = fallbackBed ? `, Giường: ${fallbackBed}` : '';
-
-      advices.push({
-        id: 1,
-        title: `⚡ [Cần xác nhận] Làm lố cuối ca sáng (${m2t(overTimeStart)} – ${m2t(overTimeEnd)}) với ${targetStaff}${subInfo}${bedInfo}`,
-        description: `Không tìm được slot rảnh hoàn toàn. Phương án này nới lỏng thêm giờ cuối ca sáng cho ${targetStaff}. Cần đối soát trước khi ấn cứu.`,
-        actionType: 'OVERTIME',
+    // 11. Phương án giải cứu: CHỈ đề xuất khung giờ đã xác minh không trùng
+    const windowLabel = (t) => t < 780 ? (t < 510 ? 'Sáng sớm' : (t < 630 ? 'Giữa ca sáng' : 'Cuối ca sáng')) : (t < 870 ? 'Đầu ca chiều' : 'Giữa/Cuối ca chiều');
+    const advices = foundSlots.map((slot, idx) => {
+      const actionType = slot.isOvertime ? 'OVERTIME' : (slot.time >= 780 && buoiDieuTri === 'Sang' ? 'SWITCH_SESSION' : 'EXACT_SLOT');
+      const subInfo = slot.subStaff ? `, Phụ: ${slot.subStaff}` : '';
+      const bedInfo = slot.bed ? `, Giường: ${slot.bed}` : '';
+      const machineInfo = !/^thủ công$/i.test(slot.machine) ? ', ' + slot.machine : '';
+      return {
+        id: idx + 1,
+        title: `⚡ [Đã xác minh] ${m2t(slot.time)} – ${m2t(slot.end)} (${slot.staff}${subInfo}${machineInfo}${bedInfo})`,
+        description: `${windowLabel(slot.time)}${slot.isOvertime ? ' (làm lố tối đa 15 phút)' : ''}: ${slot.staff} rảnh${slot.subStaff ? ', người phụ ' + slot.subStaff + ' rảnh' : ''}${machineInfo ? ', máy ' + slot.machine + ' rảnh' : ''}, BN rảnh${slot.bed ? ', giường ' + slot.bed + ' trống' : ''}.`,
+        actionType,
+        verified: true,
         patch: {
-          gioDienRa: m2t(overTimeStart),
-          gioKetThuc: m2t(overTimeEnd),
-          nvChinh: targetStaff,
-          nvPhu: fallbackSub,
-          may: (machinesOfCategory[0] || "Thủ công"),
-          giuong: fallbackBed,
+          gioDienRa: m2t(slot.time),
+          gioKetThuc: m2t(slot.end),
+          nvChinh: slot.staff,
+          nvPhu: slot.subStaff || '',
+          may: slot.machine,
+          giuong: slot.bed || '',
           phong: room
         }
-      });
-
-      const aftStart = 810; // 13:30
-      const aftEnd = aftStart + tgMay;
-      const aftSub = (canPhu === 1 && candidateSubs.length > 0) ? (candidateSubs.find(s => s !== targetStaff) || candidateSubs[0] || "") : "";
-      const aftBed = chooseBedForSlot(aftStart, aftEnd);
-      const aftSubInfo = aftSub ? `, Phụ: ${aftSub}` : '';
-      const aftBedInfo = aftBed ? `, Giường: ${aftBed}` : '';
-
-      advices.push({
-        id: 2,
-        title: `⚡ [Cần xác nhận] Chuyển ca sang buổi Chiều (${m2t(aftStart)} – ${m2t(aftEnd)})${aftSubInfo}${aftBedInfo}`,
-        description: `Đề xuất xếp [${tt}] vào đầu ca chiều. Vui lòng kiểm tra lịch rảnh của BN và nhân sự trước khi áp dụng.`,
-        actionType: 'SWITCH_SESSION',
-        patch: {
-          gioDienRa: m2t(aftStart),
-          gioKetThuc: m2t(aftEnd),
-          nvChinh: targetStaff,
-          nvPhu: aftSub,
-          may: (machinesOfCategory[0] || "Thủ công"),
-          giuong: aftBed,
-          phong: room
-        }
-      });
-    }
+      };
+    });
 
     return {
       rotItem,
@@ -3625,6 +3581,7 @@ const UnscheduledDiagnosticEngine = (function () {
       advices
     };
   }
+
 
   return {
     diagnose: diagnose

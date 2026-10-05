@@ -1,6 +1,6 @@
 {
-    "version": "4.2.0-rev3",
-    "releaseDate": "04/10/2026",
-    "releaseTime": "21:15 04/10/2026",
-    "notes": "Khắc phục triệt để lỗi không lưu dữ liệu chấm công và mất dữ liệu khi F5 trên Laptop và MiniPC; vô hiệu hóa logic dọn dẹp mock data xóa nhầm dữ liệu thực tháng 10; bổ sung HTTP keepalive chống hủy request khi F5/reload; bảo vệ bộ nhớ tạm và cache cục bộ thời gian thực."
+    "version": "4.2.1-rev1",
+    "releaseDate": "05/10/2026",
+    "releaseTime": "13:25 05/10/2026",
+    "notes": "Nâng cấp toàn diện logic Xếp lịch bổ sung và Cố vấn giải cứu ca rớt: Dồn lịch thông minh (Left-shift Compaction) tôn trọng 100% lịch đã xếp trước đó; Bỏ qua trạm MiniPC khi xếp bổ sung để tránh rớt ca và xung đột giờ; Động cơ Cố vấn giải cứu ca rớt (Unscheduled Diagnostic Engine) quét động thời gian thực và xác minh chống trùng giờ 4 chiều (Bệnh nhân, Kỹ thuật viên, Máy móc, Giường bệnh) trước khi đề xuất và áp dụng."
 }

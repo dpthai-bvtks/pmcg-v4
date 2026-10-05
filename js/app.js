@@ -7602,7 +7602,41 @@ var dataCache = window.dataCache;
         // 💡 BỘ CỐ VẤN GIẢI CỨU CA RỚT THÔNG MINH (SMART UNSCHEDULED ADVISOR)
         // ============================================================
 
+        function refreshUnscheduledAdvisorData() {
+            if (!window.lastUnscheduledData || window.lastUnscheduledData.length === 0) return;
+            let db = null;
+            if (window.SchedulerEngine && typeof window.SchedulerEngine.buildDbFromCache === 'function') {
+                try {
+                    db = window.SchedulerEngine.buildDbFromCache().database;
+                } catch(e) {
+                    console.warn('[Advisor]: Cannot build DB for diagnosis:', e);
+                }
+            }
+            if (db && window.UnscheduledDiagnosticEngine && typeof window.UnscheduledDiagnosticEngine.diagnose === 'function') {
+                const currentSched = (Array.isArray(window.currentScheduleData) ? window.currentScheduleData : [])
+                    .filter(r => r && r.gioDienRa && r.gioDienRa !== '--' && !String(r.gioDienRa).includes('Rớt') && !r.__dropped);
+                window.lastUnscheduledData = window.lastUnscheduledData.map(item => {
+                    try {
+                        const diag = window.UnscheduledDiagnosticEngine.diagnose(item, db, currentSched);
+                        if (diag) {
+                            return {
+                                ...item,
+                                causeCode: diag.causeCode || item.causeCode,
+                                causeTitle: diag.causeTitle || item.causeTitle,
+                                causeDetail: diag.causeDetail || item.causeDetail,
+                                advices: diag.advices || []
+                            };
+                        }
+                    } catch(dErr) {
+                        console.warn('[Advisor]: diagnose error for item:', dErr);
+                    }
+                    return item;
+                });
+            }
+        }
+
         function openUnscheduledAdvisorModal() {
+            refreshUnscheduledAdvisorData();
             const modal = document.getElementById('modal-unscheduled-advisor');
             if (modal) {
                 modal.style.display = 'flex';
@@ -7649,20 +7683,7 @@ var dataCache = window.dataCache;
                 const causeTitle = item.causeTitle || '🟡 Chưa xếp được';
                 const causeDetail = escapeHtml(item.causeDetail || item.reason || 'Thiếu tài nguyên hoặc hết khung giờ rảnh.');
 
-                const advices = (item.advices && item.advices.length > 0) ? item.advices : [
-                    {
-                        id: 1,
-                        title: `⚡ Cho phép KTV làm lố 10 phút cuối ca sáng (11:30 - 11:40)`,
-                        description: `Nới lỏng khung giờ làm việc ca sáng để hoàn tất ca [${procName}] cho BN ${bnName}.`,
-                        patch: { gioDienRa: "11:30", gioKetThuc: "12:00", nvChinh: "KTV Phụ Trách", nvPhu: "", may: "Thủ công", giuong: "", phong: roomName }
-                    },
-                    {
-                        id: 2,
-                        title: `⚡ Chuyển ca sang buổi Chiều (13:30 - 14:00)`,
-                        description: `Xếp ca [${procName}] vào đầu giờ chiều khi có máy và nhân sự rảnh rỗi.`,
-                        patch: { gioDienRa: "13:30", gioKetThuc: "14:00", nvChinh: "KTV Phụ Trách", nvPhu: "", may: "Thủ công", giuong: "", phong: roomName }
-                    }
-                ];
+                const advices = Array.isArray(item.advices) ? item.advices : [];
 
                 html += `
                 <div class="rescue-card">
@@ -7679,11 +7700,11 @@ var dataCache = window.dataCache;
                     </div>
 
                     <div style="font-weight: 700; font-size: 13px; color: #334155; margin-bottom: 8px;">
-                        💡 Gợi ý phương án giải cứu (1-Click Tự động xếp lịch):
+                        💡 Gợi ý phương án giải cứu (Đã xác minh không trùng giờ):
                     </div>
 
                     <div class="rescue-advices-list">
-                        ${advices.map((advice, adviceIdx) => `
+                        ${advices.length > 0 ? advices.map((advice, adviceIdx) => `
                             <div class="rescue-advice-item">
                                 <div class="rescue-advice-info">
                                     <div class="rescue-advice-title">${escapeHtml(advice.title)}</div>
@@ -7693,7 +7714,14 @@ var dataCache = window.dataCache;
                                     ⚡ Áp dụng giải cứu ngay
                                 </button>
                             </div>
-                        `).join('')}
+                        `).join('') : `
+                            <div style="padding: 12px 16px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; font-size: 13px; color: #92400e;">
+                                ⚠️ Hiện chưa tìm thấy khung giờ rảnh hoàn toàn mà không vi phạm lịch đã xếp (BN / KTV / Máy / Giường đều kín).
+                                <div style="margin-top: 6px; font-size: 12px; color: #78350f;">
+                                    👉 <strong>Khuyến nghị:</strong> Bạn có thể mở rộng ca trực (cho phép làm thêm giờ) trong <em>Danh mục Nhân sự</em>, hoặc điều chỉnh giờ y lệnh của bệnh nhân để tạo khoảng trống.
+                                </div>
+                            </div>
+                        `}
                     </div>
                 </div>`;
             });
@@ -7707,9 +7735,11 @@ var dataCache = window.dataCache;
 
             const rotItem = unscheduled[rotIndex];
             const advices = (rotItem.advices && rotItem.advices.length > 0) ? rotItem.advices : [];
-            const advice = advices[adviceIndex] || {
-                patch: { gioDienRa: "11:30", gioKetThuc: "12:00", nvChinh: "KTV Phụ Trách", nvPhu: "", may: "Thủ công", giuong: "", phong: rotItem.room || rotItem.phong || "" }
-            };
+            const advice = advices[adviceIndex];
+            if (!advice || !advice.patch) {
+                alert("⚠️ Không tìm thấy phương án giải cứu hợp lệ!");
+                return;
+            }
             const patch = advice.patch || {};
 
             const targetDate = rotItem.ngay || (document.getElementById('schedule-date')?.value) || new Date().toISOString().slice(0, 10);
@@ -7726,7 +7756,7 @@ var dataCache = window.dataCache;
             const bnClean = String(patName).trim().toUpperCase();
             const rmClean = String(targetRoom).trim().toLowerCase();
 
-            // Ưu tiên 1: Tra cứu xem BN này đã có giường trong cùng phòng trong ngày chưa (ví dụ G33)
+            // Ưu tiên 1: Tra cứu xem BN này đã có giường trong cùng phòng trong ngày chưa
             let existingBnBed = "";
             for (const item of window.currentScheduleData) {
                 const iBn = String(item.tenBN || item.HOTEN || '').trim().toUpperCase();
@@ -7739,8 +7769,7 @@ var dataCache = window.dataCache;
             }
             if (existingBnBed) {
                 resolvedBed = existingBnBed;
-            } else if (!resolvedBed || resolvedBed === "Giường 1") {
-                // Nếu không có giường của BN và patch bị rơi vào fallback "Giường 1" hoặc rỗng
+            } else if (!resolvedBed) {
                 let roomBeds = [];
                 if (typeof dataCache !== 'undefined' && dataCache.room) {
                     const rObj = dataCache.room.find(r => String(r.tenPhong || r.name || r[1] || '').trim().toLowerCase() === rmClean);
@@ -7752,10 +7781,10 @@ var dataCache = window.dataCache;
                     }
                 }
                 if (roomBeds.length > 0) {
-                    const gStart = patch.gioDienRa || "11:30";
-                    const gEnd = patch.gioKetThuc || "12:00";
-                    const tStart = (typeof t2m === 'function') ? t2m(gStart) : 690;
-                    const tEnd = (typeof t2m === 'function') ? t2m(gEnd) : 720;
+                    const gStart = patch.gioDienRa || "08:00";
+                    const gEnd = patch.gioKetThuc || "08:30";
+                    const tStart = (typeof t2m === 'function') ? t2m(gStart) : 480;
+                    const tEnd = (typeof t2m === 'function') ? t2m(gEnd) : 510;
                     const freeBed = roomBeds.find(bName => {
                         return !window.currentScheduleData.some(item => {
                             const iRoom = String(item.phong || item.PHONG || '').trim().toLowerCase();
@@ -7767,8 +7796,6 @@ var dataCache = window.dataCache;
                         });
                     });
                     resolvedBed = freeBed || roomBeds[0];
-                } else {
-                    resolvedBed = (resolvedBed === "Giường 1" && !rmClean.includes("phục hồi")) ? "G1" : (resolvedBed || "G1");
                 }
             }
 
@@ -7790,7 +7817,6 @@ var dataCache = window.dataCache;
             }
 
             if (needSub && !resolvedNvPhu) {
-                // Ưu tiên 1: Lấy người phụ mà BN đã có ở ca khác trong ngày (ví dụ Phụ 5)
                 let existingSub = "";
                 for (const item of window.currentScheduleData) {
                     const iBn = String(item.tenBN || item.HOTEN || '').trim().toUpperCase();
@@ -7804,15 +7830,6 @@ var dataCache = window.dataCache;
                     resolvedNvPhu = existingSub;
                 } else if (procDsPhu.length > 0) {
                     resolvedNvPhu = procDsPhu[0];
-                } else if (typeof dataCache !== 'undefined' && dataCache.staff) {
-                    const subStaff = dataCache.staff.find(s => {
-                        const sName = String(s.ten || s.name || s[1] || '').trim();
-                        const sRole = String(s.vaiTro || s.role || s[2] || '').trim();
-                        return /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(sRole) || /phụ/i.test(sName);
-                    });
-                    if (subStaff) {
-                        resolvedNvPhu = String(subStaff.ten || subStaff.name || subStaff[1] || '').trim();
-                    }
                 }
             }
 
@@ -7822,17 +7839,30 @@ var dataCache = window.dataCache;
                 namSinh: patNs,
                 phong: targetRoom,
                 thuThuat: procName,
-                gioDienRa: patch.gioDienRa || "11:30",
-                gioKetThuc: patch.gioKetThuc || "12:00",
+                gioDienRa: patch.gioDienRa || "08:00",
+                gioKetThuc: patch.gioKetThuc || "08:30",
                 nvChinh: patch.nvChinh || "KTV Phụ Trách",
                 nvPhu: resolvedNvPhu,
                 may: patch.may || "Thủ công",
                 giuong: resolvedBed
             };
 
-            if (!window.currentScheduleData) window.currentScheduleData = [];
+            // 🔒 BẢO VỆ CHỐNG TRÙNG GIỜ TUYỆT ĐỐI (STRICT OVERLAP VALIDATION):
+            // Dùng bộ hậu kiểm va chạm kiểm tra toàn diện với lịch hiện tại
+            let db = null;
+            if (window.SchedulerEngine && typeof window.SchedulerEngine.buildDbFromCache === 'function') {
+                try { db = window.SchedulerEngine.buildDbFromCache().database; } catch(e) {}
+            }
+            if (window.SchedulerEngine && typeof window.SchedulerEngine.validateNoOverlapWithExisting === 'function') {
+                const valRes = window.SchedulerEngine.validateNoOverlapWithExisting([rescuedRow], window.currentScheduleData, db);
+                if (valRes && valRes.collisionDrops && valRes.collisionDrops.length > 0) {
+                    const col = valRes.collisionDrops[0];
+                    alert(`⚠️ Không thể xếp ca này do xung đột thời gian:\n${col.reason || col.causeDetail || 'Trùng lịch với tài nguyên khác'}!\nVui lòng chọn khung giờ khác.`);
+                    return;
+                }
+            }
 
-            // 🔒 DEDUP GUARD: Kiểm tra ca giải cứu chưa tồn tại trong lịch (để tránh trùng lặp)
+            // 🔒 DEDUP GUARD: Kiểm tra ca giải cứu chưa tồn tại trong lịch
             const _dupKey = [rescuedRow.tenBN, rescuedRow.thuThuat, rescuedRow.gioDienRa, rescuedRow.ngay]
                 .map(x => String(x || '').trim().toLowerCase()).join('|');
             const _alreadyExists = window.currentScheduleData.some(x =>
@@ -7844,10 +7874,9 @@ var dataCache = window.dataCache;
                 return;
             }
 
-            // ✅ CHỈ push vào currentScheduleData (nguồn sự thật duy nhất)
+            // ✅ CHỈ push vào currentScheduleData khi đã xác minh 100% không trùng
             window.currentScheduleData.push(rescuedRow);
 
-            // 🔄 Sync ngược dataCache.schedule để filterSchedule() và loadDashboard() đọ cùng source
             if (typeof dataCache !== 'undefined') {
                 dataCache.schedule = window.currentScheduleData;
             }
@@ -7881,6 +7910,8 @@ var dataCache = window.dataCache;
 
             notify(`⚡ Đã giải cứu ca [${rescuedRow.thuThuat}] cho BN ${rescuedRow.tenBN} (${rescuedRow.gioDienRa}–${rescuedRow.gioKetThuc}, ${rescuedRow.nvChinh})!`, 'success');
 
+            // Cập nhật lại chẩn đoán cho các ca rớt còn lại theo lịch mới
+            refreshUnscheduledAdvisorData();
             renderUnscheduledAdvisor();
         }
 
