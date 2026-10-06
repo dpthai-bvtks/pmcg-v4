@@ -863,6 +863,79 @@ class EmrHisBotApp:
             self.log(f"Lỗi tìm form qua UIA: {e}", level="WARN")
         return None
 
+    def _find_form_main_uia(self):
+        """Tìm đối tượng WindowControl của FormMain emrHIS bằng UIAutomation"""
+        if auto is None:
+            return None
+        try:
+            # 1. Tìm trực tiếp theo AutomationId='FormMain'
+            form = auto.WindowControl(searchDepth=3, AutomationId="FormMain")
+            if form.Exists(0.2):
+                return form
+            # 2. Tìm theo SubName='emrHIS'
+            form = auto.WindowControl(searchDepth=3, SubName="emrHIS")
+            if form.Exists(0.2):
+                return form
+            # 3. Quét các cửa sổ Desktop cấp 1
+            root = auto.GetRootControl()
+            for win in root.GetChildren():
+                if win.ControlType == auto.ControlType.WindowControl:
+                    w_name = (win.Name or "").lower()
+                    if "emrhis" in w_name or win.AutomationId == "FormMain":
+                        return win
+        except Exception:
+            pass
+        return None
+
+    def _find_button_start_uia(self, main_uia=None):
+        """Tìm nút 'Bắt đầu thực hiện' trên FormMain emrHIS bằng UIAutomation"""
+        if auto is None:
+            return None
+        try:
+            if not main_uia:
+                main_uia = self._find_form_main_uia()
+            if main_uia:
+                for name in ["Bắt đầu thực hiện", "Bắt đầu", "Thực hiện"]:
+                    btn = main_uia.ButtonControl(searchDepth=6, SubName=name)
+                    if btn.Exists(0.08):
+                        return btn
+                    ctrl = main_uia.Control(searchDepth=6, SubName=name)
+                    if ctrl.Exists(0.08) and ctrl.ControlType in [auto.ControlType.ButtonControl, auto.ControlType.MenuItemControl]:
+                        return ctrl
+        except Exception:
+            pass
+        return None
+
+    def _find_context_menu_item_uia(self, target_names=None, timeout=1.0):
+        """
+        Tìm MenuItemControl trên Context Menu vừa mở bằng UIAutomation
+        Giúp click chính xác 100% vào mục 'Nhập Thông Tin PTTT' mà không lo lệch chuột
+        """
+        if auto is None:
+            return None
+        if target_names is None:
+            target_names = ["Nhập Thông Tin PTTT", "PTTT", "Thủ thuật", "Nhập thông tin"]
+
+        start_t = time.time()
+        while time.time() - start_t < timeout:
+            try:
+                root = auto.GetRootControl()
+                for name in target_names:
+                    # 1. Quét MenuItem trực tiếp trên Desktop root
+                    item = root.MenuItemControl(searchDepth=5, SubName=name)
+                    if item.Exists(0.04):
+                        return item
+                    # 2. Quét trong MenuControl
+                    menu = root.MenuControl(searchDepth=4)
+                    if menu.Exists(0.04):
+                        item = menu.MenuItemControl(searchDepth=3, SubName=name)
+                        if item.Exists(0.04):
+                            return item
+            except Exception:
+                pass
+            time.sleep(0.08)
+        return None
+
     def _get_control_center_pos(self, ctrl):
         """Lấy tọa độ tâm thực tế (cx, cy) của một UIAutomation Control"""
         if ctrl and ctrl.Exists(0.1):
@@ -875,6 +948,37 @@ class EmrHisBotApp:
             except Exception:
                 pass
         return None
+
+    def _set_control_text(self, ctrl, text, pos_fallback=None):
+        """
+        Gán giá trị văn bản cho Control thông minh và siêu tốc:
+        1. Thử dùng UIAutomation ValuePattern.SetValue() (chạy tức thì trong 0.005s, không cần chuột hay phím ảo)
+        2. Nếu không thành công, tự động fallback click tâm BoundingRectangle hoặc pos_fallback, rồi paste qua Clipboard
+        """
+        delay = self.speed_var.get()
+        if ctrl and auto is not None:
+            try:
+                val_pat = ctrl.GetPattern(auto.PatternId.ValuePattern) if hasattr(ctrl, 'GetPattern') else None
+                if val_pat and hasattr(val_pat, 'SetValue'):
+                    val_pat.SetValue(str(text))
+                    self.log(f"⚡ Đã gán trực tiếp qua UIA ValuePattern: '{text}'")
+                    return True
+            except Exception:
+                pass
+
+        pos = self._get_control_center_pos(ctrl) if ctrl else pos_fallback
+        if pos:
+            pyautogui.click(pos[0], pos[1])
+            time.sleep(delay * 0.2)
+            pyautogui.hotkey("ctrl", "a")
+            time.sleep(0.05)
+            pyautogui.press("backspace")
+            pyperclip.copy(str(text))
+            pyautogui.hotkey("ctrl", "v")
+            time.sleep(delay * 0.2)
+            pyautogui.press("enter")
+            return True
+        return False
 
     def fill_ekip_ktv(self, pos_ekip, task, form_window=None):
         """
@@ -993,23 +1097,10 @@ class EmrHisBotApp:
         # =====================================================================
         # 3. PHƯƠNG PHÁP VÔ CẢM (txtPPVoCam) - EditControl chuẩn
         # =====================================================================
-        pos_vc = None
-        if form_uia:
-            ctrl_vc = form_uia.EditControl(AutomationId="txtPPVoCam")
-            pos_vc = self._get_control_center_pos(ctrl_vc)
-        if not pos_vc:
-            pos_vc = self.get_safe_pos(cal.get("cbo_vo_cam"), form_window)
-
-        if pos_vc:
-            pyautogui.click(pos_vc[0], pos_vc[1])
-            time.sleep(delay * 0.25)
-            pyautogui.hotkey("ctrl", "a")
-            time.sleep(0.05)
-            pyautogui.press("backspace")
-            pyperclip.copy(vo_cam)
-            pyautogui.hotkey("ctrl", "v")
-            time.sleep(delay * 0.2)
-            pyautogui.press("enter")
+        ctrl_vc = form_uia.EditControl(AutomationId="txtPPVoCam") if form_uia else None
+        pos_vc = self._get_control_center_pos(ctrl_vc) if ctrl_vc else self.get_safe_pos(cal.get("cbo_vo_cam"), form_window)
+        if ctrl_vc or pos_vc:
+            self._set_control_text(ctrl_vc, vo_cam, pos_fallback=pos_vc)
             self.log(f"💉 Đã nhập Phương pháp vô cảm: '{vo_cam}'")
         time.sleep(delay * 0.2)
 
@@ -1053,38 +1144,19 @@ class EmrHisBotApp:
         # 5. MÁY Y TẾ (txtMayThucHien) - EditControl
         # =====================================================================
         if may_y_te and len(may_y_te) > 1:
-            pos_may = None
-            if form_uia:
-                ctrl_may = form_uia.EditControl(AutomationId="txtMayThucHien")
-                pos_may = self._get_control_center_pos(ctrl_may)
-            if not pos_may:
-                pos_may = self.get_safe_pos(cal.get("cbo_may_y_te"), form_window)
-            if pos_may:
-                pyautogui.click(pos_may[0], pos_may[1])
-                time.sleep(delay * 0.2)
-                pyautogui.hotkey("ctrl", "a")
-                pyperclip.copy(may_y_te)
-                pyautogui.hotkey("ctrl", "v")
-                time.sleep(delay * 0.2)
-                pyautogui.press("enter")
+            ctrl_may = form_uia.EditControl(AutomationId="txtMayThucHien") if form_uia else None
+            pos_may = self._get_control_center_pos(ctrl_may) if ctrl_may else self.get_safe_pos(cal.get("cbo_may_y_te"), form_window)
+            if ctrl_may or pos_may:
+                self._set_control_text(ctrl_may, may_y_te, pos_fallback=pos_may)
                 self.log(f"⚙️ Đã nhập Máy y tế: '{may_y_te}'")
 
         # =====================================================================
         # 6. MÔ TẢ THỦ THUẬT (txtMoTaPTTT) - EditControl (Mặc định: '.')
         # =====================================================================
-        pos_mt = None
-        if form_uia:
-            ctrl_mt = form_uia.EditControl(AutomationId="txtMoTaPTTT")
-            pos_mt = self._get_control_center_pos(ctrl_mt)
-        if not pos_mt:
-            pos_mt = self.get_safe_pos(cal.get("txt_mo_ta"), form_window)
-        if pos_mt:
-            pyautogui.click(pos_mt[0], pos_mt[1])
-            time.sleep(delay * 0.2)
-            pyautogui.hotkey("ctrl", "a")
-            pyperclip.copy(mo_ta)
-            pyautogui.hotkey("ctrl", "v")
-            time.sleep(delay * 0.2)
+        ctrl_mt = form_uia.EditControl(AutomationId="txtMoTaPTTT") if form_uia else None
+        pos_mt = self._get_control_center_pos(ctrl_mt) if ctrl_mt else self.get_safe_pos(cal.get("txt_mo_ta"), form_window)
+        if ctrl_mt or pos_mt:
+            self._set_control_text(ctrl_mt, mo_ta, pos_fallback=pos_mt)
             self.log(f"📝 Đã nhập Mô tả: '{mo_ta}'")
 
         # =====================================================================
@@ -1119,21 +1191,35 @@ class EmrHisBotApp:
         # =====================================================================
         # 8. BẤM NÚT "LƯU + ĐÓNG" (btnSaveClose)
         # =====================================================================
-        pos_save = None
         btn_save_uia = None
+        saved_by_invoke = False
         if form_uia:
             btn_save_uia = form_uia.ButtonControl(AutomationId="btnSaveClose")
-            pos_save = self._get_control_center_pos(btn_save_uia)
+            if not btn_save_uia.Exists(0.1):
+                btn_save_uia = form_uia.ButtonControl(SubName="Lưu")
 
-        if not pos_save:
-            pos_save = self.get_safe_pos(cal.get("btn_luu_dong"), form_window)
+            if btn_save_uia and btn_save_uia.Exists(0.1):
+                # Thử InvokePattern trước để phản hồi tức thì
+                try:
+                    inv = btn_save_uia.GetPattern(auto.PatternId.InvokePattern) if hasattr(btn_save_uia, 'GetPattern') else None
+                    if inv and hasattr(inv, 'Invoke'):
+                        inv.Invoke()
+                        saved_by_invoke = True
+                        self.log("💾 Đã kích hoạt 'Lưu + Đóng' qua UIA InvokePattern siêu tốc.")
+                except Exception:
+                    pass
 
-        if pos_save:
-            pyautogui.click(pos_save[0], pos_save[1])
-            self.log(f"💾 Đã bấm 'Lưu + Đóng' tại ({pos_save[0]}, {pos_save[1]}).")
-        elif btn_save_uia:
-            btn_save_uia.Click()
-            self.log("💾 Đã click 'Lưu + Đóng' qua UIAutomation Invoke.")
+        if not saved_by_invoke:
+            pos_save = self._get_control_center_pos(btn_save_uia) if btn_save_uia else None
+            if not pos_save:
+                pos_save = self.get_safe_pos(cal.get("btn_luu_dong"), form_window)
+
+            if pos_save:
+                pyautogui.click(pos_save[0], pos_save[1])
+                self.log(f"💾 Đã bấm 'Lưu + Đóng' tại ({pos_save[0]}, {pos_save[1]}).")
+            elif btn_save_uia:
+                btn_save_uia.Click()
+                self.log("💾 Đã click 'Lưu + Đóng' qua UIAutomation Click.")
 
         time.sleep(delay * 1.2)
 
@@ -1212,7 +1298,8 @@ class EmrHisBotApp:
         if not main_win:
             raise Exception("Không tìm thấy cửa sổ emrHIS! Vui lòng mở emrHIS lên.")
 
-        # 2. Tìm kiếm bệnh nhân theo tên (Không ấn Enter để tránh ra danh sách nhiều ngày)
+        main_uia = self._find_form_main_uia()
+
         # 2. Tìm kiếm bệnh nhân theo tên (Không ấn Enter để tránh ra danh sách nhiều ngày)
         pos_search = self.get_safe_pos(cal_main.get("search_box"), main_win)
         if pos_search:
@@ -1245,11 +1332,15 @@ class EmrHisBotApp:
         if self.stop_requested:
             return False
 
-        # 4. Bấm "Bắt đầu thực hiện" (Tự bấm Có nếu có cảnh báo, xử lý tọa độ động theo cảnh báo)
-        pos_btn_start = self.get_safe_pos(cal_main.get("btn_bat_dau_thuc_hien"), main_win)
+        # 4. Bấm "Bắt đầu thực hiện" (Tự động phát hiện nút qua UIA, fallback sang tọa độ)
+        btn_start_uia = self._find_button_start_uia(main_uia)
+        pos_btn_start = self._get_control_center_pos(btn_start_uia) if btn_start_uia else None
+        if not pos_btn_start:
+            pos_btn_start = self.get_safe_pos(cal_main.get("btn_bat_dau_thuc_hien"), main_win)
+
         if pos_btn_start:
             pyautogui.click(pos_btn_start[0], pos_btn_start[1])
-            self.log("▶️ Đã bấm 'Bắt đầu thực hiện'. Đang kiểm tra cảnh báo xác nhận...")
+            self.log(f"▶️ Đã bấm 'Bắt đầu thực hiện' tại ({pos_btn_start[0]}, {pos_btn_start[1]}). Đang kiểm tra cảnh báo...")
             time.sleep(delay * 0.8)
 
             # Tự động quét và click nút 'Có' (dò tìm tọa độ thực tế bất kể vị trí nút Có thay đổi)
@@ -1264,16 +1355,26 @@ class EmrHisBotApp:
         pos_proc = self.get_safe_pos(cal_main.get("procedure_first_row"), main_win)
         if pos_proc:
             pyautogui.rightClick(pos_proc[0], pos_proc[1])
-            time.sleep(delay * 0.8)
+            time.sleep(delay * 0.4)
 
-            pos_menu = self.get_safe_pos(cal_main.get("menu_nhap_tt_pttt"), main_win)
-            if pos_menu:
-                pyautogui.click(pos_menu[0], pos_menu[1])
+            # Thử tìm MenuItem "Nhập Thông Tin PTTT" bằng UIAutomation để click chuẩn 100%
+            menu_item_uia = self._find_context_menu_item_uia(target_names=["Nhập Thông Tin PTTT", "PTTT", "Thủ thuật"])
+            pos_menu_uia = self._get_control_center_pos(menu_item_uia) if menu_item_uia else None
+
+            if pos_menu_uia:
+                pyautogui.click(pos_menu_uia[0], pos_menu_uia[1])
+                self.log(f"🎯 Đã click Menu 'Nhập Thông Tin PTTT' qua UIA tại ({pos_menu_uia[0]}, {pos_menu_uia[1]})!")
             else:
-                pyautogui.press("down")
-                pyautogui.press("enter")
+                pos_menu = self.get_safe_pos(cal_main.get("menu_nhap_tt_pttt"), main_win)
+                if pos_menu:
+                    pyautogui.click(pos_menu[0], pos_menu[1])
+                    self.log(f"🎯 Đã click Menu theo tọa độ cấu hình ({pos_menu[0]}, {pos_menu[1]}).")
+                else:
+                    pyautogui.press("down")
+                    pyautogui.press("enter")
+                    self.log("🎯 Đã chọn Menu bằng phím tắt Down + Enter.")
 
-            time.sleep(delay * 2.0)
+            time.sleep(delay * 1.5)
 
         if self.stop_requested:
             return False
