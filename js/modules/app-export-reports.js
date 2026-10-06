@@ -645,10 +645,30 @@
                 const tenBnClean = String(r.tenBN || '').replace(/\s*\((RV|❌\s*Rớt)\)\s*$/i, '').trim();
                 const nvChinh = String(r.nguoiThucHien || r.nvChinh || '').trim();
                 const staffObj = staffMap[nvChinh.toLowerCase()] || {};
-                const ktvMa = String(staffObj.tenHis || staffObj.his_name || nvChinh).trim();
+                const padTime = (t) => {
+                    if (!t) return '08:00';
+                    const parts = String(t).trim().split(':');
+                    if (parts.length >= 2) {
+                        return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+                    }
+                    return String(t).trim();
+                };
 
-                const gioBd = String(r.gioDienRa || r.gioVao || '08:00').trim();
-                const gioKt = String(r.gioKetThuc || r.gioRa || '08:30').trim();
+                const getStaffInitials = (name) => {
+                    if (!name) return 'hdd';
+                    return name.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                        .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+                        .split(/\s+/).filter(Boolean)
+                        .map(w => w[0].toLowerCase()).join('');
+                };
+
+                let ktvMa = String(staffObj.tenHis || staffObj.his_name || '').trim();
+                if (!ktvMa) {
+                    ktvMa = getStaffInitials(nvChinh);
+                }
+
+                const gioBd = padTime(r.gioDienRa || r.GIODIENRA || r.gioVao || '08:00');
+                const gioKt = padTime(r.gioKetThuc || r.GIOKETTHUC || r.gioRa || '08:30');
 
                 return {
                     stt: idx + 1,
