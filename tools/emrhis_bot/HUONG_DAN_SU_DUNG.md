@@ -20,32 +20,30 @@
 
 ---
 
-## 🎯 2 CHẾ ĐỘ VẬN HÀNH TIỆN LỢI
+## 🎯 3 CHẾ ĐỘ VẬN HÀNH TIỆN LỢI
 
-### Chế độ 1: Điền siêu tốc Form đang mở (Phím tắt `[F8]`) - *Khuyên dùng hàng ngày*
-*Cách này cực kỳ nhanh, an toàn và bạn luôn kiểm soát 100%:*
-1. Bạn mở sẵn phần mềm **emrHIS**, chọn bệnh nhân và mở cửa sổ **"Cập Nhật Thông Tin Thủ Thuật"**.
-2. Nhấn phím **`[F8]`** trên bàn phím (hoặc bấm nút **`⚡ ĐIỀN FORM ĐANG MỞ (F8)`** trên Bot).
-3. Bot sẽ tự động:
-   - Điền **Thời gian bắt đầu** (đúng định dạng `HH:mm dd/MM/yyyy`).
-   - Điền **Thời gian kết thúc**.
-   - Chọn **Tình hình PTTT**: *Chủ động*.
-   - Chọn **Phương pháp vô cảm**: *Khác*.
-   - Chọn **Máy y tế** (nếu ca đó có phân bổ máy).
-   - Điền **Mô tả thủ thuật**: dấu `.`
-   - Điền **Thủ thuật viên chính**: gõ mã nhân viên vào ô Nhân viên của dòng 1 bảng Ê-kíp.
-   - Bấm nút **`Lưu + Đóng`** và tự động xác nhận thông báo!
-4. Ca đó sẽ tự động đánh dấu `Hoàn thành` và chuyển sang ca kế tiếp trong danh sách.
+### Chế độ 1: 🧪 CHẠY THỬ NGHIỆM ĐÚNG 1 CA (Phím tắt `[F7]`) - *Khuyên dùng để kiểm tra thử nghiệm*
+*Giúp bạn chạy thử 1 ca duy nhất từ A đến Z để kiểm tra độ chính xác trước khi cho chạy hàng loạt:*
+1. Mở phần mềm **emrHIS**, để ở màn hình phòng thủ thuật.
+2. Trên bảng danh sách của Bot, bạn click chuột chọn **bất kỳ ca nào muốn thử** (hoặc để mặc định ca đầu tiên).
+3. Bấm nút **`🧪 CHẠY THỬ 1 CA (F7)`** (hoặc nhấn phím **`[F7]`**).
+4. Bot sẽ tự động thực hiện trọn vẹn:
+   - Tự tìm kiếm tên bệnh nhân $\rightarrow$ Chọn bệnh nhân.
+   - Bấm *Bắt đầu thực hiện* $\rightarrow$ Tự xác nhận cảnh báo.
+   - Chuột phải dòng thủ thuật $\rightarrow$ Chọn *Nhập Thông Tin PTTT*.
+   - Điền đầy đủ giờ BD, KT, Chủ động, Khác, Máy, Mô tả `.`, KTV $\rightarrow$ Bấm *Lưu + Đóng*.
+   - **DỪNG LẠI NGAY LẬP TỨC** và hiện thông báo hoàn thành để bạn kiểm tra!
 
-### Chế độ 2: Tự động chạy hoàn toàn toàn bộ ca (Phím tắt `[F9]`)
+### Chế độ 2: Điền siêu tốc Form đang mở (Phím tắt `[F8]`)
+*Dùng khi bạn đã tự mở sẵn cửa sổ "Cập Nhật Thông Tin Thủ Thuật" cho bệnh nhân:*
+1. Bạn mở sẵn cửa sổ **"Cập Nhật Thông Tin Thủ Thuật"** trên `emrHIS`.
+2. Nhấn phím **`[F8]`** trên bàn phím (hoặc bấm nút **`⚡ ĐIỀN FORM ĐANG MỞ (F8)`**).
+3. Bot sẽ tự động điền toàn bộ các trường trong 1 giây và bấm `Lưu + Đóng`!
+
+### Chế độ 3: Tự động chạy hoàn toàn toàn bộ ca (Phím tắt `[F9]`)
 1. Bật sẵn **emrHIS**, mở đúng phòng thủ thuật cần nhập.
-2. Bấm nút **`▶️ CHẠY TỰ ĐỘNG (F9)`** trên Bot.
-3. Bot sẽ tự động thực hiện tuần tự từng bệnh nhân:
-   - Tìm kiếm họ tên bệnh nhân trong ô tìm kiếm $\rightarrow$ Chọn bệnh nhân.
-   - Bấm *Bắt đầu thực hiện* $\rightarrow$ Tự bấm Có nếu có cảnh báo.
-   - Chuột phải vào dòng thủ thuật $\rightarrow$ Chọn *Nhập Thông Tin PTTT*.
-   - Tự động điền đầy đủ form và bấm *Lưu + Đóng*.
-   - Chuyển sang bệnh nhân tiếp theo cho đến khi xong hết danh sách!
+2. Bấm nút **`▶️ CHẠY TỰ ĐỘNG (F9)`** (hoặc phím **`[F9]`**).
+3. Bot sẽ tự động chạy tuần tự từng ca từ đầu đến cuối danh sách (tự tìm BN, bắt đầu, mở form, điền, lưu và chuyển ca tiếp theo).
 
 ---
 

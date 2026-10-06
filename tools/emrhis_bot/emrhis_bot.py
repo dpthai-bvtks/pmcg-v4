@@ -30,6 +30,7 @@ CONFIG_PATH = os.path.join(APP_DIR, "emrhis_config.json")
 
 # Win32 Virtual Keys cho Global Hotkeys
 VK_ESCAPE = 0x1B
+VK_F7 = 0x76
 VK_F8 = 0x77
 VK_F9 = 0x78
 VK_F12 = 0x7B
@@ -126,7 +127,7 @@ class EmrHisBotApp:
 
         status_sub = tk.Label(
             header_frame,
-            text="Phím tắt: [F8] Điền form hiện tại | [F9] Chạy tự động | [ESC / F12] Dừng khẩn cấp",
+            text="Phím tắt: [F7] Chạy thử 1 ca | [F8] Điền form hiện tại | [F9] Chạy tự động | [ESC / F12] Dừng khẩn cấp",
             font=("Segoe UI", 9),
             fg="#94a3b8",
             bg="#0f172a"
@@ -165,6 +166,19 @@ class EmrHisBotApp:
 
         sep1 = ttk.Separator(toolbar, orient=tk.VERTICAL)
         sep1.pack(side=tk.LEFT, fill=tk.Y, padx=10)
+
+        self.btn_run_test = tk.Button(
+            toolbar,
+            text="🧪 CHẠY THỬ 1 CA (F7)",
+            bg="#7c3aed",
+            fg="white",
+            font=("Segoe UI", 10, "bold"),
+            relief=tk.FLAT,
+            padx=12,
+            pady=5,
+            command=self.run_single_test_task
+        )
+        self.btn_run_test.pack(side=tk.LEFT, padx=4)
 
         self.btn_run_all = tk.Button(
             toolbar,
@@ -347,6 +361,7 @@ class EmrHisBotApp:
     # =========================================================================
     def _start_global_hotkey_listener(self):
         def listener():
+            prev_f7 = False
             prev_f8 = False
             prev_f9 = False
             prev_esc = False
@@ -361,6 +376,12 @@ class EmrHisBotApp:
                     if self.is_running:
                         self.root.after(0, self.request_stop)
 
+                # F7 -> Run Single Test Task
+                now_f7 = is_key_pressed(VK_F7)
+                if now_f7 and not prev_f7:
+                    if not self.is_running and not self.is_calibrating:
+                        self.root.after(0, self.run_single_test_task)
+
                 # F8 -> Fill Current Form
                 now_f8 = is_key_pressed(VK_F8)
                 if now_f8 and not prev_f8:
@@ -373,6 +394,7 @@ class EmrHisBotApp:
                     if not self.is_running and not self.is_calibrating:
                         self.root.after(0, self.start_auto_run)
 
+                prev_f7 = now_f7
                 prev_f8 = now_f8
                 prev_f9 = now_f9
                 prev_esc = now_esc
@@ -721,6 +743,176 @@ class EmrHisBotApp:
             self.tree.see(str(next_idx))
 
     # =========================================================================
+    # CORE PIPELINE: THỰC HIỆN ĐẦY ĐỦ 1 CA THỦ THUẬT
+    # =========================================================================
+    def execute_single_task_pipeline(self, task, idx=0):
+        """
+        Thực hiện toàn bộ chu trình nhập cho 1 ca thủ thuật:
+        Tìm BN -> Chọn BN -> Bắt đầu thực hiện -> Mở PTTT -> Điền form -> Lưu + Đóng
+        """
+        delay = self.speed_var.get()
+        cal_main = self.config.get("calibration", {}).get("main_window", {})
+        form_title = self.config.get("settings", {}).get("window_form_title_contains", "Cập Nhật Thông Tin Thủ Thuật")
+        ten_bn = task.get("ten_bn", "").strip()
+
+        # 1. Kích hoạt cửa sổ chính emrHIS
+        main_win = self.find_emrhis_window()
+        if not main_win:
+            raise Exception("Không tìm thấy cửa sổ emrHIS! Vui lòng mở emrHIS lên.")
+
+        # 2. Tìm kiếm bệnh nhân theo tên (Không ấn Enter để tránh ra danh sách nhiều ngày)
+        pos_search = self.get_safe_pos(cal_main.get("search_box"), main_win)
+        if pos_search:
+            pyautogui.click(pos_search[0], pos_search[1])
+            time.sleep(delay)
+            pyautogui.hotkey("ctrl", "a")
+            pyautogui.press("backspace")
+            pyperclip.copy(ten_bn)
+            pyautogui.hotkey("ctrl", "v")
+            if self.config.get("settings", {}).get("search_press_enter", False):
+                pyautogui.press("enter")
+            time.sleep(delay * 1.0)
+
+        if self.stop_requested:
+            return False
+
+        # 3. Chọn dòng bệnh nhân trong danh sách
+        pos_pt_row = self.get_safe_pos(cal_main.get("patient_first_row"), main_win)
+        if pos_pt_row:
+            pyautogui.click(pos_pt_row[0], pos_pt_row[1])
+            time.sleep(delay)
+
+        if self.stop_requested:
+            return False
+
+        # 4. Bấm "Bắt đầu thực hiện"
+        pos_btn_start = self.get_safe_pos(cal_main.get("btn_bat_dau_thuc_hien"), main_win)
+        if pos_btn_start:
+            pyautogui.click(pos_btn_start[0], pos_btn_start[1])
+            time.sleep(delay * 1.5)
+
+            # Nếu có cảnh báo xác nhận -> Enter để chọn Có
+            if self.config.get("settings", {}).get("auto_dismiss_popups", True):
+                pyautogui.press("enter")
+                time.sleep(delay * 0.5)
+
+        if self.stop_requested:
+            return False
+
+        # 5. Chuột phải vào dòng thủ thuật -> chọn "Nhập Thông Tin PTTT"
+        pos_proc = self.get_safe_pos(cal_main.get("procedure_first_row"), main_win)
+        if pos_proc:
+            pyautogui.rightClick(pos_proc[0], pos_proc[1])
+            time.sleep(delay * 0.8)
+
+            pos_menu = self.get_safe_pos(cal_main.get("menu_nhap_tt_pttt"), main_win)
+            if pos_menu:
+                pyautogui.click(pos_menu[0], pos_menu[1])
+            else:
+                pyautogui.press("down")
+                pyautogui.press("enter")
+
+            time.sleep(delay * 2.0)
+
+        if self.stop_requested:
+            return False
+
+        # 6. Đợi cửa sổ popup form hiện lên
+        form_win = None
+        for _ in range(15):
+            form_win = self.find_emrhis_window(form_title)
+            if form_win:
+                break
+            time.sleep(0.3)
+
+        # 7. Điền form PTTT và ấn Lưu + Đóng
+        self.fill_form_pttt(task, form_window=form_win)
+        task["status"] = "Hoàn thành"
+        return True
+
+    # =========================================================================
+    # PHÍM TẮT F7: CHẠY THỬ NGHIỆM ĐÚNG 1 CA (SINGLE TEST RUN)
+    # =========================================================================
+    def run_single_test_task(self):
+        if not self.tasks:
+            messagebox.showwarning("Chưa có dữ liệu", "Vui lòng nạp danh sách ca trước (Dán từ Clipboard hoặc mở file JSON)!")
+            return
+
+        if self.is_running:
+            return
+
+        # Lấy ca đang chọn trong bảng hoặc ca đầu tiên chưa làm
+        selected_iid = self.tree.focus()
+        task_idx = None
+        if selected_iid:
+            try:
+                task_idx = int(selected_iid)
+            except ValueError:
+                pass
+
+        if task_idx is None:
+            for idx, t in enumerate(self.tasks):
+                if t.get("status") != "Hoàn thành":
+                    task_idx = idx
+                    break
+            if task_idx is None:
+                task_idx = 0
+
+        task = self.tasks[task_idx]
+        ten_bn = task.get("ten_bn", "").strip()
+        tt_name = task.get("thu_thuat", "").strip()
+
+        # Đánh dấu chọn trên giao diện
+        self.tree.selection_set(str(task_idx))
+        self.tree.focus(str(task_idx))
+        self.tree.see(str(task_idx))
+
+        self.is_running = True
+        self.stop_requested = False
+        self.btn_run_all.config(state=tk.DISABLED)
+        self.btn_run_test.config(state=tk.DISABLED)
+        self.btn_fill_one.config(state=tk.DISABLED)
+        self.btn_stop.config(state=tk.NORMAL)
+
+        def worker():
+            try:
+                self.log(f"🧪 [CHẠY THỬ] Bắt đầu thử nghiệm trọn vẹn 1 ca duy nhất (#{task_idx + 1}): {ten_bn} [{tt_name}]...")
+                task["status"] = "Đang chạy thử..."
+                self.root.after(0, self._refresh_table)
+
+                success = self.execute_single_task_pipeline(task, task_idx)
+                if success:
+                    self.log(f"🎉 [CHẠY THỬ THÀNH CÔNG] Hoàn tất ca #{task_idx + 1}: {ten_bn} - {tt_name}!")
+                    self.root.after(0, lambda: messagebox.showinfo(
+                        "Chạy Thử Nghiệm Thành Công",
+                        f"🎉 ĐÃ HOÀN TẤT THỬ NGHIỆM 1 CA:\n\n"
+                        f"• Bệnh nhân: {ten_bn}\n"
+                        f"• Thủ thuật: {tt_name}\n"
+                        f"• Giờ: {task.get('gio_bat_dau')} - {task.get('gio_ket_thuc')}\n"
+                        f"• KTV: {task.get('ktv_ma') or task.get('ktv_ten')}\n\n"
+                        f"👉 Bạn hãy kiểm tra lại trên emrHIS xem thông tin đã lưu đúng chưa nhé!"
+                    ))
+            except pyautogui.FailSafeException:
+                task["status"] = "Đã dừng (Fail-Safe)"
+                self.log("🛑 Nhận lệnh dừng khẩn cấp từ chuột (Fail-Safe) khi đang chạy thử!", level="WARN")
+            except Exception as ex:
+                task["status"] = f"Lỗi: {str(ex)[:30]}"
+                self.log(f"❌ [CHẠY THỬ THẤT BẠI] Lỗi ca #{task_idx + 1} ({ten_bn}): {ex}", level="ERROR")
+                self.root.after(0, lambda: messagebox.showerror("Lỗi chạy thử 1 ca", f"Không thể hoàn thành ca thử nghiệm:\n{ex}"))
+            finally:
+                self.is_running = False
+                self.stop_requested = False
+                self.root.after(0, self._refresh_table)
+                self.root.after(0, lambda: (
+                    self.btn_run_all.config(state=tk.NORMAL),
+                    self.btn_run_test.config(state=tk.NORMAL),
+                    self.btn_fill_one.config(state=tk.NORMAL),
+                    self.btn_stop.config(state=tk.DISABLED)
+                ))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    # =========================================================================
     # CHẠY TỰ ĐỘNG TOÀN BỘ DANH SÁCH (F9)
     # =========================================================================
     def start_auto_run(self):
@@ -744,13 +936,13 @@ class EmrHisBotApp:
         self.is_running = True
         self.stop_requested = False
         self.btn_run_all.config(state=tk.DISABLED)
+        self.btn_run_test.config(state=tk.DISABLED)
+        self.btn_fill_one.config(state=tk.DISABLED)
         self.btn_stop.config(state=tk.NORMAL)
 
         def worker():
             self.log("🚀 BẮT ĐẦU CHẠY TỰ ĐỘNG TOÀN BỘ DANH SÁCH CA...")
             delay = self.speed_var.get()
-            cal_main = self.config.get("calibration", {}).get("main_window", {})
-            form_title = self.config.get("settings", {}).get("window_form_title_contains", "Cập Nhật Thông Tin Thủ Thuật")
 
             for idx, task in enumerate(self.tasks):
                 if self.stop_requested:
@@ -768,81 +960,8 @@ class EmrHisBotApp:
                 self.root.after(0, self._refresh_table)
 
                 try:
-                    # 1. Kích hoạt cửa sổ chính emrHIS
-                    main_win = self.find_emrhis_window()
-                    if not main_win:
-                        raise Exception("Không tìm thấy cửa sổ emrHIS! Vui lòng mở emrHIS lên.")
-
-                    # 2. Tìm kiếm bệnh nhân theo tên
-                    pos_search = self.get_safe_pos(cal_main.get("search_box"), main_win)
-                    if pos_search:
-                        pyautogui.click(pos_search[0], pos_search[1])
-                        time.sleep(delay)
-                        pyautogui.hotkey("ctrl", "a")
-                        pyautogui.press("backspace")
-                        pyperclip.copy(ten_bn)
-                        pyautogui.hotkey("ctrl", "v")
-                        # Không ấn Enter để emrHIS chỉ lọc trong danh sách ngày hiện tại
-                        if self.config.get("settings", {}).get("search_press_enter", False):
-                            pyautogui.press("enter")
-                        time.sleep(delay * 1.0)
-
-                    if self.stop_requested:
-                        break
-
-                    # 3. Chọn dòng bệnh nhân trong danh sách
-                    pos_pt_row = self.get_safe_pos(cal_main.get("patient_first_row"), main_win)
-                    if pos_pt_row:
-                        pyautogui.click(pos_pt_row[0], pos_pt_row[1])
-                        time.sleep(delay)
-
-                    # 4. Bấm "Bắt đầu thực hiện"
-                    pos_btn_start = self.get_safe_pos(cal_main.get("btn_bat_dau_thuc_hien"), main_win)
-                    if pos_btn_start:
-                        pyautogui.click(pos_btn_start[0], pos_btn_start[1])
-                        time.sleep(delay * 1.5)
-
-                        # Nếu có cảnh báo xác nhận -> Enter để chọn Có
-                        if self.config.get("settings", {}).get("auto_dismiss_popups", True):
-                            pyautogui.press("enter")
-                            time.sleep(delay * 0.5)
-
-                    if self.stop_requested:
-                        break
-
-                    # 5. Chuột phải vào dòng thủ thuật -> chọn "Nhập Thông Tin PTTT"
-                    pos_proc = self.get_safe_pos(cal_main.get("procedure_first_row"), main_win)
-                    if pos_proc:
-                        pyautogui.rightClick(pos_proc[0], pos_proc[1])
-                        time.sleep(delay * 0.8)
-
-                        # Click menu "Nhập Thông Tin PTTT"
-                        pos_menu = self.get_safe_pos(cal_main.get("menu_nhap_tt_pttt"), main_win)
-                        if pos_menu:
-                            pyautogui.click(pos_menu[0], pos_menu[1])
-                        else:
-                            # Phím mũi tên xuống hoặc phím tắt
-                            pyautogui.press("down")
-                            pyautogui.press("enter")
-
-                        time.sleep(delay * 2.0)
-
-                    if self.stop_requested:
-                        break
-
-                    # 6. Đợi cửa sổ popup form hiện lên
-                    form_win = None
-                    for _ in range(15):
-                        form_win = self.find_emrhis_window(form_title)
-                        if form_win:
-                            break
-                        time.sleep(0.3)
-
-                    # 7. Điền form
-                    self.fill_form_pttt(task, form_window=form_win)
-                    task["status"] = "Hoàn thành"
+                    self.execute_single_task_pipeline(task, idx)
                     self.log(f"✅ Hoàn tất ca #{idx + 1}: {ten_bn}")
-
                 except pyautogui.FailSafeException:
                     self.stop_requested = True
                     task["status"] = "Đã dừng (Fail-Safe)"
@@ -857,7 +976,12 @@ class EmrHisBotApp:
 
             self.is_running = False
             self.stop_requested = False
-            self.root.after(0, lambda: (self.btn_run_all.config(state=tk.NORMAL), self.btn_stop.config(state=tk.DISABLED)))
+            self.root.after(0, lambda: (
+                self.btn_run_all.config(state=tk.NORMAL),
+                self.btn_run_test.config(state=tk.NORMAL),
+                self.btn_fill_one.config(state=tk.NORMAL),
+                self.btn_stop.config(state=tk.DISABLED)
+            ))
             self.log("🏁 Hoàn tất phiên chạy tự động!")
 
         threading.Thread(target=worker, daemon=True).start()
