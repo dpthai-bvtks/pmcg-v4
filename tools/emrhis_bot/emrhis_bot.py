@@ -21,6 +21,11 @@ import pyautogui
 import pyperclip
 import pygetwindow as gw
 
+try:
+    import uiautomation as auto
+except ImportError:
+    auto = None
+
 # Cấu hình an toàn cho PyAutoGUI
 pyautogui.FAILSAFE = True
 pyautogui.PAUSE = 0.05
@@ -564,6 +569,194 @@ class EmrHisBotApp:
         return target_x, target_y
 
     # =========================================================================
+    # HÀM XỬ LÝ HỘP THOẠI CẢNH BÁO TỰ ĐỘNG BẤM 'CÓ' (UIA + PHÍM TẮT)
+    # =========================================================================
+    def auto_click_dialog_yes(self, timeout=2.0):
+        """
+        Tự động tìm và bấm nút 'Có' (hoặc '&Có', 'Yes', 'Đồng ý') trên hộp thoại cảnh báo:
+        - Quét cửa sổ popup ở trên cùng (Foreground Control) và các cửa sổ con.
+        - Sử dụng UIAutomation để tìm nút bấm theo tên và lấy tọa độ thực tế (BoundingRectangle),
+          bất kể vị trí hay kích thước của cảnh báo thay đổi như thế nào trên màn hình.
+        - Fallback gửi phím tắt Alt+C (chuẩn Windows cho &Có) và Enter khi phát hiện có dialog.
+        """
+        start_time = time.time()
+        dialog_detected = False
+
+        while time.time() - start_time < timeout:
+            try:
+                if auto is not None:
+                    # 1. Quét control / cửa sổ đang Foreground
+                    fg = auto.GetForegroundControl()
+                    if fg:
+                        fg_name = (fg.Name or "").strip().lower()
+                        is_likely_dialog = any(k in fg_name for k in ["cảnh báo", "thông báo", "xác nhận", "hỏi", "lưu ý", "warning", "confirm", "question", "emrhis"])
+
+                        # A. Tìm trực tiếp theo ButtonControl
+                        target_names = ["Có", "&Có", "Yes", "&Yes", "Đồng ý", "Chấp nhận", "Xác nhận"]
+                        for target_name in target_names:
+                            btn = fg.ButtonControl(searchDepth=5, Name=target_name)
+                            if btn.Exists(0.04):
+                                dialog_detected = True
+                                rect = btn.BoundingRectangle
+                                if rect and (rect.right > rect.left) and (rect.bottom > rect.top):
+                                    cx = (rect.left + rect.right) // 2
+                                    cy = (rect.top + rect.bottom) // 2
+                                    pyautogui.click(cx, cy)
+                                    self.log(f"🔔 Đã tự động click nút '{btn.Name}' tại tọa độ thực tế ({cx}, {cy}) trên cảnh báo.")
+                                else:
+                                    btn.Click()
+                                    self.log(f"🔔 Đã click nút '{btn.Name}' qua UIA trên cảnh báo.")
+                                time.sleep(0.3)
+                                return True
+
+                        # B. Tìm theo SubName nếu tên có tiền tố/hậu tố
+                        for sub_name in ["Có", "Yes", "Đồng ý"]:
+                            btn = fg.ButtonControl(searchDepth=5, SubName=sub_name)
+                            if btn.Exists(0.04):
+                                dialog_detected = True
+                                rect = btn.BoundingRectangle
+                                if rect and (rect.right > rect.left) and (rect.bottom > rect.top):
+                                    cx = (rect.left + rect.right) // 2
+                                    cy = (rect.top + rect.bottom) // 2
+                                    pyautogui.click(cx, cy)
+                                    self.log(f"🔔 Đã click nút chứa '{sub_name}' tại tọa độ thực tế ({cx}, {cy}) trên cảnh báo.")
+                                else:
+                                    btn.Click()
+                                    self.log(f"🔔 Đã click nút chứa '{sub_name}' qua UIA.")
+                                time.sleep(0.3)
+                                return True
+
+                        # C. Nếu là hộp thoại có nút Không / Hủy -> Chắc chắn có dialog
+                        btn_no = fg.ButtonControl(searchDepth=3, Name="Không")
+                        if btn_no.Exists(0.04):
+                            dialog_detected = True
+                            pyautogui.hotkey('alt', 'c')
+                            time.sleep(0.1)
+                            pyautogui.press('enter')
+                            self.log("🔔 Đã chọn 'Có' (Alt+C/Enter) trên hộp thoại xác nhận.")
+                            time.sleep(0.3)
+                            return True
+
+                        if is_likely_dialog:
+                            dialog_detected = True
+
+                    # 2. Quét thêm các cửa sổ con của Desktop (RootControl) nếu fg không bắt được
+                    root = auto.GetRootControl()
+                    for win in root.GetChildren():
+                        if win.ControlType == auto.ControlType.WindowControl:
+                            w_rect = win.BoundingRectangle
+                            # Nếu là cửa sổ nhỏ (kích thước của popup/dialog)
+                            if w_rect and (w_rect.width() < 900 and w_rect.height() < 600):
+                                for target_name in ["Có", "&Có", "Yes", "&Yes", "Đồng ý"]:
+                                    btn = win.ButtonControl(searchDepth=4, Name=target_name)
+                                    if btn.Exists(0.03):
+                                        dialog_detected = True
+                                        rect = btn.BoundingRectangle
+                                        if rect and (rect.right > rect.left):
+                                            cx = (rect.left + rect.right) // 2
+                                            cy = (rect.top + rect.bottom) // 2
+                                            pyautogui.click(cx, cy)
+                                            self.log(f"🔔 Đã click nút '{btn.Name}' tại tọa độ ({cx}, {cy}) trên cửa sổ '{win.Name}'.")
+                                        else:
+                                            btn.Click()
+                                            self.log(f"🔔 Đã click nút '{btn.Name}' qua UIA.")
+                                        time.sleep(0.3)
+                                        return True
+            except Exception:
+                pass
+            time.sleep(0.08)
+
+        # 3. Nếu phát hiện có Dialog đang mở mà chưa click được nút
+        if dialog_detected:
+            pyautogui.hotkey('alt', 'c')
+            time.sleep(0.1)
+            pyautogui.press('enter')
+            self.log("🔔 Đã gửi Alt+C / Enter để đóng hộp thoại cảnh báo.")
+            return True
+
+        # Nếu không có dialog nào xuất hiện sau thời gian chờ -> Tiếp tục an toàn
+        self.log("ℹ️ Không phát hiện cảnh báo xuất hiện sau thao tác.")
+        return False
+
+    # =========================================================================
+    # HÀM CHỌN MỤC TỪ DROPDOWN COMBOBOX (UIA + PHÍM ĐIỀU HƯỚNG)
+    # =========================================================================
+    def select_dropdown_item(self, pos_safe, item_name, form_win=None):
+        """
+        Chọn một mục từ danh sách thả xuống (Dropdown ComboBox):
+        - Click vào ô Dropdown để focus
+        - Bấm F4 hoặc Alt+Down để mở danh sách xổ xuống
+        - Dùng UIAutomation quét tìm ListItem có tên tương ứng và click đúng tọa độ tâm
+        - Nếu không, dùng phím tắt tương ứng: 'k' cho 'Khác', 'c' / Home cho 'Chủ động', rồi Enter
+        """
+        if not pos_safe or not item_name:
+            return
+
+        delay = self.speed_var.get()
+        cx, cy = pos_safe
+
+        # 1. Click vào ô ComboBox để focus
+        pyautogui.click(cx, cy)
+        time.sleep(delay * 0.35)
+
+        # 2. Mở danh sách dropdown bằng phím F4 (chuẩn WinForms/DevExpress)
+        pyautogui.press("f4")
+        time.sleep(delay * 0.35)
+
+        # 3. Thử tìm và click ListItem qua UIAutomation
+        selected = False
+        if auto is not None:
+            try:
+                fg = auto.GetForegroundControl()
+                if fg:
+                    target_item = fg.ListItemControl(searchDepth=5, SubName=item_name)
+                    if not target_item.Exists(0.08):
+                        # Thử quét các cửa sổ top-level popup menu
+                        root = auto.GetRootControl()
+                        for win in root.GetChildren():
+                            candidate = win.ListItemControl(searchDepth=4, SubName=item_name)
+                            if candidate.Exists(0.05):
+                                target_item = candidate
+                                break
+
+                    if target_item.Exists(0.08):
+                        rect = target_item.BoundingRectangle
+                        if rect and (rect.right > rect.left) and (rect.bottom > rect.top):
+                            item_cx = (rect.left + rect.right) // 2
+                            item_cy = (rect.top + rect.bottom) // 2
+                            pyautogui.click(item_cx, item_cy)
+                        else:
+                            target_item.Click()
+                        selected = True
+                        self.log(f"🔽 Đã chọn '{item_name}' từ dropdown (UIA click).")
+            except Exception:
+                pass
+
+        # 4. Fallback bằng phím điều hướng dropdown chuẩn của WinForms / DevExpress
+        if not selected:
+            clean = item_name.strip().lower()
+            if "khác" in clean or "khac" in clean:
+                pyautogui.press("k")
+                time.sleep(delay * 0.2)
+                pyautogui.press("enter")
+                self.log(f"🔽 Đã chọn '{item_name}' từ dropdown (phím K + Enter).")
+            elif "chủ động" in clean or "chu dong" in clean:
+                pyautogui.press("home")
+                time.sleep(delay * 0.15)
+                pyautogui.press("c")
+                time.sleep(delay * 0.15)
+                pyautogui.press("enter")
+                self.log(f"🔽 Đã chọn '{item_name}' từ dropdown (phím Home + C + Enter).")
+            else:
+                first_char = clean[0] if clean else "c"
+                pyautogui.press(first_char)
+                time.sleep(delay * 0.2)
+                pyautogui.press("enter")
+                self.log(f"🔽 Đã chọn '{item_name}' từ dropdown ({first_char} + Enter).")
+
+        time.sleep(delay * 0.25)
+
+    # =========================================================================
     # ĐIỀN FORM "CẬP NHẬT THÔNG TIN THỦ THUẬT" (CORE ENGINE)
     # =========================================================================
     def fill_form_pttt(self, task, form_window=None):
@@ -593,8 +786,8 @@ class EmrHisBotApp:
         # Chuẩn bị dữ liệu
         ngay_gio_bd = task.get("ngay_gio_bd") or f"{task.get('gio_bat_dau', '08:00')} {task.get('ngay', '')}".strip()
         ngay_gio_kt = task.get("ngay_gio_kt") or f"{task.get('gio_ket_thuc', '08:30')} {task.get('ngay', '')}".strip()
-        tinh_hinh = task.get("tinh_hinh") or "Chủ động"
-        vo_cam = task.get("vo_cam") or "Khác"
+        tinh_hinh = task.get("tinh_hinh") or self.config.get("defaults", {}).get("tinh_hinh", "Chủ động")
+        vo_cam = task.get("vo_cam") or self.config.get("defaults", {}).get("vo_cam", "Khác")
         may_y_te = task.get("may_y_te", "").strip()
         mo_ta = task.get("mo_ta") or "."
         ktv_code = task.get("ktv_ma") or task.get("ktv_ten", "")
@@ -621,38 +814,20 @@ class EmrHisBotApp:
             pyautogui.hotkey("ctrl", "v")
             time.sleep(delay * 0.5)
 
-        # 3. Phương pháp vô cảm (Mặc định: 'Khác')
+        # 3. Phương pháp vô cảm (Chọn từ Dropdown: 'Khác')
         pos_vc = self.get_safe_pos(cal.get("cbo_vo_cam"), form_window)
         if pos_vc:
-            pyautogui.click(pos_vc[0], pos_vc[1])
-            time.sleep(delay * 0.5)
-            pyperclip.copy(vo_cam)
-            pyautogui.hotkey("ctrl", "a")
-            pyautogui.hotkey("ctrl", "v")
-            pyautogui.press("enter")
-            time.sleep(delay * 0.5)
+            self.select_dropdown_item(pos_vc, vo_cam, form_window)
 
-        # 4. Tình hình PTTT (Mặc định: 'Chủ động')
+        # 4. Tình hình PTTT (Chọn từ Dropdown: 'Chủ động')
         pos_th = self.get_safe_pos(cal.get("cbo_tinh_hinh"), form_window)
         if pos_th:
-            pyautogui.click(pos_th[0], pos_th[1])
-            time.sleep(delay * 0.5)
-            pyperclip.copy(tinh_hinh)
-            pyautogui.hotkey("ctrl", "a")
-            pyautogui.hotkey("ctrl", "v")
-            pyautogui.press("enter")
-            time.sleep(delay * 0.5)
+            self.select_dropdown_item(pos_th, tinh_hinh, form_window)
 
-        # 5. Máy y tế (nếu có)
+        # 5. Máy y tế (nếu có, chọn từ Dropdown)
         pos_may = self.get_safe_pos(cal.get("cbo_may_y_te"), form_window)
         if pos_may and may_y_te:
-            pyautogui.click(pos_may[0], pos_may[1])
-            time.sleep(delay * 0.5)
-            pyperclip.copy(may_y_te)
-            pyautogui.hotkey("ctrl", "a")
-            pyautogui.hotkey("ctrl", "v")
-            pyautogui.press("enter")
-            time.sleep(delay * 0.5)
+            self.select_dropdown_item(pos_may, may_y_te, form_window)
 
         # 6. Mô tả thủ thuật (Mặc định: '.')
         pos_mt = self.get_safe_pos(cal.get("txt_mo_ta"), form_window)
@@ -682,12 +857,9 @@ class EmrHisBotApp:
             self.log("💾 Đã click 'Lưu + Đóng'.")
             time.sleep(delay * 1.5)
 
-            # Tự động đóng popup cảnh báo nếu có (bấm 'Có' / Enter / Space)
+            # Tự động đóng popup cảnh báo/xác nhận nếu có
             if self.config.get("settings", {}).get("auto_dismiss_popups", True):
-                time.sleep(0.3)
-                pyautogui.press("enter")
-
-        self.log(f"✅ Hoàn thành điền form cho: {task.get('ten_bn')}")
+                self.auto_click_dialog_yes(timeout=1.2)
 
         self.log(f"✅ Hoàn thành điền form cho: {task.get('ten_bn')}")
 
@@ -785,15 +957,16 @@ class EmrHisBotApp:
         if self.stop_requested:
             return False
 
-        # 4. Bấm "Bắt đầu thực hiện"
+        # 4. Bấm "Bắt đầu thực hiện" (Tự bấm Có nếu có cảnh báo, xử lý tọa độ động theo cảnh báo)
         pos_btn_start = self.get_safe_pos(cal_main.get("btn_bat_dau_thuc_hien"), main_win)
         if pos_btn_start:
             pyautogui.click(pos_btn_start[0], pos_btn_start[1])
-            time.sleep(delay * 1.5)
+            self.log("▶️ Đã bấm 'Bắt đầu thực hiện'. Đang kiểm tra cảnh báo xác nhận...")
+            time.sleep(delay * 0.8)
 
-            # Nếu có cảnh báo xác nhận -> Enter để chọn Có
+            # Tự động quét và click nút 'Có' (dò tìm tọa độ thực tế bất kể vị trí nút Có thay đổi)
             if self.config.get("settings", {}).get("auto_dismiss_popups", True):
-                pyautogui.press("enter")
+                self.auto_click_dialog_yes(timeout=2.0)
                 time.sleep(delay * 0.5)
 
         if self.stop_requested:
