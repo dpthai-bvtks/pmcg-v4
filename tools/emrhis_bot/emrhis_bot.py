@@ -513,6 +513,34 @@ class EmrHisBotApp:
             return w
         return None
 
+    def get_safe_pos(self, pos_dict, win=None):
+        """
+        Xác định tọa độ click an toàn tuyệt đối:
+        - Ưu tiên tọa độ tuyệt đối x, y mà người dùng đã cân chỉnh trên màn hình
+        - Luôn kẹp cách mép màn hình tối thiểu 10px để không bao giờ chạm góc (0,0) kích hoạt FailSafeException
+        """
+        if not pos_dict:
+            return None
+        screen_w, screen_h = pyautogui.size()
+
+        target_x = pos_dict.get("x", 0)
+        target_y = pos_dict.get("y", 0)
+
+        use_rel = self.config.get("settings", {}).get("coordinate_mode") == "window_relative"
+        if use_rel and win and "rx" in pos_dict and "ry" in pos_dict:
+            rx = pos_dict["rx"]
+            ry = pos_dict["ry"]
+            if rx > 0 and ry > 0:
+                rel_x = win.left + rx
+                rel_y = win.top + ry
+                if 10 <= rel_x <= screen_w - 10 and 10 <= rel_y <= screen_h - 10:
+                    target_x = rel_x
+                    target_y = rel_y
+
+        target_x = max(10, min(screen_w - 10, int(target_x)))
+        target_y = max(10, min(screen_h - 10, int(target_y)))
+        return target_x, target_y
+
     # =========================================================================
     # ĐIỀN FORM "CẬP NHẬT THÔNG TIN THỦ THUẬT" (CORE ENGINE)
     # =========================================================================
@@ -538,9 +566,6 @@ class EmrHisBotApp:
         except Exception:
             pass
 
-        win_left = form_window.left
-        win_top = form_window.top
-
         self.log(f"👉 Bắt đầu điền form: {task.get('ten_bn')} - {task.get('thu_thuat')}")
 
         # Chuẩn bị dữ liệu
@@ -553,13 +578,10 @@ class EmrHisBotApp:
         ktv_code = task.get("ktv_ma") or task.get("ktv_ten", "")
 
         # 1. Thời gian bắt đầu
-        pos_bd = cal.get("thoi_gian_bat_dau")
+        pos_bd = self.get_safe_pos(cal.get("thoi_gian_bat_dau"), form_window)
         if pos_bd:
-            target_x = win_left + pos_bd["rx"] if "rx" in pos_bd else pos_bd["x"]
-            target_y = win_top + pos_bd["ry"] if "ry" in pos_bd else pos_bd["y"]
-            pyautogui.click(target_x, target_y)
+            pyautogui.click(pos_bd[0], pos_bd[1])
             time.sleep(delay * 0.5)
-            # Chọn toàn bộ ô và dán/gõ
             pyautogui.hotkey("ctrl", "a")
             pyautogui.press("backspace")
             pyperclip.copy(ngay_gio_bd)
@@ -567,11 +589,9 @@ class EmrHisBotApp:
             time.sleep(delay * 0.5)
 
         # 2. Thời gian kết thúc
-        pos_kt = cal.get("thoi_gian_ket_thuc")
+        pos_kt = self.get_safe_pos(cal.get("thoi_gian_ket_thuc"), form_window)
         if pos_kt:
-            target_x = win_left + pos_kt["rx"] if "rx" in pos_kt else pos_kt["x"]
-            target_y = win_top + pos_kt["ry"] if "ry" in pos_kt else pos_kt["y"]
-            pyautogui.click(target_x, target_y)
+            pyautogui.click(pos_kt[0], pos_kt[1])
             time.sleep(delay * 0.5)
             pyautogui.hotkey("ctrl", "a")
             pyautogui.press("backspace")
@@ -580,13 +600,10 @@ class EmrHisBotApp:
             time.sleep(delay * 0.5)
 
         # 3. Phương pháp vô cảm (Mặc định: 'Khác')
-        pos_vc = cal.get("cbo_vo_cam")
+        pos_vc = self.get_safe_pos(cal.get("cbo_vo_cam"), form_window)
         if pos_vc:
-            target_x = win_left + pos_vc["rx"] if "rx" in pos_vc else pos_vc["x"]
-            target_y = win_top + pos_vc["ry"] if "ry" in pos_vc else pos_vc["y"]
-            pyautogui.click(target_x, target_y)
+            pyautogui.click(pos_vc[0], pos_vc[1])
             time.sleep(delay * 0.5)
-            # Gõ hoặc chọn dropdown
             pyperclip.copy(vo_cam)
             pyautogui.hotkey("ctrl", "a")
             pyautogui.hotkey("ctrl", "v")
@@ -594,11 +611,9 @@ class EmrHisBotApp:
             time.sleep(delay * 0.5)
 
         # 4. Tình hình PTTT (Mặc định: 'Chủ động')
-        pos_th = cal.get("cbo_tinh_hinh")
+        pos_th = self.get_safe_pos(cal.get("cbo_tinh_hinh"), form_window)
         if pos_th:
-            target_x = win_left + pos_th["rx"] if "rx" in pos_th else pos_th["x"]
-            target_y = win_top + pos_th["ry"] if "ry" in pos_th else pos_th["y"]
-            pyautogui.click(target_x, target_y)
+            pyautogui.click(pos_th[0], pos_th[1])
             time.sleep(delay * 0.5)
             pyperclip.copy(tinh_hinh)
             pyautogui.hotkey("ctrl", "a")
@@ -607,11 +622,9 @@ class EmrHisBotApp:
             time.sleep(delay * 0.5)
 
         # 5. Máy y tế (nếu có)
-        pos_may = cal.get("cbo_may_y_te")
+        pos_may = self.get_safe_pos(cal.get("cbo_may_y_te"), form_window)
         if pos_may and may_y_te:
-            target_x = win_left + pos_may["rx"] if "rx" in pos_may else pos_may["x"]
-            target_y = win_top + pos_may["ry"] if "ry" in pos_may else pos_may["y"]
-            pyautogui.click(target_x, target_y)
+            pyautogui.click(pos_may[0], pos_may[1])
             time.sleep(delay * 0.5)
             pyperclip.copy(may_y_te)
             pyautogui.hotkey("ctrl", "a")
@@ -620,11 +633,9 @@ class EmrHisBotApp:
             time.sleep(delay * 0.5)
 
         # 6. Mô tả thủ thuật (Mặc định: '.')
-        pos_mt = cal.get("txt_mo_ta")
+        pos_mt = self.get_safe_pos(cal.get("txt_mo_ta"), form_window)
         if pos_mt:
-            target_x = win_left + pos_mt["rx"] if "rx" in pos_mt else pos_mt["x"]
-            target_y = win_top + pos_mt["ry"] if "ry" in pos_mt else pos_mt["y"]
-            pyautogui.click(target_x, target_y)
+            pyautogui.click(pos_mt[0], pos_mt[1])
             time.sleep(delay * 0.5)
             pyautogui.hotkey("ctrl", "a")
             pyperclip.copy(mo_ta)
@@ -632,13 +643,10 @@ class EmrHisBotApp:
             time.sleep(delay * 0.5)
 
         # 7. Ê-Kíp PTTT -> Ô Nhân Viên dòng 1 (Thủ thuật chính)
-        pos_ekip = cal.get("grid_ekip_cell_nhanvien")
+        pos_ekip = self.get_safe_pos(cal.get("grid_ekip_cell_nhanvien"), form_window)
         if pos_ekip and ktv_code:
-            target_x = win_left + pos_ekip["rx"] if "rx" in pos_ekip else pos_ekip["x"]
-            target_y = win_top + pos_ekip["ry"] if "ry" in pos_ekip else pos_ekip["y"]
-            pyautogui.doubleClick(target_x, target_y)
+            pyautogui.doubleClick(pos_ekip[0], pos_ekip[1])
             time.sleep(delay * 0.5)
-            # Dán mã KTV (dùng clipboard để tránh Unikey nhảy ký tự)
             pyperclip.copy(ktv_code)
             pyautogui.hotkey("ctrl", "v")
             time.sleep(delay * 0.5)
@@ -646,11 +654,9 @@ class EmrHisBotApp:
             time.sleep(delay * 0.5)
 
         # 8. Bấm nút "Lưu + Đóng"
-        pos_save = cal.get("btn_luu_dong")
+        pos_save = self.get_safe_pos(cal.get("btn_luu_dong"), form_window)
         if pos_save:
-            target_x = win_left + pos_save["rx"] if "rx" in pos_save else pos_save["x"]
-            target_y = win_top + pos_save["ry"] if "ry" in pos_save else pos_save["y"]
-            pyautogui.click(target_x, target_y)
+            pyautogui.click(pos_save[0], pos_save[1])
             self.log("💾 Đã click 'Lưu + Đóng'.")
             time.sleep(delay * 1.5)
 
@@ -658,6 +664,8 @@ class EmrHisBotApp:
             if self.config.get("settings", {}).get("auto_dismiss_popups", True):
                 time.sleep(0.3)
                 pyautogui.press("enter")
+
+        self.log(f"✅ Hoàn thành điền form cho: {task.get('ten_bn')}")
 
         self.log(f"✅ Hoàn thành điền form cho: {task.get('ten_bn')}")
 
@@ -766,11 +774,9 @@ class EmrHisBotApp:
                         raise Exception("Không tìm thấy cửa sổ emrHIS! Vui lòng mở emrHIS lên.")
 
                     # 2. Tìm kiếm bệnh nhân theo tên
-                    pos_search = cal_main.get("search_box")
+                    pos_search = self.get_safe_pos(cal_main.get("search_box"), main_win)
                     if pos_search:
-                        sx = main_win.left + pos_search["rx"] if "rx" in pos_search else pos_search["x"]
-                        sy = main_win.top + pos_search["ry"] if "ry" in pos_search else pos_search["y"]
-                        pyautogui.click(sx, sy)
+                        pyautogui.click(pos_search[0], pos_search[1])
                         time.sleep(delay)
                         pyautogui.hotkey("ctrl", "a")
                         pyautogui.press("backspace")
@@ -784,19 +790,15 @@ class EmrHisBotApp:
                         break
 
                     # 3. Chọn dòng bệnh nhân trong danh sách
-                    pos_pt_row = cal_main.get("patient_first_row")
+                    pos_pt_row = self.get_safe_pos(cal_main.get("patient_first_row"), main_win)
                     if pos_pt_row:
-                        px = main_win.left + pos_pt_row["rx"] if "rx" in pos_pt_row else pos_pt_row["x"]
-                        py = main_win.top + pos_pt_row["ry"] if "ry" in pos_pt_row else pos_pt_row["y"]
-                        pyautogui.click(px, py)
+                        pyautogui.click(pos_pt_row[0], pos_pt_row[1])
                         time.sleep(delay)
 
                     # 4. Bấm "Bắt đầu thực hiện"
-                    pos_btn_start = cal_main.get("btn_bat_dau_thuc_hien")
+                    pos_btn_start = self.get_safe_pos(cal_main.get("btn_bat_dau_thuc_hien"), main_win)
                     if pos_btn_start:
-                        bx = main_win.left + pos_btn_start["rx"] if "rx" in pos_btn_start else pos_btn_start["x"]
-                        by = main_win.top + pos_btn_start["ry"] if "ry" in pos_btn_start else pos_btn_start["y"]
-                        pyautogui.click(bx, by)
+                        pyautogui.click(pos_btn_start[0], pos_btn_start[1])
                         time.sleep(delay * 1.5)
 
                         # Nếu có cảnh báo xác nhận -> Enter để chọn Có
@@ -808,19 +810,15 @@ class EmrHisBotApp:
                         break
 
                     # 5. Chuột phải vào dòng thủ thuật -> chọn "Nhập Thông Tin PTTT"
-                    pos_proc = cal_main.get("procedure_first_row")
+                    pos_proc = self.get_safe_pos(cal_main.get("procedure_first_row"), main_win)
                     if pos_proc:
-                        rx = main_win.left + pos_proc["rx"] if "rx" in pos_proc else pos_proc["x"]
-                        ry = main_win.top + pos_proc["ry"] if "ry" in pos_proc else pos_proc["y"]
-                        pyautogui.rightClick(rx, ry)
+                        pyautogui.rightClick(pos_proc[0], pos_proc[1])
                         time.sleep(delay * 0.8)
 
                         # Click menu "Nhập Thông Tin PTTT"
-                        pos_menu = cal_main.get("menu_nhap_tt_pttt")
+                        pos_menu = self.get_safe_pos(cal_main.get("menu_nhap_tt_pttt"), main_win)
                         if pos_menu:
-                            mx = main_win.left + pos_menu["rx"] if "rx" in pos_menu else pos_menu["x"]
-                            my = main_win.top + pos_menu["ry"] if "ry" in pos_menu else pos_menu["y"]
-                            pyautogui.click(mx, my)
+                            pyautogui.click(pos_menu[0], pos_menu[1])
                         else:
                             # Phím mũi tên xuống hoặc phím tắt
                             pyautogui.press("down")
@@ -844,6 +842,11 @@ class EmrHisBotApp:
                     task["status"] = "Hoàn thành"
                     self.log(f"✅ Hoàn tất ca #{idx + 1}: {ten_bn}")
 
+                except pyautogui.FailSafeException:
+                    self.stop_requested = True
+                    task["status"] = "Đã dừng (Fail-Safe)"
+                    self.log("🛑 Phát hiện chuột di chuyển vào góc màn hình (Fail-Safe). Đã tạm dừng toàn bộ tiến trình để đảm bảo an toàn!", level="WARN")
+                    break
                 except Exception as ex:
                     task["status"] = f"Lỗi: {str(ex)[:30]}"
                     self.log(f"❌ Lỗi ca #{idx + 1} ({ten_bn}): {ex}", level="ERROR")
@@ -969,9 +972,12 @@ class EmrHisBotApp:
                         rx = x
                         ry = y
                         target_win = self.find_emrhis_window()
-                        if target_win:
+                        if target_win and target_win.left >= 0 and target_win.top >= 0:
                             rx = x - target_win.left
                             ry = y - target_win.top
+                        if rx < 0 or ry < 0:
+                            rx = x
+                            ry = y
 
                         cal_data[sec][key] = {"x": x, "y": y, "rx": rx, "ry": ry}
                         self.log(f"🎯 Đã bắt tọa độ {key}: Screen({x}, {y}) - Relative({rx}, {ry})")

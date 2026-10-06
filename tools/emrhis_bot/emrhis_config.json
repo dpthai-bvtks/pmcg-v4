@@ -4,6 +4,7 @@
     "key_interval": 0.02,
     "wait_window_timeout": 5.0,
     "failsafe": true,
+    "coordinate_mode": "screen_absolute",
     "window_main_title_contains": "emrHIS",
     "window_form_title_contains": "Cập Nhật Thông Tin Thủ Thuật",
     "auto_dismiss_popups": true
@@ -31,82 +32,82 @@
       "search_box": {
         "x": 53,
         "y": 197,
-        "rx": -171,
-        "ry": -27
+        "rx": 53,
+        "ry": 197
       },
       "patient_first_row": {
         "x": 98,
         "y": 192,
-        "rx": -126,
-        "ry": -32
+        "rx": 98,
+        "ry": 192
       },
       "btn_bat_dau_thuc_hien": {
         "x": 1813,
         "y": 932,
-        "rx": 1589,
-        "ry": 708
+        "rx": 1813,
+        "ry": 932
       },
       "procedure_first_row": {
         "x": 701,
         "y": 344,
-        "rx": 477,
-        "ry": 120
+        "rx": 701,
+        "ry": 344
       },
       "menu_nhap_tt_pttt": {
         "x": 727,
         "y": 408,
-        "rx": 503,
-        "ry": 184
+        "rx": 727,
+        "ry": 408
       }
     },
     "form_pttt": {
       "thoi_gian_bat_dau": {
         "x": 736,
         "y": 255,
-        "rx": 630,
-        "ry": 196
+        "rx": 736,
+        "ry": 255
       },
       "thoi_gian_ket_thuc": {
         "x": 1166,
         "y": 255,
-        "rx": 1060,
-        "ry": 196
+        "rx": 1166,
+        "ry": 255
       },
       "cbo_tinh_hinh": {
         "x": 334,
         "y": 557,
-        "rx": 228,
-        "ry": 498
+        "rx": 334,
+        "ry": 557
       },
       "cbo_vo_cam": {
         "x": 1259,
         "y": 525,
-        "rx": 1153,
-        "ry": 466
+        "rx": 1259,
+        "ry": 525
       },
       "cbo_may_y_te": {
         "x": 1169,
         "y": 590,
-        "rx": 1063,
-        "ry": 531
+        "rx": 1169,
+        "ry": 590
       },
       "txt_mo_ta": {
         "x": 210,
         "y": 758,
-        "rx": 104,
-        "ry": 699
+        "rx": 210,
+        "ry": 758
       },
       "grid_ekip_cell_nhanvien": {
         "x": 1516,
         "y": 257,
-        "rx": 1410,
-        "ry": 198
+        "rx": 1516,
+        "ry": 257
       },
       "btn_luu_dong": {
         "x": 1748,
         "y": 938,
-        "rx": 1642,
-        "ry": 879
+        "rx": 1748,
+        "ry": 938
       }
     }
   }
