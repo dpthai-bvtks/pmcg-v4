@@ -726,20 +726,24 @@ class EmrHisBotApp:
         Điền chính xác ngày giờ vào ô DevExpress DateEdit (mask HH:mm dd/MM/yyyy)
         Bằng cách xóa sạch ô, dán qua clipboard và gõ trực tiếp 12 chữ số mask
         """
+    def set_datetime_field(self, pos, dt_str, form_window=None):
+        """
+        Điền chính xác ngày giờ vào ô DevExpress DateEdit (mask HH:mm dd/MM/yyyy)
+        Bằng cách xóa sạch ô, dán chuẩn định dạng HH:mm dd/MM/yyyy
+        """
         if not pos:
             return
         delay = self.speed_var.get()
         cx, cy = pos
         dt_formatted = self.normalize_datetime_str(dt_str)
-        digits = "".join([c for c in dt_formatted if c.isdigit()])
 
-        # Click vào ô thời gian
+        # 1. Click vào ô thời gian
         pyautogui.click(cx, cy)
         time.sleep(delay * 0.2)
         pyautogui.click(cx, cy, clicks=3)
         time.sleep(delay * 0.1)
 
-        # Xóa sạch ô bằng Home -> Shift+End -> Backspace
+        # 2. Xóa sạch ô bằng Home -> Shift+End -> Backspace
         pyautogui.press("home")
         time.sleep(0.05)
         pyautogui.hotkey("ctrl", "a")
@@ -747,17 +751,12 @@ class EmrHisBotApp:
         pyautogui.press("backspace")
         time.sleep(0.05)
 
-        # Dán qua clipboard chuỗi đầy đủ HH:mm dd/MM/yyyy
+        # 3. Dán qua clipboard chuỗi đầy đủ HH:mm dd/MM/yyyy
         pyperclip.copy(dt_formatted)
         pyautogui.hotkey("ctrl", "v")
-        time.sleep(delay * 0.2)
-
-        # Gõ trực tiếp 12 chữ số (HHmmddMMyyyy) để chắc chắn khớp mask DevExpress
-        if len(digits) >= 12:
-            pyautogui.press("home")
-            time.sleep(0.05)
-            pyautogui.write(digits[:12], interval=0.03)
-            time.sleep(delay * 0.2)
+        time.sleep(delay * 0.25)
+        pyautogui.press("enter")
+        time.sleep(delay * 0.1)
 
         self.log(f"🕒 Đã nhập thời gian: {dt_formatted}")
 
@@ -768,7 +767,7 @@ class EmrHisBotApp:
         """
         Chọn một mục từ danh sách thả xuống (Dropdown ComboBox):
         - Click mở dropdown (nút mũi tên dropdown hoặc Alt+Down)
-        - Chọn item từ danh sách (End cho 'Khác', Home cho 'Chủ động')
+        - Chọn item từ danh sách (End cho 'Khác', Home + Down cho 'Chủ động')
         - Dán đồng thời giá trị để DevExpress LookUpEdit nhận dạng
         """
         if not pos_safe or not item_name:
@@ -805,11 +804,14 @@ class EmrHisBotApp:
             pyautogui.press("enter")
             self.log(f"🔽 Đã chọn '{item_name}' từ dropdown (phím End + Enter).")
         elif "chủ động" in clean or "chu dong" in clean:
-            # Mục 'Chủ động' thường nằm ở đầu danh sách dropdown
+            # Trong dropdown: Mục 1 là 'Cấp cứu', Mục 2 là 'Chủ động'
+            # Do đó phải bấm Home rồi bấm Down (mũi tên xuống) để chọn 'Chủ động'
             pyautogui.press("home")
+            time.sleep(delay * 0.1)
+            pyautogui.press("down")
             time.sleep(delay * 0.15)
             pyautogui.press("enter")
-            self.log(f"🔽 Đã chọn '{item_name}' từ dropdown (phím Home + Enter).")
+            self.log(f"🔽 Đã chọn '{item_name}' từ dropdown (phím Home + Down + Enter).")
         else:
             first_char = clean[0] if clean else "c"
             pyautogui.press(first_char)
@@ -836,19 +838,13 @@ class EmrHisBotApp:
             if k.lower() in name_clean.lower() or name_clean.lower() in k.lower():
                 return v.strip().lower()
 
-        # Tự động tạo chữ viết tắt không dấu (Hoàng Đức Đạt -> hdd)
-        import unicodedata
-        nfkd = unicodedata.normalize('NFKD', name_clean)
-        ascii_str = "".join([c for c in nfkd if not unicodedata.combining(c)]).replace('đ', 'd').replace('Đ', 'D')
-        words = ascii_str.split()
-        initials = "".join([w[0].lower() for w in words if w])
-        return initials or name_clean.lower()
+        return ""
 
     def fill_ekip_ktv(self, pos_ekip, task, form_window=None):
         """
         Điền KTV chính vào ô 'Nhân Viên' dòng 1 của bảng 'Ê-Kip PTTT':
-        - Dò đúng tọa độ cột 'Nhân Viên' (bên phải cột 'Vai Trò', x >= 1650)
-        - Gõ mã nhân viên (ví dụ: 'hdd') để popup chọn nhân sự hiện ra và bấm Enter
+        - Dò đúng tọa độ cột 'Nhân Viên' (tọa độ x=1710, y=225)
+        - Nhập mã KTV (nếu có như hdd) hoặc dán tên đầy đủ KTV rồi bấm Enter
         """
         if not pos_ekip:
             return
@@ -859,15 +855,14 @@ class EmrHisBotApp:
         if not ktv_code or ktv_code == nv_name:
             ktv_code = self.get_ktv_code(nv_name)
 
-        if not ktv_code:
-            ktv_code = "hdd"
-
-        # Đảm bảo click vào cột 'Nhân Viên' (tránh click vào cột 'Vai Trò' ở x ~ 1516)
+        # Đảm bảo click vào cột 'Nhân Viên' (tọa độ x=1710, y=225)
         cell_x, cell_y = pos_ekip
         if cell_x < 1580:
-            cell_x = 1680
+            cell_x = 1710
+        if cell_y > 240:
+            cell_y = 225
 
-        self.log(f"👨‍⚕️ Nhập KTV chính: '{nv_name}' (mã: '{ktv_code}') tại cột Nhân Viên ({cell_x}, {cell_y})...")
+        self.log(f"👨‍⚕️ Nhập KTV chính: '{nv_name}' tại cột Nhân Viên ({cell_x}, {cell_y})...")
 
         # 1. Click vào ô Nhân Viên dòng 1
         pyautogui.click(cell_x, cell_y)
@@ -879,20 +874,20 @@ class EmrHisBotApp:
         pyautogui.press("f2")
         time.sleep(0.1)
 
-        # 3. Gõ mã KTV (ví dụ: hdd)
-        pyautogui.write(ktv_code, interval=0.08)
-        time.sleep(delay * 0.4)
+        # 3. Nếu có mã ngắn (ví dụ: hdd), gõ mã; nếu không có mã thì gõ/dán tên đầy đủ
+        if ktv_code:
+            pyautogui.write(ktv_code, interval=0.08)
+            time.sleep(delay * 0.4)
+            pyautogui.press("enter")
+            self.log(f"👨‍⚕️ Đã gõ mã KTV: {ktv_code}")
+        else:
+            pyperclip.copy(nv_name)
+            pyautogui.hotkey("ctrl", "v")
+            time.sleep(delay * 0.4)
+            pyautogui.press("enter")
+            self.log(f"👨‍⚕️ Đã dán tên KTV: {nv_name}")
 
-        # 4. Xác nhận chọn KTV bằng Enter
-        pyautogui.press("enter")
         time.sleep(delay * 0.3)
-
-        # Dự phòng: dán tên/mã và ấn Enter
-        pyperclip.copy(ktv_code)
-        pyautogui.hotkey("ctrl", "v")
-        time.sleep(0.1)
-        pyautogui.press("enter")
-        time.sleep(delay * 0.2)
 
     # =========================================================================
     # ĐIỀN FORM "CẬP NHẬT THÔNG TIN THỦ THUẬT" (CORE ENGINE)
@@ -1052,17 +1047,21 @@ class EmrHisBotApp:
             raise Exception("Không tìm thấy cửa sổ emrHIS! Vui lòng mở emrHIS lên.")
 
         # 2. Tìm kiếm bệnh nhân theo tên (Không ấn Enter để tránh ra danh sách nhiều ngày)
+        # 2. Tìm kiếm bệnh nhân theo tên (Không ấn Enter để tránh ra danh sách nhiều ngày)
         pos_search = self.get_safe_pos(cal_main.get("search_box"), main_win)
         if pos_search:
             pyautogui.click(pos_search[0], pos_search[1])
-            time.sleep(delay)
+            time.sleep(delay * 0.5)
             pyautogui.hotkey("ctrl", "a")
             pyautogui.press("backspace")
             pyperclip.copy(ten_bn)
             pyautogui.hotkey("ctrl", "v")
             if self.config.get("settings", {}).get("search_press_enter", False):
                 pyautogui.press("enter")
-            time.sleep(delay * 1.0)
+            time.sleep(delay * 0.8)
+            # Chuyển con trỏ xuống chọn ngay dòng bệnh nhân đầu tiên trong kết quả lọc
+            pyautogui.press("down")
+            time.sleep(delay * 0.4)
 
         if self.stop_requested:
             return False
@@ -1070,7 +1069,11 @@ class EmrHisBotApp:
         # 3. Chọn dòng bệnh nhân trong danh sách
         pos_pt_row = self.get_safe_pos(cal_main.get("patient_first_row"), main_win)
         if pos_pt_row:
-            pyautogui.click(pos_pt_row[0], pos_pt_row[1])
+            click_pt_x, click_pt_y = pos_pt_row
+            # Đảm bảo không click đè lên ô tìm kiếm nếu y bị trùng
+            if pos_search and abs(click_pt_y - pos_search[1]) < 25:
+                click_pt_y = pos_search[1] + 50
+            pyautogui.click(click_pt_x, click_pt_y)
             time.sleep(delay)
 
         if self.stop_requested:
