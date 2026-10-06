@@ -266,6 +266,45 @@ class EmrHisBotApp:
         )
         btn_clear.pack(side=tk.RIGHT, padx=4)
 
+        # 2b. Thanh liên kết cửa sổ emrHIS (Window Selector)
+        win_bar = tk.Frame(self.root, bg="#e2e8f0", padx=10, pady=5)
+        win_bar.pack(fill=tk.X)
+
+        tk.Label(win_bar, text="🔗 Cửa sổ emrHIS:", font=("Segoe UI", 9, "bold"), bg="#e2e8f0", fg="#334155").pack(side=tk.LEFT, padx=(4, 6))
+
+        self.cbo_windows = ttk.Combobox(win_bar, width=45, state="readonly", font=("Segoe UI", 9))
+        self.cbo_windows.pack(side=tk.LEFT, padx=4)
+        self.cbo_windows.bind("<<ComboboxSelected>>", self.on_window_selected)
+
+        btn_refresh_wins = tk.Button(
+            win_bar,
+            text="🔄 Quét cửa sổ",
+            bg="#f8fafc",
+            fg="#0f172a",
+            font=("Segoe UI", 9, "bold"),
+            relief=tk.GROOVE,
+            padx=8,
+            pady=2,
+            command=self.refresh_window_list
+        )
+        btn_refresh_wins.pack(side=tk.LEFT, padx=3)
+
+        btn_pick_win = tk.Button(
+            win_bar,
+            text="🎯 Chỉ định bằng chuột (3s)",
+            bg="#f59e0b",
+            fg="white",
+            font=("Segoe UI", 9, "bold"),
+            relief=tk.FLAT,
+            padx=10,
+            pady=2,
+            command=self.start_pick_window
+        )
+        btn_pick_win.pack(side=tk.LEFT, padx=4)
+
+        self.lbl_selected_win = tk.Label(win_bar, text="Đang dò tìm...", font=("Segoe UI", 9, "italic"), bg="#e2e8f0", fg="#64748b")
+        self.lbl_selected_win.pack(side=tk.LEFT, padx=8)
+
         # 3. Main Split Area: Danh sách ca (trên) & Log trạng thái (dưới)
         paned = tk.PanedWindow(self.root, orient=tk.VERTICAL, sashrelief=tk.RAISED, bg="#cbd5e1")
         paned.pack(fill=tk.BOTH, expand=True, padx=8, pady=5)
@@ -364,7 +403,11 @@ class EmrHisBotApp:
         self.lbl_status = tk.Label(footer, text="Sẵn sàng. Vui lòng nạp danh sách ca từ PM-XếpLịch.", font=("Segoe UI", 9), bg="#e2e8f0", fg="#475569")
         self.lbl_status.pack(side=tk.LEFT)
 
+        self.window_map = {}
+        self.current_target_window = None
+
         self.log("Khởi động emrHIS-AutoBot thành công. Hệ thống sẵn sàng!")
+        self.root.after(350, self.refresh_window_list)
         is_cal = self.config.get("calibration", {}).get("is_calibrated", False)
         if not is_cal:
             self.log("⚠️ Chú ý: Chưa thực hiện cân chỉnh tọa độ cho máy tính này. Vui lòng bấm '🎯 Cân Chỉnh Tọa Độ' một lần trước khi chạy tự động.", level="WARN")
@@ -529,8 +572,108 @@ class EmrHisBotApp:
             self.log("Đã xóa danh sách ca.")
 
     # =========================================================================
-    # TÌM VÀ ACTIVATE CỬA SỔ emrHIS (ĐA CƠ CHẾ + AUTO LAUNCH + FORCE FOREGROUND)
+    # TÌM VÀ ACTIVATE CỬA SỔ emrHIS (WINDOW SELECTOR + MOUSE PICKER + FORCE FOREGROUND)
     # =========================================================================
+    def on_window_selected(self, event=None):
+        """Khi người dùng chọn cửa sổ từ combobox"""
+        sel_title = self.cbo_windows.get()
+        if sel_title in self.window_map:
+            self.current_target_window = self.window_map[sel_title]
+            self.lbl_selected_win.config(text=f"✅ {sel_title[:25]}", fg="#16a34a")
+            self.log(f"🔗 Đã liên kết với cửa sổ: '{sel_title}'")
+            self.force_activate_window(self.current_target_window)
+
+    def refresh_window_list(self):
+        """Quét toàn bộ các cửa sổ có hiển thị trên màn hình đưa vào combobox"""
+        titles = []
+        self.window_map = {}
+
+        try:
+            for w in gw.getAllWindows():
+                t = (w.title or "").strip()
+                if t and w.visible and w.width > 250 and w.height > 180:
+                    if t not in self.window_map:
+                        titles.append(t)
+                        self.window_map[t] = w
+        except Exception:
+            pass
+
+        try:
+            user32 = ctypes.windll.user32
+            def _cb(hwnd, _):
+                if user32.IsWindowVisible(hwnd):
+                    length = user32.GetWindowTextLengthW(hwnd)
+                    if length > 0:
+                        buf = ctypes.create_unicode_buffer(length + 1)
+                        user32.GetWindowTextW(hwnd, buf, length + 1)
+                        t = buf.value.strip()
+                        if t and t not in self.window_map:
+                            rect = wintypes.RECT()
+                            user32.GetWindowRect(hwnd, ctypes.byref(rect))
+                            if (rect.right - rect.left > 250) and (rect.bottom - rect.top > 180):
+                                titles.append(t)
+                                self.window_map[t] = gw.Win32Window(hwnd)
+                return True
+            user32.EnumWindows(ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)(_cb), 0)
+        except Exception:
+            pass
+
+        self.cbo_windows['values'] = titles
+
+        # Tự động chọn mục phù hợp nhất
+        best_match = None
+        for t in titles:
+            t_lower = t.lower()
+            if any(k in t_lower for k in ["emrhis", "his", "medibox", "sanita", "bệnh", "thủ thuật", "phẫu thuật"]):
+                best_match = t
+                break
+
+        if best_match:
+            self.cbo_windows.set(best_match)
+            self.current_target_window = self.window_map[best_match]
+            self.lbl_selected_win.config(text=f"✅ {best_match[:25]}", fg="#16a34a")
+            self.log(f"🎯 Đã tự động nhận diện cửa sổ emrHIS: '{best_match}'")
+        elif titles:
+            self.cbo_windows.current(0)
+            self.current_target_window = self.window_map[titles[0]]
+            self.lbl_selected_win.config(text=f"❓ {titles[0][:25]}", fg="#d97706")
+        else:
+            self.lbl_selected_win.config(text="Không tìm thấy", fg="#dc2626")
+
+    def start_pick_window(self):
+        """Bật chế độ chỉ định cửa sổ emrHIS bằng cách click chuột trong 3 giây"""
+        def _pick_worker():
+            self.log("⏳ BẮT ĐẦU CHỈ ĐỊNH: Hãy click chuột vào cửa sổ emrHIS trong 3 giây tới...")
+            for i in range(3, 0, -1):
+                self.lbl_selected_win.config(text=f"👉 Click emrHIS ({i}s)...", fg="#d97706")
+                time.sleep(1)
+
+            x, y = pyautogui.position()
+            hwnd = ctypes.windll.user32.WindowFromPoint(wintypes.POINT(x, y))
+            GA_ROOT = 2
+            root_hwnd = ctypes.windll.user32.GetAncestor(hwnd, GA_ROOT) or hwnd
+
+            length = ctypes.windll.user32.GetWindowTextLengthW(root_hwnd)
+            buf = ctypes.create_unicode_buffer(length + 1)
+            ctypes.windll.user32.GetWindowTextW(root_hwnd, buf, length + 1)
+            picked_title = buf.value.strip() or f"Cửa sổ (HWND: {root_hwnd})"
+
+            w_obj = gw.Win32Window(root_hwnd)
+            self.current_target_window = w_obj
+            self.window_map[picked_title] = w_obj
+
+            cur_vals = list(self.cbo_windows['values'])
+            if picked_title not in cur_vals:
+                cur_vals.insert(0, picked_title)
+                self.cbo_windows['values'] = cur_vals
+            self.cbo_windows.set(picked_title)
+
+            self.lbl_selected_win.config(text=f"✅ {picked_title[:25]}", fg="#16a34a")
+            self.log(f"🎯 ĐÃ GHIM CỬA SỔ EMRHIS: '{picked_title}' (HWND: {root_hwnd})")
+            self.force_activate_window(w_obj)
+
+        threading.Thread(target=_pick_worker, daemon=True).start()
+
     def user_click_open_his(self):
         """Người dùng chủ động bấm nút '🏥 Mở / Bật emrHIS' trên thanh công cụ"""
         self.log("🔍 Đang tìm hoặc mở giao diện emrHIS...")
@@ -567,7 +710,13 @@ class EmrHisBotApp:
                 else:
                     user32.ShowWindow(hwnd, SW_SHOW)
 
-                # 2. AttachThreadInput để bypass Foreground Lock của Windows
+                # 2. Nhấn Alt ảo để Windows cấp quyền chuyển đổi Foreground
+                try:
+                    pyautogui.press('alt')
+                except Exception:
+                    pass
+
+                # 3. AttachThreadInput để bypass Foreground Lock của Windows
                 cur_tid = kernel32.GetCurrentThreadId()
                 fg_hwnd = user32.GetForegroundWindow()
                 fg_tid = user32.GetWindowThreadProcessId(fg_hwnd, None)
@@ -623,12 +772,11 @@ class EmrHisBotApp:
 
     def _search_any_emrhis_window(self, title_part=None):
         """Tìm bất kỳ cửa sổ nào của emrHIS bằng đa cơ chế (Tiêu đề, UIA, HWND Process)"""
-        # 1. Thử theo pygetwindow title thông thường
         if title_part:
             candidates = [title_part]
         else:
             cfg_title = self.config.get("settings", {}).get("window_main_title_contains", "emrHIS")
-            candidates = [cfg_title, "emrHIS", "HIS", "Medibox", "Sanita", "Quản Lý", "Khám"]
+            candidates = [cfg_title, "emrHIS", "HIS", "Medibox", "Sanita", "Quản Lý", "Khám", "Thủ Thuật"]
 
         for cand in candidates:
             try:
@@ -644,18 +792,16 @@ class EmrHisBotApp:
             except Exception:
                 pass
 
-        # 2. Thử tìm qua UIAutomation AutomationId='FormMain'
         if auto is not None:
             try:
                 main_uia = self._find_form_main_uia()
-                if main_uia and main_uia.Exists(0.1):
+                if main_uia and main_uia.Exists(0.2):
                     hwnd = getattr(main_uia, 'NativeWindowHandle', None)
                     if hwnd and ctypes.windll.user32.IsWindow(hwnd):
                         return gw.Win32Window(hwnd)
             except Exception:
                 pass
 
-        # 3. Thử quét tất cả HWND thuộc tiến trình có tên emrHIS.exe
         try:
             user32 = ctypes.windll.user32
             kernel32 = ctypes.windll.kernel32
@@ -697,14 +843,19 @@ class EmrHisBotApp:
 
         return None
 
-    def find_emrhis_window(self, title_part=None, auto_launch=True):
+    def find_emrhis_window(self, title_part=None, auto_launch=False):
         r"""
         Tìm và kích hoạt cửa sổ emrHIS lên màn hình:
+        - Ưu tiên cửa sổ người dùng đang chọn trên combobox / đã click chỉ định (khi tìm cửa sổ chính)
         - Quét đa cơ chế (Tiêu đề, UIA, HWND Process)
-        - Nếu chưa mở và auto_launch=True: Tự động khởi chạy từ C:\PRIVATE-DPT\HIS\emrHIS.exe
-        - Kích hoạt cửa sổ cưỡng bức (Force Activate)
+        - Force Activate + Alt key để mang ra trước màn hình
         """
-        w = self._search_any_emrhis_window(title_part)
+        w = None
+        if title_part is None and hasattr(self, 'current_target_window') and self.current_target_window:
+            w = self.current_target_window
+
+        if not w:
+            w = self._search_any_emrhis_window(title_part)
 
         if not w and auto_launch and title_part is None:
             self.log("⚠️ Chưa phát hiện cửa sổ emrHIS trên màn hình. Đang tự động mở phần mềm...")
