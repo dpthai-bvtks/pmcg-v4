@@ -1,0 +1,1000 @@
+# -*- coding: utf-8 -*-
+"""
+================================================================================
+                    emrHIS-AutoBot v2.0 - BẢN THƯƠNG MẠI
+   Công cụ Tự động hóa Nhập Thông tin Phẫu thuật - Thủ thuật vào emrHIS
+   Tích hợp trực tiếp với PM Xếp Lịch Phục Hồi Chức Năng & YHCT v4
+================================================================================
+"""
+
+import os
+import sys
+import time
+import json
+import threading
+import ctypes
+from datetime import datetime
+import tkinter as tk
+from tkinter import ttk, messagebox, filedialog
+
+import pyautogui
+import pyperclip
+import pygetwindow as gw
+
+# Cấu hình an toàn cho PyAutoGUI
+pyautogui.FAILSAFE = True
+pyautogui.PAUSE = 0.05
+
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_PATH = os.path.join(APP_DIR, "emrhis_config.json")
+
+# Win32 Virtual Keys cho Global Hotkeys
+VK_ESCAPE = 0x1B
+VK_F8 = 0x77
+VK_F9 = 0x78
+VK_F12 = 0x7B
+VK_KEY_C = 0x43
+
+
+def load_config():
+    if os.path.exists(CONFIG_PATH):
+        try:
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Lỗi đọc config: {e}")
+    return {
+        "settings": {
+            "step_delay": 0.35,
+            "key_interval": 0.02,
+            "wait_window_timeout": 5.0,
+            "failsafe": True,
+            "window_main_title_contains": "emrHIS",
+            "window_form_title_contains": "Cập Nhật Thông Tin Thủ Thuật",
+            "auto_dismiss_popups": True
+        },
+        "defaults": {
+            "tinh_hinh": "Chủ động",
+            "vo_cam": "Khác",
+            "mo_ta": ".",
+            "may_y_te": ""
+        },
+        "staff_mapping": {},
+        "calibration": {
+            "is_calibrated": False,
+            "screen_resolution": [1920, 1080],
+            "main_window": {},
+            "form_pttt": {}
+        }
+    }
+
+
+def save_config(cfg):
+    try:
+        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception as e:
+        print(f"Lỗi lưu config: {e}")
+        return False
+
+
+def is_key_pressed(vk_code):
+    """Kiểm tra xem phím vật lý có đang được ấn không bằng Win32 GetAsyncKeyState"""
+    return (ctypes.windll.user32.GetAsyncKeyState(vk_code) & 0x8000) != 0
+
+
+class EmrHisBotApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("emrHIS-AutoBot v2.0 - Tự động nhập thông tin PTTT")
+        self.root.geometry("1020x720")
+        self.root.minsize(880, 600)
+
+        # Trạng thái
+        self.config = load_config()
+        self.tasks = []
+        self.current_task_index = 0
+        self.is_running = False
+        self.stop_requested = False
+        self.is_calibrating = False
+
+        self._setup_style()
+        self._build_ui()
+        self._start_global_hotkey_listener()
+
+    def _setup_style(self):
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure("Treeview", rowheight=26, font=("Segoe UI", 10))
+        style.configure("Treeview.Heading", font=("Segoe UI", 10, "bold"))
+        style.map("Treeview", background=[("selected", "#0284c7")])
+
+    def _build_ui(self):
+        # 1. Top Bar / Header
+        header_frame = tk.Frame(self.root, bg="#0f172a", height=60)
+        header_frame.pack(fill=tk.X, side=tk.TOP)
+
+        title_lbl = tk.Label(
+            header_frame,
+            text="🤖 emrHIS-AutoBot | Trợ lý Tự Động Nhập Thủ Thuật",
+            font=("Segoe UI", 15, "bold"),
+            fg="#f8fafc",
+            bg="#0f172a"
+        )
+        title_lbl.pack(side=tk.LEFT, padx=15, pady=12)
+
+        status_sub = tk.Label(
+            header_frame,
+            text="Phím tắt: [F8] Điền form hiện tại | [F9] Chạy tự động | [ESC / F12] Dừng khẩn cấp",
+            font=("Segoe UI", 9),
+            fg="#94a3b8",
+            bg="#0f172a"
+        )
+        status_sub.pack(side=tk.RIGHT, padx=15, pady=15)
+
+        # 2. Thanh điều khiển chính (Action Bar)
+        toolbar = tk.Frame(self.root, bg="#f1f5f9", padx=10, pady=8)
+        toolbar.pack(fill=tk.X)
+
+        btn_paste = tk.Button(
+            toolbar,
+            text="📋 Dán từ Clipboard (PM-XếpLịch)",
+            bg="#0284c7",
+            fg="white",
+            font=("Segoe UI", 10, "bold"),
+            relief=tk.FLAT,
+            padx=12,
+            pady=5,
+            command=self.load_from_clipboard
+        )
+        btn_paste.pack(side=tk.LEFT, padx=4)
+
+        btn_open = tk.Button(
+            toolbar,
+            text="📂 Mở file JSON",
+            bg="#475569",
+            fg="white",
+            font=("Segoe UI", 10),
+            relief=tk.FLAT,
+            padx=10,
+            pady=5,
+            command=self.load_from_file
+        )
+        btn_open.pack(side=tk.LEFT, padx=4)
+
+        sep1 = ttk.Separator(toolbar, orient=tk.VERTICAL)
+        sep1.pack(side=tk.LEFT, fill=tk.Y, padx=10)
+
+        self.btn_run_all = tk.Button(
+            toolbar,
+            text="▶️ CHẠY TỰ ĐỘNG (F9)",
+            bg="#16a34a",
+            fg="white",
+            font=("Segoe UI", 10, "bold"),
+            relief=tk.FLAT,
+            padx=14,
+            pady=5,
+            command=self.start_auto_run
+        )
+        self.btn_run_all.pack(side=tk.LEFT, padx=4)
+
+        self.btn_fill_one = tk.Button(
+            toolbar,
+            text="⚡ ĐIỀN FORM ĐANG MỞ (F8)",
+            bg="#d97706",
+            fg="white",
+            font=("Segoe UI", 10, "bold"),
+            relief=tk.FLAT,
+            padx=12,
+            pady=5,
+            command=self.fill_current_open_form
+        )
+        self.btn_fill_one.pack(side=tk.LEFT, padx=4)
+
+        self.btn_stop = tk.Button(
+            toolbar,
+            text="⏹ DỪNG (ESC)",
+            bg="#dc2626",
+            fg="white",
+            font=("Segoe UI", 10, "bold"),
+            relief=tk.FLAT,
+            padx=12,
+            pady=5,
+            state=tk.DISABLED,
+            command=self.request_stop
+        )
+        self.btn_stop.pack(side=tk.LEFT, padx=4)
+
+        btn_calib = tk.Button(
+            toolbar,
+            text="🎯 Cân Chỉnh Tọa Độ",
+            bg="#6366f1",
+            fg="white",
+            font=("Segoe UI", 10, "bold"),
+            relief=tk.FLAT,
+            padx=10,
+            pady=5,
+            command=self.open_calibration_wizard
+        )
+        btn_calib.pack(side=tk.RIGHT, padx=4)
+
+        btn_clear = tk.Button(
+            toolbar,
+            text="🗑 Xóa DS",
+            bg="#e2e8f0",
+            fg="#334155",
+            font=("Segoe UI", 9),
+            relief=tk.FLAT,
+            padx=8,
+            pady=5,
+            command=self.clear_task_list
+        )
+        btn_clear.pack(side=tk.RIGHT, padx=4)
+
+        # 3. Main Split Area: Danh sách ca (trên) & Log trạng thái (dưới)
+        paned = tk.PanedWindow(self.root, orient=tk.VERTICAL, sashrelief=tk.RAISED, bg="#cbd5e1")
+        paned.pack(fill=tk.BOTH, expand=True, padx=8, pady=5)
+
+        # 3.1 Bảng danh sách ca
+        table_frame = tk.Frame(paned, bg="white")
+        paned.add(table_frame, height=360)
+
+        # Header bảng có thống kê
+        tbl_info_frame = tk.Frame(table_frame, bg="#f8fafc", padx=8, pady=4)
+        tbl_info_frame.pack(fill=tk.X)
+
+        self.lbl_stats = tk.Label(
+            tbl_info_frame,
+            text="Tổng cộng: 0 ca | Chờ: 0 | Đã nhập: 0 | Lỗi: 0",
+            font=("Segoe UI", 10, "bold"),
+            fg="#1e293b",
+            bg="#f8fafc"
+        )
+        self.lbl_stats.pack(side=tk.LEFT)
+
+        cols = ("stt", "ten_bn", "nam_sinh", "thu_thuat", "gio_bd", "gio_kt", "ktv", "may", "trang_thai")
+        self.tree = ttk.Treeview(table_frame, columns=cols, show="headings", selectmode="browse")
+
+        self.tree.heading("stt", text="STT")
+        self.tree.heading("ten_bn", text="Họ Tên Bệnh Nhân")
+        self.tree.heading("nam_sinh", text="Năm Sinh")
+        self.tree.heading("thu_thuat", text="Tên Thủ Thuật")
+        self.tree.heading("gio_bd", text="Giờ BĐ")
+        self.tree.heading("gio_kt", text="Giờ KT")
+        self.tree.heading("ktv", text="KTV (Mã)")
+        self.tree.heading("may", text="Máy Y Tế")
+        self.tree.heading("trang_thai", text="Trạng Thái")
+
+        self.tree.column("stt", width=45, anchor=tk.CENTER)
+        self.tree.column("ten_bn", width=170, anchor=tk.W)
+        self.tree.column("nam_sinh", width=75, anchor=tk.CENTER)
+        self.tree.column("thu_thuat", width=220, anchor=tk.W)
+        self.tree.column("gio_bd", width=70, anchor=tk.CENTER)
+        self.tree.column("gio_kt", width=70, anchor=tk.CENTER)
+        self.tree.column("ktv", width=110, anchor=tk.W)
+        self.tree.column("may", width=110, anchor=tk.W)
+        self.tree.column("trang_thai", width=110, anchor=tk.CENTER)
+
+        tree_scroll_y = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.tree.yview)
+        tree_scroll_x = ttk.Scrollbar(table_frame, orient=tk.HORIZONTAL, command=self.tree.xview)
+        self.tree.configure(yscrollcommand=tree_scroll_y.set, xscrollcommand=tree_scroll_x.set)
+
+        tree_scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
+        tree_scroll_x.pack(side=tk.BOTTOM, fill=tk.X)
+        self.tree.pack(fill=tk.BOTH, expand=True)
+
+        # 3.2 Khung Log & Cấu hình nhanh
+        bottom_frame = tk.Frame(paned, bg="#f8fafc")
+        paned.add(bottom_frame, height=200)
+
+        log_header = tk.Frame(bottom_frame, bg="#e2e8f0", padx=8, pady=3)
+        log_header.pack(fill=tk.X)
+
+        tk.Label(
+            log_header,
+            text="📝 Nhật ký vận hành (Live Activity Log):",
+            font=("Segoe UI", 9, "bold"),
+            bg="#e2e8f0",
+            fg="#334155"
+        ).pack(side=tk.LEFT)
+
+        # Speed slider
+        speed_frame = tk.Frame(log_header, bg="#e2e8f0")
+        speed_frame.pack(side=tk.RIGHT)
+        tk.Label(speed_frame, text="Tốc độ trễ (s):", font=("Segoe UI", 9), bg="#e2e8f0").pack(side=tk.LEFT, padx=3)
+        self.speed_var = tk.DoubleVar(value=self.config.get("settings", {}).get("step_delay", 0.35))
+        speed_scale = ttk.Scale(speed_frame, from_=0.15, to_=1.5, variable=self.speed_var, orient=tk.HORIZONTAL, length=100)
+        speed_scale.pack(side=tk.LEFT, padx=3)
+        self.lbl_speed_val = tk.Label(speed_frame, text=f"{self.speed_var.get():.2f}s", font=("Segoe UI", 9, "bold"), bg="#e2e8f0")
+        self.lbl_speed_val.pack(side=tk.LEFT, padx=2)
+        speed_scale.configure(command=lambda v: self.lbl_speed_val.config(text=f"{float(v):.2f}s"))
+
+        # Log Text Area
+        log_scroll = ttk.Scrollbar(bottom_frame, orient=tk.VERTICAL)
+        self.log_txt = tk.Text(
+            bottom_frame,
+            font=("Consolas", 9),
+            bg="#0f172a",
+            fg="#f1f5f9",
+            yscrollcommand=log_scroll.set,
+            wrap=tk.WORD
+        )
+        log_scroll.config(command=self.log_txt.yview)
+        log_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.log_txt.pack(fill=tk.BOTH, expand=True)
+
+        # 4. Status Footer
+        footer = tk.Frame(self.root, bg="#e2e8f0", height=24, padx=8)
+        footer.pack(fill=tk.X, side=tk.BOTTOM)
+        self.lbl_status = tk.Label(footer, text="Sẵn sàng. Vui lòng nạp danh sách ca từ PM-XếpLịch.", font=("Segoe UI", 9), bg="#e2e8f0", fg="#475569")
+        self.lbl_status.pack(side=tk.LEFT)
+
+        self.log("Khởi động emrHIS-AutoBot thành công. Hệ thống sẵn sàng!")
+        is_cal = self.config.get("calibration", {}).get("is_calibrated", False)
+        if not is_cal:
+            self.log("⚠️ Chú ý: Chưa thực hiện cân chỉnh tọa độ cho máy tính này. Vui lòng bấm '🎯 Cân Chỉnh Tọa Độ' một lần trước khi chạy tự động.", level="WARN")
+
+    def log(self, msg, level="INFO"):
+        ts = datetime.now().strftime("%H:%M:%S")
+        prefix = f"[{ts}] [{level}] "
+        self.log_txt.insert(tk.END, prefix + msg + "\n")
+        self.log_txt.see(tk.END)
+        self.lbl_status.config(text=msg)
+
+    # =========================================================================
+    # GLOBAL HOTKEYS LISTENER (Chạy ngầm liên tục qua Win32 API)
+    # =========================================================================
+    def _start_global_hotkey_listener(self):
+        def listener():
+            prev_f8 = False
+            prev_f9 = False
+            prev_esc = False
+            prev_f12 = False
+
+            while True:
+                time.sleep(0.04)
+                # ESC / F12 -> Emergency Stop
+                now_esc = is_key_pressed(VK_ESCAPE)
+                now_f12 = is_key_pressed(VK_F12)
+                if (now_esc and not prev_esc) or (now_f12 and not prev_f12):
+                    if self.is_running:
+                        self.root.after(0, self.request_stop)
+
+                # F8 -> Fill Current Form
+                now_f8 = is_key_pressed(VK_F8)
+                if now_f8 and not prev_f8:
+                    if not self.is_running and not self.is_calibrating:
+                        self.root.after(0, self.fill_current_open_form)
+
+                # F9 -> Start Auto
+                now_f9 = is_key_pressed(VK_F9)
+                if now_f9 and not prev_f9:
+                    if not self.is_running and not self.is_calibrating:
+                        self.root.after(0, self.start_auto_run)
+
+                prev_f8 = now_f8
+                prev_f9 = now_f9
+                prev_esc = now_esc
+                prev_f12 = now_f12
+
+        t = threading.Thread(target=listener, daemon=True)
+        t.start()
+
+    # =========================================================================
+    # NẠP DỮ LIỆU
+    # =========================================================================
+    def load_from_clipboard(self):
+        try:
+            raw = pyperclip.paste().strip()
+            if not raw:
+                messagebox.showwarning("Clipboard rỗng", "Bộ nhớ tạm (Clipboard) không có dữ liệu!\nVui lòng vào PM-XếpLịch bấm nút '🤖 XUẤT LỆNH emrHIS' trước.")
+                return
+            data = json.loads(raw)
+            self._process_loaded_data(data)
+        except json.JSONDecodeError:
+            messagebox.showerror("Sai định dạng", "Dữ liệu trong Clipboard không phải là JSON hợp lệ từ PM-XếpLịch!")
+        except Exception as e:
+            messagebox.showerror("Lỗi", f"Không thể đọc dữ liệu: {e}")
+
+    def load_from_file(self):
+        path = filedialog.askopenfilename(
+            title="Chọn file lệnh emrHIS từ PM-XếpLịch",
+            filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")]
+        )
+        if not path:
+            return
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            self._process_loaded_data(data)
+        except Exception as e:
+            messagebox.showerror("Lỗi đọc file", f"Không thể đọc file: {e}")
+
+    def _process_loaded_data(self, data):
+        tasks = []
+        if isinstance(data, dict) and "tasks" in data:
+            tasks = data["tasks"]
+        elif isinstance(data, list):
+            tasks = data
+        elif isinstance(data, dict) and "schedule" in data:
+            # Fallback convert from schedule
+            sched = data.get("schedule", [])
+            for idx, r in enumerate(sched):
+                tasks.append({
+                    "stt": idx + 1,
+                    "ten_bn": r.get("tenBN", ""),
+                    "nam_sinh": r.get("namSinh", ""),
+                    "thu_thuat": r.get("thuThuat", ""),
+                    "gio_bat_dau": r.get("gioDienRa", "08:00"),
+                    "gio_ket_thuc": r.get("gioKetThuc", "08:30"),
+                    "ngay": data.get("dateDisplay", ""),
+                    "ngay_gio_bd": f"{r.get('gioDienRa', '08:00')} {data.get('dateDisplay', '')}",
+                    "ngay_gio_kt": f"{r.get('gioKetThuc', '08:30')} {data.get('dateDisplay', '')}",
+                    "tinh_hinh": "Chủ động",
+                    "vo_cam": "Khác",
+                    "may_y_te": r.get("mayMoc", ""),
+                    "mo_ta": ".",
+                    "ktv_ma": r.get("nvChinh", ""),
+                    "ktv_ten": r.get("nvChinh", "")
+                })
+
+        if not tasks:
+            messagebox.showwarning("Trống", "Không tìm thấy danh sách ca thủ thuật nào trong dữ liệu!")
+            return
+
+        self.tasks = tasks
+        self._refresh_table()
+        self.log(f"Đã nạp thành công {len(tasks)} ca thủ thuật từ PM-XếpLịch!")
+        messagebox.showinfo("Thành công", f"Đã nạp {len(tasks)} ca thủ thuật!\nBạn có thể bấm '⚡ ĐIỀN FORM ĐANG MỞ (F8)' hoặc '▶️ CHẠY TỰ ĐỘNG (F9)'.")
+
+    def _refresh_table(self):
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        cho = 0
+        xong = 0
+        loi = 0
+
+        for idx, t in enumerate(self.tasks):
+            stt = t.get("stt", idx + 1)
+            ten = t.get("ten_bn", "")
+            ns = t.get("nam_sinh", "")
+            tt = t.get("thu_thuat", "")
+            bd = t.get("gio_bat_dau", "")
+            kt = t.get("gio_ket_thuc", "")
+            ktv = t.get("ktv_ma") or t.get("ktv_ten", "")
+            may = t.get("may_y_te", "")
+            st = t.get("status", "Chờ thực hiện")
+
+            if st == "Hoàn thành":
+                xong += 1
+            elif "Lỗi" in st:
+                loi += 1
+            else:
+                cho += 1
+
+            self.tree.insert("", tk.END, iid=str(idx), values=(stt, ten, ns, tt, bd, kt, ktv, may, st))
+
+        self.lbl_stats.config(text=f"Tổng cộng: {len(self.tasks)} ca | Chờ: {cho} | Đã nhập: {xong} | Lỗi: {loi}")
+
+    def clear_task_list(self):
+        if self.is_running:
+            return
+        if messagebox.askyesno("Xác nhận", "Bạn có chắc muốn xóa toàn bộ danh sách ca hiện tại?"):
+            self.tasks = []
+            self._refresh_table()
+            self.log("Đã xóa danh sách ca.")
+
+    # =========================================================================
+    # TÌM VÀ ACTIVATE CỬA SỔ emrHIS
+    # =========================================================================
+    def find_emrhis_window(self, title_part=None):
+        if title_part is None:
+            title_part = self.config.get("settings", {}).get("window_main_title_contains", "emrHIS")
+
+        windows = gw.getWindowsWithTitle(title_part)
+        if not windows:
+            # Tìm không phân biệt hoa thường
+            all_wins = gw.getAllTitles()
+            matches = [t for t in all_wins if title_part.lower() in t.lower()]
+            if matches:
+                windows = gw.getWindowsWithTitle(matches[0])
+
+        if windows:
+            w = windows[0]
+            try:
+                if w.isMinimized:
+                    w.restore()
+                w.activate()
+                time.sleep(0.3)
+            except Exception as e:
+                self.log(f"Cảnh báo activate cửa sổ: {e}", level="WARN")
+            return w
+        return None
+
+    # =========================================================================
+    # ĐIỀN FORM "CẬP NHẬT THÔNG TIN THỦ THUẬT" (CORE ENGINE)
+    # =========================================================================
+    def fill_form_pttt(self, task, form_window=None):
+        """
+        Thực hiện điền toàn bộ trường vào cửa sổ 'Cập Nhật Thông Tin Thủ Thuật'
+        Dựa trên tọa độ cân chỉnh hoặc phím Tab/Click
+        """
+        delay = self.speed_var.get()
+        cal = self.config.get("calibration", {}).get("form_pttt", {})
+
+        if not form_window:
+            form_title = self.config.get("settings", {}).get("window_form_title_contains", "Cập Nhật Thông Tin Thủ Thuật")
+            form_window = self.find_emrhis_window(form_title)
+
+        if not form_window:
+            raise Exception("Không tìm thấy cửa sổ 'Cập Nhật Thông Tin Thủ Thuật' đang mở trên màn hình!")
+
+        # Kích hoạt cửa sổ form lên trên cùng
+        try:
+            form_window.activate()
+            time.sleep(delay)
+        except Exception:
+            pass
+
+        win_left = form_window.left
+        win_top = form_window.top
+
+        self.log(f"👉 Bắt đầu điền form: {task.get('ten_bn')} - {task.get('thu_thuat')}")
+
+        # Chuẩn bị dữ liệu
+        ngay_gio_bd = task.get("ngay_gio_bd") or f"{task.get('gio_bat_dau', '08:00')} {task.get('ngay', '')}".strip()
+        ngay_gio_kt = task.get("ngay_gio_kt") or f"{task.get('gio_ket_thuc', '08:30')} {task.get('ngay', '')}".strip()
+        tinh_hinh = task.get("tinh_hinh") or "Chủ động"
+        vo_cam = task.get("vo_cam") or "Khác"
+        may_y_te = task.get("may_y_te", "").strip()
+        mo_ta = task.get("mo_ta") or "."
+        ktv_code = task.get("ktv_ma") or task.get("ktv_ten", "")
+
+        # 1. Thời gian bắt đầu
+        pos_bd = cal.get("thoi_gian_bat_dau")
+        if pos_bd:
+            target_x = win_left + pos_bd["rx"] if "rx" in pos_bd else pos_bd["x"]
+            target_y = win_top + pos_bd["ry"] if "ry" in pos_bd else pos_bd["y"]
+            pyautogui.click(target_x, target_y)
+            time.sleep(delay * 0.5)
+            # Chọn toàn bộ ô và dán/gõ
+            pyautogui.hotkey("ctrl", "a")
+            pyautogui.press("backspace")
+            pyperclip.copy(ngay_gio_bd)
+            pyautogui.hotkey("ctrl", "v")
+            time.sleep(delay * 0.5)
+
+        # 2. Thời gian kết thúc
+        pos_kt = cal.get("thoi_gian_ket_thuc")
+        if pos_kt:
+            target_x = win_left + pos_kt["rx"] if "rx" in pos_kt else pos_kt["x"]
+            target_y = win_top + pos_kt["ry"] if "ry" in pos_kt else pos_kt["y"]
+            pyautogui.click(target_x, target_y)
+            time.sleep(delay * 0.5)
+            pyautogui.hotkey("ctrl", "a")
+            pyautogui.press("backspace")
+            pyperclip.copy(ngay_gio_kt)
+            pyautogui.hotkey("ctrl", "v")
+            time.sleep(delay * 0.5)
+
+        # 3. Phương pháp vô cảm (Mặc định: 'Khác')
+        pos_vc = cal.get("cbo_vo_cam")
+        if pos_vc:
+            target_x = win_left + pos_vc["rx"] if "rx" in pos_vc else pos_vc["x"]
+            target_y = win_top + pos_vc["ry"] if "ry" in pos_vc else pos_vc["y"]
+            pyautogui.click(target_x, target_y)
+            time.sleep(delay * 0.5)
+            # Gõ hoặc chọn dropdown
+            pyperclip.copy(vo_cam)
+            pyautogui.hotkey("ctrl", "a")
+            pyautogui.hotkey("ctrl", "v")
+            pyautogui.press("enter")
+            time.sleep(delay * 0.5)
+
+        # 4. Tình hình PTTT (Mặc định: 'Chủ động')
+        pos_th = cal.get("cbo_tinh_hinh")
+        if pos_th:
+            target_x = win_left + pos_th["rx"] if "rx" in pos_th else pos_th["x"]
+            target_y = win_top + pos_th["ry"] if "ry" in pos_th else pos_th["y"]
+            pyautogui.click(target_x, target_y)
+            time.sleep(delay * 0.5)
+            pyperclip.copy(tinh_hinh)
+            pyautogui.hotkey("ctrl", "a")
+            pyautogui.hotkey("ctrl", "v")
+            pyautogui.press("enter")
+            time.sleep(delay * 0.5)
+
+        # 5. Máy y tế (nếu có)
+        pos_may = cal.get("cbo_may_y_te")
+        if pos_may and may_y_te:
+            target_x = win_left + pos_may["rx"] if "rx" in pos_may else pos_may["x"]
+            target_y = win_top + pos_may["ry"] if "ry" in pos_may else pos_may["y"]
+            pyautogui.click(target_x, target_y)
+            time.sleep(delay * 0.5)
+            pyperclip.copy(may_y_te)
+            pyautogui.hotkey("ctrl", "a")
+            pyautogui.hotkey("ctrl", "v")
+            pyautogui.press("enter")
+            time.sleep(delay * 0.5)
+
+        # 6. Mô tả thủ thuật (Mặc định: '.')
+        pos_mt = cal.get("txt_mo_ta")
+        if pos_mt:
+            target_x = win_left + pos_mt["rx"] if "rx" in pos_mt else pos_mt["x"]
+            target_y = win_top + pos_mt["ry"] if "ry" in pos_mt else pos_mt["y"]
+            pyautogui.click(target_x, target_y)
+            time.sleep(delay * 0.5)
+            pyautogui.hotkey("ctrl", "a")
+            pyperclip.copy(mo_ta)
+            pyautogui.hotkey("ctrl", "v")
+            time.sleep(delay * 0.5)
+
+        # 7. Ê-Kíp PTTT -> Ô Nhân Viên dòng 1 (Thủ thuật chính)
+        pos_ekip = cal.get("grid_ekip_cell_nhanvien")
+        if pos_ekip and ktv_code:
+            target_x = win_left + pos_ekip["rx"] if "rx" in pos_ekip else pos_ekip["x"]
+            target_y = win_top + pos_ekip["ry"] if "ry" in pos_ekip else pos_ekip["y"]
+            pyautogui.doubleClick(target_x, target_y)
+            time.sleep(delay * 0.5)
+            # Dán mã KTV (dùng clipboard để tránh Unikey nhảy ký tự)
+            pyperclip.copy(ktv_code)
+            pyautogui.hotkey("ctrl", "v")
+            time.sleep(delay * 0.5)
+            pyautogui.press("enter")
+            time.sleep(delay * 0.5)
+
+        # 8. Bấm nút "Lưu + Đóng"
+        pos_save = cal.get("btn_luu_dong")
+        if pos_save:
+            target_x = win_left + pos_save["rx"] if "rx" in pos_save else pos_save["x"]
+            target_y = win_top + pos_save["ry"] if "ry" in pos_save else pos_save["y"]
+            pyautogui.click(target_x, target_y)
+            self.log("💾 Đã click 'Lưu + Đóng'.")
+            time.sleep(delay * 1.5)
+
+            # Tự động đóng popup cảnh báo nếu có (bấm 'Có' / Enter / Space)
+            if self.config.get("settings", {}).get("auto_dismiss_popups", True):
+                time.sleep(0.3)
+                pyautogui.press("enter")
+
+        self.log(f"✅ Hoàn thành điền form cho: {task.get('ten_bn')}")
+
+    # =========================================================================
+    # PHÍM TẮT F8: ĐIỀN NHANH 1 FORM ĐANG MỞ
+    # =========================================================================
+    def fill_current_open_form(self):
+        if not self.tasks:
+            messagebox.showwarning("Chưa có dữ liệu", "Vui lòng nạp danh sách ca trước (Dán từ Clipboard hoặc mở file JSON)!")
+            return
+
+        # Lấy ca đang được chọn trong bảng hoặc ca đầu tiên chưa làm
+        selected_iid = self.tree.focus()
+        task_idx = None
+        if selected_iid:
+            try:
+                task_idx = int(selected_iid)
+            except ValueError:
+                pass
+
+        if task_idx is None:
+            # Tìm ca đầu tiên chưa hoàn thành
+            for idx, t in enumerate(self.tasks):
+                if t.get("status") != "Hoàn thành":
+                    task_idx = idx
+                    break
+            if task_idx is None:
+                task_idx = 0
+
+        task = self.tasks[task_idx]
+
+        def run_thread():
+            try:
+                self.btn_fill_one.config(state=tk.DISABLED)
+                self.log(f"⚡ [F8] Đang điền form hiện tại cho ca #{task_idx + 1}: {task.get('ten_bn')}...")
+                self.fill_form_pttt(task)
+                task["status"] = "Hoàn thành"
+                self.root.after(0, self._refresh_table)
+                self.root.after(0, lambda: self._select_next_row(task_idx))
+            except Exception as e:
+                self.log(f"❌ Lỗi [F8]: {e}", level="ERROR")
+                messagebox.showerror("Lỗi điền form", str(e))
+            finally:
+                self.btn_fill_one.config(state=tk.NORMAL)
+
+        threading.Thread(target=run_thread, daemon=True).start()
+
+    def _select_next_row(self, current_idx):
+        next_idx = current_idx + 1
+        if next_idx < len(self.tasks):
+            self.tree.selection_set(str(next_idx))
+            self.tree.focus(str(next_idx))
+            self.tree.see(str(next_idx))
+
+    # =========================================================================
+    # CHẠY TỰ ĐỘNG TOÀN BỘ DANH SÁCH (F9)
+    # =========================================================================
+    def start_auto_run(self):
+        if not self.tasks:
+            messagebox.showwarning("Chưa có ca nào", "Vui lòng nạp danh sách ca trước khi chạy!")
+            return
+
+        cal = self.config.get("calibration", {})
+        if not cal.get("is_calibrated", False):
+            if not messagebox.askyesno(
+                "Chưa cân chỉnh tọa độ",
+                "Máy tính này chưa được cân chỉnh tọa độ cho emrHIS!\n\n"
+                "Bạn có muốn vào phần '🎯 Cân Chỉnh Tọa Độ' ngay bây giờ không?\n"
+                "(Bấm No nếu bạn vẫn muốn thử chạy)"
+            ):
+                pass
+            else:
+                self.open_calibration_wizard()
+                return
+
+        self.is_running = True
+        self.stop_requested = False
+        self.btn_run_all.config(state=tk.DISABLED)
+        self.btn_stop.config(state=tk.NORMAL)
+
+        def worker():
+            self.log("🚀 BẮT ĐẦU CHẠY TỰ ĐỘNG TOÀN BỘ DANH SÁCH CA...")
+            delay = self.speed_var.get()
+            cal_main = self.config.get("calibration", {}).get("main_window", {})
+            form_title = self.config.get("settings", {}).get("window_form_title_contains", "Cập Nhật Thông Tin Thủ Thuật")
+
+            for idx, task in enumerate(self.tasks):
+                if self.stop_requested:
+                    self.log("⏹ Đã nhận lệnh dừng từ người dùng!", level="WARN")
+                    break
+
+                if task.get("status") == "Hoàn thành":
+                    continue
+
+                self.root.after(0, lambda i=idx: (self.tree.selection_set(str(i)), self.tree.focus(str(i)), self.tree.see(str(i))))
+                ten_bn = task.get("ten_bn", "").strip()
+                tt_name = task.get("thu_thuat", "").strip()
+                self.log(f"--- Đang xử lý ca {idx + 1}/{len(self.tasks)}: {ten_bn} [{tt_name}] ---")
+                task["status"] = "Đang chạy..."
+                self.root.after(0, self._refresh_table)
+
+                try:
+                    # 1. Kích hoạt cửa sổ chính emrHIS
+                    main_win = self.find_emrhis_window()
+                    if not main_win:
+                        raise Exception("Không tìm thấy cửa sổ emrHIS! Vui lòng mở emrHIS lên.")
+
+                    # 2. Tìm kiếm bệnh nhân theo tên
+                    pos_search = cal_main.get("search_box")
+                    if pos_search:
+                        sx = main_win.left + pos_search["rx"] if "rx" in pos_search else pos_search["x"]
+                        sy = main_win.top + pos_search["ry"] if "ry" in pos_search else pos_search["y"]
+                        pyautogui.click(sx, sy)
+                        time.sleep(delay)
+                        pyautogui.hotkey("ctrl", "a")
+                        pyautogui.press("backspace")
+                        pyperclip.copy(ten_bn)
+                        pyautogui.hotkey("ctrl", "v")
+                        time.sleep(delay * 0.5)
+                        pyautogui.press("enter")
+                        time.sleep(delay * 1.5)
+
+                    if self.stop_requested:
+                        break
+
+                    # 3. Chọn dòng bệnh nhân trong danh sách
+                    pos_pt_row = cal_main.get("patient_first_row")
+                    if pos_pt_row:
+                        px = main_win.left + pos_pt_row["rx"] if "rx" in pos_pt_row else pos_pt_row["x"]
+                        py = main_win.top + pos_pt_row["ry"] if "ry" in pos_pt_row else pos_pt_row["y"]
+                        pyautogui.click(px, py)
+                        time.sleep(delay)
+
+                    # 4. Bấm "Bắt đầu thực hiện"
+                    pos_btn_start = cal_main.get("btn_bat_dau_thuc_hien")
+                    if pos_btn_start:
+                        bx = main_win.left + pos_btn_start["rx"] if "rx" in pos_btn_start else pos_btn_start["x"]
+                        by = main_win.top + pos_btn_start["ry"] if "ry" in pos_btn_start else pos_btn_start["y"]
+                        pyautogui.click(bx, by)
+                        time.sleep(delay * 1.5)
+
+                        # Nếu có cảnh báo xác nhận -> Enter để chọn Có
+                        if self.config.get("settings", {}).get("auto_dismiss_popups", True):
+                            pyautogui.press("enter")
+                            time.sleep(delay * 0.5)
+
+                    if self.stop_requested:
+                        break
+
+                    # 5. Chuột phải vào dòng thủ thuật -> chọn "Nhập Thông Tin PTTT"
+                    pos_proc = cal_main.get("procedure_first_row")
+                    if pos_proc:
+                        rx = main_win.left + pos_proc["rx"] if "rx" in pos_proc else pos_proc["x"]
+                        ry = main_win.top + pos_proc["ry"] if "ry" in pos_proc else pos_proc["y"]
+                        pyautogui.rightClick(rx, ry)
+                        time.sleep(delay * 0.8)
+
+                        # Click menu "Nhập Thông Tin PTTT"
+                        pos_menu = cal_main.get("menu_nhap_tt_pttt")
+                        if pos_menu:
+                            mx = main_win.left + pos_menu["rx"] if "rx" in pos_menu else pos_menu["x"]
+                            my = main_win.top + pos_menu["ry"] if "ry" in pos_menu else pos_menu["y"]
+                            pyautogui.click(mx, my)
+                        else:
+                            # Phím mũi tên xuống hoặc phím tắt
+                            pyautogui.press("down")
+                            pyautogui.press("enter")
+
+                        time.sleep(delay * 2.0)
+
+                    if self.stop_requested:
+                        break
+
+                    # 6. Đợi cửa sổ popup form hiện lên
+                    form_win = None
+                    for _ in range(15):
+                        form_win = self.find_emrhis_window(form_title)
+                        if form_win:
+                            break
+                        time.sleep(0.3)
+
+                    # 7. Điền form
+                    self.fill_form_pttt(task, form_window=form_win)
+                    task["status"] = "Hoàn thành"
+                    self.log(f"✅ Hoàn tất ca #{idx + 1}: {ten_bn}")
+
+                except Exception as ex:
+                    task["status"] = f"Lỗi: {str(ex)[:30]}"
+                    self.log(f"❌ Lỗi ca #{idx + 1} ({ten_bn}): {ex}", level="ERROR")
+
+                self.root.after(0, self._refresh_table)
+                time.sleep(delay * 1.0)
+
+            self.is_running = False
+            self.stop_requested = False
+            self.root.after(0, lambda: (self.btn_run_all.config(state=tk.NORMAL), self.btn_stop.config(state=tk.DISABLED)))
+            self.log("🏁 Hoàn tất phiên chạy tự động!")
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def request_stop(self):
+        if self.is_running:
+            self.stop_requested = True
+            self.log("⚠️ ĐANG DỪNG KHẨN CẤP...", level="WARN")
+
+    # =========================================================================
+    # HƯỚNG DẪN CÂN CHỈNH TỌA ĐỘ TRỰC QUAN (CALIBRATION WIZARD)
+    # =========================================================================
+    def open_calibration_wizard(self):
+        wizard = tk.Toplevel(self.root)
+        wizard.title("🎯 Hướng Dẫn Cân Chỉnh Tọa Độ Cho Màn Hình")
+        wizard.geometry("640x520")
+        wizard.resizable(False, False)
+        wizard.attributes("-topmost", True)
+
+        self.is_calibrating = True
+
+        steps = [
+            # Màn hình chính
+            ("main_window", "search_box", "1. Ô Tìm kiếm Bệnh nhân", "Rê chuột vào Ô TÌM KIẾM BỆNH NHÂN (trên màn hình chính emrHIS) rồi bấm phím [C]"),
+            ("main_window", "patient_first_row", "2. Dòng Bệnh nhân đầu tiên", "Rê chuột vào DÒNG BỆNH NHÂN ĐẦU TIÊN trong bảng danh sách rồi bấm phím [C]"),
+            ("main_window", "btn_bat_dau_thuc_hien", "3. Nút 'Bắt đầu thực hiện'", "Rê chuột vào NÚT 'BẮT ĐẦU THỰC HIỆN' rồi bấm phím [C]"),
+            ("main_window", "procedure_first_row", "4. Dòng Thủ thuật cần chuột phải", "Rê chuột vào DÒNG THỦ THUẬT tương ứng rồi bấm phím [C]"),
+            ("main_window", "menu_nhap_tt_pttt", "5. Menu 'Nhập Thông Tin PTTT'", "Chuột phải vào dòng thủ thuật để menu hiện ra, rê vào 'Nhập Thông Tin PTTT' rồi bấm [C]"),
+            # Form PTTT
+            ("form_pttt", "thoi_gian_bat_dau", "6. Ô 'Thời gian bắt đầu *'", "Mở cửa sổ PTTT lên. Rê chuột vào ô THỜI GIAN BẮT ĐẦU rồi bấm phím [C]"),
+            ("form_pttt", "thoi_gian_ket_thuc", "7. Ô 'Thời gian kết thúc *'", "Rê chuột vào ô THỜI GIAN KẾT THÚC rồi bấm phím [C]"),
+            ("form_pttt", "cbo_vo_cam", "8. Dropdown 'Phương pháp vô cảm *'", "Rê chuột vào ô PHƯƠNG PHÁP VÔ CẢM rồi bấm phím [C]"),
+            ("form_pttt", "cbo_tinh_hinh", "9. Dropdown 'Tình hình PTTT *'", "Rê chuột vào ô TÌNH HÌNH PTTT rồi bấm phím [C]"),
+            ("form_pttt", "cbo_may_y_te", "10. Dropdown 'Máy y tế'", "Rê chuột vào ô MÁY Y TẾ (nếu có, hoặc bấm Bỏ Qua) rồi bấm phím [C]"),
+            ("form_pttt", "txt_mo_ta", "11. Ô 'Mô tả thủ thuật'", "Rê chuột vào khung MÔ TẢ THỦ THUẬT (ô lớn bên dưới) rồi bấm phím [C]"),
+            ("form_pttt", "grid_ekip_cell_nhanvien", "12. Ô Nhân viên dòng 1 (Thủ thuật chính)", "Rê chuột vào ô NHÂN VIÊN dòng 1 của bảng 'Ê-Kip PTTT' rồi bấm phím [C]"),
+            ("form_pttt", "btn_luu_dong", "13. Nút 'Lưu + Đóng'", "Rê chuột vào nút 'LƯU + ĐÓNG' (góc dưới cùng bên phải) rồi bấm phím [C]")
+        ]
+
+        current_step_idx = [0]
+        cal_data = {
+            "is_calibrated": True,
+            "screen_resolution": [pyautogui.size().width, pyautogui.size().height],
+            "main_window": dict(self.config.get("calibration", {}).get("main_window", {})),
+            "form_pttt": dict(self.config.get("calibration", {}).get("form_pttt", {}))
+        }
+
+        # UI
+        lbl_step_num = tk.Label(wizard, text="Bước 1/13", font=("Segoe UI", 12, "bold"), fg="#0284c7")
+        lbl_step_num.pack(pady=8)
+
+        lbl_step_title = tk.Label(wizard, text="", font=("Segoe UI", 13, "bold"), fg="#0f172a")
+        lbl_step_title.pack(pady=4)
+
+        lbl_step_desc = tk.Label(wizard, text="", font=("Segoe UI", 10), wraplength=580, justify=tk.CENTER, fg="#475569")
+        lbl_step_desc.pack(pady=10)
+
+        lbl_pos_live = tk.Label(wizard, text="Tọa độ chuột hiện tại: X=0, Y=0", font=("Consolas", 11, "bold"), fg="#16a34a")
+        lbl_pos_live.pack(pady=10)
+
+        btn_box = tk.Frame(wizard)
+        btn_box.pack(pady=15)
+
+        def update_step():
+            if current_step_idx[0] >= len(steps):
+                # Hoàn thành
+                lbl_step_num.config(text="🎉 ĐÃ HOÀN TẤT CÂN CHỈNH!")
+                lbl_step_title.config(text="Đã lưu toàn bộ tọa độ thành công.")
+                lbl_step_desc.config(text="Các thông số đã được lưu vào file emrhis_config.json.\nGiờ đây bạn có thể chạy tự động mượt mà!")
+                btn_skip.pack_forget()
+                btn_finish.pack(side=tk.LEFT, padx=5)
+                return
+
+            sec, key, title, desc = steps[current_step_idx[0]]
+            lbl_step_num.config(text=f"Bước {current_step_idx[0] + 1}/{len(steps)}")
+            lbl_step_title.config(text=title)
+            lbl_step_desc.config(text=desc)
+
+        def on_skip():
+            current_step_idx[0] += 1
+            update_step()
+
+        def on_finish():
+            self.config["calibration"] = cal_data
+            save_config(self.config)
+            self.is_calibrating = False
+            self.log("🎯 Đã cập nhật tọa độ cân chỉnh mới vào emrhis_config.json!")
+            wizard.destroy()
+
+        btn_skip = tk.Button(btn_box, text="⏭ Bỏ Qua Bước Này", font=("Segoe UI", 10), command=on_skip)
+        btn_skip.pack(side=tk.LEFT, padx=5)
+
+        btn_finish = tk.Button(btn_box, text="💾 Lưu và Đóng", font=("Segoe UI", 10, "bold"), bg="#16a34a", fg="white", command=on_finish)
+
+        # Thread theo dõi chuột & phím C
+        def cal_tracker():
+            prev_c = False
+            while self.is_calibrating and wizard.winfo_exists():
+                time.sleep(0.04)
+                x, y = pyautogui.position()
+                try:
+                    lbl_pos_live.config(text=f"Tọa độ chuột hiện tại: X={x}, Y={y}")
+                except Exception:
+                    break
+
+                now_c = is_key_pressed(VK_KEY_C)
+                if now_c and not prev_c:
+                    # Bấm phím C
+                    if current_step_idx[0] < len(steps):
+                        sec, key, _, _ = steps[current_step_idx[0]]
+
+                        # Tính tọa độ tương đối theo cửa sổ nếu tìm thấy
+                        rx = x
+                        ry = y
+                        target_win = self.find_emrhis_window()
+                        if target_win:
+                            rx = x - target_win.left
+                            ry = y - target_win.top
+
+                        cal_data[sec][key] = {"x": x, "y": y, "rx": rx, "ry": ry}
+                        self.log(f"🎯 Đã bắt tọa độ {key}: Screen({x}, {y}) - Relative({rx}, {ry})")
+                        current_step_idx[0] += 1
+                        wizard.after(0, update_step)
+
+                prev_c = now_c
+
+        threading.Thread(target=cal_tracker, daemon=True).start()
+        update_step()
+
+        def on_close():
+            self.is_calibrating = False
+            wizard.destroy()
+
+        wizard.protocol("WM_DELETE_WINDOW", on_close)
+
+
+def main():
+    root = tk.Tk()
+    app = EmrHisBotApp(root)
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    main()

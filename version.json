@@ -1,6 +1,6 @@
 {
-    "version": "4.2.2-rev1",
+    "version": "4.2.2-rev2",
     "releaseDate": "06/10/2026",
-    "releaseTime": "08:30 06/10/2026",
-    "notes": "Khắc phục triệt để lỗi khi lưu bệnh nhân, nhân sự 'Failed to fetch': Định tuyến độc lập các tác vụ Mutation (addBenhNhan, editBenhNhan, addNhanSu, editNhanSu) luôn gửi tới máy chủ chính Cloudflare/Turso; Gỡ bỏ keepalive gây lỗi TypeError fetch trên trình duyệt; Cơ chế tự động thử lại 1 lần sau 800ms cho mutation; Tự động phục hồi chế độ Primary (Liveness Probe) khi máy chủ chính trực tuyến; Bảo vệ dữ liệu bệnh nhân và nhân sự trên Optimistic UI và IndexedDB OfflineCache khi gián đoạn mạng."
+    "releaseTime": "10:45 06/10/2026",
+    "notes": "Thay thế nút XUẤT PDF thành nút 🤖 XUẤT LỆNH emrHIS trên thanh công cụ Lịch trình; Ra mắt công cụ emrHIS-AutoBot v2.0 (tools/emrhis_bot) tự động hóa nhập thông tin Phẫu thuật - Thủ thuật vào emrHIS qua phím tắt F8/F9; Khắc phục lỗi mã hóa ký tự Unicode tiếng Việt trong file thực thi CHAY_BOT_EMRHIS.bat trên Windows cmd.exe."
 }

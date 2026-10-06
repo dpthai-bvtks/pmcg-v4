@@ -599,7 +599,7 @@
         window.toggleScheduleViewMode = toggleScheduleViewMode;
 
         // ============================================================
-        // ⚡ XUẤT DỮ LIỆU ĐỂ TỰ ĐỘNG NHẬP HIS (AUTO-HIS IMPORTER)
+        // ⚡ XUẤT DỮ LIỆU ĐỂ TỰ ĐỘNG NHẬP emrHIS (AUTO-emrHIS BOT)
         // ============================================================
         function exportDataForHisAuto() {
             const rawSched = (window.currentScheduleData && window.currentScheduleData.length) ? window.currentScheduleData : 
@@ -608,9 +608,9 @@
             
             if (!safeSched.length) {
                 if (typeof window.showToast === 'function') {
-                    window.showToast('⚠️ Chưa có dữ liệu lịch trình để xuất sang phần mềm HIS!', 'warning');
+                    window.showToast('⚠️ Chưa có dữ liệu lịch trình để xuất sang emrHIS!', 'warning');
                 } else {
-                    alert('Chưa có dữ liệu lịch trình để xuất sang phần mềm HIS!');
+                    alert('Chưa có dữ liệu lịch trình để xuất sang emrHIS!');
                 }
                 return;
             }
@@ -619,11 +619,65 @@
                                   (document.getElementById('schedule-date')?.value) || 
                                   (safeSched[0]?.ngay) || '';
 
+            // Định dạng ngày theo chuẩn emrHIS: dd/MM/yyyy
+            let ddmmyyyy = '';
+            if (activeDateVal) {
+                const parts = activeDateVal.split('-');
+                if (parts.length === 3) {
+                    ddmmyyyy = `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
+                }
+            }
+            if (!ddmmyyyy) {
+                const now = new Date();
+                ddmmyyyy = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+            }
+
+            // Chuẩn hóa danh sách nhân sự để lấy mã emrHIS (tenHis ví dụ: hdd, dpt)
+            const staffList = (typeof dataCache !== 'undefined' && dataCache.staff) ? dataCache.staff : [];
+            const staffMap = {};
+            staffList.forEach(s => {
+                if (s.ten) {
+                    staffMap[s.ten.trim().toLowerCase()] = s;
+                }
+            });
+
+            const emrTasks = safeSched.map((r, idx) => {
+                const tenBnClean = String(r.tenBN || '').replace(/\s*\((RV|❌\s*Rớt)\)\s*$/i, '').trim();
+                const nvChinh = String(r.nguoiThucHien || r.nvChinh || '').trim();
+                const staffObj = staffMap[nvChinh.toLowerCase()] || {};
+                const ktvMa = String(staffObj.tenHis || staffObj.his_name || nvChinh).trim();
+
+                const gioBd = String(r.gioDienRa || r.gioVao || '08:00').trim();
+                const gioKt = String(r.gioKetThuc || r.gioRa || '08:30').trim();
+
+                return {
+                    stt: idx + 1,
+                    ten_bn: tenBnClean,
+                    nam_sinh: r.namSinh || '',
+                    thu_thuat: String(r.thuThuat || '').trim(),
+                    gio_bat_dau: gioBd,
+                    gio_ket_thuc: gioKt,
+                    ngay: ddmmyyyy,
+                    ngay_gio_bd: `${gioBd} ${ddmmyyyy}`,
+                    ngay_gio_kt: `${gioKt} ${ddmmyyyy}`,
+                    tinh_hinh: "Chủ động",
+                    vo_cam: "Khác",
+                    may_y_te: String(r.mayMoc || r.may || '').trim(),
+                    mo_ta: ".",
+                    ktv_ma: ktvMa,
+                    ktv_ten: nvChinh,
+                    phong: String(r.phong || '').trim()
+                };
+            });
+
             const exportObj = {
-                version: "1.0",
+                version: "2.0",
+                software: "emrHIS",
                 exportedAt: new Date().toISOString(),
                 date: activeDateVal,
-                totalProcedures: safeSched.length,
+                dateDisplay: ddmmyyyy,
+                totalProcedures: emrTasks.length,
+                tasks: emrTasks,
                 schedule: safeSched
             };
 
@@ -632,32 +686,33 @@
             // 1. Tự động Copy vào Clipboard
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(jsonStr).then(() => {
-                    console.log("Đã copy dữ liệu lịch vào Clipboard");
+                    console.log("Đã copy lệnh emrHIS vào Clipboard");
                 }).catch(e => console.warn("Lỗi copy clipboard:", e));
             }
 
-            // 2. Tải file his_schedule.json
+            // 2. Tải file emrhis_tasks.json
             try {
                 const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `his_schedule_${activeDateVal || 'today'}.json`;
+                a.download = `emrhis_tasks_${activeDateVal || 'today'}.json`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
             } catch (err) {
-                console.error("Lỗi tải file JSON:", err);
+                console.error("Lỗi tải file JSON emrHIS:", err);
             }
 
-            const msg = `✅ ĐÃ XUẤT ${safeSched.length} CA THỦ THUẬT!\n\n1. Dữ liệu đã được tự động sao chép vào Clipboard (Bạn chỉ cần mở tool Auto-HIS và bấm '📋 Dán từ Clipboard').\n2. Đồng thời đã tải file 'his_schedule_${activeDateVal || 'today'}.json' về máy.`;
+            const msg = `🤖 ĐÃ XUẤT ${emrTasks.length} LỆNH THỦ THUẬT CHO emrHIS!\n\n1. Đã TỰ ĐỘNG SAO CHÉP VÀO BỘ NHỚ TẠM (CLIPBOARD).\n   👉 Bạn chỉ cần mở tool 'emrHIS Bot' và bấm nút '📋 Dán từ Clipboard' là nạp được ngay!\n\n2. Đồng thời đã tải file: 'emrhis_tasks_${activeDateVal || 'today'}.json'.`;
             if (typeof window.showToast === 'function') {
-                window.showToast(`✅ Đã xuất ${safeSched.length} ca sang Auto-HIS (đã copy & tải file)!`, 'success');
+                window.showToast(`🤖 Đã xuất ${emrTasks.length} ca sang emrHIS Bot!`, 'success', 5000);
             }
             alert(msg);
         }
         window.exportDataForHisAuto = exportDataForHisAuto;
+        window.exportEmrHisTasks = exportDataForHisAuto;
 
         function renderScheduleGanttTimeline() {
             const target = document.getElementById('schedule-gantt-target');

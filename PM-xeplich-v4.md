@@ -7617,6 +7617,39 @@ ormalizeScheduleItem.
 - `version.json` (cập nhật version 4.2.2-rev1)
 - `PM-xeplich-v4.md` (nhật ký phát triển)
 
+---
+
+## 31. 🤖 Tích Hợp Tự Động Hóa emrHIS (emrHIS-AutoBot v2.0)
+
+### Bối Cảnh & Nhu Cầu
+Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật viên/bác sĩ phải nhập thủ công từng ca thủ thuật vào phần mềm HIS của bệnh viện (`emrHIS` - desktop app x86). Quy trình này tốn nhiều giờ mỗi ngày và dễ nhầm lẫn giờ bắt đầu, giờ kết thúc, kỹ thuật viên chính, máy y tế.
+
+### Giải Pháp Tích Hợp Hai Chiều:
+1. **Phía Web (`PM-XepLich`):**
+   - Nút bấm **`🤖 XUẤT LỆNH emrHIS`** tại thanh công cụ Tab Lịch Trình (`index.html`).
+   - Hàm `exportDataForHisAuto()` trong `js/modules/app-export-reports.js`:
+     - Tự động định dạng chuẩn xác từng trường theo yêu cầu của `emrHIS`: `ten_bn`, `nam_sinh`, `thu_thuat`, `gio_bat_dau`, `gio_ket_thuc`, `ngay`, `ngay_gio_bd` (định dạng `HH:mm dd/MM/yyyy`), `ngay_gio_kt` (`HH:mm dd/MM/yyyy`), `tinh_hinh` ("Chủ động"), `vo_cam` ("Khác"), `may_y_te`, `mo_ta` ("."), `ktv_ma` (mã nhân viên như `hdd`, `dpt`), `phong`.
+     - Tự động nạp vào **Clipboard** đồng thời tải file dự phòng `emrhis_tasks_[ngày].json`.
+2. **Phía Công Cụ Desktop (`tools/emrhis_bot/`):**
+   - **`emrhis_bot.py`**: Ứng dụng Tkinter GUI + PyAutoGUI + Win32 Global Hotkeys (`ctypes`):
+     - **Phím tắt toàn cục [F8]**: Điền siêu tốc form "Cập Nhật Thông Tin Thủ Thuật" đang mở trên màn hình trong 1 giây (nhập Thời gian BD, KT, Chủ động, Khác, Máy, Mô tả `.`, mã KTV, ấn Lưu+Đóng).
+     - **Phím tắt toàn cục [F9]**: Chạy tự động tuần tự toàn bộ danh sách ca (Tìm kiếm bệnh nhân $\rightarrow$ Chọn BN $\rightarrow$ Bắt đầu thực hiện $\rightarrow$ Chuột phải PTTT $\rightarrow$ Điền form $\rightarrow$ Lưu+Đóng $\rightarrow$ Ca tiếp theo).
+     - **Phím tắt an toàn [ESC] / [F12] & Fail-Safe**: Dừng khẩn cấp tức thì.
+     - **Bộ cân chỉnh trực quan (Calibration Wizard)**: Hướng dẫn người dùng cân chỉnh tọa độ màn hình 1 lần bằng phím `C`, lưu vào `emrhis_config.json`.
+     - **Chống lỗi gõ tiếng Việt (Unikey/EVKey)**: Sử dụng clipboard injection (`pyperclip`) đảm bảo tên tiếng Việt và mã nhân viên chính xác 100%.
+   - **`CHAY_BOT_EMRHIS.bat`**: Khởi động 1 chạm cho người dùng Windows (chuẩn ASCII không lỗi mã hóa Unicode trên cmd.exe).
+   - **`HUONG_DAN_SU_DUNG.md`**: Cẩm nang hướng dẫn sử dụng chi tiết từng bước.
+
+### Cập nhật Phiên bản v4.2.2-rev2 (10:45 06/10/2026):
+- **Giao diện Lịch trình**: Thay thế nút "XUẤT PDF" bằng nút duy nhất "🤖 XUẤT LỆNH emrHIS" (màu xanh dương đậm nổi bật, font chữ in đậm).
+- **Sửa file chạy Bot**: Khắc phục triệt để lỗi phân giải ký tự tiếng Việt có dấu trong `CHAY_BOT_EMRHIS.bat` trên Windows `cmd.exe`.
+- **Đồng bộ phiên bản theo RULES.md**:
+  - `version.json`: `4.2.2-rev2`, `releaseTime`: `10:45 06/10/2026`.
+  - `index.html`: Cập nhật toàn bộ cache busters `?v=4.2.2-rev2`, `APP_VERSION = '4.2.2-rev2'`, `#sys-last-update` -> `10:45 06/10/2026`, chân trang `#app-footer-version` giữ đúng chuẩn `Phiên bản: 4.2.2`.
+  - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.2.2-rev2'`.
+
+
+
 
 
 

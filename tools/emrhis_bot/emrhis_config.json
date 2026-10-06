@@ -1,0 +1,113 @@
+{
+  "settings": {
+    "step_delay": 0.35,
+    "key_interval": 0.02,
+    "wait_window_timeout": 5.0,
+    "failsafe": true,
+    "window_main_title_contains": "emrHIS",
+    "window_form_title_contains": "Cập Nhật Thông Tin Thủ Thuật",
+    "auto_dismiss_popups": true
+  },
+  "defaults": {
+    "tinh_hinh": "Chủ động",
+    "vo_cam": "Khác",
+    "mo_ta": ".",
+    "may_y_te": ""
+  },
+  "staff_mapping": {
+    "Đặng Phong Thái": "dpt",
+    "Hoàng Đức Đạt": "hdd",
+    "Bùi Đức Thịnh": "bdt",
+    "Nguyễn Thị Hoa": "nth",
+    "Nguyễn Văn An": "nva"
+  },
+  "calibration": {
+    "is_calibrated": true,
+    "screen_resolution": [
+      1920,
+      1080
+    ],
+    "main_window": {
+      "search_box": {
+        "x": 53,
+        "y": 197,
+        "rx": -171,
+        "ry": -27
+      },
+      "patient_first_row": {
+        "x": 98,
+        "y": 192,
+        "rx": -126,
+        "ry": -32
+      },
+      "btn_bat_dau_thuc_hien": {
+        "x": 1813,
+        "y": 932,
+        "rx": 1589,
+        "ry": 708
+      },
+      "procedure_first_row": {
+        "x": 701,
+        "y": 344,
+        "rx": 477,
+        "ry": 120
+      },
+      "menu_nhap_tt_pttt": {
+        "x": 727,
+        "y": 408,
+        "rx": 503,
+        "ry": 184
+      }
+    },
+    "form_pttt": {
+      "thoi_gian_bat_dau": {
+        "x": 736,
+        "y": 255,
+        "rx": 630,
+        "ry": 196
+      },
+      "thoi_gian_ket_thuc": {
+        "x": 1166,
+        "y": 255,
+        "rx": 1060,
+        "ry": 196
+      },
+      "cbo_tinh_hinh": {
+        "x": 334,
+        "y": 557,
+        "rx": 228,
+        "ry": 498
+      },
+      "cbo_vo_cam": {
+        "x": 1259,
+        "y": 525,
+        "rx": 1153,
+        "ry": 466
+      },
+      "cbo_may_y_te": {
+        "x": 1169,
+        "y": 590,
+        "rx": 1063,
+        "ry": 531
+      },
+      "txt_mo_ta": {
+        "x": 210,
+        "y": 758,
+        "rx": 104,
+        "ry": 699
+      },
+      "grid_ekip_cell_nhanvien": {
+        "x": 1516,
+        "y": 257,
+        "rx": 1410,
+        "ry": 198
+      },
+      "btn_luu_dong": {
+        "x": 1748,
+        "y": 938,
+        "rx": 1642,
+        "ry": 879
+      }
+    }
+  }
+}
