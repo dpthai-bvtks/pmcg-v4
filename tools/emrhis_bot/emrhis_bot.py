@@ -835,10 +835,51 @@ class EmrHisBotApp:
 
         return ""
 
+    def _find_form_pttt_uia(self):
+        """Tìm đối tượng WindowControl của popup 'FormThuThuat_Ekip' bằng UIAutomation"""
+        if auto is None:
+            return None
+        try:
+            # 1. Tìm trực tiếp theo AutomationId='FormThuThuat_Ekip'
+            form = auto.WindowControl(searchDepth=4, AutomationId="FormThuThuat_Ekip")
+            if form.Exists(0.2):
+                return form
+
+            # 2. Tìm theo Name/SubName
+            form = auto.WindowControl(searchDepth=4, SubName="Cập Nhật Thông Tin Thủ Thuật")
+            if form.Exists(0.2):
+                return form
+
+            # 3. Quét từ FormMain con
+            main_win = auto.WindowControl(searchDepth=2, AutomationId="FormMain")
+            if main_win.Exists(0.1):
+                f = main_win.WindowControl(searchDepth=3, AutomationId="FormThuThuat_Ekip")
+                if f.Exists(0.2):
+                    return f
+                f = main_win.WindowControl(searchDepth=3, SubName="Cập Nhật Thông Tin Thủ Thuật")
+                if f.Exists(0.2):
+                    return f
+        except Exception as e:
+            self.log(f"Lỗi tìm form qua UIA: {e}", level="WARN")
+        return None
+
+    def _get_control_center_pos(self, ctrl):
+        """Lấy tọa độ tâm thực tế (cx, cy) của một UIAutomation Control"""
+        if ctrl and ctrl.Exists(0.1):
+            try:
+                rect = ctrl.BoundingRectangle
+                if rect and rect.width() > 0 and rect.height() > 0:
+                    cx = (rect.left + rect.right) // 2
+                    cy = (rect.top + rect.bottom) // 2
+                    return cx, cy
+            except Exception:
+                pass
+        return None
+
     def fill_ekip_ktv(self, pos_ekip, task, form_window=None):
         """
         Điền KTV chính vào ô 'Nhân Viên' dòng 1 của bảng 'Ê-Kip PTTT':
-        - Dò đúng tọa độ cột 'Nhân Viên' (tọa độ x=1710, y=225)
+        - Dò đúng tọa độ cột 'Nhân Viên' dòng 1 (x~1640, y~257)
         - Nhập mã KTV (nếu có như hdd) hoặc dán tên đầy đủ KTV rồi bấm Enter
         """
         if not pos_ekip:
@@ -850,20 +891,15 @@ class EmrHisBotApp:
         if not ktv_code or ktv_code == nv_name:
             ktv_code = self.get_ktv_code(nv_name)
 
-        # Đảm bảo click vào cột 'Nhân Viên' (tọa độ x=1710, y=225)
         cell_x, cell_y = pos_ekip
-        if cell_x < 1580:
-            cell_x = 1710
-        if cell_y > 240:
-            cell_y = 225
 
-        self.log(f"👨‍⚕️ Nhập KTV chính: '{nv_name}' tại cột Nhân Viên ({cell_x}, {cell_y})...")
+        self.log(f"👨‍⚕️ Nhập KTV chính: '{nv_name}' (mã: '{ktv_code}') tại ô ({cell_x}, {cell_y})...")
 
         # 1. Click vào ô Nhân Viên dòng 1
         pyautogui.click(cell_x, cell_y)
-        time.sleep(delay * 0.3)
+        time.sleep(delay * 0.25)
         pyautogui.doubleClick(cell_x, cell_y)
-        time.sleep(delay * 0.3)
+        time.sleep(delay * 0.25)
 
         # 2. Mở chế độ gõ bằng F2 hoặc Enter
         pyautogui.press("f2")
@@ -871,26 +907,29 @@ class EmrHisBotApp:
 
         # 3. Nếu có mã ngắn (ví dụ: hdd), gõ mã; nếu không có mã thì gõ/dán tên đầy đủ
         if ktv_code:
-            pyautogui.write(ktv_code, interval=0.08)
-            time.sleep(delay * 0.4)
+            pyautogui.write(ktv_code, interval=0.06)
+            time.sleep(delay * 0.3)
             pyautogui.press("enter")
-            self.log(f"👨‍⚕️ Đã gõ mã KTV: {ktv_code}")
+            self.log(f"👨‍⚕️ Đã gõ mã KTV: '{ktv_code}'")
         else:
             pyperclip.copy(nv_name)
             pyautogui.hotkey("ctrl", "v")
-            time.sleep(delay * 0.4)
+            time.sleep(delay * 0.3)
             pyautogui.press("enter")
-            self.log(f"👨‍⚕️ Đã dán tên KTV: {nv_name}")
+            self.log(f"👨‍⚕️ Đã dán tên KTV: '{nv_name}'")
 
-        time.sleep(delay * 0.3)
+        time.sleep(delay * 0.25)
+        pyautogui.press("enter")
+        time.sleep(delay * 0.15)
 
     # =========================================================================
-    # ĐIỀN FORM "CẬP NHẬT THÔNG TIN THỦ THUẬT" (CORE ENGINE)
+    # ĐIỀN FORM "CẬP NHẬT THÔNG TIN THỦ THUẬT" (CORE ENGINE - UIA AUTOMATIONIDS)
     # =========================================================================
     def fill_form_pttt(self, task, form_window=None):
         """
         Thực hiện điền toàn bộ trường vào cửa sổ 'Cập Nhật Thông Tin Thủ Thuật'
-        Dựa trên tọa độ cân chỉnh hoặc phím Tab/Click
+        Sử dụng UIAutomation theo AutomationId chuẩn 100% từ emrHIS,
+        có fallback an toàn tuyệt đối theo tọa độ cấu hình.
         """
         delay = self.speed_var.get()
         cal = self.config.get("calibration", {}).get("form_pttt", {})
@@ -902,14 +941,20 @@ class EmrHisBotApp:
         if not form_window:
             raise Exception("Không tìm thấy cửa sổ 'Cập Nhật Thông Tin Thủ Thuật' đang mở trên màn hình!")
 
-        # Kích hoạt cửa sổ form lên trên cùng
         try:
             form_window.activate()
-            time.sleep(delay)
+            time.sleep(delay * 0.5)
         except Exception:
             pass
 
         self.log(f"👉 Bắt đầu điền form: {task.get('ten_bn')} - {task.get('thu_thuat')}")
+
+        # Tìm đối tượng UIA của form
+        form_uia = self._find_form_pttt_uia()
+        if form_uia:
+            self.log("🎯 Đã liên kết UIAutomation với cửa sổ 'FormThuThuat_Ekip' thành công!")
+        else:
+            self.log("⚠️ Không gắn được UIA trực tiếp, sử dụng tọa độ màn hình chuẩn hóa.", level="WARN")
 
         # Chuẩn bị dữ liệu
         ngay_gio_bd = task.get("ngay_gio_bd") or f"{task.get('gio_bat_dau', '08:00')} {task.get('ngay', '')}".strip()
@@ -919,56 +964,182 @@ class EmrHisBotApp:
         may_y_te = task.get("may_y_te", "").strip()
         mo_ta = task.get("mo_ta") or "."
 
-        # 1. Thời gian bắt đầu (Định dạng chuẩn 12 ký tự số HH:mm dd/MM/yyyy)
-        pos_bd = self.get_safe_pos(cal.get("thoi_gian_bat_dau"), form_window)
+        # =====================================================================
+        # 1. THỜI GIAN BẮT ĐẦU (txtNgayPTTT)
+        # =====================================================================
+        pos_bd = None
+        if form_uia:
+            ctrl_bd = form_uia.PaneControl(AutomationId="txtNgayPTTT")
+            pos_bd = self._get_control_center_pos(ctrl_bd)
+        if not pos_bd:
+            pos_bd = self.get_safe_pos(cal.get("thoi_gian_bat_dau"), form_window)
         if pos_bd:
             self.set_datetime_field(pos_bd, ngay_gio_bd, form_window)
+        time.sleep(delay * 0.2)
 
-        # 2. Thời gian kết thúc (Định dạng chuẩn 12 ký tự số HH:mm dd/MM/yyyy)
-        pos_kt = self.get_safe_pos(cal.get("thoi_gian_ket_thuc"), form_window)
+        # =====================================================================
+        # 2. THỜI GIAN KẾT THÚC (txtNgayPTTT_End)
+        # =====================================================================
+        pos_kt = None
+        if form_uia:
+            ctrl_kt = form_uia.PaneControl(AutomationId="txtNgayPTTT_End")
+            pos_kt = self._get_control_center_pos(ctrl_kt)
+        if not pos_kt:
+            pos_kt = self.get_safe_pos(cal.get("thoi_gian_ket_thuc"), form_window)
         if pos_kt:
             self.set_datetime_field(pos_kt, ngay_gio_kt, form_window)
+        time.sleep(delay * 0.2)
 
-        # 3. Phương pháp vô cảm (Chọn từ Dropdown: 'Khác')
-        pos_vc = self.get_safe_pos(cal.get("cbo_vo_cam"), form_window)
+        # =====================================================================
+        # 3. PHƯƠNG PHÁP VÔ CẢM (txtPPVoCam) - EditControl chuẩn
+        # =====================================================================
+        pos_vc = None
+        if form_uia:
+            ctrl_vc = form_uia.EditControl(AutomationId="txtPPVoCam")
+            pos_vc = self._get_control_center_pos(ctrl_vc)
+        if not pos_vc:
+            pos_vc = self.get_safe_pos(cal.get("cbo_vo_cam"), form_window)
+
         if pos_vc:
-            self.select_dropdown_item(pos_vc, vo_cam, form_window)
+            pyautogui.click(pos_vc[0], pos_vc[1])
+            time.sleep(delay * 0.25)
+            pyautogui.hotkey("ctrl", "a")
+            time.sleep(0.05)
+            pyautogui.press("backspace")
+            pyperclip.copy(vo_cam)
+            pyautogui.hotkey("ctrl", "v")
+            time.sleep(delay * 0.2)
+            pyautogui.press("enter")
+            self.log(f"💉 Đã nhập Phương pháp vô cảm: '{vo_cam}'")
+        time.sleep(delay * 0.2)
 
-        # 4. Tình hình PTTT (Chọn từ Dropdown: 'Chủ động')
-        pos_th = self.get_safe_pos(cal.get("cbo_tinh_hinh"), form_window)
+        # =====================================================================
+        # 4. TÌNH HÌNH PTTT (txtTinhHinhPTTT) - ComboBoxControl ('Chủ động')
+        # =====================================================================
+        pos_th = None
+        if form_uia:
+            ctrl_th = form_uia.ComboBoxControl(AutomationId="txtTinhHinhPTTT")
+            if ctrl_th.Exists(0.1):
+                btn_open = ctrl_th.ButtonControl(Name="Open")
+                if btn_open.Exists(0.1):
+                    pos_th = self._get_control_center_pos(btn_open)
+                else:
+                    pos_th = self._get_control_center_pos(ctrl_th)
+        if not pos_th:
+            pos_th = self.get_safe_pos(cal.get("cbo_tinh_hinh"), form_window)
+
         if pos_th:
-            self.select_dropdown_item(pos_th, tinh_hinh, form_window)
+            # Click mở dropdown và chọn 'Chủ động' (Home -> Down -> Enter)
+            pyautogui.click(pos_th[0], pos_th[1])
+            time.sleep(delay * 0.25)
+            clean_th = tinh_hinh.strip().lower()
+            if "chủ" in clean_th or "chu" in clean_th:
+                pyautogui.press("home")
+                time.sleep(delay * 0.1)
+                pyautogui.press("down")
+                time.sleep(delay * 0.15)
+                pyautogui.press("enter")
+                self.log(f"🔽 Đã chọn Tình hình PTTT: '{tinh_hinh}' (Home + Down + Enter)")
+            elif "cấp" in clean_th or "cap" in clean_th:
+                pyautogui.press("home")
+                time.sleep(delay * 0.1)
+                pyautogui.press("enter")
+                self.log(f"🔽 Đã chọn Tình hình PTTT: '{tinh_hinh}' (Home + Enter)")
+            else:
+                self.select_dropdown_item(pos_th, tinh_hinh, form_window)
+        time.sleep(delay * 0.2)
 
-        # 5. Máy y tế (nếu có giá trị thực tế, chọn từ Dropdown)
-        pos_may = self.get_safe_pos(cal.get("cbo_may_y_te"), form_window)
-        if pos_may and may_y_te and len(may_y_te) > 1:
-            self.select_dropdown_item(pos_may, may_y_te, form_window)
+        # =====================================================================
+        # 5. MÁY Y TẾ (txtMayThucHien) - EditControl
+        # =====================================================================
+        if may_y_te and len(may_y_te) > 1:
+            pos_may = None
+            if form_uia:
+                ctrl_may = form_uia.EditControl(AutomationId="txtMayThucHien")
+                pos_may = self._get_control_center_pos(ctrl_may)
+            if not pos_may:
+                pos_may = self.get_safe_pos(cal.get("cbo_may_y_te"), form_window)
+            if pos_may:
+                pyautogui.click(pos_may[0], pos_may[1])
+                time.sleep(delay * 0.2)
+                pyautogui.hotkey("ctrl", "a")
+                pyperclip.copy(may_y_te)
+                pyautogui.hotkey("ctrl", "v")
+                time.sleep(delay * 0.2)
+                pyautogui.press("enter")
+                self.log(f"⚙️ Đã nhập Máy y tế: '{may_y_te}'")
 
-        # 6. Mô tả thủ thuật (Mặc định: '.')
-        pos_mt = self.get_safe_pos(cal.get("txt_mo_ta"), form_window)
+        # =====================================================================
+        # 6. MÔ TẢ THỦ THUẬT (txtMoTaPTTT) - EditControl (Mặc định: '.')
+        # =====================================================================
+        pos_mt = None
+        if form_uia:
+            ctrl_mt = form_uia.EditControl(AutomationId="txtMoTaPTTT")
+            pos_mt = self._get_control_center_pos(ctrl_mt)
+        if not pos_mt:
+            pos_mt = self.get_safe_pos(cal.get("txt_mo_ta"), form_window)
         if pos_mt:
             pyautogui.click(pos_mt[0], pos_mt[1])
-            time.sleep(delay * 0.4)
+            time.sleep(delay * 0.2)
             pyautogui.hotkey("ctrl", "a")
             pyperclip.copy(mo_ta)
             pyautogui.hotkey("ctrl", "v")
-            time.sleep(delay * 0.4)
+            time.sleep(delay * 0.2)
+            self.log(f"📝 Đã nhập Mô tả: '{mo_ta}'")
 
-        # 7. Ê-Kíp PTTT -> Ô Nhân Viên dòng 1 (Thủ thuật chính)
-        pos_ekip = self.get_safe_pos(cal.get("grid_ekip_cell_nhanvien"), form_window)
+        # =====================================================================
+        # 7. Ê-KÍP PTTT -> CỘT NHÂN VIÊN DÒNG 1 (mListViewData)
+        # =====================================================================
+        pos_ekip = None
+        if form_uia:
+            try:
+                lv = form_uia.ListControl(AutomationId="mListViewData")
+                if lv.Exists(0.1):
+                    item1 = lv.ListItemControl(Name="1")
+                    if item1.Exists(0.1):
+                        row_rect = item1.BoundingRectangle
+                        # Lấy tọa độ cột Nhân Viên từ Header hoặc ước lượng
+                        hdr_nv = lv.HeaderItemControl(Name="Nhân Viên")
+                        if hdr_nv.Exists(0.1):
+                            nv_rect = hdr_nv.BoundingRectangle
+                            cx = (nv_rect.left + min(nv_rect.right, lv.BoundingRectangle.right)) // 2
+                        else:
+                            cx = row_rect.left + int(row_rect.width() * 0.65)
+                        cy = (row_rect.top + row_rect.bottom) // 2
+                        pos_ekip = (cx, cy)
+            except Exception as e:
+                self.log(f"Lỗi dò ô KTV qua UIA: {e}", level="WARN")
+
+        if not pos_ekip:
+            pos_ekip = self.get_safe_pos(cal.get("grid_ekip_cell_nhanvien"), form_window)
+
         if pos_ekip:
             self.fill_ekip_ktv(pos_ekip, task, form_window)
 
-        # 8. Bấm nút "Lưu + Đóng"
-        pos_save = self.get_safe_pos(cal.get("btn_luu_dong"), form_window)
+        # =====================================================================
+        # 8. BẤM NÚT "LƯU + ĐÓNG" (btnSaveClose)
+        # =====================================================================
+        pos_save = None
+        btn_save_uia = None
+        if form_uia:
+            btn_save_uia = form_uia.ButtonControl(AutomationId="btnSaveClose")
+            pos_save = self._get_control_center_pos(btn_save_uia)
+
+        if not pos_save:
+            pos_save = self.get_safe_pos(cal.get("btn_luu_dong"), form_window)
+
         if pos_save:
             pyautogui.click(pos_save[0], pos_save[1])
-            self.log("💾 Đã click 'Lưu + Đóng'.")
-            time.sleep(delay * 1.5)
+            self.log(f"💾 Đã bấm 'Lưu + Đóng' tại ({pos_save[0]}, {pos_save[1]}).")
+        elif btn_save_uia:
+            btn_save_uia.Click()
+            self.log("💾 Đã click 'Lưu + Đóng' qua UIAutomation Invoke.")
 
-            # Tự động đóng popup cảnh báo/xác nhận nếu có
-            if self.config.get("settings", {}).get("auto_dismiss_popups", True):
-                self.auto_click_dialog_yes(timeout=1.5)
+        time.sleep(delay * 1.2)
+
+        # Tự động đóng popup cảnh báo/xác nhận nếu có
+        if self.config.get("settings", {}).get("auto_dismiss_popups", True):
+            self.auto_click_dialog_yes(timeout=2.0)
 
         self.log(f"✅ Hoàn thành điền form cho: {task.get('ten_bn')}")
 
