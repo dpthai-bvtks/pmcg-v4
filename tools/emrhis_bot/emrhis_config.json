@@ -7,7 +7,8 @@
     "coordinate_mode": "screen_absolute",
     "window_main_title_contains": "emrHIS",
     "window_form_title_contains": "Cập Nhật Thông Tin Thủ Thuật",
-    "auto_dismiss_popups": true
+    "auto_dismiss_popups": true,
+    "search_press_enter": false
   },
   "defaults": {
     "tinh_hinh": "Chủ động",

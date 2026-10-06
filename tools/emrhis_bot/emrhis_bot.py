@@ -782,9 +782,10 @@ class EmrHisBotApp:
                         pyautogui.press("backspace")
                         pyperclip.copy(ten_bn)
                         pyautogui.hotkey("ctrl", "v")
-                        time.sleep(delay * 0.5)
-                        pyautogui.press("enter")
-                        time.sleep(delay * 1.5)
+                        # Không ấn Enter để emrHIS chỉ lọc trong danh sách ngày hiện tại
+                        if self.config.get("settings", {}).get("search_press_enter", False):
+                            pyautogui.press("enter")
+                        time.sleep(delay * 1.0)
 
                     if self.stop_requested:
                         break
