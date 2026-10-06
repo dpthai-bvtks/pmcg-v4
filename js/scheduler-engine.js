@@ -2213,9 +2213,81 @@ function getSafeCache() {
 
     // 5. Patients
     const patList = cache.pat || cache.patients || [];
-    const skipList = skipProcsStr ? String(skipProcsStr).split(',').map(s => s.trim().toLowerCase()).filter(Boolean) : [];
+    const skipList = skipProcsStr ? String(skipProcsStr).split(/[,;\n\r]+/).map(s => s.trim().normalize('NFC').toLowerCase()).filter(Boolean) : [];
     const seen = new Set();
     const forcedDrops = [];
+
+    // 🛡️ Hàm so khớp thông minh: Bỏ qua toàn bộ thủ thuật khớp tên/viết tắt/từ khóa/không dấu
+    const removeToneForSkip = (str) => {
+      return String(str || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'D')
+        .toLowerCase()
+        .trim();
+    };
+
+    const isProcSkipped = (tenThuThuat) => {
+      if (!skipList || !skipList.length || !tenThuThuat) return false;
+
+      const cleanRaw = String(tenThuThuat).normalize('NFC').trim().toLowerCase();
+      // Loại bỏ phần trong ngoặc [kim ngắn], (thuốc), (dòng xung)...
+      const cleanBase = cleanRaw.replace(/\[.*?\]|\(.*?\)/g, '').trim();
+      const rawNoTone = removeToneForSkip(cleanRaw);
+      const baseNoTone = removeToneForSkip(cleanBase);
+
+      const info = database.thuThuatInfo ? (database.thuThuatInfo[cleanRaw] || database.thuThuatInfo[cleanBase]) : null;
+      const tenGoc = info ? String(info[8] || '').normalize('NFC').trim().toLowerCase() : cleanRaw;
+      const tenGocBase = tenGoc.replace(/\[.*?\]|\(.*?\)/g, '').trim();
+      const tenGocNoTone = removeToneForSkip(tenGoc);
+      const tenGocBaseNoTone = removeToneForSkip(tenGocBase);
+      const vietTat = info ? String(info[9] || '').normalize('NFC').trim().toLowerCase() : '';
+      const vietTatNoTone = removeToneForSkip(vietTat);
+
+      for (let s of skipList) {
+        const sClean = String(s).normalize('NFC').trim().toLowerCase();
+        if (!sClean) continue;
+        const sBase = sClean.replace(/\[.*?\]|\(.*?\)/g, '').trim();
+        const sNoTone = removeToneForSkip(sClean);
+        const sBaseNoTone = removeToneForSkip(sBase);
+
+        // 1. So khớp chính xác (có dấu hoặc không dấu)
+        if (cleanRaw === sClean || cleanBase === sClean || tenGoc === sClean || tenGocBase === sClean || vietTat === sClean) {
+          return true;
+        }
+        if (cleanRaw === sBase || cleanBase === sBase || tenGoc === sBase || tenGocBase === sBase) {
+          return true;
+        }
+        if (rawNoTone === sNoTone || baseNoTone === sNoTone || tenGocNoTone === sNoTone || tenGocBaseNoTone === sNoTone || vietTatNoTone === sNoTone) {
+          return true;
+        }
+        if (rawNoTone === sBaseNoTone || baseNoTone === sBaseNoTone || tenGocNoTone === sBaseNoTone) {
+          return true;
+        }
+
+        // 2. So khớp từ khóa / Substring thông minh (VD: "thủy châm", "điện châm", "điện xung", "kéo giãn", "parafin", "xoa bóp"...)
+        if (sClean.length >= 2) {
+          if (cleanRaw.includes(sClean) || cleanBase.includes(sClean) || tenGoc.includes(sClean) || tenGocBase.includes(sClean)) {
+            return true;
+          }
+          if (rawNoTone.includes(sNoTone) || baseNoTone.includes(sNoTone) || tenGocNoTone.includes(sNoTone) || tenGocBaseNoTone.includes(sNoTone)) {
+            return true;
+          }
+          // Ngược lại: từ khóa của người dùng chứa tên thủ thuật (VD: người dùng gõ "Thủy châm vitamin b1")
+          if (cleanBase.length >= 3 && (sClean.includes(cleanBase) || sNoTone.includes(baseNoTone))) {
+            return true;
+          }
+        }
+
+        // 3. Khớp viết tắt (VD: "tc" -> Thủy châm, "đc" -> Điện châm, "xbbh" -> Xoa bóp bấm huyệt...)
+        if (vietTat && (vietTat === sClean || vietTatNoTone === sNoTone || vietTat === sBase)) {
+          return true;
+        }
+      }
+
+      return false;
+    };
 
     // Thu thập danh sách họ tên bệnh nhân sạch từ existingSched và cache.pat để đối chiếu phục hồi
     const validPatientCandidates = [];
@@ -2337,13 +2409,13 @@ function getSafeCache() {
       const isRaVien = (leaveRaw && String(leaveRaw).trim() !== "");
 
       const pendingFiltered = procs.filter(tenThuThuat => {
-        if (!skipList.length || isRaVien) return true;
+        if (!skipList.length) return true;
         const tenLower = String(tenThuThuat || '').toLowerCase();
         const info = database.thuThuatInfo[tenLower];
         const tenGoc = info ? (info[8] || "").toLowerCase() : tenLower;
         const vietTat = info ? (info[9] || "").toLowerCase() : "";
-        if (skipList.includes(tenLower) || skipList.includes(tenGoc) || skipList.includes(vietTat)) {
-          forcedDrops.push({ pId: pId, bn: pName, ns: pNs, room: pRoom, tt: tenThuThuat, reason: "Tạm ngưng thủ thuật (Khoa báo nghỉ)" });
+        if (isProcSkipped(tenThuThuat)) {
+          forcedDrops.push({ pId: pId, bn: pName, ns: pNs, room: pRoom, tt: tenThuThuat, causeCode: 'PROC_SKIPPED', causeTitle: 'Tạm ngưng thủ thuật', reason: "Tạm ngưng thủ thuật (Khoa báo nghỉ)", causeDetail: "Tạm ngưng thủ thuật (Khoa báo nghỉ)" });
           return false;
         }
         return true;
@@ -3240,6 +3312,15 @@ const UnscheduledDiagnosticEngine = (function () {
       return rotItem.map(item => diagnose(item, db, currentSched));
     }
     db = db || {};
+
+    if (rotItem.causeCode === 'PROC_SKIPPED' || (rotItem.reason && (rotItem.reason.includes('Tạm ngưng') || rotItem.reason.includes('Khoa báo nghỉ')))) {
+      return {
+        causeCode: 'PROC_SKIPPED',
+        causeTitle: 'Tạm ngưng thủ thuật',
+        causeDetail: rotItem.reason || 'Tạm ngưng thủ thuật (Khoa báo nghỉ)',
+        advices: ['Bỏ từ khóa khỏi ô "Bỏ qua thủ thuật" trong cửa sổ xếp lịch nếu muốn xếp lại thủ thuật này.']
+      };
+    }
 
     const bnName = String(rotItem.bn || rotItem.tenBN || rotItem.HOTEN || '').normalize('NFC').toUpperCase().trim();
     const bnNs = String(rotItem.ns || rotItem.namSinh || rotItem.NAMSINH || '').trim();

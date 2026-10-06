@@ -1,6 +1,6 @@
 {
-    "version": "4.2.2-rev2",
+    "version": "4.2.3",
     "releaseDate": "06/10/2026",
-    "releaseTime": "10:45 06/10/2026",
-    "notes": "Thay thế nút XUẤT PDF thành nút 🤖 XUẤT LỆNH emrHIS trên thanh công cụ Lịch trình; Ra mắt công cụ emrHIS-AutoBot v2.0 (tools/emrhis_bot) tự động hóa nhập thông tin Phẫu thuật - Thủ thuật vào emrHIS qua phím tắt F8/F9; Khắc phục lỗi mã hóa ký tự Unicode tiếng Việt trong file thực thi CHAY_BOT_EMRHIS.bat trên Windows cmd.exe."
+    "releaseTime": "14:15 06/10/2026",
+    "notes": "Nâng cấp hoàn thiện chức năng Bỏ qua thủ thuật (Không xếp lịch) với cơ chế so khớp thông minh không dấu/từ khóa/viết tắt và loại bỏ điều kiện bỏ sót bệnh nhân ra viện; Tự động lưu và phục hồi danh sách thủ thuật bỏ qua; Dọn dẹp các tệp log và tệp rác tạm."
 }

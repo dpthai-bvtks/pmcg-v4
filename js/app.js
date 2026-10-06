@@ -7183,6 +7183,13 @@ var dataCache = window.dataCache;
 
         function runScheduling() {
             if (!document.getElementById('schedule-date').value) return alert("Vui lòng chọn ngày xếp lịch trước!");
+            const skipInp = document.getElementById('modal-skip-procs');
+            if (skipInp && !skipInp.value) {
+                try {
+                    const savedSkip = localStorage.getItem('pm_skip_procs') || '';
+                    if (savedSkip) skipInp.value = savedSkip;
+                } catch (e) {}
+            }
             document.getElementById('strategyModal').style.display = 'flex';
             if (window._crowdedMode === null || window._crowdedMode === undefined) {
                 setCrowdedMode(true);
@@ -7254,9 +7261,10 @@ var dataCache = window.dataCache;
         async function executeScheduling(strategy) {
             window.viewingImportedScheduleFile = false;
             const preferLocal = document.getElementById('chk-use-minipc-solver')?.checked ?? true;
-            closeStrategyModal();
             const dateVal = document.getElementById('schedule-date').value;
             const skipVal = document.getElementById('modal-skip-procs')?.value || "";
+            try { localStorage.setItem('pm_skip_procs', skipVal); } catch(e) {}
+            closeStrategyModal();
             // Truyền lựa chọn ngày đông/vắng: 1 = đông, 0 = vắng, -1 = tự động
             const crowdedVal = window._crowdedMode === true ? 1 : (window._crowdedMode === false ? 0 : -1);
             const res = document.getElementById('schedule-result');
