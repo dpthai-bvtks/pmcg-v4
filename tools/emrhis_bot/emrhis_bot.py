@@ -12,7 +12,9 @@ import sys
 import time
 import json
 import threading
+import subprocess
 import ctypes
+from ctypes import wintypes
 from datetime import datetime
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -168,6 +170,19 @@ class EmrHisBotApp:
             command=self.load_from_file
         )
         btn_open.pack(side=tk.LEFT, padx=4)
+
+        btn_open_his = tk.Button(
+            toolbar,
+            text="🏥 Mở / Bật emrHIS",
+            bg="#0284c7",
+            fg="white",
+            font=("Segoe UI", 10, "bold"),
+            relief=tk.FLAT,
+            padx=10,
+            pady=5,
+            command=self.user_click_open_his
+        )
+        btn_open_his.pack(side=tk.LEFT, padx=4)
 
         sep1 = ttk.Separator(toolbar, orient=tk.VERTICAL)
         sep1.pack(side=tk.LEFT, fill=tk.Y, padx=10)
@@ -514,29 +529,189 @@ class EmrHisBotApp:
             self.log("Đã xóa danh sách ca.")
 
     # =========================================================================
-    # TÌM VÀ ACTIVATE CỬA SỔ emrHIS
+    # TÌM VÀ ACTIVATE CỬA SỔ emrHIS (ĐA CƠ CHẾ + AUTO LAUNCH + FORCE FOREGROUND)
     # =========================================================================
-    def find_emrhis_window(self, title_part=None):
-        if title_part is None:
-            title_part = self.config.get("settings", {}).get("window_main_title_contains", "emrHIS")
+    def user_click_open_his(self):
+        """Người dùng chủ động bấm nút '🏥 Mở / Bật emrHIS' trên thanh công cụ"""
+        self.log("🔍 Đang tìm hoặc mở giao diện emrHIS...")
+        w = self.find_emrhis_window(auto_launch=True)
+        if w:
+            self.log("✅ Giao diện emrHIS đã sẵn sàng trên màn hình!")
+        else:
+            messagebox.showwarning(
+                "Thông báo",
+                "Chưa kết nối được với giao diện emrHIS.\n\nVui lòng mở emrHIS và đăng nhập tài khoản trước khi thực hiện!"
+            )
 
-        windows = gw.getWindowsWithTitle(title_part)
-        if not windows:
-            # Tìm không phân biệt hoa thường
-            all_wins = gw.getAllTitles()
-            matches = [t for t in all_wins if title_part.lower() in t.lower()]
-            if matches:
-                windows = gw.getWindowsWithTitle(matches[0])
+    def force_activate_window(self, win):
+        """
+        Đưa cửa sổ lên trên cùng (Foreground) một cách cưỡng bức và tin cậy tuyệt đối:
+        Khắc phục triệt để lỗi Windows chặn SetForegroundWindow hoặc chỉ nhấp nháy taskbar
+        """
+        if not win:
+            return False
+        try:
+            hwnd = getattr(win, '_hWnd', None) or getattr(win, 'hwnd', None)
+            if not hwnd and isinstance(win, int):
+                hwnd = win
 
-        if windows:
-            w = windows[0]
-            try:
-                if w.isMinimized:
-                    w.restore()
-                w.activate()
+            user32 = ctypes.windll.user32
+            kernel32 = ctypes.windll.kernel32
+
+            if hwnd and user32.IsWindow(hwnd):
+                # 1. Khôi phục nếu đang bị thu nhỏ
+                SW_RESTORE = 9
+                SW_SHOW = 5
+                if user32.IsIconic(hwnd):
+                    user32.ShowWindow(hwnd, SW_RESTORE)
+                else:
+                    user32.ShowWindow(hwnd, SW_SHOW)
+
+                # 2. AttachThreadInput để bypass Foreground Lock của Windows
+                cur_tid = kernel32.GetCurrentThreadId()
+                fg_hwnd = user32.GetForegroundWindow()
+                fg_tid = user32.GetWindowThreadProcessId(fg_hwnd, None)
+                target_tid = user32.GetWindowThreadProcessId(hwnd, None)
+
+                if fg_tid != target_tid:
+                    user32.AttachThreadInput(cur_tid, fg_tid, True)
+                    user32.AttachThreadInput(cur_tid, target_tid, True)
+                    user32.AllowSetForegroundWindow(-1)
+                    user32.SetForegroundWindow(hwnd)
+                    user32.BringWindowToTop(hwnd)
+                    user32.AttachThreadInput(cur_tid, fg_tid, False)
+                    user32.AttachThreadInput(cur_tid, target_tid, False)
+                else:
+                    user32.SetForegroundWindow(hwnd)
+                    user32.BringWindowToTop(hwnd)
+
                 time.sleep(0.3)
-            except Exception as e:
-                self.log(f"Cảnh báo activate cửa sổ: {e}", level="WARN")
+                return True
+            else:
+                if hasattr(win, 'isMinimized') and win.isMinimized:
+                    win.restore()
+                if hasattr(win, 'activate'):
+                    win.activate()
+                time.sleep(0.3)
+                return True
+        except Exception as e:
+            self.log(f"Cảnh báo force_activate: {e}", level="WARN")
+        return False
+
+    def launch_emrhis(self):
+        """Khởi động ứng dụng emrHIS nếu chưa mở trên máy"""
+        exe_path = self.config.get("settings", {}).get("emrhis_path", r"C:\PRIVATE-DPT\HIS\emrHIS.exe")
+        if not os.path.exists(exe_path):
+            self.log(f"⚠️ Không tìm thấy tệp emrHIS tại: {exe_path}", level="WARN")
+            return None
+
+        try:
+            self.log(f"🚀 Đang khởi chạy phần mềm: {exe_path}...")
+            subprocess.Popen([exe_path], cwd=os.path.dirname(exe_path))
+            self.log("⏳ Đang chờ giao diện emrHIS xuất hiện (tối đa 15 giây)...")
+
+            for _ in range(30):
+                time.sleep(0.5)
+                w = self._search_any_emrhis_window()
+                if w:
+                    self.force_activate_window(w)
+                    self.log("✅ Giao diện emrHIS đã khởi động và hiển thị thành công!")
+                    return w
+        except Exception as e:
+            self.log(f"❌ Lỗi khi khởi động emrHIS: {e}", level="ERROR")
+        return None
+
+    def _search_any_emrhis_window(self, title_part=None):
+        """Tìm bất kỳ cửa sổ nào của emrHIS bằng đa cơ chế (Tiêu đề, UIA, HWND Process)"""
+        # 1. Thử theo pygetwindow title thông thường
+        if title_part:
+            candidates = [title_part]
+        else:
+            cfg_title = self.config.get("settings", {}).get("window_main_title_contains", "emrHIS")
+            candidates = [cfg_title, "emrHIS", "HIS", "Medibox", "Sanita", "Quản Lý", "Khám"]
+
+        for cand in candidates:
+            try:
+                wins = gw.getWindowsWithTitle(cand)
+                if wins:
+                    return wins[0]
+                all_wins = gw.getAllTitles()
+                matches = [t for t in all_wins if cand.lower() in t.lower() and t.strip()]
+                if matches:
+                    wins = gw.getWindowsWithTitle(matches[0])
+                    if wins:
+                        return wins[0]
+            except Exception:
+                pass
+
+        # 2. Thử tìm qua UIAutomation AutomationId='FormMain'
+        if auto is not None:
+            try:
+                main_uia = self._find_form_main_uia()
+                if main_uia and main_uia.Exists(0.1):
+                    hwnd = getattr(main_uia, 'NativeWindowHandle', None)
+                    if hwnd and ctypes.windll.user32.IsWindow(hwnd):
+                        return gw.Win32Window(hwnd)
+            except Exception:
+                pass
+
+        # 3. Thử quét tất cả HWND thuộc tiến trình có tên emrHIS.exe
+        try:
+            user32 = ctypes.windll.user32
+            kernel32 = ctypes.windll.kernel32
+            PROCESS_QUERY_INFORMATION = 0x0400
+            PROCESS_VM_READ = 0x0010
+
+            target_hwnd = []
+
+            def _enum_cb(hwnd, _):
+                if not user32.IsWindowVisible(hwnd):
+                    return True
+                rect = wintypes.RECT()
+                user32.GetWindowRect(hwnd, ctypes.byref(rect))
+                w = rect.right - rect.left
+                h = rect.bottom - rect.top
+                if w < 200 or h < 200:
+                    return True
+
+                pid = wintypes.DWORD()
+                user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+                h_proc = kernel32.OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, False, pid.value)
+                if h_proc:
+                    buf = ctypes.create_unicode_buffer(512)
+                    size = wintypes.DWORD(512)
+                    if kernel32.QueryFullProcessImageNameW(h_proc, 0, buf, ctypes.byref(size)):
+                        exe_name = os.path.basename(buf.value).lower()
+                        if "emrhis" in exe_name or exe_name == "emrhis.exe":
+                            target_hwnd.append(hwnd)
+                    kernel32.CloseHandle(h_proc)
+                return True
+
+            WNDENUMPROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+            user32.EnumWindows(WNDENUMPROC(_enum_cb), 0)
+
+            if target_hwnd:
+                return gw.Win32Window(target_hwnd[0])
+        except Exception:
+            pass
+
+        return None
+
+    def find_emrhis_window(self, title_part=None, auto_launch=True):
+        r"""
+        Tìm và kích hoạt cửa sổ emrHIS lên màn hình:
+        - Quét đa cơ chế (Tiêu đề, UIA, HWND Process)
+        - Nếu chưa mở và auto_launch=True: Tự động khởi chạy từ C:\PRIVATE-DPT\HIS\emrHIS.exe
+        - Kích hoạt cửa sổ cưỡng bức (Force Activate)
+        """
+        w = self._search_any_emrhis_window(title_part)
+
+        if not w and auto_launch and title_part is None:
+            self.log("⚠️ Chưa phát hiện cửa sổ emrHIS trên màn hình. Đang tự động mở phần mềm...")
+            w = self.launch_emrhis()
+
+        if w:
+            self.force_activate_window(w)
             return w
         return None
 
