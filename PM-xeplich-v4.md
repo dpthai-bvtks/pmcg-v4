@@ -7562,6 +7562,62 @@ ormalizeScheduleItem.
 - `version.json` (cập nhật version 4.2.1-rev1)
 - `PM-xeplich-v4.md` (nhật ký phát triển)
 
+### [v4.2.2-rev1] - 08:30 06/10/2026: Khắc Phục Triệt Để Lỗi Khi Lưu Bệnh Nhân, Nhân Sự "Failed to fetch"
+
+**Yêu cầu người dùng:**
+- *"đọc rules.md và sửa Lỗi khi lưu bệnh nhân, nhân sự: Failed to fetch"*
+
+**Nguyên nhân gốc rễ (Root Cause Analysis):**
+1. **Lỗi gán nhầm thuộc tính `task.isMutation` trong `callApi` (`js/app.js`):**
+   - Tại dòng 1960, đối tượng `task` được tạo với `isMutation: shouldShowLoading` thay vì `isMutation: isMutation`.
+   - Các hành động lưu bệnh nhân (`addBenhNhan`, `editBenhNhan`) và nhân sự (`addNhanSu`, `editNhanSu`) nằm trong danh sách `SILENT_MUTATION_ACTIONS`, khiến `shouldShowLoading = false`.
+   - Hệ quả: Thuộc tính `isMutation` trong `task` bị gán thành `false`, biến các tác vụ ghi dữ liệu thành query đọc bình thường.
+2. **Kích hoạt Failover nhầm sang Google Sheets & Gây kẹt chế độ `_serverMode = 'backup'`:**
+   - Khi có bất kỳ sự cố mạng hoặc timeout thoáng qua, nhánh `if (isCurrentlyPrimary && backupUrl && !isMutation)` trong `executeApiTask` bị kích hoạt do `isMutation` là `false`.
+   - Hệ thống cố gắng gửi lệnh `addBenhNhan` / `editBenhNhan` / `addNhanSu` sang URL Google Apps Script dự phòng (`script.google.com`), vốn không hề hỗ trợ các endpoint này.
+   - Thêm vào đó, `window._serverMode` bị chuyển sang `'backup'` vĩnh viễn (do hoàn toàn không có cơ chế tự động thăm dò và khôi phục về `'primary'`).
+3. **CORS Preflight Block khi gửi Fetch POST kèm Header tùy biến sang Google Apps Script:**
+   - Khi `_serverMode` là `'backup'`, hàm `getApiUrl()` trả về URL Google Sheets cho mọi yêu cầu tiếp theo.
+   - Trình duyệt gửi `fetch(getApiUrl(), { headers: { 'Content-Type': 'application/json', 'x-unit-code': ..., 'Authorization': ... } })`. Google Apps Script từ chối CORS Preflight (OPTIONS), khiến trình duyệt ném ngay ngoại lệ `TypeError: Failed to fetch`.
+   - Người dùng liên tục gặp lỗi "Lỗi khi lưu bệnh nhân: Failed to fetch" và "Lỗi lưu nhân sự: Failed to fetch" trong tất cả các lần bấm Lưu tiếp theo.
+4. **Xung đột `keepalive: !!isMutation` với `AbortSignal`:**
+   - Thuộc tính `keepalive` kết hợp với `AbortSignal` và Custom Headers trên một số phiên bản nhân Chromium gây lỗi `TypeError: Failed to fetch` hoặc vượt quota 64KB.
+5. **Cơ chế xóa sạch dữ liệu Optimistic UI khi gặp lỗi mạng:**
+   - Trong `savePatient`, khối `onError` trước đây gọi `loadEntity('getBenhNhan', 'pat', renderPatientsTable, [], true)` làm xóa trắng bệnh nhân người dùng vừa nhập khi có sự cố mạng.
+
+**Giải pháp & Khắc phục triệt để:**
+1. **Định tuyến độc lập và tuyệt đối cho Mutation (`js/app.js`):**
+   - Xây dựng hàm `getPrimaryApiUrl()` trả về trực tiếp URL Cloudflare Worker chính (`DEFAULT_API_URL` hoặc `customUrl`).
+   - Nâng cấp `getApiUrl(functionName)`: Mọi hành động Mutation (`add*`, `edit*`, `delete*`, `save*`, `chotSo`...) **bắt buộc luôn trả về `getPrimaryApiUrl()`**, tuyệt đối không bao giờ định tuyến tác vụ ghi sang Google Sheets.
+   - Trong `executeApiTask`: `const targetUrl = isMutation ? getPrimaryApiUrl() : getApiUrl(functionName);`.
+2. **Sửa lỗi logic `callApi` & Gỡ bỏ `keepalive`:**
+   - Sửa `task = { functionName, args, onSuccess, onError, isMutation: isMutation, showLoading: shouldShowLoading, retries: 0 }`.
+   - Gỡ bỏ thuộc tính `keepalive` khỏi `fetch` thông thường để loại bỏ hoàn toàn xung đột Blink runtime.
+   - Khi `executeApiTask` gọi thành công máy chủ chính, tự động khôi phục ngay `window._serverMode = 'primary'` và cập nhật huy hiệu trạng thái.
+3. **Cơ chế Tự Động Thử Lại (Retry 800ms) & Thông báo thân thiện:**
+   - Tự động thử lại 1 lần sau 800ms nếu gặp lỗi mạng chớp nhoáng trước khi báo lỗi.
+   - Bắt các lỗi `Failed to fetch`, `NetworkError` và chuyển thành thông báo rõ ràng: *"Không thể kết nối đến máy chủ ({functionName}). Vui lòng kiểm tra lại kết nối mạng Internet hoặc thử lại!"*.
+4. **Tự động Thăm dò Phục hồi (Primary Liveness Probe trong `js/sync.js`):**
+   - Trong chu kỳ polling `doPoll`, nếu phát hiện hệ thống đang ở chế độ `'backup'`, tự động ping nhẹ máy chủ chính Cloudflare. Khi máy chủ chính trực tuyến trở lại, tự động phục hồi `window._serverMode = 'primary'` và hiển thị toast thông báo.
+5. **Bảo tồn Dữ liệu Nhập liệu & Bộ nhớ đệm Ngoại tuyến:**
+   - Trong `savePatient` và `saveStaff`: Khi gặp lỗi kết nối máy chủ, giữ nguyên bản ghi optimistically trên giao diện và lưu ngay vào `OfflineSyncEngine.saveCache` (IndexedDB / LocalStorage), tuyệt đối không xóa trắng danh sách.
+6. **Bổ sung Unique Index trên CSDL (`backend/src/schema.js`):**
+   - Bổ sung `CREATE UNIQUE INDEX IF NOT EXISTS idx_nhan_su_unit_name ON nhan_su(unit_code, name)` phòng ngừa triệt để lỗi SQLite ON CONFLICT.
+7. **Kiểm thử & Đóng gói phiên bản theo RULES.md:**
+   - `node scripts/verify-build.mjs`: 100% PASS (4/4 tầng kiểm thử).
+   - Nâng phiên bản theo ngày mới (06/10/2026): `4.2.2-rev1` (Footer `#app-footer-version` giữ đúng chuẩn `Phiên bản: 4.2.2`, timestamp `#sys-last-update` $\rightarrow$ `⏱ Cập nhật lần cuối: 08:30 06/10/2026`).
+   - Service Worker: `CACHE_NAME = 'pmcg-v4-cache-4.2.2-rev1'`.
+
+**File sửa đổi:**
+- `js/app.js` (getPrimaryApiUrl, getApiUrl mutation isolation, executeApiTask retry & keepalive fix, savePatient & saveStaff optimistic cache protection)
+- `js/sync.js` (doPoll primary server liveness probe & auto-recovery)
+- `backend/src/schema.js` (bổ sung idx_nhan_su_unit_name)
+- `index.html` (cập nhật phiên bản 4.2.2, timestamp footer, cache busters ?v=4.2.2-rev1)
+- `sw.js` (cập nhật CACHE_NAME v4.2.2-rev1)
+- `version.json` (cập nhật version 4.2.2-rev1)
+- `PM-xeplich-v4.md` (nhật ký phát triển)
+
+
 
 
 

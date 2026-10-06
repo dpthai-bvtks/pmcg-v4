@@ -309,6 +309,7 @@ export async function ensureSchema(db) {
       "CREATE UNIQUE INDEX IF NOT EXISTS idx_tenants_code ON tenants(unit_code)",
       "CREATE INDEX IF NOT EXISTS idx_benh_nhan_unit ON benh_nhan(unit_code, is_saturday, order_idx)",
       "CREATE INDEX IF NOT EXISTS idx_nhan_su_unit ON nhan_su(unit_code, is_active, priority)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_nhan_su_unit_name ON nhan_su(unit_code, name)",
       "CREATE INDEX IF NOT EXISTS idx_may_moc_unit ON may_moc(unit_code, is_active, order_idx)",
       "CREATE INDEX IF NOT EXISTS idx_phong_unit ON phong(unit_code, is_active, order_idx)",
       "CREATE INDEX IF NOT EXISTS idx_thu_thuat_unit ON thu_thuat(unit_code, is_active, order_idx)",

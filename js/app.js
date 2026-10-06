@@ -1253,19 +1253,36 @@ window.showGlobalLoading = function (text) {
         }
         window.updateServerStatusBadge = updateServerStatusBadge;
 
-        function getApiUrl() {
-            let backupUrl = (typeof getBackupSheetsUrl === 'function')
-                ? getBackupSheetsUrl()
-                : ((localStorage.getItem('times_backup_api_url') || '').trim() || DEFAULT_BACKUP_SHEETS_URL);
-            if (window._serverMode === 'backup' && backupUrl) {
-                return backupUrl;
-            }
+        function getPrimaryApiUrl() {
             let customUrl = (localStorage.getItem('times_custom_api_url') || '').trim();
             if (customUrl.includes('script.google.com') || customUrl.includes('google.com/macros')) {
                 localStorage.removeItem('times_custom_api_url');
                 customUrl = '';
             }
             return customUrl || DEFAULT_API_URL;
+        }
+        window.getPrimaryApiUrl = getPrimaryApiUrl;
+
+        function getApiUrl(functionName = '') {
+            const isMutation = functionName && (
+                functionName.startsWith('add') || functionName.startsWith('edit') ||
+                functionName.startsWith('delete') || functionName.startsWith('bulkUpdate') ||
+                functionName.startsWith('save') || functionName.startsWith('chotSo') ||
+                functionName.startsWith('runScheduling') || functionName.startsWith('chuyenNgayMoi')
+            );
+            // 🛡️ BẮT BUỘC: Mọi tác vụ ghi/thay đổi dữ liệu (Mutations) như lưu bệnh nhân, nhân sự...
+            // PHẢI LUÔN GỬI TỚI MÁY CHỦ CHÍNH CLOUDFLARE/TURSO, TUYỆT ĐỐI KHÔNG GỬI TỚI GOOGLE SHEETS DỰ PHÒNG!
+            if (isMutation) {
+                return getPrimaryApiUrl();
+            }
+
+            let backupUrl = (typeof getBackupSheetsUrl === 'function')
+                ? getBackupSheetsUrl()
+                : ((localStorage.getItem('times_backup_api_url') || '').trim() || DEFAULT_BACKUP_SHEETS_URL);
+            if (window._serverMode === 'backup' && backupUrl) {
+                return backupUrl;
+            }
+            return getPrimaryApiUrl();
         }
         window.getApiUrl = getApiUrl;
 
@@ -1573,17 +1590,19 @@ var dataCache = window.dataCache;
 
         
         async function executeApiTask(task) {
-            const { functionName, args, onSuccess, onError, isMutation, retries = 0 } = task;
+            const { functionName, args, onSuccess, onError, isMutation, showLoading, retries = 0 } = task;
             activeApiRequests++;
 
             const finish = () => {
                 activeApiRequests--;
-                if (isMutation) {
+                if (showLoading) {
                     mutationCount = Math.max(0, mutationCount - 1);
                     checkMutationLoading();
                 }
                 setTimeout(scheduleNextApiRequest, 5);
             };
+
+            const targetUrl = isMutation ? getPrimaryApiUrl() : getApiUrl(functionName);
 
             try {
                 const controller = new AbortController();
@@ -1605,7 +1624,7 @@ var dataCache = window.dataCache;
                     headers['Authorization'] = 'Bearer ' + token;
                 }
 
-                const response = await fetch(getApiUrl(), {
+                const response = await fetch(targetUrl, {
                     method: 'POST',
                     headers: headers,
                     body: JSON.stringify({
@@ -1613,8 +1632,7 @@ var dataCache = window.dataCache;
                         args: args || [],
                         unit_code: currentUnit
                     }),
-                    signal: controller.signal,
-                    keepalive: !!isMutation
+                    signal: controller.signal
                 });
 
                 clearTimeout(timeoutId);
@@ -1636,6 +1654,10 @@ var dataCache = window.dataCache;
 
                 if (result && result.status === 'success') {
                     _consecutiveApiErrors = 0;
+                    if (window._serverMode === 'backup' && targetUrl === getPrimaryApiUrl()) {
+                        window._serverMode = 'primary';
+                        if (typeof updateServerStatusBadge === 'function') updateServerStatusBadge('primary');
+                    }
                     if (isMutation) {
                         window._lastLocalMutationTime = Date.now();
                     }
@@ -1673,7 +1695,7 @@ var dataCache = window.dataCache;
             } catch (err) {
                 console.warn(`[Cloudflare API Error] ${functionName}:`, err);
 
-                // 🛡️ TỰ ĐỘNG CHUYỂN ĐỔI SANG GOOGLE SHEETS DỰ PHÒNG KHI MÁY CHỦ CHÍNH BỊ TẮT / LỖI MẠNG
+                // 🛡️ TỰ ĐỘNG CHUYỂN ĐỔI SANG GOOGLE SHEETS DỰ PHÒNG CHỈ DÀNH CHO CÁC QUERY ĐỌC DỮ LIỆU (GET / READ)
                 const backupUrl = (typeof getBackupSheetsUrl === 'function') ? getBackupSheetsUrl() : '';
                 const isCurrentlyPrimary = (window._serverMode !== 'backup');
                 if (isCurrentlyPrimary && backupUrl && !isMutation) {
@@ -1712,20 +1734,24 @@ var dataCache = window.dataCache;
 
                 finish();
 
-                // Tự động thử lại 1 lần cho các query đọc dữ liệu nếu bị timeout hoặc lỗi mạng
-                if (!isMutation && retries < 1) {
-                    console.log(`[API Retry] Thử lại ${functionName} sau 1 giây...`);
+                // 🛡️ Tự động thử lại 1 lần cho cả mutation và read query nếu bị timeout hoặc lỗi mạng
+                if (retries < 1) {
+                    console.log(`[API Retry] Thử lại ${functionName} sau 800ms...`);
                     setTimeout(() => {
                         apiQueue.push({ ...task, retries: retries + 1 });
                         scheduleNextApiRequest();
-                    }, 1000);
+                    }, 800);
                     return;
                 }
 
                 const isTimeout = err.name === 'TimeoutError' || err.name === 'AbortError' || (err.message && err.message.includes('abort'));
-                const errMsg = isTimeout 
+                let errMsg = isTimeout 
                     ? `Quá thời gian kết nối máy chủ (${functionName} - Timeout 30s).`
                     : (err.message || 'Lỗi kết nối máy chủ Cloudflare');
+
+                if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError') || errMsg.includes('Load failed')) {
+                    errMsg = `Không thể kết nối đến máy chủ (${functionName}). Vui lòng kiểm tra lại kết nối mạng Internet hoặc thử lại!`;
+                }
 
                 if (onError) onError(errMsg);
                 else console.error(err);
@@ -1957,7 +1983,7 @@ var dataCache = window.dataCache;
                     checkMutationLoading();
                 }
 
-                const task = { functionName, args: args || [], onSuccess, onError, isMutation: shouldShowLoading, retries: 0 };
+                const task = { functionName, args: args || [], onSuccess, onError, isMutation: isMutation, showLoading: shouldShowLoading, retries: 0 };
                 apiQueue.push(task);
                 scheduleNextApiRequest();
             });
@@ -5323,7 +5349,13 @@ var dataCache = window.dataCache;
                 callApi('editNhanSu', [sheetIdx, ten, vaiTro, trangThai, tgLam, kyNang, gioBan, thayThe, quyen, tenHis], () => {
                     notify('Đã lưu nhân sự thành công!', 'success');
                 }, (err) => {
-                    alert("Lỗi lưu nhân sự: " + (err.message || err));
+                    const errText = (err && typeof err === 'object' && err.message) ? err.message : String(err || 'Lỗi không xác định');
+                    alert("Lỗi lưu nhân sự: " + errText);
+                    try {
+                        if (window.OfflineSyncEngine && typeof window.OfflineSyncEngine.saveCache === 'function') {
+                            window.OfflineSyncEngine.saveCache('staff', dataCache.staff);
+                        }
+                    } catch(eCache) {}
                     safeCall('loadDashboard');
                 });
             } else {
@@ -5332,7 +5364,13 @@ var dataCache = window.dataCache;
                 callApi('addNhanSu', [ten, vaiTro, trangThai, tgLam, kyNang, gioBan, thayThe, quyen, tenHis], () => {
                     notify('Đã thêm nhân sự thành công!', 'success');
                 }, (err) => {
-                    alert("Lỗi thêm nhân sự: " + (err.message || err));
+                    const errText = (err && typeof err === 'object' && err.message) ? err.message : String(err || 'Lỗi không xác định');
+                    alert("Lỗi thêm nhân sự: " + errText);
+                    try {
+                        if (window.OfflineSyncEngine && typeof window.OfflineSyncEngine.saveCache === 'function') {
+                            window.OfflineSyncEngine.saveCache('staff', dataCache.staff);
+                        }
+                    } catch(eCache) {}
                     safeCall('loadDashboard');
                 });
             }
@@ -5759,10 +5797,14 @@ var dataCache = window.dataCache;
             const onError = (e) => {
                 window._savePatientLock = false;
                 if (btnSave) { btnSave.disabled = false; btnSave.innerText = 'Lưu'; }
-                alert('Lỗi khi lưu bệnh nhân: ' + e);
-                // Khôi phục lại dữ liệu gốc từ máy chủ nếu xảy ra lỗi
-                if (window.dataCacheTime) window.dataCacheTime['pat'] = 0;
-                loadEntity('getBenhNhan', 'pat', renderPatientsTable, [], true);
+                const errText = (e && typeof e === 'object' && e.message) ? e.message : String(e || 'Lỗi không xác định');
+                alert('Lỗi khi lưu bệnh nhân: ' + errText);
+                // 🛡️ BẢO VỆ DỮ LIỆU: Giữ nguyên bệnh nhân vừa nhập trên bảng, lưu vào bộ nhớ đệm Offline, không tự ý xóa sạch!
+                try {
+                    if (window.OfflineSyncEngine && typeof window.OfflineSyncEngine.saveCache === 'function') {
+                        window.OfflineSyncEngine.saveCache('pat', dataCache.pat);
+                    }
+                } catch(eCache) {}
             };
 
             if (currentEditIdx > -1 && currentItem) {

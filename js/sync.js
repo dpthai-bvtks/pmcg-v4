@@ -320,6 +320,29 @@
     function doPoll() {
         if (isSyncing) return;
         if (typeof callApi !== 'function') return;
+
+        // 🛡️ TỰ ĐỘNG PHỤC HỒI: Nếu đang ở chế độ dự phòng, kiểm tra xem máy chủ chính đã kết nối lại được chưa
+        if (window._serverMode === 'backup' && typeof window.getPrimaryApiUrl === 'function') {
+            const primaryUrl = window.getPrimaryApiUrl();
+            const unitCode = localStorage.getItem('pm_unit_code') || 'bvtks-cs2';
+            fetch(primaryUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-unit-code': unitCode },
+                body: JSON.stringify({ action: 'ping', args: [], unit_code: unitCode })
+            }).then(r => r.json()).then(res => {
+                if (res && res.status === 'success') {
+                    console.log('[RealtimeSync]: Máy chủ chính đã trực tuyến trở lại. Tự động phục hồi chế độ Primary!');
+                    window._serverMode = 'primary';
+                    if (typeof window.updateServerStatusBadge === 'function') {
+                        window.updateServerStatusBadge('primary');
+                    }
+                    if (typeof window.showToast === 'function') {
+                        window.showToast('✅ Đã kết nối lại máy chủ chính Cloudflare & Turso!', 'success', 3000);
+                    }
+                }
+            }).catch(() => {});
+        }
+
         isSyncing = true;
         callApi('getDataVersion', [], function(data) {
             isSyncing = false;
