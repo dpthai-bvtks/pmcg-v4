@@ -724,11 +724,6 @@ class EmrHisBotApp:
     def set_datetime_field(self, pos, dt_str, form_window=None):
         """
         Điền chính xác ngày giờ vào ô DevExpress DateEdit (mask HH:mm dd/MM/yyyy)
-        Bằng cách xóa sạch ô, dán qua clipboard và gõ trực tiếp 12 chữ số mask
-        """
-    def set_datetime_field(self, pos, dt_str, form_window=None):
-        """
-        Điền chính xác ngày giờ vào ô DevExpress DateEdit (mask HH:mm dd/MM/yyyy)
         Bằng cách xóa sạch ô, dán chuẩn định dạng HH:mm dd/MM/yyyy
         """
         if not pos:
