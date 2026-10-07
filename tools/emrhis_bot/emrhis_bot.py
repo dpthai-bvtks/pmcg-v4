@@ -1213,6 +1213,34 @@ class EmrHisBotApp:
             pass
         return None
 
+    def _find_form_pttt_uia(self):
+        """Tìm đối tượng WindowControl của popup 'FormThuThuat_Ekip' bằng UIAutomation"""
+        if auto is None:
+            return None
+        try:
+            # 1. Tìm trực tiếp theo AutomationId='FormThuThuat_Ekip' trên Desktop
+            form = auto.WindowControl(searchDepth=4, AutomationId="FormThuThuat_Ekip")
+            if form.Exists(0.2):
+                return form
+
+            # 2. Tìm theo SubName='Cập Nhật Thông Tin' hoặc 'Thủ Thuật'
+            form = auto.WindowControl(searchDepth=4, SubName="Cập Nhật Thông Tin Thủ Thuật")
+            if form.Exists(0.2):
+                return form
+
+            # 3. Quét các cửa sổ con của FormMain
+            main_uia = self._find_form_main_uia()
+            if main_uia and main_uia.Exists(0.1):
+                f = main_uia.WindowControl(searchDepth=3, AutomationId="FormThuThuat_Ekip")
+                if f.Exists(0.2):
+                    return f
+                f = main_uia.WindowControl(searchDepth=3, SubName="Cập Nhật Thông Tin Thủ Thuật")
+                if f.Exists(0.2):
+                    return f
+        except Exception:
+            pass
+        return None
+
     def _find_button_start_uia(self, main_uia=None):
         """Tìm nút 'Bắt đầu thực hiện' trên FormMain emrHIS bằng UIAutomation"""
         if auto is None:
@@ -1364,27 +1392,28 @@ class EmrHisBotApp:
         delay = self.speed_var.get()
         cal = self.config.get("calibration", {}).get("form_pttt", {})
 
-        if not form_window:
-            form_title = self.config.get("settings", {}).get("window_form_title_contains", "Cập Nhật Thông Tin Thủ Thuật")
-            form_window = self.find_emrhis_window(form_title)
-
-        if not form_window:
-            raise Exception("Không tìm thấy cửa sổ 'Cập Nhật Thông Tin Thủ Thuật' đang mở trên màn hình!")
-
-        try:
-            form_window.activate()
-            time.sleep(delay * 0.5)
-        except Exception:
-            pass
-
-        self.log(f"👉 Bắt đầu điền form: {task.get('ten_bn')} - {task.get('thu_thuat')}")
-
-        # Tìm đối tượng UIA của form
+        # 1. Ưu tiên tìm đối tượng UIA trực tiếp (FormThuThuat_Ekip)
         form_uia = self._find_form_pttt_uia()
         if form_uia:
             self.log("🎯 Đã liên kết UIAutomation với cửa sổ 'FormThuThuat_Ekip' thành công!")
+            try:
+                hwnd = getattr(form_uia, 'NativeWindowHandle', None)
+                if hwnd:
+                    form_window = gw.Win32Window(hwnd)
+                    self.force_activate_window(form_window)
+            except Exception:
+                pass
         else:
-            self.log("⚠️ Không gắn được UIA trực tiếp, sử dụng tọa độ màn hình chuẩn hóa.", level="WARN")
+            if not form_window:
+                form_title = self.config.get("settings", {}).get("window_form_title_contains", "Cập Nhật Thông Tin Thủ Thuật")
+                form_window = self.find_emrhis_window(form_title)
+            if form_window:
+                self.force_activate_window(form_window)
+            else:
+                raise Exception("Không tìm thấy cửa sổ 'Cập Nhật Thông Tin Thủ Thuật' đang mở trên màn hình! Vui lòng mở form thủ thuật trước rồi bấm F8.")
+
+        time.sleep(delay * 0.3)
+        self.log(f"👉 Bắt đầu điền form: {task.get('ten_bn')} - {task.get('thu_thuat')}")
 
         # Chuẩn bị dữ liệu
         ngay_gio_bd = task.get("ngay_gio_bd") or f"{task.get('gio_bat_dau', '08:00')} {task.get('ngay', '')}".strip()
@@ -1589,6 +1618,10 @@ class EmrHisBotApp:
                 self.log(f"⚡ [F8] Đang điền form hiện tại cho ca #{task_idx + 1}: {task.get('ten_bn')}...")
                 self.fill_form_pttt(task)
                 task["status"] = "Hoàn thành"
+                try:
+                    ctypes.windll.user32.MessageBeep(0x00000040)
+                except Exception:
+                    pass
                 self.root.after(0, self._refresh_table)
                 self.root.after(0, lambda: self._select_next_row(task_idx))
             except Exception as e:
