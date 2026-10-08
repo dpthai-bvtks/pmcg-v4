@@ -1161,34 +1161,6 @@ class EmrHisBotApp:
 
         return ""
 
-    def _find_form_pttt_uia(self):
-        """Tìm đối tượng WindowControl của popup 'FormThuThuat_Ekip' bằng UIAutomation"""
-        if auto is None:
-            return None
-        try:
-            # 1. Tìm trực tiếp theo AutomationId='FormThuThuat_Ekip'
-            form = auto.WindowControl(searchDepth=4, AutomationId="FormThuThuat_Ekip")
-            if form.Exists(0.2):
-                return form
-
-            # 2. Tìm theo Name/SubName
-            form = auto.WindowControl(searchDepth=4, SubName="Cập Nhật Thông Tin Thủ Thuật")
-            if form.Exists(0.2):
-                return form
-
-            # 3. Quét từ FormMain con
-            main_win = auto.WindowControl(searchDepth=2, AutomationId="FormMain")
-            if main_win.Exists(0.1):
-                f = main_win.WindowControl(searchDepth=3, AutomationId="FormThuThuat_Ekip")
-                if f.Exists(0.2):
-                    return f
-                f = main_win.WindowControl(searchDepth=3, SubName="Cập Nhật Thông Tin Thủ Thuật")
-                if f.Exists(0.2):
-                    return f
-        except Exception as e:
-            self.log(f"Lỗi tìm form qua UIA: {e}", level="WARN")
-        return None
-
     def _find_form_main_uia(self):
         """Tìm đối tượng WindowControl của FormMain emrHIS bằng UIAutomation"""
         if auto is None:
@@ -1198,47 +1170,75 @@ class EmrHisBotApp:
             form = auto.WindowControl(searchDepth=3, AutomationId="FormMain")
             if form.Exists(0.2):
                 return form
-            # 2. Tìm theo SubName='emrHIS'
-            form = auto.WindowControl(searchDepth=3, SubName="emrHIS")
-            if form.Exists(0.2):
-                return form
+            # 2. Tìm theo SubName='emrHIS' hoặc 'PMQL'
+            for sub in ["emrHIS", "PMQL", "BỆNH VIỆN", "DPT|"]:
+                form = auto.WindowControl(searchDepth=3, SubName=sub)
+                if form.Exists(0.1):
+                    return form
             # 3. Quét các cửa sổ Desktop cấp 1
             root = auto.GetRootControl()
             for win in root.GetChildren():
                 if win.ControlType == auto.ControlType.WindowControl:
                     w_name = (win.Name or "").lower()
-                    if "emrhis" in w_name or win.AutomationId == "FormMain":
+                    if "emrhis" in w_name or "pmql" in w_name or win.AutomationId == "FormMain":
                         return win
         except Exception:
             pass
         return None
 
     def _find_form_pttt_uia(self):
-        """Tìm đối tượng WindowControl của popup 'FormThuThuat_Ekip' bằng UIAutomation"""
+        """
+        Tìm đối tượng WindowControl/Container của Form 'Cập Nhật Thông Tin Thủ Thuật':
+        1. Tìm theo AutomationId='FormThuThuat_Ekip' hoặc SubName='Cập Nhật Thông Tin'
+        2. Tìm FormThuThuat_Ekip bên trong FormMain
+        3. Tìm nút 'Lưu + Đóng' (btnSaveClose) bên trong FormMain hoặc trên Desktop
+        """
         if auto is None:
             return None
         try:
-            # 1. Tìm trực tiếp theo AutomationId='FormThuThuat_Ekip' trên Desktop
+            # 1. Tìm trực tiếp trên Desktop
             form = auto.WindowControl(searchDepth=4, AutomationId="FormThuThuat_Ekip")
             if form.Exists(0.2):
                 return form
 
-            # 2. Tìm theo SubName='Cập Nhật Thông Tin' hoặc 'Thủ Thuật'
-            form = auto.WindowControl(searchDepth=4, SubName="Cập Nhật Thông Tin Thủ Thuật")
+            form = auto.WindowControl(searchDepth=4, SubName="Cập Nhật Thông Tin")
             if form.Exists(0.2):
                 return form
 
-            # 3. Quét các cửa sổ con của FormMain
+            # 2. Quét sâu bên trong FormMain (trường hợp form PTTT là Docking / Tab con)
             main_uia = self._find_form_main_uia()
             if main_uia and main_uia.Exists(0.1):
-                f = main_uia.WindowControl(searchDepth=3, AutomationId="FormThuThuat_Ekip")
+                f = main_uia.WindowControl(searchDepth=6, AutomationId="FormThuThuat_Ekip")
                 if f.Exists(0.2):
                     return f
-                f = main_uia.WindowControl(searchDepth=3, SubName="Cập Nhật Thông Tin Thủ Thuật")
+
+                f = main_uia.PaneControl(searchDepth=6, AutomationId="FormThuThuat_Ekip")
                 if f.Exists(0.2):
                     return f
-        except Exception:
-            pass
+
+                # Kiểm tra nút 'Lưu + Đóng' hoặc 'btnSaveClose' bên trong FormMain
+                btn_save = main_uia.ButtonControl(searchDepth=8, AutomationId="btnSaveClose")
+                if btn_save.Exists(0.1):
+                    return main_uia
+
+                btn_save = main_uia.ButtonControl(searchDepth=8, SubName="Lưu + Đóng")
+                if btn_save.Exists(0.1):
+                    return main_uia
+
+                # Kiểm tra control 'txtNgayPTTT'
+                txt_ngay = main_uia.Control(searchDepth=8, AutomationId="txtNgayPTTT")
+                if txt_ngay.Exists(0.1):
+                    return main_uia
+
+            # 3. Quét toàn Desktop tìm nút 'Lưu + Đóng'
+            root = auto.GetRootControl()
+            btn_save = root.ButtonControl(searchDepth=10, SubName="Lưu + Đóng")
+            if btn_save.Exists(0.1):
+                top_win = btn_save.GetTopLevelControl()
+                if top_win:
+                    return top_win
+        except Exception as e:
+            self.log(f"Lỗi tìm form qua UIA: {e}", level="WARN")
         return None
 
     def _find_button_start_uia(self, main_uia=None):

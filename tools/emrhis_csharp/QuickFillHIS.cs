@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -33,7 +34,7 @@ namespace EmrHisQuickFill
             TenBn = "";
             ThuThuat = "";
             GioBatDau = "08:00";
-            GioKetThuc = "08:30";
+            GioKetThuc = "08:25";
             Ngay = "";
             NgayGioBd = "";
             NgayGioKt = "";
@@ -60,7 +61,7 @@ namespace EmrHisQuickFill
         private bool _isRunning = false;
         private bool _stopRequested = false;
 
-        // Win32 API cho Global Hotkeys
+        // Win32 APIs
         [DllImport("user32.dll")]
         private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
 
@@ -75,6 +76,30 @@ namespace EmrHisQuickFill
 
         [DllImport("user32.dll")]
         private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        [DllImport("user32.dll")]
+        private static extern bool BringWindowToTop(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+        private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
+        [DllImport("user32.dll")]
+        private static extern int GetClassName(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
+        [DllImport("user32.dll")]
+        private static extern bool IsWindowVisible(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+        [DllImport("user32.dll")]
+        private static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, int dwExtraInfo);
+        private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
+        private const uint MOUSEEVENTF_LEFTUP = 0x0004;
 
         private const int HOTKEY_F8 = 1008;
         private const int HOTKEY_F9 = 1009;
@@ -91,8 +116,8 @@ namespace EmrHisQuickFill
 
         private void InitializeComponent()
         {
-            this.Text = "⚡ emrHIS C# Native QuickFill v1.0 [Phương Án B]";
-            this.Size = new Size(720, 480);
+            this.Text = "⚡ emrHIS C# Native QuickFill v1.1 [Đã tối ưu nhận diện Form]";
+            this.Size = new Size(760, 500);
             this.StartPosition = FormStartPosition.CenterScreen;
             this.TopMost = true; // Luôn nổi để dễ quan sát khi thao tác trên emrHIS
             this.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
@@ -177,68 +202,109 @@ namespace EmrHisQuickFill
             btnClear.Click += (s, e) => ClearTasks();
             toolbar.Controls.Add(btnClear);
 
+            Button btnTestFind = new Button
+            {
+                Text = "🔍 Thử Tìm Form",
+                Font = new Font("Segoe UI", 8.5F),
+                ForeColor = Color.White,
+                BackColor = Color.FromArgb(71, 85, 105),
+                FlatStyle = FlatStyle.Flat,
+                Size = new Size(110, 40),
+                Location = new Point(650, 8),
+                Cursor = Cursors.Hand
+            };
+            btnTestFind.FlatAppearance.BorderSize = 0;
+            btnTestFind.Click += (s, e) =>
+            {
+                string info;
+                var elem = FindFormThuThuat(out info);
+                if (elem != null)
+                {
+                    MessageBox.Show("✅ ĐÃ TÌM THẤY FORM!\n\nChi tiết:\n" + info, "Kết quả tìm kiếm", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else
+                {
+                    MessageBox.Show("❌ KHÔNG TÌM THẤY FORM!\n\nChi tiết quá trình quét:\n" + info, "Kết quả tìm kiếm", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            };
+            toolbar.Controls.Add(btnTestFind);
+
             this.Controls.Add(toolbar);
 
-            // 2. Status Bar ở dưới
-            Panel bottomPanel = new Panel { Dock = DockStyle.Bottom, Height = 48, BackColor = Color.FromArgb(241, 245, 249), Padding = new Padding(8, 4, 8, 4) };
-
-            _lblStatus = new Label
-            {
-                Text = "Sẵn sàng. Bấm 'Dán Clipboard' để nạp dữ liệu từ PM-XếpLịch.",
-                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(30, 41, 59),
-                Dock = DockStyle.Top,
-                Height = 20
-            };
-            bottomPanel.Controls.Add(_lblStatus);
-
-            _lblStats = new Label
-            {
-                Text = "Tổng: 0 ca | Chờ: 0 | Đã nhập: 0",
-                Font = new Font("Segoe UI", 8.5F),
-                ForeColor = Color.FromArgb(100, 116, 139),
-                Dock = DockStyle.Bottom,
-                Height = 18
-            };
-            bottomPanel.Controls.Add(_lblStats);
-
-            this.Controls.Add(bottomPanel);
-
-            // 3. ListView Bảng danh sách ca
+            // 2. Body List View
             _lvTasks = new ListView
             {
                 Dock = DockStyle.Fill,
                 View = View.Details,
                 FullRowSelect = true,
                 GridLines = true,
-                Font = new Font("Segoe UI", 9F),
-                BackColor = Color.White
+                MultiSelect = false,
+                Font = new Font("Segoe UI", 9F)
             };
             _lvTasks.Columns.Add("STT", 45);
-            _lvTasks.Columns.Add("Bệnh Nhân", 170);
-            _lvTasks.Columns.Add("Thủ Thuật", 170);
-            _lvTasks.Columns.Add("Giờ BĐ", 65);
-            _lvTasks.Columns.Add("Giờ KT", 65);
-            _lvTasks.Columns.Add("KTV", 80);
-            _lvTasks.Columns.Add("Trạng Thái", 100);
-
+            _lvTasks.Columns.Add("Bệnh Nhân", 140);
+            _lvTasks.Columns.Add("Thủ Thuật", 120);
+            _lvTasks.Columns.Add("Giờ BĐ", 60);
+            _lvTasks.Columns.Add("Giờ KT", 60);
+            _lvTasks.Columns.Add("KTV", 110);
+            _lvTasks.Columns.Add("Trạng Thái", 130);
+            _lvTasks.DoubleClick += (s, e) => ExecuteFillCurrentForm();
             this.Controls.Add(_lvTasks);
-            _lvTasks.BringToFront();
 
-            // Đăng ký Global Hotkeys khi khởi động
+            // 3. Footer Status Bar
+            Panel footer = new Panel { Dock = DockStyle.Bottom, Height = 58, BackColor = Color.White, Padding = new Padding(10, 6, 10, 6) };
+            
+            _lblStatus = new Label
+            {
+                Dock = DockStyle.Top,
+                Height = 24,
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(30, 41, 59),
+                Text = "Sẵn sàng. Hãy dán dữ liệu hoặc bấm F8 để điền ca đang chọn."
+            };
+            footer.Controls.Add(_lblStatus);
+
+            _lblStats = new Label
+            {
+                Dock = DockStyle.Bottom,
+                Height = 20,
+                Font = new Font("Segoe UI", 8.5F),
+                ForeColor = Color.FromArgb(100, 116, 139),
+                Text = "Tổng: 0 ca | Chờ: 0 | Đã hoàn thành: 0"
+            };
+            footer.Controls.Add(_lblStats);
+
+            this.Controls.Add(footer);
+
+            // Tự nạp dữ liệu từ clipboard hoặc file json nếu có
             this.Load += (s, e) =>
+            {
+                RegisterGlobalHotkeys();
+                AutoLoadDefaultTasks();
+            };
+            this.FormClosing += (s, e) => UnregisterGlobalHotkeys();
+        }
+
+        private void RegisterGlobalHotkeys()
+        {
+            try
             {
                 RegisterHotKey(this.Handle, HOTKEY_F8, 0, VK_F8);
                 RegisterHotKey(this.Handle, HOTKEY_F9, 0, VK_F9);
                 RegisterHotKey(this.Handle, HOTKEY_ESC, 0, VK_ESCAPE);
-            };
+            }
+            catch { }
+        }
 
-            this.FormClosing += (s, e) =>
+        private void UnregisterGlobalHotkeys()
+        {
+            try
             {
                 UnregisterHotKey(this.Handle, HOTKEY_F8);
                 UnregisterHotKey(this.Handle, HOTKEY_F9);
                 UnregisterHotKey(this.Handle, HOTKEY_ESC);
-            };
+            }
+            catch { }
         }
 
         protected override void WndProc(ref Message m)
@@ -263,14 +329,14 @@ namespace EmrHisQuickFill
             base.WndProc(ref m);
         }
 
-        private void SetStatus(string msg, Color? color = null)
+        private void SetStatus(string text, Color? color = null)
         {
             if (this.InvokeRequired)
             {
-                this.Invoke(new Action(() => SetStatus(msg, color)));
+                this.Invoke(new Action(() => SetStatus(text, color)));
                 return;
             }
-            _lblStatus.Text = msg;
+            _lblStatus.Text = text;
             _lblStatus.ForeColor = color ?? Color.FromArgb(30, 41, 59);
         }
 
@@ -278,72 +344,105 @@ namespace EmrHisQuickFill
         {
             int total = _tasks.Count;
             int done = 0;
-            int waiting = 0;
             foreach (var t in _tasks)
             {
                 if (t.Status == "Hoàn thành") done++;
-                else waiting++;
             }
-            _lblStats.Text = string.Format("Tổng: {0} ca | Chờ: {1} | Đã hoàn thành: {2}", total, waiting, done);
+            int pending = total - done;
+            _lblStats.Text = string.Format("Tổng: {0} ca | Chờ: {1} | Đã hoàn thành: {2}", total, pending, done);
         }
 
         private void RefreshListView()
         {
-            if (this.InvokeRequired)
-            {
-                this.Invoke(new Action(RefreshListView));
-                return;
-            }
             _lvTasks.BeginUpdate();
             _lvTasks.Items.Clear();
             for (int i = 0; i < _tasks.Count; i++)
             {
                 var t = _tasks[i];
-                var lvi = new ListViewItem((i + 1).ToString());
-                lvi.SubItems.Add(t.TenBn);
-                lvi.SubItems.Add(t.ThuThuat);
-                lvi.SubItems.Add(t.GioBatDau);
-                lvi.SubItems.Add(t.GioKetThuc);
-                lvi.SubItems.Add(!string.IsNullOrEmpty(t.KtvMa) ? t.KtvMa : t.KtvTen);
-                lvi.SubItems.Add(t.Status);
+                var item = new ListViewItem((i + 1).ToString());
+                item.SubItems.Add(t.TenBn);
+                item.SubItems.Add(t.ThuThuat);
+                item.SubItems.Add(t.GioBatDau);
+                item.SubItems.Add(t.GioKetThuc);
+                item.SubItems.Add(!string.IsNullOrEmpty(t.KtvTen) ? t.KtvTen : t.KtvMa);
+                item.SubItems.Add(t.Status);
 
                 if (t.Status == "Hoàn thành")
                 {
-                    lvi.BackColor = Color.FromArgb(240, 253, 244);
-                    lvi.ForeColor = Color.FromArgb(22, 101, 52);
+                    item.BackColor = Color.FromArgb(240, 253, 244);
+                    item.ForeColor = Color.FromArgb(22, 101, 52);
                 }
                 else if (t.Status.StartsWith("Lỗi"))
                 {
-                    lvi.BackColor = Color.FromArgb(254, 242, 242);
-                    lvi.ForeColor = Color.FromArgb(153, 27, 27);
+                    item.BackColor = Color.FromArgb(254, 242, 242);
+                    item.ForeColor = Color.FromArgb(153, 27, 27);
                 }
-                _lvTasks.Items.Add(lvi);
+                _lvTasks.Items.Add(item);
             }
             _lvTasks.EndUpdate();
             UpdateStats();
+        }
+
+        private void AutoLoadDefaultTasks()
+        {
+            string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "danh_sach_thu_thuat_hom_nay.json");
+            if (File.Exists(jsonPath))
+            {
+                try
+                {
+                    string json = File.ReadAllText(jsonPath, Encoding.UTF8);
+                    var list = ParseJsonTasks(json);
+                    if (list.Count > 0)
+                    {
+                        _tasks = list;
+                        RefreshListView();
+                        SetStatus(string.Format("Đã nạp {0} ca từ danh_sach_thu_thuat_hom_nay.json", list.Count), Color.FromArgb(2, 132, 199));
+                        return;
+                    }
+                }
+                catch { }
+            }
+
+            // Nếu trong clipboard có dữ liệu JSON thì tự nhận
+            try
+            {
+                if (Clipboard.ContainsText())
+                {
+                    string clip = Clipboard.GetText();
+                    if (clip.Contains("ten_bn") || clip.Contains("ho_ten") || clip.Contains("thu_thuat"))
+                    {
+                        var list = ParseJsonTasks(clip);
+                        if (list.Count > 0)
+                        {
+                            _tasks = list;
+                            RefreshListView();
+                            SetStatus(string.Format("Đã nạp {0} ca từ Clipboard!", list.Count), Color.FromArgb(22, 163, 74));
+                        }
+                    }
+                }
+            }
+            catch { }
         }
 
         private void LoadTasksFromClipboard()
         {
             try
             {
+                if (!Clipboard.ContainsText())
+                {
+                    MessageBox.Show("Clipboard hiện không có văn bản!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
                 string text = Clipboard.GetText();
-                if (string.IsNullOrEmpty(text))
+                var list = ParseJsonTasks(text);
+                if (list.Count == 0)
                 {
-                    MessageBox.Show("Clipboard đang trống! Vui lòng bấm 'Xuất Bot Nhập HIS' từ PM-XếpLịch trước.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("Không tìm thấy dữ liệu ca thủ thuật trong Clipboard!\nHãy sao chép danh sách JSON hoặc xuất từ tool xếp lịch.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
-
-                List<PatientTask> parsed = ParseJsonTasks(text);
-                if (parsed.Count == 0)
-                {
-                    MessageBox.Show("Không tìm thấy dữ liệu ca hợp lệ trong Clipboard!\nVui lòng copy đúng dữ liệu JSON từ PM-XếpLịch.", "Cảnh báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-
-                _tasks = parsed;
+                _tasks = list;
                 RefreshListView();
-                SetStatus(string.Format("✅ Đã nạp thành công {0} ca thủ thuật từ Clipboard!", _tasks.Count), Color.FromArgb(22, 163, 74));
+                SetStatus(string.Format("Đã nạp thành công {0} ca từ Clipboard!", list.Count), Color.FromArgb(22, 163, 74));
             }
             catch (Exception ex)
             {
@@ -354,11 +453,9 @@ namespace EmrHisQuickFill
         private List<PatientTask> ParseJsonTasks(string json)
         {
             var list = new List<PatientTask>();
-            // Tìm mảng JSON [ { ... }, { ... } ]
             Match matchArray = Regex.Match(json, @"\[\s*\{.*\}\s*\]", RegexOptions.Singleline);
             string content = matchArray.Success ? matchArray.Value : json;
 
-            // Tách từng object { ... }
             MatchCollection objects = Regex.Matches(content, @"\{[^{}]*\}");
             foreach (Match m in objects)
             {
@@ -438,23 +535,24 @@ namespace EmrHisQuickFill
             }
 
             var task = _tasks[selectedIndex];
-            SetStatus(string.Format("⚡ [F8] Đang điền cho ca #{0}: {1}...", selectedIndex + 1, task.TenBn), Color.FromArgb(217, 119, 6));
+            SetStatus(string.Format("⚡ [F8] Đang tìm form và điền cho ca #{0}: {1}...", selectedIndex + 1, task.TenBn), Color.FromArgb(217, 119, 6));
 
             ThreadPool.QueueUserWorkItem(_ =>
             {
                 try
                 {
-                    bool ok = FillFormNativeUIA(task);
+                    string diagInfo;
+                    bool ok = FillFormNativeUIA(task, out diagInfo);
                     if (ok)
                     {
                         task.Status = "Hoàn thành";
                         MessageBeep(0x00000040); // Tiếng Beep nhẹ báo hiệu thành công
                         SetStatus(string.Format("✅ Đã điền & Lưu thành công ca #{0}: {1}!", selectedIndex + 1, task.TenBn), Color.FromArgb(22, 163, 74));
-                        
+
                         this.Invoke(new Action(() =>
                         {
                             RefreshListView();
-                            // Chọn ca tiếp theo
+                            // Tự động chuyển chọn ca tiếp theo
                             if (selectedIndex + 1 < _tasks.Count)
                             {
                                 _lvTasks.Items[selectedIndex + 1].Selected = true;
@@ -464,7 +562,7 @@ namespace EmrHisQuickFill
                     }
                     else
                     {
-                        SetStatus("❌ Không tìm thấy Form 'Cập Nhật Thông Tin Thủ Thuật' đang mở!", Color.FromArgb(220, 38, 38));
+                        SetStatus("❌ " + diagInfo, Color.FromArgb(220, 38, 38));
                     }
                 }
                 catch (Exception ex)
@@ -476,12 +574,16 @@ namespace EmrHisQuickFill
             });
         }
 
-        private bool FillFormNativeUIA(PatientTask task)
+        private bool FillFormNativeUIA(PatientTask task, out string diagInfo)
         {
-            // 1. Tìm cửa sổ popup 'FormThuThuat_Ekip' trên Desktop
-            AutomationElement form = FindFormThuThuat();
+            diagInfo = "";
+
+            // 1. TÌM FORM PTTT TRÊN EMRHIS
+            string findLog;
+            AutomationElement form = FindFormThuThuat(out findLog);
             if (form == null)
             {
+                diagInfo = "Không tìm thấy Form PTTT đang mở trên emrHIS!";
                 return false;
             }
 
@@ -492,85 +594,250 @@ namespace EmrHisQuickFill
                 if (hwnd != IntPtr.Zero)
                 {
                     ShowWindow(hwnd, 9); // SW_RESTORE
+                    BringWindowToTop(hwnd);
                     SetForegroundWindow(hwnd);
                 }
             }
             catch { }
 
-            Thread.Sleep(50);
+            Thread.Sleep(80);
 
             // 2. Điền Ngày Giờ Bắt Đầu (txtNgayPTTT)
             string dtStart = !string.IsNullOrEmpty(task.NgayGioBd) ? task.NgayGioBd : (task.GioBatDau + " " + task.Ngay).Trim();
-            SetControlValue(form, "txtNgayPTTT", dtStart);
+            if (string.IsNullOrEmpty(dtStart)) dtStart = task.GioBatDau;
+            SmartSetControlValue(form, dtStart, "txtNgayPTTT", "txtNgayBD", "txtThoiGianBD");
 
             // 3. Điền Ngày Giờ Kết Thúc (txtNgayPTTT_End)
             string dtEnd = !string.IsNullOrEmpty(task.NgayGioKt) ? task.NgayGioKt : (task.GioKetThuc + " " + task.Ngay).Trim();
-            SetControlValue(form, "txtNgayPTTT_End", dtEnd);
+            if (string.IsNullOrEmpty(dtEnd)) dtEnd = task.GioKetThuc;
+            SmartSetControlValue(form, dtEnd, "txtNgayPTTT_End", "txtNgayKT", "txtThoiGianKT");
 
-            // 4. Điền Phương Pháp Vô Cảm (txtPPVoCam)
-            SetControlValue(form, "txtPPVoCam", task.VoCam);
+            // 4. Điền Tình Hình PTTT (bắt buộc vì có dấu sao đỏ '*')
+            string tinhHinh = !string.IsNullOrEmpty(task.TinhHinh) ? task.TinhHinh : "Chủ động";
+            SmartSetControlValue(form, tinhHinh, "txtTinhHinhPTTT", "cboTinhHinhPTTT", "txtTinhHinh", "cboTinhHinh");
 
-            // 5. Điền Máy Thực Hiện (txtMayThucHien)
+            // 5. Điền Phương Pháp Vô Cảm (txtPPVoCam)
+            SmartSetControlValue(form, task.VoCam, "txtPPVoCam", "cboPPVoCam");
+
+            // 6. Điền Máy Thực Hiện (txtMayThucHien) nếu có
             if (!string.IsNullOrEmpty(task.MayYTe))
             {
-                SetControlValue(form, "txtMayThucHien", task.MayYTe);
+                SmartSetControlValue(form, task.MayYTe, "txtMayThucHien");
             }
 
-            // 6. Điền Mô Tả (txtMoTaPTTT)
-            SetControlValue(form, "txtMoTaPTTT", !string.IsNullOrEmpty(task.MoTa) ? task.MoTa : ".");
+            // 7. Điền Mô Tả (txtMoTaPTTT)
+            SmartSetControlValue(form, !string.IsNullOrEmpty(task.MoTa) ? task.MoTa : ".", "txtMoTaPTTT", "txtMoTa");
 
-            // 7. Điền KTV Chính vào bảng mListViewData nếu có
+            // 8. Điền KTV Chính vào bảng Ê-Kíp PTTT nếu có
             FillKtvCell(form, task);
 
-            Thread.Sleep(50);
+            Thread.Sleep(80);
 
-            // 8. Bấm nút Lưu + Đóng (btnSaveClose)
-            ClickSaveButton(form);
+            // 9. Bấm nút Lưu + Đóng
+            bool saved = ClickSaveButton(form);
+            if (!saved)
+            {
+                diagInfo = "Đã điền thông tin nhưng chưa bấm được nút 'Lưu + Đóng'.";
+            }
 
             return true;
         }
 
-        private AutomationElement FindFormThuThuat()
+        // =====================================================================
+        // THUẬT TOÁN TÌM FORM THỦ THUẬT SIÊU MẠNH MẼ (ROBUST)
+        // =====================================================================
+        private AutomationElement FindFormThuThuat(out string log)
         {
-            // 1. Tìm theo AutomationId='FormThuThuat_Ekip'
-            var condId = new PropertyCondition(AutomationElement.AutomationIdProperty, "FormThuThuat_Ekip");
-            AutomationElement form = AutomationElement.RootElement.FindFirst(TreeScope.Children, condId);
-            if (form != null) return form;
+            StringBuilder sbLog = new StringBuilder();
+            List<IntPtr> candidates = new List<IntPtr>();
 
-            // 2. Tìm theo SubName 'Cập Nhật Thông Tin'
-            var forms = AutomationElement.RootElement.FindAll(TreeScope.Children, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Window));
-            foreach (AutomationElement w in forms)
+            // 1. Quét tìm qua các Process emrHIS
+            try
+            {
+                var procs = Process.GetProcesses();
+                foreach (var p in procs)
+                {
+                    try
+                    {
+                        string pName = p.ProcessName.ToLower();
+                        if (pName.Contains("his"))
+                        {
+                            if (p.MainWindowHandle != IntPtr.Zero && !candidates.Contains(p.MainWindowHandle))
+                            {
+                                candidates.Add(p.MainWindowHandle);
+                            }
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+
+            // 2. Quét qua EnumWindows để tìm tất cả cửa sổ có tiêu đề liên quan
+            EnumWindows((hWnd, lParam) =>
+            {
+                if (!IsWindowVisible(hWnd)) return true;
+
+                StringBuilder sbTitle = new StringBuilder(512);
+                GetWindowText(hWnd, sbTitle, 512);
+                string title = sbTitle.ToString();
+
+                uint pid;
+                GetWindowThreadProcessId(hWnd, out pid);
+
+                if (title.Contains("Cập Nhật Thông Tin") || 
+                    title.Contains("Thủ Thuật") || 
+                    title.Contains("PMQL BỆNH VIỆN") || 
+                    title.Contains("emrHIS") ||
+                    title.Contains("DPT|"))
+                {
+                    if (!candidates.Contains(hWnd))
+                    {
+                        candidates.Add(hWnd);
+                    }
+                }
+                return true;
+            }, IntPtr.Zero);
+
+            sbLog.AppendLine(string.Format("Tìm thấy {0} cửa sổ ứng viên.", candidates.Count));
+
+            // 3. Với mỗi cửa sổ ứng viên, kiểm tra xem có chứa Form hoặc các Control PTTT không
+            foreach (IntPtr hwnd in candidates)
             {
                 try
                 {
-                    string name = w.Current.Name;
-                    if (!string.IsNullOrEmpty(name) && (name.Contains("Cập Nhật Thông Tin") || name.Contains("Thủ Thuật")))
+                    AutomationElement root = AutomationElement.FromHandle(hwnd);
+                    if (root == null) continue;
+
+                    string rootName = "";
+                    string rootAid = "";
+                    try
                     {
-                        return w;
+                        rootName = root.Current.Name;
+                        rootAid = root.Current.AutomationId;
                     }
+                    catch { }
+
+                    // A. Nếu bản thân cửa sổ chính là FormThuThuat_Ekip
+                    if (rootAid == "FormThuThuat_Ekip" || rootName.Contains("Cập Nhật Thông Tin"))
+                    {
+                        log = string.Format("Khớp trực tiếp Form: AID='{0}', Title='{1}'", rootAid, rootName);
+                        return root;
+                    }
+
+                    // B. Tìm FormThuThuat_Ekip bên trong (Tab / MDI con)
+                    var condForm = new PropertyCondition(AutomationElement.AutomationIdProperty, "FormThuThuat_Ekip");
+                    var innerForm = root.FindFirst(TreeScope.Descendants, condForm);
+                    if (innerForm != null)
+                    {
+                        log = string.Format("Khớp FormThuThuat_Ekip bên trong HWND {0} ({1})", hwnd, rootName);
+                        return innerForm;
+                    }
+
+                    // C. Tìm qua các Button đặc trưng: "Lưu + Đóng" hoặc "btnSaveClose"
+                    var condSaveClose = new OrCondition(
+                        new PropertyCondition(AutomationElement.NameProperty, "Lưu + Đóng"),
+                        new PropertyCondition(AutomationElement.AutomationIdProperty, "btnSaveClose")
+                    );
+                    var btnSave = root.FindFirst(TreeScope.Descendants, condSaveClose);
+                    if (btnSave != null)
+                    {
+                        log = string.Format("Khớp qua nút 'Lưu + Đóng' bên trong HWND {0} ({1})", hwnd, rootName);
+                        return root;
+                    }
+
+                    // D. Tìm qua các Edit đặc trưng: "txtNgayPTTT" hoặc "mListViewData"
+                    var condControls = new OrCondition(
+                        new PropertyCondition(AutomationElement.AutomationIdProperty, "txtNgayPTTT"),
+                        new PropertyCondition(AutomationElement.AutomationIdProperty, "mListViewData"),
+                        new PropertyCondition(AutomationElement.NameProperty, "Thông Tin PTTT")
+                    );
+                    var specialCtrl = root.FindFirst(TreeScope.Descendants, condControls);
+                    if (specialCtrl != null)
+                    {
+                        log = string.Format("Khớp qua control PTTT đặc trưng bên trong HWND {0} ({1})", hwnd, rootName);
+                        return root;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    sbLog.AppendLine(string.Format("Lỗi quét HWND {0}: {1}", hwnd, ex.Message));
+                }
+            }
+
+            // 4. Fallback cuối cùng: Quét từ RootElement (Desktop)
+            try
+            {
+                var condBtn = new PropertyCondition(AutomationElement.NameProperty, "Lưu + Đóng");
+                var btnAny = AutomationElement.RootElement.FindFirst(TreeScope.Descendants, condBtn);
+                if (btnAny != null)
+                {
+                    log = "Khớp qua tìm kiếm 'Lưu + Đóng' trên toàn Desktop!";
+                    // Trả về TopLevelWindow chứa nút này
+                    return btnAny;
+                }
+            }
+            catch { }
+
+            log = sbLog.ToString();
+            return null;
+        }
+
+        // =====================================================================
+        // ĐIỀN GIÁ TRỊ THÔNG MINH CHO CẢ WINFORMS & DEVEXPRESS
+        // =====================================================================
+        private void SmartSetControlValue(AutomationElement parent, string text, params string[] automationIds)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+
+            AutomationElement ctrl = null;
+            foreach (var aid in automationIds)
+            {
+                try
+                {
+                    var cond = new PropertyCondition(AutomationElement.AutomationIdProperty, aid);
+                    ctrl = parent.FindFirst(TreeScope.Descendants, cond);
+                    if (ctrl != null) break;
                 }
                 catch { }
             }
 
-            return null;
-        }
+            if (ctrl == null) return;
 
-        private void SetControlValue(AutomationElement parent, string automationId, string text)
-        {
-            if (string.IsNullOrEmpty(text)) return;
             try
             {
-                var cond = new PropertyCondition(AutomationElement.AutomationIdProperty, automationId);
-                var ctrl = parent.FindFirst(TreeScope.Descendants, cond);
-                if (ctrl != null)
+                // Cách 1: ValuePattern (Nhanh và chuẩn nhất nếu hỗ trợ)
+                object patternObj;
+                if (ctrl.TryGetCurrentPattern(ValuePattern.Pattern, out patternObj))
                 {
-                    object patternObj;
-                    if (ctrl.TryGetCurrentPattern(ValuePattern.Pattern, out patternObj))
-                    {
-                        var vp = (ValuePattern)patternObj;
-                        vp.SetValue(text);
-                        return;
-                    }
+                    var vp = (ValuePattern)patternObj;
+                    vp.SetValue(text);
+                    return;
+                }
+            }
+            catch { }
+
+            try
+            {
+                // Cách 2: Nếu ValuePattern không đổi được (DevExpress controls)
+                // Click vào giữa BoundingRectangle -> SendKeys Ctrl+A -> Gõ nội dung -> Tab
+                var rect = ctrl.Current.BoundingRectangle;
+                if (rect.Width > 0 && rect.Height > 0)
+                {
+                    int cx = (int)(rect.Left + rect.Width / 2);
+                    int cy = (int)(rect.Top + rect.Height / 2);
+
+                    Cursor.Position = new Point(cx, cy);
+                    mouse_event(MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP, (uint)cx, (uint)cy, 0, 0);
+                    Thread.Sleep(30);
+
+                    SendKeys.SendWait("^a");
+                    Thread.Sleep(20);
+                    SendKeys.SendWait("{BACKSPACE}");
+                    Thread.Sleep(20);
+                    SendKeys.SendWait(text);
+                    Thread.Sleep(20);
+                    SendKeys.SendWait("{TAB}");
                 }
             }
             catch { }
@@ -583,25 +850,35 @@ namespace EmrHisQuickFill
 
             try
             {
-                var condList = new PropertyCondition(AutomationElement.AutomationIdProperty, "mListViewData");
+                var condList = new OrCondition(
+                    new PropertyCondition(AutomationElement.AutomationIdProperty, "mListViewData"),
+                    new PropertyCondition(AutomationElement.NameProperty, "Ê-Kíp PTTT")
+                );
                 var lv = form.FindFirst(TreeScope.Descendants, condList);
                 if (lv != null)
                 {
-                    // Lấy dòng 1
+                    // Lấy dòng 1 (Kỹ thuật viên chính)
                     var condItem = new PropertyCondition(AutomationElement.NameProperty, "1");
                     var item1 = lv.FindFirst(TreeScope.Children, condItem);
+                    if (item1 == null)
+                    {
+                        // Thử lấy con đầu tiên
+                        var children = lv.FindAll(TreeScope.Children, Condition.TrueCondition);
+                        if (children.Count > 0) item1 = children[0];
+                    }
+
                     if (item1 != null)
                     {
                         var rect = item1.Current.BoundingRectangle;
-                        int cx = (int)(rect.Left + rect.Width * 0.65);
+                        // Click vào cột 'Nhân Viên' (khoảng 65% - 75% chiều ngang của dòng)
+                        int cx = (int)(rect.Left + rect.Width * 0.70);
                         int cy = (int)(rect.Top + rect.Height / 2);
 
-                        // Click vào ô KTV
                         Cursor.Position = new Point(cx, cy);
                         mouse_event(MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP, (uint)cx, (uint)cy, 0, 0);
-                        Thread.Sleep(50);
+                        Thread.Sleep(40);
                         mouse_event(MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP, (uint)cx, (uint)cy, 0, 0);
-                        Thread.Sleep(50);
+                        Thread.Sleep(40);
 
                         SendKeys.SendWait("{F2}");
                         Thread.Sleep(30);
@@ -612,11 +889,15 @@ namespace EmrHisQuickFill
             catch { }
         }
 
-        private void ClickSaveButton(AutomationElement form)
+        private bool ClickSaveButton(AutomationElement form)
         {
+            // 1. Tìm qua InvokePattern
             try
             {
-                var condBtn = new PropertyCondition(AutomationElement.AutomationIdProperty, "btnSaveClose");
+                var condBtn = new OrCondition(
+                    new PropertyCondition(AutomationElement.NameProperty, "Lưu + Đóng"),
+                    new PropertyCondition(AutomationElement.AutomationIdProperty, "btnSaveClose")
+                );
                 var btn = form.FindFirst(TreeScope.Descendants, condBtn);
                 if (btn != null)
                 {
@@ -625,18 +906,32 @@ namespace EmrHisQuickFill
                     {
                         var inv = (InvokePattern)patternObj;
                         inv.Invoke();
-                        return;
+                        return true;
+                    }
+
+                    // Click chuột trực tiếp vào tâm nút nếu Invoke không được
+                    var rect = btn.Current.BoundingRectangle;
+                    if (rect.Width > 0 && rect.Height > 0)
+                    {
+                        int cx = (int)(rect.Left + rect.Width / 2);
+                        int cy = (int)(rect.Top + rect.Height / 2);
+                        Cursor.Position = new Point(cx, cy);
+                        mouse_event(MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP, (uint)cx, (uint)cy, 0, 0);
+                        return true;
                     }
                 }
             }
             catch { }
 
-            // Fallback gửi phím Alt + L
+            // 2. Fallback: gửi phím Alt + L
             try
             {
                 SendKeys.SendWait("%l");
+                return true;
             }
             catch { }
+
+            return false;
         }
 
         private void StartAutoRun()
@@ -648,7 +943,7 @@ namespace EmrHisQuickFill
             _btnAutoF9.Enabled = false;
             _btnStop.Enabled = true;
 
-            SetStatus("▶️ Đang ở chế độ Tự Động! Hãy mở từng form hoặc để bot tự quét...", Color.FromArgb(22, 163, 74));
+            SetStatus("▶️ Đang ở chế độ TỰ ĐỘNG (F9)! Hãy mở form ca đầu tiên trên emrHIS...", Color.FromArgb(22, 163, 74));
 
             ThreadPool.QueueUserWorkItem(_ =>
             {
@@ -676,21 +971,23 @@ namespace EmrHisQuickFill
                         for (int w = 0; w < 60; w++)
                         {
                             if (_stopRequested) break;
-                            form = FindFormThuThuat();
+                            string tmpLog;
+                            form = FindFormThuThuat(out tmpLog);
                             if (form != null) break;
-                            Thread.Sleep(200);
+                            Thread.Sleep(250);
                         }
 
                         if (form != null && !_stopRequested)
                         {
-                            bool ok = FillFormNativeUIA(t);
+                            string diag;
+                            bool ok = FillFormNativeUIA(t, out diag);
                             if (ok)
                             {
                                 t.Status = "Hoàn thành";
                                 MessageBeep(0x00000040);
                                 this.Invoke(new Action(RefreshListView));
                             }
-                            Thread.Sleep(500);
+                            Thread.Sleep(600);
                         }
                     }
                 }
@@ -715,11 +1012,6 @@ namespace EmrHisQuickFill
             _stopRequested = true;
             SetStatus("⏹ Đã gửi yêu cầu dừng!", Color.FromArgb(220, 38, 38));
         }
-
-        [DllImport("user32.dll")]
-        private static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, int dwExtraInfo);
-        private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
-        private const uint MOUSEEVENTF_LEFTUP = 0x0004;
 
         [STAThread]
         public static void Main()
