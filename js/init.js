@@ -297,6 +297,10 @@ window.doLogin = function () {
     }
     if (errDiv) errDiv.style.display = 'none';
 
+    // 🛡️ Đảm bảo luồng đăng nhập luôn phục hồi và hướng tới máy chủ chính Cloudflare Worker
+    window._serverMode = 'primary';
+    if (typeof window.updateServerStatusBadge === 'function') window.updateServerStatusBadge('primary');
+
     // Lưu mã đơn vị vào localStorage
     localStorage.setItem('pm_unit_code', unit);
 

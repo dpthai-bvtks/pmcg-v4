@@ -7696,6 +7696,58 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 - `PM-xeplich-v4.md` (nhật ký phát triển)
 - `backups/backup_before_perf_opt_20261009/` (thư mục sao lưu an toàn toàn bộ file gốc trước khi sửa)
 
+---
+
+## 33. 🛡️ Khắc Phục Triệt Để Lỗi Đăng Nhập Khi MiniPC Tắt & Cô Lập Tuyệt Đối Luồng Xác Thực SaaS (v4.2.4-rev2 - 20:30 09/10/2026)
+
+### Bối Cảnh & Yêu Cầu Của Người Dùng
+- **Hiện tượng:** Khi người dùng mở phần mềm trên trình duyệt từ laptop ở nhà lúc MiniPC ở viện đã tắt máy, giao diện xuất hiện thông báo toast: *"⚡ Máy chủ chính đang tắt. Đã tự động kết nối Google Sheets dự phòng!"*. Khi nhập mã đơn vị `bvtks-cs2`, tài khoản `admin`, mật khẩu và bấm `Đăng Nhập ➔`, màn hình báo lỗi đỏ: *"Không thể kết nối đến máy chủ (verifyLogin). Vui lòng kiểm tra lại kết nối mạng Internet hoặc thử lại!"*.
+- **Yêu cầu:** Khắc phục triệt để lỗi đăng nhập khi MiniPC tắt, bảo đảm sao lưu (backup) dự phòng an toàn trước khi chỉnh sửa.
+
+### Phân Tích Nguyên Nhân Gốc Rễ (Root Causes)
+1. **Hiệu ứng Domino kích hoạt Failover sớm từ `js/sync.js`:**
+   - Khi vừa tải trang, hàm `doPoll()` trong `sync.js` tự động chạy sau 1-2 giây mà hoàn toàn không kiểm tra xem người dùng đã đăng nhập hay chưa (`!token || !sess.username || isLoginOverlayOpen`).
+   - Nếu trong `localStorage` trên laptop còn sót cấu hình `times_custom_api_url` trỏ về IP mạng nội bộ viện của MiniPC (`http://192.168.1.x:8080`) hoặc kết nối mạng bị gián đoạn 1 nhịp, request bị lỗi mạng.
+   - Hàm `executeApiTask` lập tức kích hoạt auto-failover: gán `window._serverMode = 'backup'`, hiển thị Toast báo máy chủ chính tắt và chuyển toàn bộ hệ thống sang chế độ dự phòng Google Sheets.
+2. **Định tuyến nhầm API Xác thực (`verifyLogin`) sang Google Sheets:**
+   - Trong `getApiUrl(functionName)`, cơ chế kiểm tra trước đây chỉ cô lập các hàm Mutation (`add*`, `edit*`, `delete*`, `save*`, `chotSo*`...). Các API xác thực danh tính như `verifyLogin`, `checkLogin`, `login` không phải mutation nên khi `_serverMode === 'backup'`, chúng bị định tuyến thẳng sang Google Sheets WebApp (`script.google.com`).
+   - Google Sheets không hỗ trợ CORS cho POST request dạng JSON từ trình duyệt và hoàn toàn không có bảng `tai_khoan` / thuật toán băm mật khẩu PBKDF2 / cơ chế ký JWT Token.
+   - Kết quả: Trình duyệt ném lỗi `TypeError: Failed to fetch` và giao diện hiển thị: *"Không thể kết nối đến máy chủ (verifyLogin)"*.
+3. **Lỗ hổng Mixed Content / IP nội bộ trên HTTPS Public Domain:**
+   - Nếu người dùng trước đó đã lưu IP mạng viện trong `times_custom_api_url`, khi truy cập qua tên miền chính thức `https://xeplichthuthuat.io.vn` thì trình duyệt chặn hoàn toàn các kết nối HTTP không an toàn (Mixed Content).
+
+### Giải Pháp Khắc Phục Toàn Diện (Multi-tier Fix)
+1. **Tạo bản sao lưu an toàn (Safe Backup):**
+   - Đã lưu giữ trọn vẹn toàn bộ 6 file mã nguồn trước khi sửa vào thư mục: `backups/backup_before_login_minipc_fix_20261009/` (gồm `app.js`, `sync.js`, `init.js`, `index.html`, `version.json`, `sw.js`).
+2. **Cô lập tuyệt đối tập API Xác thực & Bản quyền SaaS (`AUTH_AND_SYSTEM_ACTIONS`):**
+   - Khai báo bộ danh mục `AUTH_AND_SYSTEM_ACTIONS` gồm: `verifyLogin`, `checkLogin`, `login`, `changePassword`, `getAccounts`, `saveAccount`, `deleteAccount`, `ping`, `getPublicUnits`, `getPublicTenantInfo`, `getSubscriptionPlans`, `registerTrialTenant`, `createPaymentOrder`, `checkPaymentStatus`, `paymentWebhook`.
+   - Cập nhật `getApiUrl`: Bắt buộc mọi API xác thực & SaaS PHẢI LUÔN LUÔN gửi về `getPrimaryApiUrl()` (Cloudflare Worker & Turso Cloud Tokyo), tuyệt đối không bao giờ gửi sang Google Sheets.
+   - Trong `executeApiTask`: `targetUrl = (isMutation || isAuthOrSystem) ? getPrimaryApiUrl() : getApiUrl(functionName);`. Chặn đứng 100% failover sang Google Sheets đối với các action này.
+3. **Chặn kích hoạt Failover khi đang ở màn hình Đăng nhập:**
+   - Trong khối catch của `executeApiTask`: Bổ sung điều kiện kiểm tra `const isLoginScreen = overlay && overlay.style.display !== 'none';`. Tuyệt đối không bật chế độ backup và không hiện toast máy chủ chính tắt khi người dùng chưa đăng nhập.
+4. **Tự động làm sạch URL nội bộ trên HTTPS:**
+   - Cập nhật `getPrimaryApiUrl()`: Tự động phát hiện và xóa sạch `times_custom_api_url` nếu là địa chỉ HTTP local (`127.0.0.1`, `localhost`, `192.168.*`, `:8080`) khi đang chạy trên HTTPS ngoài mạng viện.
+5. **Bảo vệ Polling trong `sync.js`:**
+   - Trong `doPoll()`: Bổ sung kiểm tra `if (!token || !sess.username || isLoginOverlayOpen) return;`. Tuyệt đối không thăm dò khi chưa đăng nhập.
+6. **Chủ động phục hồi chế độ Primary khi bấm Đăng nhập:**
+   - Trong cả `window.doLogin` (`init.js` và `app.js`): Thiết lập `window._serverMode = 'primary'` ngay khi nhấn nút để luồng xác thực luôn thông suốt với Cloudflare Worker.
+7. **Kiểm thử & Đóng gói phiên bản theo RULES.md:**
+   - Chạy `node scripts/verify-build.mjs`: Đạt 100% PASS (4/4 tầng kiểm tra).
+   - Nâng số revision: `4.2.4-rev2` (timestamp: `20:30 09/10/2026`, chân trang giữ chuẩn `Phiên bản: 4.2.4`).
+   - Service Worker: `CACHE_NAME = 'pmcg-v4-cache-4.2.4-rev2'`.
+   - Deploy Cloudflare Pages thành công 100%: `https://55bac170.pmcg-v3.pages.dev` (kết nối live tại `https://pmcg-v4.pages.dev` và `https://www.xeplichthuthuat.io.vn`).
+
+**File sửa đổi:**
+- `js/app.js` (AUTH_AND_SYSTEM_ACTIONS isolation, getPrimaryApiUrl LAN cleaner, getApiUrl auth routing, executeApiTask auth & login screen guard, doLogin primary restore)
+- `js/init.js` (doLogin primary mode restore)
+- `js/sync.js` (doPoll login guard preventing false background failover)
+- `index.html` (đồng bộ cache busters ?v=4.2.4-rev2, timestamp 20:30 09/10/2026)
+- `sw.js` (CACHE_NAME pmcg-v4-cache-4.2.4-rev2)
+- `version.json` (version 4.2.4-rev2, releaseTime 20:30 09/10/2026)
+- `PM-xeplich-v4.md` (nhật ký phát triển)
+- `backups/backup_before_login_minipc_fix_20261009/` (thư mục sao lưu an toàn toàn bộ file gốc trước khi sửa)
+
+
 
 
 

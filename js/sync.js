@@ -321,6 +321,15 @@
         if (isSyncing) return;
         if (typeof callApi !== 'function') return;
 
+        // 🛡️ BẢO VỆ: Nếu chưa đăng nhập hoặc đang ở màn hình đăng nhập, không chạy polling để tránh trigger failover nhầm
+        const token = (typeof getAuthToken === 'function') ? getAuthToken() : (localStorage.getItem('pm_jwt_token') || '');
+        const sess = (typeof getSession === 'function') ? getSession() : {};
+        const overlay = document.getElementById('login-overlay');
+        const isLoginOverlayOpen = overlay && overlay.style.display !== 'none';
+        if (!token || !sess.username || isLoginOverlayOpen) {
+            return;
+        }
+
         // 🛡️ TỰ ĐỘNG PHỤC HỒI: Nếu đang ở chế độ dự phòng, kiểm tra xem máy chủ chính đã kết nối lại được chưa
         if (window._serverMode === 'backup' && typeof window.getPrimaryApiUrl === 'function') {
             const primaryUrl = window.getPrimaryApiUrl();

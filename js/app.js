@@ -1253,9 +1253,34 @@ window.showGlobalLoading = function (text) {
         }
         window.updateServerStatusBadge = updateServerStatusBadge;
 
+        const AUTH_AND_SYSTEM_ACTIONS = new Set([
+            'verifyLogin',
+            'checkLogin',
+            'login',
+            'changePassword',
+            'getAccounts',
+            'saveAccount',
+            'deleteAccount',
+            'ping',
+            'getPublicUnits',
+            'getPublicTenantInfo',
+            'getSubscriptionPlans',
+            'registerTrialTenant',
+            'createPaymentOrder',
+            'checkPaymentStatus',
+            'paymentWebhook'
+        ]);
+        window.AUTH_AND_SYSTEM_ACTIONS = AUTH_AND_SYSTEM_ACTIONS;
+
         function getPrimaryApiUrl() {
             let customUrl = (localStorage.getItem('times_custom_api_url') || '').trim();
             if (customUrl.includes('script.google.com') || customUrl.includes('google.com/macros')) {
+                localStorage.removeItem('times_custom_api_url');
+                customUrl = '';
+            }
+            // 🛡️ Lọc bỏ URL local HTTP (như 127.0.0.1, localhost, 192.168.*, :8080) nếu trang đang chạy trên HTTPS public ngoài viện
+            if (customUrl && location.protocol === 'https:' && (customUrl.startsWith('http://') || customUrl.includes('127.0.0.1') || customUrl.includes('localhost') || customUrl.includes('192.168.') || customUrl.includes(':8080'))) {
+                console.warn('[API URL Guard] Phát hiện custom URL nội bộ không khả dụng trên HTTPS ngoài mạng LAN viện, tự động chuyển về máy chủ Cloudflare:', customUrl);
                 localStorage.removeItem('times_custom_api_url');
                 customUrl = '';
             }
@@ -1270,9 +1295,10 @@ window.showGlobalLoading = function (text) {
                 functionName.startsWith('save') || functionName.startsWith('chotSo') ||
                 functionName.startsWith('runScheduling') || functionName.startsWith('chuyenNgayMoi')
             );
-            // 🛡️ BẮT BUỘC: Mọi tác vụ ghi/thay đổi dữ liệu (Mutations) như lưu bệnh nhân, nhân sự...
+            const isAuthOrSystem = AUTH_AND_SYSTEM_ACTIONS.has(functionName);
+            // 🛡️ BẮT BUỘC: Mọi tác vụ ghi/thay đổi dữ liệu (Mutations) VÀ các tác vụ xác thực/bản quyền/tài khoản (Auth & SaaS)
             // PHẢI LUÔN GỬI TỚI MÁY CHỦ CHÍNH CLOUDFLARE/TURSO, TUYỆT ĐỐI KHÔNG GỬI TỚI GOOGLE SHEETS DỰ PHÒNG!
-            if (isMutation) {
+            if (isMutation || isAuthOrSystem) {
                 return getPrimaryApiUrl();
             }
 
@@ -1602,7 +1628,8 @@ var dataCache = window.dataCache;
                 setTimeout(scheduleNextApiRequest, 5);
             };
 
-            const targetUrl = isMutation ? getPrimaryApiUrl() : getApiUrl(functionName);
+            const isAuthOrSystem = (typeof AUTH_AND_SYSTEM_ACTIONS !== 'undefined' && AUTH_AND_SYSTEM_ACTIONS.has(functionName));
+            const targetUrl = (isMutation || isAuthOrSystem) ? getPrimaryApiUrl() : getApiUrl(functionName);
 
             try {
                 const controller = new AbortController();
@@ -1695,10 +1722,13 @@ var dataCache = window.dataCache;
             } catch (err) {
                 console.warn(`[Cloudflare API Error] ${functionName}:`, err);
 
-                // 🛡️ TỰ ĐỘNG CHUYỂN ĐỔI SANG GOOGLE SHEETS DỰ PHÒNG CHỈ DÀNH CHO CÁC QUERY ĐỌC DỮ LIỆU (GET / READ)
+                // 🛡️ TỰ ĐỘNG CHUYỂN ĐỔI SANG GOOGLE SHEETS DỰ PHÒNG CHỈ DÀNH CHO CÁC QUERY ĐỌC DỮ LIỆU LÂM SÀNG (GET / READ)
+                // TUYỆT ĐỐI KHÔNG CHUYỂN ĐỔI SANG GOOGLE SHEETS KHI ĐANG XÁC THỰC HOẶC ĐANG Ở MÀN HÌNH ĐĂNG NHẬP!
                 const backupUrl = (typeof getBackupSheetsUrl === 'function') ? getBackupSheetsUrl() : '';
                 const isCurrentlyPrimary = (window._serverMode !== 'backup');
-                if (isCurrentlyPrimary && backupUrl && !isMutation) {
+                const overlay = document.getElementById('login-overlay');
+                const isLoginScreen = overlay && overlay.style.display !== 'none';
+                if (isCurrentlyPrimary && backupUrl && !isMutation && !isAuthOrSystem && !isLoginScreen) {
                     console.log(`🔄 [Auto Failover] Máy chủ chính gián đoạn. Tự động chuyển sang Google Sheets dự phòng cho: ${functionName}`);
                     window._serverMode = 'backup';
                     if (typeof updateServerStatusBadge === 'function') {
@@ -2027,6 +2057,10 @@ var dataCache = window.dataCache;
 
             if (btn) { btn.innerText = "⏳ Đang kiểm tra..."; btn.disabled = true; }
             if (errDiv) errDiv.style.display = "none";
+
+            // 🛡️ Đảm bảo luồng đăng nhập luôn phục hồi và hướng tới máy chủ chính Cloudflare Worker
+            window._serverMode = 'primary';
+            if (typeof updateServerStatusBadge === 'function') updateServerStatusBadge('primary');
 
             localStorage.setItem('pm_unit_code', unit);
 
