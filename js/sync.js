@@ -381,10 +381,51 @@
     }
     window.triggerDataSync = doPoll;
 
-    function scheduleNextPoll() {
+    // ⚡ TIẾT KIỆM QUOTA TURSO & BĂNG THÔNG: Tự động phát hiện trạng thái nghỉ (Idle Detection)
+    let lastUserActivityTime = Date.now();
+    const IDLE_TIMEOUT_MS = 3 * 60 * 1000; // Sau 3 phút không chạm chuột/bàn phím -> Idle
+    const IDLE_POLL_INTERVAL = 30000;      // 30 giây khi Idle (giảm 75% số lần request)
+    let isUserCurrentlyIdle = false;
+
+    function recordUserActivity() {
+        const wasIdle = isUserCurrentlyIdle;
+        lastUserActivityTime = Date.now();
+        isUserCurrentlyIdle = false;
+        if (wasIdle) {
+            // Người dùng vừa chạm chuột/gõ phím trở lại -> kiểm tra đồng bộ ngay và quay về nhịp bình thường
+            console.log('[RealtimeSync]: Người dùng hoạt động trở lại. Đồng bộ ngay và khôi phục nhịp polling nhanh!');
+            scheduleNextPoll(true);
+        }
+    }
+
+    let activityThrottle = null;
+    ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evtName => {
+        window.addEventListener(evtName, () => {
+            if (!activityThrottle) {
+                activityThrottle = setTimeout(() => {
+                    activityThrottle = null;
+                    recordUserActivity();
+                }, 1000);
+            }
+        }, { passive: true });
+    });
+
+    function scheduleNextPoll(immediate = false) {
         if (syncTimer) clearTimeout(syncTimer);
+        if (immediate) {
+            doPoll();
+        }
+        const timeSinceActivity = Date.now() - lastUserActivityTime;
+        isUserCurrentlyIdle = timeSinceActivity > IDLE_TIMEOUT_MS;
+
         const isChamCongActive = !!document.getElementById('tab-chamcong')?.classList.contains('active');
-        const interval = isChamCongActive ? 4000 : 8000;
+        let interval;
+        if (isUserCurrentlyIdle) {
+            interval = IDLE_POLL_INTERVAL;
+        } else {
+            interval = isChamCongActive ? 4000 : 8000;
+        }
+
         syncTimer = setTimeout(() => {
             doPoll();
             scheduleNextPoll();
@@ -392,6 +433,7 @@
     }
 
     function startAutoPolling() {
+        recordUserActivity();
         doPoll();
         scheduleNextPoll();
     }
@@ -409,6 +451,7 @@
     document.addEventListener('visibilitychange', function() {
         if (document.hidden) {
             if (syncTimer) {
+                clearTimeout(syncTimer);
                 clearInterval(syncTimer);
                 syncTimer = null;
             }

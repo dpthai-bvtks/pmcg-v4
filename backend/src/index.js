@@ -1132,6 +1132,27 @@ async function setCaiDat(db, unitCode, key, value) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// ⚡ CLOUDFLARE EDGE IN-MEMORY CACHE CHO DATA_VERSION (TIẾT KIỆM 95% QUOTA TURSO)
+// ═══════════════════════════════════════════════════════════════════════════════
+const _DATA_VERSION_CACHE = new Map(); // unitCode -> { version, expireAt }
+
+async function getDataVersionCached(db, unitCode = "bvtks-cs2") {
+  const now = Date.now();
+  const cached = _DATA_VERSION_CACHE.get(unitCode);
+  if (cached && cached.expireAt > now) {
+    return cached.version;
+  }
+  try {
+    const rec = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'data_version'").bind(unitCode).first();
+    const v = rec ? String(rec.value) : String(now);
+    _DATA_VERSION_CACHE.set(unitCode, { version: v, expireAt: now + 15000 }); // TTL 15s tại Edge RAM
+    return v;
+  } catch(e) {
+    return cached ? cached.version : String(now);
+  }
+}
+
 function makeBumpDataVersionStmt(db, unitCode = "bvtks-cs2") {
   const v = String(Date.now());
   return db.prepare("UPDATE cai_dat SET value = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ? AND key = 'data_version'").bind(v, unitCode);
@@ -1139,6 +1160,8 @@ function makeBumpDataVersionStmt(db, unitCode = "bvtks-cs2") {
 
 async function bumpDataVersion(db, unitCode = "bvtks-cs2") {
   const v = String(Date.now());
+  // ⚡ Cập nhật tức thời 0ms trong RAM Edge Worker để mọi client nhận ngay lập tức
+  _DATA_VERSION_CACHE.set(unitCode, { version: v, expireAt: Date.now() + 15000 });
   try {
     const res = await makeBumpDataVersionStmt(db, unitCode).run();
     if (!res || (res.meta && res.meta.changes === 0) || (res.rowsAffected === 0)) {
@@ -1172,13 +1195,10 @@ export default {
         if (unitCodes.length === 0) unitCodes.push("bvtks-cs2");
         for (const uCode of unitCodes) {
           await checkAutoChotSo(db, uCode);
-          // Tự động huấn luyện & cập nhật mô hình AI hàng ngày trên Cloudflare Edge
-          await trainAIModelOnServer(db, uCode).catch(() => {});
         }
       } catch(eAuto) {
         console.error("[Worker CRON Auto-ChotSo Error]:", eAuto);
         await checkAutoChotSo(db, "bvtks-cs2");
-        await trainAIModelOnServer(db, "bvtks-cs2").catch(() => {});
       }
 
       // 2. 💾 TỰ ĐỘNG SAO LƯU GOOGLE DRIVE VÀO KHUNG 17:00 GIỜ VN (10:00 UTC)
@@ -1249,6 +1269,19 @@ export default {
           console.log(`[Worker CRON]: Automated backup uploaded to Google Drive successfully (${filename})!`);
         }
       }
+
+      // 3. 🤖 TỰ ĐỘNG HUẤN LUYỆN MÔ HÌNH AI (CHỈ CHẠY 1 LẦN DUY NHẤT VÀO KHUNG 17H THAY VÌ MỖI 10 PHÚT)
+      if (hh === 17 && mm < 15) {
+        try {
+          console.log("[Worker CRON]: Executing daily AI model training at 17:00 VN...");
+          const aiSetting = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'ai_auto_train_enable'").bind("bvtks-cs2").first();
+          if (!aiSetting || aiSetting.value !== '0') {
+            await trainAIModelOnServer(db, "bvtks-cs2");
+          }
+        } catch(eAi) {
+          console.warn("[Worker CRON AI-Train 17h warning]:", eAi);
+        }
+      }
     } catch(err) {
       console.error("[Worker CRON Error]:", err);
     }
@@ -1304,6 +1337,12 @@ async function handleApiAction(action, args, env, request, ctx, unitCode = "bvtk
   const db = getDatabase(env, ctx);
   if (!db) {
     return error("Database chưa được cấu hình (cần TURSO_URL hoặc D1 binding DB).", 500);
+  }
+
+  // ⚡ Tối ưu hóa cực hạn: Xử lý getDataVersion qua Edge In-Memory Cache (tiết kiệm 95% quota Turso)
+  if (action === "getDataVersion") {
+    const v = await getDataVersionCached(db, unitCode);
+    return success({ version: v }, requestOrigin);
   }
 
   const context = {

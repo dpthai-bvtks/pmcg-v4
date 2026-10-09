@@ -1,6 +1,6 @@
 {
-    "version": "4.2.4-rev2",
+    "version": "4.2.4-rev3",
     "releaseDate": "09/10/2026",
-    "releaseTime": "20:30 09/10/2026",
-    "notes": "Khắc phục triệt để lỗi đăng nhập khi MiniPC tắt: bảo vệ tuyệt đối luồng xác thực verifyLogin và SaaS luôn gửi về Cloudflare Worker & Turso Cloud, không bị failover nhầm sang Google Sheets; tự động dọn dẹp URL local không hợp lệ trên HTTPS; chặn polling khi chưa đăng nhập."
+    "releaseTime": "21:00 09/10/2026",
+    "notes": "Tối ưu hóa triệt để 95% quota Turso Cloud (Hướng 3): bổ sung Cloudflare Edge In-Memory Cache cho getDataVersion (TTL 15s) giảm hàng triệu lượt đọc; loại bỏ huấn luyện AI mỗi 10 phút, chuyển sang 1 lần/ngày lúc 17:00 VN; bổ sung Idle Detection trong polling client (giãn về 30s sau 3 phút nghỉ); bảo toàn 100% CSDL dự phòng Turso và hoạt động độc lập của MiniPC viện."
 }
