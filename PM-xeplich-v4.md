@@ -7648,6 +7648,55 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
   - `index.html`: Cập nhật toàn bộ cache busters `?v=4.2.2-rev2`, `APP_VERSION = '4.2.2-rev2'`, `#sys-last-update` -> `10:45 06/10/2026`, chân trang `#app-footer-version` giữ đúng chuẩn `Phiên bản: 4.2.2`.
   - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.2.2-rev2'`.
 
+---
+
+## 32. ⚡ Tối Ưu Hiệu Năng Khởi Động & Chuyển Tab (Lazy-Rendering & Debounced Observers v4.2.4-rev1 - 09/10/2026)
+
+### Bối Cảnh & Yêu Cầu Của Người Dùng
+- **Hiện tượng:** Khi mở phần mềm trên trình duyệt, ứng dụng đôi khi bị khựng, giật lag, phải chờ một vài giây CPU hạ tải thì việc chuyển đổi qua lại giữa các tab mới mượt mà.
+- **Yêu cầu:** Khắc phục triệt để độ trễ khởi động, đảm bảo ứng dụng mở lên là tương tác được ngay, đồng thời tạo bản sao lưu (backup) an toàn trước khi chỉnh sửa để có thể phục hồi nếu cần.
+
+### Phân Tích Nguyên Nhân Gốc Rễ (Root Causes)
+1. **Eager Pre-rendering trên DOM ẩn:**
+   - Lúc `DOMContentLoaded`, `js/thongke.js` đã vội vã gọi `renderChamCongTable()` và `renderThongKeTable()` để dựng hàng chục dòng, hàng trăm thẻ ô input (31 ngày chấm công + bảng thống kê chi tiết) ngay cả khi người dùng đang ở tab Trang chủ (`#tab-home`).
+   - Trong `restoreOfflineCache()` và `applyBootstrapData()` của `js/app.js`, hệ thống gọi liên tiếp hàng loạt hàm render nặng: `renderPatientsTable()`, `renderStaffTable()`, `renderMachinesTable()`, `renderRoomsTable()`, `renderProceduresTable()`, `renderBusyPat()`, `renderLeavePat()`, `renderBusyStaff()`.
+2. **Bão DOM MutationObserver trong `js/sync.js`:**
+   - Lệnh `observer.observe(document.body, { childList: true, subtree: true })` lắng nghe mọi biến động DOM trên toàn bộ trang. Mỗi khi bất kỳ bảng nào thay đổi nội dung, observer bị kích hoạt liên tục hàng trăm lần, gọi hàm tìm kiếm và gán lại sự kiện tab sidebar gây nghẽn Main Thread CPU.
+3. **Độ trễ trong `flushPendingChamCongSave()` khi chuyển tab:**
+   - Mỗi cú click tab đều gọi `flushPendingChamCongSave()`, dù người dùng không hề mở hay sửa dữ liệu ở tab chấm công, hàm vẫn duyệt qua các kiểm tra không cần thiết.
+
+### Giải Pháp Tối Ưu Hóa Đa Tầng (Multi-tier Performance Optimization)
+1. **Tạo bản sao lưu an toàn (Safe Backup):**
+   - Đã lưu giữ trọn vẹn toàn bộ các file mã nguồn gốc trước khi tối ưu tại thư mục: `backups/backup_before_perf_opt_20261009/` (gồm `app.js`, `sync.js`, `thongke.js`, `init.js`, `index.html`, `version.json`, `sw.js`).
+2. **Thu hẹp phạm vi MutationObserver & Debounce (`js/sync.js`):**
+   - Đổi đối tượng quan sát từ `document.body` (toàn trang) sang `#nav-tabs` (chỉ trong danh mục sidebar).
+   - Thêm debounce 150ms để triệt tiêu hiện tượng dồn dập sự kiện, giải phóng CPU hoàn toàn.
+3. **Lazy-Rendering theo nhu cầu thực tế (`js/thongke.js`):**
+   - Hủy bỏ lệnh dựng bảng trước ở `DOMContentLoaded`. Chuyển sang cờ `chamCongHasRendered` và `thongKeHasRendered`, chỉ dựng bảng khi người dùng thực sự click vào tab Chấm công hoặc Thống kê.
+   - Thêm fast-path trong `flushPendingChamCongSave()`: nếu không có cell nào đang focus và không có thay đổi bẩn (`!isEditingCell && !chamCongSaveTimeout && !chamCongIsDirty`), trả về ngay 0ms, chuyển tab mượt tức thì.
+4. **Kiến trúc Khởi động Nhanh theo Tab Active (`js/app.js`):**
+   - Trong `restoreOfflineCache()` và `applyBootstrapData()`: Chỉ render dữ liệu thuộc tab đang hiển thị (ví dụ tab `#tab-home`), hoãn lại việc dựng các bảng phụ.
+   - Sử dụng `requestIdleCallback` (hoặc `setTimeout`) để pre-warm các bảng còn lại khi CPU rảnh rỗi.
+   - Trong `handleHashChange()`: Tích hợp đầy đủ lazy-rendering theo nhu cầu cho tất cả các tab (`#tab-patients`, `#tab-staff`, `#tab-busy`, `#tab-machines`, `#tab-rooms`, `#tab-procs`, `#tab-chamcong`, `#tab-thongke`), chỉ vẽ lại khi dữ liệu có thay đổi (`dirty`).
+   - Hoãn tải `loadTimRanhDataFromServer()` 1200ms sau khi trang đã tương tác mượt mà.
+5. **Kiểm thử chất lượng & Đồng bộ phiên bản theo RULES.md:**
+   - Kiểm thử `node scripts/verify-build.mjs`: Đạt 100% PASS trên cả 4 tầng kiểm tra.
+   - Tăng phiên bản theo ngày 09/10/2026: `4.2.4-rev1`.
+   - Footer: `#app-footer-version` hiển thị `Phiên bản: 4.2.4`, `#sys-last-update` hiển thị `20:08 09/10/2026`.
+   - Service Worker: `CACHE_NAME = 'pmcg-v4-cache-4.2.4-rev1'`.
+   - Deploy Cloudflare Pages thành công 100%: `npm run deploy:web`.
+
+**File sửa đổi:**
+- `js/sync.js` (thu hẹp MutationObserver về #nav-tabs, thêm debounce 150ms)
+- `js/thongke.js` (lazy-render bảng chấm công và thống kê, tối ưu fast-path flushPendingChamCongSave)
+- `js/app.js` (lazy-rendering theo tab active, pre-warm khi rảnh bằng requestIdleCallback, tối ưu handleHashChange)
+- `index.html` (cập nhật phiên bản 4.2.4, timestamp 20:08 09/10/2026, cache busters ?v=4.2.4-rev1)
+- `sw.js` (CACHE_NAME pmcg-v4-cache-4.2.4-rev1)
+- `version.json` (version 4.2.4-rev1, releaseTime 20:08 09/10/2026)
+- `PM-xeplich-v4.md` (nhật ký phát triển)
+- `backups/backup_before_perf_opt_20261009/` (thư mục sao lưu an toàn toàn bộ file gốc trước khi sửa)
+
+
 
 
 

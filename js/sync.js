@@ -106,25 +106,25 @@
         }
     }
 
-    // Run after DOM ready and also on any dynamic changes
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', attachTooltips);
-    } else {
+    function initSidebarTooltips() {
         attachTooltips();
+        const sidebarMenu = document.getElementById('nav-tabs') || document.querySelector('.sidebar-menu') || document.querySelector('.sidebar');
+        if (sidebarMenu) {
+            let tooltipDebounce = null;
+            const observer = new MutationObserver(() => {
+                if (tooltipDebounce) clearTimeout(tooltipDebounce);
+                tooltipDebounce = setTimeout(attachTooltips, 150);
+            });
+            observer.observe(sidebarMenu, { childList: true });
+        }
     }
-    
-    // Re-attach for any dynamically added buttons (e.g. after login)
-    if (document.body) {
-        const observer = new MutationObserver(attachTooltips);
-        observer.observe(document.body, { childList: true, subtree: true });
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSidebarTooltips);
     } else {
-        document.addEventListener('DOMContentLoaded', () => {
-            if (document.body) {
-                const observer = new MutationObserver(attachTooltips);
-                observer.observe(document.body, { childList: true, subtree: true });
-            }
-        });
+        initSidebarTooltips();
     }
+    window.attachSidebarTooltips = attachTooltips;
 })();
 
 (function initRealtimeSync() {

@@ -1352,10 +1352,14 @@ window.switchAdminSection = function(sectionId, btn) {
         }
 
         function flushPendingChamCongSave() {
+            const activeEl = document.activeElement;
+            const isEditingCell = activeEl && activeEl.classList && (activeEl.classList.contains('cc-input-text') || activeEl.classList.contains('heso-input'));
+            if (!isEditingCell && !chamCongSaveTimeout && !chamCongIsDirty) {
+                return; // Không có thay đổi trong chấm công, chuyển tab tức thì 0ms
+            }
             window._lastLocalMutationTime = Date.now();
             // 1. Commit ngay ô input đang focus (nếu có)
-            const activeEl = document.activeElement;
-            if (activeEl && activeEl.classList) {
+            if (isEditingCell) {
                 const my = getChamCongMonthYear();
                 const daysInMonth = new Date(my.split('-')[0], my.split('-')[1], 0).getDate();
                 if (activeEl.classList.contains('cc-input-text')) {
@@ -2052,9 +2056,15 @@ window.switchAdminSection = function(sectionId, btn) {
 
             loadChamCongSymbols(() => {
                 renderChamCongLegend();
-                // Pre-render sẵn bảng Chấm Công và Thống Kê
-                try { renderChamCongTable(); } catch(e) { console.error(e); }
-                try { renderThongKeTable(); } catch(e) { console.error(e); }
+                // Chỉ render nếu người dùng đang chủ động mở tab Chấm Công hoặc Thống Kê khi nạp trang
+                const isCCActive = !!document.getElementById('tab-chamcong')?.classList.contains('active');
+                const isTKActive = !!document.getElementById('tab-thongke')?.classList.contains('active');
+                if (isCCActive) {
+                    try { renderChamCongTable(); } catch(e) { console.error(e); }
+                }
+                if (isTKActive) {
+                    try { renderThongKeTable(); } catch(e) { console.error(e); }
+                }
             });
         });
 

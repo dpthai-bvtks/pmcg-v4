@@ -3514,32 +3514,37 @@ var dataCache = window.dataCache;
                             try { localStorage.setItem(cacheKey, JSON.stringify(b)); } catch(e) {}
                         }
 
+                        const curActiveTab = (window.location.hash || '').replace(/^#tab=|^#/, '').trim() || 'tab-home';
+                        const shouldRenderTab = (tabId) => (curActiveTab === tabId);
+
                         if (b.machines && Array.isArray(b.machines)) {
                             b.machines.forEach((m, i) => { if (m) m.sheetIndex = i; });
                             dataCache.machine = b.machines.filter(m => m && (m.tenLoai || m[1]));
-                            if (typeof renderMachinesTable === 'function') renderMachinesTable();
+                            if (shouldRenderTab('tab-machines') && typeof renderMachinesTable === 'function') renderMachinesTable();
                         } else {
                             dataCache.machine = [];
                         }
                         if (b.rooms && Array.isArray(b.rooms)) {
                             b.rooms.forEach((r, i) => { if (r) r.sheetIndex = i; });
                             dataCache.room = b.rooms.filter(r => r && (r.tenPhong || r[1]));
-                            if (typeof renderRoomsTable === 'function') renderRoomsTable();
+                            if (shouldRenderTab('tab-rooms') && typeof renderRoomsTable === 'function') renderRoomsTable();
                         } else {
                             dataCache.room = [];
                         }
                         if (b.procedures && Array.isArray(b.procedures)) {
                             b.procedures.forEach((p, i) => { if (p) p.sheetIndex = i; });
                             dataCache.proc = b.procedures;
-                            if (typeof renderProceduresTable === 'function') renderProceduresTable();
-                            if (typeof renderProcedureCheckboxes === 'function') renderProcedureCheckboxes();
+                            if (shouldRenderTab('tab-procedures')) {
+                                if (typeof renderProceduresTable === 'function') renderProceduresTable();
+                                if (typeof renderProcedureCheckboxes === 'function') renderProcedureCheckboxes();
+                            }
                         } else {
                             dataCache.proc = [];
                         }
                         if (b.staff && Array.isArray(b.staff)) {
                             b.staff.forEach((st, i) => { if (st) st.sheetIndex = i; });
                             dataCache.staff = b.staff.filter(st => st && st.ten);
-                            if (typeof renderStaffTable === 'function') renderStaffTable();
+                            if (shouldRenderTab('tab-staff') && typeof renderStaffTable === 'function') renderStaffTable();
                         } else {
                             dataCache.staff = [];
                         }
@@ -3550,10 +3555,12 @@ var dataCache = window.dataCache;
                             dataCache.schedule = [];
                             window.currentScheduleData = [];
                         }
-                        try {
-                            if (typeof loadScheduleList === 'function') loadScheduleList();
-                        } catch (eSched) {
-                            console.warn('[Offline Cache] Lỗi nạp danh sách lịch trình (cô lập an toàn):', eSched);
+                        if (shouldRenderTab('tab-schedule') || shouldRenderTab('tab-home')) {
+                            try {
+                                if (typeof loadScheduleList === 'function') loadScheduleList();
+                            } catch (eSched) {
+                                console.warn('[Offline Cache] Lỗi nạp danh sách lịch trình (cô lập an toàn):', eSched);
+                            }
                         }
 
                         if (b && Array.isArray(b.patients)) {
@@ -3582,7 +3589,7 @@ var dataCache = window.dataCache;
                                 cacheIsStale = true;
                             }
                             dataCache.pat = b.patients.filter(pt => pt && pt.ten);
-                            if (typeof renderPatientsTable === 'function') renderPatientsTable();
+                            if (shouldRenderTab('tab-patients') && typeof renderPatientsTable === 'function') renderPatientsTable();
                         } else {
                             dataCache.pat = [];
                         }
@@ -3751,9 +3758,12 @@ var dataCache = window.dataCache;
                             if (st.skills && !st.chuyenMon) st.chuyenMon = st.skills;
                         }
                     });
+                    const curActiveTab = (window.location.hash || '').replace(/^#tab=|^#/, '').trim() || 'tab-home';
+                    const shouldRenderTab = (tabId) => (curActiveTab === tabId);
+
                     dataCache.staff = rawStaff.filter(st => st && (st.ten || st.name));
                     b.staff = dataCache.staff;
-                    if (typeof renderStaffTable === 'function') renderStaffTable();
+                    if (shouldRenderTab('tab-staff') && typeof renderStaffTable === 'function') renderStaffTable();
                     if (typeof window.resetChamCongForUnit === 'function') {
                         window.resetChamCongForUnit(localStorage.getItem('pm_unit_code'));
                     }
@@ -3815,10 +3825,15 @@ var dataCache = window.dataCache;
                     localStorage.removeItem('meds_unscheduled');
                     localStorage.removeItem('meds_schedule_unit');
                 }
-                try {
-                    if (typeof loadScheduleList === 'function') loadScheduleList();
-                } catch (eSched) {
-                    console.warn('[Bootstrap] Lỗi nạp danh sách lịch trình (cô lập an toàn):', eSched);
+                const curActiveTab = (window.location.hash || '').replace(/^#tab=|^#/, '').trim() || 'tab-home';
+                const shouldRenderTab = (tabId) => (curActiveTab === tabId);
+
+                if (shouldRenderTab('tab-schedule') || shouldRenderTab('tab-home')) {
+                    try {
+                        if (typeof loadScheduleList === 'function') loadScheduleList();
+                    } catch (eSched) {
+                        console.warn('[Bootstrap] Lỗi nạp danh sách lịch trình (cô lập an toàn):', eSched);
+                    }
                 }
 
                 try {
@@ -3829,7 +3844,7 @@ var dataCache = window.dataCache;
                     } else {
                         dataCache.pat = [];
                     }
-                    if (typeof renderPatientsTable === 'function') renderPatientsTable();
+                    if (shouldRenderTab('tab-patients') && typeof renderPatientsTable === 'function') renderPatientsTable();
                 } catch (ePat) {
                     console.warn('[Bootstrap] Lỗi nạp danh sách bệnh nhân (cô lập an toàn):', ePat);
                 }
@@ -3856,8 +3871,10 @@ var dataCache = window.dataCache;
                             dataCache.protocols = parsed;
                             if (window.dataCache) window.dataCache.protocols = parsed;
                             try { localStorage.setItem('meds_protocols', JSON.stringify(parsed)); } catch(e) {}
-                            if (typeof renderProtocolsTable === 'function') renderProtocolsTable();
-                            if (typeof renderProtocolSelectOptions === 'function') renderProtocolSelectOptions();
+                            if (shouldRenderTab('tab-procedures')) {
+                                if (typeof renderProtocolsTable === 'function') renderProtocolsTable();
+                                if (typeof renderProtocolSelectOptions === 'function') renderProtocolSelectOptions();
+                            }
                         }
                     } catch(e) {}
                 }
@@ -3889,6 +3906,20 @@ var dataCache = window.dataCache;
             if (typeof updateStats === 'function') updateStats();
             if (typeof renderScheduleCalendar === 'function') renderScheduleCalendar();
             safeCall('loadDashboard');
+
+            // ⚡ Khởi chạy nền (Idle Task) chuẩn bị sẵn sàng dữ liệu các tab còn lại khi CPU rảnh rỗi
+            const scheduleIdlePrewarm = () => {
+                if (typeof renderStaffTable === 'function' && !document.getElementById('staff-table-body')?.children.length) renderStaffTable();
+                if (typeof renderPatientsTable === 'function' && !document.getElementById('patients-table-body')?.children.length) renderPatientsTable();
+                if (typeof renderMachinesTable === 'function' && !document.getElementById('machines-table-body')?.children.length) renderMachinesTable();
+                if (typeof renderRoomsTable === 'function' && !document.getElementById('rooms-table-body')?.children.length) renderRoomsTable();
+                if (typeof renderProceduresTable === 'function' && !document.getElementById('procedures-table-body')?.children.length) renderProceduresTable();
+            };
+            if (typeof window.requestIdleCallback === 'function') {
+                window.requestIdleCallback(scheduleIdlePrewarm, { timeout: 3500 });
+            } else {
+                setTimeout(scheduleIdlePrewarm, 2000);
+            }
 
             if (!window._systemReadyLogged) {
                 window._systemReadyLogged = true;
@@ -8733,10 +8764,12 @@ var dataCache = window.dataCache;
             });
         }
 
-        // Chạy luôn hàm tải dữ liệu ngay khi mở web
+        // Trì hoãn việc tải dữ liệu phụ (Tìm rảnh) để nhường toàn bộ tài nguyên cho giao diện chính
         document.addEventListener('DOMContentLoaded', function () {
-            if (typeof window.loadTimRanhDataFromServer === 'function') window.loadTimRanhDataFromServer();
             initUtilsHisUploader();
+            setTimeout(() => {
+                if (typeof window.loadTimRanhDataFromServer === 'function') window.loadTimRanhDataFromServer();
+            }, 1200);
         });
 
         function filterDoctorTable() {
@@ -12700,13 +12733,27 @@ var dataCache = window.dataCache;
                 if (targetTab === 'tab-tenants') {
                     if (typeof loadTenantsList === 'function') loadTenantsList();
                 }
+                if (targetTab === 'tab-machines') {
+                    if (typeof renderMachinesTable === 'function') renderMachinesTable();
+                }
                 if (targetTab === 'tab-procedures') {
                     if (typeof renderProceduresTable === 'function') renderProceduresTable();
                     if (typeof renderProtoProcsFormCheckboxes === 'function') renderProtoProcsFormCheckboxes();
                     if (typeof renderProtocolsTable === 'function') renderProtocolsTable();
+                    if (typeof renderProtocolSelectOptions === 'function') renderProtocolSelectOptions();
                 }
-                if (targetTab === 'tab-rooms' && typeof renderDynamicMachineInputs === 'function') {
-                    renderDynamicMachineInputs();
+                if (targetTab === 'tab-rooms') {
+                    if (typeof renderRoomsTable === 'function') renderRoomsTable();
+                    if (typeof renderDynamicMachineInputs === 'function') renderDynamicMachineInputs();
+                }
+                if (targetTab === 'tab-staff') {
+                    if (typeof renderStaffTable === 'function') renderStaffTable();
+                    if (typeof renderProcedureCheckboxes === 'function') renderProcedureCheckboxes();
+                }
+                if (targetTab === 'tab-patients') {
+                    if (typeof renderPatientsTable === 'function') renderPatientsTable();
+                    if (typeof renderProcedureCheckboxes === 'function') renderProcedureCheckboxes();
+                    if (typeof window.triggerDataSync === 'function') window.triggerDataSync();
                 }
                 if (targetTab === 'tab-admin') {
                     if (typeof loadSystemSettings === 'function') loadSystemSettings();
@@ -12717,11 +12764,10 @@ var dataCache = window.dataCache;
                 }
                 if (targetTab === 'tab-thongke') {
                     if (typeof loadThongKeData === 'function') loadThongKeData();
-}
-
-                if ((targetTab === 'tab-staff' || targetTab === 'tab-patients') && typeof renderProcedureCheckboxes === 'function') {
-                    renderProcedureCheckboxes();
-}
+                }
+                if (targetTab === 'tab-utils') {
+                    if (typeof window.loadTimRanhDataFromServer === 'function') window.loadTimRanhDataFromServer();
+                }
 }
 });
 
