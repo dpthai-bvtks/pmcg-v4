@@ -7795,6 +7795,38 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 - `version.json` (version 4.2.4-rev3, releaseTime 21:00 09/10/2026)
 - `PM-xeplich-v4.md` (nhật ký phát triển)
 
+---
+
+## 35. 🛡️ Nâng Cấp Bộ Super-Verify 9 Tầng & Dọn Dẹp Tinh Gọn Repository (21:30 09/10/2026)
+
+### Bối Cảnh & Yêu Cầu Của Người Dùng
+- **Hiện tượng:** Sau khi hoàn tất tối ưu Quota Turso (Hướng 3), người dùng yêu cầu rà soát khả năng xóa bỏ các thư mục phụ trợ như `docs/`, `backups/` và tinh gọn dự án. Đồng thời, người dùng mong muốn mở rộng bộ kiểm thử tự động ngoài 4 tầng hiện tại thành một **Bộ Super-Verify tích hợp đầy đủ các hình thức kiểm thử tự động chuyên sâu** và đưa vào `RULES.md` làm tiêu chuẩn bắt buộc cho mọi phiên làm việc tiếp theo.
+- **Quyết định:** Thực hiện Phương án 1 (Dọn dẹp ~12 MB) và xây dựng mới Bộ Super-Verify 9 tầng.
+
+### Kết Quả Thực Hiện
+1. **Dọn dẹp tinh gọn kho mã nguồn (Phương án 1):**
+   - Xóa bỏ thư mục `docs/`: 26 file ảnh chụp màn hình cũ và 2 file markdown lập kế hoạch ban đầu (~4.5 MB).
+   - Xóa bỏ file CSDL tĩnh cũ `backups/d1_backup.sql` (~7.3 MB) và thư mục `backups/legacy-apps-script/` (24 KB).
+   - Tổng dung lượng giải phóng: **~12 MB**, giúp Git và Google Drive đồng bộ siêu tốc.
+2. **Nâng cấp Bộ Super-Verify 9 Tầng (`scripts/verify-build.mjs`):**
+   - **Tầng 1 (Cú pháp JS):** Kiểm tra `node -c` 100% file JavaScript cốt lõi frontend và backend routers.
+   - **Tầng 2 (Inline Scripts HTML):** Trích xuất và kiểm tra cú pháp toàn bộ inline `<script>` trong `index.html`, `hdsd.html`.
+   - **Tầng 3 (Top-Level Scope Window Guard):** Quét tĩnh phát hiện các lệnh gán `window.xyz = xyz;` chưa khai báo (chống ReferenceError).
+   - **Tầng 4 (Runtime Node VM Sandbox):** Mô phỏng thực thi trong môi trường sandbox Node VM giả lập browser globals để bắt lỗi khởi tạo và TDZ.
+   - **Tầng 5 (Quét Bảo Mật & Rò Rỉ Khóa Bí Mật):** Quét 100% file frontend (`js/*`, `css/*`, `index.html`) bảo đảm không hardcode `TURSO_TOKEN`, JWT secret hay mật khẩu quản trị.
+   - **Tầng 6 (Kiểm Thử Ràng Buộc Thuật Toán Xếp Lịch):** Chạy thuật toán xếp lịch với dữ liệu mẫu, kiểm tra tự động 100% không trùng máy, không trùng nhân viên, đúng giờ bận và đo benchmark (< 2 giây).
+   - **Tầng 7 (Kiểm Thử Hợp Đồng API & Edge Cache):** Gửi HTTP request thật tới Cloudflare Worker kiểm tra `ping` (< 500ms) và kiểm tra `getDataVersion` qua Edge In-Memory Cache.
+   - **Tầng 8 (Kiểm Thử Mô Hình Ngoại Tuyến Dexie):** Kiểm tra định nghĩa đầy đủ 7 Object Stores (`patients`, `schedules`, `history`, `chamcong`, `thongke`, `syncQueue`, `cache`) và cơ chế phân giải xung đột.
+   - **Tầng 9 (Kiểm Thử Toàn Vẹn Tài Nguyên DOM & PWA):** Quét 100% link assets tĩnh không bị 404 và kiểm tra đầy đủ 18 ID phần tử giao diện cốt lõi.
+3. **Cập nhật RULES.md:**
+   - Chuẩn hóa Mục 1: Bắt buộc chạy Bộ Super-Verify 9 tầng trước mọi lần build, deploy và git commit.
+
+**File sửa đổi:**
+- `scripts/verify-build.mjs` (nâng cấp bộ kiểm thử lên 9 tầng toàn diện)
+- `RULES.md` (cập nhật quy tắc Super-Verify 9 tầng)
+- `PM-xeplich-v4.md` (nhật ký phát triển)
+
+
 
 
 

@@ -4,12 +4,21 @@
 
 ---
 
-## 1. 🧪 Kiểm tra trước khi đẩy code (Test Before Push)
+## 1. 🧪 Kiểm tra trước khi đẩy code (Test Before Push - Super-Verify 9 Tầng)
 - **Tuyệt đối không push code mù.** 
-- Trước khi đẩy code lên Github hay Cloudflare, AI **bắt buộc chạy bộ kiểm tra toàn diện 4 tầng**:
+- Trước khi đẩy code lên Github hay Cloudflare, AI **bắt buộc chạy bộ kiểm tra toàn diện 9 tầng (Super-Verify Suite)**:
   `node scripts/verify-build.mjs`
-  *(Bộ kiểm tra bao gồm: 1. Kiểm tra cú pháp tất cả tệp JS; 2. Trích xuất & kiểm tra cú pháp toàn bộ inline <script> trong HTML; 3. Quét tĩnh các lệnh gán top-level `window.x = x` tránh biến undefined; 4. Mô phỏng thực thi Runtime trong Node VM Sandbox để phát hiện TDZ và ReferenceError).*
-- Chỉ khi lệnh trên trả về exit code `0` (`TẤT CẢ CÁC BÀI TEST ĐÃ VƯỢT QUA 100%!`) mới được phép tiến hành deploy và commit Git.
+  *(Bộ kiểm tra bao gồm 9 tầng bảo vệ nghiêm ngặt:*
+  *1. Kiểm tra cú pháp (node -c) 100% tệp JS cốt lõi & backend router;*
+  *2. Trích xuất & kiểm tra cú pháp toàn bộ inline <script> trong HTML;*
+  *3. Quét tĩnh các lệnh gán top-level window.xyz = xyz tránh biến undefined/ReferenceError;*
+  *4. Mô phỏng thực thi Runtime trong Node VM Sandbox để phát hiện TDZ và crash khởi tạo;*
+  *5. Quét Bảo Mật & Rò Rỉ Khóa Bí Mật (chống hardcode Turso Token, Private Key, mật khẩu ở Frontend);*
+  *6. Kiểm thử Tính Đúng Đắn Thuật Toán Xếp Lịch & Ràng Buộc Y Tế (0 xung đột máy/nhân viên, benchmark < 2s);*
+  *7. Kiểm thử Tích Hợp API Cloudflare Worker & Turso Edge In-Memory Cache (Live Contract Test);*
+  *8. Kiểm thử Mô Hình Ngoại Tuyến Offline-First & Dexie IndexedDB (đủ 7 Stores cốt lõi & conflict handler);*
+  *9. Kiểm thử Toàn Vẹn Tài Nguyên DOM, PWA & Zero Broken Links (quét 100% link asset tĩnh, zero 404, đủ 18 ID cốt lõi).*
+- Chỉ khi lệnh trên trả về exit code `0` (`TẤT CẢ 9 TẦNG SUPER-VERIFY ĐÃ VƯỢT QUA 100%!`) mới được phép tiến hành deploy và commit Git.
 - Đảm bảo logic xếp lịch và tính toán của 3 bộ giải thuật (`cp-solver.js`, `scheduler-engine.js`, `ai-scheduler.js`) không bị xung đột hoặc phát sinh lỗi cú pháp.
 
 ---
