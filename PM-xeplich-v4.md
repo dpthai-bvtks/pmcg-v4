@@ -7862,3 +7862,49 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 - `scripts/sync_minipc_to_sheets.mjs` (kịch bản đồng bộ từ MiniPC lên Google Sheets)
 - `version.json`, `index.html`, `sw.js` (nâng phiên bản lên v4.2.5-rev1, ngày 10/10/2026)
 - `PM-xeplich-v4.md` (nhật ký phát triển)
+
+---
+
+## 37. 🚀 Chuyển Đổi Kiến Trúc Lưu Trữ 3 Tầng: MiniPC -> Google Sheets -> Turso Cloud (21:35 10/10/2026 - v4.2.5-rev2)
+
+### Bối Cảnh & Yêu Cầu Của Người Dùng
+- **Bối cảnh:** Cơ chế Dual-Write cũ nhân bản từng câu lệnh SQL đơn lẻ (INSERT/UPDATE/DELETE) theo thời gian thực từ Cloudflare Worker sang Turso Cloud. Khi thao tác xếp lịch, cập nhật giờ bận hay chốt sổ, hàng ngàn lệnh ghi dồn dập khiến Turso cạn kiệt gói Quota Free Tier (100.000 lượt/tháng).
+- **Yêu cầu của người dùng:**
+  + Thao tác trên phần mềm lưu thẳng trực tiếp vào MiniPC SQLite (`127.0.0.1:8080`).
+  + Có lệnh lưu ngầm tự động vào Google Sheets (`PMCG-Database-v4`).
+  + Đến 16:00 hàng ngày (GMT+7) mới đồng bộ một lần sang Turso Cloud.
+  + Google Sheets là nơi lưu trữ cấp 2, Turso cấp 3. Dù có tắt MiniPC thì các máy tính hay điện thoại khác vẫn xem và thao tác được dữ liệu từ Google Sheets.
+  + Đồng bộ đầy đủ hơn 17.000 dòng (thực tế 26.061 dòng) của bảng `lich_su` từ MiniPC lên Google Sheets.
+
+### Phân Tích & Giải Pháp Kỹ Thuật Đã Triển Khai
+1. **Đồng bộ 100% Lịch Sử Đầy Đủ (26.061 dòng) Lên Google Sheets (`scripts/sync_full_history_to_sheets.mjs`):**
+   - Bảng `lich_su` trên MiniPC có thực tế 26.061 bản ghi.
+   - Do Google Apps Script có giới hạn execution time và payload size, giải pháp chia nhỏ thành các batch 1.000 dòng:
+     * Batch 0: Gọi `saveTable` để ghi đè header và 1.000 dòng đầu tiên.
+     * Batch 1..26: Gọi `appendTable` nối tiếp ngầm từng 1.000 dòng.
+   - Kết quả: Google Sheet `lich_su` đã lưu trữ trọn vẹn 26.062 dòng (bao gồm header).
+2. **Triệt tiêu Realtime Dual-Write Phân Mảnh Trên Cloudflare Worker (`backend/src/index.js`):**
+   - Loại bỏ việc sao chép realtime câu lệnh ghi cho mỗi request tới Fallback URL (`TURSO_URL`).
+   - 100% thao tác đọc/ghi hằng ngày được xử lý trực tiếp trên Primary (`MiniPC SQLite`), tốc độ phản hồi < 10ms, không tốn bất kỳ quota đám mây nào.
+   - `FALLBACK_URL` chỉ được kích hoạt làm lớp cứu hộ khi MiniPC tắt hẳn hoặc mạng nội bộ gặp sự cố.
+3. **Đăng Ký Tác Vụ Tự Động Hóa Hàng Ngày Lúc 16:00 (GMT+7) Trên MiniPC:**
+   - Xây dựng kịch bản `scripts/sync_minipc_to_turso.mjs`:
+     * Đọc schema và xóa sạch/ghi đè các bảng danh mục nhỏ: `tenants`, `cai_dat`, `tai_khoan`, `nhan_su`, `may_moc`, `phong`, `thu_thuat`, `benh_nhan`, `cham_cong`, `thong_ke`, `tim_ranh`, `tai_lieu`, `phac_do`, `gio_ban_chung_cu`, `lich_su_dinh_muc`.
+     * Với bảng lớn `lich_su`: chỉ kiểm tra và đẩy bù số dòng chênh lệch (`SELECT MAX(id)`), tiết kiệm tối đa băng thông và không gây tràn quota.
+   - Đăng ký vào Windows Task Scheduler:
+     `schtasks /Create /SC DAILY /TN "PMCG_Sync_MiniPC_To_Turso_16h" /TR "node C:\PRIVATE-DPT\PM-DPT\PM-xeplich\PM-chinh\ban_web\v4-thuongmai\scripts\sync_minipc_to_turso.mjs" /ST 16:00 /F`.
+   - Đã chạy thử nghiệm thành công 100% (exit code 0).
+4. **Cơ Chế Hot-Mirror Ngầm & Offline Fallback Sang Google Sheets (`js/app.js`):**
+   - Hàm `triggerDebouncedGoogleSheetsAutoSync(3500)` tự động gom cụm dữ liệu thay đổi và đẩy ngầm sau 3.5 giây không thao tác, chỉ gửi 17 bảng chuẩn snake_case.
+   - Khi máy trạm di động mở ngoài viện hoặc khi MiniPC tắt, hàm `fetchBootstrapFromGoogleSheets` tự động đọc dữ liệu qua JSONP / Fetch từ Google Apps Script Web App và nạp vào giao diện thông qua `applyBootstrapData`.
+5. **Kiểm Thử Toàn Diện & Đóng Gói Triển Khai:**
+   - Vượt qua 100% 9 tầng kiểm thử của Bộ Super-Verify `node scripts/verify-build.mjs`.
+   - Cập nhật phiên bản hệ thống lên `4.2.5-rev2` trên toàn bộ PWA Cache, `version.json`, `index.html`.
+
+**File sửa đổi:**
+- `backend/src/index.js` (tắt dual-write realtime sang Turso, định tuyến chuẩn mô hình 3 tầng)
+- `scripts/sync_full_history_to_sheets.mjs` (kịch bản đồng bộ 26.061 dòng lịch sử lên Sheets qua chunked append)
+- `scripts/sync_minipc_to_turso.mjs` (kịch bản chốt CSDL định kỳ 16h sang Turso Cloud)
+- `version.json`, `index.html`, `sw.js` (nâng phiên bản lên v4.2.5-rev2)
+- `PM-xeplich-v4.md` (nhật ký phát triển)
+

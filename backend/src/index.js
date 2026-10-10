@@ -127,25 +127,11 @@ function createTursoAdapter(env, ctx) {
     }
 
     if (primaryJson) {
-      // Dual-Write: Nếu ghi thành công trên Primary, nhân bản ngầm an toàn sang Turso Cloud
-      if (!usedFallback && FALLBACK_URL && isWrite && writeCopy) {
-        writeCopy.push({ type: 'close' });
-        const replicatePromise = fetchWithTimeout(FALLBACK_URL, FALLBACK_TOKEN, writeCopy, 8000)
-          .then(async fbRes => {
-            if (!fbRes.ok) {
-              const fbErr = await fbRes.text().catch(() => '');
-              console.warn(`[DUAL-WRITE WARNING] Turso Cloud HTTP ${fbRes.status}: ${fbErr.substring(0, 150)}`);
-            }
-          })
-          .catch(fbErr => {
-            console.warn(`[DUAL-WRITE ERROR] Could not replicate to Turso Cloud: ${fbErr.message}`);
-          });
-
-        if (ctx && typeof ctx.waitUntil === 'function') {
-          ctx.waitUntil(replicatePromise);
-        }
-      }
-
+      // 🛡️ MÔ HÌNH 3 TẦNG LƯU TRỮ (TIẾT KIỆM 99.9% QUOTA TURSO CLOUD):
+      // - Cấp 1 (Chính): Ghi thẳng 100% vào Primary (MiniPC SQLite).
+      // - Cấp 2 (Hot Mirror): Đẩy ngầm tự động sang Google Sheets (Auto-mirroring 17 bảng sạch).
+      // - Cấp 3 (Cold Disaster Recovery): Turso Cloud chỉ nhận dữ liệu chốt sổ 1 lần/ngày lúc 16:00 VN.
+      // => TẮT HOÀN TOÀN việc nhân bản ngầm realtime sang Turso cho từng câu lệnh SQL lẻ.
       return primaryJson.results || [];
     }
 

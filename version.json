@@ -1,6 +1,6 @@
 {
-    "version": "4.2.5-rev1",
+    "version": "4.2.5-rev2",
     "releaseDate": "10/10/2026",
-    "releaseTime": "16:20 10/10/2026",
-    "notes": "Chuẩn hóa và đồng bộ 100% CSDL từ MiniPC lên Google Sheets (PMCG-Database-v4); dọn dẹp các tab tiếng Anh trùng lặp (pat, staff, machines, rooms, procedures, protocols, schedule, history); chuẩn hóa toàn diện cấu trúc bảng CSDL snake_case theo chuẩn SaaS v4."
+    "releaseTime": "21:35 10/10/2026",
+    "notes": "Chuyển đổi hoàn tất Kiến Trúc Lưu Trữ 3 Tầng: MiniPC SQLite (Primary Realtime, 0 quota) -> Google Sheets (Hot Mirror ngầm sau 3.5s) -> Turso Cloud (Cold Disaster Recovery định kỳ 16:00 GMT+7, triệt tiêu hao phí Quota)."
 }
