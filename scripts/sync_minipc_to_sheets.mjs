@@ -151,16 +151,19 @@ async function run() {
     console.log(`✔ Bảng [${t.padEnd(20)}] (${String(rows.length).padStart(4)} dòng) -> ${res.status} (${((Date.now() - t0)/1000).toFixed(1)}s)`);
   }
 
-  // 4. Đồng bộ bảng lớn [lich_su] (2,500 dòng mới nhất)
-  console.log('\n--- 4. Đồng bộ 2,500 dòng mới nhất của bảng lớn [lich_su] ---');
-  const histRows = await queryMiniPC('SELECT * FROM lich_su ORDER BY id DESC LIMIT 2500');
-  const tHist = Date.now();
-  const resHist1 = await postGAS({ action: 'saveTable', args: ['lich_su', histRows] });
-  console.log(`✔ Bảng [lich_su             ] (2,500 dòng) -> ${resHist1.status} (${((Date.now() - tHist)/1000).toFixed(1)}s)`);
+  // 4. Đồng bộ bảng lớn [lich_su] theo từng khối 1,000 dòng để chống quá tải kết nối
+  console.log('\n--- 4. Đồng bộ 2,000 dòng mới nhất của bảng lớn [lich_su] (Chia khối 1,000 dòng) ---');
+  const batch1 = await queryMiniPC('SELECT * FROM lich_su ORDER BY id DESC LIMIT 1000');
+  const tHist1 = Date.now();
+  const resHist1 = await postGAS({ action: 'saveTable', args: ['lich_su', batch1] });
+  console.log(`✔ Bảng [lich_su             ] (Khối 1: 1,000 dòng) -> ${resHist1.status} (${((Date.now() - tHist1)/1000).toFixed(1)}s)`);
 
-  // Đồng bộ cả tab LichSu để các phiên bản cũ / báo cáo đọc liền mạch
-  const resHist2 = await postGAS({ action: 'saveTable', args: ['LichSu', histRows] });
-  console.log(`✔ Bảng [LichSu              ] (2,500 dòng) -> ${resHist2.status}`);
+  const batch2 = await queryMiniPC('SELECT * FROM lich_su ORDER BY id DESC LIMIT 1000 OFFSET 1000');
+  if (batch2 && batch2.length > 0) {
+    const tHist2 = Date.now();
+    const resHist2 = await postGAS({ action: 'appendTable', args: ['lich_su', batch2] });
+    console.log(`✔ Bảng [lich_su             ] (Khối 2: 1,000 dòng) -> ${resHist2.status} (${((Date.now() - tHist2)/1000).toFixed(1)}s)`);
+  }
 
   console.log('\n═══════════════════════════════════════════════════════════════════════════════');
   console.log('🎉 ĐÃ ĐỒNG BỘ THÀNH CÔNG TOÀN BỘ CƠ SỞ DỮ LIỆU TỪ MINIPC LÊN GOOGLE SHEETS!');
