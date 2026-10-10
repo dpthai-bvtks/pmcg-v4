@@ -7826,17 +7826,39 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 - `RULES.md` (cập nhật quy tắc Super-Verify 9 tầng)
 - `PM-xeplich-v4.md` (nhật ký phát triển)
 
+---
 
+## 36. 🧹 Chuẩn Hóa Cấu Trúc Bảng CSDL & Đồng Bộ MiniPC Sang Google Sheets (16:20 10/10/2026 - v4.2.5-rev1)
 
+### Bối Cảnh & Yêu Cầu Của Người Dùng
+- **Hiện tượng:** Google Sheet CSDL `PMCG-Database-v4` (ID: `1ikidVHkjUuuSGrM62SK9RxM2vAABHt4ivK98WxxzH8c`) bị phát sinh quá nhiều tab trùng lặp hỗn loạn (lên tới 40 tab):
+  + Nhóm tab tiếng Anh cũ: `pat`, `staff`, `machines`, `rooms`, `procedures`, `protocols`, `schedule`, `history`.
+  + Nhóm tab PascalCase: `BenhNhan`, `NhanSu`, `MayMoc`, `Phong`, `ThuThuat`, `LichTrinh`, `LichSu`, `TaiKhoan`, `ChamCong`, `ThongKe`, `CaiDat`, `GioBanChungCu`.
+  + Nhóm tab snake_case chuẩn SQLite SaaS v4: `benh_nhan`, `nhan_su`, `may_moc`, `phong`, `thu_thuat`, `phac_do`, `lich_trinh`, `lich_su`, `gio_ban_chung_cu`, `tim_ranh`, `cai_dat`, `cham_cong`, `thong_ke`, `tai_khoan`, `tai_lieu`, `tenants`, `lich_su_dinh_muc`.
+- **Yêu cầu:** MiniPC đang bật, Turso đang hết quota. Xem xét dọn dẹp toàn bộ bảng trùng lặp trong Google Sheets và đẩy lại CSDL chuẩn từ MiniPC lên Google Sheets.
 
+### Phân Tích Kỹ Thuật & Giải Pháp Triệt Để
+1. **Tìm ra nguyên nhân gốc:**
+   - Trong `js/app.js` (hàm `auto-sync` và `exportToGoogleSheets`), payload ngầm gửi cả key tiếng Anh lẫn tiếng Việt: `{ pat: pat, benh_nhan: pat, staff: staff, nhan_su: staff... }`.
+   - Google Apps Script khi duyệt `dataObj` lại tự động tạo sheet cho từng key, sau đó còn ghi tiếp sheet PascalCase (`BenhNhan`, `NhanSu`...), dẫn đến mỗi bảng bị nhân 3 bản sao trên Sheet.
+2. **Xử lý triệt để trong Frontend (`js/app.js`):**
+   - Loại bỏ hoàn toàn các key tiếng Anh thừa (`pat`, `staff`, `machines`, `rooms`, `procedures`, `protocols`, `schedule`, `history`) khỏi payload `saveBootstrapBackup`. Chỉ giữ duy nhất định dạng snake_case chuẩn CSDL SQLite v4.
+3. **Cập nhật Google Apps Script (`google-apps-script/code.gs`):**
+   - Bổ sung action `deleteSheet` và `cleanupRedundantSheets`.
+   - Cập nhật các hàm đọc (`getBootstrapDataFromSheets`, `getHistoryFullDataFromSheets`...) ưu tiên đọc bảng chuẩn snake_case và fallback an toàn bảng PascalCase.
+4. **Viết kịch bản & Thực thi Đồng bộ MiniPC -> Google Sheets (`scripts/sync_minipc_to_sheets.mjs`):**
+   - Kết nối trực tiếp vào MiniPC SQLite pipeline (`127.0.0.1:8080`).
+   - Xóa sạch toàn bộ nội dung của các tab alias/trùng lặp cũ (`pat`, `staff`, `machines`...).
+   - Đẩy chính xác 100% dữ liệu thực từ MiniPC lên 17 bảng chuẩn:
+     * `benh_nhan` (46 dòng), `nhan_su` (20 dòng), `may_moc` (81 dòng), `phong` (13 dòng), `thu_thuat` (29 dòng), `phac_do` (17 dòng), `lich_trinh` (92 dòng), `gio_ban_chung_cu` (510 dòng), `tim_ranh` (174 dòng), `cai_dat` (86 dòng), `cham_cong` (20 dòng), `thong_ke` (16 dòng), `tai_khoan` (4 dòng), `tai_lieu` (6 dòng), `tenants` (3 dòng), `lich_su_dinh_muc` (24 dòng).
+     * `lich_su` & `LichSu`: Đẩy 2,500 dòng mới nhất để các thiết bị fallback mở lịch sử siêu tốc mà không vượt quá thời gian thực thi của Apps Script.
+5. **Kiểm thử & Triển khai:**
+   - Vượt qua 100% Bộ Super-Verify 9 tầng (`node scripts/verify-build.mjs`).
+   - Deploy Cloudflare Pages thành công (`https://pmcg-v4.pages.dev`).
 
-
-
-
-
-
-
-
-
-
-
+**File sửa đổi:**
+- `js/app.js` (chuẩn hóa payload auto-sync sang snake_case, loại bỏ key tiếng Anh thừa)
+- `google-apps-script/code.gs` (tạo mới file chuẩn, hỗ trợ deleteSheet và dọn tab)
+- `scripts/sync_minipc_to_sheets.mjs` (kịch bản đồng bộ từ MiniPC lên Google Sheets)
+- `version.json`, `index.html`, `sw.js` (nâng phiên bản lên v4.2.5-rev1, ngày 10/10/2026)
+- `PM-xeplich-v4.md` (nhật ký phát triển)

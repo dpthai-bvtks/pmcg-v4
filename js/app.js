@@ -1102,21 +1102,13 @@ window.showGlobalLoading = function (text) {
                         const payload = {
                             action: 'saveBootstrapBackup',
                             args: [{
-                                pat: pat,
                                 benh_nhan: pat,
-                                staff: staff,
                                 nhan_su: staff,
-                                machines: machines,
                                 may_moc: machines,
-                                rooms: rooms,
                                 phong: rooms,
-                                procedures: procs,
                                 thu_thuat: procs,
-                                protocols: protocols,
                                 phac_do: protocols,
-                                schedule: schedule,
                                 lich_trinh: schedule,
-                                history: history,
                                 lich_su: history,
                                 cai_dat: localStorage.getItem('times_settings_cache') || ''
                             }],
