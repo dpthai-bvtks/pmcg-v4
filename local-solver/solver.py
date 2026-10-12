@@ -457,7 +457,7 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
         # 7. Phân công Nhân sự Phụ (Điều dưỡng hỗ trợ) nếu thủ thuật cần phụ
         sub_choice_vars = {}
         if t["can_phu"] == 1:
-            nurse_candidates = nurse_names if nurse_names else staff_names
+            nurse_candidates = nurse_names if nurse_names else [s for s in staff_names if not staff_dict[s]["is_doc"]]
             for n_name in nurse_candidates:
                 n_var = model.NewBoolVar(f"sub_{tid}_{n_name}")
                 sub_choice_vars[n_name] = n_var

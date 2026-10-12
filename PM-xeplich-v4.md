@@ -7908,3 +7908,48 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 - `version.json`, `index.html`, `sw.js` (nâng phiên bản lên v4.2.5-rev2)
 - `PM-xeplich-v4.md` (nhật ký phát triển)
 
+---
+
+### [v4.2.6-rev1] - 08:15 12/10/2026: Sửa Triệt Để Lỗi Nhân Sự Có Vai Trò Bác Sĩ Bị Gán Vào Cột Người Phụ (NV Phụ)
+
+#### 1. Yêu cầu của người dùng:
+- Phát hiện tình trạng nhân sự có chức danh / vai trò là **Bác sĩ** (ví dụ: `BS Đạt`) bị thuật toán phân công vào cột **NGƯỜI PHỤ** (`NV PHỤ`) trong lịch điều trị thủ thuật (ví dụ ca Điện châm của bệnh nhân Vũ Hồng Ngân lúc 08:12, NV Chính: BS Khuyến, NV Phụ: BS Đạt).
+- Yêu cầu giải thích nguyên nhân và khắc phục triệt để để Bác sĩ tuyệt đối không bao giờ xuất hiện ở vai trò Người phụ.
+
+#### 2. Phân tích nguyên nhân gốc rễ (Root Cause Analysis):
+1. **Lọt Bác sĩ vào danh sách ứng viên người phụ (`candidatesSub`) trong `js/scheduler-engine.js`**:
+   - Tại dòng 864–869 của hàm `tryScheduleOne`:
+     Cả 2 nhánh `if ((isDoc || isKtv) && !isNurse)` và `else` đều push `tenNV` vào `candidatesSub`, dẫn đến mọi Bác sĩ có kỹ năng thủ thuật đều trở thành ứng viên người phụ!
+2. **Cơ chế chọn người phụ (`canPhu === 1`) bị fallback khi phòng chỉ có Bác sĩ hoặc Điều dưỡng bận**:
+   - Bộ lọc `filteredSubs` lọc theo phòng trực `targetRoom`. Nếu Bác sĩ trực cùng phòng hoặc Điều dưỡng đang bận ở khung giờ đó, `filteredSubs` còn lại Bác sĩ. Dù có dòng sort ưu tiên Điều dưỡng, nhưng khi danh sách chỉ còn Bác sĩ thì `filteredSubs[0]` lập tức lấy Bác sĩ làm `nvPhu`.
+3. **Các vị trí liên quan khác chưa có chốt chặn lọc vai trò Bác sĩ**:
+   - `js/cp-solver.js` (dòng 595): `subPool` chỉ lọc `s.name !== validStaff` mà chưa loại trừ `isDoc`.
+   - `local-solver/solver.py` (dòng 460): `nurse_candidates` fallback toàn bộ `staff_names` bao gồm cả Bác sĩ.
+   - `js/scheduler-engine.js` (`findAvailableDiagnosticSlots`, dòng 3508): `addSub` chưa kiểm tra `!isDocRow(row)`.
+   - `js/modules/app-error-checker.js`: Chưa có cảnh báo khi dữ liệu lịch xếp có Bác sĩ làm người phụ.
+
+#### 3. Giải pháp kỹ thuật đã triển khai:
+1. **Loại bỏ hoàn toàn Bác sĩ khỏi `candidatesSub` trong `js/scheduler-engine.js`**:
+   - Nhánh `(isDoc || isKtv) && !isNurse`: Chỉ push vào `candidatesSub` nếu `isKtv && isFreeForSubTeardown`. Tuyệt đối không cho Bác sĩ (`isDoc`) vào `candidatesSub`.
+   - Bổ sung chốt chặn 2 lớp tại bước chọn người phụ: `validSubs = candidatesSub.filter(x => x !== nvChinh && !isDoc(x))`.
+   - Tại `findAvailableDiagnosticSlots`: `addSub` bắt buộc kiểm tra `!isDocRow(row)`.
+2. **Đồng bộ trên bộ giải thuật CP-SAT Solver & Python Solver**:
+   - `js/cp-solver.js`: `subPool` loại bỏ 100% nhân sự có vai trò Bác sĩ (`!isDoc`).
+   - `local-solver/solver.py`: `nurse_candidates` chỉ lấy Điều dưỡng hoặc KTV (`not staff_dict[s]["is_doc"]`), không lấy Bác sĩ.
+   - `js/app.js`: Loại bỏ Bác sĩ khi tìm `existingSub` và `procDsPhu` ở modal thêm ca / giải cứu.
+3. **Bổ sung cảnh báo vào Tab Kiểm Tra Lỗi (`js/modules/app-error-checker.js`)**:
+   - Kiểm tra `techPhuNorm`: nếu có tiền tố `BS` hoặc vai trò Bác sĩ trong CSDL, cảnh báo lỗi: `"Bác sĩ (${techPhuRaw}) không được phân công làm Người phụ (NV Phụ phải là Điều dưỡng hoặc KTV)"`.
+4. **Kiểm thử & Nâng phiên bản**:
+   - Vượt qua 100% 9 tầng của bộ Super-Verify `node scripts/verify-build.mjs`.
+   - Cập nhật phiên bản: `4.2.6-rev1` (Cache buster, Service Worker, `version.json`, footer timestamp `08:15 12/10/2026`).
+
+**File sửa đổi:**
+- `js/scheduler-engine.js` (loại Bác sĩ khỏi candidatesSub và validSubs, kiểm tra isDocRow trong addSub)
+- `js/cp-solver.js` (loại Bác sĩ khỏi subPool trong CP-SAT solver)
+- `local-solver/solver.py` (loại Bác sĩ khỏi nurse_candidates)
+- `js/app.js` (loại Bác sĩ khi gán existingSub / procDsPhu)
+- `js/modules/app-error-checker.js` (bổ sung rule phát hiện lỗi Bác sĩ làm người phụ)
+- `version.json`, `index.html`, `sw.js` (nâng phiên bản lên v4.2.6-rev1)
+- `PM-xeplich-v4.md` (ghi nhật ký phát triển)
+
+

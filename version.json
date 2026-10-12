@@ -1,6 +1,6 @@
 {
-    "version": "4.2.5-rev2",
-    "releaseDate": "10/10/2026",
-    "releaseTime": "21:35 10/10/2026",
-    "notes": "Chuyển đổi hoàn tất Kiến Trúc Lưu Trữ 3 Tầng: MiniPC SQLite (Primary Realtime, 0 quota) -> Google Sheets (Hot Mirror ngầm sau 3.5s) -> Turso Cloud (Cold Disaster Recovery định kỳ 16:00 GMT+7, triệt tiêu hao phí Quota)."
+    "version": "4.2.6-rev1",
+    "releaseDate": "12/10/2026",
+    "releaseTime": "08:15 12/10/2026",
+    "notes": "Sửa triệt để lỗi logic phân công Người phụ: Loại bỏ hoàn toàn nhân sự có vai trò Bác sĩ khỏi danh sách ứng viên Người phụ (candidatesSub, validSubs, subPool), bổ sung kiểm tra bắt lỗi Bác sĩ làm Người phụ trong tab Kiểm tra lỗi."
 }

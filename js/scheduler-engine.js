@@ -863,7 +863,8 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         // Chỉ BS hoặc KTV mới được làm NV Chính; Điều dưỡng chỉ được làm NV Phụ
         if ((isDoc || isKtv) && !isNurse) {
           candidatesMain.push(tenNV);
-          if (isFreeForSubTeardown) candidatesSub.push(tenNV);
+          if (isKtv && isFreeForSubTeardown) candidatesSub.push(tenNV);
+
         } else {
           if (isFreeForSubTeardown) candidatesSub.push(tenNV);
         }
@@ -992,7 +993,11 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
         let nvPhu = "";
         if (canPhu === 1) {
-          const validSubs = candidatesSub.filter(x => x !== nvChinh);
+          const validSubs = candidatesSub.filter(x => {
+            if (x === nvChinh) return false;
+            const r = (staffRole[x] || '').toLowerCase();
+            return !(/bác sĩ|bac si|^bs\b/i.test(r) || /^bs\b/i.test(x));
+          });
           if (validSubs.length === 0) continue;
 
           const hasSubInRoom = validSubs.some(s => (staffMyRooms[s] || []).includes(targetRoom));
@@ -3500,7 +3505,7 @@ const UnscheduledDiagnosticEngine = (function () {
     const candidateSubs = [];
     const addSub = (name) => {
       const row = findStaffRow(String(name || '').trim());
-      if (row && !candidateSubs.includes(row[0])) candidateSubs.push(row[0]);
+      if (row && !isDocRow(row) && !candidateSubs.includes(row[0])) candidateSubs.push(row[0]);
     };
     if (canPhu === 1) {
       if (patientExistingSub) addSub(patientExistingSub);

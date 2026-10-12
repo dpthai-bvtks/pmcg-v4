@@ -592,7 +592,11 @@
             // Lọc danh sách nhân sự phụ thực tế (ưu tiên Điều dưỡng / Hộ lý / Phụ)
             const subPool = (db.rawStaff || [])
               .map(s => ({ name: s[0], role: s[1] || '' }))
-              .filter(s => s.name && s.name !== validStaff)
+              .filter(s => {
+                if (!s.name || s.name === validStaff) return false;
+                const isDoc = /bác sĩ|bac si|^bs\b/i.test(s.role) || /^bs\b/i.test(s.name);
+                return !isDoc;
+              })
               .sort((a, b) => {
                 const aIsNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly|phụ/i.test(a.role) || /^phụ\b/i.test(a.name);
                 const bIsNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly|phụ/i.test(b.role) || /^phụ\b/i.test(b.name);

@@ -7928,7 +7928,7 @@ var dataCache = window.dataCache;
                 for (const item of window.currentScheduleData) {
                     const iBn = String(item.tenBN || item.HOTEN || '').trim().toUpperCase();
                     const iSub = String(item.nvPhu || item["NV PHỤ"] || '').trim();
-                    if (iBn === bnClean && iSub) {
+                    if (iBn === bnClean && iSub && !/^bs\b/i.test(iSub)) {
                         existingSub = iSub;
                         break;
                     }
@@ -7936,7 +7936,8 @@ var dataCache = window.dataCache;
                 if (existingSub) {
                     resolvedNvPhu = existingSub;
                 } else if (procDsPhu.length > 0) {
-                    resolvedNvPhu = procDsPhu[0];
+                    const validDsPhu = procDsPhu.filter(p => !/^bs\b/i.test(p));
+                    if (validDsPhu.length > 0) resolvedNvPhu = validDsPhu[0];
                 }
             }
 

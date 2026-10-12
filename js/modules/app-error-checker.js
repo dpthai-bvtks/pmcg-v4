@@ -375,6 +375,19 @@
                     if (techPhuRaw && !validStaffNames.includes(techPhuNorm)) {
                         addOtherRow(otherTbody, sttOther++, techPhuRaw, `${patientDisplay}<br/>${procName}`, timeAStr, "Sai tên NV Phụ (Không có trong CSDL)");
                     }
+                    if (techPhuNorm) {
+                        const isDocPhu = /^bs\b/i.test(techPhuNorm) || (() => {
+                            const found = staffList.find(s => (s.ten && s.ten.toLowerCase() === techPhuNorm.toLowerCase()) || (s.name && s.name.toLowerCase() === techPhuNorm.toLowerCase()));
+                            if (found) {
+                                const r = String(found.chucVu || found.role || '').toLowerCase();
+                                return /bác sĩ|bac si|^bs\b/i.test(r);
+                            }
+                            return false;
+                        })();
+                        if (isDocPhu) {
+                            addOtherRow(otherTbody, sttOther++, techPhuRaw, `${patientDisplay}<br/>${procName}`, timeAStr, "Bác sĩ không được phân công làm Người phụ (NV Phụ phải là Điều dưỡng hoặc KTV)");
+                        }
+                    }
 
                     const status = String(row['AF'] || '').trim().toLowerCase();
                     if (status && status !== "chủ động" && status !== "nan") {
