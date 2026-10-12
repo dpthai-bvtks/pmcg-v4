@@ -213,7 +213,15 @@ export async function handlePatientsAction(action, ctx) {
           thoiGianThucHienMax: (p.tg_thuc_hien_max && p.tg_thuc_hien_max > 0) ? p.tg_thuc_hien_max : p.tg_thuc_hien,
           thoiGianThuThuat: p.tg_thu_thuat,
           thoiGianThuThuatMin: p.tg_thu_thuat,
-          thoiGianThuThuatMax: (p.tg_thu_thuat_max && p.tg_thu_thuat_max > 0) ? p.tg_thu_thuat_max : p.tg_thu_thuat,
+          thoiGianThuThuatMax: (() => {
+            const rawMax = (p.tg_thu_thuat_max && p.tg_thu_thuat_max > 0) ? p.tg_thu_thuat_max : p.tg_thu_thuat;
+            if (rawMax <= p.tg_thu_thuat) {
+              const tLow = String(p.ten_thu_thuat || '').toLowerCase();
+              if (tLow.includes('điện châm') || tLow === 'đc' || tLow === 'dctb') return Math.max(p.tg_thu_thuat, 30);
+              if (tLow.includes('parafin') || tLow === 'pa') return Math.max(p.tg_thu_thuat, 25);
+            }
+            return rawMax;
+          })(),
           khoangCach: p.khoang_cach,
           canRutMay: (p.can_rut_may === 1 || p.can_rut_may === '1' || p.can_rut_may === 'Có' || p.can_rut_may === true) ? 'Có' : 'Không',
           canNguoiPhu: (p.can_nguoi_phu === 1 || p.can_nguoi_phu === '1' || p.can_nguoi_phu === 'Có' || p.can_nguoi_phu === true) ? 'Có' : 'Không',

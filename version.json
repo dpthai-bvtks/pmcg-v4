@@ -1,6 +1,6 @@
 {
-    "version": "4.2.6-rev1",
+    "version": "4.2.6-rev2",
     "releaseDate": "12/10/2026",
-    "releaseTime": "08:15 12/10/2026",
-    "notes": "Sửa triệt để lỗi logic phân công Người phụ: Loại bỏ hoàn toàn nhân sự có vai trò Bác sĩ khỏi danh sách ứng viên Người phụ (candidatesSub, validSubs, subPool), bổ sung kiểm tra bắt lỗi Bác sĩ làm Người phụ trong tab Kiểm tra lỗi."
+    "releaseTime": "11:50 12/10/2026",
+    "notes": "Sửa triệt để lỗi kiểm tra thời gian thủ thuật điện châm: Cập nhật định mức CSDL tg_thu_thuat_max=30, đồng bộ mapping trường thoiGianThuThuatMax và bổ sung Smart YHCT duration fallback 25-30 phút trong module Kiểm tra lỗi."
 }

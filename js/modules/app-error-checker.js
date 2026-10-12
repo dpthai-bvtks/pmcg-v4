@@ -289,12 +289,27 @@
                 if (!start || isNaN(start.getTime()) || !end || isNaN(end.getTime())) continue;
 
                 // Tính toán các mốc thời gian của thủ thuật
-                const tgThMin = procInfo ? (parseInt(procInfo.thoiGianThucHienMin || procInfo.thoiGianThucHien || procInfo[6]) || 5) : 5;
-                let tgThMax = procInfo ? (parseInt(procInfo.thoiGianThucHienMax || procInfo[13]) || tgThMin) : tgThMin;
+                const tgThMin = procInfo ? (parseInt(procInfo.thoiGianThucHienMin || procInfo.thoiGianThucHien || procInfo.tg_thuc_hien || procInfo[6]) || 5) : 5;
+                let tgThMax = procInfo ? (parseInt(procInfo.thoiGianThucHienMax || procInfo.tg_thuc_hien_max || procInfo[13]) || tgThMin) : tgThMin;
                 if (tgThMax < tgThMin) tgThMax = tgThMin;
 
-                const tgTtMin = procInfo ? (parseInt(procInfo.thoiGianThuThuatMin || procInfo.thoiGianThuThuat || procInfo[7]) || 15) : 15;
-                let tgTtMax = procInfo ? (parseInt(procInfo.thoiGianThuThuatMax || procInfo[12]) || tgTtMin) : tgTtMin;
+                const tgTtMin = procInfo ? (parseInt(procInfo.thoiGianThuThuatMin || procInfo.thoiGianThuThuat || procInfo.tg_thu_thuat || procInfo[7]) || 15) : 15;
+                let tgTtMax = procInfo ? (parseInt(procInfo.thoiGianThuThuatMax || procInfo.tg_thu_thuat_max || procInfo[12]) || 0) : 0;
+
+                // Smart YHCT duration range fallback (Đồng bộ tuyệt đối với scheduler-engine.js và renderProceduresTable)
+                if (!tgTtMax || tgTtMax <= tgTtMin) {
+                    const tenLower = String(procInfo?.ten || procInfo?.name || procName || '').toLowerCase();
+                    if (tenLower.includes('điện châm') || tenLower === 'đc' || tenLower === 'dctb') {
+                        if (tgTtMin === 25) tgTtMax = 30;
+                        else if (tgTtMin === 30) tgTtMax = 35;
+                        else tgTtMax = Math.max(tgTtMin, 30);
+                    } else if (tenLower.includes('parafin') || tenLower === 'pa') {
+                        if (tgTtMin === 20) tgTtMax = 25;
+                        else tgTtMax = tgTtMin;
+                    } else {
+                        tgTtMax = tgTtMin;
+                    }
+                }
                 if (tgTtMax < tgTtMin) tgTtMax = tgTtMin;
 
                 const isCont = procInfo ? (procInfo.lienTuc === 'Có' || procInfo.lienTuc === 1 || procInfo.lienTuc === '1' || procInfo.lienTuc === true || procInfo[14] === 'Có' || procInfo[14] === 1 || (tgThMin === tgTtMin && tgThMax === tgTtMax && tgThMin >= 10)) : false;

@@ -7952,4 +7952,47 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 - `version.json`, `index.html`, `sw.js` (nâng phiên bản lên v4.2.6-rev1)
 - `PM-xeplich-v4.md` (ghi nhật ký phát triển)
 
+---
+
+### [v4.2.6-rev2] - 11:50 12/10/2026: Sửa Lỗi Báo Sai Định Mức Thời Gian Thủ Thuật Điện Châm (25-30 Phút) Trong Tab Kiểm Tra Lỗi
+
+#### 1. Yêu cầu của người dùng:
+- Người dùng đã cấu hình thời gian thủ thuật điện châm là 25–30 phút, lịch xếp ra ca 30 phút (từ 08:13 đến 08:43).
+- Tuy nhiên trong tab **Kiểm tra lỗi** (bảng *Lỗi sai quy trình / phân quyền*), hệ thống vẫn báo lỗi:
+  `Thời gian thủ thuật vượt quá quy định (30 phút > 25 phút)` đối với các ca điện châm của BS Đạt và BS Thái.
+
+#### 2. Phân tích nguyên nhân gốc rễ (Root Cause Analysis):
+1. **Dữ liệu danh mục lưu trong CSDL thực tế**:
+   - Trong bảng `thu_thuat` của SQLite MiniPC và Turso Cloud, bản ghi `điện châm` trước đó có `tg_thu_thuat = 25` và `tg_thu_thuat_max = 25` (trên Google Sheets cũng đang lưu `thoiGianThuThuatMax = 25`).
+2. **Cơ chế Smart YHCT Fallback không đồng bộ giữa các module**:
+   - Trong hàm hiển thị `renderProceduresTable()` (`js/app.js`) và bộ engine xếp lịch `js/scheduler-engine.js` (dòng 2133):
+     Đã có sẵn cơ chế thông minh: nếu thủ thuật là Điện châm mà `tgMin = 25` và `tgMax <= tgMin` thì engine tự động cho phép dải thời gian linh hoạt `tgMax = 30` phút. Vì vậy lịch xếp ra ca kéo dài 30 phút (08:13 -> 08:43).
+   - Tuy nhiên, trong module kiểm tra lỗi `js/modules/app-error-checker.js` (dòng 296–298) **hoàn toàn chưa có cơ chế Smart YHCT fallback này**, đồng thời chỉ đọc `procInfo[12]` chứ không đọc `procInfo.tg_thu_thuat_max` hay `procInfo.thoiGianThuThuatMax`. Do đó `tgTtMax` bị fallback về `25`, khiến module kiểm tra lỗi so sánh `30 > 25` và báo sai quy định.
+3. **Thiếu trường ánh xạ khi normalize `dataCache.proc`**:
+   - Trong `js/app.js` (dòng 3758), khi gán danh mục thủ thuật từ server vào cache client, mới chỉ map `tg_thu_thuat` sang `thoiGianThuThuat` mà chưa map `tg_thu_thuat_max` sang `thoiGianThuThuatMax`.
+
+#### 3. Giải pháp kỹ thuật đã triển khai:
+1. **Cập nhật CSDL đồng bộ trên cả MiniPC SQLite và Turso Cloud**:
+   - Đã chạy SQL cập nhật trực tiếp:
+     `UPDATE thu_thuat SET tg_thu_thuat = 25, tg_thu_thuat_max = 30, updated_at = CURRENT_TIMESTAMP WHERE ten_thu_thuat = 'điện châm'`.
+2. **Đồng bộ hóa Smart YHCT Fallback trong `js/modules/app-error-checker.js`**:
+   - Bổ sung việc đọc đầy đủ các trường `thoiGianThuThuatMax`, `tg_thu_thuat_max`, `procInfo[12]`.
+   - Bổ sung cơ chế Smart YHCT duration range đồng bộ 100% với `scheduler-engine.js`: Nếu thủ thuật là Điện châm (`điện châm`, `đc`, `dctb`) mà `tgTtMin === 25` và `tgTtMax <= tgTtMin`, tự động nhận diện `tgTtMax = 30` (hoặc Parafin 20 -> 25 phút).
+3. **Cập nhật chuẩn hóa dữ liệu trong `js/app.js` và `backend/src/routes/patients.js`**:
+   - Trong `js/app.js`: Đã map đầy đủ `thoiGianThuThuatMin`, `thoiGianThuThuatMax`, `thoiGianThucHienMin`, `thoiGianThucHienMax`.
+   - Trong `backend/src/routes/patients.js`: Bổ sung Smart duration fallback cho `thoiGianThuThuatMax` khi trả về API `getThuThuat`.
+4. **Kiểm thử & Nâng phiên bản**:
+   - Vượt qua 100% 9 tầng kiểm thử của `node scripts/verify-build.mjs`.
+   - Nâng phiên bản `4.2.6-rev2` trên `version.json`, `index.html` (cache buster `?v=4.2.6-rev2`, timestamp `11:50 12/10/2026`), `sw.js` (`pmcg-v4-cache-4.2.6-rev2`).
+   - Deploy Cloudflare Worker (`pmcg-api`) và Cloudflare Pages (`pmcg-v3`).
+
+**File sửa đổi:**
+- `backend/src/routes/patients.js` (bổ sung fallback thoiGianThuThuatMax cho API getThuThuat)
+- `js/app.js` (chuẩn hóa mapping thoiGianThuThuatMax và tự động điền form sửa thủ thuật)
+- `js/modules/app-error-checker.js` (đồng bộ Smart YHCT duration fallback cho tab Kiểm tra lỗi)
+- `version.json`, `index.html`, `sw.js` (nâng phiên bản lên v4.2.6-rev2)
+- CSDL MiniPC SQLite & Turso Cloud (`UPDATE thu_thuat SET tg_thu_thuat_max = 30`)
+- `PM-xeplich-v4.md` (ghi nhật ký phát triển)
+
+
 

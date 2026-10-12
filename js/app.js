@@ -3756,7 +3756,11 @@ var dataCache = window.dataCache;
                             if (p.phan_loai && !p.phanLoai) p.phanLoai = p.phan_loai;
                             if (p.phanLoai && !p.phan_loai) p.phan_loai = p.phanLoai;
                             if (p.tg_thuc_hien && !p.thoiGianThucHien) p.thoiGianThucHien = Number(p.tg_thuc_hien);
+                            if (p.tg_thuc_hien && !p.thoiGianThucHienMin) p.thoiGianThucHienMin = Number(p.tg_thuc_hien);
+                            if (p.tg_thuc_hien_max && !p.thoiGianThucHienMax) p.thoiGianThucHienMax = Number(p.tg_thuc_hien_max);
                             if (p.tg_thu_thuat && !p.thoiGianThuThuat) p.thoiGianThuThuat = Number(p.tg_thu_thuat);
+                            if (p.tg_thu_thuat && !p.thoiGianThuThuatMin) p.thoiGianThuThuatMin = Number(p.tg_thu_thuat);
+                            if (p.tg_thu_thuat_max && !p.thoiGianThuThuatMax) p.thoiGianThuThuatMax = Number(p.tg_thu_thuat_max);
                             if (p.can_rut_may && !p.canRutMay) p.canRutMay = p.can_rut_may;
                             if (p.can_nguoi_phu && !p.canNguoiPhu) p.canNguoiPhu = p.can_nguoi_phu;
                             if (p.ds_nguoi_phu && !p.dsNguoiPhu) p.dsNguoiPhu = p.ds_nguoi_phu;
@@ -5046,6 +5050,12 @@ var dataCache = window.dataCache;
                     if (id === 'proc-person-time-max' && (!val && val !== 0)) val = item.thoiGianThucHienMax || item[13] || item.thoiGianThucHien || item[6];
                     if (id === 'proc-machine-time' && (!val && val !== 0)) val = item.thoiGianThuThuat || item[7];
                     if (id === 'proc-machine-time-max' && (!val && val !== 0)) val = item.thoiGianThuThuatMax || item[12] || item.thoiGianThuThuat || item[7];
+                    if (id === 'proc-machine-time-max') {
+                        const minVal = parseInt(item.thoiGianThuThuatMin || item.thoiGianThuThuat || item[7]) || 0;
+                        if ((!val || val <= minVal) && /điện châm|đc\b|dctb/i.test(item.ten || item.name || item[1] || '')) {
+                            val = (minVal === 25 ? 30 : (minVal === 30 ? 35 : Math.max(minVal, 30)));
+                        }
+                    }
                     el.value = (val !== undefined && val !== null) ? val : '';
                 }
             });
