@@ -192,6 +192,23 @@ var ScheduleUtils = (function () {
     return String(rawMachine).normalize('NFC').trim();
   }
 
+  function isManualOrNoMachine(may) {
+    if (!may && may !== 0) return true;
+    const m = String(may).normalize('NFC').trim().toLowerCase().replace(/\s+/g, '');
+    if (!m || m === '--' || m === '-' || m === 'none' || m === 'null' || m === 'undefined') return true;
+    if (m === 'thucong' || m === 'thủcông' || m.includes('thucong') || m.includes('thủcông')) return true;
+    if (m === 'khong' || m === 'không' || m.includes('khongdungmay') || m.includes('khôngdùngmáy')) return true;
+    return false;
+  }
+
+  function isNoBed(giuong) {
+    if (!giuong && giuong !== 0) return true;
+    const g = String(giuong).normalize('NFC').trim().toLowerCase().replace(/\s+/g, '').replace(/^giuong|^g/i, '');
+    if (!g || g === '--' || g === '-' || g === 'none' || g === 'null' || g === 'undefined') return true;
+    if (g === 'thucong' || g === 'thủcông' || g === 'khong' || g === 'không') return true;
+    return false;
+  }
+
   // ============================================================
   // 4. ĐÓNG GÓI & XUẤT BẢN RA PHẠM VI TOÀN CỤC
   // ============================================================
@@ -215,6 +232,8 @@ var ScheduleUtils = (function () {
     healRoomName: cleanAndHealRoomName,
     cleanAndHealMachineName,
     healMachineName: cleanAndHealMachineName,
+    isManualOrNoMachine,
+    isNoBed,
     getSession: gScope.getSession,
     getAuthToken: gScope.getAuthToken,
     notify: gScope.notify,

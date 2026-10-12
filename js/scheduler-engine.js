@@ -76,6 +76,25 @@ var SchedulerEngine = (typeof window !== 'undefined' ? window : (typeof global !
     if (_U && typeof _U.cleanAndHealMachineName === 'function') return _U.cleanAndHealMachineName(rawMachine, candidates);
     return String(rawMachine || '').normalize('NFC').trim();
   }
+  function isManualOrNoMachine(may) {
+    if (_U && typeof _U.isManualOrNoMachine === 'function') return _U.isManualOrNoMachine(may);
+    if (!may && may !== 0) return true;
+    const m = String(may).normalize('NFC').trim().toLowerCase().replace(/\s+/g, '');
+    if (!m || m === '--' || m === '-' || m === 'none' || m === 'null' || m === 'undefined') return true;
+    if (m === 'thucong' || m === 'thủcông' || m.includes('thucong') || m.includes('thủcông')) return true;
+    if (m === 'khong' || m === 'không' || m.includes('khongdungmay') || m.includes('khôngdùngmáy')) return true;
+    return false;
+  }
+
+  function isNoBed(giuong) {
+    if (_U && typeof _U.isNoBed === 'function') return _U.isNoBed(giuong);
+    if (!giuong && giuong !== 0) return true;
+    const g = String(giuong).normalize('NFC').trim().toLowerCase().replace(/\s+/g, '').replace(/^giuong|^g/i, '');
+    if (!g || g === '--' || g === '-' || g === 'none' || g === 'null' || g === 'undefined') return true;
+    if (g === 'thucong' || g === 'thủcông' || g === 'khong' || g === 'không') return true;
+    return false;
+  }
+
 
 function normalizeScheduleItem(row) {
   if (!row) return null;
@@ -1680,12 +1699,12 @@ function getPatientSignature(pat) {
         }
 
         // 4. Máy móc (vẫn khóa 100% thời gian [testStart, testEnd])
-        if (curItem.may && other.may && curItem.may !== 'Thủ công' && other.may !== 'Thủ công' && curItem.may === other.may) {
+        if (curItem.may && other.may && !isManualOrNoMachine(curItem.may) && !isManualOrNoMachine(other.may) && curItem.may === other.may) {
           if (is_overlap(testStart, testEnd, other._s, other._e)) return true;
         }
 
         // 5. Giường (vẫn khóa 100% thời gian [testStart, testEnd])
-        if (curItem.phong && other.phong && curItem.phong === other.phong && curItem.giuong && other.giuong && curItem.giuong === other.giuong) {
+        if (curItem.phong && other.phong && curItem.phong === other.phong && curItem.giuong && other.giuong && !isNoBed(curItem.giuong) && !isNoBed(other.giuong) && curItem.giuong === other.giuong) {
           if (is_overlap(testStart, testEnd, other._s, other._e)) return true;
         }
       }
@@ -1705,8 +1724,8 @@ function getPatientSignature(pat) {
           if ((cNv1 && (cNv1 === fx.nv1 || cNv1 === fx.nv2)) || (cNv2 && (cNv2 === fx.nv1 || cNv2 === fx.nv2))) {
             if (hasStaffIntervalOverlap(curStaffIntervals, fx.staffIntervals)) return true;
           }
-          if (timeOverlap && cMay && cMay !== 'thủcông' && fx.may && fx.may !== 'thủcông' && cMay === fx.may) return true;
-          if (timeOverlap && cPhong && cGiuong && cPhong === fx.phong && cGiuong === fx.giuong) return true;
+          if (timeOverlap && cMay && !isManualOrNoMachine(cMay) && fx.may && !isManualOrNoMachine(fx.may) && cMay === fx.may) return true;
+          if (timeOverlap && cPhong && cGiuong && !isNoBed(cGiuong) && !isNoBed(fx.giuong) && cPhong === fx.phong && cGiuong === fx.giuong) return true;
         }
       }
 
@@ -1995,11 +2014,11 @@ function getPatientSignature(pat) {
 
         // 3. Kiểm tra va chạm Máy móc (máy bận toàn bộ từ đầu đến cuối)
         if (isOverlap(cS, cE, ex.s, ex.e)) {
-          if (cMay && cMay !== 'thucong' && ex.may && ex.may !== 'thucong' && cMay === ex.may) {
+          if (cMay && !isManualOrNoMachine(cMay) && ex.may && !isManualOrNoMachine(ex.may) && cMay === ex.may) {
             collisionReason = `Máy móc ${cand.may} đã bận (${m2t(ex.s)}-${m2t(ex.e)})`;
             break;
           }
-          if (cPhong && ex.phong && cPhong === ex.phong && cGiuong && ex.giuong && cGiuong === ex.giuong) {
+          if (cPhong && ex.phong && cPhong === ex.phong && cGiuong && ex.giuong && !isNoBed(cGiuong) && !isNoBed(ex.giuong) && cGiuong === ex.giuong) {
             collisionReason = `Giường ${cand.giuong} (${cand.phong}) đã có người (${m2t(ex.s)}-${m2t(ex.e)})`;
             break;
           }

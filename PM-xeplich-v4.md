@@ -7994,5 +7994,49 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 - CSDL MiniPC SQLite & Turso Cloud (`UPDATE thu_thuat SET tg_thu_thuat_max = 30`)
 - `PM-xeplich-v4.md` (ghi nhật ký phát triển)
 
+---
+
+### [v4.2.6-rev3] - 13:45 12/10/2026: Sửa Lỗi Xung Đột Giả "Máy Móc Thủ Công Đã Bận" Chặn Áp Dụng Cố Vấn Giải Cứu Ca Rớt
+
+#### 1. Yêu cầu của người dùng:
+- Người dùng sử dụng modal **Bộ Cố Vấn Giải Cứu Ca Rớt Thông Minh** (Smart Unscheduled Advisor), hệ thống tìm được phương án giải cứu hợp lệ (*"✨ [Đã xác minh] ... Giữa/Cuối ca chiều"*).
+- Tuy nhiên khi bấm nút **"Áp dụng giải cứu ngay"**, phần mềm hiển thị modal cảnh báo:
+  `⚠️ Không thể xếp ca này do xung đột thời gian: Máy móc Thủ công đã bận (15:43-16:08)! Vui lòng chọn khung giờ khác.` và chặn không cho xếp ca vào lịch.
+
+#### 2. Phân tích nguyên nhân gốc rễ (Root Cause Analysis):
+1. **Lỗi kiểm tra loại trừ chuỗi tiếng Việt có dấu trong bộ hậu kiểm va chạm (`validateNoOverlapWithExisting`)**:
+   - Trong `js/scheduler-engine.js` (dòng 1937 & dòng 1998):
+     `const cMay = String(cand.may || '').toLowerCase().replace(/\s+/g, '');`
+     Nếu thủ thuật làm bằng tay / không dùng máy thì `cand.may` là `"Thủ công"` -> `cMay = "thủcông"` (có dấu tiếng Việt).
+     Tương tự, các ca thủ công đã xếp trong lịch cũng có `ex.may = "thủcông"`.
+   - Nhưng điều kiện kiểm tra va chạm máy móc lại viết:
+     `if (cMay && cMay !== 'thucong' && ex.may && ex.may !== 'thucong' && cMay === ex.may)`
+   - Do `'thủcông' !== 'thucong'` luôn trả về `true`, hệ thống hiểu nhầm "Thủ công" là **một chiếc máy vật lý có thật**, và coi tất cả các ca làm thủ công đang tranh giành chiếc máy này! Khi có ca khác làm thủ công trong khung giờ (15:43-16:08), hàm hậu kiểm lập tức báo `Máy móc Thủ công đã bận` và chặn ca giải cứu.
+2. **Hiện tượng tương tự ở các điểm kiểm tra xung đột khác (`hasConflictAt`, `cp-solver.js`)**:
+   - Trong `scheduler-engine.js` (`hasConflictAt`) và `cp-solver.js`, việc kiểm tra chuỗi máy `"Thủ công"` chưa bao quát các biến thể như `thủ công`, `thu cong`, `không`, `none`, `--`, `khong dung may`.
+   - Kiểm tra trùng giường (`cGiuong === ex.giuong`) cũng chưa loại trừ trường hợp giường trống / không gán giường (`giuong: ""`, `"--"`).
+
+#### 3. Giải pháp kỹ thuật đã triển khai:
+1. **Xây dựng bộ hàm chuẩn hóa dùng chung toàn hệ thống (`js/schedule-utils.js`)**:
+   - `isManualOrNoMachine(may)`: Nhận diện chuẩn xác 100% tất cả các biến thể thủ thuật làm bằng tay / không cần máy: `"Thủ công"`, `"thủ công"`, `"thu cong"`, `"thủcông"`, `"thucong"`, `"không"`, `"khong"`, `"--"`, `"-"`, `"none"`, `""`, `"không dùng máy"`.
+   - `isNoBed(giuong)`: Nhận diện trường hợp ca không gán giường bệnh để tránh báo trùng giường giả.
+2. **Cập nhật đồng bộ trong `js/scheduler-engine.js`**:
+   - Tại `validateNoOverlapWithExisting` (dòng 1998): Đổi sang `!isManualOrNoMachine(cMay) && !isManualOrNoMachine(ex.may) && cMay === ex.may`. Triệt tiêu hoàn toàn lỗi xung đột giả "Máy móc Thủ công đã bận".
+   - Tại `hasConflictAt` (dòng 1683 & 1708): Áp dụng `isManualOrNoMachine` và `isNoBed` khi kiểm tra xung đột máy và giường.
+3. **Đồng bộ hóa trong `js/cp-solver.js`**:
+   - Áp dụng `isManualOrNoMachineLocal(may)` cho toàn bộ các điểm kiểm tra tài nguyên máy móc trong solver CP-SAT.
+4. **Kiểm thử & Nâng phiên bản**:
+   - Chạy bộ kiểm thử 9 tầng `node scripts/verify-build.mjs`: Đạt 100% (Pass 9/9 tầng).
+   - Nâng phiên bản `4.2.6-rev3` trên `version.json`, `index.html` (cache buster `?v=4.2.6-rev3`, timestamp `13:45 12/10/2026`), `sw.js` (`pmcg-v4-cache-4.2.6-rev3`).
+   - Deploy Cloudflare Pages (`pmcg-v3`).
+
+**File sửa đổi:**
+- `js/schedule-utils.js` (bổ sung isManualOrNoMachine và isNoBed dùng chung)
+- `js/scheduler-engine.js` (sửa validateNoOverlapWithExisting và hasConflictAt)
+- `js/cp-solver.js` (sửa kiểm tra ràng buộc máy móc dùng isManualOrNoMachineLocal)
+- `version.json`, `index.html`, `sw.js` (nâng phiên bản lên v4.2.6-rev3)
+- `PM-xeplich-v4.md` (ghi nhật ký phát triển)
+
+
 
 

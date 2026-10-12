@@ -1,6 +1,6 @@
 {
-    "version": "4.2.6-rev2",
+    "version": "4.2.6-rev3",
     "releaseDate": "12/10/2026",
-    "releaseTime": "11:50 12/10/2026",
-    "notes": "Sửa triệt để lỗi kiểm tra thời gian thủ thuật điện châm: Cập nhật định mức CSDL tg_thu_thuat_max=30, đồng bộ mapping trường thoiGianThuThuatMax và bổ sung Smart YHCT duration fallback 25-30 phút trong module Kiểm tra lỗi."
+    "releaseTime": "13:45 12/10/2026",
+    "notes": "Sửa triệt để lỗi xung đột giả Máy móc Thủ công đã bận: Chuẩn hóa nhận diện thủ thuật làm bằng tay / không dùng máy (isManualOrNoMachine) và giường trống (isNoBed) trong bộ hậu kiểm va chạm validateNoOverlapWithExisting, hasConflictAt và cp-solver.js, triệt tiêu lỗi chặn giải cứu ca rớt."
 }

@@ -50,7 +50,20 @@
     list.push([s, e]);
   }
 
-  function isContinuousProcedureLocal(info, dur) {
+  
+  function isManualOrNoMachineLocal(may) {
+    const globalSE = typeof window !== 'undefined' ? window.SchedulerEngine : (typeof globalThis !== 'undefined' ? globalThis.SchedulerEngine : null);
+    if (globalSE && typeof globalSE.isManualOrNoMachine === 'function') return globalSE.isManualOrNoMachine(may);
+    const _U = typeof ScheduleUtils !== 'undefined' ? ScheduleUtils : (typeof window !== 'undefined' && window.ScheduleUtils ? window.ScheduleUtils : null);
+    if (_U && typeof _U.isManualOrNoMachine === 'function') return _U.isManualOrNoMachine(may);
+    if (!may && may !== 0) return true;
+    const m = String(may).normalize('NFC').trim().toLowerCase().replace(/\s+/g, '');
+    if (!m || m === '--' || m === '-' || m === 'none' || m === 'null' || m === 'undefined') return true;
+    if (m === 'thucong' || m === 'thủcông' || m.includes('thucong') || m.includes('thủcông')) return true;
+    if (m === 'khong' || m === 'không' || m.includes('khongdungmay') || m.includes('khôngdùngmáy')) return true;
+    return false;
+  }
+function isContinuousProcedureLocal(info, dur) {
     const globalSE = typeof window !== 'undefined' ? window.SchedulerEngine : (typeof globalThis !== 'undefined' ? globalThis.SchedulerEngine : null);
     if (globalSE && typeof globalSE.isContinuousProcedure === 'function') {
       return globalSE.isContinuousProcedure(info, dur);
@@ -184,7 +197,7 @@
     }
 
     // 3. Ràng buộc máy móc không trùng
-    if (machine && machine !== 'Thủ công') {
+    if (machine && !isManualOrNoMachineLocal(machine)) {
       const assignedRoom = db.machineToRoom?.[machine];
       if (assignedRoom && patRoom && assignedRoom !== patRoom) {
         return false;
@@ -316,7 +329,7 @@
       addStaffIntervals(item.nvPhu);
 
       const may = item.may;
-      if (may && may !== 'Thủ công') {
+      if (may && !isManualOrNoMachineLocal(may)) {
         addInterval(machineIntervals, may, s, e);
         const cleanMay = String(may).toLowerCase().replace(/\s+/g, '');
         for (const mType in (db.machineTypes || {})) {
@@ -373,7 +386,7 @@
       }
 
       const may = item.may || item.MAY;
-      if (may && may !== 'Thủ công') addInterval(machineIntervals, may, s, e);
+      if (may && !isManualOrNoMachineLocal(may)) addInterval(machineIntervals, may, s, e);
 
       const phong = item.phong || item.PHONG;
       const giuong = item.giuong || item.GIUONG;
@@ -444,7 +457,7 @@
       // Danh sách máy khả dụng: ưu tiên máy phòng của mình, nếu không có thì lấy máy rảnh từ danh mục chung
       const loaiMayKey = loaiMay.toLowerCase();
       const roomSpecific = (db.roomMachines?.[patRoom]?.[loaiMayKey]) || (db.roomMachines?.[patRoom]?.[loaiMay]) || [];
-      const machineCandidates = (loaiMay !== "Thủ công")
+      const machineCandidates = (!isManualOrNoMachineLocal(loaiMay))
         ? (roomSpecific.length > 0 ? roomSpecific : ((db.machineTypes && db.machineTypes[loaiMay]) || []))
         : ["Thủ công"];
 
@@ -525,7 +538,7 @@
           let validMachine = null;
           for (let mIdx = 0; mIdx < machineCandidates.length; mIdx++) {
             const m = machineCandidates[mIdx];
-            if (m === 'Thủ công') {
+            if (isManualOrNoMachineLocal(m)) {
               validMachine = m;
               break;
             }
@@ -647,7 +660,7 @@
 
           // Cập nhật ngay các intervals để các ca sau không bị trùng
           addInterval(patIntervals, pKey, candStart, candEnd + 5);
-          if (validMachine !== 'Thủ công') addInterval(machineIntervals, validMachine, candStart, candEnd);
+          if (!isManualOrNoMachineLocal(validMachine)) addInterval(machineIntervals, validMachine, candStart, candEnd);
           addInterval(bedIntervals, `${patRoom}_${validBed}`, candStart, candEnd);
           for (const [ivS, ivE] of candStaffIntervals) {
             addInterval(staffIntervals, validStaff, ivS, ivE);
