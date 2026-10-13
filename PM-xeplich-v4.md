@@ -8142,6 +8142,58 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 - `version.json` (nâng phiên bản v4.2.7-rev3)
 - `PM-xeplich-v4.md` (ghi nhật ký phát triển)
 
+---
+
+### [v4.2.7-rev4] - 14:55 13/10/2026: Tối Ưu Hóa Toàn Diện Giải Thuật Xếp Lịch & Khắc Phục Triệt Để Ca Bệnh Bị Rớt Khi Còn Nhiều Giờ Rảnh
+
+#### 1. Hiện tượng & Phản ánh của người dùng:
+- Người dùng phản ánh: *"giờ rảnh còn khá nhiều nhưng lại không xếp được lịch tối ưu mà lại bị rớt, xem lại cho mình"*.
+- Trong thực tế xếp lịch, người dùng thấy các phòng, máy móc, và nhân sự còn rất nhiều khoảng trống rảnh rỗi (thậm chí 1 - 2 tiếng) nhưng một số ca thủ thuật vẫn bị đánh dấu rớt ("❌ Rớt") mà không được bộ giải tự động xếp vào các khoảng rảnh đó.
+
+#### 2. Nguyên nhân gốc rễ (Root Causes):
+1. **Ràng buộc khoảng cách ngoại trú quá cứng nhắc (`gap > 3`)**:
+   - Trong `tryScheduleOne`, khi bệnh nhân ngoại trú đã có ca trước đó (`lastScheduledEnd > 0`), hệ thống kiểm tra `gap = tNow - lastScheduledEnd`. Nếu `gap > 3`, thuật toán lập tức từ chối (`return false`).
+   - Nếu trong đúng 3 phút sau ca 1 nhân sự hoặc máy bị bận, thì ở mọi mốc thời gian sau đó của ngày (khi `gap` là 5, 10, 30, 60 phút...), điều kiện `gap > 3` vĩnh viễn đúng, khiến ca tiếp theo của bệnh nhân **bị khóa chết và không bao giờ được xếp**, dù cả nhân sự lẫn máy rảnh hàng giờ sau đó.
+2. **Khóa cứng buổi điều trị mặc định sang ca Sáng (`buoiDieuTri = 'Sang'`)**:
+   - Khi bệnh nhân không chọn cụ thể buổi sáng/chiều (hệ thống mặc định là `'TuDong'`), trong `prepareSchedulerDb` và `tryScheduleOne` lại bị gán mặc định thành `"Sang"`.
+   - Toàn bộ bệnh nhân ngoại trú này bị cấm tiệt không được xếp vào ca chiều (`candStart < lunchEnd || gioKetThuc > morningShiftEnd`), khiến buổi chiều dù trống 100% tài nguyên ("giờ rảnh còn khá nhiều") vẫn không thể cứu được ca.
+3. **Thuật toán vét ca Backfill chỉ quét duy nhất mốc đầu khoảng trống (`prevEnd`)**:
+   - Trong 2 vòng lặp vét ca (`isBackfill` và `tempDropList`), thuật toán duyệt khoảng rảnh `[prevEnd, slot[0]]` nhưng chỉ thêm duy nhất `prevEnd` vào `gapStarts`.
+   - Nếu tại đúng phút `prevEnd` bệnh nhân đang làm ca khác (hoặc máy bận), `t = prevEnd` bị bỏ qua và toàn bộ khoảng rảnh 60 - 150 phút còn lại của nhân sự không hề được thử bất kỳ phút nào khác (`prevEnd + 5`, `prevEnd + 10`, `patient.free_at`...).
+4. **Cơ chế Dừng Sớm Giả (Ultra-Early Exit) trong `runBestIteration` & Bỏ qua Seed đối xứng**:
+   - Trong `runBestIteration`, nếu bước 0 còn `bestRot.length <= 3`, thuật toán dừng lặp ngay lập tức vì tưởng CP Solver sẽ cứu được. Nếu CP Solver không cứu được hết, 1 - 3 ca này bị bỏ rơi vĩnh viễn.
+   - Trong `runSchedulingAsync`, điều kiện chạy seed đối xứng chỉ kích hoạt khi `best.rot.length > 3`, nên khi rớt 1 - 3 ca thì seed 2 không bao giờ được chạy.
+5. **Bộ giải toán CP-SAT / MIP Optimizer (`js/cp-solver.js`, `solver.py`)**:
+   - `machineCandidates` chỉ lấy máy trong phòng của BN. Nếu máy đó bận, CP Solver không thử các máy cùng loại ở các phòng khác.
+   - `local-solver/solver.py` thiếu khai báo `thu_thuat_info` dẫn đến lỗi `NameError`.
+
+#### 3. Giải pháp & Khắc phục triệt để:
+1. **Nới lỏng khoảng cách ngoại trú thông minh (`js/scheduler-engine.js`)**:
+   - Ở Pha 1: Ưu tiên gom ca liền mạch với khoảng cách tối đa `gap <= 20` phút (thay vì 3 phút).
+   - Ở Pha 2 (`currentPhase >= 2`), khi vét ca (`isBackfill`) hoặc xếp bổ sung (`isSupplemental`): Cho phép mọi khoảng cách hợp lệ (`gap >= 0`, `maxAllowedGap = 9999`) trong khung giờ làm việc của bệnh nhân. Tuyệt đối không để ca bệnh bị rớt chỉ vì phải chờ giữa 2 thủ thuật.
+2. **Chuẩn hóa buổi điều trị `buoiDieuTri: 'TuDong'`**:
+   - Cập nhật trong `prepareSchedulerDb`, `tryScheduleOne`, `MedicalCPSolver`, `UnscheduledDiagnosticEngine` và `local-solver/solver.py`: Khi bệnh nhân không chỉ định buổi, mặc định là `'TuDong'`. Bộ giải tự do chọn ca sáng hoặc ca chiều tùy theo khung giờ rảnh của khoa.
+3. **Nâng cấp Backfill quét toàn diện khoảng trống theo bước 5 phút**:
+   - Khi phát hiện khoảng trống rảnh `[gStart, gEnd]`: Quét toàn bộ các mốc cách nhau 5 phút (`for (let t = gStart; t + tgMay <= gEnd; t += 5)`), đồng thời bổ sung chính xác mốc `patient.free_at` và các mốc kết thúc ca bận `b[1]` của bệnh nhân.
+4. **Loại bỏ Ultra-Early Exit giả**:
+   - Trong `runBestIteration`: Chỉ dừng sớm khi `bestRot.length === 0` (100% không còn ca rớt). Khi còn bất kỳ ca rớt nào, thuật toán tiếp tục các bước đột biến và Tabu Search / LAHC trong ngân sách thời gian.
+   - Trong `runSchedulingAsync`: Khi `best.rot.length > 0` và thời gian còn dư (< 350ms), tiếp tục kích hoạt seed đối xứng và bộ giải toán sâu để vét kiệt toàn bộ ca rớt.
+5. **Hỗ trợ máy cùng loại liên phòng và giường linh hoạt**:
+   - Trong Pha 2 / Backfill / CP-SAT: Khi máy trong phòng bận, tự động phối hợp máy cùng loại rảnh từ các phòng khác để giải cứu ca rớt.
+   - Sửa lỗi `NameError: thu_thuat_info` trong `local-solver/solver.py` (chạy tối ưu OPTIMAL trong 229ms).
+6. **Quy chuẩn phiên bản theo RULES.md**:
+   - Đạt 100% 9 tầng kiểm thử của `node scripts/verify-build.mjs`.
+   - Nâng phiên bản `4.2.7-rev4`, cập nhật `version.json`, `sw.js` (`pmcg-v4-cache-4.2.7-rev4`), `index.html` (timestamp `14:55 13/10/2026`, cache buster `?v=4.2.7-rev4`).
+
+**File sửa đổi:**
+- `js/scheduler-engine.js` (sửa tryScheduleOne, buoiDieuTri TuDong, backfill 5 phút, early exit)
+- `js/cp-solver.js` (buoiDieuTri TuDong, kết hợp máy liên phòng)
+- `local-solver/solver.py` (khắc phục thu_thuat_info, p_buoi TuDong)
+- `index.html` (nâng cache buster ?v=4.2.7-rev4, timestamp 14:55 13/10/2026)
+- `sw.js` (nâng CACHE_NAME pmcg-v4-cache-4.2.7-rev4)
+- `version.json` (nâng phiên bản v4.2.7-rev4)
+- `PM-xeplich-v4.md` (ghi nhật ký phát triển)
+
 
 
 

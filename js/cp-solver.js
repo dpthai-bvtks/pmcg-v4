@@ -448,17 +448,19 @@ function isContinuousProcedureLocal(info, dur) {
       const arriveTime = patObj ? Math.max(450, patObj.arrive || 450) : 450;
       const leaveTime = (patObj && patObj.leave && patObj.leave < 9999) ? patObj.leave : 1020;
       const loaiBN = patObj ? (patObj.loaiBN || 'NoiTru') : 'NoiTru';
-      const buoiDieuTri = patObj ? (patObj.buoiDieuTri || 'Sang') : 'Sang';
+      const buoiDieuTri = patObj ? (patObj.buoiDieuTri || patObj.buoi_dieu_tri || 'TuDong') : 'TuDong';
 
       const ttInfo = db.thuThuatInfo ? (db.thuThuatInfo[tenTT.toLowerCase()] || ["Thủ công", 20, 5, "PHCN"]) : ["Thủ công", 20, 5, "PHCN"];
       const loaiMay = ttInfo[0] || "Thủ công";
       const tgMay = parseInt(ttInfo[1]) || 20;
 
-      // Danh sách máy khả dụng: ưu tiên máy phòng của mình, nếu không có thì lấy máy rảnh từ danh mục chung
+      // Danh sách máy khả dụng: ưu tiên máy phòng của mình, kết hợp thêm máy rảnh cùng loại từ các phòng khác để giải cứu ca rớt
       const loaiMayKey = loaiMay.toLowerCase();
       const roomSpecific = (db.roomMachines?.[patRoom]?.[loaiMayKey]) || (db.roomMachines?.[patRoom]?.[loaiMay]) || [];
+      const allTypeMachines = (db.machineTypes && (db.machineTypes[loaiMay] || db.machineTypes[loaiMayKey])) || [];
+      const combinedMachines = [...new Set([...roomSpecific, ...allTypeMachines])];
       const machineCandidates = (!isManualOrNoMachineLocal(loaiMay))
-        ? (roomSpecific.length > 0 ? roomSpecific : ((db.machineTypes && db.machineTypes[loaiMay]) || []))
+        ? (combinedMachines.length > 0 ? combinedMachines : ["Thủ công"])
         : ["Thủ công"];
 
       // Danh sách giường khả dụng: Giường phòng + Hỗ trợ giường máy kéo giãn / ghế điều trị linh hoạt

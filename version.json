@@ -1,6 +1,6 @@
 {
-    "version": "4.2.7-rev3",
+    "version": "4.2.7-rev4",
     "releaseDate": "13/10/2026",
-    "releaseTime": "11:45 13/10/2026",
-    "notes": "Nâng cấp tiện ích tìm máy rảnh: hiển thị dropdown mã máy cùng loại, tính toán và hiển thị đầy đủ các khoảng thời gian rảnh trong ngày (Khung giờ, Số phút) tương tự giờ rảnh của nhân sự."
+    "releaseTime": "14:55 13/10/2026",
+    "notes": "Tối ưu hóa toàn diện giải thuật xếp lịch và bộ giải toán CP-SAT: Khắc phục triệt để tình trạng còn nhiều giờ rảnh nhưng ca bệnh bị rớt (nới lỏng khoảng cách ngoại trú lên 20 phút / vô hạn khi vét ca, mặc định buổi TuDong, mở rộng quét khoảng trống 5 phút và điểm rảnh của bệnh nhân trong backfill, loại bỏ dừng sớm giả khi còn ca rớt, bổ sung máy rảnh liên phòng và thử nghiệm seed đối xứng)."
 }

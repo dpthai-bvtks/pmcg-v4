@@ -132,6 +132,7 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
     room_machines = db.get("roomMachines", {})
     machine_types = db.get("machineTypes", {})
     date_val = str(db.get("dateVal", "") or "Hôm nay")
+    thu_thuat_info = db.get("thuThuatInfo", {})
 
     # 1. Tiền xử lý nhân sự (Bác sĩ, KTV, Điều dưỡng)
     staff_dict = {}
@@ -187,7 +188,7 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
         p_arrive = max(450, int(pat.get("arrive", 450) or 450))
         p_leave = int(pat.get("leave", 1020) or 1020) if pat.get("leave") != 9999 else 1020
         p_loai = pat.get("loaiBN", "NoiTru")
-        p_buoi = pat.get("buoiDieuTri", "Sang")
+        p_buoi = pat.get("buoiDieuTri") or pat.get("buoi_dieu_tri") or "TuDong"
         p_busy = pat.get("busy", [])
         pending = pat.get("pending", [])
 

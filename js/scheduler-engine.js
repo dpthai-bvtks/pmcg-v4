@@ -722,9 +722,12 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
   });
   patients.forEach(p => { p.randSeed = p._isNew ? (0.5 + rand() * 0.5) : (rand() * 0.5); });
 
+  let currentPhase = 1;
+
   function tryScheduleOne(patient, tenThuThuat, tNow) {
     const loaiBN = patient.loaiBN || 'NoiTru';
-    const buoiDieuTri = patient.buoiDieuTri || 'Sang';
+    const buoiDieuTri = patient.buoiDieuTri || 'TuDong';
+    const isRelaxedPass = isBackfill || isSupplemental || (currentPhase >= 2);
     const cleanTT = cleanAndHealProcedureName(tenThuThuat);
     const info = thuThuatInfo[tenThuThuat.toLowerCase()] || thuThuatInfo[cleanTT.toLowerCase()] || ["Thủ công", 15, 5, "PHCN", 1, 0, [], 5];
     const isYHCT = String(info[3] || "").trim().toUpperCase() === "YHCT";
@@ -755,7 +758,8 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
       if (patient.lastScheduledEnd && patient.lastScheduledEnd > 0) {
         const gap = tNow - patient.lastScheduledEnd;
-        if (gap < 0 || gap > 3) {
+        const maxAllowedGap = isRelaxedPass ? 9999 : 20;
+        if (gap < 0 || gap > maxAllowedGap) {
           return false;
         }
       }
@@ -787,7 +791,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
           oddSteps.push(d);
         }
       }
-      return isBackfill ? [...roundSteps, ...oddSteps] : roundSteps;
+      return (isBackfill || isRelaxedPass) ? [...roundSteps, ...oddSteps] : roundSteps;
     }
 
     let candidatePairs = [];
@@ -869,7 +873,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         // Khóa giờ kết thúc đối với Thủ thuật viên chính
         if (mainNeedsTeardown && checkSlot(tearStart, tearEnd)) return;
         
-        if (!isSupplemental && !isBackfill && staffRole[tenNV] === 'Kỹ thuật viên' && (staffMyRooms[tenNV] || []).length > 0 && !staffMyRooms[tenNV].includes(targetRoom)) return;
+        if (!isSupplemental && !isRelaxedPass && staffRole[tenNV] === 'Kỹ thuật viên' && (staffMyRooms[tenNV] || []).length > 0 && !staffMyRooms[tenNV].includes(targetRoom)) return;
 
         const role = (staffRole[tenNV] || '').toLowerCase();
         const isDoc = /bác sĩ|bac si|^bs\b/i.test(role) || /^bs\b/i.test(tenNV);
@@ -960,11 +964,11 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         };
 
         const roomMatch = resolveFromMap(db.roomMachines?.[targetRoom], effectiveLoaiMay);
+        const globalMatch = resolveFromMap(machineTypes, effectiveLoaiMay) || [];
         if (roomMatch && roomMatch.length > 0) {
-          possibleMachines = roomMatch;
+          possibleMachines = isRelaxedPass ? [...new Set([...roomMatch, ...globalMatch])] : roomMatch;
         } else {
-          const globalMatch = resolveFromMap(machineTypes, effectiveLoaiMay);
-          possibleMachines = (globalMatch && globalMatch.length > 0) ? globalMatch : [];
+          possibleMachines = globalMatch;
         }
       }
       const availableMachines = scenario === 3 ? possibleMachines.filter(m => !reservedMachines.has(m)) : possibleMachines;
@@ -982,7 +986,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         const isKeoGian = loaiMay.toLowerCase().includes("kéo giãn");
         const tuKhoaKhongGiuong = ["tập vận", "siêu âm", "cứu", "thủy châm", "điện châm", "hồng ngoại", "xbbh", "xoa bóp", "khí dung"];
         const isFlexibleBed = isKeoGian || tuKhoaKhongGiuong.some(k => tenThuThuat.toLowerCase().includes(k));
-        if (isFlexibleBed || isSupplemental || isBackfill) {
+        if (isFlexibleBed || isSupplemental || isRelaxedPass) {
           selectedBed = isKeoGian ? "Giường máy Kéo giãn" : "Ghế điều trị / Giường phụ";
         } else {
           continue;
@@ -993,7 +997,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         const isInMyRoom = (staffMyRooms[nvChinh] || []).includes(targetRoom);
         const isFloating = (staffMyRooms[nvChinh] || []).length === 0;
         if (!(isInMyRoom || isFloating)) {
-          if (!isSupplemental) {
+          if (!isSupplemental && !isRelaxedPass) {
             const hasSkilledStaffInRoom = (staffBySkill[tenThuThuat.toLowerCase()] || []).some(s =>
               (staffMyRooms[s] || []).includes(targetRoom)
             );
@@ -1170,6 +1174,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
   }
 
   for (let phase = 1; phase <= 2; phase++) {
+    currentPhase = phase;
     if (phase === 2 && !patients.some(p => p.pending.length > 0)) break;
     let tNow = startOfDay;
     while (tNow <= endOfDay) {
@@ -1260,10 +1265,26 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
             const tl = mergeTimeline([...(staffTimeline[tenNV] || [])]);
             let prevEnd = startOfDay;
             for (const slot of tl) {
-              if (slot[0] > prevEnd && prevEnd + tgMay <= allowedMaxEnd) gapStarts.add(prevEnd);
+              if (slot[0] > prevEnd && prevEnd + tgMay <= allowedMaxEnd) {
+                const gStart = prevEnd;
+                const gEnd = Math.min(slot[0], allowedMaxEnd);
+                for (let t = gStart; t + tgMay <= gEnd; t += 5) gapStarts.add(t);
+                if (patient.free_at >= gStart && patient.free_at + tgMay <= gEnd) gapStarts.add(patient.free_at);
+                (patient.busy || []).forEach(b => {
+                  if (b[1] >= gStart && b[1] + tgMay <= gEnd) gapStarts.add(b[1]);
+                });
+              }
               prevEnd = Math.max(prevEnd, slot[1]);
             }
-            if (prevEnd + tgMay <= allowedMaxEnd) gapStarts.add(prevEnd);
+            if (prevEnd + tgMay <= allowedMaxEnd) {
+              const gStart = prevEnd;
+              const gEnd = allowedMaxEnd;
+              for (let t = gStart; t + tgMay <= gEnd; t += 5) gapStarts.add(t);
+              if (patient.free_at >= gStart && patient.free_at + tgMay <= gEnd) gapStarts.add(patient.free_at);
+              (patient.busy || []).forEach(b => {
+                if (b[1] >= gStart && b[1] + tgMay <= gEnd) gapStarts.add(b[1]);
+              });
+            }
           }
           for (const t of [...gapStarts].sort((a, b) => a - b)) {
             if (t < (patient.free_at || 0) || patient.busy.some(b => b[0] <= t && t < b[1])) continue;
@@ -1315,10 +1336,26 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         const tl = mergeTimeline([...(staffTimeline[tenNV] || [])]);
         let prevEnd = minStart;
         for (const slot of tl) {
-          if (slot[0] > prevEnd && prevEnd >= minStart && prevEnd + tgCanThiet <= allowedMaxEnd) gapStarts.add(prevEnd);
+          if (slot[0] > prevEnd && prevEnd >= minStart && prevEnd + tgCanThiet <= allowedMaxEnd) {
+            const gStart = prevEnd;
+            const gEnd = Math.min(slot[0], allowedMaxEnd);
+            for (let t = gStart; t + tgCanThiet <= gEnd; t += 5) gapStarts.add(t);
+            if (pat.free_at >= gStart && pat.free_at + tgCanThiet <= gEnd) gapStarts.add(pat.free_at);
+            (pat.busy || []).forEach(b => {
+              if (b[1] >= gStart && b[1] + tgCanThiet <= gEnd) gapStarts.add(b[1]);
+            });
+          }
           prevEnd = Math.max(prevEnd, slot[1]);
         }
-        if (prevEnd >= minStart && prevEnd + tgCanThiet <= allowedMaxEnd) gapStarts.add(prevEnd);
+        if (prevEnd >= minStart && prevEnd + tgCanThiet <= allowedMaxEnd) {
+          const gStart = prevEnd;
+          const gEnd = allowedMaxEnd;
+          for (let t = gStart; t + tgCanThiet <= gEnd; t += 5) gapStarts.add(t);
+          if (pat.free_at >= gStart && pat.free_at + tgCanThiet <= gEnd) gapStarts.add(pat.free_at);
+          (pat.busy || []).forEach(b => {
+            if (b[1] >= gStart && b[1] + tgCanThiet <= gEnd) gapStarts.add(b[1]);
+          });
+        }
       }
       for (const t of [...gapStarts].sort((a, b) => a - b)) {
         if (t < (pat.free_at || 0) || pat.busy.some(b => is_overlap(t, t + tgCanThiet, b[0], b[1]))) continue;
@@ -1452,7 +1489,7 @@ function getPatientSignature(pat) {
     // ⚡ ULTRA FAST EARLY EXIT:
     // Bước 0 đã dùng AI Smart Patient Ranking tối ưu nhất, nếu chỉ còn rớt <= 3 ca thì dừng ngay lập tức!
     // Pha 2 (Toán học CP-SAT Math Optimizer) sẽ giải cứu các ca này trong 20ms!
-    if (bestRot && bestRot.length <= 3) {
+    if (bestRot && bestRot.length === 0) {
       return {
         sched: bestSched,
         rot: bestRot,
@@ -1508,8 +1545,8 @@ function getPatientSignature(pat) {
         }
       }
 
-      // ⚡ Early Exit: Nếu đã xếp thành công 100% không rớt ca nào hoặc chỉ còn <= 3 ca rớt
-      if (bestRot && bestRot.length <= 3) {
+      // ⚡ Early Exit: Dừng sớm khi đã xếp thành công 100% không rớt ca nào
+      if (bestRot && bestRot.length === 0) {
         break;
       }
     }
@@ -2446,7 +2483,7 @@ function getSafeCache() {
       });
 
       const loaiBN = p.loai_bn || p.loaiBN || p[9] || "NoiTru";
-      const buoiDieuTri = p.buoi_dieu_tri || p.buoiDieuTri || p[10] || "Sang";
+      const buoiDieuTri = p.buoi_dieu_tri || p.buoiDieuTri || p[10] || "TuDong";
 
       database.rawPatients.push({
         pId: pId,
@@ -2841,9 +2878,9 @@ function getSafeCache() {
       }
     }
 
-    // ⚡ 4. NẾU VẪN CÒN NHIỀU CA RỚT (> 3 ca) VÀ THỜI GIAN CÒN DƯ (< 250ms): Mới thử thêm seed đối xứng để vét kiệt
+    // ⚡ 4. NẾU VẪN CÒN CA RỚT VÀ THỜI GIAN CÒN DƯ (< 350ms): Thử thêm seed đối xứng để vét kiệt
     const elapsedSoFar = performance.now() - startTime;
-    if (best && best.rot && best.rot.length > 3 && elapsedSoFar < 250) {
+    if (best && best.rot && best.rot.length > 0 && elapsedSoFar < 350) {
       const altSeed = 101;
       const altRes = runBestIteration(db, dateVal, cleanExistingSched, scenario, crowdedOverride, weights, altSeed, 1);
       if (altRes && altRes.sched) {
@@ -3377,7 +3414,7 @@ const UnscheduledDiagnosticEngine = (function () {
     const arriveMins = (patientObj && patientObj.arrive) ? patientObj.arrive : 450;
     const leaveMins = (patientObj && patientObj.leave && patientObj.leave < 1440) ? patientObj.leave : 1440;
     const loaiBN = (patientObj && patientObj.loaiBN) || 'NoiTru';
-    const buoiDieuTri = (patientObj && patientObj.buoiDieuTri) || 'Sang';
+    const buoiDieuTri = (patientObj && (patientObj.buoiDieuTri || patientObj.buoi_dieu_tri)) || 'TuDong';
 
     // 3. Phòng / giường
     const roomKey = Object.keys(db.roomBeds || {}).find(r => normKey(r) === normKey(room)) || room;
