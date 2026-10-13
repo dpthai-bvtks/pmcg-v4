@@ -436,82 +436,14 @@ function removeVietnameseTones(str) {
 window.removeVietnameseTones = removeVietnameseTones;
 
 /**
- * 🛡️ HÀM PHỤC HỒI HỌ TÊN BỆNH NHÂN TOÀN DIỆN (SELF-HEALING PATIENT NAMES)
- * Tự động phát hiện và sửa chữa các chuỗi bị lỗi ký tự (\uFFFD, \u0000) hoặc nuốt nguyên âm
- * (Trn -> Trần, Cưng -> Cường, Lnh -> Lãnh, Nguyn -> Nguyễn, Phm -> Phạm...)
+ * 🛡️ HỌ TÊN BỆNH NHÂN (CHUẨN BẢN V3: GIỮ NGUYÊN BẢN 100%)
+ * Tuyệt đối không can thiệp, không đoán mò hay hoán đổi ký tự.
  */
 function healPatientName(rawName, candidates = [], forceUpperCase = false) {
-    if (!rawName) return '';
-    let name = String(rawName).normalize('NFC').trim();
+    if (!rawName && rawName !== 0) return '';
+    const name = String(rawName).normalize('NFC').replace(/[\ufeff\u200b\u200c\u200d\u200e\u200f]/g, '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
     if (!name) return '';
-
-    const isAllUpper = (name === name.toUpperCase() && /[A-Z\u00C0-\u024F\u1EA0-\u1EF9]/.test(name));
-    const shouldUpper = forceUpperCase || isAllUpper;
-
-    const hasCorruptChar = /[\ufffd\u0000]/.test(name) || /\b[A-Za-z\u00C0-\u024F\u1EA0-\u1EF9]+\?[A-Za-z\u00C0-\u024F\u1EA0-\u1EF9]+\b/.test(name);
-    const hasSwallowedVowel = /\b(Trn|Cưng|Lnh|Nguyn|Phm)\b/i.test(name) ||
-        /\bTr[\ufffd\s\?]*n\b/i.test(name) ||
-        /\bL[\ufffd\s\?]*nh\b/i.test(name) ||
-        /\bC[\ufffd\s\?]*ng\b/i.test(name) ||
-        /\bNguy[\ufffd\s\?]*n\b/i.test(name) ||
-        /\bPh[\ufffd\s\?]*m\b/i.test(name);
-
-    if (!hasCorruptChar && !hasSwallowedVowel) {
-        return shouldUpper ? name.toUpperCase() : name;
-    }
-
-    const candList = Array.isArray(candidates) ? candidates : [];
-    for (const cand of candList) {
-        if (!cand) continue;
-        const cleanCand = String(cand).normalize('NFC').trim();
-        if (/[\ufffd\u0000]/.test(cleanCand) || /\b(Trn|Cưng|Lnh)\b/i.test(cleanCand)) continue;
-
-        const wildcardPattern = '^' + name
-            .replace(/[\ufffd\u0000\?]+/g, '.*')
-            .replace(/\bTrn\b/gi, 'Tr.*n')
-            .replace(/\bCưng\b/gi, 'C.*ng')
-            .replace(/\bLnh\b/gi, 'L.*nh')
-            .replace(/\s+/g, '\\s+') + '$';
-        try {
-            if (new RegExp(wildcardPattern, 'i').test(cleanCand)) {
-                return shouldUpper ? cleanCand.toUpperCase() : cleanCand;
-            }
-        } catch (e) {}
-
-        const noToneName = removeVietnameseTones(name.replace(/[\ufffd\u0000\?]/g, ''));
-        const noToneCand = removeVietnameseTones(cleanCand);
-        if (noToneName && noToneCand) {
-            if (noToneName === noToneCand) {
-                return shouldUpper ? cleanCand.toUpperCase() : cleanCand;
-            }
-            const nameTokens = noToneName.split(/\s+/).filter(t => t.length >= 2);
-            const candTokens = noToneCand.split(/\s+/).filter(t => t.length >= 2);
-            const matchedTokens = nameTokens.filter(t => candTokens.includes(t));
-            if (nameTokens.length >= 2 && matchedTokens.length >= nameTokens.length - 1) {
-                return shouldUpper ? cleanCand.toUpperCase() : cleanCand;
-            }
-        }
-    }
-
-    let healed = name;
-    healed = healed.replace(/\bTr[\ufffd\s\?]*n\b/gi, 'Trần');
-    healed = healed.replace(/\bTrn\b/gi, 'Trần');
-    healed = healed.replace(/\bL[\ufffd\s\?]*nh\b/gi, 'Lãnh');
-    healed = healed.replace(/\bLnh\b/gi, 'Lãnh');
-    healed = healed.replace(/\bC[\ufffd\s\?]*ng\b/gi, 'Cường');
-    healed = healed.replace(/\bCưng\b/gi, 'Cường');
-    healed = healed.replace(/\bNguy[\ufffd\s\?]*n\b/gi, 'Nguyễn');
-    healed = healed.replace(/\bNguyn\b/gi, 'Nguyễn');
-    healed = healed.replace(/\bPh[\ufffd\s\?]*m\b/gi, 'Phạm');
-    healed = healed.replace(/\bPhm\b/gi, 'Phạm');
-    healed = healed.replace(/\bHo[\ufffd\s\?]*ng\b/gi, 'Hoàng');
-    healed = healed.replace(/(Văn|Thị)\s+H[\ufffd\s\?]*ng\b/gi, '$1 Hồng');
-    healed = healed.replace(/[\ufffd\u0000]/g, '').replace(/\s+/g, ' ').trim();
-
-    if (shouldUpper) {
-        return healed.toUpperCase();
-    }
-    return healed.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
+    return forceUpperCase ? name.toUpperCase() : name;
 }
 window.healPatientName = healPatientName;
 

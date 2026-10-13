@@ -964,48 +964,14 @@ function calculateSubscriptionInfo(tenant) {
 // 🗄️ ensureSchema and self-healing migrations are modularized in ./schema.js
 
 /**
- * 🛡️ BACKEND PATIENT NAME HEALING ENGINE
- * Tự động sửa chữa các chuỗi bị lỗi ký tự (\uFFFD, \u0000) hoặc nuốt nguyên âm tiếng Việt
+ * 🛡️ HỌ TÊN BỆNH NHÂN BACKEND (CHUẨN BẢN V3: GIỮ NGUYÊN BẢN 100%)
+ * Tuyệt đối không can thiệp, không đoán mò hay hoán đổi ký tự.
  */
 function healBackendPatientName(rawName, forceUpperCase = false) {
-  if (!rawName) return '';
-  let name = String(rawName).normalize('NFC').trim();
+  if (!rawName && rawName !== 0) return '';
+  const name = String(rawName).normalize('NFC').replace(/[\ufeff\u200b\u200c\u200d\u200e\u200f]/g, '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
   if (!name) return '';
-
-  const isAllUpper = (name === name.toUpperCase() && /[A-ZÀ-Ỹ]/.test(name));
-  const shouldUpper = forceUpperCase || isAllUpper;
-
-  const hasCorruptChar = /[\ufffd\u0000]/.test(name) || /\b[A-Za-zÀ-ỹ]+\?[A-Za-zÀ-ỹ]+\b/.test(name);
-  const hasSwallowedVowel = /\b(Trn|Cưng|Lnh|Nguyn|Phm)\b/i.test(name) ||
-    /\bTr[\ufffd\s\?]*n\b/i.test(name) ||
-    /\bL[\ufffd\s\?]*nh\b/i.test(name) ||
-    /\bC[\ufffd\s\?]*ng\b/i.test(name) ||
-    /\bNguy[\ufffd\s\?]*n\b/i.test(name) ||
-    /\bPh[\ufffd\s\?]*m\b/i.test(name);
-
-  if (!hasCorruptChar && !hasSwallowedVowel) {
-    return shouldUpper ? name.toUpperCase() : name;
-  }
-
-  let healed = name;
-  healed = healed.replace(/\bTr[\ufffd\s\?]*n\b/gi, 'Trần');
-  healed = healed.replace(/\bTrn\b/gi, 'Trần');
-  healed = healed.replace(/\bL[\ufffd\s\?]*nh\b/gi, 'Lãnh');
-  healed = healed.replace(/\bLnh\b/gi, 'Lãnh');
-  healed = healed.replace(/\bC[\ufffd\s\?]*ng\b/gi, 'Cường');
-  healed = healed.replace(/\bCưng\b/gi, 'Cường');
-  healed = healed.replace(/\bNguy[\ufffd\s\?]*n\b/gi, 'Nguyễn');
-  healed = healed.replace(/\bNguyn\b/gi, 'Nguyễn');
-  healed = healed.replace(/\bPh[\ufffd\s\?]*m\b/gi, 'Phạm');
-  healed = healed.replace(/\bPhm\b/gi, 'Phạm');
-  healed = healed.replace(/\bHo[\ufffd\s\?]*ng\b/gi, 'Hoàng');
-  healed = healed.replace(/(Văn|Thị)\s+H[\ufffd\s\?]*ng\b/gi, '$1 Hồng');
-  healed = healed.replace(/[\ufffd\u0000]/g, '').replace(/\s+/g, ' ').trim();
-
-  if (shouldUpper) {
-    return healed.toUpperCase();
-  }
-  return healed.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
+  return forceUpperCase ? name.toUpperCase() : name;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

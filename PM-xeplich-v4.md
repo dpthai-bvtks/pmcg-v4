@@ -8073,6 +8073,40 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 - `version.json`, `sw.js` (đồng bộ phiên bản v4.2.7-rev1)
 - `PM-xeplich-v4.md` (ghi nhật ký phát triển)
 
+---
+
+### [v4.2.7-rev2] - 10:55 13/10/2026: Loại Bỏ Triệt Để Logic Đoán Mò Nuốt Nguyên Âm Chữa Lành Tên Bệnh Nhân
+
+#### 1. Yêu cầu của người dùng:
+- Xử lý triệt để lỗi bệnh nhân "Nguyễn Đức Ngọc" (từ file `13.xls`) bị biến thành "Nguyễn Đứcườngọc".
+- Loại bỏ hoàn toàn logic "Tự phục hồi họ tên bệnh nhân / Chữa lành nuốt nguyên âm" còn sót lại, tuân thủ nguyên tắc chuẩn bản v3: 100% giữ nguyên bản họ tên bệnh nhân gốc từ file Excel/HIS, không can thiệp, không đoán mò hay hoán đổi ký tự.
+
+#### 2. Phân tích nguyên nhân & Giải pháp kỹ thuật:
+1. **Nguyên nhân gốc rễ**:
+   - Trong `js/app.js` (`healPatientName`) và `backend/src/index.js` (`healBackendPatientName`), regex `healed.replace(/\bC[\ufffd\s\?]*ng\b/gi, 'Cường')` sử dụng ranh giới từ `\b` và cờ `/i`.
+   - Với chuỗi `"Đức Ngọc"`:
+     + Chữ `c` cuối của `Đức` khớp với `C` trong regex `/i`.
+     + Khoảng trắng khớp với `[\ufffd\s\?]*`.
+     + Chữ `Ng` đầu của `Ngọc` khớp với `ng`.
+     + Trong JavaScript RegExp chuẩn, chữ cái có dấu `ọ` (`\u1ECD`) không thuộc `\w` (ASCII), nên tiếp giáp giữa `g` và `ọ` tạo thành ranh giới từ `\b`.
+     + Do đó, cụm `c Ng` bị regex thay thế thành `Cường` -> `"Nguyễn ĐứCườngọc"` -> proper case thành `"Nguyễn Đứcườngọc"`.
+2. **Khắc phục triệt để**:
+   - Trong `js/app.js`: Đơn giản hóa `healPatientName` chỉ thực hiện chuẩn hóa Unicode NFC và cắt khoảng trắng thừa (`normalize('NFC').trim()`), loại bỏ hoàn toàn mọi biểu thức regex thay thế nuốt nguyên âm / sửa chuỗi.
+   - Trong `backend/src/index.js`: Đơn giản hóa `healBackendPatientName` tương tự, chỉ làm sạch Unicode NFC và khoảng trắng, không sửa đổi dữ liệu họ tên từ client gửi lên Database.
+3. **Quy chuẩn phiên bản theo RULES.md**:
+   - Vượt qua 100% 9 tầng kiểm thử của `node scripts/verify-build.mjs`.
+   - Nâng revision trong ngày lên `4.2.7-rev2` trên `version.json`, `index.html` (footer version `Phiên bản: 4.2.7`, timestamp `10:55 13/10/2026`, cache buster `?v=4.2.7-rev2`), `sw.js` (`pmcg-v4-cache-4.2.7-rev2`).
+   - Deploy toàn diện Cloudflare Worker API (`pmcg-api`) và Cloudflare Pages (`pmcg-v3`).
+
+**File sửa đổi:**
+- `js/app.js` (loại bỏ regex đoán mò nuốt nguyên âm trong healPatientName)
+- `backend/src/index.js` (loại bỏ regex đoán mò nuốt nguyên âm trong healBackendPatientName)
+- `index.html` (cập nhật cache buster ?v=4.2.7-rev2, timestamp 10:55 13/10/2026)
+- `sw.js` (nâng CACHE_NAME pmcg-v4-cache-4.2.7-rev2)
+- `version.json` (nâng phiên bản v4.2.7-rev2)
+- `PM-xeplich-v4.md` (ghi nhật ký phát triển)
+
+
 
 
 

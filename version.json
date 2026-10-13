@@ -1,6 +1,6 @@
 {
-    "version": "4.2.7-rev1",
+    "version": "4.2.7-rev2",
     "releaseDate": "13/10/2026",
-    "releaseTime": "07:25 13/10/2026",
-    "notes": "Gỡ bỏ nút xuất y lệnh emrHIS trên thanh công cụ Lịch trình, bổ sung hiển thị cột NV Phụ trong file xuất lịch Excel (exportSchedule) và PDF (exportSchedulePDF)."
+    "releaseTime": "10:55 13/10/2026",
+    "notes": "Loại bỏ triệt để logic đoán mò nuốt nguyên âm chữa lành tên bệnh nhân ở cả frontend và backend, bảo toàn 100% tên bệnh nhân gốc từ file HIS/Excel."
 }
