@@ -2267,9 +2267,11 @@ function getSafeCache() {
 
       const bsStr = String(r.bacSi || r[2] || "");
       const ktvStr = String(r.ktv || r[3] || "");
+      const ddStr = String(r.dieuDuong || r.dieu_duong || r.dd || (Array.isArray(r) ? r[7] : "") || "");
       const dsBacSi = bsStr.split(",").map(x => x.trim()).filter(Boolean);
       const dsKTV = ktvStr.split(",").map(x => x.trim()).filter(Boolean);
-      database.roomStaff[roomName] = [...new Set([...dsBacSi, ...dsKTV].map(x => database.replacementMap[x] || x))];
+      const dsDD = ddStr.split(",").map(x => x.trim()).filter(Boolean);
+      database.roomStaff[roomName] = [...new Set([...dsBacSi, ...dsKTV, ...dsDD].map(x => database.replacementMap[x] || x))];
     });
 
     // 5. Patients

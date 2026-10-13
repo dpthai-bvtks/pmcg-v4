@@ -89,6 +89,7 @@ export async function ensureSchema(db) {
         ten_phong TEXT NOT NULL,
         bac_si TEXT DEFAULT '',
         ktv TEXT DEFAULT '',
+        dieu_duong TEXT DEFAULT '',
         danh_sach_may TEXT DEFAULT '',
         so_giuong INTEGER DEFAULT 0,
         danh_sach_giuong TEXT DEFAULT '',
@@ -326,6 +327,7 @@ export async function ensureSchema(db) {
       "ALTER TABLE may_moc ADD COLUMN order_idx INTEGER DEFAULT 0",
       "ALTER TABLE phong ADD COLUMN is_active INTEGER DEFAULT 1",
       "ALTER TABLE phong ADD COLUMN order_idx INTEGER DEFAULT 0",
+      "ALTER TABLE phong ADD COLUMN dieu_duong TEXT DEFAULT ''",
       "ALTER TABLE thu_thuat ADD COLUMN is_active INTEGER DEFAULT 1",
       "ALTER TABLE thu_thuat ADD COLUMN order_idx INTEGER DEFAULT 0",
       "ALTER TABLE thu_thuat ADD COLUMN tg_thu_thuat_max INTEGER DEFAULT 0",
@@ -516,6 +518,7 @@ export async function ensureSchema(db) {
             ten_phong TEXT NOT NULL,
             bac_si TEXT DEFAULT '',
             ktv TEXT DEFAULT '',
+            dieu_duong TEXT DEFAULT '',
             danh_sach_may TEXT DEFAULT '',
             so_giuong INTEGER DEFAULT 0,
             danh_sach_giuong TEXT DEFAULT '',
@@ -526,8 +529,8 @@ export async function ensureSchema(db) {
           )
         `).run();
         await db.prepare(`
-          INSERT OR IGNORE INTO phong_v4 (id, unit_code, ten_phong, bac_si, ktv, danh_sach_may, so_giuong, danh_sach_giuong, order_idx, is_active, updated_at)
-          SELECT id, COALESCE(unit_code, 'bvtks-cs2'), ten_phong, bac_si, ktv, danh_sach_may, so_giuong, danh_sach_giuong, order_idx, is_active, updated_at FROM phong
+          INSERT OR IGNORE INTO phong_v4 (id, unit_code, ten_phong, bac_si, ktv, dieu_duong, danh_sach_may, so_giuong, danh_sach_giuong, order_idx, is_active, updated_at)
+          SELECT id, COALESCE(unit_code, 'bvtks-cs2'), ten_phong, bac_si, ktv, COALESCE(dieu_duong, ''), danh_sach_may, so_giuong, danh_sach_giuong, order_idx, is_active, updated_at FROM phong
         `).run();
         await db.prepare("DROP TABLE phong").run();
         await db.prepare("ALTER TABLE phong_v4 RENAME TO phong").run();

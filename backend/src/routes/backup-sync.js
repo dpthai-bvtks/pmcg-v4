@@ -207,6 +207,7 @@ export async function handleBackupSyncAction(action, ctx) {
         name: r.ten_phong,
         bacSi: r.bac_si || "",
         ktv: r.ktv || "",
+        dieuDuong: r.dieu_duong || "",
         danhSachMay: r.danh_sach_may || "",
         soGiuong: r.so_giuong || 0,
         danhSachGiuong: r.danh_sach_giuong || ""

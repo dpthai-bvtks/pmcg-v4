@@ -2234,20 +2234,13 @@
 
 
 
-        #rooms-table td:not(:nth-child(5)) {
-
+        #rooms-table td:not(:nth-child(6)) {
             white-space: nowrap !important;
-
         }
 
-
-
-        #rooms-table td:nth-child(5) {
-
+        #rooms-table td:nth-child(6) {
             min-width: 250px !important;
-
             white-space: normal !important;
-
         }
 
 

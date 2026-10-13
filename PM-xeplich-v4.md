@@ -8194,6 +8194,42 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 - `version.json` (nâng phiên bản v4.2.7-rev4)
 - `PM-xeplich-v4.md` (ghi nhật ký phát triển)
 
+### [v4.2.7-rev5] - 15:40 13/10/2026: Tách Riêng Cột Điều Dưỡng Độc Lập Khỏi KTV Trong Bảng Quản Lý Phòng Thủ Thuật
+
+#### 1. Yêu cầu & Bối cảnh:
+- Người dùng yêu cầu tạo thêm 1 cột riêng biệt để thể hiện Điều dưỡng trong phòng điều trị, tách bạch hoàn toàn khỏi KTV (trước đây cột mang tên `ĐD/KTV` chứa chung cả hai).
+
+#### 2. Giải pháp thực hiện:
+1. **Giao diện bảng phòng (`index.html`)**:
+   - Thêm cột `<th>Điều dưỡng</th>` bên cạnh `<th>KTV</th>`, nâng tổng số cột bảng phòng từ 7 lên 8 cột (`STT | TÊN PHÒNG | BÁC SĨ | KTV | ĐIỀU DƯỠNG | CÁC MÁY | SỐ GIƯỜNG | THAO TÁC`).
+   - Cập nhật CSS `#rooms-table td:not(:nth-child(6))` và `#rooms-table td:nth-child(6)` để căn chỉnh chính xác cột "Các Máy".
+2. **Logic hiển thị & Phân tách thông minh (`js/modules/app-resources.js`)**:
+   - Bổ sung hàm `splitKtvAndDd(item, cache)`:
+     - Nếu phòng đã có trường `dieuDuong`, hiển thị riêng biệt.
+     - Với dữ liệu lịch sử lưu chung trong trường `ktv`, tự động phân tách thông minh dựa trên tiền tố (`ĐD`, `DD` vs `KTV`) và chức danh trong danh mục nhân sự (`cache.staff`), giúp 100% dữ liệu phòng hiện hữu ngay lập tức hiển thị tách bạch không cần lưu lại.
+   - Khi chỉnh sửa (`editRoom`): Tự động tích đúng các checkbox tương ứng trong khung KTV (`.room-ktv-cb`) và Điều dưỡng (`.room-dd-cb`).
+   - Khi lưu (`saveRoom`): Tách riêng danh sách KTV và Điều dưỡng, lưu cả 2 trường `ktv` và `dieuDuong` vào CSDL.
+3. **Đồng bộ giải thuật xếp lịch (`js/scheduler-engine.js`)**:
+   - Đảm bảo `database.roomStaff[roomName]` nạp đầy đủ danh sách Bác sĩ, KTV và Điều dưỡng của phòng.
+4. **Backend Schema & APIs Cloudflare Worker (`backend/src/schema.js`, `backend/src/routes/patients.js`, `backend/src/routes/backup-sync.js`)**:
+   - Thêm cột `dieu_duong TEXT DEFAULT ''` vào bảng `phong` và danh sách tự động migration.
+   - Cập nhật các API `getPhong`, `addPhong`, `editPhong` và chức năng sao lưu/đồng bộ hỗ trợ đầy đủ `dieuDuong`.
+5. **Quy chuẩn phiên bản theo RULES.md**:
+   - Vượt qua 100% 9 tầng kiểm thử của `node scripts/verify-build.mjs`.
+   - Nâng phiên bản `4.2.7-rev5`, cập nhật `version.json`, `sw.js` (`pmcg-v4-cache-4.2.7-rev5`), `index.html` (timestamp `15:40 13/10/2026`, cache buster `?v=4.2.7-rev5`).
+
+**File sửa đổi:**
+- `index.html` (thêm cột Điều dưỡng, nâng cache buster ?v=4.2.7-rev5, timestamp 15:40 13/10/2026)
+- `css/style.css` (căn chỉnh nth-child(6) cho cột Các Máy)
+- `js/modules/app-resources.js` (bổ sung splitKtvAndDd, cập nhật renderRoomsTable, saveRoom, editRoom)
+- `js/scheduler-engine.js` (đồng bộ roomStaff gồm cả BS, KTV, Điều dưỡng)
+- `backend/src/schema.js` (migration thêm cột dieu_duong trong bảng phong)
+- `backend/src/routes/patients.js` (hỗ trợ trường dieuDuong trong API getPhong, addPhong, editPhong)
+- `backend/src/routes/backup-sync.js` (hỗ trợ trường dieuDuong khi sao lưu/đồng bộ)
+- `sw.js` (nâng CACHE_NAME pmcg-v4-cache-4.2.7-rev5)
+- `version.json` (nâng phiên bản v4.2.7-rev5)
+- `PM-xeplich-v4.md` (ghi nhật ký phát triển)
+
 
 
 

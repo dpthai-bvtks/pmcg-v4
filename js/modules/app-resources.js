@@ -319,6 +319,57 @@
     // 🏥 2. QUẢN LÝ PHÒNG BỆNH (ROOMS MANAGEMENT)
     // ============================================================
 
+    function splitKtvAndDd(item, cache) {
+        if (!item) return { ktv: '', dieuDuong: '' };
+        const rawKtv = String(item.ktv || item[3] || '').trim();
+        const rawDd = String(item.dieuDuong || item.dieu_duong || item.dd || (Array.isArray(item) ? item[7] : '') || '').trim();
+
+        if (rawDd) {
+            return { ktv: rawKtv, dieuDuong: rawDd };
+        }
+
+        if (!rawKtv) {
+            return { ktv: '', dieuDuong: '' };
+        }
+
+        const parts = rawKtv.split(',').map(s => s.trim()).filter(Boolean);
+        const ktvList = [];
+        const ddList = [];
+        const staffList = (cache && cache.staff) ? cache.staff : (typeof dataCache !== 'undefined' && dataCache.staff ? dataCache.staff : []);
+
+        parts.forEach(part => {
+            const lower = part.toLowerCase();
+            if (/^(đd|dd|điều dưỡng|y tá|hộ lý|phụ)\b/i.test(part) || lower.startsWith('đd ') || lower.startsWith('dd ')) {
+                ddList.push(part);
+            } else if (/^(ktv|kỹ thuật viên)\b/i.test(part) || lower.startsWith('ktv ')) {
+                ktvList.push(part);
+            } else {
+                const cleanName = part.replace(/^(bs|ktv|đd|dd)\s+/i, '').trim().toLowerCase();
+                const found = staffList.find(s => {
+                    if (!s) return false;
+                    const sName = String(s.ten || s.name || (Array.isArray(s) ? s[0] : '') || '').trim().toLowerCase();
+                    const sClean = sName.replace(/^(bs|ktv|đd|dd)\s+/i, '').trim();
+                    return sName === lower || sClean === cleanName;
+                });
+                if (found) {
+                    const role = String(found.vaiTro || found.role || (Array.isArray(found) ? found[1] : '') || '').toLowerCase();
+                    if (role.includes('điều dưỡng') || role.includes('y tá') || role.includes('hộ lý') || role.includes('phụ')) {
+                        ddList.push(part);
+                    } else {
+                        ktvList.push(part);
+                    }
+                } else {
+                    ktvList.push(part);
+                }
+            }
+        });
+
+        return {
+            ktv: ktvList.join(', '),
+            dieuDuong: ddList.join(', ')
+        };
+    }
+
     function renderRoomsTable() {
         const cache = getCache();
         const tbody = document.getElementById('rooms-list');
@@ -340,17 +391,19 @@
         }
 
         if (!cache.room || !cache.room.length) {
-            tbody.innerHTML = emptyRowHtml(7, 'Chưa có dữ liệu phòng');
+            tbody.innerHTML = emptyRowHtml(8, 'Chưa có dữ liệu phòng');
             return;
         }
 
         tbody.innerHTML = cache.room.map((item, i) => {
             const idx = cache.room.indexOf(item);
+            const staff = splitKtvAndDd(item, cache);
             return `<tr class="draggable-row editable-row" data-drag-idx="${i}" onclick="if(!window._isDraggingRow) editRoom(${idx})" title="Bấm sửa (Kéo thả nút ☰ hoặc bấm ▲/▼ để đổi thứ tự, Phím Delete để xóa)">
                 <td>${sttControlHtml("rooms", i, cache.room.length)}</td>
                 <td><strong>${safeEscape(item.tenPhong || item[1] || '')}</strong></td>
                 <td>${safeEscape(item.bacSi || item[2] || '')}</td>
-                <td style="font-size:11px">${safeEscape(item.ktv || item[3] || '')}</td>
+                <td style="font-size:11px">${safeEscape(staff.ktv)}</td>
+                <td style="font-size:11px">${safeEscape(staff.dieuDuong)}</td>
                 <td style="font-size:11px; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${safeEscape(item.danhSachMay || item[4] || '')}">${safeEscape(item.danhSachMay || item[4] || '')}</td>
                 <td style="text-align:center;">${item.soGiuong || item[5] || 0}</td>
                 <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteRoom(${idx})">Xóa</button></td>
@@ -381,8 +434,16 @@
 
         if (!ten) return alert("Nhập tên phòng");
 
-        const bs = Array.from(document.querySelectorAll('.room-doc-cb:checked')).map(cb => cb.value).join(', ');
-        const ktv = Array.from(document.querySelectorAll('.room-stf-cb:checked')).map(cb => cb.value).join(', ');
+        const bs = Array.from(document.querySelectorAll('.room-doc-cb:checked')).map(cb => cb.value.trim()).filter(Boolean).join(', ');
+        let ktv = Array.from(document.querySelectorAll('.room-ktv-cb:checked')).map(cb => cb.value.trim()).filter(Boolean).join(', ');
+        let dd = Array.from(document.querySelectorAll('.room-dd-cb:checked')).map(cb => cb.value.trim()).filter(Boolean).join(', ');
+
+        if (!ktv && !dd && document.querySelectorAll('.room-stf-cb:checked').length) {
+            const allStf = Array.from(document.querySelectorAll('.room-stf-cb:checked')).map(cb => cb.value.trim()).filter(Boolean);
+            const spl = splitKtvAndDd({ ktv: allStf.join(', ') }, cache);
+            ktv = spl.ktv;
+            dd = spl.dieuDuong;
+        }
 
         const roomIdx = editIdx.room > -1 ? editIdx.room : (cache.room || []).length;
 
@@ -440,7 +501,7 @@
             const oldName = oldItem ? String(oldItem.tenPhong || oldItem.ten_phong || (Array.isArray(oldItem) ? oldItem[1] : '') || '').trim() : '';
             const oldId = oldItem ? oldItem.id : null;
 
-            cache.room[editIdx.room] = { id: oldId, tenPhong: ten, bacSi: bs, ktv, danhSachMay: dsMay, soGiuong: slGiuong, danhSachGiuong: dsGiuong };
+            cache.room[editIdx.room] = { id: oldId, tenPhong: ten, bacSi: bs, ktv, dieuDuong: dd, danhSachMay: dsMay, soGiuong: slGiuong, danhSachGiuong: dsGiuong };
 
             if (oldName !== ten) {
                 if (cache.pat) {
@@ -480,16 +541,25 @@
                     tenPhong: ten,
                     bacSi: bs,
                     ktv: ktv,
+                    dieuDuong: dd,
                     danhSachMay: dsMay,
                     soGiuong: slGiuong,
                     danhSachGiuong: dsGiuong
-                }, editIdx.room, ten, bs, ktv, dsMay, slGiuong, dsGiuong, oldName]);
+                }, editIdx.room, ten, bs, ktv, dsMay, slGiuong, dsGiuong, oldName, dd]);
             }
         } else {
-            cache.room.push({ tenPhong: ten, bacSi: bs, ktv, danhSachMay: dsMay, soGiuong: slGiuong, danhSachGiuong: dsGiuong });
+            cache.room.push({ tenPhong: ten, bacSi: bs, ktv, dieuDuong: dd, danhSachMay: dsMay, soGiuong: slGiuong, danhSachGiuong: dsGiuong });
 
             if (typeof callApi === 'function') {
-                callApi('addPhong', [ten, bs, ktv, dsMay, slGiuong, dsGiuong]);
+                callApi('addPhong', [{
+                    tenPhong: ten,
+                    bacSi: bs,
+                    ktv: ktv,
+                    dieuDuong: dd,
+                    danhSachMay: dsMay,
+                    soGiuong: slGiuong,
+                    danhSachGiuong: dsGiuong
+                }, ten, bs, ktv, dsMay, slGiuong, dsGiuong, dd]);
             }
         }
 
@@ -522,20 +592,41 @@
         if (nameEl) nameEl.value = item.tenPhong || item[1] || '';
         if (bedsEl) bedsEl.value = item.soGiuong || item[5] || 0;
 
-        document.querySelectorAll('.room-doc-cb, .room-stf-cb').forEach(cb => cb.checked = false);
+        document.querySelectorAll('.room-doc-cb, .room-ktv-cb, .room-dd-cb, .room-stf-cb').forEach(cb => cb.checked = false);
+
+        function matchCheckbox(selector, val) {
+            if (!val) return null;
+            const clean = val.trim().toLowerCase();
+            const cleanNoPrefix = clean.replace(/^(bs|ktv|đd|dd)\s+/i, '').trim();
+            const cbs = document.querySelectorAll(selector);
+            for (const cb of cbs) {
+                const cbVal = cb.value.trim().toLowerCase();
+                const cbNoPrefix = cbVal.replace(/^(bs|ktv|đd|dd)\s+/i, '').trim();
+                if (cbVal === clean || cbNoPrefix === cleanNoPrefix) {
+                    return cb;
+                }
+            }
+            return null;
+        }
 
         const bacSi = item.bacSi || item[2] || '';
         if (bacSi) {
             bacSi.split(',').forEach(b => {
-                const cb = document.querySelector(`.room-doc-cb[value="${b.trim()}"]`);
+                const cb = matchCheckbox('.room-doc-cb', b);
                 if (cb) cb.checked = true;
             });
         }
 
-        const ktv = item.ktv || item[3] || '';
-        if (ktv) {
-            ktv.split(',').forEach(k => {
-                const cb = document.querySelector(`.room-stf-cb[value="${k.trim()}"]`);
+        const staffSplit = splitKtvAndDd(item, cache);
+        if (staffSplit.ktv) {
+            staffSplit.ktv.split(',').forEach(k => {
+                const cb = matchCheckbox('.room-ktv-cb, .room-stf-cb', k);
+                if (cb) cb.checked = true;
+            });
+        }
+        if (staffSplit.dieuDuong) {
+            staffSplit.dieuDuong.split(',').forEach(d => {
+                const cb = matchCheckbox('.room-dd-cb, .room-stf-cb', d);
                 if (cb) cb.checked = true;
             });
         }

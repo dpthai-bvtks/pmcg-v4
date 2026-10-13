@@ -1,6 +1,6 @@
 {
-    "version": "4.2.7-rev4",
+    "version": "4.2.7-rev5",
     "releaseDate": "13/10/2026",
-    "releaseTime": "14:55 13/10/2026",
-    "notes": "Tối ưu hóa toàn diện giải thuật xếp lịch và bộ giải toán CP-SAT: Khắc phục triệt để tình trạng còn nhiều giờ rảnh nhưng ca bệnh bị rớt (nới lỏng khoảng cách ngoại trú lên 20 phút / vô hạn khi vét ca, mặc định buổi TuDong, mở rộng quét khoảng trống 5 phút và điểm rảnh của bệnh nhân trong backfill, loại bỏ dừng sớm giả khi còn ca rớt, bổ sung máy rảnh liên phòng và thử nghiệm seed đối xứng)."
+    "releaseTime": "15:40 13/10/2026",
+    "notes": "Tách riêng biệt cột Điều dưỡng khỏi KTV trong bảng Quản lý phòng thủ thuật, tự động phân tách dữ liệu cũ và đồng bộ CSDL đám mây kèm form phòng."
 }
