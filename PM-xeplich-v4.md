@@ -8037,6 +8037,43 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 - `version.json`, `index.html`, `sw.js` (nâng phiên bản lên v4.2.6-rev3)
 - `PM-xeplich-v4.md` (ghi nhật ký phát triển)
 
+---
+
+### [v4.2.7-rev1] - 07:25 13/10/2026: Gỡ Bỏ Nút Xuất Lệnh emrHIS & Bổ Sung Cột NV Phụ Ở File Xuất Lịch
+
+#### 1. Yêu cầu của người dùng:
+- Gỡ bỏ nút **"🤖 XUẤT LỆNH emrHIS"** trên thanh công cụ của Tab Lịch trình (`#tab-schedule`).
+- Bổ sung hiển thị cột **NV Phụ** (Kỹ thuật viên 2 / Điều dưỡng phụ) trong file xuất lịch (file Excel và file PDF).
+
+#### 2. Phân tích nguyên nhân & Giải pháp kỹ thuật:
+1. **Gỡ bỏ nút xuất emrHIS trên giao diện người dùng**:
+   - Trong `index.html` (dòng 1913-1914), gỡ bỏ phần tử button gọi hàm `exportEmrHisTasks()`.
+   - Vẫn bảo lưu hàm nghiệp vụ `exportDataForHisAuto` trong `js/modules/app-export-reports.js` để tránh phá vỡ API runtime.
+2. **Bổ sung cột NV Phụ trong file Excel xuất lịch (`exportSchedule`)**:
+   - Trong `js/modules/app-export-reports.js`:
+     + Nâng ma trận dữ liệu từ 9 cột lên 10 cột: `["STT", "Tên Bệnh Nhân", "Năm Sinh", "Phòng Điều Trị", "Thủ Thuật", "Bắt Đầu", "Kết Thúc", "KTV / Bác Sĩ", "NV Phụ", "Máy Móc"]`.
+     + Ánh xạ đầy đủ `nvChinhVal` (KTV chính) và `nvPhuVal` (KTV/Điều dưỡng phụ) qua hàm chuẩn hóa tên nhân sự `cleanAndHealStaffName`.
+     + Cập nhật công thức tổng kết `SUBTOTAL(103, ...)` đủ 10 phần tử.
+     + Cập nhật phạm vi bộ lọc tự động `!autofilter`: từ `A5:I...` sang `A5:J...`.
+     + Cập nhật các khối gộp dòng tiêu đề `!merges`: mở rộng từ cột `c=0` đến `c=9`.
+     + Cập nhật mảng độ rộng cột `!cols`: thêm `{ wch: 18 }` cho cột NV Phụ.
+     + Mở rộng vòng lặp format style `xlsx-js-style`: chạy từ `C = 0` đến `C <= 9`, tự động in đậm cả cột KTV chính (C=7) và cột NV Phụ (C=8).
+3. **Bổ sung cột NV Phụ trong file PDF xuất lịch (`exportSchedulePDF`)**:
+   - Thêm cột `{ text: 'NV Phụ', style: 'tableHeader' }` vào header bảng.
+   - Thêm ô dữ liệu `row.nvPhu` với font size 8.5pt.
+   - Tối ưu lại mảng độ rộng 9 cột `widths: [20, 130, 42, 135, 42, 42, 95, 95, '*']` vừa vặn hoàn hảo trên khổ giấy A4 Landscape.
+4. **Kiểm thử & Nâng phiên bản**:
+   - Vượt qua 100% 9 tầng kiểm thử của `node scripts/verify-build.mjs`.
+   - Nâng phiên bản sang ngày mới: `4.2.7-rev1` trên `version.json`, `index.html` (footer version `Phiên bản: 4.2.7`, timestamp `07:25 13/10/2026`, cache buster `?v=4.2.7-rev1`), `sw.js` (`pmcg-v4-cache-4.2.7-rev1`).
+   - Deploy Cloudflare Pages (`pmcg-v3`).
+
+**File sửa đổi:**
+- `index.html` (gỡ nút exportEmrHisTasks, nâng phiên bản v4.2.7-rev1)
+- `js/modules/app-export-reports.js` (bổ sung cột NV Phụ ở exportSchedule và exportSchedulePDF)
+- `version.json`, `sw.js` (đồng bộ phiên bản v4.2.7-rev1)
+- `PM-xeplich-v4.md` (ghi nhật ký phát triển)
+
+
 
 
 

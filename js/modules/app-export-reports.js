@@ -54,13 +54,13 @@
 
             const wb = XLSX.utils.book_new();
 
-            // Xây dựng ma trận dữ liệu Excel (9 Cột có Cột Phòng Điều Trị)
+            // Xây dựng ma trận dữ liệu Excel (10 Cột có Cột NV Phụ & Cột Phòng Điều Trị)
             const ws_data = [
                 [(localStorage.getItem('pm_unit_name') || 'Bệnh viện Than - Khoáng sản Cơ sở 2').toUpperCase() + " - KHOA YHCT & PHCN"],
                 ["BẢNG LỊCH TRÌNH ĐIỀU TRỊ THỦ THUẬT"],
                 [`Ngày thực hiện: ${displayDate}`],
                 [""], // Dòng trống cách quãng
-                ["STT", "Tên Bệnh Nhân", "Năm Sinh", "Phòng Điều Trị", "Thủ Thuật", "Bắt Đầu", "Kết Thúc", "KTV / Bác Sĩ", "Máy Móc"]
+                ["STT", "Tên Bệnh Nhân", "Năm Sinh", "Phòng Điều Trị", "Thủ Thuật", "Bắt Đầu", "Kết Thúc", "KTV / Bác Sĩ", "NV Phụ", "Máy Móc"]
             ];
 
             const dischargedCount = safeSched.filter(r => r.__isDischarged).length;
@@ -70,6 +70,9 @@
                 if (row.__isDischarged) tenBNText += ' (RV)';
                 if (row.__dropped) tenBNText += ' (❌ Rớt)';
 
+                const nvChinhVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvChinh) : (row.nvChinh || '')).trim();
+                const nvPhuVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvPhu) : (row.nvPhu || '')).trim();
+
                 ws_data.push([
                     idx + 1,
                     tenBNText,
@@ -78,7 +81,8 @@
                     String(row.thuThuat || '').trim(),
                     String(row.gioDienRa || '').trim(),
                     String(row.gioKetThuc || '').trim(),
-                    String(row.nvChinh || '').trim(),
+                    nvChinhVal,
+                    nvPhuVal,
                     String(row.may || '--').trim()
                 ]);
             });
@@ -97,24 +101,25 @@
                 "",
                 "",
                 "",
+                "",
                 ""
             ]);
 
             const ws = XLSX.utils.aoa_to_sheet(ws_data);
 
-            // 🎯 Kích hoạt Drop-list Filter (AutoFilter) tại dòng Header (A5:I${lastDataRow})
-            ws['!autofilter'] = { ref: `A5:I${lastDataRow}` };
+            // 🎯 Kích hoạt Drop-list Filter (AutoFilter) tại dòng Header (A5:J${lastDataRow})
+            ws['!autofilter'] = { ref: `A5:J${lastDataRow}` };
 
-            // Merge các dòng tiêu đề (Cột A đến I: c=0 đến c=8)
+            // Merge các dòng tiêu đề (Cột A đến J: c=0 đến c=9)
             ws['!merges'] = [
-                { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }, // Dòng 1: Tên bệnh viện
-                { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } }, // Dòng 2: Tên bảng
-                { s: { r: 2, c: 0 }, e: { r: 2, c: 8 } }, // Dòng 3: Ngày thực hiện
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } }, // Dòng 1: Tên bệnh viện
+                { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } }, // Dòng 2: Tên bảng
+                { s: { r: 2, c: 0 }, e: { r: 2, c: 9 } }, // Dòng 3: Ngày thực hiện
                 { s: { r: ws_data.length - 1, c: 0 }, e: { r: ws_data.length - 1, c: 2 } }, // Dòng tổng: Cột A-C
-                { s: { r: ws_data.length - 1, c: 4 }, e: { r: ws_data.length - 1, c: 8 } }  // Dòng tổng: Cột E-I
+                { s: { r: ws_data.length - 1, c: 4 }, e: { r: ws_data.length - 1, c: 9 } }  // Dòng tổng: Cột E-J
             ];
 
-            // Độ rộng tối ưu 9 cột
+            // Độ rộng tối ưu 10 cột
             ws['!cols'] = [
                 { wch: 6 },   // STT
                 { wch: 28 },  // Tên Bệnh Nhân
@@ -124,6 +129,7 @@
                 { wch: 11 },  // Bắt Đầu
                 { wch: 11 },  // Kết Thúc
                 { wch: 20 },  // KTV / Bác Sĩ
+                { wch: 18 },  // NV Phụ
                 { wch: 18 }   // Máy Móc
             ];
 
@@ -180,7 +186,7 @@
 
                     // Tiêu đề cột bảng (Dòng 4, index r=4)
                     if (R === 4) {
-                        for (let C = 0; C <= 8; C++) {
+                        for (let C = 0; C <= 9; C++) {
                             const addr = XLSX.utils.encode_cell({ r: 4, c: C });
                             if (ws[addr]) {
                                 ws[addr].s = {
@@ -201,7 +207,7 @@
 
                     // Dòng tổng kết cuối bảng
                     if (R === ws_data.length - 1) {
-                        for (let C = 0; C <= 8; C++) {
+                        for (let C = 0; C <= 9; C++) {
                             const addr = XLSX.utils.encode_cell({ r: R, c: C });
                             if (ws[addr]) {
                                 ws[addr].s = {
@@ -226,7 +232,7 @@
                     const isRV = rowObj && !!rowObj.__isDischarged;
                     const centerCols = new Set([0, 2, 3, 5, 6]); // STT, NamSinh, Phong, BatDau, KetThuc
 
-                    for (let C = 0; C <= 8; C++) {
+                    for (let C = 0; C <= 9; C++) {
                         const addr = XLSX.utils.encode_cell({ r: R, c: C });
                         if (!ws[addr]) continue;
 
@@ -238,7 +244,7 @@
                             font: {
                                 name: "Arial",
                                 sz: 10,
-                                bold: isRV || C === 0 || C === 5 || C === 7,
+                                bold: isRV || C === 0 || C === 5 || C === 7 || C === 8,
                                 color: { rgb: fontColor }
                             },
                             alignment: { horizontal: alignH, vertical: "center" },
@@ -430,7 +436,7 @@
                 const roomRows = roomMap[rName];
                 const dischargedCount = roomRows.filter(r => r.__isDischarged).length;
 
-                // Bảng dữ liệu của riêng phòng này (không có cột Giường)
+                // Bảng dữ liệu của riêng phòng này (có cột NV Phụ)
                 const bodyTable = [
                     [
                         { text: 'STT', style: 'tableHeader', alignment: 'center' },
@@ -440,6 +446,7 @@
                         { text: 'Bắt Đầu', style: 'tableHeader', alignment: 'center' },
                         { text: 'Kết Thúc', style: 'tableHeader', alignment: 'center' },
                         { text: 'KTV / Bác Sĩ', style: 'tableHeader' },
+                        { text: 'NV Phụ', style: 'tableHeader' },
                         { text: 'Máy Móc', style: 'tableHeader' }
                     ]
                 ];
@@ -459,6 +466,7 @@
                         { text: String(row.gioDienRa || ''), alignment: 'center', bold: true, color: '#059669', fontSize: 9 },
                         { text: String(row.gioKetThuc || ''), alignment: 'center', fontSize: 9 },
                         { text: String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvChinh) : (row.nvChinh || '')), bold: true, fontSize: 9 },
+                        { text: String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvPhu) : (row.nvPhu || '')), fontSize: 8.5 },
                         { text: String(row.may || '--'), fontSize: 8.5 }
                     ]);
                 });
@@ -493,7 +501,7 @@
                     {
                         table: {
                             headerRows: 1,
-                            widths: [24, 155, 48, 165, 48, 48, 120, '*'],
+                            widths: [20, 130, 42, 135, 42, 42, 95, 95, '*'],
                             body: bodyTable
                         },
                         layout: {
