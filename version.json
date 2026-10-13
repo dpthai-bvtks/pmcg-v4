@@ -1,6 +1,6 @@
 {
-    "version": "4.2.7-rev2",
+    "version": "4.2.7-rev3",
     "releaseDate": "13/10/2026",
-    "releaseTime": "10:55 13/10/2026",
-    "notes": "Loại bỏ triệt để logic đoán mò nuốt nguyên âm chữa lành tên bệnh nhân ở cả frontend và backend, bảo toàn 100% tên bệnh nhân gốc từ file HIS/Excel."
+    "releaseTime": "11:45 13/10/2026",
+    "notes": "Nâng cấp tiện ích tìm máy rảnh: hiển thị dropdown mã máy cùng loại, tính toán và hiển thị đầy đủ các khoảng thời gian rảnh trong ngày (Khung giờ, Số phút) tương tự giờ rảnh của nhân sự."
 }

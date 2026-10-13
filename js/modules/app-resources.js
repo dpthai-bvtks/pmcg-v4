@@ -67,9 +67,13 @@
         const procMachineSelect = document.getElementById('proc-machine');
         const searchMachineSelect = document.getElementById('search-machine-type');
         if (procMachineSelect && searchMachineSelect) {
+            const prevSearchType = searchMachineSelect.value;
             const types = [...new Set((cache.machine || []).map(m => String(m.tenLoai || m[1] || '').trim()))].filter(Boolean);
             procMachineSelect.innerHTML = '<option>Thủ công</option>' + types.map(t => `<option value="${safeEscape(t)}">${safeEscape(t)}</option>`).join('');
-            searchMachineSelect.innerHTML = '<option>Chọn loại máy</option>' + types.map(t => `<option value="${safeEscape(t)}">${safeEscape(t)}</option>`).join('');
+            searchMachineSelect.innerHTML = '<option value="">Chọn loại máy...</option>' + types.map(t => `<option value="${safeEscape(t)}">${safeEscape(t)}</option>`).join('');
+            if (prevSearchType && types.includes(prevSearchType)) {
+                searchMachineSelect.value = prevSearchType;
+            }
         }
 
         const typeDatalist = document.getElementById('machine-types-datalist');

@@ -2961,7 +2961,7 @@ var dataCache = window.dataCache;
 
                     if (targetId === 'search-doc-time') timBacSiRanh();
 
-                    else if (targetId === 'search-machine-time' || targetId === 'search-machine-type') timMayRanh();
+                    else if (targetId === 'search-machine-time' || targetId === 'search-machine-type' || targetId === 'search-machine-code') timMayRanh();
 }
 }
 
@@ -8958,7 +8958,72 @@ var dataCache = window.dataCache;
             }
         }
 
+        function onSearchMachineTypeChange() {
+            const loai = (document.getElementById('search-machine-type')?.value || '').trim();
+            const codeSelect = document.getElementById('search-machine-code');
+            if (!codeSelect) return;
+
+            if (!loai || loai.includes("Chọn loại")) {
+                codeSelect.innerHTML = '<option value="">🔍 Tất cả mã máy...</option>';
+                const tbody = document.getElementById('free-machine-list');
+                if (tbody) tbody.innerHTML = '<tr><td colspan="3" align="center" style="color:gray; padding: 20px;">Chọn loại máy và bấm Tìm...</td></tr>';
+                return;
+            }
+
+            const allMachines = (dataCache && Array.isArray(dataCache.machine)) ? dataCache.machine : [];
+            const mayThuocLoai = allMachines.filter(m => {
+                if (!m) return false;
+                const t = String(m.tenLoai || m.ten_loai || (Array.isArray(m) ? m[1] : '') || '').trim();
+                const s = m.trangThai || m.trang_thai || (Array.isArray(m) ? m[3] : '') || 'Sẵn sàng';
+                return t.toLowerCase() === loai.toLowerCase() && s === 'Sẵn sàng';
+            }).map(m => String(m.maMay || m.ma_may || (Array.isArray(m) ? m[2] : '') || '').trim()).filter(Boolean);
+
+            const uniqueCodes = [...new Set(mayThuocLoai)].sort();
+            codeSelect.innerHTML = '<option value="">🔍 Tất cả mã máy (' + uniqueCodes.length + ')...</option>' +
+                uniqueCodes.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+
+            timMayRanh();
+        }
+        window.onSearchMachineTypeChange = onSearchMachineTypeChange;
+
+        function filterMachineTable() {
+            const codeSelect = document.getElementById('search-machine-code');
+            const selectedCode = (codeSelect?.value || '').trim().toLowerCase();
+            const tbody = document.getElementById('free-machine-list');
+            if (!tbody) return;
+
+            const trs = Array.from(tbody.getElementsByTagName('tr')).filter(tr => tr.id !== 'no-match-machine-row');
+            if (!trs.length) return;
+
+            let visibleCount = 0;
+            trs.forEach(tr => {
+                const td = tr.getElementsByTagName('td')[0];
+                if (td) {
+                    const txt = (td.textContent || td.innerText).trim().toLowerCase();
+                    if (!selectedCode || txt.includes(selectedCode)) {
+                        tr.style.display = '';
+                        visibleCount++;
+                    } else {
+                        tr.style.display = 'none';
+                    }
+                }
+            });
+
+            const oldNoMatch = document.getElementById('no-match-machine-row');
+            if (oldNoMatch) oldNoMatch.remove();
+
+            if (visibleCount === 0 && trs.length > 0) {
+                tbody.insertAdjacentHTML('beforeend', '<tr id="no-match-machine-row"><td colspan="3" align="center" style="color:#c0392b; font-weight:bold; padding:20px;">Không có khung giờ rảnh cho mã máy này</td></tr>');
+            }
+        }
+        window.filterMachineTable = filterMachineTable;
+
         function timMayRanh() {
+            let previousSelection = "";
+            if (document.getElementById('search-machine-code')) {
+                previousSelection = document.getElementById('search-machine-code').value;
+            }
+
             const searchDate = document.getElementById('utils-search-date')?.value || '';
             if (!searchDate) return alert("Vui lòng chọn Ngày cần tìm ở trên trước!");
 
@@ -8972,7 +9037,9 @@ var dataCache = window.dataCache;
                 return;
             }
 
-            const loai = document.getElementById('search-machine-type').value;
+            const loai = (document.getElementById('search-machine-type')?.value || '').trim();
+            if (!loai || loai.includes("Chọn loại")) return alert("Vui lòng chọn Loại máy cần tìm!");
+
             let gio_str = (document.getElementById('search-machine-time')?.value || '').trim();
             if (!gio_str) {
                 gio_str = "07:30";
@@ -8987,8 +9054,6 @@ var dataCache = window.dataCache;
                 sourceData = window.utilsScheduleData || [];
             }
 
-            if (!loai || loai.includes("Chọn loại")) return alert("Vui lòng chọn Loại máy cần tìm!");
-
             const t_vao = t2m(gio_str);
             const tbody = document.getElementById('free-machine-list');
             tbody.innerHTML = '';
@@ -8997,12 +9062,27 @@ var dataCache = window.dataCache;
                 if (!m) return false;
                 const t = String(m.tenLoai || m.ten_loai || (Array.isArray(m) ? m[1] : '') || '').trim();
                 const s = m.trangThai || m.trang_thai || (Array.isArray(m) ? m[3] : '') || 'Sẵn sàng';
-                return t === loai.trim() && s === 'Sẵn sàng';
+                return t.toLowerCase() === loai.toLowerCase() && s === 'Sẵn sàng';
             }).map(m => String(m.maMay || m.ma_may || (Array.isArray(m) ? m[2] : '') || '').trim()).filter(Boolean);
 
             if (!may_thuoc_loai.length) {
-                tbody.innerHTML = `<tr> <td colspan="2" align="center" style="color:#c0392b; font-weight:bold;">Máy đang hỏng/bảo trì hết</td></tr>`;
+                tbody.innerHTML = `<tr> <td colspan="3" align="center" style="color:#c0392b; font-weight:bold; padding:20px;">Máy đang hỏng/bảo trì hết</td></tr>`;
                 return;
+            }
+
+            // Đồng bộ dropdown mã máy cùng loại nếu chưa có hoặc số lượng khác
+            const codeSelect = document.getElementById('search-machine-code');
+            if (codeSelect) {
+                const uniqueCodes = [...new Set(may_thuoc_loai)].sort();
+                const currentOpts = Array.from(codeSelect.options).map(o => o.value).filter(Boolean);
+                const isMatch = uniqueCodes.length === currentOpts.length && uniqueCodes.every(c => currentOpts.includes(c));
+                if (!isMatch) {
+                    codeSelect.innerHTML = '<option value="">🔍 Tất cả mã máy (' + uniqueCodes.length + ')...</option>' +
+                        uniqueCodes.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+                    if (previousSelection && uniqueCodes.includes(previousSelection)) {
+                        codeSelect.value = previousSelection;
+                    }
+                }
             }
 
             const m_busy = {};
@@ -9037,6 +9117,49 @@ var dataCache = window.dataCache;
                 }
             });
 
+            // Ca làm việc chuẩn của khoa/phòng cho máy móc
+            let shifts = [];
+            const staffList = (window._liveDataCacheBackup && window._liveDataCacheBackup.staff && window._liveDataCacheBackup.staff.length > 0)
+                ? window._liveDataCacheBackup.staff
+                : (dataCache.staff || []);
+
+            const staffShifts = [];
+            staffList.forEach(s => {
+                if (s && s.thoiGianLam && s.trangThai !== 'Nghỉ cả ngày') {
+                    String(s.thoiGianLam).split(',').forEach(sh => {
+                        const pts = sh.split('-');
+                        if (pts.length === 2) {
+                            const s0 = t2m(pts[0].trim()), s1 = t2m(pts[1].trim());
+                            if (!isNaN(s0) && !isNaN(s1) && s1 > s0) staffShifts.push([s0, s1]);
+                        }
+                    });
+                }
+            });
+
+            const isWinter = (typeof window !== 'undefined' && typeof window.getCurrentStaffSeason === 'function')
+                ? (window.getCurrentStaffSeason() === 'winter')
+                : false;
+
+            if (staffShifts.length > 0) {
+                const morningShifts = staffShifts.filter(s => s[0] < 720);
+                const afternoonShifts = staffShifts.filter(s => s[0] >= 720);
+                if (morningShifts.length > 0) {
+                    shifts.push([Math.min(...morningShifts.map(s => s[0])), Math.max(...morningShifts.map(s => s[1]))]);
+                }
+                if (afternoonShifts.length > 0) {
+                    shifts.push([Math.min(...afternoonShifts.map(s => s[0])), Math.max(...afternoonShifts.map(s => s[1]))]);
+                }
+            }
+
+            if (!shifts.length) {
+                shifts = isWinter ? [[450, 720], [780, 1014]] : [[420, 690], [780, 1014]];
+            }
+
+            const yhctEndRaw = document.getElementById("admin-yhct-end")?.value;
+            const yhctLunchRaw = document.getElementById("admin-yhct-lunch")?.value;
+            const yhctEndVal = (yhctEndRaw !== undefined && yhctEndRaw !== '') ? (parseInt(yhctEndRaw) || 0) : 0;
+            const yhctLunchVal = (yhctLunchRaw !== undefined && yhctLunchRaw !== '') ? (parseInt(yhctLunchRaw) || 0) : 0;
+
             let found = false;
             may_thuoc_loai.forEach(m => {
                 const busy = m_busy[m].sort((a, b) => a[0] - b[0]);
@@ -9047,29 +9170,57 @@ var dataCache = window.dataCache;
                     b[0] <= last[1] ? merged[merged.length - 1] = [last[0], Math.max(last[1], b[1])] : merged.push(b);
                 });
 
-                let is_free = true, free_until = 1440;
-                for (const b of merged) {
-                    if (b[0] <= t_vao && t_vao < b[1]) {
-                        is_free = false;
-                        break;
-                    }
-                    if (b[1] <= t_vao) continue;
-                    if (b[0] > t_vao) free_until = Math.min(free_until, b[0]);
-                }
+                shifts.forEach((sh, sIdx) => {
+                    const extraMins = (sIdx === 0 && shifts.length > 1) ? yhctLunchVal : ((sIdx === shifts.length - 1) ? yhctEndVal : 0);
+                    const shEndExtended = sh[1] + extraMins;
+                    let curr = sh[0];
 
-                if (is_free) {
-                    tbody.innerHTML += `<tr>
-                        <td><strong>${m}</strong></td>
-                        <td style="color:#27ae60; font-weight:bold;">${free_until === 1440 ? "Hết ngày" : `Đến ${m2t(free_until - 1)}`}</td>
-                    </tr>`;
-                    found = true;
-                }
+                    for (const b of merged) {
+                        if (b[0] >= shEndExtended) break;
+
+                        if (curr < b[0]) {
+                            const valid_start = Math.max(curr, t_vao);
+                            if (valid_start < b[0]) {
+                                const mins = b[0] - valid_start;
+                                if (mins >= 1) {
+                                    tbody.innerHTML += `<tr>
+                                        <td>⚙️ <b>${escapeHtml(m)}</b></td>
+                                        <td>${m2t(valid_start)} - ${m2t(b[0] - 1)}</td>
+                                        <td><strong style="color:#d35400">${mins}</strong></td>
+                                    </tr>`;
+                                    found = true;
+                                }
+                            }
+                        }
+                        curr = Math.max(curr, b[1]);
+                    }
+
+                    if (curr < shEndExtended) {
+                        const valid_start = Math.max(curr, t_vao);
+                        if (valid_start < shEndExtended) {
+                            const mins = shEndExtended - valid_start;
+                            if (mins >= 1) {
+                                const noteOvertime = extraMins > 0 ? ` <span style="font-size:11px; color:#e67e22; font-weight:normal;">(+${extraMins}p lố)</span>` : '';
+                                tbody.innerHTML += `<tr>
+                                    <td>⚙️ <b>${escapeHtml(m)}</b></td>
+                                    <td>${m2t(valid_start)} - ${m2t(shEndExtended - 1)}${noteOvertime}</td>
+                                    <td><strong style="color:#d35400">${mins}</strong></td>
+                                </tr>`;
+                                found = true;
+                            }
+                        }
+                    }
+                });
             });
 
             if (!found) {
-                tbody.innerHTML = `<tr> <td colspan="2" align="center" style="color:#c0392b; font-weight:bold;">Hết máy rảnh</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="3" align="center" style="color:#c0392b; font-weight:bold; padding:20px;">Hết máy rảnh trong khoảng thời gian này</td></tr>`;
             }
+
+            // Áp dụng bộ lọc mã máy nếu đang chọn
+            filterMachineTable();
         }
+        window.timMayRanh = timMayRanh;
 
         // ============================================================
 

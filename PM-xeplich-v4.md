@@ -8106,6 +8106,43 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 - `version.json` (nâng phiên bản v4.2.7-rev2)
 - `PM-xeplich-v4.md` (ghi nhật ký phát triển)
 
+---
+
+### [v4.2.7-rev3] - 11:45 13/10/2026: Nâng Cấp Tiện Ích Tìm Máy Rảnh (Dropdown Mã Máy & Khung Giờ Rảnh Đầy Đủ)
+
+#### 1. Yêu cầu của người dùng:
+- Xem lại tính năng tìm giờ rảnh của máy móc trong Tiện ích tìm kiếm rảnh (`#tab-utils`).
+- Thêm cơ chế: khi chọn Loại máy thì sẽ xuất hiện thêm 1 dropdown chứa danh sách các Mã máy cùng loại đó.
+- Sau đó tính toán và hiển thị các khoảng thời gian rảnh đầy đủ (Khung giờ bắt đầu - kết thúc, Số phút rảnh) tương tự như giờ rảnh của nhân sự, thay vì chỉ hiện "Rảnh đến" cụt lủn.
+
+#### 2. Phân tích nguyên nhân & Giải pháp kỹ thuật:
+1. **Hạn chế trước đó**:
+   - Hàm `timMayRanh` cũ chỉ kiểm tra xem tại đúng thời điểm `t_vao` (ví dụ 09:00) máy có rảnh hay không và rảnh đến mấy giờ (`free_until`).
+   - Nếu lúc 09:00 máy đang bận, toàn bộ máy đó bị ẩn khỏi bảng và người dùng không thể biết các khung giờ khác trong ngày máy rảnh lúc nào để xếp ca.
+2. **Triển khai kỹ thuật mới**:
+   - **Giao diện Tiện ích (`index.html`)**:
+     + Bổ sung dropdown `<select id="search-machine-code" onchange="filterMachineTable()">` bên cạnh dropdown chọn Loại máy.
+     + Cập nhật bảng kết quả `#free-machine-list` từ 2 cột (`Tên máy` | `Rảnh đến`) sang chuẩn 3 cột (`Tên máy` | `Khung giờ` | `Phút`) đồng bộ với bảng Bác sĩ rảnh bên trái.
+   - **Xử lý sự kiện & Lọc tương tác (`js/app.js`)**:
+     + Viết hàm `onSearchMachineTypeChange()`: khi chọn Loại máy, trích xuất danh sách mã máy sẵn sàng cùng loại từ `dataCache.machine`, nạp vào `search-machine-code` và tự động kích hoạt tìm kiếm.
+     + Viết hàm `filterMachineTable()`: hỗ trợ lọc mượt mà theo mã máy đã chọn hoặc xem toàn bộ máy cùng loại ("🔍 Tất cả mã máy...").
+     + Viết lại hoàn chỉnh thuật toán `timMayRanh()`: tính toán các ca làm việc của khoa/phòng trong ngày (ca sáng, ca chiều, tính cả phút lố trưa `admin-yhct-lunch` và chiều `admin-yhct-end`), trừ đi các khoảng bận đã xếp trong ngày của máy, trích xuất toàn bộ các khoảng thời gian rảnh hợp lệ `>= 1 phút` và hiển thị chi tiết (Khung giờ `HH:mm - HH:mm`, Số phút rảnh).
+   - **Đồng bộ Module Tài nguyên (`js/modules/app-resources.js`)**:
+     + Cập nhật `renderMachinesTable` để bảo toàn lựa chọn loại máy và mã máy khi dữ liệu được nạp lại.
+3. **Quy chuẩn phiên bản theo RULES.md**:
+   - Vượt qua 100% 9 tầng kiểm thử của `node scripts/verify-build.mjs`.
+   - Nâng revision lên `4.2.7-rev3` trên `version.json`, `index.html` (timestamp `11:45 13/10/2026`, cache buster `?v=4.2.7-rev3`), `sw.js` (`pmcg-v4-cache-4.2.7-rev3`).
+   - Deploy Cloudflare Pages (`pmcg-v3`).
+
+**File sửa đổi:**
+- `index.html` (thêm dropdown search-machine-code, sửa header bảng 3 cột, nâng cache buster ?v=4.2.7-rev3)
+- `js/app.js` (hàm onSearchMachineTypeChange, filterMachineTable, viết lại timMayRanh)
+- `js/modules/app-resources.js` (đồng bộ renderMachinesTable với search-machine-type)
+- `sw.js` (nâng CACHE_NAME pmcg-v4-cache-4.2.7-rev3)
+- `version.json` (nâng phiên bản v4.2.7-rev3)
+- `PM-xeplich-v4.md` (ghi nhật ký phát triển)
+
+
 
 
 
