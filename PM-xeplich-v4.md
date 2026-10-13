@@ -8230,6 +8230,32 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 - `version.json` (nâng phiên bản v4.2.7-rev5)
 - `PM-xeplich-v4.md` (ghi nhật ký phát triển)
 
+### [v4.2.7-rev6] - 16:10 13/10/2026: Tối Ưu Tự Động Xuống Dòng Cho Nội Dung Ô Bảng Phòng, Hiển Thị Đầy Đủ Cột Thao Tác
+
+#### 1. Yêu cầu & Bối cảnh:
+- Sau khi bổ sung cột Điều dưỡng, người dùng phản hồi cột Thao Tác bị che mất và yêu cầu cho phép nội dung các ô được phép xuống dòng để bảng co giãn vừa vặn màn hình.
+
+#### 2. Giải pháp thực hiện:
+1. **Loại bỏ cưỡng bức nowrap trong CSS (`css/style.css`)**:
+   - Gỡ bỏ `white-space: nowrap !important;` trên các cột nội dung của `#rooms-table`.
+   - Thiết lập `table-layout: auto !important; width: 100% !important;` kèm `white-space: normal !important; word-break: break-word !important; line-height: 1.35 !important;` cho `th` và `td`.
+   - Cố định kích thước gọn gàng cho các cột kỹ thuật: STT (45px, căn giữa), Số Giường (65px, căn giữa), Thao Tác (70px, căn giữa).
+2. **Loại bỏ inline nowrap ở danh sách máy (`js/modules/app-resources.js`)**:
+   - Gỡ bỏ thuộc tính `white-space: nowrap; text-overflow: ellipsis;` trong ô Các Máy (`danhSachMay`), cho phép danh sách máy móc tự động xuống dòng mượt mà.
+   - Căn giữa nội dung cho ô STT, Số Giường và nút Xóa trong cột Thao Tác.
+3. **Quy chuẩn phiên bản theo RULES.md**:
+   - Vượt qua 100% 9 tầng kiểm thử của `node scripts/verify-build.mjs`.
+   - Nâng phiên bản `4.2.7-rev6`, cập nhật `version.json`, `sw.js` (`pmcg-v4-cache-4.2.7-rev6`), `index.html` (timestamp `16:10 13/10/2026`, cache buster `?v=4.2.7-rev6`).
+
+**File sửa đổi:**
+- `css/style.css` (cho phép wrap text ở các ô, gỡ bỏ nowrap, cố định độ rộng cột STT/Giường/Thao tác)
+- `js/modules/app-resources.js` (gỡ bỏ inline nowrap ở cột máy, căn giữa nút thao tác và STT)
+- `index.html` (căn giữa tiêu đề STT và Thao tác, nâng cache buster ?v=4.2.7-rev6, timestamp 16:10 13/10/2026)
+- `sw.js` (nâng CACHE_NAME pmcg-v4-cache-4.2.7-rev6)
+- `version.json` (nâng phiên bản v4.2.7-rev6)
+- `PM-xeplich-v4.md` (ghi nhật ký phát triển)
+
+
 
 
 

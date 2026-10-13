@@ -1,6 +1,6 @@
 {
-    "version": "4.2.7-rev5",
+    "version": "4.2.7-rev6",
     "releaseDate": "13/10/2026",
-    "releaseTime": "15:40 13/10/2026",
-    "notes": "Tách riêng biệt cột Điều dưỡng khỏi KTV trong bảng Quản lý phòng thủ thuật, tự động phân tách dữ liệu cũ và đồng bộ CSDL đám mây kèm form phòng."
+    "releaseTime": "16:10 13/10/2026",
+    "notes": "Cho phép nội dung các ô trong bảng phòng tự động xuống dòng và tối ưu độ rộng cột, đảm bảo cột thao tác luôn hiển thị đầy đủ và rõ ràng."
 }

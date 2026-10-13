@@ -2234,13 +2234,47 @@
 
 
 
-        #rooms-table td:not(:nth-child(6)) {
-            white-space: nowrap !important;
+        #rooms-table {
+            width: 100% !important;
+            table-layout: auto !important;
         }
 
-        #rooms-table td:nth-child(6) {
-            min-width: 250px !important;
+        #rooms-table th,
+        #rooms-table td {
             white-space: normal !important;
+            word-break: break-word !important;
+            overflow-wrap: break-word !important;
+            height: auto !important;
+            line-height: 1.35 !important;
+        }
+
+        #rooms-table th:nth-child(1),
+        #rooms-table td:nth-child(1) {
+            width: 45px !important;
+            min-width: 45px !important;
+            white-space: nowrap !important;
+            text-align: center !important;
+        }
+
+        #rooms-table th:nth-child(2),
+        #rooms-table td:nth-child(2) {
+            min-width: 85px !important;
+        }
+
+        #rooms-table th:nth-child(7),
+        #rooms-table td:nth-child(7) {
+            width: 65px !important;
+            min-width: 60px !important;
+            white-space: nowrap !important;
+            text-align: center !important;
+        }
+
+        #rooms-table th:nth-child(8),
+        #rooms-table td:nth-child(8) {
+            width: 70px !important;
+            min-width: 65px !important;
+            white-space: nowrap !important;
+            text-align: center !important;
         }
 
 

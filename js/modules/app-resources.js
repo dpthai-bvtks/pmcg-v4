@@ -399,14 +399,14 @@
             const idx = cache.room.indexOf(item);
             const staff = splitKtvAndDd(item, cache);
             return `<tr class="draggable-row editable-row" data-drag-idx="${i}" onclick="if(!window._isDraggingRow) editRoom(${idx})" title="Bấm sửa (Kéo thả nút ☰ hoặc bấm ▲/▼ để đổi thứ tự, Phím Delete để xóa)">
-                <td>${sttControlHtml("rooms", i, cache.room.length)}</td>
+                <td style="text-align:center;">${sttControlHtml("rooms", i, cache.room.length)}</td>
                 <td><strong>${safeEscape(item.tenPhong || item[1] || '')}</strong></td>
                 <td>${safeEscape(item.bacSi || item[2] || '')}</td>
-                <td style="font-size:11px">${safeEscape(staff.ktv)}</td>
-                <td style="font-size:11px">${safeEscape(staff.dieuDuong)}</td>
-                <td style="font-size:11px; max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${safeEscape(item.danhSachMay || item[4] || '')}">${safeEscape(item.danhSachMay || item[4] || '')}</td>
+                <td style="font-size:11px;">${safeEscape(staff.ktv)}</td>
+                <td style="font-size:11px;">${safeEscape(staff.dieuDuong)}</td>
+                <td style="font-size:11px; word-break:break-word;" title="${safeEscape(item.danhSachMay || item[4] || '')}">${safeEscape(item.danhSachMay || item[4] || '')}</td>
                 <td style="text-align:center;">${item.soGiuong || item[5] || 0}</td>
-                <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteRoom(${idx})">Xóa</button></td>
+                <td style="text-align:center;"><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteRoom(${idx})">Xóa</button></td>
             </tr>`;
         }).join('');
 
