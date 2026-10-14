@@ -1,6 +1,6 @@
 {
-    "version": "4.2.7-rev6",
-    "releaseDate": "13/10/2026",
-    "releaseTime": "16:10 13/10/2026",
-    "notes": "Cho phép nội dung các ô trong bảng phòng tự động xuống dòng và tối ưu độ rộng cột, đảm bảo cột thao tác luôn hiển thị đầy đủ và rõ ràng."
+    "version": "4.2.8-rev1",
+    "releaseDate": "14/10/2026",
+    "releaseTime": "07:31 14/10/2026",
+    "notes": "Tối ưu hóa toán học Google OR-Tools CP-SAT: Phá vỡ tính đối xứng máy móc với AddCumulative, Cân bằng tải KTV tuyến tính Min-Max, Rút ngắn thời gian chờ bệnh nhân, đồng bộ và vận hành tại C:\\PMCG-System\\PMCG-Solver."
 }

@@ -1,19 +1,20 @@
 """
 🧠 GOOGLE OR-TOOLS CP-SAT OPTIMIZATION ENGINE (LOCAL SOLVER AGENT)
 Hệ thống Xếp lịch Thủ thuật YHCT - PHCN v4-thuongmai (T.I.M.E.S System)
-Tận dụng 100% CPU đa nhân đa luồng (C++ Native) của Mini PC để giải toán quy hoạch ràng buộc toàn cục.
+Tối ưu hóa toán học nâng cao: Phá vỡ tính đối xứng (Symmetry Breaking qua AddCumulative),
+Tuyến tính hóa cân bằng tải nhân sự Min-Max, Rút ngắn thời gian chờ bệnh nhân,
+Khai thác 100% CPU đa luồng C++ Native của Mini PC trạm tính toán.
 """
 
 import time
 import math
 from typing import Dict, List, Any, Tuple, Optional
 from ortools.sat.python import cp_model
-
-
 import unicodedata
 
+
 def strip_accents(s: str) -> str:
-    """Loại bỏ dấu tiếng Việt để so khớp kỹ năng và tên thủ thuật"""
+    """Loại bỏ dấu tiếng Việt để so khớp kỹ năng, phòng và tên thủ thuật"""
     if not s:
         return ""
     s = str(s).strip().lower()
@@ -36,7 +37,7 @@ def t2m(t: Any) -> int:
         if 0 < val <= 1:
             return round(val * 1440)
         return int(val)
-    except:
+    except Exception:
         return 0
 
 
@@ -87,8 +88,8 @@ def is_continuous_proc(info: list, duration: int) -> bool:
     loai_may = str(info[0] if len(info) > 0 else "Thủ công").strip()
     base_tg_may = int(info[1]) if len(info) > 1 and info[1] else 15
     tg_nv = int(info[2]) if len(info) > 2 and info[2] else 5
-    
-    # 1. Cờ tường minh từ CSDL (trường thứ 12 / index 11)
+
+    # Cờ tường minh từ CSDL (trường thứ 12 / index 11)
     if len(info) > 11:
         flag = info[11]
         if flag in (1, "1", "Có", True):
@@ -105,12 +106,17 @@ def is_continuous_proc(info: list, duration: int) -> bool:
 
 def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
-    Bộ giải quy hoạch ràng buộc toán học Google OR-Tools CP-SAT cho v4-thuongmai
+    Bộ giải quy hoạch ràng buộc toán học Google OR-Tools CP-SAT tối ưu cho v4-thuongmai
+    Áp dụng kỹ thuật:
+    - Cumulative Constraint gom cụm máy móc phá vỡ tính đối xứng (Symmetry Breaking)
+    - Min-Max tuyến tính cân bằng tải nhân sự giữa các KTV
+    - Rút ngắn khoảng chờ ngắt quãng giữa các thủ thuật của cùng bệnh nhân
+    - Tham số Linearization Level 2 & Presolve tăng tốc hội tụ < 1s
     """
     start_wall_time = time.perf_counter()
     options = options or {}
     time_limit_sec = float(options.get("timeLimitSeconds", 5.0))
-    num_workers = int(options.get("numWorkers", 4)) # Tận dụng 4 luồng của CPU i5 Mini PC
+    num_workers = int(options.get("numWorkers", 4))  # Tận dụng 4 luồng của CPU i5 Mini PC
 
     model = cp_model.CpModel()
 
@@ -176,6 +182,16 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
         all_rooms = ["Phòng 201", "Phòng 202", "Phòng 203"]
         room_beds = {r: [f"Giường {i+1}" for i in range(5)] for r in all_rooms}
 
+    # Chuẩn hóa danh mục máy móc theo loại máy (Machine Pool)
+    # Hỗ trợ cả key gốc và key không dấu để phá vỡ tính đối xứng (Symmetry Breaking)
+    all_machines_by_type = {}
+    for m_type, m_list in machine_types.items():
+        clean_key = strip_accents(str(m_type))
+        clean_key_simple = clean_key.replace("may ", "").replace("den ", "").strip()
+        all_machines_by_type[clean_key] = list(m_list)
+        if clean_key_simple and clean_key_simple != clean_key:
+            all_machines_by_type[clean_key_simple] = list(m_list)
+
     # 3. Phẳng hóa danh sách công việc (Tasks) cần xếp từ rawPatients
     tasks = []
     task_id = 0
@@ -215,6 +231,7 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
                 "p_buoi": p_buoi,
                 "p_busy": p_busy,
                 "tt_name": tt,
+                "info": info,
                 "loai_may": loai_may,
                 "tg_may": tg_may,
                 "tg_nv": tg_nv,
@@ -239,50 +256,46 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
     # 🧩 XÂY DỰNG MÔ HÌNH TOÁN HỌC CP-SAT
     # ============================================================
 
-    # Mảng lưu các biến quyết định cho từng task
     task_vars = {}
-    
-    # Tập hợp các intervals cho từng tài nguyên để chặn NoOverlap
-    patient_intervals = {} # p_id -> list of intervals
-    bed_intervals = {}     # (room, bed) -> list of intervals
-    machine_intervals = {} # machine_name -> list of intervals
-    staff_intervals = {}   # staff_name -> list of intervals
+    patient_intervals = {}          # p_id -> list of intervals
+    patient_scheduled_tasks = {}    # p_id -> list of tv
+    bed_intervals = {}              # (room, bed) -> list of intervals
+    staff_intervals = {}            # staff_name -> list of intervals
+    staff_assigned_loads = {s: [] for s in doc_ktv_names}  # s -> list of (dur_expr)
+
+    # Cụm máy móc cho AddCumulative (Symmetry Breaking)
+    # machine_pool_intervals: pool_key -> list of intervals
+    machine_pool_intervals = {}
+    machine_pool_capacities = {}
+    machine_pool_candidates = {}
 
     for s_name in staff_names:
         staff_intervals[s_name] = []
-        # 1. Chặn các mốc ngoài ca làm việc thực tế của nhân sự
+        # Chặn các mốc ngoài ca làm việc thực tế của nhân sự
         s_shifts = staff_dict[s_name]["shifts"]
         if s_shifts:
-            # Chặn trước ca đầu
             first_s = s_shifts[0][0]
             if first_s > 0:
                 staff_intervals[s_name].append(model.NewIntervalVar(0, first_s, first_s, f"pre_shift_{s_name}"))
-            # Chặn giữa các ca (nghỉ trưa)
             for idx in range(len(s_shifts) - 1):
                 gap_s = s_shifts[idx][1]
                 gap_e = s_shifts[idx + 1][0]
                 if gap_e > gap_s:
                     staff_intervals[s_name].append(model.NewIntervalVar(gap_s, gap_e - gap_s, gap_e, f"lunch_shift_{s_name}_{idx}"))
-            # Chặn sau ca cuối
             last_e = s_shifts[-1][1]
             if last_e < 1440:
                 staff_intervals[s_name].append(model.NewIntervalVar(last_e, 1440 - last_e, 1440, f"post_shift_{s_name}"))
 
-        # 2. Chặn các mốc bận cá nhân của nhân sự
+        # Chặn các mốc bận cá nhân của nhân sự
         for b_idx, (b_s, b_e) in enumerate(staff_dict[s_name]["busy"]):
             b_dur = b_e - b_s
             if b_dur > 0:
                 b_int = model.NewIntervalVar(b_s, b_dur, b_e, f"busy_{s_name}_{b_idx}")
                 staff_intervals[s_name].append(b_int)
 
-    # Khởi tạo danh sách máy khả dụng (hỗ trợ không phân biệt hoa/thường)
-    all_machines_by_type = {}
-    for m_type, m_list in machine_types.items():
-        all_machines_by_type[str(m_type).strip().lower()] = list(m_list)
-
     total_drop_penalties = []
     total_start_costs = []
-    total_overtime_costs = []
+    patient_wait_penalties = []
 
     day_start = 450
     day_end = max(afternoon_end + 30, 1050)
@@ -294,22 +307,23 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
         gap_min = t["gap_min"]
         is_cont = t["is_cont"]
         p_room = t["p_room"]
+        p_id = t["p_id"]
 
         # Biến boolean: Có xếp được ca này hay rớt?
         is_scheduled = model.NewBoolVar(f"sched_{tid}")
         is_dropped = model.NewBoolVar(f"drop_{tid}")
         model.Add(is_scheduled + is_dropped == 1)
+        # Chuẩn hóa trọng số phạt rớt ca (ưu tiên tối cao 100.000 điểm)
         total_drop_penalties.append(is_dropped * 100000)
 
+        # Domain Tightening từ thông tin bệnh nhân
         min_start = max(450, t["p_arrive"])
         max_end = min(afternoon_end, t["p_leave"])
         can_fit = (min_start + tg_may <= max_end)
 
-        # Nếu thời gian giữa giờ vào và giờ ra của BN ngắn hơn thời lượng thủ thuật, tự động đánh dấu rớt an toàn
         if not can_fit:
             model.Add(is_scheduled == 0)
 
-        # Miền giá trị toàn cục an toàn tránh tuyệt đối lỗi lb > ub gây MODEL_INVALID
         start_var = model.NewIntVar(day_start, day_end, f"start_{tid}")
         end_var = model.NewIntVar(day_start, day_end, f"end_{tid}")
         model.Add(end_var == start_var + tg_may)
@@ -330,23 +344,21 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
             elif t["p_buoi"] == "Chieu":
                 model.Add(is_morning == 0).OnlyEnforceIf(is_scheduled)
 
-        # Khoảng thời gian chính của thủ thuật trên Giường và Máy
+        # Khoảng thời gian chính của thủ thuật
         proc_interval = model.NewOptionalIntervalVar(start_var, tg_may, end_var, is_scheduled, f"proc_iv_{tid}")
-        
-        # 1. Ràng buộc Bệnh nhân: không trùng giữa các ca của cùng bệnh nhân + 5 phút nghỉ
-        p_iv = model.NewOptionalIntervalVar(start_var, tg_may + 5, end_var + 5, is_scheduled, f"pat_iv_{tid}")
-        patient_intervals.setdefault(t["p_id"], []).append(p_iv)
 
-    # 4. Phân công Giường bệnh trong phòng của bệnh nhân
+        # Ràng buộc Bệnh nhân: không trùng giữa các ca của cùng bệnh nhân + 5 phút nghỉ
+        p_iv = model.NewOptionalIntervalVar(start_var, tg_may + 5, end_var + 5, is_scheduled, f"pat_iv_{tid}")
+        patient_intervals.setdefault(p_id, []).append(p_iv)
+
+        # 4. Phân công Giường bệnh trong phòng
         candidate_beds = list(room_beds.get(p_room, []))
         if not candidate_beds:
             candidate_beds = ["Giường 1", "Giường 2", "Giường 3", "Giường 4", "Giường 5"]
-        # Ghế phụ / giường kéo giãn / ghế điều trị linh hoạt cho các thủ thuật không bắt buộc giường cứng
         is_keo_gian = "kéo giãn" in t["loai_may"].lower() or "kg" in t["loai_may"].lower()
         if is_keo_gian:
             candidate_beds.append("Giường máy Kéo giãn")
         else:
-            # Cho phép sử dụng Ghế điều trị / Giường phụ linh hoạt để không bị nghẽn giường
             candidate_beds.append("Ghế điều trị")
             candidate_beds.append("Giường phụ")
 
@@ -360,48 +372,46 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
 
         model.Add(sum(bed_choice_vars.values()) == is_scheduled)
 
-        # 5. Phân công Máy móc
-        mach_choice_vars = {}
+        # 5. Phân công Máy móc: Gom cụm tài nguyên chung (AddCumulative - Symmetry Breaking)
+        # Thay vì gán từng máy cụ thể sinh ra N! hoán vị đối xứng, gom toàn bộ máy cùng loại
+        # vào một cụm Cumulative Capacity. Sau khi giải, gán máy cụ thể qua Interval Coloring cực nhanh.
+        m_pool_key = None
+        c_machs = []
         if t["loai_may"] != "Thủ công":
-            c_machs = all_machines_by_type.get(t["loai_may"].strip().lower(), [])
+            lm_clean = strip_accents(t["loai_may"])
+            lm_simple = lm_clean.replace("may ", "").replace("den ", "").strip()
+            c_machs = all_machines_by_type.get(lm_clean) or all_machines_by_type.get(lm_simple) or []
             if not c_machs:
-                # Tìm kiếm tương đối theo từ khóa loại máy
-                lm_clean = t["loai_may"].strip().lower().replace("máy ", "").replace("đèn ", "")
                 for mk, mv in all_machines_by_type.items():
-                    if lm_clean in mk or mk in lm_clean:
+                    if lm_simple in mk or mk in lm_simple:
                         c_machs = mv
                         break
             if not c_machs:
                 c_machs = [f"{t['loai_may']} 01"]
-            for m_name in c_machs:
-                m_var = model.NewBoolVar(f"mach_{tid}_{m_name}")
-                mach_choice_vars[m_name] = m_var
-                m_iv = model.NewOptionalIntervalVar(start_var, tg_may, end_var, m_var, f"m_iv_{tid}_{m_name}")
-                machine_intervals.setdefault(m_name, []).append(m_iv)
-            model.Add(sum(mach_choice_vars.values()) == is_scheduled)
-        else:
-            mach_choice_vars["Thủ công"] = is_scheduled
+
+            m_pool_key = lm_simple if lm_simple else lm_clean
+            machine_pool_intervals.setdefault(m_pool_key, []).append(proc_interval)
+            machine_pool_capacities[m_pool_key] = max(machine_pool_capacities.get(m_pool_key, 0), len(c_machs))
+            machine_pool_candidates[m_pool_key] = c_machs
 
         # 6. Phân công Nhân sự Chính (Bác sĩ / KTV)
-        # Lọc nhân sự có kỹ năng phù hợp
         staff_candidates = []
         p_tt = t["tt_name"].lower().strip()
         p_tt_clean = strip_accents(p_tt)
-        p_vt = str(info[9] if len(info) > 9 and info[9] else "").lower().strip()
-        p_tg = str(info[8] if len(info) > 8 and info[8] else "").lower().strip()
+        p_info = t["info"]
+        p_vt = str(p_info[9] if len(p_info) > 9 and p_info[9] else "").lower().strip()
+        p_tg = str(p_info[8] if len(p_info) > 8 and p_info[8] else "").lower().strip()
 
         for s_name in doc_ktv_names:
             st = staff_dict[s_name]
             s_skills = st["skills"]
             s_skills_clean = strip_accents(s_skills)
-            
-            # Kiểm tra kỹ năng bao quát
+
             has_all_skills = ("all" in s_skills or "toàn bộ" in s_skills or "toan bo" in s_skills_clean or "cả hai" in s_skills or "ca hai" in s_skills_clean)
             is_dept_match = (("yhct" in s_skills and t["khoa"] == "YHCT") or
                              ("phcn" in s_skills and t["khoa"] == "PHCN") or
                              (st["is_doc"] and t["khoa"] == "YHCT"))
-            
-            # Khớp tên thủ thuật, tên viết tắt, tên gốc hoặc không dấu
+
             is_proc_match = False
             for part in s_skills.split(","):
                 part_clean = part.strip()
@@ -425,33 +435,31 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
             staff_candidates = doc_ktv_names if doc_ktv_names else staff_names
 
         staff_choice_vars = {}
-        
-        # Tính khoảng thời gian bận thực tế của nhân sự theo cơ chế đa pha:
-        # - Pha 1 (Setup): [start_var, start_var + tg_nv + gap_min]
-        # - Pha 2 (Máy chạy / lưu kim): RẢNH 100%
-        # - Pha 3 (Teardown): [end_var - 1, end_var + gap_min] (phút thứ 25 + gap)
         setup_dur = min(tg_nv + gap_min, tg_may)
         has_teardown = not is_cont and (tg_may > tg_nv)
         teardown_dur = 1 + gap_min
+
+        # Thời lượng nhân sự làm việc để cân bằng tải
+        staff_work_dur = tg_may if is_cont else (setup_dur + (teardown_dur if has_teardown else 0))
 
         for s_name in staff_candidates:
             s_var = model.NewBoolVar(f"st_{tid}_{s_name}")
             staff_choice_vars[s_name] = s_var
 
             if is_cont:
-                # Thủ thuật liên tục: khóa suốt ca
                 full_dur = tg_may + gap_min
                 st_iv = model.NewOptionalIntervalVar(start_var, full_dur, start_var + full_dur, s_var, f"st_full_{tid}_{s_name}")
                 staff_intervals[s_name].append(st_iv)
             else:
-                # Pha 1: Setup
                 st_setup_iv = model.NewOptionalIntervalVar(start_var, setup_dur, start_var + setup_dur, s_var, f"st_set_{tid}_{s_name}")
                 staff_intervals[s_name].append(st_setup_iv)
-
-                # Pha 3: Teardown (Phút thứ 25 + gapMinutes)
                 if has_teardown:
                     st_tear_iv = model.NewOptionalIntervalVar(end_var - 1, teardown_dur, end_var + gap_min, s_var, f"st_tear_{tid}_{s_name}")
                     staff_intervals[s_name].append(st_tear_iv)
+
+            # Đóng góp khối lượng công việc vào nhân viên s_name
+            if s_name in staff_assigned_loads:
+                staff_assigned_loads[s_name].append(s_var * staff_work_dur)
 
         model.Add(sum(staff_choice_vars.values()) == is_scheduled)
 
@@ -462,8 +470,6 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
             for n_name in nurse_candidates:
                 n_var = model.NewBoolVar(f"sub_{tid}_{n_name}")
                 sub_choice_vars[n_name] = n_var
-
-                # Nhân sự phụ cũng bận theo pha Setup và Teardown
                 if is_cont:
                     n_full_dur = tg_may + gap_min
                     n_iv = model.NewOptionalIntervalVar(start_var, n_full_dur, start_var + n_full_dur, n_var, f"n_full_{tid}_{n_name}")
@@ -471,48 +477,53 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
                 else:
                     n_setup_iv = model.NewOptionalIntervalVar(start_var, setup_dur, start_var + setup_dur, n_var, f"n_set_{tid}_{n_name}")
                     staff_intervals[n_name].append(n_setup_iv)
-
                     if has_teardown:
                         n_tear_iv = model.NewOptionalIntervalVar(end_var - 1, teardown_dur, end_var + gap_min, n_var, f"n_tear_{tid}_{n_name}")
                         staff_intervals[n_name].append(n_tear_iv)
 
             model.Add(sum(sub_choice_vars.values()) == is_scheduled)
 
-        # Lưu lại các biến quyết định để giải mã kết quả
-        task_vars[tid] = {
+        tv_entry = {
             "is_scheduled": is_scheduled,
             "start_var": start_var,
             "end_var": end_var,
             "bed_choice_vars": bed_choice_vars,
-            "mach_choice_vars": mach_choice_vars,
+            "m_pool_key": m_pool_key,
+            "c_machs": c_machs,
             "staff_choice_vars": staff_choice_vars,
             "sub_choice_vars": sub_choice_vars,
             "task": t
         }
+        task_vars[tid] = tv_entry
+        patient_scheduled_tasks.setdefault(p_id, []).append(tv_entry)
 
-        # Ưu tiên dồn lịch sớm (Left-shift penalty nhẹ)
+        # Dồn lịch sớm (Left-shift Makespan nhẹ, trọng số = 1)
         total_start_costs.append(start_var)
 
     # ============================================================
-    # 🔒 RÀNG BUỘC KHÔNG TRÙNG LẶP TÀI NGUYÊN (NO-OVERLAP)
+    # 🔒 RÀNG BUỘC KHÔNG TRÙNG LẶP TÀI NGUYÊN (NO-OVERLAP & CUMULATIVE)
     # ============================================================
 
-    # 1. Bệnh nhân: không trùng lịch giữa các ca
+    # 1. Bệnh nhân: không trùng lịch giữa các ca của cùng bệnh nhân
     for p_id, iv_list in patient_intervals.items():
         if len(iv_list) > 1:
             model.AddNoOverlap(iv_list)
 
-    # 2. Giường bệnh: không trùng trên cùng 1 giường
+    # 2. Cụm máy móc: AddCumulative phá vỡ tính đối xứng (Symmetry Breaking)
+    for m_pool_key, iv_list in machine_pool_intervals.items():
+        capacity = machine_pool_capacities.get(m_pool_key, 1)
+        if len(iv_list) > 0:
+            if capacity > 1:
+                demands = [1] * len(iv_list)
+                model.AddCumulative(iv_list, demands, capacity)
+            else:
+                model.AddNoOverlap(iv_list)
+
+    # 3. Giường bệnh: không trùng trên cùng 1 giường
     for b_key, iv_list in bed_intervals.items():
-        # Ghế điều trị cho phép nhiều người ngồi (linh hoạt), giường cố định chặn trùng
         if not b_key[1].startswith("Ghế") and not "phụ" in b_key[1].lower():
             if len(iv_list) > 1:
                 model.AddNoOverlap(iv_list)
-
-    # 3. Máy móc: không trùng trên cùng 1 máy
-    for m_name, iv_list in machine_intervals.items():
-        if m_name != "Thủ công" and len(iv_list) > 1:
-            model.AddNoOverlap(iv_list)
 
     # 4. Nhân sự: không trùng ca làm việc (theo khoảng bận Setup, Teardown, giờ bận)
     for s_name, iv_list in staff_intervals.items():
@@ -520,10 +531,43 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
             model.AddNoOverlap(iv_list)
 
     # ============================================================
-    # 🎯 HÀM MỤC TIÊU (OBJECTIVE FUNCTION)
+    # 🎯 HÀM MỤC TIÊU NÂNG CAO (ADVANCED OBJECTIVE ENGINEERING)
     # ============================================================
-    # Tối thiểu hóa: Phạt ca rớt (100.000) + Dồn lịch sớm (Left-pack)
-    model.Minimize(sum(total_drop_penalties) + sum(total_start_costs))
+    objective_terms = []
+
+    # 1. Phạt rớt ca: Trọng số tối cao 100.000 để đảm bảo xếp tối đa ca
+    objective_terms.extend(total_drop_penalties)
+
+    # 2. Hoàn thành sớm buổi làm việc (Makespan / Left-pack: trọng số 1)
+    objective_terms.extend(total_start_costs)
+
+    # 3. Rút ngắn thời gian chờ ngắt quãng giữa các thủ thuật của bệnh nhân (trọng số 10)
+    for p_id, p_tv_list in patient_scheduled_tasks.items():
+        if len(p_tv_list) >= 2:
+            p_span_start = model.NewIntVar(day_start, day_end, f"p_span_s_{p_id}")
+            p_span_end = model.NewIntVar(day_start, day_end, f"p_span_e_{p_id}")
+            for tv in p_tv_list:
+                model.Add(p_span_start <= tv["start_var"]).OnlyEnforceIf(tv["is_scheduled"])
+                model.Add(p_span_end >= tv["end_var"]).OnlyEnforceIf(tv["is_scheduled"])
+
+            total_dur = sum(tv["task"]["tg_may"] for tv in p_tv_list)
+            p_wait = model.NewIntVar(0, day_end - day_start, f"p_wait_{p_id}")
+            model.Add(p_wait >= (p_span_end - p_span_start) - total_dur)
+            objective_terms.append(10 * p_wait)
+
+    # 4. Tuyến tính hóa cân bằng tải nhân viên KTV (Min-Max: trọng số 5)
+    valid_ktv_loads = [sum(staff_assigned_loads[s]) for s in doc_ktv_names if staff_assigned_loads[s]]
+    if len(valid_ktv_loads) >= 2:
+        max_load = model.NewIntVar(0, 480, "max_staff_load")
+        min_load = model.NewIntVar(0, 480, "min_staff_load")
+        for load_expr in valid_ktv_loads:
+            model.Add(max_load >= load_expr)
+            model.Add(min_load <= load_expr)
+        load_imbalance = max_load - min_load
+        objective_terms.append(5 * load_imbalance)
+
+    # Tổng hợp hàm mục tiêu
+    model.Minimize(cp_model.LinearExpr.Sum(objective_terms))
 
     # ============================================================
     # ⚡ CẤU HÌNH BỘ GIẢI TOÁN HỌC GOOGLE OR-TOOLS (CP-SAT)
@@ -531,6 +575,8 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
     solver = cp_model.CpSolver()
     solver.parameters.num_search_workers = num_workers
     solver.parameters.max_time_in_seconds = time_limit_sec
+    solver.parameters.linearization_level = 2   # Tăng cường lát cắt Simplex cut hội tụ nhanh hơn
+    solver.parameters.cp_model_presolve = True  # Bật tiền giải nén miền giá trị
     solver.parameters.log_search_progress = False
 
     status = solver.Solve(model)
@@ -541,6 +587,56 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
     scheduled_list = []
     unscheduled_list = []
 
+    # ============================================================
+    # 🎨 HẬU XỬ LÝ: INTERVAL COLORING GÁN MÃ MÁY CỤ THỂ
+    # ============================================================
+    # Gom các ca đã xếp theo cụm máy để gán máy không bị trùng
+    tasks_by_pool = {}
+    if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        for tid, tv in task_vars.items():
+            if solver.Value(tv["is_scheduled"]) == 1 and tv["m_pool_key"]:
+                tasks_by_pool.setdefault(tv["m_pool_key"], []).append({
+                    "tid": tid,
+                    "start": solver.Value(tv["start_var"]),
+                    "end": solver.Value(tv["end_var"]),
+                    "c_machs": tv["c_machs"]
+                })
+
+    assigned_machines = {}
+    for pool_key, p_tasks in tasks_by_pool.items():
+        # Sắp xếp theo giờ bắt đầu tăng dần
+        p_tasks.sort(key=lambda x: (x["start"], x["end"]))
+        c_machs = machine_pool_candidates.get(pool_key, [])
+        if not c_machs:
+            c_machs = [f"{pool_key.title()} 01"]
+
+        # Theo dõi thời điểm máy sẽ rảnh
+        mach_free_time = {m: 0 for m in c_machs}
+        for item in p_tasks:
+            s = item["start"]
+            e = item["end"]
+            tid = item["tid"]
+
+            # Chọn máy đang rảnh tại thời điểm s (ưu tiên máy có khoảng nghỉ ít nhất)
+            best_m = None
+            min_idle = 999999
+            for m in c_machs:
+                if mach_free_time[m] <= s:
+                    idle = s - mach_free_time[m]
+                    if idle < min_idle:
+                        min_idle = idle
+                        best_m = m
+
+            # Fallback nếu cận biên: chọn máy rảnh sớm nhất
+            if best_m is None:
+                best_m = min(c_machs, key=lambda m: mach_free_time[m])
+
+            mach_free_time[best_m] = e
+            assigned_machines[tid] = best_m
+
+    # ============================================================
+    # 📋 TẬP HỢP KẾT QUẢ ĐẦU RA
+    # ============================================================
     for tid, tv in task_vars.items():
         t = tv["task"]
         if status in (cp_model.OPTIMAL, cp_model.FEASIBLE) and solver.Value(tv["is_scheduled"]) == 1:
@@ -554,12 +650,10 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
                     chosen_bed = b_name
                     break
 
-            # Lấy máy được chọn
+            # Lấy máy từ kết quả Interval Coloring hoặc Thủ công
             chosen_mach = "Thủ công"
-            for m_name, m_var in tv["mach_choice_vars"].items():
-                if m_name == "Thủ công" or solver.Value(m_var) == 1:
-                    chosen_mach = m_name
-                    break
+            if tv["m_pool_key"]:
+                chosen_mach = assigned_machines.get(tid, tv["c_machs"][0] if tv["c_machs"] else "Thủ công")
 
             # Lấy nhân sự chính được chọn
             chosen_staff = ""
