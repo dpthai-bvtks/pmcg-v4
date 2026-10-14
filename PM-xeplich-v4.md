@@ -8452,4 +8452,50 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 - `index.html` (cache busters ?v=4.2.8-rev5, APP_VERSION)
 - `PM-xeplich-v4.md` (ghi nhật ký phát triển)
 
+### Tích Hợp 3 Tính Năng Đột Phá Từ MEDS System & PMXL: Ghim Ca Ra Viện, Tự Động Tìm Giờ Rảnh 1-Click & Hệ Thống Undo/Redo (14/10/2026 - v4.2.8-rev6)
+
+#### 1. Yêu cầu của người dùng:
+- **Tính năng 1:** Tự động ghim thẳng những ca của bệnh nhân ra viện (`gioRa`), còn lại sẽ xáo trộn linh hoạt những ca của bệnh nhân khác khi xếp lại / xếp bổ sung.
+- **Tính năng 2:** Không dùng đến (loại bỏ để giữ giao diện tinh gọn).
+- **Tính năng 3:** Cung cấp nút **"⚡ Tự động tìm giờ rảnh cho ca này"** (1-Click Smart Slot Finder) khi có xung đột hoặc cần dời ca cục bộ mà không đảo lộn toàn khoa.
+- **Tính năng 4:** Bổ sung tính năng **Hoàn tác / Làm lại (Undo / Redo: `Ctrl+Z` / `Ctrl+Y`)** bảo vệ an toàn dữ liệu lịch xếp.
+
+#### 2. Giải pháp kỹ thuật đã triển khai:
+1. **Tính năng 1 - Tự động Ghim Cứng Ca Bệnh Nhân Ra Viện (`executeScheduling` trong `js/app.js`):**
+   - Trước khi giải bài toán xếp lịch tổng hoặc xếp lại, hệ thống tự động quét danh bạ bệnh nhân `dataCache.pat` và bảng lịch hiện hành `currentScheduleData`.
+   - Toàn bộ ca điều trị của những bệnh nhân có `gioRa` hợp lệ được tách riêng thành `pinnedDischargedSched` và đánh dấu `__isPinned = true`, `__isDischarged = true`.
+   - `pinnedDischargedSched` được truyền trực tiếp vào tham số `existingSched` của Solver (cả Trạm Mini PC Google OR-Tools CP-SAT lẫn Heuristic JS Engine).
+   - Solver coi khung giờ, KTV, giường và máy móc của các ca này là **hằng số bất biến (bận cố định)**; toàn bộ thủ thuật của các bệnh nhân khác được tự do tối ưu, xáo trộn lấp đầy quanh các ca đã ghim.
+   - Kết quả trả về được tự động kết hợp đầy đủ, trên bảng lịch hiển thị huy hiệu nổi bật `🔒 RV (Ghim)`.
+
+2. **Tính năng 3 - Nút "⚡ Tự động tìm giờ rảnh cho ca này" (`autoFindFreeSlotForSchedule`):**
+   - Xây dựng thuật toán quét khe rảnh đồng thời 3 yếu tố thời gian thực:
+     + **Bệnh nhân:** Nằm trong khoảng `gioVao` - `gioRa`, không trùng ca khác của chính mình, không rơi vào `gioBan`.
+     + **Kỹ thuật viên:** Ưu tiên KTV hiện tại, nếu bận sẽ chọn KTV có kỹ năng thực hiện thủ thuật đang rảnh trong ca làm việc.
+     + **Máy móc & Giường:** Quét máy rảnh cùng loại trong phòng, giường rảnh.
+   - Tích hợp giao diện:
+     + Thêm cột thứ 13 **"Thao Tác"** trên bảng lịch `#tab-schedule` với nút bấm nhanh `⚡ Sửa/Giờ rảnh`.
+     + Xây dựng Modal Chi Tiết Ca Điều Trị `#modal-schedule-item-detail` với nút to nổi bật **"⚡ Tự Động Tìm Giờ Rảnh"** cùng các nút chỉnh sửa/xóa ca.
+     + Tích hợp trực tiếp nút `⚡ Tự tìm giờ rảnh` vào từng hàng lỗi trùng giờ ở `#tab-kiemtra` (`js/modules/app-error-checker.js`): Bấm 1 click là ca gây đè được chuyển ngay sang giờ rảnh và bảng kiểm tra tự động refresh, triệt tiêu lỗi tức thì!
+
+3. **Tính năng 4 - Hệ thống Undo / Redo cho Xếp Lịch:**
+   - Xây dựng cơ chế lịch sử snapshot 25 trạng thái gần nhất (`_scheduleUndoStack`, `_scheduleRedoStack`, `pushScheduleHistory`).
+   - Tự động snapshot trước khi Xếp Lịch Tổng, Xếp Bổ Sung, Tự Tìm Giờ Rảnh, Sửa Ca, Xóa Ca.
+   - Bổ sung 2 nút điều khiển `↩️ Hoàn tác` (`#btn-sched-undo`) và `↪️ Làm lại` (`#btn-sched-redo`) trên thanh công cụ của bảng lịch.
+   - Lắng nghe sự kiện bàn phím toàn cục: Bấm `Ctrl + Z` để hoàn tác, `Ctrl + Y` (hoặc `Ctrl + Shift + Z`) để làm lại.
+
+4. **Đồng bộ phiên bản và Super-Verify theo RULES.md:**
+   - Nâng phiên bản `4.2.8-rev6`, cập nhật `version.json`, `sw.js` (`pmcg-v4-cache-4.2.8-rev6`), `index.html` (33 vị trí cache buster `?v=4.2.8-rev6`, `APP_VERSION = '4.2.8-rev6'`).
+   - Pass 100% 9 tầng kiểm tra Super-Verify (`node scripts/verify-build.mjs`).
+   - Deploy Cloudflare Worker (`pmcg-api`) và Cloudflare Pages (`pmcg-v3`).
+
+**File sửa đổi:**
+- `index.html` (thêm nút Undo/Redo, cột Thao Tác bảng lịch, Modal chi tiết ca #modal-schedule-item-detail, cập nhật cache busters ?v=4.2.8-rev6)
+- `js/app.js` (ghim ca BN ra viện trong executeScheduling, hệ thống Undo/Redo, autoFindFreeSlotForSchedule, modal handlers, hiển thị cột Thao Tác)
+- `js/modules/app-error-checker.js` (tích hợp nút ⚡ Tự tìm giờ rảnh vào bảng kiểm tra lỗi trùng giờ)
+- `sw.js` (CACHE_NAME pmcg-v4-cache-4.2.8-rev6)
+- `version.json` (nâng lên 4.2.8-rev6, timestamp 14:20 14/10/2026)
+- `PM-xeplich-v4.md` (ghi nhật ký phát triển)
+
+
 

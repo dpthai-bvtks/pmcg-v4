@@ -1,6 +1,6 @@
 {
-    "version": "4.2.8-rev5",
+    "version": "4.2.8-rev6",
     "releaseDate": "14/10/2026",
-    "releaseTime": "12:55 14/10/2026",
-    "notes": "Rà soát toàn diện các tab hệ thống: hoàn thiện cơ chế đồng bộ tức thời LocalStorage Bootstrap Cache cho tab-machines (máy móc), tab-staff (nhân sự) và tab-patients (bệnh nhân) chống mất dữ liệu khi F5; chuẩn hóa kiểm tra update changes trên mọi database adapter."
+    "releaseTime": "14:20 14/10/2026",
+    "notes": "Tích hợp 3 tính năng nâng cao: (1) Tự động ghim cứng các ca bệnh nhân ra viện (gioRa) không cho xê dịch khi xếp lại/xếp bổ sung, chỉ xáo trộn các ca còn lại; (2) Bộ điều phối thông minh '⚡ Tự động tìm giờ rảnh cho ca này' (1-Click Smart Slot Finder) giải quyết ca trùng/xung đột tức thì tại tab-schedule và tab-kiemtra; (3) Hệ thống Hoàn tác / Làm lại (Undo/Redo: Ctrl+Z / Ctrl+Y) bảo vệ dữ liệu xếp lịch an toàn tuyệt đối."
 }

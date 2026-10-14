@@ -182,32 +182,32 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
     <!-- CSS Custom -->
-    <link rel="stylesheet" href="css/style.css?v=4.2.8-rev5">
+    <link rel="stylesheet" href="css/style.css?v=4.2.8-rev6">
     <!-- PWA & Mobile Web App Meta Tags -->
-    <link rel="manifest" href="manifest.json?v=4.2.8-rev5">
+    <link rel="manifest" href="manifest.json?v=4.2.8-rev6">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="T.I.M.E.S">
     <!-- CSS Mobile & Tablet Responsive -->
-    <link rel="stylesheet" href="css/mobile.css?v=4.2.8-rev5">
+    <link rel="stylesheet" href="css/mobile.css?v=4.2.8-rev6">
 
     <!-- JS Thư viện Offline IndexedDB Dexie.js -->
-    <script src="js/dexie.min.js?v=4.2.8-rev5"></script>
+    <script src="js/dexie.min.js?v=4.2.8-rev6"></script>
     <!-- JS Thư viện Bảo mật DOMPurify & Tìm kiếm mờ thông minh Fuse.js -->
-    <script src="js/purify.min.js?v=4.2.8-rev5"></script>
-    <script src="js/fuse.min.js?v=4.2.8-rev5"></script>
+    <script src="js/purify.min.js?v=4.2.8-rev6"></script>
+    <script src="js/fuse.min.js?v=4.2.8-rev6"></script>
     <!-- JS Thư viện Biểu đồ Thống Kê Chart.js & Validation Schema Zod -->
-    <script src="js/chart.min.js?v=4.2.8-rev5"></script>
-    <script src="js/zod.min.js?v=4.2.8-rev5"></script>
+    <script src="js/chart.min.js?v=4.2.8-rev6"></script>
+    <script src="js/zod.min.js?v=4.2.8-rev6"></script>
     <!-- JS Thư viện kéo thả nội bộ -->
-    <script src="js/sortable.min.js?v=4.2.8-rev5"></script>
+    <script src="js/sortable.min.js?v=4.2.8-rev6"></script>
     <!-- Thư viện Dòng thời gian Timeline Frappe Gantt -->
-    <link rel="stylesheet" href="css/frappe-gantt.css?v=4.2.8-rev5">
-    <script src="js/frappe-gantt.min.js?v=4.2.8-rev5"></script>
+    <link rel="stylesheet" href="css/frappe-gantt.css?v=4.2.8-rev6">
+    <script src="js/frappe-gantt.min.js?v=4.2.8-rev6"></script>
     <!-- Thư viện Xuất PDF pdfmake tiếng Việt -->
-    <script src="js/pdfmake.min.js?v=4.2.8-rev5"></script>
-    <script src="js/vfs_fonts.js?v=4.2.8-rev5"></script>
+    <script src="js/pdfmake.min.js?v=4.2.8-rev6"></script>
+    <script src="js/vfs_fonts.js?v=4.2.8-rev6"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 </head>
 
@@ -1819,6 +1819,10 @@
                                     style="padding:4px 10px; font-size:12px; height:30px; font-weight:bold; border-radius:4px;" title="Xem dạng bảng danh sách">📋 Bảng</button>
                                 <button id="btn-view-gantt" class="btn-secondary" onclick="toggleScheduleViewMode('gantt')"
                                     style="padding:4px 10px; font-size:12px; height:30px; font-weight:bold; border-radius:4px;" title="Xem dạng dòng thời gian Timeline Gantt">⏱️ Timeline</button>
+                                <button id="btn-sched-undo" class="btn btn-sm" onclick="undoSchedule()" disabled
+                                    style="padding:4px 8px; font-size:12px; height:30px; font-weight:bold; border-radius:4px; border:1px solid #cbd5e1; background:#f8fafc; color:#64748b; cursor:not-allowed;" title="Hoàn tác thay đổi vừa rồi (Ctrl+Z)">↩️ Hoàn tác</button>
+                                <button id="btn-sched-redo" class="btn btn-sm" onclick="redoSchedule()" disabled
+                                    style="padding:4px 8px; font-size:12px; height:30px; font-weight:bold; border-radius:4px; border:1px solid #cbd5e1; background:#f8fafc; color:#64748b; cursor:not-allowed;" title="Làm lại thao tác vừa hủy (Ctrl+Y)">↪️ Làm lại</button>
                             </div>
 
                             <div class="schedule-title-inline"
@@ -1859,11 +1863,12 @@
                                     <th class="col-hide-mobile">NV Phụ</th>
                                     <th class="col-hide-mobile">Máy</th>
                                     <th class="col-hide-mobile">Giường</th>
+                                    <th style="width: 105px; text-align: center; white-space: nowrap;">Thao Tác</th>
                                 </tr>
                             </thead>
                             <tbody id="schedule-list">
                                 <tr>
-                                    <td colspan="12" align="center">Chưa có lịch.</td>
+                                    <td colspan="13" align="center">Chưa có lịch.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -4138,6 +4143,93 @@
         </div>
     </div>
 
+    <!-- ⚡ MODAL CHI TIẾT & TỰ ĐỘNG TÌM GIỜ RẢNH CHO CA ĐIỀU TRỊ -->
+    <div id="modal-schedule-item-detail" class="modal-overlay"
+        style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); z-index: 99998; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 15px;">
+        <div style="background: #ffffff; width: 95%; max-width: 580px; max-height: 90vh; border-radius: 14px; box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.3); display: flex; flex-direction: column; overflow: hidden; border: 1px solid #e2e8f0; animation: popIn 0.25s ease-out;">
+            <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #ffffff; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #22c55e;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.4); display: flex; align-items: center; justify-content: center; font-size: 18px;">⚡</div>
+                    <div>
+                        <h3 id="msid-title" style="margin: 0; font-size: 16.5px; font-weight: 800; color: #f8fafc;">Chi Tiết Ca Điều Trị</h3>
+                        <div id="msid-subtitle" style="font-size: 12px; color: #94a3b8; margin-top: 2px;">Xem thông tin & Tự động điều phối giờ rảnh</div>
+                    </div>
+                </div>
+                <button type="button" onclick="closeScheduleItemDetailModal()" style="background: rgba(255,255,255,0.1); border: none; color: #cbd5e1; font-size: 20px; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;">&times;</button>
+            </div>
+
+            <div id="msid-body" style="padding: 18px 20px; overflow-y: auto; flex: 1; background: #f8fafc; font-size: 13.5px; color: #334155;">
+                <input type="hidden" id="msid-item-index" value="-1">
+                
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <div id="msid-bn-name" style="font-size: 16px; font-weight: 800; color: #0f172a;">NGUYỄN VĂN A (1980)</div>
+                            <div id="msid-bn-room" style="font-size: 12.5px; color: #64748b; margin-top: 3px;">Phòng 201 • Giường 02</div>
+                        </div>
+                        <div id="msid-rv-badge"></div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                    <div>
+                        <label style="display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 4px;">Thủ thuật:</label>
+                        <input type="text" id="msid-input-proc" readonly style="width: 100%; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: #f1f5f9; font-weight: 600; font-size: 13px; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 4px;">Máy móc:</label>
+                        <input type="text" id="msid-input-machine" style="width: 100%; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; box-sizing: border-box;">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                    <div>
+                        <label style="display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 4px;">Giờ bắt đầu:</label>
+                        <input type="time" id="msid-input-start" style="width: 100%; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 700; font-size: 13px; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 4px;">Giờ kết thúc:</label>
+                        <input type="time" id="msid-input-end" style="width: 100%; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 700; font-size: 13px; box-sizing: border-box;">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                    <div>
+                        <label style="display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 4px;">Kỹ thuật viên chính:</label>
+                        <select id="msid-select-staff" style="width: 100%; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; box-sizing: border-box;"></select>
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 4px;">Người phụ (nếu có):</label>
+                        <select id="msid-select-sub" style="width: 100%; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; box-sizing: border-box;"></select>
+                    </div>
+                </div>
+
+                <!-- NÚT TỰ ĐỘNG TÌM GIỜ RẢNH CỰC KỲ NỔI BẬT -->
+                <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1.5px solid #86efac; border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                    <div>
+                        <div style="font-weight: 800; color: #166534; font-size: 13.5px;">⚡ Tự Động Tìm Giờ Rảnh Hợp Lý</div>
+                        <div style="font-size: 11.5px; color: #15803d; margin-top: 2px;">Tự quét slot rảnh cả 3 yếu tố: BN rảnh, KTV rảnh, Máy rảnh</div>
+                    </div>
+                    <button type="button" id="btn-msid-auto-free" onclick="onBtnAutoFindFreeSlotClick()"
+                        style="background: #16a34a; color: #ffffff; border: none; padding: 9px 16px; font-size: 13px; font-weight: 800; border-radius: 8px; cursor: pointer; white-space: nowrap; box-shadow: 0 4px 10px rgba(22, 163, 74, 0.3); transition: all 0.2s;">
+                        ⚡ Tự tìm giờ rảnh
+                    </button>
+                </div>
+            </div>
+
+            <div style="background: #ffffff; padding: 12px 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                <button type="button" onclick="deleteCurrentScheduleItem()"
+                    style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; padding: 8px 14px; font-size: 12.5px; font-weight: 700; border-radius: 6px; cursor: pointer;">
+                    🗑️ Xóa ca này
+                </button>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" onclick="closeScheduleItemDetailModal()" class="btn btn-secondary" style="padding: 8px 16px; font-size: 12.5px; font-weight: 600; border-radius: 6px; cursor: pointer;">Đóng</button>
+                    <button type="button" onclick="saveScheduleItemChanges()" class="btn btn-primary" style="padding: 8px 18px; font-size: 12.5px; font-weight: 700; border-radius: 6px; cursor: pointer; background: #2563eb;">💾 Lưu Thay Đổi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 💡 MODAL CỐ VẤN GIẢI CỨU CA RỚT THÔNG MINH (SMART UNSCHEDULED ADVISOR) -->
     <div id="modal-unscheduled-advisor" class="modal-overlay"
         style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.75); z-index: 99999; align-items: center; justify-content: center; backdrop-filter: blur(6px); padding: 15px;">
@@ -4516,28 +4608,28 @@
     <div id="sidebar-tooltip"></div>
 
     <!-- JavaScript Modules -->
-    <script src="js/schedule-utils.js?v=4.2.8-rev5"></script>
-    <script src="js/schedule-strategies.js?v=4.2.8-rev5"></script>
-    <script src="js/modules/export-service.js?v=4.2.8-rev5"></script>
-    <script src="js/modules/history-manager.js?v=4.2.8-rev5"></script>
-    <script src="js/offline-sync-engine.js?v=4.2.8-rev5"></script>
-    <script src="js/ai-scheduler.js?v=4.2.8-rev5"></script>
-    <script src="js/cp-solver.js?v=4.2.8-rev5"></script>
-    <script src="js/scheduler-engine.js?v=4.2.8-rev5"></script>
-    <script src="js/modules/app-resources.js?v=4.2.8-rev5"></script>
-    <script src="js/app.js?v=4.2.8-rev5"></script>
-    <script src="js/modules/app-export-reports.js?v=4.2.8-rev5"></script>
-    <script src="js/modules/app-error-checker.js?v=4.2.8-rev5"></script>
-    <script src="js/modules/app-backup-restore.js?v=4.2.8-rev5"></script>
-    <script src="js/modules/app-doc-lookup.js?v=4.2.8-rev5"></script>
-    <script src="js/modules/app-tenant-admin.js?v=4.2.8-rev5"></script>
-    <script src="js/init.js?v=4.2.8-rev5"></script>
-    <script src="js/sync.js?v=4.2.8-rev5"></script>
-    <script src="js/thongke.js?v=4.2.8-rev5"></script>
+    <script src="js/schedule-utils.js?v=4.2.8-rev6"></script>
+    <script src="js/schedule-strategies.js?v=4.2.8-rev6"></script>
+    <script src="js/modules/export-service.js?v=4.2.8-rev6"></script>
+    <script src="js/modules/history-manager.js?v=4.2.8-rev6"></script>
+    <script src="js/offline-sync-engine.js?v=4.2.8-rev6"></script>
+    <script src="js/ai-scheduler.js?v=4.2.8-rev6"></script>
+    <script src="js/cp-solver.js?v=4.2.8-rev6"></script>
+    <script src="js/scheduler-engine.js?v=4.2.8-rev6"></script>
+    <script src="js/modules/app-resources.js?v=4.2.8-rev6"></script>
+    <script src="js/app.js?v=4.2.8-rev6"></script>
+    <script src="js/modules/app-export-reports.js?v=4.2.8-rev6"></script>
+    <script src="js/modules/app-error-checker.js?v=4.2.8-rev6"></script>
+    <script src="js/modules/app-backup-restore.js?v=4.2.8-rev6"></script>
+    <script src="js/modules/app-doc-lookup.js?v=4.2.8-rev6"></script>
+    <script src="js/modules/app-tenant-admin.js?v=4.2.8-rev6"></script>
+    <script src="js/init.js?v=4.2.8-rev6"></script>
+    <script src="js/sync.js?v=4.2.8-rev6"></script>
+    <script src="js/thongke.js?v=4.2.8-rev6"></script>
 
     <!-- PWA Service Worker Registration + Instant Auto-Update Detection & Blocking Modal -->
     <script>
-    const APP_VERSION = '4.2.8-rev5';
+    const APP_VERSION = '4.2.8-rev6';
 
     (function registerAndAutoUpdate() {
         // 1. Kênh BroadcastChannel đồng bộ tức thì mọi tab đang mở trên cùng một máy

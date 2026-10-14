@@ -7101,7 +7101,7 @@ var dataCache = window.dataCache;
                 if (window._todayIsFinalized) {
                     const countTxt = window._finalizedTodayCount ? `${window._finalizedTodayCount.toLocaleString('vi-VN')} ca` : 'toàn bộ ca thủ thuật';
                     tbody.innerHTML = `<tr>
-                        <td colspan="12" style="text-align:center; padding: 45px 20px; background:#f8fafc;">
+                        <td colspan="13" style="text-align:center; padding: 45px 20px; background:#f8fafc;">
                             <div style="max-width:560px; margin:0 auto;">
                                 <div style="font-size:36px; margin-bottom:10px;">📋</div>
                                 <div style="font-size:16px; font-weight:700; color:#1e293b; margin-bottom:6px;">Hôm nay đã hoàn tất chốt sổ ngày</div>
@@ -7116,63 +7116,61 @@ var dataCache = window.dataCache;
                     </tr>`;
                 } else {
                     tbody.innerHTML = `<tr>
-                        <td colspan="12" style="text-align:center; padding: 35px 20px; color:#94a3b8; font-style:italic;">
+                        <td colspan="13" style="text-align:center; padding: 35px 20px; color:#94a3b8; font-style:italic;">
                             Chưa có dữ liệu lịch trình. Bác sĩ hãy bấm "Xếp Lịch Tự Động" để bắt đầu.
                         </td>
                     </tr>`;
                 }
                 renderPaginationUI('sched-pagination-container', 0, 1, 1, 'SCHED');
+                if (typeof updateUndoRedoUI === 'function') updateUndoRedoUI();
                 return;
             }
 
             const totalPages = Math.ceil(schedFilteredData.length / PAGE_SIZE) || 1;
-
             const start = (schedCurrentPage - 1) * PAGE_SIZE;
-
             const pageData = schedFilteredData.slice(start, start + PAGE_SIZE);
 
             tbody.innerHTML = pageData.map((item, i) => {
                 const ngayShort = item.ngay ? String(item.ngay).split('-').reverse().join('/').substring(0, 5) : '';
-
                 const rowClass = item.__dropped ? 'row-dropped' : 'row-scheduled';
-
                 const reasonTitle = item.__dropped ? ` title="${item.reason || item.may || 'Không xếp được'}"` : '';
 
                 const isDischarged = !!item.__isDischarged;
-                const dischargeMark = isDischarged ? ' <span style="color:#27ae60; font-size:10.5px; font-style:italic; font-weight:700; white-space:nowrap; margin-left:4px;">(✔ RV)</span>' : '';
+                const isPinned = !!item.__isPinned;
+                let dischargeMark = '';
+                if (isPinned) {
+                    dischargeMark = ' <span style="display:inline-block; padding:1px 6px; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; border-radius:10px; font-size:10.5px; font-weight:700; white-space:nowrap; margin-left:4px;" title="Ca bệnh nhân ra viện (Đã ghim cứng, không bị xáo trộn khi xếp lại)">🔒 RV (Ghim)</span>';
+                } else if (isDischarged) {
+                    dischargeMark = ' <span style="display:inline-block; padding:1px 5px; background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; border-radius:10px; font-size:10.5px; font-weight:700; white-space:nowrap; margin-left:4px;" title="Bệnh nhân ra viện">(✔ RV)</span>';
+                }
+
+                const rawList = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];
+                const itemRawIdx = rawList.indexOf(item);
 
                 return `<tr class="${rowClass}"${reasonTitle}>
-
             <td style="text-align:center">${start + i + 1}</td>
-
             <td class="col-hide-mobile" style="text-align:center">${ngayShort}</td>
-
             <td style="font-weight:bold;">${item.tenBN || ''}${dischargeMark}</td>
-
             <td class="col-hide-mobile" style="text-align:center;">${item.namSinh || ''}</td>
-
             <td style="text-align:center;">${item.phong || ''}</td>
-
             <td>${item.thuThuat || ''}</td>
-
             <td style="font-weight:bold; text-align:center;">${item.gioDienRa || ''}</td>
-
             <td style="font-weight:bold; text-align:center;">${item.gioKetThuc || ''}</td>
-
             <td>${(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(item.nvChinh) : (item.nvChinh || ''))}</td>
-
             <td class="col-hide-mobile">${(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(item.nvPhu) : (item.nvPhu || ''))}</td>
-
             <td class="col-hide-mobile">${item.may || ''}</td>
-
             <td class="col-hide-mobile" style="text-align:center;">${item.giuong || ''}</td>
-
+            <td style="text-align:center; white-space:nowrap;">
+                <button type="button" class="btn btn-sm" onclick="openScheduleItemDetailModal(${itemRawIdx})" 
+                    style="padding:3px 8px; font-size:11.5px; font-weight:700; background:#f0fdf4; color:#166534; border:1px solid #86efac; border-radius:5px; cursor:pointer;" 
+                    title="Xem chi tiết & Tự động tìm giờ rảnh cho ca này">⚡ Sửa/Giờ rảnh</button>
+            </td>
         </tr>`;
-}).join('');
+            }).join('');
 
             // Vẽ thanh điều hướng riêng cho Xếp lịch
-
             renderPaginationUI('sched-pagination-container', schedFilteredData.length, schedCurrentPage, totalPages, 'SCHED');
+            if (typeof updateUndoRedoUI === 'function') updateUndoRedoUI();
 }
 
         // 3. Hàm tạo Thanh điều hướng (ĐÃ TÍCH HỢP NÚT XUẤT PDF)
@@ -7357,6 +7355,38 @@ var dataCache = window.dataCache;
             await new Promise(r => setTimeout(r, 16)); // Yield 1 frame for silky-smooth UI paint
 
             try {
+                // 🕒 Lưu lịch sử trước khi xếp lịch mới (Phục vụ Undo/Redo)
+                if (typeof pushScheduleHistory === 'function') {
+                    pushScheduleHistory('Chạy xếp lịch tổng (' + dateVal + ')');
+                }
+
+                // 🔒 TÍNH NĂNG 1: TỰ ĐỘNG GHIM CỨNG CÁC CA CỦA BỆNH NHÂN RA VIỆN, CHỈ XÁO TRỘN CÁC CA CÒN LẠI
+                const rawCurrentSched = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];
+                const patCacheList = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.pat)) ? dataCache.pat : [];
+                const dischargedMap = new Map();
+                patCacheList.forEach(p => {
+                    const leave = String(p.gioRa || p.leave_time || '').trim();
+                    if (leave && leave.toLowerCase() !== 'none') {
+                        const kName = String(p.ten || p.name || '').trim().toLowerCase();
+                        const kNs = String(p.namSinh || '').trim();
+                        dischargedMap.set(`${kName}|${kNs}`, leave);
+                        dischargedMap.set(kName, leave);
+                        if (p.id) dischargedMap.set(String(p.id), leave);
+                    }
+                });
+
+                const pinnedDischargedSched = [];
+                (Array.isArray(rawCurrentSched) ? rawCurrentSched : []).forEach(row => {
+                    if (!row || isDroppedScheduleRow(row) || !row.gioDienRa || row.gioDienRa === '--' || String(row.gioDienRa).includes('Rớt')) return;
+                    const rName = String(row.tenBN || '').trim().toLowerCase();
+                    const rNs = String(row.namSinh || '').trim();
+                    const isDischarged = row.__isDischarged || dischargedMap.has(`${rName}|${rNs}`) || dischargedMap.has(rName) || (row.pId && dischargedMap.has(String(row.pId)));
+                    if (isDischarged) {
+                        const copyRow = { ...row, __isDischarged: true, __isPinned: true };
+                        pinnedDischargedSched.push(copyRow);
+                    }
+                });
+
                 let out = null;
                 const yhctLunchNum = (dataCache?.settings?.yhctLunch !== undefined && dataCache.settings.yhctLunch !== '') ? Math.max(0, parseInt(dataCache.settings.yhctLunch) || 0) : 0;
                 const yhctEndNum = (dataCache?.settings?.yhctEnd !== undefined && dataCache.settings.yhctEnd !== '') ? Math.max(0, parseInt(dataCache.settings.yhctEnd) || 0) : 0;
@@ -7371,20 +7401,39 @@ var dataCache = window.dataCache;
                     }
                 };
                 if (window.SchedulerEngine && typeof window.SchedulerEngine.runSchedulingAsync === 'function') {
-                    out = await window.SchedulerEngine.runSchedulingAsync(dateVal, strategy, skipVal, crowdedVal, [], schedulingOptions);
+                    out = await window.SchedulerEngine.runSchedulingAsync(dateVal, strategy, skipVal, crowdedVal, pinnedDischargedSched, schedulingOptions);
                 } else if (window.SchedulerEngine && typeof window.SchedulerEngine.runScheduling === 'function') {
-                    out = window.SchedulerEngine.runScheduling(dateVal, strategy, skipVal, crowdedVal, [], schedulingOptions);
+                    out = window.SchedulerEngine.runScheduling(dateVal, strategy, skipVal, crowdedVal, pinnedDischargedSched, schedulingOptions);
                 }
 
                 if (window.hideGlobalLoading) window.hideGlobalLoading();
                 const timeTaken = (out && out.elapsedMs !== undefined) ? (out.elapsedMs / 1000).toFixed(2) : ((performance.now() - startTime) / 1000).toFixed(2);
                 btn.innerText = 'CHẠY XẾP LỊCH TỔNG'; btn.disabled = false; btn.style.background = '#008b02';
 
-                const sched = (out && (out.schedule || out.sched)) ? (out.schedule || out.sched) : [];
+                let sched = (out && (out.schedule || out.sched)) ? (out.schedule || out.sched) : [];
                 const unsch = (out && (out.unscheduled || out.rot)) ? (out.unscheduled || out.rot) : [];
-                const schedCount = (out && out.scheduleCount !== undefined) ? out.scheduleCount : sched.length;
+
+                // Ghép nối các ca đã ghim của bệnh nhân ra viện vào kết quả xếp lịch
+                if (pinnedDischargedSched.length > 0) {
+                    const finalCombined = [...pinnedDischargedSched];
+                    sched.forEach(item => {
+                        const normItem = normalizeScheduleRow(item);
+                        const isDup = finalCombined.some(ex => 
+                            (ex.tenBN || '').trim().toLowerCase() === (normItem.tenBN || '').trim().toLowerCase() &&
+                            (ex.thuThuat || '').trim().toLowerCase() === (normItem.thuThuat || '').trim().toLowerCase() &&
+                            (ex.gioDienRa || '').trim() === (normItem.gioDienRa || '').trim()
+                        );
+                        if (!isDup) finalCombined.push(normItem);
+                    });
+                    sched = finalCombined;
+                }
+
+                const schedCount = sched.length;
                 const unschCount = (out && out.unscheduledCount !== undefined) ? out.unscheduledCount : unsch.length;
-                const engineInfo = (out && out.engine) ? out.engine : 'Turbo-Engine';
+                let engineInfo = (out && out.engine) ? out.engine : 'Turbo-Engine';
+                if (pinnedDischargedSched.length > 0) {
+                    engineInfo += ` (🔒 Ghim ${pinnedDischargedSched.length} ca RV)`;
+                }
 
                 window.currentScheduleData = markDischargedInSchedule(sched);
                 if (typeof dataCache !== 'undefined') dataCache.schedule = sched;
@@ -7472,6 +7521,9 @@ var dataCache = window.dataCache;
             window.viewingImportedScheduleFile = false;
             const dateVal = document.getElementById('schedule-date').value;
             if (!dateVal) return alert("Vui lòng chọn ngày để xếp bổ sung!");
+            if (typeof pushScheduleHistory === 'function') {
+                pushScheduleHistory('Xếp bổ sung BN mới (' + dateVal + ')');
+            }
             const btn = document.getElementById('btn-run-extra');
             btn.innerText = '⏳ ĐANG TÌM CHỖ TRỐNG...'; btn.disabled = true;
 
@@ -7638,6 +7690,537 @@ var dataCache = window.dataCache;
                 alert("Lỗi xếp bổ sung: " + err.message);
             }
         }
+
+        // ============================================================
+        // ↩️ HỆ THỐNG HOÀN TÁC / LÀM LẠI (UNDO / REDO) CHO XẾP LỊCH
+        // ============================================================
+        window._scheduleUndoStack = [];
+        window._scheduleRedoStack = [];
+        const MAX_SCHEDULE_HISTORY = 25;
+
+        function updateUndoRedoUI() {
+            const btnUndo = document.getElementById('btn-sched-undo');
+            const btnRedo = document.getElementById('btn-sched-redo');
+            if (btnUndo) {
+                const canUndo = window._scheduleUndoStack.length > 0;
+                btnUndo.disabled = !canUndo;
+                btnUndo.style.cursor = canUndo ? 'pointer' : 'not-allowed';
+                btnUndo.style.background = canUndo ? '#f0fdf4' : '#f8fafc';
+                btnUndo.style.color = canUndo ? '#15803d' : '#64748b';
+                btnUndo.style.borderColor = canUndo ? '#86efac' : '#cbd5e1';
+                btnUndo.title = canUndo 
+                    ? `Hoàn tác: ${window._scheduleUndoStack[window._scheduleUndoStack.length - 1].action || 'Thao tác trước'} (Ctrl+Z)` 
+                    : 'Không còn thao tác nào để hoàn tác (Ctrl+Z)';
+            }
+            if (btnRedo) {
+                const canRedo = window._scheduleRedoStack.length > 0;
+                btnRedo.disabled = !canRedo;
+                btnRedo.style.cursor = canRedo ? 'pointer' : 'not-allowed';
+                btnRedo.style.background = canRedo ? '#eff6ff' : '#f8fafc';
+                btnRedo.style.color = canRedo ? '#1d4ed8' : '#64748b';
+                btnRedo.style.borderColor = canRedo ? '#93c5fd' : '#cbd5e1';
+                btnRedo.title = canRedo 
+                    ? `Làm lại: ${window._scheduleRedoStack[window._scheduleRedoStack.length - 1].action || 'Thao tác sau'} (Ctrl+Y)` 
+                    : 'Không còn thao tác nào để làm lại (Ctrl+Y)';
+            }
+        }
+        window.updateUndoRedoUI = updateUndoRedoUI;
+
+        function pushScheduleHistory(actionDesc = 'Thay đổi lịch') {
+            try {
+                const currentData = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];
+                const snapshot = JSON.stringify(currentData);
+                window._scheduleUndoStack.push({
+                    action: actionDesc,
+                    data: snapshot,
+                    time: Date.now()
+                });
+                if (window._scheduleUndoStack.length > MAX_SCHEDULE_HISTORY) {
+                    window._scheduleUndoStack.shift();
+                }
+                // Xóa redo stack khi có thao tác mới
+                window._scheduleRedoStack = [];
+                updateUndoRedoUI();
+            } catch(e) {
+                console.warn('[pushScheduleHistory] Không thể lưu snapshot:', e);
+            }
+        }
+        window.pushScheduleHistory = pushScheduleHistory;
+
+        function undoSchedule() {
+            if (!window._scheduleUndoStack || window._scheduleUndoStack.length === 0) {
+                notify('Không còn thao tác nào để hoàn tác!', 'warning');
+                return;
+            }
+            try {
+                const currentData = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];
+                const lastEntry = window._scheduleUndoStack.pop();
+
+                // Đẩy trạng thái hiện tại sang Redo
+                window._scheduleRedoStack.push({
+                    action: lastEntry.action,
+                    data: JSON.stringify(currentData),
+                    time: Date.now()
+                });
+                if (window._scheduleRedoStack.length > MAX_SCHEDULE_HISTORY) {
+                    window._scheduleRedoStack.shift();
+                }
+
+                const restoredData = JSON.parse(lastEntry.data || '[]');
+                if (typeof dataCache !== 'undefined') dataCache.schedule = restoredData;
+                if (window.dataCache) window.dataCache.schedule = restoredData;
+                window.currentScheduleData = markDischargedInSchedule(restoredData);
+
+                const curUnit = getCurrentUnitCode();
+                localStorage.setItem(getUnitStorageKey('meds_success'), JSON.stringify(restoredData));
+                localStorage.setItem('meds_success', JSON.stringify(restoredData));
+
+                loadScheduleList();
+                if (typeof renderScheduleGanttTimeline === 'function' && document.getElementById('schedule-gantt-wrap')?.style.display !== 'none') {
+                    renderScheduleGanttTimeline();
+                }
+                updateUndoRedoUI();
+                notify(`↩️ Đã hoàn tác: ${lastEntry.action || 'thao tác vừa rồi'}`, 'info');
+            } catch(e) {
+                console.error('[undoSchedule] Lỗi hoàn tác:', e);
+                notify('Lỗi hoàn tác dữ liệu!', 'danger');
+            }
+        }
+        window.undoSchedule = undoSchedule;
+
+        function redoSchedule() {
+            if (!window._scheduleRedoStack || window._scheduleRedoStack.length === 0) {
+                notify('Không còn thao tác nào để làm lại!', 'warning');
+                return;
+            }
+            try {
+                const currentData = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];
+                const nextEntry = window._scheduleRedoStack.pop();
+
+                // Đẩy trạng thái hiện tại sang Undo
+                window._scheduleUndoStack.push({
+                    action: nextEntry.action,
+                    data: JSON.stringify(currentData),
+                    time: Date.now()
+                });
+                if (window._scheduleUndoStack.length > MAX_SCHEDULE_HISTORY) {
+                    window._scheduleUndoStack.shift();
+                }
+
+                const restoredData = JSON.parse(nextEntry.data || '[]');
+                if (typeof dataCache !== 'undefined') dataCache.schedule = restoredData;
+                if (window.dataCache) window.dataCache.schedule = restoredData;
+                window.currentScheduleData = markDischargedInSchedule(restoredData);
+
+                const curUnit = getCurrentUnitCode();
+                localStorage.setItem(getUnitStorageKey('meds_success'), JSON.stringify(restoredData));
+                localStorage.setItem('meds_success', JSON.stringify(restoredData));
+
+                loadScheduleList();
+                if (typeof renderScheduleGanttTimeline === 'function' && document.getElementById('schedule-gantt-wrap')?.style.display !== 'none') {
+                    renderScheduleGanttTimeline();
+                }
+                updateUndoRedoUI();
+                notify(`↪️ Đã làm lại: ${nextEntry.action || 'thao tác'}`, 'info');
+            } catch(e) {
+                console.error('[redoSchedule] Lỗi làm lại:', e);
+                notify('Lỗi làm lại thao tác!', 'danger');
+            }
+        }
+        window.redoSchedule = redoSchedule;
+
+        // Bắt phím tắt Ctrl+Z (Undo) và Ctrl+Y / Ctrl+Shift+Z (Redo) toàn cục
+        window.addEventListener('keydown', function(e) {
+            const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+            if (tag === 'input' || tag === 'textarea' || (e.target && e.target.isContentEditable)) {
+                return;
+            }
+            if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+                if (e.key === 'z' || e.key === 'Z') {
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        redoSchedule();
+                    } else {
+                        undoSchedule();
+                    }
+                } else if (e.key === 'y' || e.key === 'Y') {
+                    e.preventDefault();
+                    redoSchedule();
+                }
+            }
+        });
+
+        // ============================================================
+        // ⚡ TÍNH NĂNG 3: TỰ ĐỘNG TÌM GIỜ RẢNH CHO CA ĐIỀU TRỊ (1-CLICK SMART SLOT FINDER)
+        // ============================================================
+        async function autoFindFreeSlotForSchedule(targetIdxOrObj, options = {}) {
+            let target = null;
+            let targetIdx = -1;
+            const currentList = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];
+
+            if (typeof targetIdxOrObj === 'number') {
+                targetIdx = targetIdxOrObj;
+                target = currentList[targetIdx];
+            } else if (targetIdxOrObj && typeof targetIdxOrObj === 'object') {
+                target = targetIdxOrObj;
+                targetIdx = currentList.findIndex(r => 
+                    (r.tenBN || '').trim().toLowerCase() === (target.tenBN || '').trim().toLowerCase() &&
+                    (r.thuThuat || '').trim().toLowerCase() === (target.thuThuat || '').trim().toLowerCase() &&
+                    (r.gioDienRa || '').trim() === (target.gioDienRa || '').trim()
+                );
+            }
+
+            if (!target) {
+                notify('Không tìm thấy thông tin ca điều trị cần tìm giờ rảnh!', 'danger');
+                return { success: false, message: 'Ca không tồn tại' };
+            }
+
+            // Lưu Undo Stack trước khi thay đổi
+            pushScheduleHistory(`Tự tìm giờ rảnh: ${target.tenBN || ''} - ${target.thuThuat || ''}`);
+
+            const helperT2M = (tStr) => {
+                if (!tStr || !String(tStr).includes(':')) return 0;
+                const p = String(tStr).trim().split(':');
+                return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0);
+            };
+            const helperM2T = (mins) => {
+                const m = Math.max(0, parseInt(mins, 10) || 0);
+                return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+            };
+            const isOverlap = (s1, e1, s2, e2) => Math.max(s1, s2) < Math.min(e1, e2);
+
+            const bnName = String(target.tenBN || '').trim().toUpperCase();
+            const bnNs = String(target.namSinh || '').trim();
+            const ttName = String(target.thuThuat || '').trim();
+            const currentStaff = String(target.nvChinh || '').trim();
+            const currentMach = String(target.may || '').trim();
+
+            // 1. Thông tin Bệnh nhân
+            const patList = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.pat)) ? dataCache.pat : [];
+            const patObj = patList.find(p => {
+                const pName = String(p.ten || p.name || '').trim().toUpperCase();
+                const pNs = String(p.namSinh || '').trim();
+                return pName === bnName && (!bnNs || !pNs || bnNs === pNs);
+            }) || null;
+
+            const arriveMins = (patObj && patObj.gioVao && String(patObj.gioVao).includes(':')) ? helperT2M(patObj.gioVao) : 450;
+            const leaveMins = (patObj && patObj.gioRa && String(patObj.gioRa).includes(':')) ? helperT2M(patObj.gioRa) : 1020;
+            const buoiDT = patObj ? (patObj.buoi_dieu_tri || patObj.buoiDieuTri || 'TuDong') : 'TuDong';
+
+            // 2. Thông tin Thủ thuật
+            const procList = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.proc)) ? dataCache.proc : [];
+            const procObj = procList.find(p => {
+                const n = String(p.ten || p.name || p[0] || '').trim().toLowerCase();
+                return n === ttName.toLowerCase();
+            }) || null;
+
+            let duration = 20;
+            let loaiMay = 'Thủ công';
+            if (procObj) {
+                duration = Math.max(10, parseInt(procObj.thoiGianThuThuat || procObj.tg_thu_thuat || procObj[2] || procObj[1]) || 20);
+                loaiMay = String(procObj.loaiMay || procObj.may || procObj[0] || 'Thủ công').trim();
+            }
+            const isManual = !loaiMay || /^thủ công$/i.test(loaiMay) || loaiMay === '--' || loaiMay === '-';
+
+            // 3. Các ca khác trong ngày (bóc tách ca này ra)
+            const otherSched = currentList.filter(r => r !== target && !(
+                (r.tenBN || '').trim().toUpperCase() === bnName &&
+                (r.thuThuat || '').trim().toLowerCase() === ttName.toLowerCase() &&
+                (r.gioDienRa || '').trim() === (target.gioDienRa || '').trim()
+            ));
+
+            // Khung giờ bận của BN
+            const bnBusyIntervals = [];
+            if (patObj && patObj.gioBan) {
+                String(patObj.gioBan).split(',').forEach(b => {
+                    if (b.includes('-')) {
+                        const parts = b.split('-');
+                        bnBusyIntervals.push([helperT2M(parts[0]), helperT2M(parts[1])]);
+                    }
+                });
+            }
+            otherSched.forEach(r => {
+                const rName = String(r.tenBN || '').trim().toUpperCase();
+                const rNs = String(r.namSinh || '').trim();
+                if (rName === bnName && (!bnNs || !rNs || bnNs === rNs)) {
+                    const s = helperT2M(r.gioDienRa);
+                    const e = helperT2M(r.gioKetThuc);
+                    if (s > 0 && e > s) bnBusyIntervals.push([s, e]);
+                }
+            });
+
+            // 4. Danh sách KTV có kỹ năng
+            const staffList = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff)) ? dataCache.staff : [];
+            const isWinter = (typeof window.getCurrentStaffSeason === 'function' && window.getCurrentStaffSeason() === 'winter');
+            const defaultMorningEnd = isWinter ? 720 : 690;
+
+            const qualifiedStaff = [];
+            staffList.forEach(s => {
+                const sName = String(s.ten || s.name || s[0] || '').trim();
+                if (!sName) return;
+                const skills = String(s.kyNang || s.skills || s[2] || '').toLowerCase();
+                const isQualified = !skills || skills.includes(ttName.toLowerCase()) || skills.includes('tất cả') || skills === 'all';
+                if (isQualified) qualifiedStaff.push(sName);
+            });
+            if (currentStaff && qualifiedStaff.includes(currentStaff)) {
+                qualifiedStaff.splice(qualifiedStaff.indexOf(currentStaff), 1);
+                qualifiedStaff.unshift(currentStaff);
+            } else if (currentStaff) {
+                qualifiedStaff.unshift(currentStaff);
+            }
+            if (!qualifiedStaff.length && staffList.length) {
+                staffList.forEach(s => { if (s && (s.ten || s.name)) qualifiedStaff.push(s.ten || s.name); });
+            }
+
+            // 5. Danh sách Máy móc khả thi
+            const machList = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.machine)) ? dataCache.machine : [];
+            const candidateMachines = [];
+            if (!isManual) {
+                machList.forEach(m => {
+                    const mType = String(m.loaiMay || m.type || m[2] || '').trim().toLowerCase();
+                    const mName = String(m.tenMay || m.name || m[0] || '').trim();
+                    if (mType === loaiMay.toLowerCase() || mName.toLowerCase().includes(loaiMay.toLowerCase())) {
+                        candidateMachines.push(mName);
+                    }
+                });
+                if (currentMach && !candidateMachines.includes(currentMach)) {
+                    candidateMachines.unshift(currentMach);
+                }
+                if (!candidateMachines.length) candidateMachines.push(currentMach || loaiMay);
+            } else {
+                candidateMachines.push('Thủ công');
+            }
+
+            // 6. Quét tìm slot rảnh đồng thời cả BN, KTV và Máy
+            let bestSlot = null;
+            const scanWindows = [];
+            if (buoiDT !== 'Chieu') scanWindows.push({ start: 450, end: defaultMorningEnd });
+            if (buoiDT !== 'Sang') scanWindows.push({ start: 780, end: 990 });
+
+            for (const win of scanWindows) {
+                if (bestSlot) break;
+                const effStart = Math.max(win.start, arriveMins);
+                const effEnd = Math.min(win.end, leaveMins);
+
+                for (let t = effStart; t + duration <= effEnd; t += 5) {
+                    const slotStart = t;
+                    const slotEnd = t + duration;
+
+                    // A. BN có bận không?
+                    const bnConflict = bnBusyIntervals.some(b => isOverlap(slotStart, slotEnd, b[0], b[1]));
+                    if (bnConflict) continue;
+
+                    // B. KTV nào rảnh?
+                    for (const stName of qualifiedStaff) {
+                        const staffObj = staffList.find(s => (s.ten || s.name || s[0]) === stName);
+                        if (staffObj && staffObj.thoiGianLam && !String(staffObj.thoiGianLam).includes('Cả ngày')) {
+                            const shiftStr = String(staffObj.thoiGianLam);
+                            if (slotStart < 780 && !shiftStr.includes('Sáng') && !shiftStr.includes('07:30') && !shiftStr.includes('08:00')) continue;
+                            if (slotStart >= 780 && !shiftStr.includes('Chiều') && !shiftStr.includes('13:00') && !shiftStr.includes('13:30')) continue;
+                        }
+
+                        const stBusy = otherSched.some(r => {
+                            const rSt = String(r.nvChinh || '').trim();
+                            if (rSt.toLowerCase() === stName.toLowerCase()) {
+                                const s = helperT2M(r.gioDienRa);
+                                const e = helperT2M(r.gioKetThuc);
+                                return isOverlap(slotStart, slotEnd, s, e);
+                            }
+                            return false;
+                        });
+                        if (stBusy) continue;
+
+                        // C. Máy nào rảnh?
+                        let pickedMach = candidateMachines[0];
+                        if (!isManual) {
+                            pickedMach = candidateMachines.find(mName => {
+                                const mBusy = otherSched.some(r => {
+                                    const rM = String(r.may || '').trim();
+                                    if (rM.toLowerCase() === mName.toLowerCase()) {
+                                        const s = helperT2M(r.gioDienRa);
+                                        const e = helperT2M(r.gioKetThuc);
+                                        return isOverlap(slotStart, slotEnd, s, e);
+                                    }
+                                    return false;
+                                });
+                                return !mBusy;
+                            });
+                            if (!pickedMach) continue;
+                        }
+
+                        bestSlot = {
+                            startMin: slotStart,
+                            endMin: slotEnd,
+                            startStr: helperM2T(slotStart),
+                            endStr: helperM2T(slotEnd),
+                            staff: stName,
+                            machine: pickedMach
+                        };
+                        break;
+                    }
+                    if (bestSlot) break;
+                }
+            }
+
+            if (!bestSlot) {
+                const msg = `Không tìm thấy khung giờ rảnh phù hợp cho BN ${bnName} (${ttName}) trong ngày hôm nay!`;
+                notify('⚠️ ' + msg, 'warning');
+                return { success: false, message: msg };
+            }
+
+            // 7. Cập nhật vào ca điều trị
+            target.gioDienRa = bestSlot.startStr;
+            target.gioKetThuc = bestSlot.endStr;
+            target.nvChinh = bestSlot.staff;
+            if (bestSlot.machine) target.may = bestSlot.machine;
+
+            if (typeof dataCache !== 'undefined') dataCache.schedule = currentList;
+            if (window.dataCache) window.dataCache.schedule = currentList;
+            window.currentScheduleData = markDischargedInSchedule(currentList);
+
+            const curSchedUnit = getCurrentUnitCode();
+            localStorage.setItem(getUnitStorageKey('meds_success'), JSON.stringify(currentList));
+            localStorage.setItem('meds_success', JSON.stringify(currentList));
+
+            if (window.OfflineSyncEngine && typeof window.OfflineSyncEngine.saveCache === 'function') {
+                window.OfflineSyncEngine.saveCache('meds_success', currentList);
+            }
+
+            loadScheduleList();
+            if (typeof renderScheduleGanttTimeline === 'function' && document.getElementById('schedule-gantt-wrap')?.style.display !== 'none') {
+                renderScheduleGanttTimeline();
+            }
+
+            const successMsg = `⚡ Đã chuyển ca BN ${bnName} (${ttName}) sang [${bestSlot.startStr} - ${bestSlot.endStr}] (KTV: ${bestSlot.staff}${bestSlot.machine !== 'Thủ công' ? ', Máy: ' + bestSlot.machine : ''})`;
+            notify(successMsg, 'success');
+            return { success: true, slot: bestSlot, message: successMsg };
+        }
+        window.autoFindFreeSlotForSchedule = autoFindFreeSlotForSchedule;
+
+        // Modal Quản Lý & Tự Động Tìm Giờ Rảnh
+        function openScheduleItemDetailModal(index) {
+            const list = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];
+            const item = list[index];
+            if (!item) return;
+
+            document.getElementById('msid-item-index').value = index;
+            document.getElementById('msid-bn-name').innerText = `${item.tenBN || 'BỆNH NHÂN'} (${item.namSinh || ''})`;
+            document.getElementById('msid-bn-room').innerText = `Phòng: ${item.phong || '--'} • Giường: ${item.giuong || '--'}`;
+
+            const badgeEl = document.getElementById('msid-rv-badge');
+            if (badgeEl) {
+                if (item.__isPinned || item.__isDischarged) {
+                    badgeEl.innerHTML = `<span style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; padding:3px 9px; border-radius:12px; font-weight:700; font-size:11.5px;">🔒 RV (Đã ghim)</span>`;
+                } else {
+                    badgeEl.innerHTML = '';
+                }
+            }
+
+            document.getElementById('msid-input-proc').value = item.thuThuat || '';
+            document.getElementById('msid-input-machine').value = item.may || '';
+            document.getElementById('msid-input-start').value = item.gioDienRa || '08:00';
+            document.getElementById('msid-input-end').value = item.gioKetThuc || '08:20';
+
+            // Nạp danh sách nhân sự vào select
+            const staffList = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.staff)) ? dataCache.staff : [];
+            const staffSelect = document.getElementById('msid-select-staff');
+            const subSelect = document.getElementById('msid-select-sub');
+            if (staffSelect) {
+                staffSelect.innerHTML = staffList.map(s => {
+                    const sName = s.ten || s.name || s[0] || '';
+                    return `<option value="${escapeHtml(sName)}" ${sName === item.nvChinh ? 'selected' : ''}>${escapeHtml(sName)}</option>`;
+                }).join('');
+            }
+            if (subSelect) {
+                subSelect.innerHTML = `<option value="">(Không có người phụ)</option>` + staffList.map(s => {
+                    const sName = s.ten || s.name || s[0] || '';
+                    return `<option value="${escapeHtml(sName)}" ${sName === item.nvPhu ? 'selected' : ''}>${escapeHtml(sName)}</option>`;
+                }).join('');
+            }
+
+            const modal = document.getElementById('modal-schedule-item-detail');
+            if (modal) modal.style.display = 'flex';
+        }
+        window.openScheduleItemDetailModal = openScheduleItemDetailModal;
+
+        function closeScheduleItemDetailModal() {
+            const modal = document.getElementById('modal-schedule-item-detail');
+            if (modal) modal.style.display = 'none';
+        }
+        window.closeScheduleItemDetailModal = closeScheduleItemDetailModal;
+
+        async function onBtnAutoFindFreeSlotClick() {
+            const idx = parseInt(document.getElementById('msid-item-index').value, 10);
+            if (isNaN(idx) || idx < 0) return;
+            const res = await autoFindFreeSlotForSchedule(idx);
+            if (res && res.success && res.slot) {
+                document.getElementById('msid-input-start').value = res.slot.startStr;
+                document.getElementById('msid-input-end').value = res.slot.endStr;
+                document.getElementById('msid-select-staff').value = res.slot.staff;
+                if (res.slot.machine) document.getElementById('msid-input-machine').value = res.slot.machine;
+                setTimeout(() => closeScheduleItemDetailModal(), 800);
+            }
+        }
+        window.onBtnAutoFindFreeSlotClick = onBtnAutoFindFreeSlotClick;
+
+        function saveScheduleItemChanges() {
+            const idx = parseInt(document.getElementById('msid-item-index').value, 10);
+            const list = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];
+            const item = list[idx];
+            if (!item) return;
+
+            pushScheduleHistory(`Chỉnh sửa ca: ${item.tenBN || ''}`);
+
+            item.gioDienRa = document.getElementById('msid-input-start').value;
+            item.gioKetThuc = document.getElementById('msid-input-end').value;
+            item.nvChinh = document.getElementById('msid-select-staff').value;
+            item.nvPhu = document.getElementById('msid-select-sub').value;
+            item.may = document.getElementById('msid-input-machine').value;
+
+            if (typeof dataCache !== 'undefined') dataCache.schedule = list;
+            if (window.dataCache) window.dataCache.schedule = list;
+            window.currentScheduleData = markDischargedInSchedule(list);
+
+            const curSchedUnit = getCurrentUnitCode();
+            localStorage.setItem(getUnitStorageKey('meds_success'), JSON.stringify(list));
+            localStorage.setItem('meds_success', JSON.stringify(list));
+
+            loadScheduleList();
+            if (typeof renderScheduleGanttTimeline === 'function' && document.getElementById('schedule-gantt-wrap')?.style.display !== 'none') {
+                renderScheduleGanttTimeline();
+            }
+            closeScheduleItemDetailModal();
+            notify('💾 Đã lưu thay đổi ca điều trị thành công!', 'success');
+        }
+        window.saveScheduleItemChanges = saveScheduleItemChanges;
+
+        function deleteCurrentScheduleItem() {
+            const idx = parseInt(document.getElementById('msid-item-index').value, 10);
+            const list = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];
+            const item = list[idx];
+            if (!item) return;
+
+            if (!confirm(`Bạn có chắc chắn muốn xóa ca điều trị [${item.thuThuat}] của BN ${item.tenBN}?`)) return;
+
+            pushScheduleHistory(`Xóa ca: ${item.tenBN || ''} - ${item.thuThuat || ''}`);
+            list.splice(idx, 1);
+
+            if (typeof dataCache !== 'undefined') dataCache.schedule = list;
+            if (window.dataCache) window.dataCache.schedule = list;
+            window.currentScheduleData = markDischargedInSchedule(list);
+
+            const curSchedUnit = getCurrentUnitCode();
+            localStorage.setItem(getUnitStorageKey('meds_success'), JSON.stringify(list));
+            localStorage.setItem('meds_success', JSON.stringify(list));
+
+            loadScheduleList();
+            if (typeof renderScheduleGanttTimeline === 'function' && document.getElementById('schedule-gantt-wrap')?.style.display !== 'none') {
+                renderScheduleGanttTimeline();
+            }
+            closeScheduleItemDetailModal();
+            notify('🗑️ Đã xóa ca điều trị khỏi lịch trình!', 'info');
+        }
+        window.deleteCurrentScheduleItem = deleteCurrentScheduleItem;
 
         // ============================================================
 

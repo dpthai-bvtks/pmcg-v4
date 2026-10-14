@@ -52,11 +52,45 @@
             tbody.appendChild(tr);
         }
 
-        function addTimeRow(tbody, stt, tech, ca1Str, ca2Str, reason) {
+        function addTimeRow(tbody, stt, tech, ca1Str, ca2Str, reason, targetRow = null) {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${stt}</td><td><strong>${tech}</strong></td><td>${ca1Str}</td><td>${ca2Str}</td><td><span style="color:#c0392b; font-weight:bold;">${reason}</span></td>`;
+            let fixBtn = '';
+            if (targetRow && typeof window.autoFindFreeSlotForSchedule === 'function') {
+                const targetBn = String(targetRow.patientName || targetRow.tenBN || '').trim();
+                const targetTt = String(targetRow.procName || targetRow.thuThuat || '').trim();
+                const targetGio = targetRow.start ? `${String(targetRow.start.getHours()).padStart(2,'0')}:${String(targetRow.start.getMinutes()).padStart(2,'0')}` : String(targetRow.gioDienRa || '');
+                const safeBn = escapeHtml(targetBn);
+                const safeTt = escapeHtml(targetTt);
+                const safeGio = escapeHtml(targetGio);
+                fixBtn = `<div style="margin-top:6px;">
+                    <button type="button" class="btn btn-sm" onclick="autoFixSingleClashFromChecker('${safeBn}', '${safeTt}', '${safeGio}')"
+                        style="padding:3px 9px; font-size:11px; font-weight:700; background:#f0fdf4; color:#166534; border:1px solid #86efac; border-radius:5px; cursor:pointer;"
+                        title="Tự động tìm giờ rảnh cho ca này để giải quyết xung đột">⚡ Tự tìm giờ rảnh</button>
+                </div>`;
+            }
+            tr.innerHTML = `<td>${stt}</td><td><strong>${tech}</strong></td><td>${ca1Str}</td><td>${ca2Str}${fixBtn}</td><td><span style="color:#c0392b; font-weight:bold;">${reason}</span></td>`;
             tbody.appendChild(tr);
         }
+
+        window.autoFixSingleClashFromChecker = async function(bnName, ttName, gioDienRa) {
+            const list = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];
+            const idx = list.findIndex(r => {
+                const rName = String(r.tenBN || '').trim().toUpperCase();
+                const rTt = String(r.thuThuat || '').trim().toLowerCase();
+                const rGio = String(r.gioDienRa || '').trim();
+                return rName === bnName.toUpperCase() && rTt === ttName.toLowerCase() && (!gioDienRa || rGio === gioDienRa);
+            });
+            if (idx === -1) {
+                notify('Không tìm thấy ca tương ứng trong lịch hiện tại!', 'warning');
+                return;
+            }
+            const res = await autoFindFreeSlotForSchedule(idx);
+            if (res && res.success) {
+                // Tự động kiểm tra lại bảng lỗi tức thì
+                const btnCheck = document.getElementById('btn-check-current-schedule');
+                if (btnCheck) btnCheck.click();
+            }
+        };
 
         function isDate18Sep2026(dateObj, row) {
             if (dateObj instanceof Date && !isNaN(dateObj.getTime())) {
@@ -585,7 +619,7 @@
                             const ca2Info = `<b>${B.patientDisplay || B.patientName}</b><br/>${B.procName}<br/><span style="color:#2c3e50;">⏱ ${timeBStr}</span>`;
                             const techDisplay = (A.role === 'Phụ' || B.role === 'Phụ') ? `${tech} <small style="color:#e67e22;">(${A.role === B.role ? 'Hỗ trợ phụ' : 'Chính & Phụ'})</small>` : tech;
                             
-                            addTimeRow(timeTbody, sttTime++, techDisplay, ca1Info, ca2Info, conflictFound.reason + roleTag);
+                            addTimeRow(timeTbody, sttTime++, techDisplay, ca1Info, ca2Info, conflictFound.reason + roleTag, B);
                         }
                     }
                 }
@@ -616,7 +650,7 @@
                         const pDisplayName = P1.patientDisplay || P1.patientName || pKey;
                         const bnTag = `<span style="color:#2980b9; font-weight:bold;">👤 ${pDisplayName}</span><br/><small style="color:#7f8c8d;">(Trùng BN)</small>`;
                         
-                        addTimeRow(timeTbody, sttTime++, bnTag, p1Info, p2Info, `Bệnh nhân bị xếp 2 thủ thuật cùng lúc (${formatDate(P2.start)} đè lên ca trước kết thúc lúc ${formatDate(P1.end)})`);
+                        addTimeRow(timeTbody, sttTime++, bnTag, p1Info, p2Info, `Bệnh nhân bị xếp 2 thủ thuật cùng lúc (${formatDate(P2.start)} đè lên ca trước kết thúc lúc ${formatDate(P1.end)})`, P2);
                     }
                 }
             }
@@ -645,7 +679,7 @@
                         const g2Info = `<b>${G2.patientDisplay || G2.patientName}</b><br/>${G2.procName}<br/><span style="color:#2c3e50;">⏱ ${timeG2Str}</span><br/><small>KTV: ${G2.techMainNorm || 'Chưa rõ'}</small>`;
                         const bedTag = `<span style="color:#8e44ad; font-weight:bold;">🛏️ ${bedKey}</span><br/><small style="color:#7f8c8d;">(Trùng Giường)</small>`;
 
-                        addTimeRow(timeTbody, sttTime++, bedTag, g1Info, g2Info, `2 ca nằm trùng giường bệnh (${formatDate(G2.start)} đè lên ca trước kết thúc lúc ${formatDate(G1.end)})`);
+                        addTimeRow(timeTbody, sttTime++, bedTag, g1Info, g2Info, `2 ca nằm trùng giường bệnh (${formatDate(G2.start)} đè lên ca trước kết thúc lúc ${formatDate(G1.end)})`, G2);
                     }
                 }
             }
@@ -674,7 +708,7 @@
                         const m2Info = `<b>${M2.patientDisplay || M2.patientName}</b><br/>${M2.procName}<br/><span style="color:#2c3e50;">⏱ ${timeM2Str}</span><br/><small>KTV: ${M2.techMainNorm || 'Chưa rõ'}</small>`;
                         const machineTag = `<span style="color:#d35400; font-weight:bold;">⚡ ${mName}</span><br/><small style="color:#7f8c8d;">(Trùng Máy)</small>`;
 
-                        addTimeRow(timeTbody, sttTime++, machineTag, m1Info, m2Info, `2 ca sử dụng cùng 1 máy móc (${formatDate(M2.start)} đè lên ca trước kết thúc lúc ${formatDate(M1.end)})`);
+                        addTimeRow(timeTbody, sttTime++, machineTag, m1Info, m2Info, `2 ca sử dụng cùng 1 máy móc (${formatDate(M2.start)} đè lên ca trước kết thúc lúc ${formatDate(M1.end)})`, M2);
                     }
                 }
             }
