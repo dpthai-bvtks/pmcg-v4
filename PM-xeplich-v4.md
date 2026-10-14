@@ -8289,6 +8289,31 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 - `index.html` (cập nhật cache buster ?v=4.2.8-rev1, chân trang Phiên bản: 4.2.8, timestamp 07:31 14/10/2026)
 - `PM-xeplich-v4.md` (ghi nhật ký phát triển)
 
+### [v4.2.8-rev2] - 07:48 14/10/2026: Sửa Lỗi TDZ (Temporal Dead Zone) Khởi Tạo `isSupplemental` Trong Thuật Toán Xếp Lịch
+
+#### 1. Yêu cầu & Bối cảnh:
+- Người dùng gặp lỗi runtime khi xếp lịch: `Cannot access 'isSupplemental' before initialization`.
+
+#### 2. Phân tích nguyên nhân:
+- Trong hàm `_turbo_core_logic` ([js/scheduler-engine.js](file:///c:/PRIVATE-DPT/PM-DPT/PM-xeplich/PM-chinh/ban_web/v4-thuongmai/js/scheduler-engine.js)), hàm con `tryScheduleOne` truy cập `isSupplemental` tại dòng 730 (`const isRelaxedPass = isBackfill || isSupplemental || (currentPhase >= 2);`).
+- Tuy nhiên, biến `const isSupplemental = existingSched && existingSched.length > 0;` lại được khai báo ở tận dòng 774 bên trong `tryScheduleOne`. Do cơ chế hoisting của `const`, biến rơi vào vùng chết thời gian (Temporal Dead Zone) khi dòng 730 thực thi, gây văng `ReferenceError`.
+
+#### 3. Giải pháp thực hiện:
+1. **Chuyển khai báo lên scope cha `_turbo_core_logic`**:
+   - Khai báo `const isSupplemental = Boolean(Array.isArray(existingSched) && existingSched.length > 0);` ngay tại dòng 347 (bên cạnh `let isBackfill = false;`).
+   - Xóa bỏ dòng khai báo trùng lặp cục bộ tại dòng 774 bên trong `tryScheduleOne`.
+2. **Quy chuẩn phiên bản theo RULES.md**:
+   - Vượt qua 100% 9 tầng kiểm thử của `node scripts/verify-build.mjs`.
+   - Nâng phiên bản `4.2.8-rev2`, cập nhật `version.json`, `sw.js` (`pmcg-v4-cache-4.2.8-rev2`), `index.html` (chân trang `Phiên bản: 4.2.8`, timestamp `07:48 14/10/2026`, cache buster `?v=4.2.8-rev2`).
+
+**File sửa đổi:**
+- `js/scheduler-engine.js` (sửa lỗi TDZ cho biến isSupplemental)
+- `version.json` (nâng phiên bản 4.2.8-rev2)
+- `sw.js` (nâng CACHE_NAME pmcg-v4-cache-4.2.8-rev2)
+- `index.html` (cập nhật cache buster ?v=4.2.8-rev2, timestamp 07:48 14/10/2026)
+- `PM-xeplich-v4.md` (ghi nhật ký phát triển)
+
+
 
 
 

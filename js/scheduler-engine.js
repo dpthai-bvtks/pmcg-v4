@@ -344,6 +344,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
   let startOfDay = Math.min(450, morningShiftStart);
   let endOfDay = 1014;
   let isBackfill = false;
+  const isSupplemental = Boolean(Array.isArray(existingSched) && existingSched.length > 0);
 
   const reservedMachines = new Set();
   if (scenario === 3) {
@@ -771,7 +772,6 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
     const tgNvMin = Math.max(1, info[2] || 5);
     const tgNvMax = info[11] ? Math.max(tgNvMin, info[11]) : tgNvMin;
     const gapMinutes = (info[12] !== undefined && info[12] > 0) ? info[12] : 1;
-    const isSupplemental = existingSched && existingSched.length > 0;
     
     const isDienCham = tenThuThuat.toLowerCase().includes('điện châm') || tenThuThuat.toLowerCase() === 'đc' || (info[8] && String(info[8]).toLowerCase().includes('điện châm'));
     

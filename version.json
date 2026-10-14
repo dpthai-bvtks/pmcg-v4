@@ -1,6 +1,6 @@
 {
-    "version": "4.2.8-rev1",
+    "version": "4.2.8-rev2",
     "releaseDate": "14/10/2026",
-    "releaseTime": "07:31 14/10/2026",
-    "notes": "Tối ưu hóa toán học Google OR-Tools CP-SAT: Phá vỡ tính đối xứng máy móc với AddCumulative, Cân bằng tải KTV tuyến tính Min-Max, Rút ngắn thời gian chờ bệnh nhân, đồng bộ và vận hành tại C:\\PMCG-System\\PMCG-Solver."
+    "releaseTime": "07:48 14/10/2026",
+    "notes": "Sửa lỗi TDZ (Temporal Dead Zone): Chuyển khai báo biến isSupplemental lên đầu scope _turbo_core_logic, triệt tiêu lỗi Cannot access isSupplemental before initialization."
 }
