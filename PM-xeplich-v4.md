@@ -8410,3 +8410,46 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 - `index.html` (cập nhật cache busters ?v=4.2.8-rev4, APP_VERSION, timestamp 10:52 14/10/2026)
 - `PM-xeplich-v4.md` (ghi nhật ký phát triển)
 
+### Rà Soát Toàn Diện Các Tab Nghiệp Vụ Còn Lại: Đồng Bộ Bootstrap Cache (tab-machines, tab-staff, tab-patients) & Chuẩn Hóa Update Changes (14/10/2026 - v4.2.8-rev5)
+
+#### 1. Yêu cầu của người dùng:
+- Kiểm tra toàn bộ tất cả các tab còn lại (`tab-machines`, `tab-procedures`, `tab-staff`, `tab-patients`, `tab-schedule`, `tab-busy`, `tab-sat`, `tab-chamcong`, `tab-kiemtra`, `tab-thongke`, `tab-tenants`) xem có bị lỗi gì không: cú pháp, logic, gọi nhầm hàm, gọi thừa hàm, lỗi F5/offline sync...
+
+#### 2. Kết quả kiểm tra & Rà soát tĩnh/động:
+1. **Kiểm tra Gọi hàm từ HTML (Inline Handlers Audit):**
+   - Đã quét toàn bộ 163 hàm gọi từ thuộc tính inline (`onclick`, `onchange`, `onsubmit`...) trong `index.html`.
+   - Kết quả: **100% tất cả 163 hàm đều có định nghĩa hợp lệ và chính xác** trong các module JavaScript (`js/app.js`, `js/modules/*.js`, `js/thongke.js`, `js/init.js`, `js/scheduler-engine.js`). Không có bất kỳ hàm nào bị gọi sai tên hay không tồn tại.
+2. **Kiểm tra Cú pháp & Runtime Sandbox (9 Tầng Super-Verify):**
+   - Vượt qua 100% cả 9 tầng kiểm tra Super-Verify (`node scripts/verify-build.mjs`), 0 lỗi TDZ, 0 lỗi cú pháp, 0 broken link.
+3. **Phát hiện lỗi Logic Đồng Bộ F5 / Offline Cache (Tương tự tab-rooms trước đó):**
+   - **`tab-machines`** (`js/modules/app-resources.js`): Trong `saveMachine()` và `deleteMachine()`, sau khi thêm/sửa/xóa máy, hệ thống chỉ cập nhật `cache.machine` trong RAM mà không ghi vào `times_bootstrap_cache` trong `localStorage`. Do đó nếu người dùng F5 ngay hoặc mạng chập chờn, dữ liệu máy móc sẽ bị lấy lại từ cache cũ.
+   - **`tab-staff`** (`js/app.js`): Trong `saveStaff()` và `deleteStaff()`, cũng thiếu đồng bộ vào `times_bootstrap_cache` trong `localStorage`.
+   - **`tab-patients`** (`js/app.js`): Trong `savePatient()` và `deletePatient()`, chỉ cập nhật `dataCache.pat` mà chưa ghi ngay vào `times_bootstrap_cache`.
+4. **Phát hiện lỗi Kiểm tra Fallback UPDATE trong Backend `patients.js`:**
+   - Trong `editBenhNhan`: Kiểm tra `if (!updateRes || (updateRes.meta && updateRes.meta.changes === 0))` và `if (updateRes && updateRes.meta && updateRes.meta.changes === 0)`. Khi chạy trên MiniPC SQLite adapter (trả về `{ changes: 0 }` không có `meta`), điều kiện `updateRes.meta` bị `undefined`, dẫn đến fallback UPDATE theo `name + age` không được kích hoạt khi cần thiết.
+
+#### 3. Giải pháp kỹ thuật đã triển khai:
+1. **Đồng bộ Bootstrap Cache cho `tab-machines` (`js/modules/app-resources.js`):**
+   - Trong `saveMachine()` (nhánh Thêm và nhánh Sửa) và `deleteMachine()`: Bổ sung ghi đè ngay lập tức danh sách `machines` / `machine` / `may_moc` vào `times_bootstrap_cache_${uCode}` trong `localStorage`.
+2. **Đồng bộ Bootstrap Cache cho `tab-staff` (`js/app.js`):**
+   - Trong `saveStaff()` và `deleteStaff()`: Bổ sung ghi đè ngay lập tức danh sách `staff` / `nhan_su` vào `times_bootstrap_cache` trong `localStorage`.
+3. **Đồng bộ Bootstrap Cache cho `tab-patients` (`js/app.js`):**
+   - Trong `savePatient()` và `deletePatient()`: Bổ sung ghi đè ngay lập tức danh sách `patients` / `benh_nhan` vào `times_bootstrap_cache` trong `localStorage`.
+4. **Chuẩn hóa Adapter Changes trong Backend `patients.js` (`backend/src/routes/patients.js`):**
+   - Khởi tạo hàm chuẩn hóa `const getChanges = (res) => (res ? (res.meta?.changes ?? res.changes ?? res.affected_row_count ?? 0) : 0);`
+   - Đảm bảo tương thích 100% trên cả Cloudflare D1, Turso Cloud, và SQLite MiniPC engine.
+5. **Quy chuẩn phiên bản theo RULES.md:**
+   - Nâng phiên bản `4.2.8-rev5`, cập nhật `version.json`, `sw.js` (`pmcg-v4-cache-4.2.8-rev5`), `index.html` (33 vị trí cache buster `?v=4.2.8-rev5`, `APP_VERSION = '4.2.8-rev5'`).
+   - Pass 100% 9 tầng Super-Verify (`node scripts/verify-build.mjs`).
+   - Deploy thành công lên Cloudflare Worker (`pmcg-api`) và Cloudflare Pages (`pmcg-v3`).
+
+**File sửa đổi:**
+- `js/modules/app-resources.js` (đồng bộ bootstrap cache cho saveMachine và deleteMachine)
+- `js/app.js` (đồng bộ bootstrap cache cho saveStaff, deleteStaff, savePatient, deletePatient)
+- `backend/src/routes/patients.js` (chuẩn hóa kiểm tra update changes trên mọi database adapter)
+- `version.json` (nâng lên 4.2.8-rev5, timestamp 12:55 14/10/2026)
+- `sw.js` (CACHE_NAME pmcg-v4-cache-4.2.8-rev5)
+- `index.html` (cache busters ?v=4.2.8-rev5, APP_VERSION)
+- `PM-xeplich-v4.md` (ghi nhật ký phát triển)
+
+

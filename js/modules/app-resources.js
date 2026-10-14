@@ -207,6 +207,23 @@
                 codeEl.focus();
             }
         }
+
+        // 🛡️ Đồng bộ tức thì vào LocalStorage Bootstrap Cache để không bị hoàn tác khi F5
+        try {
+            const curUnit = (typeof window.getCurrentUnitCode === 'function') ? window.getCurrentUnitCode() : (localStorage.getItem('pm_unit_code') || 'bvtks-cs2');
+            const bKey = (typeof window.getBootstrapCacheKey === 'function') ? window.getBootstrapCacheKey() : `times_bootstrap_cache_${curUnit}`;
+            const rawCache = localStorage.getItem(bKey);
+            if (rawCache) {
+                const bCache = JSON.parse(rawCache);
+                if (bCache) {
+                    bCache.machines = cache.machine;
+                    bCache.machine = cache.machine;
+                    bCache.may_moc = cache.machine;
+                    localStorage.setItem(bKey, JSON.stringify(bCache));
+                }
+            }
+        } catch(eCache) {}
+        if (window.dataCacheTime) window.dataCacheTime['machine'] = Date.now();
     }
 
     function editRoomMachine(index) {
@@ -249,6 +266,22 @@
             const machineId = targetMachine ? (targetMachine.id || null) : null;
 
             cache.machine.splice(i, 1);
+            // 🛡️ Đồng bộ tức thì vào LocalStorage Bootstrap Cache để không bị hoàn tác khi F5
+            try {
+                const curUnit = (typeof window.getCurrentUnitCode === 'function') ? window.getCurrentUnitCode() : (localStorage.getItem('pm_unit_code') || 'bvtks-cs2');
+                const bKey = (typeof window.getBootstrapCacheKey === 'function') ? window.getBootstrapCacheKey() : `times_bootstrap_cache_${curUnit}`;
+                const rawCache = localStorage.getItem(bKey);
+                if (rawCache) {
+                    const bCache = JSON.parse(rawCache);
+                    if (bCache) {
+                        bCache.machines = cache.machine;
+                        bCache.machine = cache.machine;
+                        bCache.may_moc = cache.machine;
+                        localStorage.setItem(bKey, JSON.stringify(bCache));
+                    }
+                }
+            } catch(eCache) {}
+            if (window.dataCacheTime) window.dataCacheTime['machine'] = Date.now();
             renderMachinesTable();
 
             if (typeof callApi === 'function') {

@@ -5374,6 +5374,24 @@ var dataCache = window.dataCache;
                 });
             }
 
+            // 🛡️ Đồng bộ tức thì vào LocalStorage Bootstrap Cache để không bị hoàn tác khi F5
+            try {
+                const bKey = typeof getBootstrapCacheKey === 'function' ? getBootstrapCacheKey() : 'times_bootstrap_cache';
+                const rawBoot = localStorage.getItem(bKey);
+                if (rawBoot) {
+                    const boot = JSON.parse(rawBoot);
+                    if (boot) {
+                        boot.staff = dataCache.staff;
+                        boot.nhan_su = dataCache.staff;
+                        if (boot.data) {
+                            boot.data.staff = dataCache.staff;
+                            boot.data.nhan_su = dataCache.staff;
+                        }
+                        localStorage.setItem(bKey, JSON.stringify(boot));
+                    }
+                }
+            } catch(e) {}
+
             cancelEdit('staff'); renderStaffTable();
         }
 
@@ -5432,6 +5450,25 @@ var dataCache = window.dataCache;
                         item.sheetIndex--;
                     }
                 });
+
+                // 🛡️ Đồng bộ tức thì vào LocalStorage Bootstrap Cache để không bị hoàn tác khi F5
+                try {
+                    const bKey = typeof getBootstrapCacheKey === 'function' ? getBootstrapCacheKey() : 'times_bootstrap_cache';
+                    const rawBoot = localStorage.getItem(bKey);
+                    if (rawBoot) {
+                        const boot = JSON.parse(rawBoot);
+                        if (boot) {
+                            boot.staff = dataCache.staff;
+                            boot.nhan_su = dataCache.staff;
+                            if (boot.data) {
+                                boot.data.staff = dataCache.staff;
+                                boot.data.nhan_su = dataCache.staff;
+                            }
+                            localStorage.setItem(bKey, JSON.stringify(boot));
+                        }
+                    }
+                } catch(e) {}
+
                 renderStaffTable();
 
                 callApi('deleteNhanSu', [deletedSheetIndex, staffName], () => {
@@ -5773,6 +5810,24 @@ var dataCache = window.dataCache;
                 renderPatientsTable();
             }
 
+            // 🛡️ Đồng bộ tức thì vào LocalStorage Bootstrap Cache để không bị hoàn tác khi F5
+            try {
+                const bKey = typeof getBootstrapCacheKey === 'function' ? getBootstrapCacheKey() : 'times_bootstrap_cache';
+                const rawBoot = localStorage.getItem(bKey);
+                if (rawBoot) {
+                    const boot = JSON.parse(rawBoot);
+                    if (boot) {
+                        boot.patients = dataCache.pat;
+                        boot.benh_nhan = dataCache.pat;
+                        if (boot.data) {
+                            boot.data.patients = dataCache.pat;
+                            boot.data.benh_nhan = dataCache.pat;
+                        }
+                        localStorage.setItem(bKey, JSON.stringify(boot));
+                    }
+                }
+            } catch(e) {}
+
             // Giải phóng form ngay lập tức cho người dùng thao tác tiếp
             cancelEdit('pat');
             document.getElementById('pat-name').focus();
@@ -5968,6 +6023,25 @@ var dataCache = window.dataCache;
                         item.sheetIndex--;
                     }
                 });
+
+                // 🛡️ Đồng bộ tức thì vào LocalStorage Bootstrap Cache để không bị hoàn tác khi F5
+                try {
+                    const bKey = typeof getBootstrapCacheKey === 'function' ? getBootstrapCacheKey() : 'times_bootstrap_cache';
+                    const rawBoot = localStorage.getItem(bKey);
+                    if (rawBoot) {
+                        const boot = JSON.parse(rawBoot);
+                        if (boot) {
+                            boot.patients = dataCache.pat;
+                            boot.benh_nhan = dataCache.pat;
+                            if (boot.data) {
+                                boot.data.patients = dataCache.pat;
+                                boot.data.benh_nhan = dataCache.pat;
+                            }
+                            localStorage.setItem(bKey, JSON.stringify(boot));
+                        }
+                    }
+                } catch(e) {}
+
                 renderPatientsTable();
 
                 // Gọi máy chủ xóa ngay lập tức

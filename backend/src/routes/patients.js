@@ -941,7 +941,9 @@ export async function handlePatientsAction(action, ctx) {
         }
       }
 
-      if (!updateRes || (updateRes.meta && updateRes.meta.changes === 0)) {
+      const getChanges = (res) => (res ? (res.meta?.changes ?? res.changes ?? res.affected_row_count ?? 0) : 0);
+
+      if (!updateRes || getChanges(updateRes) === 0) {
         if (withMaBn) {
           updateRes = await db.prepare(`
             UPDATE benh_nhan SET 
@@ -1023,7 +1025,7 @@ export async function handlePatientsAction(action, ctx) {
         }
       }
 
-      if (updateRes && updateRes.meta && updateRes.meta.changes === 0) {
+      if (updateRes && getChanges(updateRes) === 0) {
         const existing = await db.prepare("SELECT id FROM benh_nhan WHERE unit_code = ? AND (name = ? OR (? > 0 AND id = ?) OR name = ?) LIMIT 1").bind(unitCode, targetName, patId, patId, patName).first();
         if (existing && existing.id) {
           if (withMaBn) {
