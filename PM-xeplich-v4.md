@@ -8363,3 +8363,50 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 - `sw.js` (nâng CACHE_NAME pmcg-v4-cache-4.2.8-rev3)
 - `index.html` (cập nhật cache buster ?v=4.2.8-rev3, timestamp 10:05 14/10/2026)
 - `PM-xeplich-v4.md` (ghi nhật ký phát triển)
+
+### [v4.2.8-rev4] - 10:52 14/10/2026: Khắc Phục Lỗi Mất Dữ Liệu Nhân Sự Phụ Trách Phòng (Tab-Rooms) Sau Khi F5
+
+#### 1. Yêu cầu của người dùng:
+- Khi người dùng chỉnh sửa danh sách nhân sự phụ trách (Bác sĩ, KTV, Điều dưỡng) trong `tab-rooms`, giao diện lúc vừa lưu thì hiển thị đúng nhưng khi nhấn F5 (tải lại trang) thì dữ liệu bị quay trở lại như cũ. Yêu cầu đọc `RULES.md`, tìm nguyên nhân và khắc phục triệt để.
+
+#### 2. Phân tích nguyên nhân:
+1. **Thiếu cột `dieu_duong` trong bảng `phong` ở CSDL MiniPC và Turso Cloud**:
+   - Khi lưu phòng (`saveRoom()`), client bóc tách nhân sự thành 3 nhóm (`bacSi`, `ktv`, `dieuDuong`) và gửi tới API `editPhong`.
+   - Backend `backend/src/routes/patients.js` thực thi `UPDATE phong SET ten_phong = ?, bac_si = ?, ktv = ?, dieu_duong = ?, ...`.
+   - Tuy nhiên, bảng `phong` thực tế trên cả MiniPC và Turso Cloud chỉ có các cột: `id, unit_code, ten_phong, bac_si, ktv, danh_sach_may, so_giuong, danh_sach_giuong, order_idx, is_active, updated_at` (chưa có cột `dieu_duong`).
+   - SQLite ném lỗi: `SQLite error: no such column: dieu_duong`. Toàn bộ thao tác ghi vào CSDL máy chủ bị hủy bỏ.
+   - Hàm `ensureSchema` trong `backend/src/schema.js` thoát sớm ngay khi kiểm tra bảng `benh_nhan` có cột `ma_bn`, dẫn tới lệnh migration tạo cột `dieu_duong` chưa từng chạy tự động.
+2. **Lỗi kiểm tra `updateRes` trong `backend/src/routes/patients.js` (dòng 549)**:
+   - Bộ adapter Turso trả về kết quả dạng `{ success: true, meta: { changes: 1 } }`.
+   - Code cũ kiểm tra `updateRes.changes > 0 || updateRes.affected_row_count > 0`, hai trường này luôn `undefined`, làm cho biến `updated` luôn bằng `false` và nhảy xuống nhánh INSERT lỗi.
+3. **Điều kiện `if (id || (actualOldTenPhong && actualOldTenPhong !== tenPhong))`**:
+   - Nếu người dùng chỉ sửa nhân sự hoặc thiết bị (giữ nguyên tên phòng), điều kiện `actualOldTenPhong !== tenPhong` bị `false`, khiến lệnh UPDATE bị bỏ qua nếu `id` là null.
+4. **Frontend `saveRoom()` không đồng bộ vào Offline Cache (`localStorage`)**:
+   - Khi bấm lưu, `saveRoom()` chỉ cập nhật tạm thời vào bộ nhớ RAM `cache.room`, không ghi đè lại vào `localStorage.getItem('times_bootstrap_cache_' + unitCode)`.
+   - Khi F5, `restoreOfflineCache()` nạp lại dữ liệu cũ từ `localStorage`, sau đó `getBootstrapData` từ server (do chưa lưu được) tiếp tục trả về dữ liệu cũ.
+
+#### 3. Giải pháp kỹ thuật đã triển khai:
+1. **Migration CSDL trực tiếp trên MiniPC & Turso Cloud**:
+   - Chạy lệnh `ALTER TABLE phong ADD COLUMN dieu_duong TEXT DEFAULT ''` trên cả Turso Cloud và MiniPC SQLite Engine thành công 100%.
+2. **Tự chữa lành vĩnh viễn trong `backend/src/schema.js`**:
+   - Bổ sung lệnh instant migration `ALTER TABLE phong ADD COLUMN dieu_duong TEXT DEFAULT ''` ngay đầu hàm `ensureSchema` (chạy trước khi kiểm tra thoát), bảo đảm bất kỳ tenant/CSDL mới hay cũ đều tự động có cột `dieu_duong`.
+3. **Sửa Backend `backend/src/routes/patients.js`**:
+   - Sửa điều kiện cập nhật: `if (id || actualOldTenPhong || tenPhong)` để dù đổi tên phòng hay giữ nguyên tên phòng, lệnh `UPDATE` vẫn luôn thực thi.
+   - Sửa kiểm tra kết quả `updateRes`: Kiểm tra `(updateRes.meta?.changes > 0 || updateRes.changes > 0 || updateRes.affected_row_count > 0)` chuẩn theo Turso Pipeline Adapter cho cả `editPhong` và `editMayMoc`.
+4. **Sửa Frontend `js/modules/app-resources.js`**:
+   - Trong `saveRoom()` và `deleteRoom()`: Tự động cập nhật mảng `rooms` / `room` vào `times_bootstrap_cache_${unitCode}` trong `localStorage` ngay lập tức.
+   - Bổ sung callback thông báo thành công / lỗi cho `callApi('editPhong')` và `callApi('addPhong')`.
+5. **Đồng bộ phiên bản và quy tắc RULES.md**:
+   - Nâng phiên bản `4.2.8-rev4`, cập nhật `version.json`, `sw.js` (`pmcg-v4-cache-4.2.8-rev4`), `index.html` (chân trang `Phiên bản: 4.2.8`, timestamp `10:52 14/10/2026`, cache buster `?v=4.2.8-rev4`).
+   - Vượt qua 100% 9 tầng kiểm tra Super-Verify (`node scripts/verify-build.mjs`).
+   - Deploy thành công toàn diện lên Cloudflare (Worker `pmcg-api` và Pages `pmcg-v4`).
+
+**File sửa đổi:**
+- `backend/src/schema.js` (bổ sung instant self-healing migration cho cột phong.dieu_duong)
+- `backend/src/routes/patients.js` (sửa điều kiện UPDATE và kiểm tra meta.changes cho editPhong, editMayMoc)
+- `js/modules/app-resources.js` (đồng bộ localStorage bootstrap cache, thêm callback cho saveRoom, deleteRoom)
+- `version.json` (nâng lên 4.2.8-rev4, timestamp 10:52 14/10/2026)
+- `sw.js` (cập nhật CACHE_NAME pmcg-v4-cache-4.2.8-rev4)
+- `index.html` (cập nhật cache busters ?v=4.2.8-rev4, APP_VERSION, timestamp 10:52 14/10/2026)
+- `PM-xeplich-v4.md` (ghi nhật ký phát triển)
+

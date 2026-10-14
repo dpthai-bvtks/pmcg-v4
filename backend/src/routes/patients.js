@@ -80,11 +80,12 @@ export async function handlePatientsAction(action, ctx) {
       const id = payload.id || null;
 
       let updated = false;
-      if (id || (oldMaMay && oldMaMay !== maMay)) {
+      if (id || oldMaMay || maMay) {
+        const targetSearchMa = oldMaMay || maMay;
         const updateRes = await db.prepare(
           "UPDATE may_moc SET ten_loai = ?, ma_may = ?, trang_thai = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ? AND (id = ? OR ma_may = ?)"
-        ).bind(tenLoai, maMay, trangThai, unitCode, id || -1, oldMaMay || "").run();
-        if (updateRes && (updateRes.changes > 0 || updateRes.affected_row_count > 0)) {
+        ).bind(tenLoai, maMay, trangThai, unitCode, id || -1, targetSearchMa).run();
+        if (updateRes && (updateRes.meta?.changes > 0 || updateRes.changes > 0 || updateRes.affected_row_count > 0)) {
           updated = true;
         }
       }
@@ -542,11 +543,12 @@ export async function handlePatientsAction(action, ctx) {
         }
       }
 
-      if (id || (actualOldTenPhong && actualOldTenPhong !== tenPhong)) {
+      if (id || actualOldTenPhong || tenPhong) {
+        const targetSearchName = actualOldTenPhong || tenPhong;
         const updateRes = await db.prepare(
           `UPDATE phong SET ten_phong = ?, bac_si = ?, ktv = ?, dieu_duong = ?, danh_sach_may = ?, so_giuong = ?, danh_sach_giuong = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ? AND (id = ? OR ten_phong = ?)`
-        ).bind(tenPhong, bacSi, ktv, dieuDuong, danhSachMay, soGiuong, danhSachGiuong, unitCode, id || -1, actualOldTenPhong || "").run();
-        if (updateRes && (updateRes.changes > 0 || updateRes.affected_row_count > 0)) {
+        ).bind(tenPhong, bacSi, ktv, dieuDuong, danhSachMay, soGiuong, danhSachGiuong, unitCode, id || -1, targetSearchName).run();
+        if (updateRes && (updateRes.meta?.changes > 0 || updateRes.changes > 0 || updateRes.affected_row_count > 0)) {
           updated = true;
         }
       }

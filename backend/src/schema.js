@@ -9,6 +9,11 @@ export async function ensureSchema(db) {
     await db.prepare("ALTER TABLE benh_nhan ADD COLUMN ma_bn TEXT DEFAULT ''").run().catch(() => {});
   } catch(eCol) {}
 
+  // 🛡️ Migration tức thời: Đảm bảo cột dieu_duong luôn tồn tại trong phong
+  try {
+    await db.prepare("ALTER TABLE phong ADD COLUMN dieu_duong TEXT DEFAULT ''").run().catch(() => {});
+  } catch(eCol2) {}
+
   if (schemaEnsured) return;
 
   try {

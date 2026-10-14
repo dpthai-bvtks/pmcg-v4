@@ -1,6 +1,6 @@
 {
-    "version": "4.2.8-rev3",
+    "version": "4.2.8-rev4",
     "releaseDate": "14/10/2026",
-    "releaseTime": "10:05 14/10/2026",
-    "notes": "Nâng cấp tính năng Xếp Bổ Sung: Kết hợp Google OR-Tools CP-SAT đóng băng lịch cũ (từ MEDS System) và kỹ thuật Ép gối cục bộ / Hãm phanh an toàn (từ PMXL)."
+    "releaseTime": "10:52 14/10/2026",
+    "notes": "Sửa lỗi lưu danh sách nhân sự phòng thủ thuật (tab-rooms): bổ sung cột dieu_duong vào bảng phong trên CSDL, hoàn thiện cơ chế cập nhật UPDATE và đồng bộ Offline Cache."
 }

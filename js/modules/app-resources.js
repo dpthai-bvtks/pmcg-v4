@@ -545,7 +545,11 @@
                     danhSachMay: dsMay,
                     soGiuong: slGiuong,
                     danhSachGiuong: dsGiuong
-                }, editIdx.room, ten, bs, ktv, dsMay, slGiuong, dsGiuong, oldName, dd]);
+                }, editIdx.room, ten, bs, ktv, dsMay, slGiuong, dsGiuong, oldName, dd],
+                () => notifyMsg(`Đã cập nhật phòng "${ten}" thành công!`, 'success'),
+                e => alert('Lỗi khi cập nhật phòng: ' + e));
+            } else {
+                notifyMsg(`Đã cập nhật phòng "${ten}" thành công!`, 'success');
             }
         } else {
             cache.room.push({ tenPhong: ten, bacSi: bs, ktv, dieuDuong: dd, danhSachMay: dsMay, soGiuong: slGiuong, danhSachGiuong: dsGiuong });
@@ -559,9 +563,30 @@
                     danhSachMay: dsMay,
                     soGiuong: slGiuong,
                     danhSachGiuong: dsGiuong
-                }, ten, bs, ktv, dsMay, slGiuong, dsGiuong, dd]);
+                }, ten, bs, ktv, dsMay, slGiuong, dsGiuong, dd],
+                () => notifyMsg(`Đã thêm phòng "${ten}" thành công!`, 'success'),
+                e => alert('Lỗi khi thêm phòng: ' + e));
+            } else {
+                notifyMsg(`Đã thêm phòng "${ten}" thành công!`, 'success');
             }
         }
+
+        // 🛡️ Đồng bộ tức thì vào LocalStorage Bootstrap Cache để không bị hoàn tác khi F5
+        try {
+            const curUnit = (typeof window.getCurrentUnitCode === 'function') ? window.getCurrentUnitCode() : (localStorage.getItem('pm_unit_code') || 'bvtks-cs2');
+            const bKey = (typeof window.getBootstrapCacheKey === 'function') ? window.getBootstrapCacheKey() : `times_bootstrap_cache_${curUnit}`;
+            const rawCache = localStorage.getItem(bKey);
+            if (rawCache) {
+                const bCache = JSON.parse(rawCache);
+                if (bCache) {
+                    bCache.rooms = cache.room;
+                    bCache.room = cache.room;
+                    localStorage.setItem(bKey, JSON.stringify(bCache));
+                }
+            }
+        } catch(eCache) {}
+
+        if (window.dataCacheTime) window.dataCacheTime['room'] = Date.now();
 
         doCancelEdit('room');
         renderRoomsTable();
@@ -665,6 +690,20 @@
             const roomId = targetRoom ? (targetRoom.id || null) : null;
 
             cache.room.splice(i, 1);
+            try {
+                const curUnit = (typeof window.getCurrentUnitCode === 'function') ? window.getCurrentUnitCode() : (localStorage.getItem('pm_unit_code') || 'bvtks-cs2');
+                const bKey = (typeof window.getBootstrapCacheKey === 'function') ? window.getBootstrapCacheKey() : `times_bootstrap_cache_${curUnit}`;
+                const rawCache = localStorage.getItem(bKey);
+                if (rawCache) {
+                    const bCache = JSON.parse(rawCache);
+                    if (bCache) {
+                        bCache.rooms = cache.room;
+                        bCache.room = cache.room;
+                        localStorage.setItem(bKey, JSON.stringify(bCache));
+                    }
+                }
+            } catch(eCache) {}
+            if (window.dataCacheTime) window.dataCacheTime['room'] = Date.now();
             renderRoomsTable();
 
             if (typeof callApi === 'function') {
