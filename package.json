@@ -1,0 +1,12 @@
+{
+  "name": "meds-system",
+  "version": "1.2.0",
+  "description": "Phần mềm quản lý và xếp lịch MEDS System",
+  "author": "CONG TY TNHH THUONG MAI VA DICH VU LAM THANG PHAT",
+  "main": "main.js",
+  "dependencies": {
+    "node-machine-id": "^1.1.12",
+    "sql.js": "^1.14.2",
+    "xlsx": "^0.18.5"
+  }
+}

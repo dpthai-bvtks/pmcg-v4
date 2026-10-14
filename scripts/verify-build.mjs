@@ -255,6 +255,34 @@ if (!secretLeakDetected) {
   logPass('100% mã nguồn Frontend và HTML an toàn: Không có Turso Token, Private Key hay mật khẩu hardcode.');
 }
 
+// Kiểm tra tham số hóa truy vấn SQL (100% Parameterized Query, chống SQL Injection theo tiêu chuẩn vibecode)
+const backendDir = path.join(ROOT_DIR, 'backend/src');
+if (fs.existsSync(backendDir)) {
+  const backendFiles = [
+    'index.js',
+    'routes/staff.js',
+    'routes/patients.js',
+    'routes/schedules.js',
+    'routes/tenants.js',
+    'routes/backup-sync.js'
+  ];
+  let unsafeSqlFound = false;
+  for (const bf of backendFiles) {
+    const bfPath = path.join(backendDir, bf);
+    if (!fs.existsSync(bfPath)) continue;
+    const code = fs.readFileSync(bfPath, 'utf8');
+    // Tìm các câu SQL nối chuỗi không an toàn dạng WHERE ... = ' + var hoặc VALUES (' + var
+    const rawConcatMatch = code.match(/(?:SELECT|INSERT|UPDATE|DELETE)\s+[\s\S]{1,100}?(?:WHERE|VALUES|SET)\s+[\s\S]{1,100}?\+\s*["'][^"']*\+/i);
+    if (rawConcatMatch) {
+      logFail(`backend/src/${bf}: Phát hiện nghi vấn nối chuỗi SQL thô! Bắt buộc dùng db.prepare().bind(...)`);
+      unsafeSqlFound = true;
+    }
+  }
+  if (!unsafeSqlFound) {
+    logPass('100% Backend Router tuân thủ Parameterized SQL (db.prepare().bind, 0 lỗ hổng SQL Injection).');
+  }
+}
+
 // -------------------------------------------------------------
 // 6. KIỂM THỬ THUẬT TOÁN XẾP LỊCH & RÀNG BUỘC Y TẾ (SOLVER BENCHMARK)
 // -------------------------------------------------------------

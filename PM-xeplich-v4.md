@@ -8497,5 +8497,44 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 - `version.json` (nâng lên 4.2.8-rev6, timestamp 14:20 14/10/2026)
 - `PM-xeplich-v4.md` (ghi nhật ký phát triển)
 
+---
+
+### [v4.2.8-rev7] - 20:44 14/10/2026: Tích Hợp 20 Tiêu Chuẩn Bảo Mật Hardening Checklist (Theo Video Vibecode) Vào RULES.md, Backend Worker & Super-Verify
+
+**Yêu cầu của người dùng:**
+- Xem video `vibecode.mp4` (20 điểm check bảo mật trước khi public website) và đọc tệp `RULES.md` để rà soát, áp dụng các tiêu chuẩn an toàn bảo mật vào phiên bản thương mại PM-XepLich v4.
+
+**Phân tích & Giải pháp:**
+1. **Rà soát 20 điểm check theo 7 nhóm từ video `vibecode.mp4`:**
+   - *Nhóm 1 (Tài khoản):* v4 đã sử dụng `PBKDF2-SHA256` 100.000 iterations kết hợp Salt & Pepper, Rate Limiting 5 lần sai khóa 15 phút (`login_attempts`), JWT stateless có hạn dùng `exp`.
+   - *Nhóm 2 (Đừng tự lộ đồ):* Khóa bí mật lưu trong Cloudflare Worker Secrets; nâng cấp Backend che giấu toàn bộ Stack Trace hệ thống khi gặp lỗi 500 (chỉ trả thông báo an toàn và mã `SERVER_ERROR`).
+   - *Nhóm 3 (Dữ liệu User gửi lên):* Bổ sung chặn Payload Size Limit tối đa 15MB tại Worker để chống tràn bộ nhớ 128MB RAM; kiểm tra định dạng file upload và validate lại toàn bộ ở Server.
+   - *Nhóm 4 (Tự thử phá trước):* Kiểm soát IDOR triệt để bằng Tenant Clamping (`WHERE unit_code = ?`), phân quyền RBAC đa cấp độ, 100% Parameterized SQL (`db.prepare().bind()`).
+   - *Nhóm 5 (Khóa phía trình duyệt):* Bổ sung các Security Headers nâng cao: `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`.
+   - *Nhóm 6 (Đừng mở toang Server):* Giữ nguyên CORS Whitelist khắt khe cho domain chính thức, bảo vệ kết nối Database SQLite/Turso qua HTTPS Pipeline an toàn.
+   - *Nhóm 7 (Lớp cuối trước khi Public):* Đưa toàn bộ qua Cloudflare chống DDoS và duy trì mô hình sao lưu tự động 3 cấp (MiniPC -> Google Sheets -> Turso Cloud).
+2. **Cập nhật quy tắc dự án [RULES.md](file:///g:/Other%20computers/mininPC%20vi%E1%BB%87n/PM-DPT/PM-xeplich/PM-chinh/ban_web/v4-thuongmai/RULES.md):**
+   - Bổ sung mục `8. 🛡️ Tiêu chuẩn An toàn Bảo mật & Chống rò rỉ dữ liệu (Hardening Checklist theo vibecode)` gồm chi tiết 20 quy chuẩn theo 7 nhóm.
+3. **Nâng cấp mã nguồn Backend Worker ([backend/src/index.js](file:///g:/Other%20computers/mininPC%20vi%E1%BB%87n/PM-DPT/PM-xeplich/PM-chinh/ban_web/v4-thuongmai/backend/src/index.js)):**
+   - Thêm header HSTS và Permissions-Policy vào `jsonResponse` và middleware toàn cục.
+   - Thêm Middleware chặn request body vượt quá 15MB (`413 Payload Too Large`).
+   - Cải tiến `app.onError` không in stack trace hay chi tiết nội bộ ra JSON client.
+4. **Tăng cường bộ Super-Verify 9 tầng ([scripts/verify-build.mjs](file:///g:/Other%20computers/mininPC%20vi%E1%BB%87n/PM-DPT/PM-xeplich/PM-chinh/ban_web/v4-thuongmai/scripts/verify-build.mjs)):**
+   - Bổ sung tầng kiểm tra quét tĩnh 100% Backend Router phát hiện mọi nghi vấn nối chuỗi SQL thô (`+`), đảm bảo 100% Parameterized SQL.
+5. **Đồng bộ phiên bản:**
+   - Nâng phiên bản `4.2.8-rev7`, cập nhật `version.json`, `sw.js` (`pmcg-v4-cache-4.2.8-rev7`), `index.html` (chân trang `Phiên bản: 4.2.8`, timestamp `20:44 14/10/2026`, cache buster `?v=4.2.8-rev7`).
+   - Kiểm thử 9 tầng `verify-build.mjs` vượt qua 100%.
+   - Deploy Cloudflare Worker (`pmcg-api`) và Cloudflare Pages (`pmcg-v3`).
+
+**File sửa đổi:**
+- `RULES.md` (bổ sung Mục 8: 20 tiêu chuẩn Hardening Checklist)
+- `backend/src/index.js` (Security Headers HSTS, Permissions-Policy, Payload Limit 15MB, Safe Error Handler)
+- `scripts/verify-build.mjs` (bổ sung quét Parameterized SQL trong Tier 5)
+- `sw.js` (CACHE_NAME pmcg-v4-cache-4.2.8-rev7)
+- `index.html` (cache busters ?v=4.2.8-rev7, timestamp 20:44 14/10/2026)
+- `version.json` (nâng lên 4.2.8-rev7)
+- `PM-xeplich-v4.md` (ghi nhật ký phát triển)
+
+
 
 

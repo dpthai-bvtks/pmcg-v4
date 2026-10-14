@@ -1,6 +1,6 @@
 {
-    "version": "4.2.8-rev6",
+    "version": "4.2.8-rev7",
     "releaseDate": "14/10/2026",
-    "releaseTime": "14:20 14/10/2026",
-    "notes": "Tích hợp 3 tính năng nâng cao: (1) Tự động ghim cứng các ca bệnh nhân ra viện (gioRa) không cho xê dịch khi xếp lại/xếp bổ sung, chỉ xáo trộn các ca còn lại; (2) Bộ điều phối thông minh '⚡ Tự động tìm giờ rảnh cho ca này' (1-Click Smart Slot Finder) giải quyết ca trùng/xung đột tức thì tại tab-schedule và tab-kiemtra; (3) Hệ thống Hoàn tác / Làm lại (Undo/Redo: Ctrl+Z / Ctrl+Y) bảo vệ dữ liệu xếp lịch an toàn tuyệt đối."
+    "releaseTime": "20:44 14/10/2026",
+    "notes": "Chuẩn hóa và tích hợp 20 tiêu chuẩn an toàn bảo mật (Hardening Checklist theo video vibecode) vào RULES.md, Backend Worker API (HSTS, Permissions-Policy, Payload Limit 15MB, Safe Error Handler chống rò rỉ Stack Trace) và Tầng 5 Super-Verify (quét Parameterized SQL)."
 }

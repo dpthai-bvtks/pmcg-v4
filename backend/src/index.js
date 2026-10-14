@@ -437,7 +437,9 @@ function jsonResponse(data, status = 200, origin = "") {
       "Content-Type": "application/json; charset=utf-8",
       "X-Content-Type-Options": "nosniff",
       "X-Frame-Options": "SAMEORIGIN",
-      "Referrer-Policy": "strict-origin-when-cross-origin"
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+      "Permissions-Policy": "camera=(), microphone=(), geolocation=()"
     }
   });
 }
@@ -459,6 +461,17 @@ app.use('*', async (c, next) => {
   if (c.req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
+
+  // Giới hạn dung lượng payload tối đa 15MB tránh tràn bộ nhớ Worker (128MB RAM)
+  const contentLength = parseInt(c.req.header("Content-Length") || "0", 10);
+  if (contentLength > 15 * 1024 * 1024) {
+    return jsonResponse({
+      status: "error",
+      error: "Dung lượng yêu cầu vượt quá giới hạn an toàn (tối đa 15MB).",
+      code: "PAYLOAD_TOO_LARGE"
+    }, 413, origin);
+  }
+
   await next();
   for (const [k, v] of Object.entries(corsHeaders)) {
     c.header(k, v);
@@ -466,15 +479,20 @@ app.use('*', async (c, next) => {
   c.header("X-Content-Type-Options", "nosniff");
   c.header("X-Frame-Options", "SAMEORIGIN");
   c.header("Referrer-Policy", "strict-origin-when-cross-origin");
+  c.header("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+  c.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
 });
 
-// Global Error Handler
+// Global Error Handler - Bảo vệ an toàn, không phơi bày stack trace nội bộ ra client
 app.onError((err, c) => {
   const origin = c.req.header("Origin") || "";
   console.error("[Global Hono Error]:", err);
+  const safeMessage = (err && typeof err.message === 'string' && !err.message.includes('\n') && err.message.length < 200)
+    ? err.message
+    : "Đã xảy ra sự cố nội bộ trên máy chủ. Vui lòng thử lại sau.";
   return jsonResponse({
     status: "error",
-    error: err.message || "Internal Server Error",
+    error: safeMessage,
     code: "SERVER_ERROR"
   }, 500, origin);
 });

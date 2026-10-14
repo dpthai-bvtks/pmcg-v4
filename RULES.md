@@ -94,3 +94,43 @@ Sau mỗi lần giải quyết xong một yêu cầu hoặc nâng cấp tính n�
   + Tóm tắt những thay đổi đã hoàn thành.
   + Báo cáo trạng thái Deploy Cloudflare (kèm link kiểm tra).
   + Báo cáo trạng thái Git commit/push.
+
+---
+
+## 8. 🛡️ Tiêu chuẩn An toàn Bảo mật & Chống rò rỉ dữ liệu (Hardening Checklist theo vibecode)
+*Áp dụng nghiêm ngặt 20 điểm kiểm tra bảo mật (7 nhóm) trước khi public phiên bản thương mại:*
+
+1. **Nhóm 1 - Quản lý Tài khoản & Đăng nhập:**
+   - **Băm mật khẩu (Password Hashing):** Sử dụng PBKDF2-SHA256 (tối thiểu 100.000 vòng lặp) hoặc Argon2/bcrypt qua Web Crypto API. Tuyệt đối không lưu mật khẩu dạng văn bản thô (plaintext).
+   - **Chống Brute-force (Rate Limiting):** Trang đăng nhập bắt buộc có giới hạn thử mật khẩu (tối đa 5 lần sai trong 15 phút, khóa tài khoản/IP 15 phút) trên cả bảng SQLite `login_attempts` và In-Memory fallback.
+   - **Thời hạn Phiên làm việc (Session Expiration):** Token JWT bắt buộc có thời hạn sống (`exp`) từ 1 đến 7 ngày, tự động vô hiệu khi hết hạn; không cấp token vô thời hạn.
+
+2. **Nhóm 2 - Chống Rò rỉ Thông tin & Lộ đồ (Information Disclosure):**
+   - **Dọn dẹp Debug Log:** Tuyệt đối không in log `console.log` chứa dữ liệu nhạy cảm của người bệnh, mật khẩu, JWT token hay payload nội bộ khi chạy trên môi trường Production.
+   - **Bảo vệ Secret & Khóa bí mật:** `JWT_SECRET`, `TURSO_TOKEN`, `FALLBACK_TOKEN` chỉ được lưu trong biến môi trường Cloudflare Worker Secrets (`wrangler secret put`). Tuyệt đối không xuất hiện trong mã nguồn Client/Frontend.
+   - **Không lộ Stack Trace:** Khi Backend gặp lỗi 500, chỉ phản hồi thông báo an toàn và mã lỗi `SERVER_ERROR` cho người dùng; stack trace chi tiết chỉ được ghi nhận nội bộ trong Cloudflare Worker Logs.
+
+3. **Nhóm 3 - Kiểm soát Dữ liệu Người dùng Gửi lên (Input & Upload Validation):**
+   - **Giới hạn loại file upload:** Chỉ chấp nhận các định dạng file quy định (.xlsx, .json, .csv) phục vụ sao lưu/nhập dữ liệu bệnh nhân và nhân sự.
+   - **Giới hạn dung lượng Payload:** Chặn các request có body vượt quá 10MB-15MB tại Worker để ngăn ngừa tấn công làm tràn bộ nhớ (Memory Exhaustion) của Cloudflare Worker (giới hạn 128MB RAM).
+   - **Xác thực tại Server (Server-side Validation):** Mọi tham số CRUD, kiểu dữ liệu, độ dài chuỗi và mã đơn vị bắt buộc phải được kiểm tra lại tại Backend Router trước khi ghi vào Database.
+
+4. **Nhóm 4 - Tự Thử Phá & Kiểm soát Quyền Truy cập (IDOR & RBAC):**
+   - **Chống IDOR & Cách ly Đơn vị (Tenant Clamping):** Không cho phép thay đổi `unit_code` trên URL hoặc Body để đọc trộm/ghi đè dữ liệu của bệnh viện khác. Mọi câu lệnh SQL đều phải kẹp chặt `WHERE unit_code = ?`.
+   - **Phân quyền chặt chẽ (RBAC):** Tài khoản người dùng thông thường (`staff`, `viewer`) tuyệt đối không thể gọi các hành động quản trị viên (`Admin`, `SUPER_ADMIN`).
+   - **Tham số hóa Truy vấn (100% Parameterized Queries):** 100% câu truy vấn cơ sở dữ liệu phải dùng `db.prepare(...).bind(...)`. Cấm triệt để việc cộng chuỗi SQL (`+`) thô.
+
+5. **Nhóm 5 - Bảo vệ Phía Trình duyệt (Browser Hardening):**
+   - **Bắt buộc HTTPS:** Cloudflare Pages và CDN domain tự động kích hoạt HSTS và chuyển hướng 100% từ HTTP sang HTTPS.
+   - **Security Headers đẩy đủ:** API responses bắt buộc đính kèm: `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`, `Strict-Transport-Security`, `Permissions-Policy`.
+   - **Cờ Cookie An toàn:** Nếu sử dụng Cookie phải có đủ 3 cờ `HttpOnly; Secure; SameSite=Lax/Strict`.
+
+6. **Nhóm 6 - Đóng kín Cửa Server (Server Hardening):**
+   - **CORS Whitelist khắt khe:** Chỉ cho phép các domain chính thức (`xeplichthuthuat.io.vn`, `pmcg-v4.pages.dev`) và localhost lúc phát triển. Không dùng wildcard `*`.
+   - **Cơ sở dữ liệu an toàn:** SQLite trên MiniPC và Turso Cloud chỉ kết nối qua giao thức mã hóa HTTPS/Pipeline có Token xác thực, không mở cổng public không bảo vệ ra ngoài Internet.
+   - **Cấp quyền tối thiểu (Least Privilege):** Token và tài khoản chỉ được cấp đúng phạm vi quyền cần thiết.
+
+7. **Nhóm 7 - Lớp Phòng vệ Ngoài cùng & Dự phòng Thảm họa:**
+   - **Cloudflare Edge Protection:** Đưa toàn bộ Website và API qua Cloudflare để phòng vệ DDoS và tăng tốc độ phản hồi qua Edge In-Memory Caching.
+   - **Sao lưu 3 Cấp Tự động (Disaster Recovery):** Cấp 1 tại MiniPC SQLite → Cấp 2 tự động đồng bộ ngầm lên Google Sheets sạch → Cấp 3 chốt sổ hàng ngày lên Turso Cloud Tokyo lúc 16:00 VN.
+
