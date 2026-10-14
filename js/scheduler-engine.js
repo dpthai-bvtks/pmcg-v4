@@ -2746,12 +2746,12 @@ function getSafeCache() {
 
       // 🧠 MINI PC GOOGLE OR-TOOLS CP-SAT SOLVER INTEGRATION (HYBRID STATION)
       const preferLocalSolver = options.preferLocalSolver !== false;
-      // ⚠️ Trạm Mini PC chưa nhận lịch cũ (existingSched) → khi xếp bổ sung phải dùng Turbo-Engine JS để không trùng giờ
-      if (preferLocalSolver && cleanExistingSched.length === 0 && (strategyKey === 'opt_math' || strategyKey === 'opt_ortools' || options.forceMiniPC)) {
+      // 🌟 Hỗ trợ cả Xếp Lịch Tổng và Xếp Bổ Sung (kèm existingSched) qua Trạm Mini PC Google OR-Tools CP-SAT (từ MEDS System & PMXL)
+      if (preferLocalSolver && (strategyKey === 'opt_math' || strategyKey === 'opt_ortools' || options.forceMiniPC || cleanExistingSched.length > 0)) {
         const isOnline = await checkMiniPCSolverOnline(600);
         if (isOnline) {
           try {
-            console.log('[SchedulerEngine]: 🚀 Đang điều phối bài toán xếp lịch sang Trạm Mini PC (Google OR-Tools CP-SAT 4 Luồng)...');
+            console.log(`[SchedulerEngine]: 🚀 Đang điều phối bài toán xếp lịch ${cleanExistingSched.length > 0 ? 'BỔ SUNG (Incremental CP-SAT)' : 'TỔNG'} sang Trạm Mini PC (Google OR-Tools CP-SAT 4 Luồng)...`);
             const payloadDb = {
               dateVal: dateVal,
               settings: db.settings || {},
@@ -2760,11 +2760,14 @@ function getSafeCache() {
               rawPatients: db.rawPatients || [],
               roomBeds: db.roomBeds || {},
               roomMachines: db.roomMachines || {},
-              machineTypes: db.machineTypes || {}
+              machineTypes: db.machineTypes || {},
+              existingSched: cleanExistingSched // 🔒 Khóa tài nguyên lịch cũ thành hằng số (từ MEDS System)
             };
             const solverOptions = {
               timeLimitSeconds: options.timeLimitSeconds || 20.0,
-              numWorkers: 4
+              numWorkers: 4,
+              maxSqueezeMinutes: options.maxSqueezeMinutes ?? 2, // 🧩 Luật Ép gối cục bộ (từ PMXL)
+              isSupplemental: cleanExistingSched.length > 0
             };
             const localRes = await solveWithMiniPC(payloadDb, solverOptions, 30000);
             // ⚠️ Kiểm tra kết quả hợp lệ: phải có success + schedule không rỗng + status không phải UNKNOWN/INFEASIBLE
@@ -2956,8 +2959,13 @@ function getSafeCache() {
     }
   }
 
-  function runExtraScheduling(dateVal, existingSched = []) {
-    return runClientScheduling(dateVal, 'opt_rare', '', -1, existingSched);
+  function runExtraScheduling(dateVal, existingSched = [], options = {}) {
+    return runSchedulingAsync(dateVal, 'opt_math', '', -1, existingSched, {
+      preferLocalSolver: true,
+      forceMiniPC: true,
+      maxSqueezeMinutes: options.maxSqueezeMinutes ?? 2,
+      ...options
+    });
   }
 
   function runSaturdayScheduling(payload = {}, dateVal = '') {

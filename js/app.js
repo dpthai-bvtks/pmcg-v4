@@ -7411,7 +7411,11 @@ var dataCache = window.dataCache;
                 let out = null;
                 const yhctLunchExtraNum = (dataCache?.settings?.yhctLunch !== undefined && dataCache.settings.yhctLunch !== '') ? Math.max(0, parseInt(dataCache.settings.yhctLunch) || 0) : 0;
                 const yhctEndExtraNum = (dataCache?.settings?.yhctEnd !== undefined && dataCache.settings.yhctEnd !== '') ? Math.max(0, parseInt(dataCache.settings.yhctEnd) || 0) : 0;
+                // 🚀 Nâng cấp Xếp Bổ Sung: Kích hoạt Google OR-Tools CP-SAT (từ MEDS System) & Ép Gối Cục Bộ (từ PMXL)
                 const extraSchedulingOptions = {
+                    preferLocalSolver: true,
+                    forceMiniPC: true,
+                    maxSqueezeMinutes: 2,
                     weights: {
                         drop: parseInt(dataCache?.settings?.dropWeight) || 10000,
                         overtime: parseFloat(dataCache?.settings?.overtimeWeight) || 2,
@@ -7421,11 +7425,11 @@ var dataCache = window.dataCache;
                     }
                 };
                 if (window.SchedulerEngine && typeof window.SchedulerEngine.runSchedulingAsync === 'function') {
-                    out = await window.SchedulerEngine.runSchedulingAsync(dateVal, 'opt_rare', '', -1, currentSched, extraSchedulingOptions);
+                    out = await window.SchedulerEngine.runSchedulingAsync(dateVal, 'opt_math', '', -1, currentSched, extraSchedulingOptions);
                 } else if (window.SchedulerEngine && typeof window.SchedulerEngine.runExtraScheduling === 'function') {
-                    out = window.SchedulerEngine.runExtraScheduling(dateVal, currentSched, extraSchedulingOptions);
+                    out = await window.SchedulerEngine.runExtraScheduling(dateVal, currentSched, extraSchedulingOptions);
                 } else if (window.SchedulerEngine && typeof window.SchedulerEngine.runScheduling === 'function') {
-                    out = window.SchedulerEngine.runScheduling(dateVal, 'opt_rare', '', -1, currentSched, extraSchedulingOptions);
+                    out = window.SchedulerEngine.runScheduling(dateVal, 'opt_math', '', -1, currentSched, extraSchedulingOptions);
                 }
 
                 if (window.hideGlobalLoading) window.hideGlobalLoading();

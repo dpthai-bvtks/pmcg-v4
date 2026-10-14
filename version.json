@@ -1,6 +1,6 @@
 {
-    "version": "4.2.8-rev2",
+    "version": "4.2.8-rev3",
     "releaseDate": "14/10/2026",
-    "releaseTime": "07:48 14/10/2026",
-    "notes": "Sửa lỗi TDZ (Temporal Dead Zone): Chuyển khai báo biến isSupplemental lên đầu scope _turbo_core_logic, triệt tiêu lỗi Cannot access isSupplemental before initialization."
+    "releaseTime": "10:05 14/10/2026",
+    "notes": "Nâng cấp tính năng Xếp Bổ Sung: Kết hợp Google OR-Tools CP-SAT đóng băng lịch cũ (từ MEDS System) và kỹ thuật Ép gối cục bộ / Hãm phanh an toàn (từ PMXL)."
 }

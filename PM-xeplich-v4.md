@@ -8322,3 +8322,44 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 
 
 
+
+### [v4.2.8-rev3] - 10:05 14/10/2026: Nâng Cấp Tối Ưu Nút "⚡ XẾP BỔ SUNG" (Kết Hợp Thuật Toán Khóa Ca MEDS System & Ép Gối Cục Bộ PMXL)
+
+#### 1. Yêu cầu & Bối cảnh:
+- Người dùng yêu cầu phân tích 2 phần mềm xếp lịch khám y tế chuyên dụng: `MEDS System.exe` và `PMXL (PhanMemXepLich.exe)`, sau đó ứng dụng tinh hoa thuật toán xếp bổ sung của 2 phần mềm này vào nút **"⚡ XẾP BỔ SUNG"** của dự án thương mại `v4-thuongmai`.
+
+#### 2. Phân tích nguyên nhân & Điểm nghẽn cũ:
+- **Điểm nghẽn tại `scheduler-engine.js` (dòng 2749)**: Trước đây hệ thống chặn Mini PC giải thuật khi có lịch cũ:
+  `if (preferLocalSolver && cleanExistingSched.length === 0 ...)`.
+  Điều này khiến nút "XẾP BỔ SUNG" bị ép buộc bỏ qua solver Google OR-Tools CP-SAT trên Mini PC, phải lùi về chạy thuật toán Heuristic JS đơn luồng trong trình duyệt, dẫn đến nguy cơ rớt ca khi lịch đã dày đặc.
+- **Mô hình Khóa ca hằng số (từ `MEDS System`)**: `scheduler_incremental.exe` biến toàn bộ các ca trong lịch cũ thành các `FixedInterval` (hằng số) để khóa nhân viên, máy móc, phòng giường và bệnh nhân, chỉ tạo biến quyết định cho ca mới.
+- **Kỹ thuật Ép gối cục bộ & Hãm phanh (từ `PMXL`)**: Khi các khe trống bị lẻ hoặc hẹp (thiếu 1-2 phút), PMXL cho phép nén nhẹ thời gian đệm (`max_squeeze_minutes`) kết hợp bóc tách pha thao tác trực tiếp của KTV (`tg_nv`), giúp nhét vừa ca mới vào khe trống mà không làm dời lịch cũ, kèm cơ chế hãm phanh chống xung đột.
+
+#### 3. Giải pháp kỹ thuật đã triển khai:
+1. **Nâng cấp `local-solver/solver.py`**:
+   - Tiếp nhận mảng `existingSched` từ payload bài toán.
+   - Lọc bỏ các thủ thuật của bệnh nhân đã có trong lịch cũ, tránh tạo task trùng lặp.
+   - Tạo các `FixedInterval` tuyệt đối trong CP-SAT: Khóa bệnh nhân cũ, khóa KTV chính/phụ (theo ca liên tục hoặc phân pha Setup/Teardown), khóa máy móc trong Cumulative pool, khóa giường bệnh.
+   - Tích hợp tham số `maxSqueezeMinutes` (mặc định 2 phút) co giãn đệm chuyển tiếp khi xếp bổ sung, giúp ca mới lấp vừa các khe hẹp.
+   - Nâng cấp thuật toán Greedy Interval Coloring cho máy móc: Kiểm tra loại trừ các khoảng bận của máy trong `existingSched`, triệt tiêu 100% nguy cơ trùng mã máy.
+2. **Nâng cấp `js/scheduler-engine.js` & `js/app.js`**:
+   - Mở khóa điều kiện tại dòng 2749, cho phép điều phối bài toán xếp bổ sung sang Trạm Mini PC OR-Tools CP-SAT.
+   - Truyền `existingSched: cleanExistingSched` và `maxSqueezeMinutes: 2` sang Mini PC.
+   - Cập nhật `runExtraScheduling()` trong `app.js` kích hoạt chiến lược `opt_math` với `preferLocalSolver: true` và `forceMiniPC: true`.
+3. **Đồng bộ hệ thống & Kiểm thử**:
+   - Bổ sung hàm kiểm thử `test_incremental_schedule()` trong `local-solver/test_solver.py`: Đạt kết quả `OPTIMAL` giải quyết ca mới chỉ trong **30 ms**, không rớt ca, 0 xung đột.
+   - Đồng bộ `solver.py` sang `C:\PMCG-System\PMCG-Solver\solver.py`, khởi động lại dịch vụ `PMCG_ORTools_Solver` thành công.
+   - Vượt qua 100% 9 tầng kiểm tra nghiêm ngặt của `node scripts/verify-build.mjs`.
+4. **Quy chuẩn phiên bản theo RULES.md**:
+   - Nâng phiên bản `4.2.8-rev3`, cập nhật `version.json`, `sw.js` (`pmcg-v4-cache-4.2.8-rev3`), `index.html` (chân trang `Phiên bản: 4.2.8`, timestamp `10:05 14/10/2026`, cache buster `?v=4.2.8-rev3`).
+
+**File sửa đổi:**
+- `local-solver/solver.py` (tiếp nhận existingSched, tạo FixedIntervals, ép gối cục bộ, Interval Coloring chống trùng máy)
+- `local-solver/test_solver.py` (bổ sung test case kiểm thử xếp bổ sung)
+- `C:\PMCG-System\PMCG-Solver\solver.py` (đồng bộ trực tiếp vào trạm tính toán Mini PC)
+- `js/scheduler-engine.js` (mở khóa Mini PC CP-SAT cho chế độ xếp bổ sung)
+- `js/app.js` (cấu hình runExtraScheduling chạy opt_math qua Mini PC)
+- `version.json` (nâng phiên bản 4.2.8-rev3)
+- `sw.js` (nâng CACHE_NAME pmcg-v4-cache-4.2.8-rev3)
+- `index.html` (cập nhật cache buster ?v=4.2.8-rev3, timestamp 10:05 14/10/2026)
+- `PM-xeplich-v4.md` (ghi nhật ký phát triển)

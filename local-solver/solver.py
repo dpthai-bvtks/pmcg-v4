@@ -118,6 +118,29 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
     time_limit_sec = float(options.get("timeLimitSeconds", 5.0))
     num_workers = int(options.get("numWorkers", 4))  # Tận dụng 4 luồng của CPU i5 Mini PC
 
+    # 🌟 TIẾP NHẬN LỊCH CŨ & THAM SỐ ÉP GỐI (Tích hợp từ MEDS System & PMXL)
+    existing_sched = db.get("existingSched", []) or []
+    is_supplemental = bool(existing_sched and len(existing_sched) > 0)
+    max_squeeze = int(options.get("maxSqueezeMinutes", 2) or 0)
+
+    # Lập danh bạ các ca đã xếp từ trước & lịch bận máy móc cũ
+    existing_scheduled_keys = set()
+    existing_mach_busy = {}  # mach_name -> list of (start_min, end_min)
+
+    if is_supplemental:
+        for ex in existing_sched:
+            if not isinstance(ex, dict):
+                continue
+            ex_name = strip_accents(str(ex.get("tenBN") or ex.get("HOTEN") or ex.get("name") or "")).upper()
+            ex_ns = str(ex.get("namSinh") or ex.get("NAMSINH") or ex.get("ns") or "").strip()
+            ex_tt = strip_accents(str(ex.get("thuThuat") or ex.get("DICHVU") or "")).lower()
+            ex_gio = str(ex.get("gioDienRa") or ex.get("GIODIENRA") or "").strip()
+            if not ex_gio or ex_gio == "--" or "Rớt" in ex_gio:
+                continue
+            if ex_name and ex_tt:
+                existing_scheduled_keys.add((ex_name, ex_ns, ex_tt))
+                existing_scheduled_keys.add((ex_name, "", ex_tt))
+
     model = cp_model.CpModel()
 
     settings = db.get("settings", {})
@@ -210,6 +233,14 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
 
         for tt in pending:
             tt_lower = str(tt).strip().lower()
+            tt_clean = strip_accents(tt_lower)
+            p_name_clean = strip_accents(p_name).upper()
+
+            # 🛡️ Nếu đang xếp bổ sung và thủ thuật này đã có trong lịch cũ -> Bỏ qua không tạo task trùng lặp
+            if is_supplemental:
+                if (p_name_clean, p_ns, tt_clean) in existing_scheduled_keys or (p_name_clean, "", tt_clean) in existing_scheduled_keys:
+                    continue
+
             info = thu_thuat_info.get(tt_lower, ["Thủ công", 20, 5, "PHCN", 1, 0, [], 5])
             loai_may = str(info[0] or "Thủ công").strip()
             tg_may = max(5, int(info[1] or 20))
@@ -243,13 +274,15 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
             task_id += 1
 
     if not tasks:
+        elapsed_ms = round((time.perf_counter() - start_wall_time) * 1000)
         return {
             "schedule": [],
             "unscheduled": [],
             "scheduleCount": 0,
             "unscheduledCount": 0,
-            "elapsedMs": round((time.perf_counter() - start_wall_time) * 1000),
-            "solver": "Google OR-Tools CP-SAT (0 tasks)"
+            "elapsedMs": elapsed_ms,
+            "solver": "Google OR-Tools CP-SAT (0 new tasks - Tất cả ca đều đã có lịch cũ)",
+            "status": "OPTIMAL"
         }
 
     # ============================================================
@@ -292,6 +325,100 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
             if b_dur > 0:
                 b_int = model.NewIntervalVar(b_s, b_dur, b_e, f"busy_{s_name}_{b_idx}")
                 staff_intervals[s_name].append(b_int)
+
+    # 🔒 ĐÓNG BĂNG TÀI NGUYÊN LỊCH CŨ THÀNH HẰNG SỐ CỐ ĐỊNH (Kỹ thuật từ MEDS System)
+    if is_supplemental:
+        for ex_idx, ex in enumerate(existing_sched):
+            if not isinstance(ex, dict):
+                continue
+            ex_s_str = str(ex.get("gioDienRa") or ex.get("GIODIENRA") or "").strip()
+            ex_e_str = str(ex.get("gioKetThuc") or ex.get("GIOKETTHUC") or "").strip()
+            if not ex_s_str or ex_s_str == "--" or "Rớt" in ex_s_str:
+                continue
+
+            ex_s = t2m(ex_s_str)
+            ex_e = t2m(ex_e_str) if ex_e_str else 0
+            if ex_s <= 0:
+                continue
+
+            ex_tt = str(ex.get("thuThuat") or ex.get("DICHVU") or "").strip().lower()
+            info_ex = thu_thuat_info.get(ex_tt, ["Thủ công", 20, 5, "PHCN", 1, 0, [], 5])
+            base_dur = int(info_ex[1] or 20) if len(info_ex) > 1 else 20
+            ex_dur = (ex_e - ex_s) if (ex_e > ex_s) else base_dur
+            ex_e = ex_s + ex_dur
+
+            ex_p_name = strip_accents(str(ex.get("tenBN") or ex.get("HOTEN") or "")).upper()
+            ex_p_ns = str(ex.get("namSinh") or ex.get("NAMSINH") or "").strip()
+            ex_p_id = ex.get("pId") or f"{ex_p_name}_{ex_p_ns}"
+
+            # 1. Khóa bệnh nhân cũ (+5 phút đệm nghỉ)
+            p_old_iv = model.NewIntervalVar(ex_s, ex_dur + 5, ex_e + 5, f"old_pat_{ex_idx}")
+            patient_intervals.setdefault(ex_p_id, []).append(p_old_iv)
+
+            # 2. Khóa KTV chính cũ
+            ex_nv = str(ex.get("nvChinh") or ex.get("NV CHÍNH") or "").strip()
+            ex_is_cont = is_continuous_proc(info_ex, ex_dur)
+            ex_tg_nv = max(1, int(info_ex[2] or 5))
+            ex_gap = int(info_ex[12]) if len(info_ex) > 12 and info_ex[12] is not None and info_ex[12] > 0 else 1
+            ex_setup_dur = min(ex_tg_nv + ex_gap, ex_dur)
+            ex_has_teardown = not ex_is_cont and (ex_dur > ex_tg_nv)
+            ex_teardown_dur = 1 + ex_gap
+
+            matched_s = None
+            if ex_nv:
+                for sn in staff_names:
+                    if sn.lower() == ex_nv.lower() or strip_accents(sn) == strip_accents(ex_nv):
+                        matched_s = sn
+                        break
+
+            if matched_s:
+                if ex_is_cont:
+                    st_old_iv = model.NewIntervalVar(ex_s, ex_dur + ex_gap, ex_e + ex_gap, f"old_st_{ex_idx}")
+                    staff_intervals[matched_s].append(st_old_iv)
+                else:
+                    st_set_old = model.NewIntervalVar(ex_s, ex_setup_dur, ex_s + ex_setup_dur, f"old_st_set_{ex_idx}")
+                    staff_intervals[matched_s].append(st_set_old)
+                    if ex_has_teardown:
+                        st_tear_old = model.NewIntervalVar(ex_e - 1, ex_teardown_dur, ex_e + ex_gap, f"old_st_tear_{ex_idx}")
+                        staff_intervals[matched_s].append(st_tear_old)
+
+            # 3. Khóa KTV / Điều dưỡng phụ cũ
+            ex_sub = str(ex.get("nvPhu") or ex.get("NV PHỤ") or "").strip()
+            matched_sub = None
+            if ex_sub:
+                for sn in staff_names:
+                    if sn.lower() == ex_sub.lower() or strip_accents(sn) == strip_accents(ex_sub):
+                        matched_sub = sn
+                        break
+            if matched_sub:
+                if ex_is_cont:
+                    sub_old_iv = model.NewIntervalVar(ex_s, ex_dur + ex_gap, ex_e + ex_gap, f"old_sub_{ex_idx}")
+                    staff_intervals[matched_sub].append(sub_old_iv)
+                else:
+                    sub_set_old = model.NewIntervalVar(ex_s, ex_setup_dur, ex_s + ex_setup_dur, f"old_sub_set_{ex_idx}")
+                    staff_intervals[matched_sub].append(sub_set_old)
+                    if ex_has_teardown:
+                        sub_tear_old = model.NewIntervalVar(ex_e - 1, ex_teardown_dur, ex_e + ex_gap, f"old_sub_tear_{ex_idx}")
+                        staff_intervals[matched_sub].append(sub_tear_old)
+
+            # 4. Khóa Giường bệnh cũ
+            ex_phong = str(ex.get("phong") or ex.get("PHONG") or "").strip()
+            ex_giuong = str(ex.get("giuong") or ex.get("GIUONG") or "").strip()
+            if ex_phong and ex_giuong and not ex_giuong.startswith("Ghế") and not "phụ" in ex_giuong.lower():
+                b_old_key = (ex_phong, ex_giuong)
+                b_old_iv = model.NewIntervalVar(ex_s, ex_dur, ex_e, f"old_bed_{ex_idx}")
+                bed_intervals.setdefault(b_old_key, []).append(b_old_iv)
+
+            # 5. Khóa Máy móc cũ
+            ex_may = str(ex.get("may") or ex.get("MAY") or "").strip()
+            if ex_may and ex_may != "Thủ công":
+                ex_lm = str(info_ex[0] or "").strip()
+                lm_clean = strip_accents(ex_lm) if ex_lm else strip_accents(ex_may)
+                lm_simple = lm_clean.replace("may ", "").replace("den ", "").strip()
+                m_pool = lm_simple if lm_simple else lm_clean
+                m_old_iv = model.NewIntervalVar(ex_s, ex_dur, ex_e, f"old_m_{ex_idx}")
+                machine_pool_intervals.setdefault(m_pool, []).append(m_old_iv)
+                existing_mach_busy.setdefault(ex_may, []).append((ex_s, ex_e))
 
     total_drop_penalties = []
     total_start_costs = []
@@ -435,9 +562,11 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
             staff_candidates = doc_ktv_names if doc_ktv_names else staff_names
 
         staff_choice_vars = {}
-        setup_dur = min(tg_nv + gap_min, tg_may)
+        # 🧩 Áp dụng luật Ép gối cục bộ (Local Squeezing từ PMXL): cho phép co nhẹ thời gian đệm khi xếp bổ sung
+        eff_gap = max(1, gap_min - max_squeeze) if is_supplemental else gap_min
+        setup_dur = min(tg_nv + eff_gap, tg_may)
         has_teardown = not is_cont and (tg_may > tg_nv)
-        teardown_dur = 1 + gap_min
+        teardown_dur = 1 + eff_gap
 
         # Thời lượng nhân sự làm việc để cân bằng tải
         staff_work_dur = tg_may if is_cont else (setup_dur + (teardown_dur if has_teardown else 0))
@@ -617,19 +746,25 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
             e = item["end"]
             tid = item["tid"]
 
-            # Chọn máy đang rảnh tại thời điểm s (ưu tiên máy có khoảng nghỉ ít nhất)
+            # Chọn máy đang rảnh tại thời điểm s (và tuyệt đối không bận trong lịch cũ existingSched)
             best_m = None
             min_idle = 999999
             for m in c_machs:
-                if mach_free_time[m] <= s:
+                # Kiểm tra máy có đang phục vụ ca cũ trong existingSched tại thời điểm [s, e] không
+                is_busy_in_old = any(b_s < e and s < b_e for b_s, b_e in existing_mach_busy.get(m, []))
+                if not is_busy_in_old and mach_free_time[m] <= s:
                     idle = s - mach_free_time[m]
                     if idle < min_idle:
                         min_idle = idle
                         best_m = m
 
-            # Fallback nếu cận biên: chọn máy rảnh sớm nhất
+            # Fallback: chọn máy không trùng lịch cũ và rảnh sớm nhất
             if best_m is None:
-                best_m = min(c_machs, key=lambda m: mach_free_time[m])
+                avail_machs = [m for m in c_machs if not any(b_s < e and s < b_e for b_s, b_e in existing_mach_busy.get(m, []))]
+                if avail_machs:
+                    best_m = min(avail_machs, key=lambda m: mach_free_time[m])
+                else:
+                    best_m = min(c_machs, key=lambda m: mach_free_time[m])
 
             mach_free_time[best_m] = e
             assigned_machines[tid] = best_m
