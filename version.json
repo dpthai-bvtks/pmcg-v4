@@ -1,6 +1,6 @@
 {
-    "version": "4.2.9-rev1",
+    "version": "4.2.9-rev2",
     "releaseDate": "15/10/2026",
-    "releaseTime": "09:58 15/10/2026",
-    "notes": "Tối ưu hóa cơ chế chịu lỗi mạng (Resilient 3-Strike Retry & Failover Guard): Âm thầm tự động thử lại 2 lần với giãn cách tăng dần cho mọi tác vụ khi mạng chập chờn, cách ly kiểm tra ngầm getDataVersion không gây báo động giả, và chỉ kích hoạt chế độ dự phòng Google Sheets khi mất kết nối liên tục 3 tác vụ (>15s)."
+    "releaseTime": "10:55 15/10/2026",
+    "notes": "Sửa lỗi Hoàn tác (Undo/Redo): Đồng bộ và khôi phục trọn vẹn cả danh sách ca rớt (lastUnscheduledData), đảm bảo khi hoàn tác thì dòng ca rớt bị hủy bỏ hoàn toàn và biến mất đúng trạng thái ban đầu."
 }

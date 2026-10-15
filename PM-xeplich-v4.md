@@ -8578,6 +8578,41 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 - `index.html` (Đồng bộ cache busters ?v=4.2.9-rev1, timestamp 09:58 15/10/2026, chân trang Phiên bản: 4.2.9)
 - `PM-xeplich-v4.md` (Ghi nhật ký phát triển)
 
+---
+
+### [v4.2.9-rev2] - 10:55 15/10/2026: Sửa Lỗi Hoàn Tác (Undo/Redo) Không Xóa Hàng Ca Rớt (Unscheduled Snapshot Sync)
+
+**Yêu cầu của người dùng:**
+- Người dùng phản ánh: Khi chia lịch xong nếu có ca bị rớt (`❌ Rớt`), sau đó nhấn nút **Hoàn tác (Undo / `Ctrl+Z`)** để quay lại trạng thái trước khi chia thì dòng ca bị rớt lại không biến mất trên bảng lịch.
+
+**Phân tích nguyên nhân gốc rễ (Root Cause):**
+1. **Thiếu vắng dữ liệu ca rớt trong Snapshot Lịch sử (`pushScheduleHistory`):**
+   - Hàm `pushScheduleHistory` trước đây chỉ lưu chuỗi JSON của mảng `currentScheduleData` (danh sách ca đã xếp thành công) mà **hoàn toàn bỏ quên mảng `window.lastUnscheduledData`** (danh sách các ca chưa xếp được / bị rớt).
+2. **Không khôi phục danh sách ca rớt khi Undo / Redo:**
+   - Trong `undoSchedule()` và `redoSchedule()`, hệ thống chỉ khôi phục `window.currentScheduleData`. Mảng `window.lastUnscheduledData` vẫn giữ nguyên các ca rớt của lần xếp lịch vừa chạy.
+   - Khi gọi `loadScheduleList()` để vẽ lại bảng, hàm `reconcileUnscheduledData(window.lastUnscheduledData)` thấy ca rớt không nằm trong `currentScheduleData` đã hoàn tác nên tiếp tục giữ nguyên và vẽ thêm dòng `❌ Rớt` vào cuối bảng lịch.
+
+**Giải pháp kỹ thuật đã triển khai:**
+1. **Lưu trữ trọn vẹn cả danh sách ca rớt vào Snapshot Lịch sử:**
+   - Cập nhật `pushScheduleHistory`: Đóng gói đồng thời cả `snapshot = JSON.stringify(currentData)` và `unscheduledSnapshot = JSON.stringify(window.lastUnscheduledData || [])` vào từng node của `_scheduleUndoStack`.
+2. **Khôi phục đồng bộ cả Lịch xếp và Ca rớt trong `undoSchedule` & `redoSchedule`:**
+   - Khi hoàn tác / làm lại: Đọc lại `restoredUnscheduled = JSON.parse(lastEntry.unscheduled || '[]')`.
+   - Gọi `setUnscheduledData(restoredUnscheduled)` để cập nhật đồng bộ cả biến bộ nhớ `window.lastUnscheduledData`, `window.currentRotData`, và cả hai khóa `localStorage` (`meds_unscheduled` và `getUnitStorageKey('meds_unscheduled')`).
+   - Cập nhật lại thanh thống kê qua `renderStats(restoredUnscheduled)`.
+   - Kết quả: Khi hoàn tác về thời điểm trước khi xếp lịch, danh sách ca rớt được khôi phục về đúng trạng thái ban đầu (nếu ban đầu không có ca rớt thì mảng rỗng `[]`), dòng `❌ Rớt` lập tức biến mất hoàn toàn khỏi bảng lịch!
+3. **Đồng bộ phiên bản và Super-Verify theo RULES.md:**
+   - Kiểm tra 9 tầng `node scripts/verify-build.mjs`: Đạt 100% PASS (exit code 0).
+   - Nâng phiên bản `4.2.9-rev2` trên `version.json`, `sw.js` (`pmcg-v4-cache-4.2.9-rev2`), `index.html` (chân trang `Phiên bản: 4.2.9`, timestamp `10:55 15/10/2026`, cache buster `?v=4.2.9-rev2`).
+   - Deploy Cloudflare Pages thành công (`pmcg-v3`).
+
+**File sửa đổi:**
+- `js/app.js` (Snapshot và khôi phục trọn vẹn lastUnscheduledData trong pushScheduleHistory, undoSchedule, redoSchedule, setUnscheduledData tenant sync)
+- `version.json` (Nâng phiên bản 4.2.9-rev2, timestamp 10:55 15/10/2026)
+- `sw.js` (CACHE_NAME pmcg-v4-cache-4.2.9-rev2)
+- `index.html` (Đồng bộ cache busters ?v=4.2.9-rev2, timestamp 10:55 15/10/2026, chân trang Phiên bản: 4.2.9)
+- `PM-xeplich-v4.md` (Ghi nhật ký phát triển)
+
+
 
 
 

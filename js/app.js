@@ -2349,6 +2349,12 @@ var dataCache = window.dataCache;
             window.currentRotData = normalized;
 
             localStorage.setItem('meds_unscheduled', JSON.stringify(normalized));
+            try {
+                const curUnit = (typeof getCurrentUnitCode === 'function') ? getCurrentUnitCode() : (localStorage.getItem('pm_unit_code') || 'bvtks-cs2');
+                if (typeof getUnitStorageKey === 'function') {
+                    localStorage.setItem(getUnitStorageKey('meds_unscheduled'), JSON.stringify(normalized));
+                }
+            } catch (e) {}
 
             if (dateVal) localStorage.setItem('meds_schedule_date', dateVal);
 
@@ -7753,10 +7759,13 @@ var dataCache = window.dataCache;
         function pushScheduleHistory(actionDesc = 'Thay đổi lịch') {
             try {
                 const currentData = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];
+                const currentUnscheduled = window.lastUnscheduledData || [];
                 const snapshot = JSON.stringify(currentData);
+                const unscheduledSnapshot = JSON.stringify(currentUnscheduled);
                 window._scheduleUndoStack.push({
                     action: actionDesc,
                     data: snapshot,
+                    unscheduled: unscheduledSnapshot,
                     time: Date.now()
                 });
                 if (window._scheduleUndoStack.length > MAX_SCHEDULE_HISTORY) {
@@ -7778,12 +7787,14 @@ var dataCache = window.dataCache;
             }
             try {
                 const currentData = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];
+                const currentUnscheduled = window.lastUnscheduledData || [];
                 const lastEntry = window._scheduleUndoStack.pop();
 
                 // Đẩy trạng thái hiện tại sang Redo
                 window._scheduleRedoStack.push({
                     action: lastEntry.action,
                     data: JSON.stringify(currentData),
+                    unscheduled: JSON.stringify(currentUnscheduled),
                     time: Date.now()
                 });
                 if (window._scheduleRedoStack.length > MAX_SCHEDULE_HISTORY) {
@@ -7791,17 +7802,32 @@ var dataCache = window.dataCache;
                 }
 
                 const restoredData = JSON.parse(lastEntry.data || '[]');
+                const restoredUnscheduled = JSON.parse(lastEntry.unscheduled || '[]');
+
                 if (typeof dataCache !== 'undefined') dataCache.schedule = restoredData;
                 if (window.dataCache) window.dataCache.schedule = restoredData;
                 window.currentScheduleData = markDischargedInSchedule(restoredData);
 
+                // Khôi phục chuẩn xác danh sách ca rớt trước đó
+                if (typeof setUnscheduledData === 'function') {
+                    setUnscheduledData(restoredUnscheduled);
+                } else {
+                    window.lastUnscheduledData = restoredUnscheduled;
+                    window.currentRotData = restoredUnscheduled;
+                    localStorage.setItem('meds_unscheduled', JSON.stringify(restoredUnscheduled));
+                }
+
                 const curUnit = getCurrentUnitCode();
                 localStorage.setItem(getUnitStorageKey('meds_success'), JSON.stringify(restoredData));
                 localStorage.setItem('meds_success', JSON.stringify(restoredData));
+                localStorage.setItem(getUnitStorageKey('meds_unscheduled'), JSON.stringify(restoredUnscheduled));
 
                 loadScheduleList();
                 if (typeof renderScheduleGanttTimeline === 'function' && document.getElementById('schedule-gantt-wrap')?.style.display !== 'none') {
                     renderScheduleGanttTimeline();
+                }
+                if (typeof renderStats === 'function') {
+                    renderStats(restoredUnscheduled);
                 }
                 updateUndoRedoUI();
                 notify(`↩️ Đã hoàn tác: ${lastEntry.action || 'thao tác vừa rồi'}`, 'info');
@@ -7819,12 +7845,14 @@ var dataCache = window.dataCache;
             }
             try {
                 const currentData = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];
+                const currentUnscheduled = window.lastUnscheduledData || [];
                 const nextEntry = window._scheduleRedoStack.pop();
 
                 // Đẩy trạng thái hiện tại sang Undo
                 window._scheduleUndoStack.push({
                     action: nextEntry.action,
                     data: JSON.stringify(currentData),
+                    unscheduled: JSON.stringify(currentUnscheduled),
                     time: Date.now()
                 });
                 if (window._scheduleUndoStack.length > MAX_SCHEDULE_HISTORY) {
@@ -7832,17 +7860,32 @@ var dataCache = window.dataCache;
                 }
 
                 const restoredData = JSON.parse(nextEntry.data || '[]');
+                const restoredUnscheduled = JSON.parse(nextEntry.unscheduled || '[]');
+
                 if (typeof dataCache !== 'undefined') dataCache.schedule = restoredData;
                 if (window.dataCache) window.dataCache.schedule = restoredData;
                 window.currentScheduleData = markDischargedInSchedule(restoredData);
 
+                // Khôi phục chuẩn xác danh sách ca rớt
+                if (typeof setUnscheduledData === 'function') {
+                    setUnscheduledData(restoredUnscheduled);
+                } else {
+                    window.lastUnscheduledData = restoredUnscheduled;
+                    window.currentRotData = restoredUnscheduled;
+                    localStorage.setItem('meds_unscheduled', JSON.stringify(restoredUnscheduled));
+                }
+
                 const curUnit = getCurrentUnitCode();
                 localStorage.setItem(getUnitStorageKey('meds_success'), JSON.stringify(restoredData));
                 localStorage.setItem('meds_success', JSON.stringify(restoredData));
+                localStorage.setItem(getUnitStorageKey('meds_unscheduled'), JSON.stringify(restoredUnscheduled));
 
                 loadScheduleList();
                 if (typeof renderScheduleGanttTimeline === 'function' && document.getElementById('schedule-gantt-wrap')?.style.display !== 'none') {
                     renderScheduleGanttTimeline();
+                }
+                if (typeof renderStats === 'function') {
+                    renderStats(restoredUnscheduled);
                 }
                 updateUndoRedoUI();
                 notify(`↪️ Đã làm lại: ${nextEntry.action || 'thao tác'}`, 'info');
