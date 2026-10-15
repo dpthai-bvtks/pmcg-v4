@@ -883,6 +883,8 @@ window.showGlobalLoading = function (text) {
         const SECONDARY_BACKUP_URL = (localStorage.getItem('times_backup_api_url') || '').trim();
         window._serverMode = 'primary'; // 'primary' | 'backup' | 'offline'
         let _consecutiveApiErrors = 0;
+        window._resetConsecutiveApiErrors = function() { _consecutiveApiErrors = 0; };
+        window.getConsecutiveApiErrors = function() { return _consecutiveApiErrors; };
 
         function getBackupSheetsUrl() {
             let backupUrl = (typeof window.sanitizeGoogleScriptUrl === 'function')
@@ -1646,20 +1648,52 @@ var dataCache = window.dataCache;
             } catch (err) {
                 console.warn(`[Cloudflare API Error] ${functionName}:`, err);
 
-                // 🛡️ TỰ ĐỘNG CHUYỂN ĐỔI SANG GOOGLE SHEETS DỰ PHÒNG CHỈ DÀNH CHO CÁC QUERY ĐỌC DỮ LIỆU LÂM SÀNG (GET / READ)
-                // TUYỆT ĐỐI KHÔNG CHUYỂN ĐỔI SANG GOOGLE SHEETS KHI ĐANG XÁC THỰC HOẶC ĐANG Ở MÀN HÌNH ĐĂNG NHẬP!
+                // 🛡️ BƯỚC 1: TỰ ĐỘNG THỬ LẠI (RETRY) ÂM THẦM CHO MỌI TRƯỜNG HỢP MẠNG LAG/GIÁN ĐOẠN NGẮN
+                // Cho phép thử lại tối đa 2 lần (tổng 3 lần thực thi) với độ trễ tăng dần (600ms, 1200ms)
+                // Tuyệt đối không kích hoạt failover hay báo động giả khi chưa hoàn tất 2 lượt retry!
+                if (retries < 2) {
+                    const delay = (retries + 1) * 600;
+                    console.log(`[API Retry] Tự động thử lại ${functionName} (lần ${retries + 1}/2) sau ${delay}ms do lỗi mạng chớp nhoáng...`);
+                    finish();
+                    setTimeout(() => {
+                        apiQueue.push({ ...task, retries: retries + 1 });
+                        scheduleNextApiRequest();
+                    }, delay);
+                    return;
+                }
+
+                // 🛡️ BƯỚC 2: TÁC VỤ POLLING NGẦM (getDataVersion)
+                // Nếu là kiểm tra phiên bản dữ liệu chạy nền định kỳ bị lỗi mạng thì âm thầm bỏ qua,
+                // sync.js sẽ tự động thăm dò lại ở nhịp kế tiếp mà không làm phiền người dùng.
+                const isSilentPoll = (functionName === 'getDataVersion');
+                if (isSilentPoll) {
+                    finish();
+                    return;
+                }
+
+                // Đã thử lại 2 lần (tổng 3 lần) mà vẫn thất bại -> ghi nhận lỗi liên tiếp
+                _consecutiveApiErrors++;
+
+                // 🛡️ BƯỚC 3: NGƯỠNG KÍCH HOẠT DỰ PHÒNG AN TOÀN (3-STRIKE FAILOVER THRESHOLD)
+                // Chỉ chuyển sang Google Sheets khi:
+                // - Đã lỗi liên tiếp ít nhất 3 tác vụ nghiệp vụ khác nhau (_consecutiveApiErrors >= 3)
+                // - Đang ở chế độ primary
+                // - Có cấu hình backupUrl
+                // - Không phải là tác vụ Mutation (ghi dữ liệu) hay Auth/SaaS
+                // - Không phải đang ở màn hình đăng nhập
                 const backupUrl = (typeof getBackupSheetsUrl === 'function') ? getBackupSheetsUrl() : '';
                 const isCurrentlyPrimary = (window._serverMode !== 'backup');
                 const overlay = document.getElementById('login-overlay');
                 const isLoginScreen = overlay && overlay.style.display !== 'none';
-                if (isCurrentlyPrimary && backupUrl && !isMutation && !isAuthOrSystem && !isLoginScreen) {
-                    console.log(`🔄 [Auto Failover] Máy chủ chính gián đoạn. Tự động chuyển sang Google Sheets dự phòng cho: ${functionName}`);
+
+                if (isCurrentlyPrimary && backupUrl && !isMutation && !isAuthOrSystem && !isLoginScreen && _consecutiveApiErrors >= 3) {
+                    console.log(`🔄 [Auto Failover] Máy chủ chính gián đoạn kết nối kéo dài (${_consecutiveApiErrors} tác vụ lỗi liên tiếp). Tự động chuyển sang Google Sheets dự phòng cho: ${functionName}`);
                     window._serverMode = 'backup';
                     if (typeof updateServerStatusBadge === 'function') {
                         updateServerStatusBadge('backup');
                     }
                     if (typeof showToast === 'function') {
-                        showToast('⚡️ Máy chủ chính đang tắt. Đã tự động kết nối Google Sheets dự phòng!', 'warning', 4000);
+                        showToast('⚡️ Máy chủ chính gián đoạn kết nối. Đã tự động kết nối Google Sheets dự phòng!', 'warning', 4000);
                     }
                     try {
                         const fallbackResp = await fetch(backupUrl, {
@@ -1687,16 +1721,6 @@ var dataCache = window.dataCache;
                 }
 
                 finish();
-
-                // 🛡️ Tự động thử lại 1 lần cho cả mutation và read query nếu bị timeout hoặc lỗi mạng
-                if (retries < 1) {
-                    console.log(`[API Retry] Thử lại ${functionName} sau 800ms...`);
-                    setTimeout(() => {
-                        apiQueue.push({ ...task, retries: retries + 1 });
-                        scheduleNextApiRequest();
-                    }, 800);
-                    return;
-                }
 
                 const isTimeout = err.name === 'TimeoutError' || err.name === 'AbortError' || (err.message && err.message.includes('abort'));
                 let errMsg = isTimeout 

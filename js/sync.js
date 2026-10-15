@@ -342,6 +342,9 @@
                 if (res && res.status === 'success') {
                     console.log('[RealtimeSync]: Máy chủ chính đã trực tuyến trở lại. Tự động phục hồi chế độ Primary!');
                     window._serverMode = 'primary';
+                    if (typeof window._resetConsecutiveApiErrors === 'function') {
+                        window._resetConsecutiveApiErrors();
+                    }
                     if (typeof window.updateServerStatusBadge === 'function') {
                         window.updateServerStatusBadge('primary');
                     }

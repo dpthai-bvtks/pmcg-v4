@@ -1,6 +1,6 @@
 {
-    "version": "4.2.8-rev7",
-    "releaseDate": "14/10/2026",
-    "releaseTime": "20:44 14/10/2026",
-    "notes": "Chuẩn hóa và tích hợp 20 tiêu chuẩn an toàn bảo mật (Hardening Checklist theo video vibecode) vào RULES.md, Backend Worker API (HSTS, Permissions-Policy, Payload Limit 15MB, Safe Error Handler chống rò rỉ Stack Trace) và Tầng 5 Super-Verify (quét Parameterized SQL)."
+    "version": "4.2.9-rev1",
+    "releaseDate": "15/10/2026",
+    "releaseTime": "09:58 15/10/2026",
+    "notes": "Tối ưu hóa cơ chế chịu lỗi mạng (Resilient 3-Strike Retry & Failover Guard): Âm thầm tự động thử lại 2 lần với giãn cách tăng dần cho mọi tác vụ khi mạng chập chờn, cách ly kiểm tra ngầm getDataVersion không gây báo động giả, và chỉ kích hoạt chế độ dự phòng Google Sheets khi mất kết nối liên tục 3 tác vụ (>15s)."
 }

@@ -8535,6 +8535,50 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 - `version.json` (nâng lên 4.2.8-rev7)
 - `PM-xeplich-v4.md` (ghi nhật ký phát triển)
 
+---
+
+### [v4.2.9-rev1] - 09:58 15/10/2026: Tối Ưu Hóa Cơ Chế Chịu Lỗi Mạng & Triệt Tiêu Báo Động Giả Chuyển Google Sheets (Resilient 3-Strike Retry & Failover Guard)
+
+**Yêu cầu của người dùng:**
+- Người dùng phản ánh hiện tượng giao diện liên tục hiện thông báo Toast *"⚡ Máy chủ chính đang tắt. Đã tự động kết nối Google Sheets dự phòng!"* và chuyển huy hiệu trạng thái sang `Google Sheets Backup` suốt buổi sáng dù máy tính chủ MiniPC ở viện vẫn đang cắm nguồn, bật sáng đèn và hoạt động bình thường.
+- Yêu cầu đọc kỹ `RULES.md` và tối ưu hóa xử lý triệt để hiện tượng này.
+
+**Phân tích nguyên nhân gốc rễ (Root Causes):**
+1. **Thực trạng MiniPC & Dịch vụ:**
+   - Database Engine SQLite cục bộ trên MiniPC (`server.mjs:8080`) và Cloudflare Tunnel (`cloudflared`) đang chạy bình thường, uptime liên tục, độ trễ phản hồi cực thấp (~1-2ms).
+2. **Hiện tượng gián đoạn vi mô trên đường truyền Internet (Micro-drops):**
+   - Đường truyền mạng Internet tại viện sáng nay có hiện tượng chập chờn / rớt gói tin ngắn (packet drops) diễn ra trong 1-2 giây (được xác thực bởi sự cố đứt kết nối socket TCP hai lần trong quá trình làm việc).
+3. **Lỗ hổng thiết kế Hair-Trigger (Bẫy sập quá nhạy) trong `js/app.js`:**
+   - Trong `executeApiTask`, đoạn code kích hoạt Auto-Failover chuyển sang Google Sheets được đặt ngay tại khối `catch (err)` mà không có ngưỡng chịu lỗi (Fault-Tolerance Threshold).
+   - Đoạn code failover chạy **ngay ở lần lỗi đầu tiên (`retries === 0`)**, trước cả khi khối retry tự động được gọi.
+   - Biến `_consecutiveApiErrors` được khai báo nhưng chưa bao giờ được tăng trong `catch`, khiến bất kỳ cú giật mạng 1 giây nào cũng biến thành sự cố "Máy chủ chính đang tắt".
+   - Tác vụ thăm dò ngầm định kỳ `getDataVersion` (chạy mỗi 30s) khi gặp lag mạng cũng vô tình kích hoạt Toast cảnh báo và đẩy cả hệ thống sang Google Sheets.
+
+**Giải pháp kỹ thuật đã triển khai:**
+1. **Cơ chế âm thầm thử lại 2 lần (Resilient 2-Step Backoff Retry):**
+   - Trong `js/app.js` (`executeApiTask`): Đưa khối thử lại lên trước tiên. Khi gặp bất kỳ lỗi mạng hoặc timeout nào, hệ thống tự động thử lại tối đa 2 lần (tổng 3 lần thực thi) với khoảng cách giãn dần (lần 1: 600ms, lần 2: 1200ms).
+   - Nếu đường truyền chỉ chập chờn 1-2 giây, tác vụ sẽ tự phục hồi êm đẹp trong các lần retry mà không làm phiền người dùng.
+2. **Cách ly tuyệt đối tác vụ thăm dò ngầm (`getDataVersion`):**
+   - Bổ sung cờ `isSilentPoll`: Nếu `functionName === 'getDataVersion'` gặp sự cố mạng, kết thúc âm thầm mà không bao giờ kích hoạt failover hay hiển thị cảnh báo lên màn hình. `js/sync.js` sẽ tự thăm dò lại ở nhịp kế tiếp.
+3. **Thiết lập ngưỡng kích hoạt dự phòng an toàn (3-Strike Failover Threshold):**
+   - Tăng biến đếm `_consecutiveApiErrors++` chỉ sau khi tác vụ đã retry hết 2 lần vẫn thất bại.
+   - Chỉ chuyển sang chế độ Google Sheets dự phòng khi có ít nhất 3 tác vụ nghiệp vụ liên tiếp đều thất bại hoàn toàn (`_consecutiveApiErrors >= 3`), tương đương mạng mất kết nối thực sự kéo dài hơn 15 giây.
+4. **Tự động phục hồi & Reset biến đếm (`_resetConsecutiveApiErrors`):**
+   - Khi có bất kỳ request nào thành công trên máy chủ chính, hoặc khi `js/sync.js` ping khôi phục thành công, `_consecutiveApiErrors` được tự động đặt lại về 0.
+5. **Kiểm thử & Đồng bộ phiên bản theo RULES.md:**
+   - Kiểm tra toàn diện 9 tầng `node scripts/verify-build.mjs`: Đạt 100% PASS (exit code 0).
+   - Nâng phiên bản ngày mới: `4.2.9-rev1` trên `version.json`, `sw.js` (`pmcg-v4-cache-4.2.9-rev1`), `index.html` (chân trang `Phiên bản: 4.2.9`, timestamp `09:58 15/10/2026`, cache busters `?v=4.2.9-rev1`).
+   - Deploy Cloudflare Pages thành công (`pmcg-v3`).
+
+**File sửa đổi:**
+- `js/app.js` (Resilient 3-strike retry-first failover guard, silent poll protector, _resetConsecutiveApiErrors)
+- `js/sync.js` (Reset error counter on primary recovery ping)
+- `version.json` (Nâng phiên bản 4.2.9-rev1, releaseDate 15/10/2026)
+- `sw.js` (Cập nhật CACHE_NAME pmcg-v4-cache-4.2.9-rev1)
+- `index.html` (Đồng bộ cache busters ?v=4.2.9-rev1, timestamp 09:58 15/10/2026, chân trang Phiên bản: 4.2.9)
+- `PM-xeplich-v4.md` (Ghi nhật ký phát triển)
+
+
 
 
 
