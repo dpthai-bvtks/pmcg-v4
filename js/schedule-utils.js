@@ -137,10 +137,32 @@ var ScheduleUtils = (function () {
     ['YÙ', 'Ý'], ['YØ', 'Ỳ'], ['YÛ', 'Ỷ'], ['YÕ', 'Ỹ']
   ];
 
+  // 2.1 GIẢI MÃ MOJIBAKE TỰ ĐỘNG (UTF-8 bytes bị đọc nhầm thành Windows-1252/ISO-8859-1)
+  function tryFixMojibake(str) {
+    if (!str || typeof str !== 'string') return str;
+    // Kiểm tra các mẫu Mojibake tiếng Việt phổ biến (Ã, á», áº, á»...)
+    if (/[\u00C3\u00C2\u00E1][\u0080-\u00BF]/.test(str) || /[\u00C0-\u00FF]{2,}/.test(str)) {
+      try {
+        if (typeof TextDecoder !== 'undefined') {
+          const bytes = new Uint8Array(str.length);
+          for (let i = 0; i < str.length; i++) {
+            bytes[i] = str.charCodeAt(i) & 0xFF;
+          }
+          const decoded = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+          // Nếu sau giải mã sạch ký tự lạ và có dấu tiếng Việt chuẩn thì áp dụng
+          if (decoded && !decoded.includes('\ufffd') && /[\u00C0-\u024F\u1EA0-\u1EF9]/.test(decoded)) {
+            return decoded.normalize('NFC');
+          }
+        }
+      } catch (e) { }
+    }
+    return str;
+  }
+
   function decodeVietnameseEncoding(raw) {
     if (!raw && raw !== 0) return '';
-    // Chuẩn bản v3: Tuyệt đối không can thiệp bất kỳ bảng mã hay hoán đổi ký tự nào, giữ nguyên 100% dữ liệu gốc
-    return String(raw).normalize('NFC').replace(/[\ufeff\u200b\u200c\u200d\u200e\u200f]/g, '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+    let str = String(raw).normalize('NFC').replace(/[\ufeff\u200b\u200c\u200d\u200e\u200f]/g, '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+    return tryFixMojibake(str);
   }
 
   function toVietnameseProperCase(raw) {
@@ -150,7 +172,7 @@ var ScheduleUtils = (function () {
 
   function stripTones(s) {
     if (!s) return '';
-    return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'd').trim().toLowerCase();
+    return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').trim().toLowerCase();
   }
 
   function cleanStaffStr(s) {
@@ -158,38 +180,186 @@ var ScheduleUtils = (function () {
   }
 
   // ============================================================
-  // 3. BỘ CHỮA LÀNH DỮ LIỆU (HEALERS) - CHUẨN BẢN V3: GIỮ NGUYÊN BẢN 100%
+  // 3. BỘ CHỮA LÀNH DỮ LIỆU (HEALERS)
+  // Cơ chế: Giải mã Mojibake + So khớp danh mục gốc (Candidates / dataCache)
+  // Tuyệt đối không tự ý đoán mò ký tự của tên bệnh nhân nếu không có căn cứ từ danh mục!
   // ============================================================
   function cleanAndHealPatientName(rawName, candidates = [], forceUpperCase = false) {
     if (!rawName && rawName !== 0) return '';
-    // Chuẩn bản v3: Giữ nguyên vẹn họ tên từ file HIS / CSDL, không đoán mò hay hoán đổi
-    const name = String(rawName).normalize('NFC').trim();
+    let name = decodeVietnameseEncoding(rawName);
     if (!name) return '';
+
+    // Nếu có danh mục bệnh nhân tham chiếu và tên hiện tại bị lỗi ký tự (? hoặc \ufffd)
+    if (/[?\ufffd]/.test(name)) {
+      let candList = Array.isArray(candidates) ? candidates : [];
+      if (!candList.length && typeof window !== 'undefined' && window.dataCache && window.dataCache.pat) {
+        candList = window.dataCache.pat;
+      }
+      if (candList.length > 0) {
+        const nameNoTone = stripTones(name);
+        const patRegex = '^' + nameNoTone.replace(/[?\ufffd]+/g, '.*') + '$';
+        try {
+          const reg = new RegExp(patRegex, 'i');
+          for (const c of candList) {
+            const cName = String(c.ten || c.name || c[1] || c || '').normalize('NFC').trim();
+            if (!cName || /[?\ufffd]/.test(cName)) continue;
+            if (reg.test(stripTones(cName))) {
+              name = cName;
+              break;
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
     return forceUpperCase ? name.toUpperCase() : name;
   }
 
   function cleanAndHealProcedureName(rawProc, candidates = []) {
     if (!rawProc && rawProc !== 0) return '';
-    // Chuẩn bản v3: Giữ nguyên vẹn tên thủ thuật gốc
-    return String(rawProc).normalize('NFC').trim();
+    let str = decodeVietnameseEncoding(rawProc);
+    if (!str) return '';
+
+    let candList = Array.isArray(candidates) ? candidates : [];
+    if (!candList.length && typeof window !== 'undefined' && window.dataCache) {
+      candList = window.dataCache.proc || window.dataCache.procedures || [];
+    }
+
+    if (candList.length > 0) {
+      // 1. Khớp chính xác (không phân biệt hoa thường)
+      for (const c of candList) {
+        if (!c) continue;
+        const cName = String(c.ten || c.name || c[1] || c || '').normalize('NFC').trim();
+        if (!cName || /[?\ufffd]/.test(cName)) continue;
+        if (cName.toLowerCase() === str.toLowerCase()) return cName;
+      }
+
+      // 2. Nếu tên thủ thuật bị lỗi dấu hỏi '?' hoặc '\ufffd' hoặc nuốt ký tự, phục hồi theo danh mục chuẩn
+      if (/[?\ufffd]/.test(str) || stripTones(str).length >= 3) {
+        const strNoTone = stripTones(str);
+        const patRegex = '^' + strNoTone.replace(/[?\ufffd]+/g, '.*') + '$';
+        try {
+          const reg = new RegExp(patRegex, 'i');
+          for (const c of candList) {
+            if (!c) continue;
+            const cName = String(c.ten || c.name || c[1] || c || '').normalize('NFC').trim();
+            if (!cName || /[?\ufffd]/.test(cName)) continue;
+            if (reg.test(stripTones(cName))) return cName;
+          }
+        } catch (e) {}
+
+        // So khớp không dấu chính xác tuyệt đối
+        for (const c of candList) {
+          if (!c) continue;
+          const cName = String(c.ten || c.name || c[1] || c || '').normalize('NFC').trim();
+          if (!cName || /[?\ufffd]/.test(cName)) continue;
+          if (stripTones(cName) === strNoTone) return cName;
+        }
+      }
+    }
+
+    return str;
   }
 
   function cleanAndHealStaffName(rawStaff, candidates = []) {
     if (!rawStaff && rawStaff !== 0) return '';
-    // Chuẩn bản v3: Giữ nguyên vẹn tên nhân sự gốc
-    return String(rawStaff).normalize('NFC').trim();
+    let str = decodeVietnameseEncoding(rawStaff);
+    if (!str) return '';
+
+    let candList = Array.isArray(candidates) ? candidates : [];
+    if (!candList.length && typeof window !== 'undefined' && window.dataCache) {
+      candList = window.dataCache.staff || [];
+    }
+
+    if (candList.length > 0) {
+      // 1. Khớp chính xác hoàn toàn
+      for (const c of candList) {
+        if (!c) continue;
+        const cName = String(c.ten || c.name || c[1] || c || '').normalize('NFC').trim();
+        if (!cName || /[?\ufffd]/.test(cName)) continue;
+        if (cName.toLowerCase() === str.toLowerCase()) return cName;
+      }
+
+      // 2. Khớp sau khi bỏ tiền tố (BS, ĐD, KTV)
+      const core = cleanStaffStr(str);
+      for (const c of candList) {
+        if (!c) continue;
+        const cName = String(c.ten || c.name || c[1] || c || '').normalize('NFC').trim();
+        if (!cName || /[?\ufffd]/.test(cName)) continue;
+        if (cleanStaffStr(cName) === core) return cName;
+      }
+
+      // 3. Khớp khi có dấu hỏi '?' hoặc '\ufffd'
+      if (/[?\ufffd]/.test(str)) {
+        const coreNoTone = stripTones(core);
+        const patRegex = '^' + coreNoTone.replace(/[?\ufffd]+/g, '.*') + '$';
+        try {
+          const reg = new RegExp(patRegex, 'i');
+          for (const c of candList) {
+            if (!c) continue;
+            const cName = String(c.ten || c.name || c[1] || c || '').normalize('NFC').trim();
+            if (!cName || /[?\ufffd]/.test(cName)) continue;
+            if (reg.test(stripTones(cleanStaffStr(cName)))) return cName;
+          }
+        } catch (e) {}
+      }
+    }
+
+    return str;
   }
 
   function cleanAndHealRoomName(rawRoom, candidates = []) {
     if (!rawRoom && rawRoom !== 0) return '';
-    // Chuẩn bản v3: Giữ nguyên vẹn tên phòng gốc
-    return String(rawRoom).normalize('NFC').trim();
+    let str = decodeVietnameseEncoding(rawRoom);
+    if (!str) return '';
+
+    let candList = Array.isArray(candidates) ? candidates : [];
+    if (!candList.length && typeof window !== 'undefined' && window.dataCache) {
+      candList = window.dataCache.room || [];
+    }
+
+    if (candList.length > 0) {
+      for (const c of candList) {
+        if (!c) continue;
+        const cName = String(c.tenPhong || c.ten || c[1] || c || '').normalize('NFC').trim();
+        if (!cName || /[?\ufffd]/.test(cName)) continue;
+        if (cName.toLowerCase() === str.toLowerCase()) return cName;
+        if (/[?\ufffd]/.test(str)) {
+          const pat = '^' + stripTones(str).replace(/[?\ufffd]+/g, '.*') + '$';
+          try {
+            if (new RegExp(pat, 'i').test(stripTones(cName))) return cName;
+          } catch (e) {}
+        }
+      }
+    }
+    return str;
   }
 
   function cleanAndHealMachineName(rawMachine, candidates = []) {
     if (!rawMachine && rawMachine !== 0) return '';
-    // Chuẩn bản v3: Giữ nguyên vẹn tên máy gốc
-    return String(rawMachine).normalize('NFC').trim();
+    let str = decodeVietnameseEncoding(rawMachine);
+    if (!str) return '';
+
+    let candList = Array.isArray(candidates) ? candidates : [];
+    if (!candList.length && typeof window !== 'undefined' && window.dataCache) {
+      candList = window.dataCache.machine || [];
+    }
+
+    if (candList.length > 0) {
+      for (const c of candList) {
+        if (!c) continue;
+        const cName = String(c.tenLoai || c.ten || c[1] || c || '').normalize('NFC').trim();
+        if (!cName || /[?\ufffd]/.test(cName)) continue;
+        if (cName.toLowerCase() === str.toLowerCase()) return cName;
+        if (/[?\ufffd]/.test(str)) {
+          const pat = '^' + stripTones(str).replace(/[?\ufffd]+/g, '.*') + '$';
+          try {
+            if (new RegExp(pat, 'i').test(stripTones(cName))) return cName;
+          } catch (e) {}
+        }
+      }
+    }
+    return str;
   }
 
   function isManualOrNoMachine(may) {

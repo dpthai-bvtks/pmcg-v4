@@ -3664,10 +3664,28 @@ var dataCache = window.dataCache;
                 b.patients = rawPatsForHeal;
             }
             if (b.schedule && Array.isArray(b.schedule)) {
+                const cleanProc = (typeof window.cleanAndHealProcedureName === 'function') ? window.cleanAndHealProcedureName : _decodeForHeal;
+                const cleanStaff = (typeof window.cleanAndHealStaffName === 'function') ? window.cleanAndHealStaffName : _decodeForHeal;
+                const cleanRoom = (typeof window.cleanAndHealRoomName === 'function') ? window.cleanAndHealRoomName : _decodeForHeal;
+                const cleanMach = (typeof window.cleanAndHealMachineName === 'function') ? window.cleanAndHealMachineName : _decodeForHeal;
+
                 b.schedule.forEach(sc => {
                     if (sc) {
-                        if (sc.tenBN) sc.tenBN = healPatientName(_decodeForHeal(sc.tenBN), [], true);
-                        if (Array.isArray(sc) && sc[1]) sc[1] = healPatientName(_decodeForHeal(sc[1]), [], true);
+                        if (Array.isArray(sc)) {
+                            if (sc[1]) sc[1] = healPatientName(_decodeForHeal(sc[1]), [], true);
+                            if (sc[3]) sc[3] = cleanRoom(sc[3]);
+                            if (sc[4]) sc[4] = cleanProc(sc[4]);
+                            if (sc[7]) sc[7] = cleanStaff(sc[7]);
+                            if (sc[8]) sc[8] = cleanStaff(sc[8]);
+                            if (sc[9]) sc[9] = cleanMach(sc[9]);
+                        } else {
+                            if (sc.tenBN) sc.tenBN = healPatientName(_decodeForHeal(sc.tenBN), [], true);
+                            if (sc.phong) sc.phong = cleanRoom(sc.phong);
+                            if (sc.thuThuat) sc.thuThuat = cleanProc(sc.thuThuat);
+                            if (sc.nvChinh) sc.nvChinh = cleanStaff(sc.nvChinh);
+                            if (sc.nvPhu) sc.nvPhu = cleanStaff(sc.nvPhu);
+                            if (sc.may) sc.may = cleanMach(sc.may);
+                        }
                     }
                 });
             }
@@ -6848,6 +6866,43 @@ var dataCache = window.dataCache;
                     }
                 }
 
+                // 🩹 Tự phục hồi nhân sự chính & phụ
+                const cleanHealStaffFn = (typeof window.cleanAndHealStaffName === 'function') ? window.cleanAndHealStaffName : null;
+                if (cleanHealStaffFn) {
+                    if (row.nvChinh) {
+                        const rawNV = String(row.nvChinh || '');
+                        const healedNV = cleanHealStaffFn(rawNV);
+                        if (healedNV && healedNV !== rawNV) {
+                            row.nvChinh = healedNV;
+                            hasHealedStorage = true;
+                        }
+                    }
+                    if (row.nvPhu) {
+                        const rawNV2 = String(row.nvPhu || '');
+                        const healedNV2 = cleanHealStaffFn(rawNV2);
+                        if (healedNV2 && healedNV2 !== rawNV2) {
+                            row.nvPhu = healedNV2;
+                            hasHealedStorage = true;
+                        }
+                    }
+                }
+
+                // 🩹 Tự phục hồi phòng & máy
+                if (typeof window.cleanAndHealRoomName === 'function' && row.phong) {
+                    const healedRoom = window.cleanAndHealRoomName(row.phong);
+                    if (healedRoom && healedRoom !== row.phong) {
+                        row.phong = healedRoom;
+                        hasHealedStorage = true;
+                    }
+                }
+                if (typeof window.cleanAndHealMachineName === 'function' && row.may) {
+                    const healedMay = window.cleanAndHealMachineName(row.may);
+                    if (healedMay && healedMay !== row.may) {
+                        row.may = healedMay;
+                        hasHealedStorage = true;
+                    }
+                }
+
                 let rawTen = String(row.tenBN || '').normalize('NFC').trim();
                 const namSinh = String(row.namSinh || '').trim();
                 const phong = String(row.phong || '').trim().toLowerCase();
@@ -7177,18 +7232,24 @@ var dataCache = window.dataCache;
                 const rawList = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];
                 const itemRawIdx = rawList.indexOf(item);
 
+                const cleanProcFn = (typeof window.cleanAndHealProcedureName === 'function') ? window.cleanAndHealProcedureName : (s => s);
+                const cleanStaffFn = (typeof window.cleanAndHealStaffName === 'function') ? window.cleanAndHealStaffName : (s => s);
+                const cleanPatientFn = (typeof window.cleanAndHealPatientName === 'function') ? window.cleanAndHealPatientName : (s => s);
+                const cleanRoomFn = (typeof window.cleanAndHealRoomName === 'function') ? window.cleanAndHealRoomName : (s => s);
+                const cleanMachineFn = (typeof window.cleanAndHealMachineName === 'function') ? window.cleanAndHealMachineName : (s => s);
+
                 return `<tr class="${rowClass}"${reasonTitle}>
             <td style="text-align:center">${start + i + 1}</td>
             <td class="col-hide-mobile" style="text-align:center">${ngayShort}</td>
-            <td style="font-weight:bold;">${item.tenBN || ''}${dischargeMark}</td>
+            <td style="font-weight:bold;">${cleanPatientFn(item.tenBN || '', [], true)}${dischargeMark}</td>
             <td class="col-hide-mobile" style="text-align:center;">${item.namSinh || ''}</td>
-            <td style="text-align:center;">${item.phong || ''}</td>
-            <td>${item.thuThuat || ''}</td>
+            <td style="text-align:center;">${cleanRoomFn(item.phong || '')}</td>
+            <td>${cleanProcFn(item.thuThuat || '')}</td>
             <td style="font-weight:bold; text-align:center;">${item.gioDienRa || ''}</td>
             <td style="font-weight:bold; text-align:center;">${item.gioKetThuc || ''}</td>
-            <td>${(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(item.nvChinh) : (item.nvChinh || ''))}</td>
-            <td class="col-hide-mobile">${(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(item.nvPhu) : (item.nvPhu || ''))}</td>
-            <td class="col-hide-mobile">${item.may || ''}</td>
+            <td>${cleanStaffFn(item.nvChinh || '')}</td>
+            <td class="col-hide-mobile">${cleanStaffFn(item.nvPhu || '')}</td>
+            <td class="col-hide-mobile">${cleanMachineFn(item.may || '')}</td>
             <td class="col-hide-mobile" style="text-align:center;">${item.giuong || ''}</td>
             <td style="text-align:center; white-space:nowrap;">
                 <button type="button" class="btn btn-sm" onclick="openScheduleItemDetailModal(${itemRawIdx})" 

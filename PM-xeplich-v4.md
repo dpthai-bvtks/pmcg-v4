@@ -8607,9 +8607,51 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 
 **File sửa đổi:**
 - `js/app.js` (Snapshot và khôi phục trọn vẹn lastUnscheduledData trong pushScheduleHistory, undoSchedule, redoSchedule, setUnscheduledData tenant sync)
-- `version.json` (Nâng phiên bản 4.2.9-rev2, timestamp 10:55 15/10/2026)
-- `sw.js` (CACHE_NAME pmcg-v4-cache-4.2.9-rev2)
-- `index.html` (Đồng bộ cache busters ?v=4.2.9-rev2, timestamp 10:55 15/10/2026, chân trang Phiên bản: 4.2.9)
+
+---
+
+### [v4.2.9-rev3] - 13:35 15/10/2026: Sửa Triệt Để Lỗi Font Chữ Tiếng Việt (Mojibake / Dấu Hỏi '?') Khi Chuyển Tab (Candidate-Based String Healing)
+
+**Yêu cầu của người dùng:**
+- Người dùng phản ánh: "sau khi xếp lịch xong, quay đi quay lại thì tên thủ thuật/tên nhân sự...1 số bị lỗi font chữ" (sau khi tự động xếp lịch, chuyển qua chuyển lại giữa các tab hoặc đồng bộ thì tên thủ thuật, tên nhân sự xuất hiện ký tự lạ, vỡ hạt hoặc dấu hỏi `'?'`).
+
+**Phân tích nguyên nhân gốc rễ (Root Cause):**
+1. **Hiện tượng Mojibake & Dấu hỏi khi đồng bộ dữ liệu:**
+   - Khi xếp lịch xong, bảng hiển thị từ bộ nhớ tạm in-memory.
+   - Khi người dùng chuyển tab (sang Bệnh nhân, Giờ bận, Nhân sự...) rồi quay lại Tab Xếp Lịch (`tab-schedule`), hàm `loadScheduleList()` chạy lại và đọc từ cache cục bộ hoặc đồng bộ từ server qua cơ chế Polling `doPoll()` / `loadBootstrapData(true)`.
+   - Nếu dữ liệu lịch trình hoặc danh mục đến từ Google Sheets WebApp dự phòng (vốn trả về dữ liệu lịch sử từ tháng 9 hoặc trả về thiếu header charset UTF-8 rõ ràng) hoặc được serialize/deserialize qua Latin1, các chuỗi tiếng Việt có dấu (`thủy châm`, `nhân viên`, `Thái`) dễ bị biến thành Mojibake (`thá»§ chÃ¢m`, `nhÃ¢n viÃªn`) hoặc dấu hỏi do bộ giải mã trình duyệt gán nhầm byte không hợp lệ.
+2. **Thiếu vắng bộ giải mã Mojibake và cơ chế đối chiếu danh mục gốc:**
+   - Trước đây ở phiên bản v4.1.8-rev5, do loại bỏ việc đoán nguyên âm thô bạo (vốn dễ đoán sai tên bệnh nhân lạ), các hàm `cleanAndHealProcedureName`, `cleanAndHealStaffName`, `cleanAndHealRoomName`, `cleanAndHealMachineName` trong `schedule-utils.js` đã bị rút gọn chỉ còn trả về `String(raw).normalize('NFC').trim()`.
+   - Kết quả: Khi chuỗi bị lỗi byte Mojibake hoặc dấu hỏi `'?'`, hệ thống không có cơ chế tự động khôi phục chuỗi về nguyên bản tiếng Việt chuẩn dù toàn bộ danh mục Thủ thuật (`dataCache.proc`), Nhân sự (`dataCache.staff`), Phòng (`dataCache.room`), Máy móc (`dataCache.machine`) đều đang có sẵn trong CSDL.
+
+**Giải pháp kỹ thuật đã triển khai:**
+1. **Bộ giải mã Mojibake tự động `tryFixMojibake` trong `schedule-utils.js`:**
+   - Sử dụng `TextDecoder('utf-8')` để tái cấu trúc lại mảng byte gốc từ các chuỗi bị đọc nhầm mã Windows-1252/ISO-8859-1 (như `thá»§ chÃ¢m` -> `thủ châm`, `nhÃ¢n viÃªn` -> `nhân viên`).
+   - Tự động tích hợp vào `decodeVietnameseEncoding(raw)`.
+2. **Phục hồi thông minh theo Danh mục Gốc (Candidate-Based Healing):**
+   - Trong `cleanAndHealProcedureName(rawProc, candidates)`:
+     - So khớp trực tiếp với danh mục thủ thuật chuẩn (`candidates` hoặc `dataCache.proc`).
+     - Nếu có ký tự lỗi (`?`, `\ufffd`) hoặc chuỗi không dấu, sử dụng regex linh hoạt và `stripTones` để đối chiếu với danh mục thủ thuật chuẩn và khôi phục 100% chính xác tên thủ thuật gốc.
+   - Trong `cleanAndHealStaffName(rawStaff, candidates)`:
+     - Tự động loại bỏ tiền tố chức danh (`BS.`, `ĐD.`, `KTV.`) để so khớp với danh mục nhân sự chuẩn (`candidates` hoặc `dataCache.staff`), phục hồi lại tên nhân viên chuẩn xác tuyệt đối.
+   - Trong `cleanAndHealRoomName` & `cleanAndHealMachineName`:
+     - Tương tự, so khớp và chữa lành tên phòng, loại máy theo danh mục gốc.
+   - Trong `cleanAndHealPatientName(rawName, candidates, forceUpperCase)`:
+     - Giải mã Mojibake sạch sẽ, chỉ đối chiếu phục hồi theo danh sách bệnh nhân khi có ký tự lỗi (`?`, `\ufffd`), bảo toàn 100% tên bệnh nhân gốc mà không tự ý đoán mò nguyên âm.
+3. **Bảo vệ toàn diện các tầng hiển thị và lưu trữ trong `app.js`:**
+   - Trong `markDischargedInSchedule`: Bổ sung tự động chữa lành cả `row.thuThuat`, `row.nvChinh`, `row.nvPhu`, `row.phong`, `row.may` và tự động cập nhật lại `localStorage` khi phát hiện dữ liệu cũ vừa được làm sạch.
+   - Trong `applyBootstrapData`: Chữa lành toàn diện mảng `b.schedule` trước khi đưa vào cache và state hiển thị.
+   - Trong `renderSchedPage`: Chuẩn hóa làm sạch từng ô hiển thị trên bảng Xếp Lịch.
+4. **Kiểm thử Super-Verify & Đồng bộ phiên bản theo RULES.md:**
+   - Kiểm tra 9 tầng `node scripts/verify-build.mjs`: PASS 100% (0 lỗi cú pháp, 0 rò rỉ secret, scheduler benchmark vượt qua).
+   - Nâng phiên bản `4.2.9-rev3` trên `version.json`, `sw.js` (`pmcg-v4-cache-4.2.9-rev3`), `index.html` (chân trang `Phiên bản: 4.2.9`, timestamp `13:35 15/10/2026`, cache buster `?v=4.2.9-rev3`).
+
+**File sửa đổi:**
+- `js/schedule-utils.js` (Thêm bộ giải mã Mojibake tryFixMojibake và đối chiếu phục hồi tên theo candidates)
+- `js/app.js` (Tích hợp làm sạch và chữa lành font chữ trong markDischargedInSchedule, applyBootstrapData, renderSchedPage)
+- `version.json` (Nâng phiên bản 4.2.9-rev3, timestamp 13:35 15/10/2026)
+- `sw.js` (CACHE_NAME pmcg-v4-cache-4.2.9-rev3)
+- `index.html` (Đồng bộ cache busters ?v=4.2.9-rev3, timestamp 13:35 15/10/2026, chân trang Phiên bản: 4.2.9)
 - `PM-xeplich-v4.md` (Ghi nhật ký phát triển)
 
 

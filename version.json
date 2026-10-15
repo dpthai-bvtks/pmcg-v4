@@ -1,6 +1,6 @@
 {
-    "version": "4.2.9-rev2",
+    "version": "4.2.9-rev3",
     "releaseDate": "15/10/2026",
-    "releaseTime": "10:55 15/10/2026",
-    "notes": "Sửa lỗi Hoàn tác (Undo/Redo): Đồng bộ và khôi phục trọn vẹn cả danh sách ca rớt (lastUnscheduledData), đảm bảo khi hoàn tác thì dòng ca rớt bị hủy bỏ hoàn toàn và biến mất đúng trạng thái ban đầu."
+    "releaseTime": "13:35 15/10/2026",
+    "notes": "Sửa triệt để lỗi font chữ tiếng Việt (Mojibake/dấu hỏi '?') khi chuyển qua lại giữa các tab hoặc đồng bộ từ CSDL/Google Sheets: Bổ sung bộ giải mã Mojibake tự động và cơ chế đối chiếu phục hồi chính xác theo danh mục gốc (Candidates) cho Tên bệnh nhân, Tên thủ thuật, Tên nhân sự, Phòng và Máy."
 }
