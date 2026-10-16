@@ -419,8 +419,18 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         }
 
         // 🛡️ Phân hệ nghiêm ngặt: Quyền YHCT không bao giờ làm PHCN, Quyền PHCN không bao giờ làm YHCT
-        if (isQuyenStrictYhct && isProcPhcn) qualified = false;
-        if (isQuyenStrictPhcn && isProcYhct) qualified = false;
+        // ⚡ EXCEPTION: Nếu tên thủ thuật được cài TƯỜNG MINH trong kyNangList (không phải keyword chung)
+        //    thì ưu tiên kỹ năng admin đã cài, không block theo phân hệ.
+        const isProcExplicitInSkills = kyNangList.some(skRaw => {
+          const skLow = skRaw.toLowerCase();
+          // Bỏ qua các từ khóa hệ thống chung
+          if (/^(yhct|phcn|cả hai|ca hai|toàn bộ|tat ca|all)$/.test(skLow)) return false;
+          return skLow === pName || (pVt && skLow === pVt) || (pTenGoc && skLow === pTenGoc) ||
+                 skLow.includes(pName) || pName.includes(skLow) ||
+                 (pVt && (skLow.includes(pVt) || pVt.includes(skLow)));
+        });
+        if (isQuyenStrictYhct && isProcPhcn && !isProcExplicitInSkills) qualified = false;
+        if (isQuyenStrictPhcn && isProcYhct && !isProcExplicitInSkills) qualified = false;
 
         if (qualified) {
           const keys = [procKey, pName];
@@ -437,8 +447,10 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         const kyNangLower = kyNang.toLowerCase();
         const pInfo = thuThuatInfo[kyNangLower];
         if (pInfo) {
-          if (isQuyenStrictYhct && pInfo[3] === 'PHCN') return;
-          if (isQuyenStrictPhcn && pInfo[3] === 'YHCT') return;
+          // Chỉ block nếu kyNang này là từ khóa chung (yhct/phcn), không block tên thủ thuật cụ thể
+          const isGenericKw = /^(yhct|phcn|cả hai|ca hai|toàn bộ|tat ca|all)$/.test(kyNangLower);
+          if (isQuyenStrictYhct && pInfo[3] === 'PHCN' && isGenericKw) return;
+          if (isQuyenStrictPhcn && pInfo[3] === 'YHCT' && isGenericKw) return;
         }
         if (!staffBySkill[kyNangLower]) staffBySkill[kyNangLower] = [];
         if (!staffBySkill[kyNangLower].includes(tenNhanVien)) staffBySkill[kyNangLower].push(tenNhanVien);
@@ -3141,14 +3153,27 @@ function getSafeCache() {
         // Điều dưỡng: chỉ làm theo kỹ năng đã cấu hình
       }
 
-      // 🛡️ BỘ LỌC PHÂN QUYỀN TUYỆT ĐỐI (Strict System Permission Filter):
-      // Nếu quyen là YHCT: xóa triệt để mọi thủ thuật PHCN khỏi skillSet
+      // 🛡️ BỘ LỌC PHÂN QUYỀN (Strict System Permission Filter):
+      // ⚡ EXCEPTION: Giữ lại thủ thuật được cài TƯỜNG MINH trong rawSkills (không phải keyword chung)
+      // Ví dụ: BS Đạt quyen=YHCT nhưng rawSkills có "điện xung" → GIỮ điện xung
+      const explicitProcSet = new Set(
+        rawSkills ? rawSkills.split(',').map(s => s.trim().toLowerCase()).filter(s =>
+          s && !/^(yhct|phcn|cả hai|ca hai|toàn bộ|tat ca|all)$/.test(s)
+        ) : []
+      );
+      // Nếu quyen là YHCT: xóa thủ thuật PHCN, nhưng GIỮ lại nếu được cài explicit
       if (isQuyenStrictYhct) {
-        allPhcnProcs.forEach(p => skillSet.delete(p.toLowerCase()));
+        allPhcnProcs.forEach(p => {
+          const pLow = p.toLowerCase();
+          if (!explicitProcSet.has(pLow)) skillSet.delete(pLow);
+        });
       }
-      // Nếu quyen là PHCN: xóa triệt để mọi thủ thuật YHCT khỏi skillSet
+      // Nếu quyen là PHCN: xóa thủ thuật YHCT, nhưng GIỮ lại nếu được cài explicit
       if (isQuyenStrictPhcn) {
-        allYhctProcs.forEach(p => skillSet.delete(p.toLowerCase()));
+        allYhctProcs.forEach(p => {
+          const pLow = p.toLowerCase();
+          if (!explicitProcSet.has(pLow)) skillSet.delete(pLow);
+        });
       }
 
       // Fallback an toàn nếu skillSet vẫn rỗng
