@@ -1,6 +1,6 @@
 {
-    "version": "4.2.9-rev3",
-    "releaseDate": "15/10/2026",
-    "releaseTime": "13:35 15/10/2026",
-    "notes": "Sửa triệt để lỗi font chữ tiếng Việt (Mojibake/dấu hỏi '?') khi chuyển qua lại giữa các tab hoặc đồng bộ từ CSDL/Google Sheets: Bổ sung bộ giải mã Mojibake tự động và cơ chế đối chiếu phục hồi chính xác theo danh mục gốc (Candidates) cho Tên bệnh nhân, Tên thủ thuật, Tên nhân sự, Phòng và Máy."
+    "version": "4.3.0-rev1",
+    "releaseDate": "16/10/2026",
+    "releaseTime": "16:10 16/10/2026",
+    "notes": "Fix lỗi kỹ năng nhân sự không phản ánh vào xếp lịch: Kỹ năng được admin cài thủ công (explicit) trong tab-staff nay luôn được ưu tiên over hạn chế phân hệ quyen (YHCT/PHCN). Ví dụ BS có quyen=YHCT nhưng admin cài kỹ năng 'điện xung' (PHCN) sẽ được xếp đúng vào điện xung."
 }
