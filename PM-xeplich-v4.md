@@ -8654,8 +8654,23 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 - `index.html` (Đồng bộ cache busters ?v=4.2.9-rev3, timestamp 13:35 15/10/2026, chân trang Phiên bản: 4.2.9)
 - `PM-xeplich-v4.md` (Ghi nhật ký phát triển)
 
+---
 
+### Fix Lỗi Kỹ Năng Nhân Sự Không Phản Ánh Vào Xếp Lịch (16/10/2026 - v4.0.6)
 
+#### Yêu cầu của người dùng:
+Chỉnh sửa kỹ năng BS Đạt thêm "yhct + điện xung" tại tab-staff, nhưng khi xếp lịch ngày thường và thứ 7 đều không thấy BS Đạt làm được điện xung.
 
+#### Phân tích nguyên nhân:
+Lỗi nằm trong **bộ lọc phân quyền tuyệt đối** trong `scheduler-engine.js`. Khi BS Đạt có `quyen="YHCT"` và `kyNang="yhct, điện xung"`, điện xung thuộc hệ PHCN → bộ lọc block hoàn toàn, dù admin đã cài thủ công.
+
+- **Fix 1 (dòng ~421, ngày thường - precomputed phase):** Thêm kiểm tra `isProcExplicitInSkills`: chỉ block nếu thủ thuật KHÔNG được cài tường minh trong kyNangList. Nếu tên thủ thuật xuất hiện literal trong kỹ năng → ưu tiên, không block.
+- **Fix 2 (dòng ~439, ngày thường - staffBySkill loop):** Thêm `isGenericKw`: chỉ block phân hệ khi kyNang là từ khóa chung (yhct/phcn/cả hai/all). Tên thủ thuật cụ thể như "điện xung" không bị block.
+- **Fix 3 (dòng ~3146, xếp lịch thứ 7):** Tạo `explicitProcSet` từ rawSkills. Khi xóa PHCN khỏi skillSet, giữ lại các thủ thuật có trong explicitProcSet.
+
+**Nguyên tắc mới:** *Kỹ năng explicit (admin cài thủ công) > Hạn chế phân hệ quyen.* Từ khóa chung (yhct/phcn/all) vẫn bị lọc theo quyen bình thường.
+
+#### File sửa đổi:
+- `js/scheduler-engine.js` (3 điểm: dòng ~421, ~439, ~3146-3151)
 
 
