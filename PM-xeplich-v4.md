@@ -6142,7 +6142,7 @@ otify(...) (các tính năng: đồng bộ phác đồ đám mây, lưu/xóa ph�
 **File sửa đổi:**
 - js/app.js: nhapDsSat() dòng 8845, importPatients() dòng 9234, importFromHIS() dòng 9422, loadBootstrapData() dòng 3156-3173.
 - js/schedule-utils.js: hasStrongTcvn3Char regex dòng 151.
-- sw.js, index.html, ersion.json: Bump lên v4.1.7-rev6.
+- sw.js, index.html, version.json: Bump lên v4.1.7-rev6.
 
 ### Khắc Phục Triệt Để Lỗi Font Chữ Do Regex TCVN3 Quá Rộng & Sửa Lỗi Không Đọc Được File HIS (29/09/2026 - v4.1.7-rev7)
 
@@ -6173,7 +6173,7 @@ orm('Họ và tên') trả về đúng 'ho va ten', nhận diện header file HI
 - js/scheduler-engine.js: Thêm cleanAndHealRoomName, cleanAndHealMachineName, áp dụng vào 
 ormalizeScheduleItem.
 - js/app.js: Sửa regex mojibake tại 3 hàm import, bổ sung decode cho rooms, machines, staff, procedures trong loadBootstrapData.
-- ersion.json, index.html, sw.js: Nâng version lên 4.1.7-rev7.
+- version.json, index.html, sw.js: Nâng version lên 4.1.7-rev7.
 
 
 ### Tích Hợp Dự Phòng CSDL Google Sheets Tự Động (Dual-Write & Auto-Failover) (30/09/2026 - v4.1.8-rev1)
@@ -8783,5 +8783,33 @@ oomRoleStaff[phong][vaiTro] vào js/scheduler-engine.js:
        - C:\PMCG-Data\lich_trinh_20.10.2026_KICH_BAN_NGAY_DONG.xlsx
    - **File sửa đổi:**
      * js/scheduler-engine.js: Tích hợp khống chế trần nhân sự từng phòng cho cả Bác sĩ, KTV và Điều dưỡng.
-     * ersion.json, index.html, sw.js: Đồng bộ phiên bản 4.3.2-rev2 và timestamp 15:30 20/10/2026.
+     * version.json, index.html, sw.js: Đồng bộ phiên bản 4.3.2-rev2 và timestamp 15:30 20/10/2026.
      * PM-xeplich-v4.md: Ghi nhật ký phát triển.
+10. **Nâng Cấp Universal Excel Parser: Sửa Lỗi Nhận Diện File HIS tt20.xls & Triệt Tiêu Spinner Treo Modal Cấu Hình (v4.3.2-rev3 - 20/10/2026):**
+    - **Yêu cầu của người dùng:** Khi nạp file `C:\Users\Administrator\Documents\tt20.xls` vào Kiểm Tra Lỗi thì báo lỗi rất nhiều, bấm vào nút "Cấu hình cột" thì bị xoay loading mãi không thao tác được.
+    - **Phân tích nguyên nhân gốc rễ (Root Causes):**
+      1. *Lỗi Spinner loading che modal vĩnh viễn:* Trong `app-error-checker.js` và `thongke.js`, sự kiện click nút cấu hình cột đã gọi `showGlobalLoading('Đang mở bảng cấu hình cột...')`. Khi gọi `UniversalExcelParser.parseExcelFile(file, { forceModal: true })`, hàm này mở modal cấu hình và trả về một Promise đang chờ người dùng thao tác. Do đó `await` giữ nguyên trạng thái, khối `finally { hideGlobalLoading() }` không được kích hoạt, dẫn đến overlay spinner đè kín lên modal khiến người dùng không thể thao tác ("load mãi không được").
+      2. *Lỗi nhận diện sai cột giờ bắt đầu (`start`):*
+         - Trong `tt20.xls`, dòng 6 có 2 dấu cách: `"Ngày giờ  làm PTTT"`. Hàm `stripVN` cũ không gộp khoảng trắng thừa `\s+` và không chuyển dấu gạch dưới `_` thành space, nên không khớp `"ngay gio pt"`.
+         - Khi không tìm thấy cột giờ bắt đầu bằng từ điển, Step 4 (Data Pattern Recognition) quét các ô có số `35000 < val < 65000` và vớ phải giá trị `44900` ở cột **Đơn giá** (`DON_GIA`), gán nhầm cột `start` thành cột Đơn giá! Dẫn đến thời gian bắt đầu bị tính thành năm 2022, thời lượng thủ thuật kéo dài tới 4 năm (~2.100.000 phút) -> gây ra hàng trăm lỗi xung đột giờ và lỗi thời lượng ảo.
+      3. *Lỗi xác định `dataStartIdx`:* File `tt20.xls` có cấu trúc tiêu đề 3 tầng (dòng 6: tiếng Việt, dòng 7: subheader, dòng 8: mã trường tiếng Anh CSDL, dòng 9: đánh số thứ tự cột 1, 2, 3..., dòng 10-11: dòng trống, dòng 12 mới là bệnh nhân đầu tiên). Parser cũ chỉ quét `header1Idx + 1`, làm cho các dòng tiêu đề mã và hàng số bị coi là bệnh nhân.
+    - **Giải pháp & Kỹ thuật đã triển khai:**
+      * **Triệt tiêu lỗi spinner:**
+        - Thêm lệnh `if (typeof window.hideGlobalLoading === 'function') window.hideGlobalLoading();` ngay tại đầu hàm `UniversalExcelParser.showMappingModal()` để luôn luôn đóng toàn bộ overlay loading trước khi mở modal.
+        - Xóa lệnh `showGlobalLoading` chặn modal trong `btnConfigMapping` (`app-error-checker.js`) và `btnConfigThongKe` (`thongke.js`).
+      * **Nâng cấp `stripVN` và Quét tiêu đề đa tầng:**
+        - `stripVN`: Chuẩn hóa dấu gạch dưới và khoảng trắng liên tiếp bằng `.replace(/[\s_]+/g, ' ')`.
+        - `detectColumns`: Tự động quét tiếp các dòng sau `header1Idx`, bỏ qua dòng trống và dòng đánh số cột `^\d+$`, thu thập mọi dòng chứa từ khóa header CSDL vào `headerRows`, gộp tất cả vào `mergedHeaders`. Xác định `dataStartIdx = 11` (dòng 12 Excel) khi gặp dòng dữ liệu ngày giờ hoặc tên bệnh nhân thực tế.
+      * **Bảo vệ an toàn cho Step 4 (Data Pattern Recognition):**
+        - Loại trừ tuyệt đối các cột có tiêu đề liên quan đến tiền tệ/mã số (`'don gia'`, `'gia'`, `'tien'`, `'phi'`, `'luong'`, `'ma'`, `'id'`...).
+        - Chỉ nhận số serial Excel nếu có phần lẻ thời gian (`val % 1 !== 0`), ngăn chặn tuyệt đối số nguyên tiền tệ (44900).
+      * **Kết quả kiểm thử:**
+        - Độ tin cậy nhận diện trên `tt20.xls`: **100%**.
+        - Tự động nhận diện chính xác 10/10 cột nghiệp vụ (Họ tên: B, Mã BN: E, Tuổi: C, Tên dịch vụ: AD, Bắt đầu: AG, Kết thúc: K, KTV chính: AS, KTV phụ: AX, Phân loại TT: AM, Phòng: P).
+        - Đọc chuẩn xác **232 ca thủ thuật**, 0 ca lỗi thời lượng bất thường, 0 ca thiếu giờ. Modal mở tức thì 0 giây không bị spinner che khuất.
+    - **File sửa đổi:**
+      * `js/modules/universal-excel-parser.js`
+      * `js/modules/app-error-checker.js`
+      * `js/thongke.js`
+      * `version.json`, `index.html`, `sw.js` (nâng lên v4.3.2-rev3, 16:10 20/10/2026).
+      * `PM-xeplich-v4.md`

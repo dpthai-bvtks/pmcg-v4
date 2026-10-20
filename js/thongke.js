@@ -2408,7 +2408,7 @@ window.switchAdminSection = function(sectionId, btn) {
                 }
                 if (window.UniversalExcelParser) {
                     try {
-                        window.showGlobalLoading("Đang mở bảng cấu hình cột...");
+                        if (window.hideGlobalLoading) window.hideGlobalLoading();
                         const res = await window.UniversalExcelParser.parseExcelFile(lastThongKeFile, { forceModal: true });
                         if (res) {
                             lastThongKeCleanRows = res.cleanRows || res.dataRows || [];
@@ -2424,7 +2424,7 @@ window.switchAdminSection = function(sectionId, btn) {
                     } catch (eConfig) {
                         console.log('[UniversalExcelParser ThongKe Config]:', eConfig);
                     } finally {
-                        window.hideGlobalLoading();
+                        if (window.hideGlobalLoading) window.hideGlobalLoading();
                     }
                 }
             });

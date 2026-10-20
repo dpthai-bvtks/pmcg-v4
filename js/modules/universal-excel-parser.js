@@ -19,6 +19,7 @@
             .replace(/đ/g, "d")
             .replace(/Đ/g, "D")
             .toLowerCase()
+            .replace(/[\s_]+/g, " ")
             .trim();
     }
 
@@ -136,13 +137,14 @@
                 }
             }
 
-            // 2. Multi-row Header Merger (Quét tìm Header tầng 1 & tầng 2)
+            // 2. Multi-level Header Merger & Smart Data Start Detection
             let header1Idx = -1;
-            let header2Idx = -1;
+            let headerRows = [];
             let dataStartIdx = -1;
 
             if (isInternalSchedule) {
                 header1Idx = internalHeaderIdx;
+                headerRows = [header1Idx];
                 dataStartIdx = header1Idx + 1;
             } else {
                 for (let i = 0; i < Math.min(rawRows.length, 30); i++) {
@@ -172,50 +174,55 @@
                     if (header1Idx === -1) header1Idx = 0;
                 }
 
-                // Kiểm tra xem dòng ngay sau có phải là Header tầng 2 không
-                if (header1Idx + 1 < rawRows.length) {
-                    const nextRow = rawRows[header1Idx + 1] || [];
-                    const nextRowNorm = nextRow.map(stripVN);
-                    const nextNonEmpty = nextRow.filter(c => String(c).trim() !== '').length;
-                    const firstCell = String(nextRow[0] || '').trim();
-                    const isDataRow = /^\d+$/.test(firstCell); // Nếu ô đầu tiên là số (1, 2, 3...) -> đây là dòng dữ liệu
+                headerRows = [header1Idx];
+                dataStartIdx = header1Idx + 1;
 
-                    const hasSubKeywords = nextRowNorm.some(c =>
-                        c.includes("ptv") || c.includes("phu 1") || c.includes("phu mo") || c.includes("chinh") ||
-                        c === "nam" || c === "nu" || c === "i" || c === "ii" || c === "iii" || c === "chua pl"
-                    );
+                const headerKeywords = [
+                    'stt', 'tt', 'name', 'mabn', 'tuoi', 'tuoi nam', 'tuoi nu', 'sovaovien', 'dien thoai', 
+                    'khoa', 'phong', 'ptv', 'nam', 'nu', 'truoc pt', 'sau pt', 'loai', 'vo cam', 'don gia', 
+                    'tien', 'ngay don tiep', 'ngay khoime', 'ngay ketthuc', 'chan doan', 'ten dich vu', 
+                    'ngay gio pt', 'phau thuat vien', 'phu mo', 'phu me', 'dieu duong', 'ky thuat vien'
+                ];
 
-                    if (!isDataRow && (hasSubKeywords || nextNonEmpty >= 4)) {
-                        const hasRealData = nextRow.some(c => /\d{1,2}\/\d{1,2}\/\d{4}/.test(String(c)));
-                        if (!hasRealData) {
-                            header2Idx = header1Idx + 1;
-                            dataStartIdx = header2Idx + 1;
-                        } else {
-                            dataStartIdx = header1Idx + 1;
-                        }
-                    } else {
-                        dataStartIdx = header1Idx + 1;
+                for (let rIdx = header1Idx + 1; rIdx < Math.min(rawRows.length, header1Idx + 15); rIdx++) {
+                    const row = rawRows[rIdx] || [];
+                    const nonEmpty = row.map(c => String(c).trim()).filter(c => c !== '');
+                    if (nonEmpty.length === 0) continue; // Dòng trống
+
+                    // Dòng đánh số thứ tự cột: 1, 2, 3, 4...
+                    const digitCount = nonEmpty.filter(c => /^\d+$/.test(c)).length;
+                    if (digitCount >= nonEmpty.length * 0.7) continue;
+
+                    // Dòng chứa mã cột CSDL hoặc sub-headers
+                    const normCells = nonEmpty.map(stripVN);
+                    const matchHdr = normCells.filter(c => headerKeywords.some(kw => c === kw || (kw.length >= 4 && c.includes(kw)))).length;
+                    if (matchHdr >= nonEmpty.length * 0.35) {
+                        headerRows.push(rIdx);
+                        continue;
                     }
-                } else {
-                    dataStartIdx = header1Idx + 1;
+
+                    // Dòng dữ liệu thực tế: có ngày tháng hoặc có tên bệnh nhân thực tế
+                    const hasDate = nonEmpty.some(c => /\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}/.test(c) || /\d{1,2}:\d{1,2}/.test(c));
+                    if (hasDate || nonEmpty.length >= 10) {
+                        dataStartIdx = rIdx;
+                        break;
+                    }
                 }
             }
 
-            // Gộp chuỗi tiêu đề các cột
-            const row1 = rawRows[header1Idx] || [];
-            const row2 = header2Idx !== -1 ? (rawRows[header2Idx] || []) : [];
-            const maxCols = Math.max(row1.length, row2.length, 25);
+            // Gộp chuỗi tiêu đề các cột từ tất cả các dòng header đã nhận diện
+            let maxCols = 0;
+            headerRows.forEach(h => { maxCols = Math.max(maxCols, (rawRows[h] || []).length); });
+            maxCols = Math.max(maxCols, 25);
 
             const mergedHeaders = [];
             for (let c = 0; c < maxCols; c++) {
-                const h1 = String(row1[c] || '').trim();
-                const h2 = String(row2[c] || '').trim();
-                let combined = '';
-                if (h1 && h2 && h1 !== h2) {
-                    combined = `${h1} ${h2}`;
-                } else {
-                    combined = h1 || h2;
-                }
+                const parts = [];
+                headerRows.forEach(h => {
+                    const val = String((rawRows[h] || [])[c] || '').trim();
+                    if (val && !parts.includes(val)) parts.push(val);
+                });
+                const combined = parts.join(' ');
                 const colLetter = (typeof XLSX !== 'undefined' && XLSX.utils && XLSX.utils.encode_col)
                     ? XLSX.utils.encode_col(c)
                     : String.fromCharCode(65 + c);
@@ -246,17 +253,17 @@
 
             const synonyms = {
                 patientName: ['ho va ten', 'ho ten', 'ten benh nhan', 'ten bn', 'nguoi benh', 'name', 'fullname', 'benh nhan'],
-                patientCode: ['so ho so', 'ma bn', 'ma benh nhan', 'so vao vien', 'mabn', 'pid', 'id', 'so ba', 'ma nb'],
-                patientDob: ['nam sinh', 'namsinh', 'tuoi nam', 'tuoi', 'dob', 'ns'],
-                procName: ['phuong phap lam thu thuat', 'phuong phap ky thuat', 'ten dich vu', 'ten thu thuat', 'dich vu ky thuat', 'phuong phap', 'thu thuat', 'dich vu', 'ky thuat', 'pttt'],
-                start: ['ngay bat dau', 'gio bat dau', 'thoi gian bat dau', 'ngay gio pt', 'ngay_gio_pt', 'bat dau', 'tu gio', 'gio vao', 'ngay gio lam pttt'],
-                end: ['ngay ket thuc', 'gio ket thuc', 'thoi gian ket thuc', 'ngay_ketthuc', 'ket thuc', 'den gio', 'gio ra'],
-                techMain: ['ptv chinh', 'phau thuat vien 1', 'phau thuat vien chinh', 'nguoi thuc hien', 'bac si', 'ktv chinh', 'nhan vien chinh', 'nv chinh', 'ptv', 'ktv', 'phau_thuat_vien_1'],
-                techPhu: ['phu 1', 'phu mo', 'phu ta', 'ktv phu', 'nv phu', 'dieu duong phu', 'phu 2'],
-                loaiTT: ['phan loai', 'loai pttt', 'loai thu thuat', 'loai_pttt', 'loai tt', 'phan loai thu thuat'],
-                phong: ['phong thuc hien', 'phong dieu tri', 'phong'],
+                patientCode: ['mabn', 'so ho so', 'ma bn', 'ma benh nhan', 'so vao vien', 'pid', 'id', 'so ba', 'ma nb'],
+                patientDob: ['tuoi nam', 'nam sinh', 'namsinh', 'tuoi', 'dob', 'ns'],
+                procName: ['ten dich vu pttt', 'ten dich vu', 'phuong phap tien hanh', 'phuong phap', 'ten thu thuat', 'thu thuat', 'dich vu', 'ten phau thuat', 'pttt'],
+                start: ['ngay gio pt', 'ngay gio lam pttt', 'gio lam pttt', 'thoi gian bat dau', 'gio bat dau', 'bat dau', 'ngay bat dau', 'start time', 'time start', 'gio thuc hien', 'tu gio', 'gio vao'],
+                end: ['thoi gian ket thuc', 'ngay ketthuc', 'gio ket thuc', 'ket thuc', 'ngay ket thuc', 'end time', 'time end', 'den gio', 'gio ra'],
+                techMain: ['phau thuat vien 1', 'phau thuat vien chinh', 'ptv 1', 'ptv chinh', 'ktv chinh', 'bac si thuc hien', 'nguoi thuc hien', 'ky thuat vien 1', 'ktv 1', 'ptv', 'ktv', 'bac si'],
+                techPhu: ['phu mo 1', 'phu 1', 'nguoi phu', 'ktv phu', 'phu me 1', 'dieu duong phu', 'tro ly', 'phu ta', 'nv phu', 'phu 2'],
+                loaiTT: ['loai pttt', 'loai thu thuat', 'phan loai', 'phan loai pttt', 'phan loai tt', 'loai'],
+                phong: ['phong thuc hien', 'noi thuc hien', 'phong lam', 'phong dieu tri', 'phong'],
                 giuong: ['giuong benh', 'giuong'],
-                may: ['may thuc hien', 'may moc', 'thiet bi', 'may']
+                may: ['may moc', 'ten may', 'thiet bi', 'may']
             };
 
             for (const [field, synList] of Object.entries(synonyms)) {
@@ -284,11 +291,20 @@
             // A. Soi tìm cột thời gian bắt đầu / kết thúc nếu chưa phát hiện đủ
             if (mapping.start === -1 || mapping.end === -1) {
                 const dateCols = [];
+                const currencyOrIdWords = ['don gia', 'gia', 'tien', 'phi', 'luong', 'so luong', 'ma', 'cchn', 'dien thoai', 'phone', 'id'];
+
                 for (let c = 0; c < maxCols; c++) {
+                    // Loại trừ cột có tiêu đề liên quan đến tiền bạc, viện phí, mã số
+                    const colHdrNorm = mergedHeaders[c]?.normalized || '';
+                    if (currencyOrIdWords.some(w => colHdrNorm.includes(w))) continue;
+
                     let matchCount = 0;
                     for (const row of sampleRows) {
                         const val = String(row[c] || '').trim();
-                        if (/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}\s+\d{1,2}:\d{1,2}/.test(val) || (typeof row[c] === 'number' && row[c] > 35000 && row[c] < 65000)) {
+                        const isDateString = /\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}\s+\d{1,2}:\d{1,2}/.test(val) || /^\d{1,2}:\d{1,2}(?::\d{1,2})?$/.test(val);
+                        // Chỉ nhận serial Excel nếu có phần lẻ thời gian (val % 1 !== 0), tránh số tiền tệ nguyên như 44900
+                        const isExcelSerialTime = (typeof row[c] === 'number' && row[c] > 35000 && row[c] < 65000 && (row[c] % 1 !== 0));
+                        if (isDateString || isExcelSerialTime) {
                             matchCount++;
                         }
                     }
@@ -385,7 +401,8 @@
             return {
                 isInternalSchedule,
                 header1Idx,
-                header2Idx,
+                header2Idx: headerRows.length > 1 ? headerRows[1] : -1,
+                headerRows,
                 dataStartIdx,
                 mapping,
                 mergedHeaders,
@@ -560,6 +577,11 @@
         // ============================================================
 
         showMappingModal: function ({ sheetName, rawRows, detectionResult, unitCode, onConfirm, onCancel }) {
+            // 🛡️ Đảm bảo tắt mọi overlay loading toàn cục đang chạy để không che modal
+            if (typeof window.hideGlobalLoading === 'function') {
+                try { window.hideGlobalLoading(); } catch (e) {}
+            }
+
             const modalId = 'modal-universal-excel-mapping';
             let modalEl = document.getElementById(modalId);
             if (!modalEl) {

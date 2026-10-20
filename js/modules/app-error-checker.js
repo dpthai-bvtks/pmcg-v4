@@ -934,7 +934,7 @@
                     }
                     if (window.UniversalExcelParser) {
                         try {
-                            if (window.showGlobalLoading) window.showGlobalLoading('Đang mở bảng cấu hình cột...');
+                            if (window.hideGlobalLoading) window.hideGlobalLoading();
                             const res = await window.UniversalExcelParser.parseExcelFile(lastCheckerFile, { forceModal: true });
                             if (res) {
                                 lastCheckerCleanRows = res.cleanRows || res.dataRows || [];
