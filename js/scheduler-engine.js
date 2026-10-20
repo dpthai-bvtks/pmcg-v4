@@ -972,6 +972,21 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
               return mMap[k];
             }
           }
+          const MACHINE_SYNONYMS = {
+            'sa': 'siêu âm', 'dx': 'điện xung', 'kg': 'kéo giãn',
+            'hn': 'hồng ngoại', 'ls': 'laser', 'sn': 'sóng ngắn',
+            'đc': 'điện châm', 'dc': 'điện châm', 'tc': 'thủy châm',
+            'dp': 'điện phân', 'pa': 'parafin'
+          };
+          const syn = MACHINE_SYNONYMS[clean] || MACHINE_SYNONYMS[low];
+          if (syn) {
+            for (const k in mMap) {
+              const kClean = k.toLowerCase().replace(/^(máy|may|đèn|den)\s+/i, '').trim();
+              if (kClean.includes(syn) || syn.includes(kClean)) {
+                return mMap[k];
+              }
+            }
+          }
           return null;
         };
 
@@ -2151,7 +2166,19 @@ function getSafeCache() {
       if (trangThai === "Sẵn sàng" && tenLoai && maMay) {
         const lowKey = tenLoai.toLowerCase();
         const cleanKey = lowKey.replace(/^(máy|may|đèn|den)\s+/i, '').trim();
-        [tenLoai, lowKey, cleanKey].forEach(k => {
+        const keysToAdd = [tenLoai, lowKey, cleanKey];
+        const MACHINE_SYNONYMS = {
+          'sa': 'siêu âm', 'dx': 'điện xung', 'kg': 'kéo giãn',
+          'hn': 'hồng ngoại', 'ls': 'laser', 'sn': 'sóng ngắn',
+          'đc': 'điện châm', 'dc': 'điện châm', 'tc': 'thủy châm',
+          'dp': 'điện phân', 'pa': 'parafin'
+        };
+        for (const [abbr, phrase] of Object.entries(MACHINE_SYNONYMS)) {
+          if (cleanKey.includes(phrase)) {
+            keysToAdd.push(abbr);
+          }
+        }
+        keysToAdd.forEach(k => {
           if (!database.machineTypes[k]) database.machineTypes[k] = [];
           if (!database.machineTypes[k].includes(maMay)) database.machineTypes[k].push(maMay);
         });
@@ -2219,6 +2246,21 @@ function getSafeCache() {
       let rawMay = String(p.may || p[5] || "").trim();
       // 🛡️ TỰ ĐỘNG KHÔI PHỤC LOẠI MÁY THẬT (AUTO-HEAL MACHINE TYPE):
       // Tuyệt đối không để thủ thuật dùng máy (như điện châm, điện xung, sóng ngắn, hồng ngoại...) bị biến thành 'Thủ công'
+      const MAY_ABBR_MAP = {
+        'sa': 'Máy Siêu âm điều trị',
+        'dx': 'Máy Điện xung đa năng',
+        'kg': 'Máy Kéo giãn cột sống cổ/lưng',
+        'hn': 'Đèn Hồng ngoại',
+        'ls': 'Máy Laser công suất thấp',
+        'sn': 'Máy Sóng ngắn trị liệu',
+        'đc': 'Máy Điện châm',
+        'dc': 'Máy Điện châm',
+        'dp': 'Máy Điện xung đa năng',
+        'pa': 'Nồi Parafin'
+      };
+      if (MAY_ABBR_MAP[rawMay.toLowerCase()]) {
+        rawMay = MAY_ABBR_MAP[rawMay.toLowerCase()];
+      }
       if (!rawMay || rawMay === "Thủ công") {
         if (/điện châm|đc\b/i.test(ten)) rawMay = "điện châm";
         else if (/điện xung|dx\b/i.test(ten)) rawMay = "điện xung";
@@ -2271,8 +2313,21 @@ function getSafeCache() {
           const mObj = (cache.machine || cache.machines || []).find(m => String(m.maMay || m.ma_may || (Array.isArray(m) ? m[2] : '') || m.ma || m.code || '').trim().toLowerCase() === code.toLowerCase());
           const mType = (mObj ? String(mObj.tenLoai || mObj.ten_loai || (Array.isArray(mObj) ? mObj[1] : '') || mObj.ten || mObj.name || '') : '').trim().toLowerCase();
           if (mType) {
-            if (!database.roomMachines[roomName][mType]) database.roomMachines[roomName][mType] = [];
-            database.roomMachines[roomName][mType].push(code);
+            const cleanMType = mType.replace(/^(máy|may|đèn|den)\s+/i, '').trim();
+            const keys = [mType, cleanMType];
+            const MACHINE_SYNONYMS = {
+              'sa': 'siêu âm', 'dx': 'điện xung', 'kg': 'kéo giãn',
+              'hn': 'hồng ngoại', 'ls': 'laser', 'sn': 'sóng ngắn',
+              'đc': 'điện châm', 'dc': 'điện châm', 'tc': 'thủy châm',
+              'dp': 'điện phân', 'pa': 'parafin'
+            };
+            for (const [abbr, phrase] of Object.entries(MACHINE_SYNONYMS)) {
+              if (cleanMType.includes(phrase)) keys.push(abbr);
+            }
+            keys.forEach(k => {
+              if (!database.roomMachines[roomName][k]) database.roomMachines[roomName][k] = [];
+              if (!database.roomMachines[roomName][k].includes(code)) database.roomMachines[roomName][k].push(code);
+            });
           }
         });
       }

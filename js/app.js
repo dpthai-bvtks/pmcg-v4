@@ -4968,6 +4968,48 @@ var dataCache = window.dataCache;
 
             if (isEdit) {
                 dataCache.proc[editIndex.proc] = obj;
+                // Cascading rename across tables if procedure name changed
+                if (oldTen && oldTen !== ten) {
+                    const oldLower = oldTen.toLowerCase().trim();
+                    // 1. Cập nhật bảng bệnh nhân (dataCache.pat)
+                    if (Array.isArray(dataCache.pat)) {
+                        dataCache.pat.forEach(pat => {
+                            if (typeof pat.thuThuat === 'string' && pat.thuThuat) {
+                                const procs = pat.thuThuat.split(',').map(p => p.trim());
+                                const updated = procs.map(p => p.toLowerCase() === oldLower ? ten : p);
+                                pat.thuThuat = updated.join(', ');
+                            } else if (Array.isArray(pat.thuThuat)) {
+                                pat.thuThuat = pat.thuThuat.map(p => String(p).toLowerCase().trim() === oldLower ? ten : p);
+                            }
+                        });
+                        try { renderPatientsTable(); } catch (e) {}
+                    }
+                    // 2. Cập nhật bảng phác đồ (dataCache.protocols)
+                    if (Array.isArray(dataCache.protocols)) {
+                        dataCache.protocols.forEach(proto => {
+                            if (typeof proto.procs === 'string' && proto.procs) {
+                                try {
+                                    const parsed = JSON.parse(proto.procs);
+                                    if (Array.isArray(parsed)) {
+                                        proto.procs = JSON.stringify(parsed.map(p => String(p).toLowerCase().trim() === oldLower ? ten : p));
+                                    }
+                                } catch (eP) {
+                                    const list = proto.procs.split(',').map(p => p.trim());
+                                    proto.procs = list.map(p => p.toLowerCase() === oldLower ? ten : p).join(', ');
+                                }
+                            } else if (Array.isArray(proto.procs)) {
+                                proto.procs = proto.procs.map(p => String(p).toLowerCase().trim() === oldLower ? ten : p);
+                            }
+                        });
+                    }
+                    // 3. Cập nhật lịch hiện hành nếu có (dataCache.schedule)
+                    if (Array.isArray(dataCache.schedule)) {
+                        dataCache.schedule.forEach(sc => {
+                            if (sc.thuThuat && sc.thuThuat.toLowerCase().trim() === oldLower) sc.thuThuat = ten;
+                            if (sc.DICHVU && sc.DICHVU.toLowerCase().trim() === oldLower) sc.DICHVU = ten;
+                        });
+                    }
+                }
             } else {
                 dataCache.proc.push(obj);
             }
@@ -5388,11 +5430,47 @@ var dataCache = window.dataCache;
 
             if (editIndex.staff > -1) {
                 const oldItem = dataCache.staff[editIndex.staff];
+                const oldTen = oldItem ? oldItem.ten : '';
                 const sheetIdx = oldItem.sheetIndex !== undefined ? oldItem.sheetIndex : editIndex.staff;
                 obj.sheetIndex = sheetIdx;
                 obj.index = editIndex.staff;
                 dataCache.staff[editIndex.staff] = obj;
                 if (window.dataCacheTime) window.dataCacheTime['staff'] = Date.now();
+
+                // Cascading rename across tables if staff name changed
+                if (oldTen && oldTen !== ten) {
+                    const oldLower = oldTen.toLowerCase().trim();
+                    // 1. Cập nhật phòng (dataCache.room)
+                    if (Array.isArray(dataCache.room)) {
+                        dataCache.room.forEach(r => {
+                            ['bacSi', 'ktv', 'dieuDuong'].forEach(field => {
+                                if (typeof r[field] === 'string' && r[field]) {
+                                    const list = r[field].split(',').map(x => x.trim());
+                                    const updated = list.map(x => x.toLowerCase() === oldLower ? ten : x);
+                                    r[field] = updated.join(', ');
+                                }
+                            });
+                        });
+                        try { renderRoomsTable(); } catch (e) {}
+                    }
+                    // 2. Cập nhật người thay thế trong danh sách nhân sự (dataCache.staff)
+                    if (Array.isArray(dataCache.staff)) {
+                        dataCache.staff.forEach(s => {
+                            if (s.nguoiThayThe && s.nguoiThayThe.toLowerCase().trim() === oldLower) {
+                                s.nguoiThayThe = ten;
+                            }
+                        });
+                    }
+                    // 3. Cập nhật lịch hiện hành nếu có (dataCache.schedule)
+                    if (Array.isArray(dataCache.schedule)) {
+                        dataCache.schedule.forEach(sc => {
+                            ['nvChinh', 'nvPhu', 'bacSi'].forEach(f => {
+                                if (sc[f] && sc[f].toLowerCase().trim() === oldLower) sc[f] = ten;
+                            });
+                        });
+                    }
+                }
+
                 callApi('editNhanSu', [sheetIdx, ten, vaiTro, trangThai, tgLam, kyNang, gioBan, thayThe, quyen, tenHis], () => {
                     notify('Đã lưu nhân sự thành công!', 'success');
                 }, (err) => {
@@ -5793,6 +5871,20 @@ var dataCache = window.dataCache;
 
             if (!ten) { window._savePatientLock = false; return alert("Nhập tên bệnh nhân"); }
             if (!phong) { window._savePatientLock = false; return alert("Vui lòng chọn Phòng"); }
+
+            // Kiểm tra tính hợp lệ của giờ ra so với giờ vào
+            if (ra && gio) {
+                const parseM = t => {
+                    const p = String(t).split(':');
+                    return p.length === 2 ? parseInt(p[0]) * 60 + parseInt(p[1]) : 0;
+                };
+                const mIn = parseM(gio);
+                const mOut = parseM(ra);
+                if (mOut > 0 && mIn > 0 && mOut <= mIn) {
+                    window._savePatientLock = false;
+                    return alert(`⚠️ Giờ ra viện (${ra}) phải muộn hơn giờ vào (${gio})!`);
+                }
+            }
 
             ten = (ten || '').normalize('NFC').trim();
             ten = healPatientName(ten, [origTen].filter(Boolean));
@@ -9248,196 +9340,125 @@ var dataCache = window.dataCache;
             const fileInput = document.getElementById('utils-his-file-input');
             if (!fileInput) return;
 
-            fileInput.addEventListener('change', function (e) {
+            fileInput.addEventListener('change', async function (e) {
                 const file = e.target.files[0];
                 if (!file) return;
 
                 if (window.showGlobalLoading) window.showGlobalLoading('Đang đọc và phân tích file HIS tìm giờ rảnh...');
-                const reader = new FileReader();
-                reader.onload = function (ev) {
-                    try {
-                        const data = new Uint8Array(ev.target.result);
-                        const workbook = XLSX.read(data, { type: 'array', cellDates: false });
-                        const firstSheetName = workbook.SheetNames[0];
-                        const worksheet = workbook.Sheets[firstSheetName];
+                try {
+                    let dataRows = [];
+                    let hisDupCount = 0;
+                    if (window.UniversalExcelParser) {
+                        const parsedRes = await window.UniversalExcelParser.parseExcelFile(file);
+                        dataRows = parsedRes.dataRows || [];
+                        hisDupCount = parsedRes.dupCount || 0;
+                    } else {
+                        const data = await file.arrayBuffer();
+                        const workbook = XLSX.read(new Uint8Array(data), { type: 'array', cellDates: false });
+                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                        dataRows = XLSX.utils.sheet_to_json(worksheet, { header: "A", defval: "" });
+                    }
 
-                        const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
-                        let headerRowIndex = -1;
-                        let isInternalSchedule = false;
+                    const parsedSchedule = [];
+                    const foundDates = new Set();
 
-                        function stripVietnamese(str) {
-                            if (!str) return '';
-                            return String(str).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().trim();
+                    for (const row of dataRows) {
+                        const techMainRaw = String(row.techMain || row['AT'] || row['nvChinh'] || '').trim();
+                        const techPhuRaw = String(row.techPhu || row['AU'] || row['nvPhu'] || '').trim();
+                        const patientName = String(row.patientName || row['C'] || row['tenBN'] || '').replace(/\s*\((?:✔ RV|❌ Rớt|RV|Rớt)\)/gi, '').trim();
+                        const procName = String(row.procName || row['AE'] || row['AG'] || row['thuThuat'] || '').trim();
+
+                        const start = (row.start instanceof Date && !isNaN(row.start.getTime()))
+                            ? row.start
+                            : (row['AH'] ? convertExcelDateToJSDate(row['AH']) : null);
+                        const end = (row.end instanceof Date && !isNaN(row.end.getTime()))
+                            ? row.end
+                            : (row['L'] ? convertExcelDateToJSDate(row['L']) : null);
+                        if (!start || isNaN(start.getTime()) || !end || isNaN(end.getTime())) continue;
+
+                        const procInfo = mapProcedureJS(procName, start);
+                        const techMainNorm = getShortNameJS(techMainRaw);
+                        const techPhuNorm = getShortNameJS(techPhuRaw);
+
+                        let dateYMD = '';
+                        if (start.getFullYear() > 1900) {
+                            const y = start.getFullYear();
+                            const m = String(start.getMonth() + 1).padStart(2, '0');
+                            const d = String(start.getDate()).padStart(2, '0');
+                            dateYMD = `${y}-${m}-${d}`;
+                            foundDates.add(dateYMD);
                         }
 
-                        for (let i = 0; i < Math.min(rawData.length, 50); i++) {
-                            const rowStr = (rawData[i] || []).map(stripVietnamese);
-                            if (rowStr.some(c => c.includes("ten benh nhan") || c.includes("ten bn") || c.includes("hoten"))) {
-                                headerRowIndex = i;
-                                isInternalSchedule = true;
-                                break;
-                            } else if (rowStr.some(c => c.includes("stt") || c.includes("name") || c.includes("mabn"))) {
-                                headerRowIndex = i;
-                                break;
-                            }
-                        }
+                        const gVao = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
+                        const gRa = `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`;
 
-                        if (headerRowIndex < 0) headerRowIndex = 0;
+                        parsedSchedule.push({
+                            nvChinh: techMainNorm || techMainRaw,
+                            nvPhu: techPhuNorm || techPhuRaw,
+                            tenBN: patientName,
+                            thuThuat: procName,
+                            gioDienRa: gVao,
+                            gioKetThuc: gRa,
+                            may: String(row.may || row['MÁY'] || (procInfo && procInfo.may ? procInfo.may : '') || '').trim(),
+                            phong: String(row.phong || row['PHÒNG'] || '').trim(),
+                            giuong: String(row.giuong || row['GIƯỜNG'] || '').trim(),
+                            ngay: dateYMD,
+                            dateYMD: dateYMD,
+                            startDate: start,
+                            endDate: end,
+                            procInfo: procInfo
+                        });
+                    }
 
-                        let dataRows = [];
-                        if (isInternalSchedule) {
-                            let extractedFileDate = '';
-                            for (let i = 0; i < headerRowIndex; i++) {
-                                const rowCells = rawData[i] || [];
-                                for (const cell of rowCells) {
-                                    const cellStr = String(cell || '').trim();
-                                    const dMatch = cellStr.match(/(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4})/);
-                                    if (dMatch) {
-                                        extractedFileDate = dMatch[1].replace(/-/g, '/');
-                                        break;
-                                    }
+                    if (parsedSchedule.length === 0) {
+                        if (window.hideGlobalLoading) window.hideGlobalLoading();
+                        alert('Không tìm thấy ca thủ thuật hợp lệ nào trong file HIS vừa chọn. Vui lòng kiểm tra lại cấu trúc file.');
+                        return;
+                    }
+
+                    window.utilsHisScheduleData = parsedSchedule;
+                    window.utilsHisFileName = file.name;
+                    window.utilsDataSource = 'HIS';
+
+                    const dateArr = [...foundDates];
+                    let chosenDate = document.getElementById('utils-search-date')?.value || '';
+                    if (dateArr.length > 0 && (!chosenDate || !dateArr.includes(chosenDate))) {
+                        chosenDate = dateArr[0];
+                        const dateInput = document.getElementById('utils-search-date');
+                        if (dateInput) dateInput.value = chosenDate;
+                    }
+
+                    // Đồng bộ giờ bận nhân sự từ cơ sở dữ liệu nếu có (hỗ trợ cả ngày hôm nay và ngày đã chốt sổ)
+                    if (chosenDate) {
+                        if (window._historyCache && window._historyCache[chosenDate] && Array.isArray(window._historyCache[chosenDate].staffBusy)) {
+                            window.utilsStaffBusy = window._historyCache[chosenDate].staffBusy;
+                        } else if (typeof callApi === 'function') {
+                            callApi('getHistoryFullData', [chosenDate], res => {
+                                const data = (res && res.data) ? res.data : res;
+                                if (data && Array.isArray(data.staffBusy) && data.staffBusy.length > 0) {
+                                    window.utilsStaffBusy = data.staffBusy;
+                                    timBacSiRanh();
                                 }
-                                if (extractedFileDate) break;
-                            }
-
-                            const headerRow = (rawData[headerRowIndex] || []).map(stripVietnamese);
-                            const colIdx = {
-                                ngay: headerRow.findIndex(h => h.includes('ngay')),
-                                ten: headerRow.findIndex(h => h.includes('ten benh nhan') || h.includes('ten bn') || h.includes('hoten')),
-                                tt: headerRow.findIndex(h => h.includes('thu thuat') || h.includes('dich vu') || h.includes('dichvu')),
-                                bd: headerRow.findIndex(h => h.includes('bat dau') || h.includes('gio dien ra') || h.includes('giodienra')),
-                                kt: headerRow.findIndex(h => h.includes('ket thuc') || h.includes('gioketthuc')),
-                                nv: headerRow.findIndex(h => h.includes('nv chinh') || h.includes('nhan vien chinh') || h.includes('ktv') || h.includes('bac si') || h.includes('bác sĩ')),
-                                nvPhu: headerRow.findIndex(h => h.includes('nv phu') || h.includes('nhan vien phu') || h.includes('phu ta') || h.includes('dieu duong phu')),
-                                phong: headerRow.findIndex(h => h.includes('phong dieu tri') || h.includes('phong')),
-                                giuong: headerRow.findIndex(h => h.includes('giuong benh') || h.includes('giuong')),
-                                may: headerRow.findIndex(h => h.includes('may moc') || h.includes('thiet bi') || h.includes('may'))
-                            };
-
-                            dataRows = rawData.slice(headerRowIndex + 1).filter(r => r && r.some(c => String(c).trim())).map(r => {
-                                const ngayStr = colIdx.ngay >= 0 ? String(r[colIdx.ngay] || '').trim() : extractedFileDate;
-                                const bdStr = colIdx.bd >= 0 ? String(r[colIdx.bd] || '').trim() : '';
-                                const ktStr = colIdx.kt >= 0 ? String(r[colIdx.kt] || '').trim() : '';
-                                if (bdStr.includes('Rớt') || bdStr === '--' || !bdStr) return null;
-
-                                const datePart = ngayStr.includes('-') ? ngayStr.split('-').reverse().join('/') : ngayStr;
-                                const startFull = datePart ? `${bdStr} ${datePart}` : bdStr;
-                                const endFull = datePart ? `${ktStr} ${datePart}` : ktStr;
-                                const cleanBN = (colIdx.ten >= 0 ? String(r[colIdx.ten] || '') : '').replace(/\s*\((?:✔ RV|❌ Rớt|RV|Rớt)\)/gi, '').trim();
-                                const procName = colIdx.tt >= 0 ? String(r[colIdx.tt] || '').trim() : '';
-                                const procInfo = mapProcedureJS(procName);
-
-                                return {
-                                    'AT': colIdx.nv >= 0 ? r[colIdx.nv] : '',
-                                    'AU': colIdx.nvPhu >= 0 ? r[colIdx.nvPhu] : '',
-                                    'C': cleanBN,
-                                    'AE': procName,
-                                    'AG': procName,
-                                    'AN': procInfo ? (procInfo.phanLoai || procInfo.loai || '') : '',
-                                    'AH': startFull,
-                                    'L': endFull,
-                                    'phong': colIdx.phong >= 0 ? String(r[colIdx.phong] || '').trim() : '',
-                                    'giuong': colIdx.giuong >= 0 ? String(r[colIdx.giuong] || '').trim() : '',
-                                    'may': colIdx.may >= 0 ? String(r[colIdx.may] || '').trim() : ''
-                                };
-                            }).filter(Boolean);
-                        } else {
-                            dataRows = XLSX.utils.sheet_to_json(worksheet, { header: "A", range: headerRowIndex, defval: "" });
-                        }
-
-                        const parsedSchedule = [];
-                        const foundDates = new Set();
-
-                        for (const row of dataRows) {
-                            const techMainRaw = String(row['AT'] || row['nvChinh'] || '').trim();
-                            const techPhuRaw = String(row['AU'] || row['nvPhu'] || '').trim();
-                            const patientName = String(row['C'] || row['tenBN'] || '').replace(/\s*\((?:✔ RV|❌ Rớt|RV|Rớt)\)/gi, '').trim();
-                            const procName = String(row['AE'] || row['AG'] || row['thuThuat'] || '').trim();
-
-                            const start = row['AH'] ? convertExcelDateToJSDate(row['AH']) : null;
-                            const end = row['L'] ? convertExcelDateToJSDate(row['L']) : null;
-                            if (!start || isNaN(start.getTime()) || !end || isNaN(end.getTime())) continue;
-
-                            const procInfo = mapProcedureJS(procName, start);
-                            const techMainNorm = getShortNameJS(techMainRaw);
-                            const techPhuNorm = getShortNameJS(techPhuRaw);
-
-                            let dateYMD = '';
-                            if (start.getFullYear() > 1900) {
-                                const y = start.getFullYear();
-                                const m = String(start.getMonth() + 1).padStart(2, '0');
-                                const d = String(start.getDate()).padStart(2, '0');
-                                dateYMD = `${y}-${m}-${d}`;
-                                foundDates.add(dateYMD);
-                            }
-
-                            const gVao = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
-                            const gRa = `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`;
-
-                            parsedSchedule.push({
-                                nvChinh: techMainNorm || techMainRaw,
-                                nvPhu: techPhuNorm || techPhuRaw,
-                                tenBN: patientName,
-                                thuThuat: procName,
-                                gioDienRa: gVao,
-                                gioKetThuc: gRa,
-                                may: String(row.may || row['MÁY'] || (procInfo && procInfo.may ? procInfo.may : '') || '').trim(),
-                                phong: String(row.phong || row['PHÒNG'] || '').trim(),
-                                giuong: String(row.giuong || row['GIƯỜNG'] || '').trim(),
-                                ngay: dateYMD,
-                                dateYMD: dateYMD,
-                                startDate: start,
-                                endDate: end,
-                                procInfo: procInfo
                             });
                         }
+                    }
 
-                        if (parsedSchedule.length === 0) {
-                            if (window.hideGlobalLoading) window.hideGlobalLoading();
-                            alert('Không tìm thấy ca thủ thuật hợp lệ nào trong file HIS vừa chọn. Vui lòng kiểm tra lại cấu trúc file.');
-                            return;
-                        }
+                    updateUtilsSourceUI();
 
-                        window.utilsHisScheduleData = parsedSchedule;
-                        window.utilsHisFileName = file.name;
-                        window.utilsDataSource = 'HIS';
+                    if (window.hideGlobalLoading) window.hideGlobalLoading();
+                    const dedupText = hisDupCount > 0 ? ` [Đã tự động loại bỏ ${hisDupCount} ca trùng HIS]` : '';
+                    notify(`Đã nạp file HIS "${file.name}" (${parsedSchedule.length} ca)${dedupText}!`, 'success');
 
-                        const dateArr = [...foundDates];
-                        let chosenDate = document.getElementById('utils-search-date')?.value || '';
-                        if (dateArr.length > 0 && (!chosenDate || !dateArr.includes(chosenDate))) {
-                            chosenDate = dateArr[0];
-                            const dateInput = document.getElementById('utils-search-date');
-                            if (dateInput) dateInput.value = chosenDate;
-                        }
-
-                        // Đồng bộ giờ bận nhân sự từ cơ sở dữ liệu nếu có (hỗ trợ cả ngày hôm nay và ngày đã chốt sổ)
-                        if (chosenDate) {
-                            if (window._historyCache && window._historyCache[chosenDate] && Array.isArray(window._historyCache[chosenDate].staffBusy)) {
-                                window.utilsStaffBusy = window._historyCache[chosenDate].staffBusy;
-                            } else if (typeof callApi === 'function') {
-                                callApi('getHistoryFullData', [chosenDate], res => {
-                                    const data = (res && res.data) ? res.data : res;
-                                    if (data && Array.isArray(data.staffBusy) && data.staffBusy.length > 0) {
-                                        window.utilsStaffBusy = data.staffBusy;
-                                        timBacSiRanh();
-                                    }
-                                });
-                            }
-                        }
-
-                        updateUtilsSourceUI();
-
-                        if (window.hideGlobalLoading) window.hideGlobalLoading();
-                        notify(`Đã nạp file HIS "${file.name}" (${parsedSchedule.length} ca)!`, 'success');
-
-                        timBacSiRanh();
-                    } catch (err) {
-                        if (window.hideGlobalLoading) window.hideGlobalLoading();
-                        console.error('initUtilsHisUploader error:', err);
+                    timBacSiRanh();
+                } catch (err) {
+                    if (window.hideGlobalLoading) window.hideGlobalLoading();
+                    console.error('initUtilsHisUploader error:', err);
+                    if (!String(err.message || err).includes('hủy thao tác')) {
                         alert('Có lỗi khi đọc file HIS: ' + (err.message || err));
                     }
-                };
-                reader.readAsArrayBuffer(file);
+                } finally {
+                    e.target.value = '';
+                }
             });
         }
 

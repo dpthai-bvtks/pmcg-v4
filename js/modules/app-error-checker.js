@@ -196,17 +196,21 @@
             const groupedMachines = {};
 
             for (let row of dataRows) {
-                let techMainRaw = String(row['AT'] || '').trim();
+                let techMainRaw = String(row.techMain || row['AT'] || '').trim();
                 let techMainNorm = getShortNameJS(techMainRaw);
 
-                let techPhuRaw = String(row['AU'] || row['nvPhu'] || row['NV PHỤ'] || '').trim();
+                let techPhuRaw = String(row.techPhu || row['AU'] || row['nvPhu'] || row['NV PHỤ'] || '').trim();
                 let techPhuNorm = getShortNameJS(techPhuRaw);
 
-                const patientName = String(row['C'] || 'Không rõ').replace(/\s*\((?:✔ RV|❌ Rớt|RV|Rớt)\)/gi, '').trim();
-                const procName = String(row['AE'] || '').trim();
+                const patientName = String(row.patientName || row['C'] || 'Không rõ').replace(/\s*\((?:✔ RV|❌ Rớt|RV|Rớt)\)/gi, '').trim();
+                const procName = String(row.procName || row['AE'] || '').trim();
 
-                let start = row['AH'] ? convertExcelDateToJSDate(row['AH']) : null;
-                let end = row['L'] ? convertExcelDateToJSDate(row['L']) : null;
+                let start = (row.start instanceof Date && !isNaN(row.start.getTime()))
+                    ? row.start
+                    : (row['AH'] ? convertExcelDateToJSDate(row['AH']) : null);
+                let end = (row.end instanceof Date && !isNaN(row.end.getTime()))
+                    ? row.end
+                    : (row['L'] ? convertExcelDateToJSDate(row['L']) : null);
                 const procInfo = mapProcedureJS(procName, start);
                 const phongRaw = String(row.phong || row['PHÒNG'] || row['phong'] || '').trim();
                 const giuongRaw = String(row.giuong || row['GIƯỜNG'] || row['giuong'] || '').trim();
@@ -879,139 +883,141 @@
                 });
             }
 
+            let lastCheckerFile = null;
+            let lastCheckerCleanRows = [];
+            let lastCheckerRawRows = [];
+            let lastCheckerDupRows = [];
+
+            const chkDedupChecker = document.getElementById('chk-dedup-his-checker');
+            const dedupBadgeChecker = document.getElementById('dedup-badge-checker');
+
+            function updateDedupBadgeChecker(dupCount, isEnabled) {
+                if (!dedupBadgeChecker) return;
+                if (dupCount > 0) {
+                    dedupBadgeChecker.style.display = 'inline-block';
+                    if (isEnabled) {
+                        dedupBadgeChecker.style.background = '#fee2e2';
+                        dedupBadgeChecker.style.color = '#b91c1c';
+                        dedupBadgeChecker.style.borderColor = '#fca5a5';
+                        dedupBadgeChecker.innerText = `- ${dupCount} ca trùng HIS`;
+                        dedupBadgeChecker.title = `Đã phát hiện và bóc tách ${dupCount} ca thủ thuật bị HIS nhân đôi`;
+                    } else {
+                        dedupBadgeChecker.style.background = '#fef3c7';
+                        dedupBadgeChecker.style.color = '#b45309';
+                        dedupBadgeChecker.style.borderColor = '#fde68a';
+                        dedupBadgeChecker.innerText = `Chưa lọc ${dupCount} ca trùng`;
+                        dedupBadgeChecker.title = `Đang hiển thị toàn bộ bao gồm ${dupCount} ca trùng lặp HIS`;
+                    }
+                } else {
+                    dedupBadgeChecker.style.display = 'none';
+                }
+            }
+
+            if (chkDedupChecker) {
+                chkDedupChecker.addEventListener('change', () => {
+                    const isDedup = chkDedupChecker.checked;
+                    updateDedupBadgeChecker(lastCheckerDupRows.length, isDedup);
+                    if (lastCheckerCleanRows.length > 0 || lastCheckerRawRows.length > 0) {
+                        const activeRows = isDedup ? lastCheckerCleanRows : lastCheckerRawRows;
+                        processErrorChecking(activeRows);
+                    }
+                });
+            }
+
+            const btnConfigMapping = document.getElementById('btn-config-excel-checker');
+            if (btnConfigMapping) {
+                btnConfigMapping.addEventListener('click', async () => {
+                    if (!lastCheckerFile) {
+                        alert('Vui lòng chọn 1 file Excel/HIS trước để cấu hình ánh xạ cột cho đơn vị.');
+                        if (fileInput) fileInput.click();
+                        return;
+                    }
+                    if (window.UniversalExcelParser) {
+                        try {
+                            if (window.showGlobalLoading) window.showGlobalLoading('Đang mở bảng cấu hình cột...');
+                            const res = await window.UniversalExcelParser.parseExcelFile(lastCheckerFile, { forceModal: true });
+                            if (res) {
+                                lastCheckerCleanRows = res.cleanRows || res.dataRows || [];
+                                lastCheckerRawRows = res.rawRows || lastCheckerCleanRows;
+                                lastCheckerDupRows = res.dupRows || [];
+                                const isDedup = chkDedupChecker ? chkDedupChecker.checked : true;
+                                updateDedupBadgeChecker(lastCheckerDupRows.length, isDedup);
+                                const activeRows = isDedup ? lastCheckerCleanRows : lastCheckerRawRows;
+                                if (activeRows && activeRows.length > 0) {
+                                    processErrorChecking(activeRows);
+                                }
+                            }
+                        } catch (eConfig) {
+                            console.log('[UniversalExcelParser Config]:', eConfig);
+                        } finally {
+                            if (window.hideGlobalLoading) window.hideGlobalLoading();
+                        }
+                    }
+                });
+            }
+
             if (fileInput) {
                 fileInput.addEventListener('change', async (e) => {
                     const file = e.target.files[0];
                     if (!file) {
                         return;
                     }
+                    lastCheckerFile = file;
 
-                    if (window.showGlobalLoading) window.showGlobalLoading('Đang phân tích file HIS...');
+                    if (window.showGlobalLoading) window.showGlobalLoading('Đang phân tích file HIS thông minh...');
                     await ensureErrorCheckerResources();
 
-                    const reader = new FileReader();
-                    reader.onload = function (ev) {
-                        try {
-                            if (typeof XLSX === 'undefined') {
-                                throw new Error('Thư viện đọc file Excel (XLSX) chưa sẵn sàng hoặc mạng bị chặn CDN. Vui lòng tải lại trang hoặc kiểm tra kết nối mạng.');
-                            }
-                            const data = new Uint8Array(ev.target.result);
-                            const workbook = XLSX.read(data, { type: 'array', cellDates: false });
-                            const firstSheetName = workbook.SheetNames[0];
-                            const worksheet = workbook.Sheets[firstSheetName];
-                            
-                            const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
-                            let headerRowIndex = -1;
-                            let isInternalSchedule = false;
-
-                            function stripVietnamese(str) {
-                                if (!str) return '';
-                                return String(str).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().trim();
-                            }
-
-                            for (let i = 0; i < Math.min(rawData.length, 50); i++) {
-                                const rowStr = (rawData[i] || []).map(stripVietnamese);
-                                if (rowStr.some(c => c.includes("ten benh nhan") || c.includes("ten bn") || c.includes("hoten"))) {
-                                    headerRowIndex = i;
-                                    isInternalSchedule = true;
-                                    break;
-                                } else if (rowStr.some(c => c.includes("stt") || c.includes("name") || c.includes("mabn"))) {
-                                    headerRowIndex = i;
-                                    break;
-                                }
-                            }
-
-                            if (headerRowIndex < 0) headerRowIndex = 0;
-
-                            let dataRows = [];
-                            if (isInternalSchedule) {
-                                // Trích xuất ngày từ dòng tiêu đề trên cùng (ví dụ: 'Ngày thực hiện: 19/09/2026') nếu không có cột Ngày
-                                let extractedFileDate = '';
-                                for (let i = 0; i < headerRowIndex; i++) {
-                                    const rowCells = rawData[i] || [];
-                                    for (const cell of rowCells) {
-                                        const cellStr = String(cell || '').trim();
-                                        const dMatch = cellStr.match(/(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4})/);
-                                        if (dMatch) {
-                                            extractedFileDate = dMatch[1].replace(/-/g, '/');
-                                            break;
-                                        }
-                                    }
-                                    if (extractedFileDate) break;
-                                }
-
-                                const headerRow = (rawData[headerRowIndex] || []).map(stripVietnamese);
-                                const colIdx = {
-                                    ngay: headerRow.findIndex(h => h.includes('ngay')),
-                                    ten: headerRow.findIndex(h => h.includes('ten benh nhan') || h.includes('ten bn') || h.includes('hoten')),
-                                    namSinh: headerRow.findIndex(h => h.includes('nam sinh') || h.includes('namsinh') || h.includes('tuoi') || h === 'ns' || h.includes('dob')),
-                                    pId: headerRow.findIndex(h => h.includes('ma bn') || h.includes('mabn') || h.includes('pid') || h.includes('ma benh nhan') || h.includes('ma nb') || h.includes('mabenhnhan') || h.includes('ma_bn')),
-                                    tt: headerRow.findIndex(h => h.includes('thu thuat') || h.includes('dich vu') || h.includes('dichvu')),
-                                    bd: headerRow.findIndex(h => h.includes('bat dau') || h.includes('gio dien ra') || h.includes('giodienra')),
-                                    kt: headerRow.findIndex(h => h.includes('ket thuc') || h.includes('gioketthuc')),
-                                    nv: headerRow.findIndex(h => h.includes('nv chinh') || h.includes('nhan vien chinh') || h.includes('ktv') || h.includes('bac si') || h.includes('bác sĩ')),
-                                    nvPhu: headerRow.findIndex(h => h.includes('nv phu') || h.includes('nhan vien phu') || h.includes('phu ta') || h.includes('dieu duong phu')),
-                                    phong: headerRow.findIndex(h => h.includes('phong dieu tri') || h.includes('phong')),
-                                    giuong: headerRow.findIndex(h => h.includes('giuong benh') || h.includes('giuong')),
-                                    may: headerRow.findIndex(h => h.includes('may moc') || h.includes('thiet bi') || h.includes('may'))
+                    try {
+                        let activeRows = [];
+                        if (window.UniversalExcelParser) {
+                            const parseRes = await window.UniversalExcelParser.parseExcelFile(file);
+                            lastCheckerCleanRows = parseRes.cleanRows || parseRes.dataRows || [];
+                            lastCheckerRawRows = parseRes.rawRows || lastCheckerCleanRows;
+                            lastCheckerDupRows = parseRes.dupRows || [];
+                            const isDedup = chkDedupChecker ? chkDedupChecker.checked : true;
+                            updateDedupBadgeChecker(lastCheckerDupRows.length, isDedup);
+                            activeRows = isDedup ? lastCheckerCleanRows : lastCheckerRawRows;
+                        } else {
+                            // Fallback truyền thống nếu chưa tải kịp UniversalExcelParser
+                            const reader = new FileReader();
+                            const rawRows = await new Promise((resolve, reject) => {
+                                reader.onload = (ev) => {
+                                    try {
+                                        const data = new Uint8Array(ev.target.result);
+                                        const workbook = XLSX.read(data, { type: 'array', cellDates: false });
+                                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                                        const rows = XLSX.utils.sheet_to_json(worksheet, { header: "A", defval: "" });
+                                        resolve(rows);
+                                    } catch (err) { reject(err); }
                                 };
+                                reader.onerror = (err) => reject(err);
+                                reader.readAsArrayBuffer(file);
+                            });
+                            lastCheckerCleanRows = rawRows;
+                            lastCheckerRawRows = rawRows;
+                            lastCheckerDupRows = [];
+                            activeRows = rawRows;
+                        }
 
-                                dataRows = rawData.slice(headerRowIndex + 1).filter(r => r && r.some(c => String(c).trim())).map(r => {
-                                    const ngayStr = colIdx.ngay >= 0 ? String(r[colIdx.ngay] || '').trim() : extractedFileDate;
-                                    const bdStr = colIdx.bd >= 0 ? String(r[colIdx.bd] || '').trim() : '';
-                                    const ktStr = colIdx.kt >= 0 ? String(r[colIdx.kt] || '').trim() : '';
-
-                                    if (bdStr.includes('Rớt') || bdStr === '--' || !bdStr) return null;
-
-                                    const datePart = ngayStr.includes('-') ? ngayStr.split('-').reverse().join('/') : ngayStr;
-                                    const startFull = datePart ? `${bdStr} ${datePart}` : bdStr;
-                                    const endFull = datePart ? `${ktStr} ${datePart}` : ktStr;
-
-                                    const cleanBN = (colIdx.ten >= 0 ? String(r[colIdx.ten] || '') : '').replace(/\s*\((?:✔ RV|❌ Rớt|RV|Rớt)\)/gi, '').trim();
-                                    const procName = colIdx.tt >= 0 ? String(r[colIdx.tt] || '').trim() : '';
-                                    const procInfo = mapProcedureJS(procName);
-                                    const procLoai = procInfo ? (procInfo.phanLoai || procInfo.loai || procInfo.he || '') : '';
-                                    const namSinhVal = colIdx.namSinh >= 0 ? String(r[colIdx.namSinh] || '').trim() : '';
-                                    const pIdVal = colIdx.pId >= 0 ? String(r[colIdx.pId] || '').trim() : '';
-
-                                    return {
-                                        'AT': colIdx.nv >= 0 ? r[colIdx.nv] : '',
-                                        'AU': colIdx.nvPhu >= 0 ? r[colIdx.nvPhu] : '',
-                                        'C': cleanBN,
-                                        'D': namSinhVal,
-                                        'namSinh': namSinhVal,
-                                        'dob': namSinhVal,
-                                        'pId': pIdVal,
-                                        'maBN': pIdVal,
-                                        'ma_bn': pIdVal,
-                                        'AE': procName,
-                                        'AG': procName,
-                                        'AF': 'Chủ động',
-                                        'AS': 'Khác',
-                                        'AN': procLoai,
-                                        'AH': startFull,
-                                        'L': endFull,
-                                        'phong': colIdx.phong >= 0 ? String(r[colIdx.phong] || '').trim() : '',
-                                        'giuong': colIdx.giuong >= 0 ? String(r[colIdx.giuong] || '').trim() : '',
-                                        'may': colIdx.may >= 0 ? String(r[colIdx.may] || '').trim() : ''
-                                    };
-                                }).filter(Boolean);
-                            } else {
-                                dataRows = XLSX.utils.sheet_to_json(worksheet, { header: "A", range: headerRowIndex, defval: "" });
-                            }
-
-                            processErrorChecking(dataRows);
-                            if (window.hideGlobalLoading) window.hideGlobalLoading();
-                        } catch (err) {
-                            if (window.hideGlobalLoading) window.hideGlobalLoading();
-                            console.error('[ErrorChecker File Error]:', err);
-                            const errMsg = (err && err.message) ? err.message : 'Vui lòng kiểm tra lại cấu trúc file Excel.';
-                            alert('Lỗi khi đọc file: ' + errMsg);
+                        if (!activeRows || activeRows.length === 0) {
+                            alert('Không tìm thấy bản ghi thủ thuật hợp lệ trong file Excel.');
                             if (timeTbody) timeTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Chưa tải dữ liệu</td></tr>';
                             if (otherTbody) otherTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Chưa tải dữ liệu</td></tr>';
+                        } else {
+                            processErrorChecking(activeRows);
                         }
-                    };
-                    reader.readAsArrayBuffer(file);
+                    } catch (err) {
+                        console.error('[ErrorChecker File Error]:', err);
+                        const errMsg = (err && err.message) ? err.message : 'Vui lòng kiểm tra lại cấu trúc file Excel.';
+                        if (!errMsg.includes('hủy thao tác')) {
+                            alert('Lỗi khi đọc file: ' + errMsg);
+                        }
+                        if (timeTbody) timeTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Chưa tải dữ liệu</td></tr>';
+                        if (otherTbody) otherTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Chưa tải dữ liệu</td></tr>';
+                    } finally {
+                        if (window.hideGlobalLoading) window.hideGlobalLoading();
+                        e.target.value = '';
+                    }
                 });
             }
         }

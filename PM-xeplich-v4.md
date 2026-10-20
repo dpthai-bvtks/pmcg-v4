@@ -8656,6 +8656,53 @@ Sau khi khoa phòng hoàn tất xếp lịch trên `PM-XepLich`, kỹ thuật vi
 
 ---
 
+### [v4.3.2-rev1] - 14:10 20/10/2026: Tích Hợp Bộ Lọc Bóc Tách Trùng Lặp HIS (HIS Deduplication Engine) Cho BVĐK Bắc Ninh & Đơn Vị Y Tế
+
+#### Yêu cầu của người dùng:
+File thực tế BVĐK Bắc Ninh (`tt16.10.2026.xlsx`) thì 1 bệnh nhân đang bị gấp đôi thủ thuật thực tế, xem `D:\PM-DPT\PM-kiemloiBN` để tách lọc các ca bị trùng.
+
+#### Phân tích nguyên nhân:
+File kết xuất từ hệ thống HIS của BVĐK Bắc Ninh nhân bản mỗi thủ thuật thành 2 dòng hoàn toàn giống nhau về: Họ tên/Mã BN, Tên thủ thuật, Thời gian bắt đầu, Thời gian kết thúc, KTV thực hiện (do HIS join 2 dòng chi phí bảo hiểm y tế và viện phí).
+- Hậu quả:
+  - Tổng số 368 dòng thô nhưng thực tế chỉ có 306 ca điều trị (bị trùng 62 ca thuộc 18 bệnh nhân).
+  - KTV Ngô Việt Hưng bị tính khống lên 154 ca và phát sinh 832 cảnh báo xung đột giờ giả tạo do ca bị tự đè lên chính bản sao của nó.
+  - Số liệu thống kê thù lao / sản lượng bị đội gấp đôi.
+
+#### Giải pháp & Cải tiến đã thực hiện:
+1. **Thuật toán bóc tách trùng lặp HIS (`js/modules/universal-excel-parser.js`):**
+   - Bổ sung hàm `UniversalExcelParser.deduplicateRows(rows)` tạo khóa bóc tách:
+     $$\text{Key} = \text{Mã/Tên BN} + \text{Tên Thủ Thuật} + \text{Giờ bắt đầu} + \text{Giờ kết thúc} + \text{KTV chính}$$
+   - Tự động lọc sạch 62 ca trùng, chỉ giữ lại đúng 1 ca chuẩn duy nhất (từ 368 dòng còn 306 ca).
+   - Trong `UniversalExcelParser.parseExcelFile`: Mặc định trả về `dataRows: cleanRows`, đồng thời cung cấp đầy đủ `rawRows`, `cleanRows`, `dupRows`, `dupCount`.
+2. **Giao diện Tab Kiểm Tra Lỗi (`index.html` & `js/modules/app-error-checker.js`):**
+   - Bổ sung checkbox `[x] Lọc trùng lặp HIS` và huy hiệu `- 62 ca trùng HIS` (`#dedup-badge-checker`).
+   - Hỗ trợ **chuyển đổi tức thì (Toggle không cần nạp lại file)** giữa dữ liệu sạch (306 ca) và dữ liệu thô (368 ca).
+3. **Bảo vệ số liệu Tab Thống Kê & Chấm Công (`index.html` & `js/thongke.js`):**
+   - Bổ sung toggle `[x] Lọc trùng HIS` và badge `- 62 ca trùng HIS` trên thanh công cụ.
+   - Tránh tính khống sản lượng, thù lao thủ thuật cho nhân viên.
+4. **Tiện ích Nạp Lịch HIS (`js/app.js`):**
+   - Tự động làm sạch các ca nhân bản trước khi đưa vào lịch làm việc và hiển thị thông báo chi tiết số ca trùng đã loại bỏ.
+5. **Đồng bộ Phiên bản & Chuẩn hóa theo `RULES.md`:**
+   - Phiên bản ngày mới: `4.3.2-rev1` (20/10/2026).
+   - Chân trang Footer: `#app-footer-version` hiển thị `Phiên bản: 4.3.2` (không có đuôi rev1 theo đúng quy tắc), `#sys-last-update` hiển thị `⏱ Cập nhật lần cuối: 14:10 20/10/2026`.
+   - Cập nhật Cache Busters trong `index.html`: `?v=4.3.2-rev1`, `APP_VERSION = '4.3.2-rev1'`.
+   - Cập nhật Service Worker: `CACHE_NAME = 'pmcg-v4-cache-4.3.2-rev1'` trong `sw.js`.
+   - Cập nhật `version.json` đồng bộ thời gian và phiên bản.
+   - Vượt qua 100% 9 tầng kiểm tra Super-Verify (`node scripts/verify-build.mjs`).
+
+#### File sửa đổi:
+- `js/modules/universal-excel-parser.js`
+- `js/modules/app-error-checker.js`
+- `js/thongke.js`
+- `js/app.js`
+- `index.html`
+- `sw.js`
+- `version.json`
+- `PM-xeplich-v4.md`
+
+
+---
+
 ### Fix Lỗi Kỹ Năng Nhân Sự Không Phản Ánh Vào Xếp Lịch (16/10/2026 - v4.0.6)
 
 #### Yêu cầu của người dùng:
@@ -8673,4 +8720,47 @@ Lỗi nằm trong **bộ lọc phân quyền tuyệt đối** trong `scheduler-e
 #### File sửa đổi:
 - `js/scheduler-engine.js` (3 điểm: dòng ~421, ~439, ~3146-3151)
 
+---
 
+### Đồng Bộ Toàn Diện Quan Hệ Các Bảng Giữa 11 Tab & Xếp Lịch Thực Tế (19/10/2026 - v4.3.1-rev1)
+
+#### Yêu cầu của người dùng:
+Kiểm tra mối liên hệ giữa các bảng trong toàn bộ 11 tab để đồng nhất quan hệ dữ liệu, tránh phát sinh lỗi khi xếp lịch, sửa toàn bộ các lỗi và xếp lịch thử với dữ liệu thực tế hiện có.
+
+#### Các vấn đề đã xử lý & sửa đổi cốt lõi:
+1. **Sửa lỗi lệch chỉ mục cờ thủ thuật liên tục trong `local-solver/solver.py`:**
+   - Trong `js/scheduler-engine.js`, `database.thuThuatInfo[ten]` gồm mảng 14 phần tử: index 11 là `tgNvMax`, index 13 mới là `isLienTuc`.
+   - `local-solver/solver.py` trước đây đọc nhầm `info[11]`. Đã sửa `is_continuous_proc`: ưu tiên đọc `info[13]` (nếu độ dài >= 14), và fallback an toàn sang `info[11]` cho mảng dữ liệu cũ 12 phần tử.
+2. **Ánh xạ từ viết tắt & tự động bù khuyết tật danh mục máy móc (Machine Synonym Auto-Healing):**
+   - Đã cập nhật `sampleProcs` trong `backend/src/routes/tenants.js` từ các mã viết tắt ("SA", "DX", "KG", "HN", "LS", "SN") thành tên loại máy đầy đủ khớp với `sampleMachines` ("Máy Siêu âm điều trị", "Máy Điện xung đa năng", v.v.).
+   - Đã thêm danh mục máy móc (`danh_sach_may`) cho các phòng trong `sampleRooms` và bổ sung `Máy Điện châm` (`ĐC-01`, `ĐC-02`).
+   - Bổ sung bảng ánh xạ từ viết tắt (`MACHINE_SYNONYMS`: "sa" -> "siêu âm", "dx" -> "điện xung", "kg" -> "kéo giãn", "hn" -> "hồng ngoại", "ls" -> "laser", "sn" -> "sóng ngắn", "đc" -> "điện châm", "dp" -> "điện phân", "pa" -> "parafin") trong `resolveFromMap`, `database.machineTypes`, `database.roomMachines` (`scheduler-engine.js`) và `solver.py`.
+3. **Chống trùng lặp khóa bệnh nhân trong CP-SAT Solver:**
+   - `p_id` trước đây khi khuyết năm sinh sẽ tạo ra các khóa trùng nhau (`name_`), khiến CP-SAT ép các bệnh nhân khác nhau phải chờ nhau. Đã bổ sung `p_idx` tạo khóa duy nhất: `pat.pId || f"{name}_{ns}_{room}_{p_idx}"`.
+4. **Cập nhật thác đổ khi đổi tên Nhân sự và Thủ thuật trong `js/app.js`:**
+   - Khi đổi tên nhân sự trong `saveStaff()`: tự động cập nhật thác đổ các bảng liên quan: `dataCache.room` (`bacSi`, `ktv`, `dieuDuong`), `dataCache.staff` (`nguoiThayThe`), và `dataCache.schedule` (`nvChinh`, `nvPhu`, `bacSi`).
+   - Khi đổi tên thủ thuật trong `saveProcedure()`: tự động cập nhật thác đổ `dataCache.pat` (`thuThuat`), `dataCache.protocols` (`procs`), và `dataCache.schedule` (`thuThuat`, `DICHVU`).
+5. **Kiểm tra tính hợp lệ thời gian bệnh nhân trong `js/app.js`:**
+   - Thêm kiểm tra trong `savePatient()`: cảnh báo và chặn lưu nếu giờ ra viện (`gioRa`) nhỏ hơn hoặc bằng giờ vào (`gioVao`).
+6. **Kiểm thử xếp lịch thực tế (Live Scheduling Benchmark) với 50 bệnh nhân đơn vị `bvtks-cs2`:**
+   - Xếp thành công 100% (164/164 ca điều trị).
+   - 0 xung đột máy móc, 0 xung đột nhân sự, 0 xung đột trùng bệnh nhân.
+7. **Đồng bộ phiên bản theo RULES.md:**
+   - `version.json`: `4.3.1-rev1`, release: `18:40 19/10/2026`.
+   - `index.html`: Chân trang `#app-footer-version` hiển thị `Phiên bản: 4.3.1` (không có rev1), cache busters `?v=4.3.1-rev1`, `APP_VERSION = '4.3.1-rev1'`.
+   - `sw.js`: `CACHE_NAME = 'pmcg-v4-cache-4.3.1-rev1'`.
+   - Kiểm tra `verify-build.mjs`: Vượt qua 100% 9/9 tầng Super-Verify.
+
+
+
+
+8. **Tích hợp Bộ Đọc File Excel / HIS Thông Minh 3 Lớp (Universal Excel & HIS Parser):**
+   - Xây dựng mô-đun độc lập `js/modules/universal-excel-parser.js` giải quyết triệt để vấn đề "hardcode" ký tự cột.
+   - **Lớp 1 (Smart Universal Auto-Detector):** Tự động gộp tiêu đề 2 tầng (Multi-row Header Merger), Từ điển đồng nghĩa Y tế đa dạng, Nhận diện bản chất dữ liệu (Data Pattern Recognition cho thời gian, tên thủ thuật, nhân viên, phân loại). Đạt độ tin cậy 100% trên file HIS BVĐK Bắc Ninh (`tt16.10.2026.xlsx`).
+   - **Lớp 2 (Visual Column Mapping Modal):** Giao diện cấu hình ánh xạ cột trực quan kèm bảng xem trước dữ liệu, lưu cấu hình ghi nhớ theo từng Đơn vị / Bệnh viện (`times_excel_mapping_{unitCode}`) trong `localStorage`.
+   - **Lớp 3 (Universal Row Normalizer):** Chuẩn hóa toàn bộ dữ liệu thành mô hình đối tượng chuẩn (`patientName`, `procName`, `start`, `end`, `techMain`, `techPhu`, `loaiTT`, `phong`, `may`...) đồng thời duy trì tương thích ngược 100% với các mã nguồn cũ (`C, AE, AH, L, AT, AU, AN`).
+   - Tích hợp đồng bộ vào:
+     + **Tab Kiểm Tra Lỗi (`js/modules/app-error-checker.js`):** Bổ sung nút "Cấu Hình Cột", bóc tách thành công 368 ca thủ thuật file Bắc Ninh phát hiện ngay hơn 800 lượt xung đột trùng giờ KTV.
+     + **Tab Thống Kê (`js/thongke.js`):** Nạp file HIS mọi đơn vị, tự động tra cứu phân loại thủ thuật từ danh mục kỹ thuật nếu file thiếu cột phân loại.
+     + **Tiện ích Nạp File HIS (`js/app.js`):** Tự động nhận diện cột và chuẩn hóa ca thủ thuật.
+   - Cập nhật `index.html` và `sw.js` (STATIC_ASSETS), vượt qua 100% 9 tầng Super-Verify (`verify-build.mjs`).

@@ -89,8 +89,16 @@ def is_continuous_proc(info: list, duration: int) -> bool:
     base_tg_may = int(info[1]) if len(info) > 1 and info[1] else 15
     tg_nv = int(info[2]) if len(info) > 2 and info[2] else 5
 
-    # Cờ tường minh từ CSDL (trường thứ 12 / index 11)
-    if len(info) > 11:
+    # Cờ tường minh từ CSDL
+    # Chuẩn v4: mảng 14 phần tử, cờ liên tục ở index 13
+    if len(info) >= 14:
+        flag = info[13]
+        if flag in (1, "1", "Có", True):
+            return True
+        if flag in (0, "0", "Không", False):
+            return False
+    # Trường hợp mảng 12 hoặc 13 phần tử cũ: kiểm tra index 11
+    elif len(info) > 11:
         flag = info[11]
         if flag in (1, "1", "Có", True):
             return True
@@ -206,7 +214,20 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
         room_beds = {r: [f"Giường {i+1}" for i in range(5)] for r in all_rooms}
 
     # Chuẩn hóa danh mục máy móc theo loại máy (Machine Pool)
-    # Hỗ trợ cả key gốc và key không dấu để phá vỡ tính đối xứng (Symmetry Breaking)
+    # Hỗ trợ cả key gốc, key không dấu và từ viết tắt (Symmetry Breaking)
+    MACHINE_SYNONYMS = {
+        "sa": "sieu am",
+        "dx": "dien xung",
+        "kg": "keo gian",
+        "hn": "hong ngoai",
+        "ls": "laser",
+        "sn": "song ngan",
+        "dc": "dien cham",
+        "tc": "thuy cham",
+        "dp": "dien phan",
+        "pa": "parafin"
+    }
+
     all_machines_by_type = {}
     for m_type, m_list in machine_types.items():
         clean_key = strip_accents(str(m_type))
@@ -214,13 +235,16 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
         all_machines_by_type[clean_key] = list(m_list)
         if clean_key_simple and clean_key_simple != clean_key:
             all_machines_by_type[clean_key_simple] = list(m_list)
+        for abbr, phrase in MACHINE_SYNONYMS.items():
+            if phrase in clean_key_simple:
+                all_machines_by_type.setdefault(abbr, list(m_list))
 
     # 3. Phẳng hóa danh sách công việc (Tasks) cần xếp từ rawPatients
     tasks = []
     task_id = 0
 
-    for pat in raw_patients:
-        p_id = pat.get("pId") or (pat.get("name", "") + "_" + str(pat.get("ns", "")))
+    for p_idx, pat in enumerate(raw_patients):
+        p_id = pat.get("pId") or f"{pat.get('name', '')}_{pat.get('ns', '')}_{pat.get('room', '')}_{p_idx}"
         p_name = pat.get("name", "")
         p_ns = str(pat.get("ns", ""))
         p_room = pat.get("room", "") or (all_rooms[0] if all_rooms else "")
@@ -508,6 +532,10 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
             lm_clean = strip_accents(t["loai_may"])
             lm_simple = lm_clean.replace("may ", "").replace("den ", "").strip()
             c_machs = all_machines_by_type.get(lm_clean) or all_machines_by_type.get(lm_simple) or []
+            if not c_machs:
+                syn = MACHINE_SYNONYMS.get(lm_simple) or MACHINE_SYNONYMS.get(lm_clean)
+                if syn:
+                    c_machs = all_machines_by_type.get(syn, [])
             if not c_machs:
                 for mk, mv in all_machines_by_type.items():
                     if lm_simple in mk or mk in lm_simple:

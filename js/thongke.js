@@ -2357,31 +2357,123 @@ window.switchAdminSection = function(sectionId, btn) {
             tbody.appendChild(trTotal);
         }
 
+        let lastThongKeFile = null;
+        let lastThongKeCleanRows = [];
+        let lastThongKeRawRows = [];
+        let lastThongKeDupRows = [];
+
+        const chkDedupThongKe = document.getElementById('chk-dedup-his-thongke');
+        const dedupBadgeThongKe = document.getElementById('dedup-badge-thongke');
+
+        function updateDedupBadgeThongKe(dupCount, isEnabled) {
+            if (!dedupBadgeThongKe) return;
+            if (dupCount > 0) {
+                dedupBadgeThongKe.style.display = 'inline-block';
+                if (isEnabled) {
+                    dedupBadgeThongKe.style.background = '#fee2e2';
+                    dedupBadgeThongKe.style.color = '#b91c1c';
+                    dedupBadgeThongKe.style.borderColor = '#fca5a5';
+                    dedupBadgeThongKe.innerText = `- ${dupCount} ca trùng HIS`;
+                    dedupBadgeThongKe.title = `Đã phát hiện và loại trừ ${dupCount} ca thủ thuật bị HIS nhân đôi`;
+                } else {
+                    dedupBadgeThongKe.style.background = '#fef3c7';
+                    dedupBadgeThongKe.style.color = '#b45309';
+                    dedupBadgeThongKe.style.borderColor = '#fde68a';
+                    dedupBadgeThongKe.innerText = `Chưa lọc ${dupCount} ca`;
+                    dedupBadgeThongKe.title = `Đang tính cả ${dupCount} ca trùng lặp HIS`;
+                }
+            } else {
+                dedupBadgeThongKe.style.display = 'none';
+            }
+        }
+
+        if (chkDedupThongKe) {
+            chkDedupThongKe.addEventListener('change', () => {
+                const isDedup = chkDedupThongKe.checked;
+                updateDedupBadgeThongKe(lastThongKeDupRows.length, isDedup);
+                if (lastThongKeCleanRows.length > 0 || lastThongKeRawRows.length > 0) {
+                    const activeRows = isDedup ? lastThongKeCleanRows : lastThongKeRawRows;
+                    processThuThuatExcelData(activeRows);
+                }
+            });
+        }
+
+        const btnConfigThongKe = document.getElementById('btn-config-excel-thongke');
+        if (btnConfigThongKe) {
+            btnConfigThongKe.addEventListener('click', async () => {
+                if (!lastThongKeFile) {
+                    alert('Vui lòng chọn 1 file HIS trước để cấu hình cột cho đơn vị.');
+                    document.getElementById('excel-file-input').click();
+                    return;
+                }
+                if (window.UniversalExcelParser) {
+                    try {
+                        window.showGlobalLoading("Đang mở bảng cấu hình cột...");
+                        const res = await window.UniversalExcelParser.parseExcelFile(lastThongKeFile, { forceModal: true });
+                        if (res) {
+                            lastThongKeCleanRows = res.cleanRows || res.dataRows || [];
+                            lastThongKeRawRows = res.rawRows || lastThongKeCleanRows;
+                            lastThongKeDupRows = res.dupRows || [];
+                            const isDedup = chkDedupThongKe ? chkDedupThongKe.checked : true;
+                            updateDedupBadgeThongKe(lastThongKeDupRows.length, isDedup);
+                            const activeRows = isDedup ? lastThongKeCleanRows : lastThongKeRawRows;
+                            if (activeRows && activeRows.length > 0) {
+                                processThuThuatExcelData(activeRows);
+                            }
+                        }
+                    } catch (eConfig) {
+                        console.log('[UniversalExcelParser ThongKe Config]:', eConfig);
+                    } finally {
+                        window.hideGlobalLoading();
+                    }
+                }
+            });
+        }
+
         // Init Excel Uploader for Thống Kê
-        document.getElementById('excel-file-input').addEventListener('change', (e) => {
+        document.getElementById('excel-file-input').addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
+            lastThongKeFile = file;
 
-            window.showGlobalLoading("Đang đọc file Excel...");
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
+            window.showGlobalLoading("Đang đọc và chuẩn hóa file Excel HIS...");
+            try {
+                let activeRows = [];
+                if (window.UniversalExcelParser) {
+                    const parsedRes = await window.UniversalExcelParser.parseExcelFile(file);
+                    lastThongKeCleanRows = parsedRes.cleanRows || parsedRes.dataRows || [];
+                    lastThongKeRawRows = parsedRes.rawRows || lastThongKeCleanRows;
+                    lastThongKeDupRows = parsedRes.dupRows || [];
+                    const isDedup = chkDedupThongKe ? chkDedupThongKe.checked : true;
+                    updateDedupBadgeThongKe(lastThongKeDupRows.length, isDedup);
+                    activeRows = isDedup ? lastThongKeCleanRows : lastThongKeRawRows;
+                } else {
+                    const data = await file.arrayBuffer();
+                    const workbook = XLSX.read(new Uint8Array(data), { type: 'array' });
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
-                    const dataRows = XLSX.utils.sheet_to_json(worksheet, { header: "A", defval: "", blankrows: true });
-
-                    processThuThuatExcelData(dataRows);
-                } catch (err) {
-                    console.error(err);
-                    alert("Có lỗi khi đọc file Excel.");
-                } finally {
-                    window.hideGlobalLoading();
+                    const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: "A", defval: "", blankrows: true });
+                    lastThongKeCleanRows = rawRows;
+                    lastThongKeRawRows = rawRows;
+                    lastThongKeDupRows = [];
+                    activeRows = rawRows;
                 }
-            };
-            reader.readAsArrayBuffer(file);
-            e.target.value = '';
+
+                if (!activeRows || activeRows.length === 0) {
+                    alert("Không tìm thấy dữ liệu thủ thuật hợp lệ trong file Excel.");
+                } else {
+                    processThuThuatExcelData(activeRows);
+                }
+            } catch (err) {
+                console.error(err);
+                const msg = err && err.message ? err.message : "Có lỗi khi đọc file Excel.";
+                if (!msg.includes('hủy thao tác')) {
+                    alert("Lỗi đọc file: " + msg);
+                }
+            } finally {
+                window.hideGlobalLoading();
+                e.target.value = '';
+            }
         });
 
         function processThuThuatExcelData(dataRows) {
@@ -2407,12 +2499,20 @@ window.switchAdminSection = function(sectionId, btn) {
                 const row = dataRows[i];
                 if (!row) continue;
 
-                const loaiTT = row['AN'];
-                let rawEmpName = row['AT'];
+                let loaiTT = row.loaiTT || row['AN'] || '';
+                let rawEmpName = row.techMain || row['AT'] || '';
 
                 if (!rawEmpName) continue;
                 rawEmpName = String(rawEmpName).trim();
                 if (!rawEmpName) continue;
+
+                // Nếu file HIS không có sẵn cột loại thủ thuật, tự động tra cứu từ danh mục kỹ thuật
+                if (!loaiTT && (row.procName || row['AE']) && typeof mapProcedureJS === 'function') {
+                    const pInfo = mapProcedureJS(row.procName || row['AE']);
+                    if (pInfo) {
+                        loaiTT = pInfo.phanLoai || pInfo.loai || pInfo.he || '';
+                    }
+                }
                 
                 const rawEmpNameNormalized = rawEmpName.normalize('NFC').toLowerCase();
                 if (rawEmpNameNormalized.includes('thủ thuật viên') || rawEmpNameNormalized.includes('tên nhân viên')) continue;
@@ -2447,7 +2547,7 @@ window.switchAdminSection = function(sectionId, btn) {
                 if (loaiTT) {
                     const strLoai = String(loaiTT).normalize('NFC').toLowerCase();
                     let isNewPrice = true;
-                    let dateStr = row['AH'] || row['Ngày giờ làm PTTT'] || '';
+                    let dateStr = row.start || row['AH'] || row['Ngày giờ làm PTTT'] || '';
                     if (dateStr !== '') {
                         if (typeof dateStr === 'number' || !isNaN(Number(dateStr))) {
                             const excelDays = Number(dateStr);

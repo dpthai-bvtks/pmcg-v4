@@ -124,17 +124,17 @@ export async function handleTenantsAction(action, ctx) {
 
       // Danh mục phòng điều trị mẫu
       const sampleRooms = [
-        { name: "Phòng Điện trị liệu (Phòng 1)", bs: "BS. Quản Lý Khoa", ktv: "KTV. Nguyễn Văn A", beds: 6 },
-        { name: "Phòng Kéo giãn cột sống (Phòng 2)", bs: "", ktv: "KTV. Nguyễn Văn A", beds: 4 },
-        { name: "Phòng Vận động trị liệu (Phòng 3)", bs: "", ktv: "KTV. Trần Thị B", beds: 5 },
-        { name: "Phòng Châm cứu & Cấy chỉ (Phòng 4)", bs: "BS. Quản Lý Khoa", ktv: "KTV. Trần Thị B", beds: 6 },
-        { name: "Phòng Xoa bóp bấm huyệt (Phòng 5)", bs: "", ktv: "KTV. Trần Thị B", beds: 4 }
+        { name: "Phòng Điện trị liệu (Phòng 1)", bs: "BS. Quản Lý Khoa", ktv: "KTV. Nguyễn Văn A", beds: 6, machines: "SA-01, SA-02, DX-01, DX-02, HN-01" },
+        { name: "Phòng Kéo giãn cột sống (Phòng 2)", bs: "", ktv: "KTV. Nguyễn Văn A", beds: 4, machines: "KG-01, HN-02" },
+        { name: "Phòng Vận động trị liệu (Phòng 3)", bs: "", ktv: "KTV. Trần Thị B", beds: 5, machines: "LS-01, SN-01" },
+        { name: "Phòng Châm cứu & Cấy chỉ (Phòng 4)", bs: "BS. Quản Lý Khoa", ktv: "KTV. Trần Thị B", beds: 6, machines: "ĐC-01, ĐC-02, HN-01" },
+        { name: "Phòng Xoa bóp bấm huyệt (Phòng 5)", bs: "", ktv: "KTV. Trần Thị B", beds: 4, machines: "" }
       ];
       sampleRooms.forEach((r, idx) => {
         seedBatch.push(db.prepare(`
-          INSERT OR IGNORE INTO phong (unit_code, ten_phong, bac_si, ktv, so_giuong, order_idx, is_active)
-          VALUES (?, ?, ?, ?, ?, ?, 1)
-        `).bind(uCode, r.name, r.bs, r.ktv, r.beds, idx + 1));
+          INSERT OR IGNORE INTO phong (unit_code, ten_phong, bac_si, ktv, danh_sach_may, so_giuong, order_idx, is_active)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+        `).bind(uCode, r.name, r.bs, r.ktv, r.machines || "", r.beds, idx + 1));
       });
 
       // Danh mục máy móc điều trị mẫu
@@ -147,7 +147,9 @@ export async function handleTenantsAction(action, ctx) {
         { type: "Máy Kéo giãn cột sống cổ/lưng", code: "KG-01" },
         { type: "Máy Sóng ngắn trị liệu", code: "SN-01" },
         { type: "Đèn Hồng ngoại", code: "HN-01" },
-        { type: "Đèn Hồng ngoại", code: "HN-02" }
+        { type: "Đèn Hồng ngoại", code: "HN-02" },
+        { type: "Máy Điện châm", code: "ĐC-01" },
+        { type: "Máy Điện châm", code: "ĐC-02" }
       ];
       sampleMachines.forEach((m, idx) => {
         seedBatch.push(db.prepare(`
@@ -158,19 +160,19 @@ export async function handleTenantsAction(action, ctx) {
 
       // 13 Thủ thuật mẫu YHCT & PHCN chuẩn Bộ Y Tế
       const sampleProcs = [
-        { name: "Siêu âm điều trị", vt: "SA", he: "PHCN", may: "SA", tg: 30, lien_tuc: 0 },
-        { name: "Điện xung điều trị", vt: "DX", he: "PHCN", may: "DX", tg: 30, lien_tuc: 0 },
-        { name: "Điện phân dẫn thuốc", vt: "DP", he: "PHCN", may: "DX", tg: 30, lien_tuc: 0 },
-        { name: "Kéo giãn cột sống bằng máy", vt: "KG", he: "PHCN", may: "KG", tg: 30, lien_tuc: 0 },
-        { name: "Chiếu đèn hồng ngoại", vt: "HN", he: "PHCN", may: "HN", tg: 30, lien_tuc: 0 },
-        { name: "Laser điều trị", vt: "LS", he: "PHCN", may: "LS", tg: 20, lien_tuc: 0 },
-        { name: "Sóng ngắn điều trị", vt: "SN", he: "PHCN", may: "SN", tg: 20, lien_tuc: 0 },
-        { name: "Tập vận động thụ động", vt: "VĐ-TD", he: "PHCN", may: "", tg: 30, lien_tuc: 0 },
-        { name: "Tập vận động có trợ giúp", vt: "VĐ-TG", he: "PHCN", may: "", tg: 30, lien_tuc: 0 },
-        { name: "Xoa bóp bấm huyệt điều trị", vt: "XBBH", he: "YHCT", may: "", tg: 30, lien_tuc: 0 },
-        { name: "Điện châm điều trị", vt: "ĐC", he: "YHCT", may: "", tg: 30, lien_tuc: 0 },
-        { name: "Cứu ngải điều trị", vt: "CN", he: "YHCT", may: "", tg: 20, lien_tuc: 0 },
-        { name: "Thủy châm điều trị", vt: "TC", he: "YHCT", may: "", tg: 15, lien_tuc: 0 }
+        { name: "Siêu âm điều trị", vt: "SA", he: "PHCN", may: "Máy Siêu âm điều trị", tg: 30, lien_tuc: 0 },
+        { name: "Điện xung điều trị", vt: "DX", he: "PHCN", may: "Máy Điện xung đa năng", tg: 30, lien_tuc: 0 },
+        { name: "Điện phân dẫn thuốc", vt: "DP", he: "PHCN", may: "Máy Điện xung đa năng", tg: 30, lien_tuc: 0 },
+        { name: "Kéo giãn cột sống bằng máy", vt: "KG", he: "PHCN", may: "Máy Kéo giãn cột sống cổ/lưng", tg: 30, lien_tuc: 0 },
+        { name: "Chiếu đèn hồng ngoại", vt: "HN", he: "PHCN", may: "Đèn Hồng ngoại", tg: 30, lien_tuc: 0 },
+        { name: "Laser điều trị", vt: "LS", he: "PHCN", may: "Máy Laser công suất thấp", tg: 20, lien_tuc: 0 },
+        { name: "Sóng ngắn điều trị", vt: "SN", he: "PHCN", may: "Máy Sóng ngắn trị liệu", tg: 20, lien_tuc: 0 },
+        { name: "Tập vận động thụ động", vt: "VĐ-TD", he: "PHCN", may: "Thủ công", tg: 30, lien_tuc: 1 },
+        { name: "Tập vận động có trợ giúp", vt: "VĐ-TG", he: "PHCN", may: "Thủ công", tg: 30, lien_tuc: 1 },
+        { name: "Xoa bóp bấm huyệt điều trị", vt: "XBBH", he: "YHCT", may: "Thủ công", tg: 30, lien_tuc: 1 },
+        { name: "Điện châm điều trị", vt: "ĐC", he: "YHCT", may: "Máy Điện châm", tg: 30, lien_tuc: 0 },
+        { name: "Cứu ngải điều trị", vt: "CN", he: "YHCT", may: "Thủ công", tg: 20, lien_tuc: 0 },
+        { name: "Thủy châm điều trị", vt: "TC", he: "YHCT", may: "Thủ công", tg: 15, lien_tuc: 1 }
       ];
       sampleProcs.forEach((p, idx) => {
         seedBatch.push(db.prepare(`
