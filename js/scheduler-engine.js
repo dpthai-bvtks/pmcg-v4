@@ -537,6 +537,20 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
     (db.roomBeds[phong] || []).forEach(giuong => { bedTracker[phong][giuong] = []; });
   }
 
+  // 🏥 KHỐNG CHẾ TRẦN NHÂN SỰ PHÒNG THEO KỊCH BẢN (NGÀY VẮNG: <= 2 NGƯỜI/VAI TRÒ, NGÀY ĐÔNG: <= 3 NGƯỜI/VAI TRÒ)
+  const roomRoleStaff = {};
+  for (const phong in db.roomBeds) {
+    roomRoleStaff[phong] = { 'BS': new Set(), 'KTV': new Set(), 'DD': new Set() };
+    const defaultStaff = roomStaff[phong] || [];
+    defaultStaff.forEach(st => {
+      const r = (staffRole[st] || '').toLowerCase();
+      const isDoc = /bác sĩ|bac si|^bs\b/i.test(r) || /^bs\b/i.test(st);
+      const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(r);
+      const cat = isDoc ? 'BS' : (isNurse ? 'DD' : 'KTV');
+      roomRoleStaff[phong][cat].add(st);
+    });
+  }
+
   let patients = db.rawPatients.map(p => ({ ...p, pId: p.pId, pending: [...p.pending], failed: false, busy: p.busy ? p.busy.map(b => [...b]) : [], loaiBN: p.loaiBN, buoiDieuTri: p.buoiDieuTri }));
 
   const resolveStaffKey = rawName => {
@@ -892,6 +906,18 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(role);
         const isKtv = !isDoc && !isNurse && (/kỹ thuật viên|ky thuat vien|^ktv\b/i.test(role) || staffRole[tenNV] === 'Kỹ thuật viên');
 
+        // 🏥 KHỐNG CHẾ TRẦN NHÂN SỰ PHÒNG THEO KỊCH BẢN:
+        // Ngày vắng: Tối đa 2 người / vai trò
+        // Ngày đông: Tối đa 3 người / vai trò
+        const roleCat = isDoc ? 'BS' : (isNurse ? 'DD' : 'KTV');
+        const maxStaffPerRole = isCrowdedDay ? 3 : 2;
+        if (!isSupplemental && !isRelaxedPass && targetRoom && roomRoleStaff[targetRoom]) {
+          const currentStaffInRoom = roomRoleStaff[targetRoom][roleCat];
+          if (currentStaffInRoom && !currentStaffInRoom.has(tenNV) && currentStaffInRoom.size >= maxStaffPerRole) {
+            return;
+          }
+        }
+
         // Đối với candidatesSub (Người phụ): nếu ca yêu cầu người phụ khóa giờ kết thúc, người phụ phải rảnh ở tearStart..tearEnd!
         const isFreeForSubTeardown = !subNeedsTeardown || !checkSlot(tearStart, tearEnd);
 
@@ -1069,6 +1095,12 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
         blockStaff(nvChinh, tNow, tNow + tgNhanVien, khoangCach, staffTimeline, staffSetupReady, staffLoad, tenThuThuat, staffLastProc);
         staffCurrentRoom[nvChinh] = targetRoom;
+        if (targetRoom && roomRoleStaff[targetRoom]) {
+          const mRole = (staffRole[nvChinh] || '').toLowerCase();
+          const mDoc = /bác sĩ|bac si|^bs\b/i.test(mRole) || /^bs\b/i.test(nvChinh);
+          const mCat = mDoc ? 'BS' : 'KTV';
+          roomRoleStaff[targetRoom][mCat].add(nvChinh);
+        }
 
         // Khóa giờ bận kết thúc ca (Teardown / Rút kim / Rút máy / Theo dõi):
         // 1. TTV chính: khóa giờ rút kim (Điện châm, Hào châm), theo dõi (Thủy châm) hoặc rút máy PHCN
@@ -1086,6 +1118,9 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
         if (nvPhu) {
           blockStaff(nvPhu, tNow, tNow + tgNhanVien, khoangCach, staffTimeline, staffSetupReady, staffLoad, tenThuThuat, staffLastProc);
+          if (targetRoom && roomRoleStaff[targetRoom]) {
+            roomRoleStaff[targetRoom]['DD'].add(nvPhu);
+          }
         }
 
         if (selectedMachine !== "Thủ công") { 

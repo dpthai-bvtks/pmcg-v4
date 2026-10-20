@@ -1,6 +1,6 @@
 {
-    "version": "4.3.2-rev1",
+    "version": "4.3.2-rev2",
     "releaseDate": "20/10/2026",
-    "releaseTime": "14:10 20/10/2026",
-    "notes": "Kiến trúc 3 lớp đọc file Excel thông minh (Universal Excel Parser) & Bóc tách lọc trùng lặp HIS (Deduplication) cho BVĐK Bắc Ninh và các đơn vị y tế."
+    "releaseTime": "15:30 20/10/2026",
+    "notes": "Chia lại lịch trình 20/10/2026 theo 2 kịch bản Ngày vắng và Ngày đông, khống chế trần nhân sự từng phòng (<= 2 người/vai trò ngày vắng, <= 3 người/vai trò ngày đông)."
 }

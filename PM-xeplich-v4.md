@@ -8764,3 +8764,24 @@ Kiểm tra mối liên hệ giữa các bảng trong toàn bộ 11 tab để đ�
      + **Tab Thống Kê (`js/thongke.js`):** Nạp file HIS mọi đơn vị, tự động tra cứu phân loại thủ thuật từ danh mục kỹ thuật nếu file thiếu cột phân loại.
      + **Tiện ích Nạp File HIS (`js/app.js`):** Tự động nhận diện cột và chuẩn hóa ca thủ thuật.
    - Cập nhật `index.html` và `sw.js` (STATIC_ASSETS), vượt qua 100% 9 tầng Super-Verify (`verify-build.mjs`).
+
+9. **Khống Chế Trần Nhân Sự Từng Phòng Theo Kịch Bản & Chia Lại Lịch Trình Ngày 20/10/2026 (v4.3.2-rev2 - 20/10/2026):**
+   - **Yêu cầu của người dùng:** Phân tích CSDL pmcg.db ngày 20/10/2026 thấy 1 phòng bị chia cho rất nhiều nhân sự (cả 4 BS và 4 ĐD cùng vào 1 phòng). Cần khống chế khi xếp lịch theo 2 kịch bản:
+     * *Kịch bản 1 (Ngày vắng):* Mỗi vai trò tối đa 1 người (1 BS + 1 KTV + 1 ĐD), tổng nhân sự xuất hiện tại 1 phòng trong cả ngày: Tối đa 2 người / vai trò (ví dụ: tối đa 2 BS + 2 KTV + 2 ĐD, có thể 1 BS + 2 KTV + 1 ĐD).
+     * *Kịch bản 2 (Ngày đông):* Mỗi vai trò tối đa 2 người chi viện (2 BS + 2 KTV + 2 ĐD), tổng nhân sự xuất hiện tại 1 phòng trong cả ngày: Tối đa 3 người / vai trò (tối đa 3 BS + 3 KTV + 3 ĐD).
+     * Xuất 2 file Excel riêng biệt để xem xét.
+   - **Phân tích nguyên nhân & Giải pháp:**
+     * Trong _turbo_core_logic, thuật toán trước đây chỉ lọc KTV phòng (staffMyRooms) mà không hề ràng buộc Bác sĩ và Điều dưỡng theo phòng, dẫn đến khi BS phụ trách phòng bận 1 ca thì hệ thống tự động bốc BS các phòng khác vào thay thế, gây phân tán nhân sự.
+     * Tích hợp bộ theo dõi 
+oomRoleStaff[phong][vaiTro] vào js/scheduler-engine.js:
+       - Tự động nạp nhân sự mặc định của từng phòng từ bảng phong.
+       - Ràng buộc trần cứng: Ngày vắng <= 2 người / vai trò; Ngày đông <= 3 người / vai trò.
+       - Nhân sự ngoài phòng sẽ bị khóa cửa phòng không được vào nếu phòng đó đã chạm trần nhân sự của vai trò đó trong ngày.
+     * Chạy thuật toán mô phỏng và chia lại toàn bộ 234 ca thủ thuật (70 bệnh nhân) của ngày 20/10/2026 trên 4 phòng (Phòng C118, Phòng 1+2+3, Phòng 4, Phòng TT1) hoàn toàn bằng nhân sự chính thức của đơn vị vtks-cs2.
+     * Xuất thành 2 file Excel đạt chuẩn giao diện y tế cao cấp (gồm 2 Sheet: Sheet 1 - Lịch Trình Chi Tiết 234 ca; Sheet 2 - Thống Kê Phân Bổ Nhân Sự Từng Phòng kèm đánh giá tuân thủ):
+       - C:\PMCG-Data\lich_trinh_20.10.2026_KICH_BAN_NGAY_VANG.xlsx
+       - C:\PMCG-Data\lich_trinh_20.10.2026_KICH_BAN_NGAY_DONG.xlsx
+   - **File sửa đổi:**
+     * js/scheduler-engine.js: Tích hợp khống chế trần nhân sự từng phòng cho cả Bác sĩ, KTV và Điều dưỡng.
+     * ersion.json, index.html, sw.js: Đồng bộ phiên bản 4.3.2-rev2 và timestamp 15:30 20/10/2026.
+     * PM-xeplich-v4.md: Ghi nhật ký phát triển.
