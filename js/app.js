@@ -8890,9 +8890,9 @@ var dataCache = window.dataCache;
 
                             kt: col(['ket thuc', 'gioketthuc']),
 
-                            nvChinh: col(['nv chinh', 'nhan vien chinh']),
+                            nvChinh: col(['nv chinh', 'nhan vien chinh', 'ktv / bac si', 'bac si / ktv', 'ktv/bs', 'bs/ktv', 'ktv', 'bac si', 'nguoi thuc hien', 'thu thuat vien']),
 
-                            nvPhu: col(['nv phu']),
+                            nvPhu: col(['nv phu', 'nhan vien phu', 'tro ly', 'dieu duong', 'nguoi phu']),
 
                             may: col(['may']),
 

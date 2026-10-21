@@ -1,6 +1,6 @@
 {
-    "version": "4.3.2-rev9",
+    "version": "4.3.2-rev10",
     "releaseDate": "21/10/2026",
-    "releaseTime": "14:38 21/10/2026",
-    "notes": "Áp dụng luật Khóa chặt nhân sự theo phòng (Strict Room Ownership): Ưu tiên tuyệt đối nhân sự phụ trách phòng, chấm dứt hoàn toàn tình trạng nhảy phòng ziczac dàn trải."
+    "releaseTime": "14:50 21/10/2026",
+    "notes": "Khắc phục lỗi nạp file lịch cũ: Tự động nhận diện đa dạng tiêu đề cột Nhân viên chính (NV Chính, KTV / Bác Sĩ, KTV/BS, Bác sĩ/KTV, Người thực hiện...)."
 }

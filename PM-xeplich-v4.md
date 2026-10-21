@@ -8953,8 +8953,22 @@ oomRoleStaff[phong][vaiTro] vào js/scheduler-engine.js:
       * BS Thảo: Sáng làm hết sạch 12 ca ở **Phòng TT1**, xong việc mới sang C118 hỗ trợ.
       * KTV Hà chip (41 ca - C118), KTV Phan Hiền (33 ca - Phòng 1+2+3) ngồi cố định tại phòng mình.
       * Đạt trọn vẹn **202 / 202 ca (0 ca rớt)**!
-      * Đã xuất file tham khảo theo định dạng chuẩn: `D:\lich-trinh-hang-ngay\tháng 10\Lich_ThuThuat_21-10-2026_KhoaPhong_ThamKhao.xlsx`. Database chính `pmcg.db` được giữ nguyên theo yêu cầu.
     - **File sửa đổi:** `js/scheduler-engine.js`, `version.json`, `index.html`, `sw.js`, `PM-xeplich-v4.md`.
+
+17. **Khắc Phục Lỗi Trống Cột NV Chính Khi Dùng Chức Năng "Tải File Lịch Cũ" (v4.3.2-rev10 - 21/10/2026):**
+    - **Hiện tượng người dùng phản ánh:**
+      * Khi dùng nút "📂 Tải file lịch cũ" để nạp file `D:\lich-trinh-hang-ngay\tháng 10\Lich_ThuThuat_21-10-2026_KhoaPhong_ThamKhao.xlsx`, toàn bộ bảng xem trước bị trống trơn cột NV chính.
+    - **Nguyên nhân kỹ thuật:**
+      * Hàm nạp lịch `importScheduleFile()` trong `js/app.js` sử dụng bộ lọc tìm cột: `col(['nv chinh', 'nhan vien chinh'])`.
+      * Trong khi đó, định dạng file lịch Excel xuất ra sử dụng tiêu đề cột là `KTV / Bác Sĩ` (hoặc `NV Chính (KTV / Bác Sĩ)`).
+      * Do chuỗi `KTV / Bác Sĩ` không khớp với từ khóa tìm kiếm hẹp ban đầu, chỉ số `idx.nvChinh` trả về `-1`, dẫn tới giá trị nhân viên chính bị bỏ qua và để trống khi hiển thị bảng nạp.
+    - **Giải pháp xử lý triệt để 2 tầng:**
+      * **Tầng 1 (Code Web App - js/app.js):** Mở rộng từ điển nhận diện tự động cho cả `nvChinh` và `nvPhu`:
+        + `nvChinh`: `['nv chinh', 'nhan vien chinh', 'ktv / bac si', 'bac si / ktv', 'ktv/bs', 'bs/ktv', 'ktv', 'bac si', 'nguoi thuc hien', 'thu thuat vien']`.
+        + `nvPhu`: `['nv phu', 'nhan vien phu', 'tro ly', 'dieu duong', 'nguoi phu']`.
+      * **Tầng 2 (Tương thích ngược file Excel):** Cập nhật tiêu đề cột trong file `Lich_ThuThuat_21-10-2026_KhoaPhong_ThamKhao.xlsx` thành `NV Chính (KTV / Bác Sĩ)`, giúp nạp hiển thị hoàn hảo ngay cả trên các phiên bản trình duyệt cũ chưa xóa cache.
+    - **File sửa đổi:** `js/app.js`, `version.json`, `index.html`, `sw.js`, `PM-xeplich-v4.md`.
+
 
 
 
