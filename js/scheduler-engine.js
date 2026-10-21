@@ -993,7 +993,16 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       if (patient.busy.some(b => is_overlap(tNow, gioKetThuc, b[0], b[1]))) continue;
 
       const candidatesMain = [], candidatesSub = [];
+      // 🔒 BẮT BUỘC: Với bệnh nhân ra viện của phòng nào thì do nhân sự phụ trách phòng đó làm hết, không phụ thuộc vào nhân sự phòng khác
+      const isDischargedPat = (patient.leave !== 9999);
+      const roomAssignedStaff = (roomStaff && targetRoom && roomStaff[targetRoom]) ? roomStaff[targetRoom] : [];
       (staffBySkill[tenThuThuat.toLowerCase()] || []).forEach(tenNV => {
+        if (isDischargedPat && targetRoom && roomAssignedStaff.length > 0) {
+          const hasRoomStaffWithSkill = roomAssignedStaff.some(st => (staffBySkill[tenThuThuat.toLowerCase()] || []).includes(st));
+          if (hasRoomStaffWithSkill && !roomAssignedStaff.includes(tenNV)) {
+            return; // Loại bỏ nhân sự ngoài phòng đối với bệnh nhân ra viện!
+          }
+        }
         if (tNow < (staffSetupReady[tenNV] || 0)) return;
         
         const checkSlot = (slotStart, slotEnd) => {
@@ -1207,6 +1216,13 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
             const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(r);
             const subCat = isNurse ? 'DD' : 'KTV';
+            if (isDischargedPat && targetRoom && roomAssignedStaff.length > 0) {
+              const hasRoomSubWithSkill = roomAssignedStaff.some(st => {
+                const rSt = (staffRole[st] || '').toLowerCase();
+                return !/bác sĩ|bac si|^bs\b/i.test(rSt) && !/^bs\b/i.test(st) && (staffBySkill[tenThuThuat.toLowerCase()] || []).includes(st);
+              });
+              if (hasRoomSubWithSkill && !roomAssignedStaff.includes(x)) return false;
+            }
             if (roomRoleStaff[targetRoom]) {
               const currentSubSet = roomRoleStaff[targetRoom][subCat];
               if (currentSubSet && !currentSubSet.has(x) && currentSubSet.size >= maxDailyUniquePerRole) {
@@ -2836,7 +2852,7 @@ function getSafeCache() {
           }
         });
       }
-      const leaveRaw = p.gioRa || p.leave_time || p[6] || "";
+      const leaveRaw = p.gioRa || p.leave_time || p.leaveTime || (p.leave && p.leave !== "16:30" && p.leave !== "17:00" ? p.leave : "") || p[6] || "";
       const isRaVien = (leaveRaw && String(leaveRaw).trim() !== "");
 
       const pendingFiltered = procs.filter(tenThuThuat => {

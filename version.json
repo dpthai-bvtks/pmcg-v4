@@ -1,6 +1,6 @@
 {
-    "version": "4.3.2-rev6",
+    "version": "4.3.2-rev7",
     "releaseDate": "21/10/2026",
-    "releaseTime": "12:46 21/10/2026",
-    "notes": "Khắc phục triệt để lỗi ReferenceError: rawCurrentSched is not defined khi bấm Chạy Xếp Lịch Tổng; đảm bảo đọc an toàn lịch hiện tại từ window.currentScheduleData."
+    "releaseTime": "13:10 21/10/2026",
+    "notes": "Ràng buộc cứng: Toàn bộ ca của bệnh nhân ra viện của phòng nào thì do nhân sự phụ trách phòng đó làm hết 100%, không phụ thuộc vào nhân sự phòng khác; khắc phục nhận diện giờ ra viện từ p.leave."
 }

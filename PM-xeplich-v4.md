@@ -8900,5 +8900,24 @@ oomRoleStaff[phong][vaiTro] vào js/scheduler-engine.js:
     - **Giải pháp:** Bổ sung lại dòng khai báo an toàn cho `rawCurrentSched` trước khi duyệt lọc ca ghim tay `__isPinnedByUser`.
     - **File sửa đổi:** `js/app.js`, `version.json`, `index.html`, `sw.js`, `PM-xeplich-v4.md`.
 
+14. **Ràng Buộc Cứng: Toàn Bộ Ca Của Bệnh Nhân Ra Viện Của Phòng Nào Thì Do Nhân Sự Phụ Trách Phòng Đó Làm Hết 100%, Không Phụ Thuộc Vào Nhân Sự Phòng Khác (v4.3.2-rev7 - 21/10/2026):**
+    - **Yêu cầu nghiệp vụ từ Bác sĩ:**
+      * Với bệnh nhân ra viện của phòng nào thì bắt buộc do nhân sự được phân công phụ trách phòng đó làm hết toàn bộ các thủ thuật, tuyệt đối không phụ thuộc hoặc điều động nhân sự từ phòng khác sang.
+    - **Nguyên nhân kỹ thuật & Cải tiến cốt lõi:**
+      1. Khắc phục hàm `leaveRaw`: Trước đây dòng 2855 chỉ kiểm tra `p.gioRa || p.leave_time || p[6]` mà bỏ sót thuộc tính `p.leave` (vốn được lưu trong cache là `'14:00'` hoặc `'09:00'`). Do đó các bệnh nhân có giờ ra viện bị hiểu nhầm là bệnh nhân nội trú thông thường (`leave = 9999`). Đã bổ sung fallback đầy đủ `(p.leave && p.leave !== "16:30" && p.leave !== "17:00" ? p.leave : "")`.
+      2. Trong `_turbo_core_logic`: Khóa cứng `candidatesMain` và `validSubs`: Nếu là bệnh nhân ra viện (`isDischargedPat = patient.leave !== 9999`), kiểm tra danh sách nhân sự phụ trách phòng `roomStaff[targetRoom]`. Nếu phòng có nhân sự đáp ứng thủ thuật đó, loại bỏ ngay lập tức bất kỳ nhân sự nào ngoài phòng.
+      3. Trong `MedicalCPSolver` (`js/cp-solver.js`): Đồng bộ khóa cứng `staffCandidates` và `subPool` của bộ giải cứu ca rớt theo đúng `db.roomStaff[patRoom]`.
+    - **Kết quả nghiệm thu:**
+      * BN Đào Đình Tuynh (Phòng C118): BS Đạt (Điện châm, Thủy châm), KTV Hà chip (Điện xung), ĐD Duyên (Phụ) ➔ 100% nhân sự C118.
+      * BN Nguyễn Duy Hà (Phòng C118): BS Đạt (Điện châm, Thủy châm), KTV Hà chip (Sóng ngắn, Điện xung), ĐD Duyên (Phụ) ➔ 100% nhân sự C118.
+      * BN Nguyễn Đăng Thanh (Phòng C118): BS Đạt (Điện châm, Thủy châm), KTV Hà chip (Điện xung), ĐD Duyên (Phụ) ➔ 100% nhân sự C118.
+      * BN Vũ Văn Quý (Phòng C118): KTV Hà chip (Hồng ngoại, Điện xung) ➔ 100% nhân sự C118.
+      * BN Bùi Thị Đoàn (Phòng 4): BS Thái (Điện châm, Thủy châm), KTV Lương (Điện xung), ĐD Thuyến (Phụ) ➔ 100% nhân sự Phòng 4.
+      * BN Bùi Thị Gián (Phòng 4): BS Thái (Điện châm, Thủy châm), KTV Lương (Điện xung), ĐD Thuyến (Phụ) ➔ 100% nhân sự Phòng 4.
+      * BN Trần Văn Quận (Phòng 1+2+3): BS Khuyến (Điện châm, Thủy châm), KTV Phan Hiền (Điện xung), ĐD Thuyến/Thuyến 2 (Phụ) ➔ 100% nhân sự Phòng 1+2+3.
+      * 100% ca ra viện xong trước giờ hẹn ra viện; 0 ca rớt; xuất lại file `D:\lich-trinh-hang-ngay\tháng 10\Lich_ThuThuat_21-10-2026.xlsx` và cập nhật SQLite database `pmcg.db`.
+    - **File sửa đổi:** `js/scheduler-engine.js`, `js/cp-solver.js`, `version.json`, `index.html`, `sw.js`, `PM-xeplich-v4.md`.
+
+
 
 

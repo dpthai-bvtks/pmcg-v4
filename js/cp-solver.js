@@ -685,7 +685,7 @@ function isContinuousProcedureLocal(info, dur) {
       const bedCandidates = baseBeds;
 
       // Danh sách nhân viên đủ kỹ năng
-      const staffCandidates = (db.rawStaff || [])
+      let staffCandidates = (db.rawStaff || [])
         .filter(s => {
           const name = s[0];
           const roleRaw = s[1] || '';
@@ -712,6 +712,16 @@ function isContinuousProcedureLocal(info, dur) {
           return skillsList.some(sk => sk === pName || (pVt && sk === pVt) || (pTenGoc && sk === pTenGoc) || sk.includes(pName) || pName.includes(sk) || (pVt && (sk.includes(pVt) || pVt.includes(sk))));
         })
         .map(s => s[0]);
+
+      // 🔒 BẮT BUỘC: Với bệnh nhân ra viện của phòng nào thì do nhân sự phụ trách phòng đó làm hết!
+      const isDischargedPat = (patObj && patObj.leave && patObj.leave < 9999);
+      const roomAssignedStaff = (db.roomStaff && db.roomStaff[patRoom]) || [];
+      if (isDischargedPat && roomAssignedStaff.length > 0) {
+        const hasStaffInRoom = staffCandidates.some(s => roomAssignedStaff.includes(s));
+        if (hasStaffInRoom) {
+          staffCandidates = staffCandidates.filter(s => roomAssignedStaff.includes(s));
+        }
+      }
 
       let assignmentFound = null;
 
@@ -834,8 +844,17 @@ function isContinuousProcedureLocal(info, dur) {
               })
               .map(s => s.name);
 
-            for (let subIdx = 0; subIdx < subPool.length; subIdx++) {
-              const subName = subPool[subIdx];
+            let finalSubPool = subPool;
+            // 🔒 BẮT BUỘC: Với bệnh nhân ra viện của phòng nào thì NV Phụ cũng do nhân sự phụ trách phòng đó làm!
+            if (isDischargedPat && roomAssignedStaff.length > 0) {
+              const hasSubInRoom = subPool.some(s => roomAssignedStaff.includes(s));
+              if (hasSubInRoom) {
+                finalSubPool = subPool.filter(s => roomAssignedStaff.includes(s));
+              }
+            }
+
+            for (let subIdx = 0; subIdx < finalSubPool.length; subIdx++) {
+              const subName = finalSubPool[subIdx];
               const subShifts = staffShiftMap.get(subName);
               if (subShifts && subShifts.length > 0) {
                 const inShift = candStaffIntervals.every(([ivS, ivE]) => {
