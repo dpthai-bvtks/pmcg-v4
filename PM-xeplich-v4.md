@@ -8894,4 +8894,11 @@ oomRoleStaff[phong][vaiTro] vào js/scheduler-engine.js:
       * `version.json`, `index.html`, `sw.js` (nâng lên v4.3.2-rev5, 12:15 21/10/2026).
       * `PM-xeplich-v4.md`
 
+13. **Khắc Phục Lỗi Biến `rawCurrentSched is not defined` Khi Bấm Chạy Xếp Lịch Tổng (v4.3.2-rev6 - 21/10/2026):**
+    - **Hiện tượng:** Người dùng bấm "Chạy xếp lịch" gặp thông báo: `Lỗi xếp lịch: rawCurrentSched is not defined`.
+    - **Nguyên nhân:** Khi dọn dẹp logic ghim ca tự động ở rev5, biến `rawCurrentSched` đã bị xóa dòng khai báo `const rawCurrentSched = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];` nhưng dòng duyệt ghim tay bên dưới vẫn tham chiếu đến nó.
+    - **Giải pháp:** Bổ sung lại dòng khai báo an toàn cho `rawCurrentSched` trước khi duyệt lọc ca ghim tay `__isPinnedByUser`.
+    - **File sửa đổi:** `js/app.js`, `version.json`, `index.html`, `sw.js`, `PM-xeplich-v4.md`.
+
+
 

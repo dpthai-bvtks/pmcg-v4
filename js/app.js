@@ -7546,6 +7546,7 @@ var dataCache = window.dataCache;
                 // 🔒 CHỈ GHIM CÁC CA ĐƯỢC NGƯỜI DÙNG CHỦ ĐỘNG GHIM TAY (__isPinnedByUser)
                 // Khi "Chạy Xếp Lịch Tổng", toàn bộ bệnh nhân (kể cả BN ra viện) được giải thuật xếp mới tối ưu từ đầu
                 // theo đúng trần nhân sự của kịch bản vừa chọn (bệnh nhân ra viện vẫn tự động xếp xong trước giờ ra viện).
+                const rawCurrentSched = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];
                 const pinnedDischargedSched = [];
                 (Array.isArray(rawCurrentSched) ? rawCurrentSched : []).forEach(row => {
                     if (!row || isDroppedScheduleRow(row) || !row.gioDienRa || row.gioDienRa === '--' || String(row.gioDienRa).includes('Rớt')) return;

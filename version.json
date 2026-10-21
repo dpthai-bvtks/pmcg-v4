@@ -1,6 +1,6 @@
 {
-    "version": "4.3.2-rev5",
+    "version": "4.3.2-rev6",
     "releaseDate": "21/10/2026",
-    "releaseTime": "12:15 21/10/2026",
-    "notes": "Khắc phục triệt để lỗi phình nhân sự phòng (vượt quá 2 người/vai trò ở Ngày vắng) do ghim tự động ca ra viện cũ sang kịch bản mới; đăng ký chặt chẽ ca ghim vào roomRoleStaff và roomActiveCases; bảo vệ trần đồng thời trong compactTimelineGaps."
+    "releaseTime": "12:46 21/10/2026",
+    "notes": "Khắc phục triệt để lỗi ReferenceError: rawCurrentSched is not defined khi bấm Chạy Xếp Lịch Tổng; đảm bảo đọc an toàn lịch hiện tại từ window.currentScheduleData."
 }
