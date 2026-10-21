@@ -994,13 +994,18 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
       const candidatesMain = [], candidatesSub = [];
       // 🔒 BẮT BUỘC: Với bệnh nhân ra viện của phòng nào thì do nhân sự phụ trách phòng đó làm hết, không phụ thuộc vào nhân sự phòng khác
-      const isDischargedPat = (patient.leave !== 9999);
       const roomAssignedStaff = (roomStaff && targetRoom && roomStaff[targetRoom]) ? roomStaff[targetRoom] : [];
+      const isDischargedPat = (patient.leave !== 9999);
       (staffBySkill[tenThuThuat.toLowerCase()] || []).forEach(tenNV => {
-        if (isDischargedPat && targetRoom && roomAssignedStaff.length > 0) {
+        // 🔒 CHỐNG DÀN TRẢI / NHẢY PHÒNG ZICZAC:
+        // Ở vòng xếp chính (không phải ca vét), nếu phòng có nhân sự phụ trách có kỹ năng này thì ưu tiên tuyệt đối nhân sự phòng đó, cấm nhân sự ngoài phòng nhảy vào cướp ca lộn xộn!
+        if (targetRoom && roomAssignedStaff.length > 0) {
           const hasRoomStaffWithSkill = roomAssignedStaff.some(st => (staffBySkill[tenThuThuat.toLowerCase()] || []).includes(st));
           if (hasRoomStaffWithSkill && !roomAssignedStaff.includes(tenNV)) {
-            return; // Loại bỏ nhân sự ngoài phòng đối với bệnh nhân ra viện!
+            // Đối với ca ra viện: cấm 100% trong mọi trường hợp
+            if (isDischargedPat) return;
+            // Đối với ca thông thường: cấm ở vòng xếp chính, chỉ cho phép chi viện khi chuyển sang pha cứu ca vét
+            if (!isSupplemental && !isRelaxedPass) return;
           }
         }
         if (tNow < (staffSetupReady[tenNV] || 0)) return;
@@ -1216,12 +1221,15 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
             const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(r);
             const subCat = isNurse ? 'DD' : 'KTV';
-            if (isDischargedPat && targetRoom && roomAssignedStaff.length > 0) {
+            if (targetRoom && roomAssignedStaff.length > 0) {
               const hasRoomSubWithSkill = roomAssignedStaff.some(st => {
                 const rSt = (staffRole[st] || '').toLowerCase();
                 return !/bác sĩ|bac si|^bs\b/i.test(rSt) && !/^bs\b/i.test(st) && (staffBySkill[tenThuThuat.toLowerCase()] || []).includes(st);
               });
-              if (hasRoomSubWithSkill && !roomAssignedStaff.includes(x)) return false;
+              if (hasRoomSubWithSkill && !roomAssignedStaff.includes(x)) {
+                if (isDischargedPat) return false;
+                if (!isSupplemental && !isRelaxedPass) return false;
+              }
             }
             if (roomRoleStaff[targetRoom]) {
               const currentSubSet = roomRoleStaff[targetRoom][subCat];

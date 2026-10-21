@@ -8937,6 +8937,26 @@ oomRoleStaff[phong][vaiTro] vào js/scheduler-engine.js:
       * Đã cập nhật 202 ca vào bảng `lich_trinh` của CSDL `C:\PMCG-Data\pmcg.db`.
     - **File sửa đổi:** `js/scheduler-engine.js`, `js/cp-solver.js`, `version.json`, `index.html`, `sw.js`, `PM-xeplich-v4.md`.
 
+16. **Áp Dụng Luật Khóa Chặt Nhân Sự Theo Phòng (Strict Room Ownership) - Triệt Tiêu Hoàn Toàn Tình Trạng Nhảy Phòng Ziczac, Dàn Trải (v4.3.2-rev9 - 21/10/2026):**
+    - **Hiện tượng thực tế phản ánh từ Bác sĩ:**
+      * Bác sĩ đang ở phòng này làm 1 vài ca thì lại nhảy sang phòng khác làm, rồi lại nhảy về (ví dụ: BS Đạt phụ trách Phòng C118 nhưng nhảy qua nhảy lại giữa C118 và Phòng 4 đến 7 lần trong ngày; BS Thảo nhảy qua nhảy lại giữa Phòng TT1 và C118). Lịch trình bị dàn trải ziczac và thiếu tính thực tiễn y tế.
+    - **Nguyên nhân kỹ thuật:**
+      * Cơ chế "Tham lam slot rảnh sớm nhất": Khi xếp ca của Phòng 4 lúc 08:52, BS Thái (Phòng 4) đang vướng ca chưa xong, thuật toán thấy BS Đạt (C118) đang rảnh nên bốc luôn BS Đạt sang Phòng 4 làm, thay vì để ca Phòng 4 lùi lại vài phút chờ BS Thái rảnh.
+      * Hiệu ứng Đô-mi-nô đổi phòng chéo: Khi BS Đạt bị bốc sang Phòng 4 thì Phòng C118 bị thiếu bác sĩ, thuật toán lại phải bốc BS Thảo (TT1) sang C118 làm thế chân cho BS Đạt.
+    - **Giải pháp & Cải tiến cốt lõi:**
+      * Khóa chặt `candidatesMain` và `candidatesSub`: Nếu phòng có nhân sự phụ trách đáp ứng kỹ năng, bắt buộc 100% phải do nhân sự phụ trách phòng đó làm ở vòng xếp chính; cấm tuyệt đối nhân sự phòng khác nhảy vào cướp ca lộn xộn.
+      * Chỉ cho phép chi viện khi phòng mình đã hoàn thành hết sạch ca trong ngày hoặc chuyển sang pha cứu ca vét cuối ngày, và khi chi viện thì làm theo khối thời gian liền mạch (Block).
+    - **Kết quả nghiệm thu:**
+      * BS Đạt: Làm trọn vẹn 16 ca tại duy nhất 1 phòng: **Phòng C118** (0 ca nhảy phòng).
+      * BS Thái: Làm trọn vẹn 18 ca tại duy nhất 1 phòng: **Phòng 4** (0 ca nhảy phòng).
+      * BS Khuyến: Làm trọn vẹn 28 ca tại duy nhất 1 phòng: **Phòng 1+2+3** (0 ca nhảy phòng).
+      * BS Thảo: Sáng làm hết sạch 12 ca ở **Phòng TT1**, xong việc mới sang C118 hỗ trợ.
+      * KTV Hà chip (41 ca - C118), KTV Phan Hiền (33 ca - Phòng 1+2+3) ngồi cố định tại phòng mình.
+      * Đạt trọn vẹn **202 / 202 ca (0 ca rớt)**!
+      * Đã xuất file tham khảo theo định dạng chuẩn: `D:\lich-trinh-hang-ngay\tháng 10\Lich_ThuThuat_21-10-2026_KhoaPhong_ThamKhao.xlsx`. Database chính `pmcg.db` được giữ nguyên theo yêu cầu.
+    - **File sửa đổi:** `js/scheduler-engine.js`, `version.json`, `index.html`, `sw.js`, `PM-xeplich-v4.md`.
+
+
 
 
 

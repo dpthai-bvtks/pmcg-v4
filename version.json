@@ -1,6 +1,6 @@
 {
-    "version": "4.3.2-rev8",
+    "version": "4.3.2-rev9",
     "releaseDate": "21/10/2026",
-    "releaseTime": "13:35 21/10/2026",
-    "notes": "Chuẩn hóa trần nhân sự: Ngày vắng <= 2 người/vai trò/phòng/ngày, Ngày đông <= 3 người/vai trò/phòng/ngày; đảm bảo 100% bệnh nhân ra viện hoàn thành đúng giờ và do nhân sự phòng làm hết."
+    "releaseTime": "14:38 21/10/2026",
+    "notes": "Áp dụng luật Khóa chặt nhân sự theo phòng (Strict Room Ownership): Ưu tiên tuyệt đối nhân sự phụ trách phòng, chấm dứt hoàn toàn tình trạng nhảy phòng ziczac dàn trải."
 }
