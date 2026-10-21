@@ -722,10 +722,10 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
   const isCrowdedDay = crowdedOverride === 1 ? true : (crowdedOverride === 0 ? false : autoCrowded);
   if (db) db._isCrowdedDay = isCrowdedDay;
 
-  // 🏥 KHỐNG CHẾ TRẦN NHÂN SỰ THEO KỊCH BẢN (ĐỒNG THỜI & TỔNG NGÀY)
-  // - Ngày vắng (crowdedVal = 0): Đồng thời <= 1 người/vai trò, Tổng ngày <= 2 người/vai trò
-  // - Ngày đông (crowdedVal = 1): Đồng thời <= 2 người/vai trò, Tổng ngày <= 3 người/vai trò
-  const maxConcurrentPerRole = isCrowdedDay ? 2 : 1;
+  // 🏥 KHỐNG CHẾ TRẦN NHÂN SỰ THEO KỊCH BẢN (THEO PHÒNG TRONG NGÀY)
+  // - Ngày vắng (crowdedVal = 0): Tối đa <= 2 người/vai trò/phòng/ngày
+  // - Ngày đông (crowdedVal = 1): Tối đa <= 3 người/vai trò/phòng/ngày
+  const maxConcurrentPerRole = isCrowdedDay ? 3 : 2;
   const maxDailyUniquePerRole = isCrowdedDay ? 3 : 2;
 
   const checkRoomRoleFeasibility = (rm, s, e, mainStaff, subStaff) => {

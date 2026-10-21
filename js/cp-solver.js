@@ -230,7 +230,7 @@ function isContinuousProcedureLocal(info, dur) {
     // 5. Ràng buộc trần nhân sự đồng thời và trần tổng ngày theo kịch bản (Ngày vắng <= 1 đồng thời & <= 2 tổng ngày; Ngày đông <= 2 đồng thời & <= 3 tổng ngày)
     if (patRoom) {
       const isCrowded = (db && db._isCrowdedDay !== undefined) ? db._isCrowdedDay : Boolean(db && db.isCrowdedDay);
-      const maxConc = isCrowded ? 2 : 1;
+      const maxConc = isCrowded ? 3 : 2;
       const maxDaily = isCrowded ? 3 : 2;
 
       const getStaffCat = (st) => {
@@ -532,7 +532,7 @@ function isContinuousProcedureLocal(info, dur) {
 
     // 🏥 KHỐNG CHẾ TRẦN NHÂN SỰ PHÒNG THEO KỊCH BẢN (ĐỒNG THỜI & TỔNG NGÀY)
     const isCrowded = (db && db._isCrowdedDay !== undefined) ? db._isCrowdedDay : Boolean(db && db.isCrowdedDay);
-    const maxConcurrentPerRole = isCrowded ? 2 : 1;
+    const maxConcurrentPerRole = isCrowded ? 3 : 2;
     const maxDailyUniquePerRole = isCrowded ? 3 : 2;
 
     const getStaffCatLocal = (st) => {

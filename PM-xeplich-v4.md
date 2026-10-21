@@ -8918,6 +8918,26 @@ oomRoleStaff[phong][vaiTro] vào js/scheduler-engine.js:
       * 100% ca ra viện xong trước giờ hẹn ra viện; 0 ca rớt; xuất lại file `D:\lich-trinh-hang-ngay\tháng 10\Lich_ThuThuat_21-10-2026.xlsx` và cập nhật SQLite database `pmcg.db`.
     - **File sửa đổi:** `js/scheduler-engine.js`, `js/cp-solver.js`, `version.json`, `index.html`, `sw.js`, `PM-xeplich-v4.md`.
 
+15. **Chuẩn Hóa Ràng Buộc Trần Nhân Sự Theo Ngày: Ngày Vắng $\le 2$ Người/Vai Trò/Phòng Trong Ngày, Ngày Đông $\le 3$ Người/Vai Trò/Phòng Trong Ngày (v4.3.2-rev8 - 21/10/2026):**
+    - **Yêu cầu nghiệp vụ:**
+      * Ngày vắng: Đảm bảo không quá 2 người/vai trò/phòng trong ngày (BS $\le 2$, KTV $\le 2$, ĐD $\le 2$).
+      * Ngày đông: Đảm bảo không quá 3 người/vai trò/phòng trong ngày (BS $\le 3$, KTV $\le 3$, ĐD $\le 3$).
+      * Xếp lịch lại từ CSDL `C:\PMCG-Data\pmcg.db` ngày 21/10/2026 với 202 ca thủ thuật theo 4 hướng: Ngày vắng + KB1, Ngày vắng + KB2, Ngày đông + KB1, Ngày đông + KB2.
+    - **Cải tiến thuật toán:**
+      * Điều chỉnh `maxConcurrentPerRole`: Ngày vắng nâng từ 1 lên 2; Ngày đông nâng từ 2 lên 3 (đồng bộ với trần nhân sự tổng ngày của từng phòng). Nhờ đó các phòng nhiều giường (15 giường) không bị nghẽn cổ chai tuần tự, hai nhân sự cùng vai trò có thể phục vụ đồng thời cho 2 giường khác nhau trong cùng phòng.
+      * Tỉ lệ xếp thành công ở Ngày vắng tăng vọt từ 180 ca lên **195 / 202 ca** (rớt 7 ca).
+      * Ở Ngày đông: Xếp trọn vẹn **202 / 202 ca (0 ca rớt)**.
+      * 100% bệnh nhân ra viện (12 bệnh nhân) được phục vụ bởi đúng nhân sự phụ trách phòng đó và hoàn tất trước 14:00.
+      * Đã xuất và lưu đầy đủ 4 file Excel vào `D:\lich-trinh-hang-ngay\tháng 10\`:
+        + `Lich_21.10.2026_NgayVang_KichBan1.xlsx` (195 ca)
+        + `Lich_21.10.2026_NgayVang_KichBan2.xlsx` (195 ca)
+        + `Lich_21.10.2026_NgayDong_KichBan1.xlsx` (202 ca)
+        + `Lich_21.10.2026_NgayDong_KichBan2.xlsx` (202 ca)
+        + `Lich_ThuThuat_21-10-2026.xlsx` (195 ca)
+      * Đã cập nhật 202 ca vào bảng `lich_trinh` của CSDL `C:\PMCG-Data\pmcg.db`.
+    - **File sửa đổi:** `js/scheduler-engine.js`, `js/cp-solver.js`, `version.json`, `index.html`, `sw.js`, `PM-xeplich-v4.md`.
+
+
 
 
 

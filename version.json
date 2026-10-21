@@ -1,6 +1,6 @@
 {
-    "version": "4.3.2-rev7",
+    "version": "4.3.2-rev8",
     "releaseDate": "21/10/2026",
-    "releaseTime": "13:10 21/10/2026",
-    "notes": "Ràng buộc cứng: Toàn bộ ca của bệnh nhân ra viện của phòng nào thì do nhân sự phụ trách phòng đó làm hết 100%, không phụ thuộc vào nhân sự phòng khác; khắc phục nhận diện giờ ra viện từ p.leave."
+    "releaseTime": "13:35 21/10/2026",
+    "notes": "Chuẩn hóa trần nhân sự: Ngày vắng <= 2 người/vai trò/phòng/ngày, Ngày đông <= 3 người/vai trò/phòng/ngày; đảm bảo 100% bệnh nhân ra viện hoàn thành đúng giờ và do nhân sự phòng làm hết."
 }
