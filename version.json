@@ -1,6 +1,6 @@
 {
-    "version": "4.3.2-rev3",
-    "releaseDate": "20/10/2026",
-    "releaseTime": "16:10 20/10/2026",
-    "notes": "Nâng cấp Universal Excel Parser: giải quyết triệt để lỗi nhận diện cột giờ thủ thuật và tiêu đề nhiều tầng của file HIS BVTKS-CS2 (tt20.xls); triệt tiêu lỗi spinner loading treo cứng che khuất modal cấu hình cột."
+    "version": "4.3.2-rev4",
+    "releaseDate": "21/10/2026",
+    "releaseTime": "11:45 21/10/2026",
+    "notes": "Khắc phục triệt để ràng buộc phân bổ nhân sự phòng cho Kịch bản Ngày vắng (tối đa 1 người/vai trò đồng thời, tối đa 2 người/vai trò/ngày) và Kịch bản Ngày đông trên toàn bộ hệ thống: Turbo-Engine, Universal CP-SAT Rescuer, đồng bộ tham số kịch bản sang Mini PC Solver."
 }

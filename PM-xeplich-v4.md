@@ -8813,3 +8813,46 @@ oomRoleStaff[phong][vaiTro] vào js/scheduler-engine.js:
       * `js/thongke.js`
       * `version.json`, `index.html`, `sw.js` (nâng lên v4.3.2-rev3, 16:10 20/10/2026).
       * `PM-xeplich-v4.md`
+
+11. **Khắc Phục Triệt Để Phân Bổ Nhân Sự Phòng Theo Kịch Bản Ngày Vắng & Ngày Đông (v4.3.2-rev4 - 21/10/2026):**
+    - **Vấn đề thực tế từ người dùng:**
+      * Ngày 21/10/2026, khi bấm chọn kịch bản **"Ngày vắng"**, việc chia giờ và nhân sự phòng vẫn chưa đạt yêu cầu:
+        1. Tại phòng C118, nhiều thời điểm xuất hiện 2 - 3 KTV cùng lúc (11:05 có tới 3 KTV), vi phạm trần đồng thời Ngày vắng ($\le 1$ người/vai trò).
+        2. Tổng số KTV xuất hiện trong ngày tại C118 phình to lên 4 KTV khác nhau, vi phạm trần ngày ($\le 2$ người/vai trò/phòng/ngày).
+        3. Nhân sự phụ (Điều dưỡng) không được kiểm tra trần số lượng, dẫn đến tình trạng 3 - 4 ĐD xuất hiện rải rác cùng một phòng.
+    - **Nguyên nhân kỹ thuật cốt lõi:**
+      1. Trong `_turbo_core_logic`: Ban đầu chưa có cơ chế theo dõi số lượng nhân sự đồng thời tại từng thời điểm (`roomActiveCases`), chỉ kiểm tra nhân viên cá nhân mà không chặn trần theo vai trò (BS/KTV/ĐD) trong phòng.
+      2. Trong `compactTimelineGaps`: Hàm dồn ca giảm khoảng rảnh chỉ kiểm tra máy móc, giường, bệnh nhân và ca trực cá nhân; hoàn toàn bỏ qua trần đồng thời của phòng, làm dồn nhiều ca trùng thời điểm vào cùng một phòng.
+      3. Trong `MedicalCPSolver` (`solveBranchAndBound`): Bộ giải cứu ca rớt không kiểm tra ràng buộc phòng, tùy tiện nhét nhân sự vào phòng làm vỡ trần.
+      4. Vòng lặp chọn `nvPhu` (Điều dưỡng): Không kiểm tra trần số lượng ĐD tối đa theo ngày của phòng.
+    - **Giải pháp xử lý triệt để:**
+      * **Khống chế trần đồng thời và trần ngày trong `_turbo_core_logic`:**
+        - Khởi tạo `roomActiveCases` theo dõi chính xác từng ca trong phòng.
+        - Xây dựng hàm kiểm định nghiêm ngặt `checkRoomRoleFeasibility(rm, s, e, mainStaff, subStaff)`:
+          + Ngày vắng: $\le 1$ người / vai trò tại 1 thời điểm; $\le 2$ người / vai trò / phòng / ngày.
+          + Ngày đông: $\le 2$ người / vai trò tại 1 thời điểm; $\le 3$ người / vai trò / phòng / ngày.
+        - Bổ sung kiểm tra cả nhân sự chính (BS/KTV) và nhân sự phụ (ĐD) khi xét tính khả thi.
+      * **Bảo vệ `compactTimelineGaps`:**
+        - Bổ sung bước kiểm tra trần đồng thời phòng vào `hasConflictAt`: Duyệt các mốc thời gian giao nhau trong phòng, nếu tại bất kỳ thời điểm nào số lượng BS, KTV hoặc ĐD vượt quá trần kịch bản thì lập tức từ chối dồn ca.
+      * **Bảo vệ `MedicalCPSolver`:**
+        - Tích hợp `checkRoomFeasibility` và `recordRoomCase` vào `isFeasibleAssignment` và `solveBranchAndBound` trong `js/cp-solver.js`.
+      * **Đồng bộ tham số sang Mini PC Solver:**
+        - Truyền đầy đủ `crowdedVal` và `isCrowdedDay` vào `payloadDb` và `solverOptions`. Gán biến toàn cục `db._isCrowdedDay` để toàn bộ pipeline hậu xử lý nhận diện chính xác.
+    - **Kết quả kiểm thử thực tế trên 199 ca ngày 21/10/2026:**
+      * **Kịch bản Ngày vắng (`crowdedVal = 0`):**
+        - Phòng C118: Đồng thời [BS: 1, KTV: 1, DD: 1] ✅, Tổng ngày [BS: 2, KTV: 2, DD: 2] ✅
+        - Phòng 1+2+3: Đồng thời [BS: 1, KTV: 1, DD: 1] ✅, Tổng ngày [BS: 2, KTV: 2, DD: 2] ✅
+        - Phòng 4: Đồng thời [BS: 1, KTV: 1, DD: 1] ✅, Tổng ngày [BS: 1, KTV: 2, DD: 2] ✅
+        - Phòng TT1: Đồng thời [BS: 1, KTV: 1, DD: 1] ✅, Tổng ngày [BS: 1, KTV: 2, DD: 2] ✅
+        - **Tổng số vi phạm Ngày vắng: 0.**
+      * **Kịch bản Ngày đông (`crowdedVal = 1`):**
+        - Tất cả các phòng: Đồng thời $\le 2$ người/vai trò ✅, Tổng ngày $\le 3$ người/vai trò ✅
+        - Xếp thành công 199/199 ca (0 rớt).
+        - **Tổng số vi phạm Ngày đông: 0.**
+      * **Kiểm định chất lượng 9/9 tầng (`verify-build.mjs`): Vượt qua 100%.**
+    - **File sửa đổi:**
+      * `js/scheduler-engine.js`
+      * `js/cp-solver.js`
+      * `version.json`, `index.html`, `sw.js` (nâng lên v4.3.2-rev4, 11:45 21/10/2026).
+      * `PM-xeplich-v4.md`
+
