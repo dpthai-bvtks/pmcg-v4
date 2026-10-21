@@ -1,6 +1,6 @@
 {
-    "version": "4.3.2-rev4",
+    "version": "4.3.2-rev5",
     "releaseDate": "21/10/2026",
-    "releaseTime": "11:45 21/10/2026",
-    "notes": "Khắc phục triệt để ràng buộc phân bổ nhân sự phòng cho Kịch bản Ngày vắng (tối đa 1 người/vai trò đồng thời, tối đa 2 người/vai trò/ngày) và Kịch bản Ngày đông trên toàn bộ hệ thống: Turbo-Engine, Universal CP-SAT Rescuer, đồng bộ tham số kịch bản sang Mini PC Solver."
+    "releaseTime": "12:15 21/10/2026",
+    "notes": "Khắc phục triệt để lỗi phình nhân sự phòng (vượt quá 2 người/vai trò ở Ngày vắng) do ghim tự động ca ra viện cũ sang kịch bản mới; đăng ký chặt chẽ ca ghim vào roomRoleStaff và roomActiveCases; bảo vệ trần đồng thời trong compactTimelineGaps."
 }

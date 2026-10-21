@@ -539,8 +539,10 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
   // 🏥 KHỐNG CHẾ TRẦN NHÂN SỰ PHÒNG THEO KỊCH BẢN (NGÀY VẮNG: <= 2 NGƯỜI/VAI TRÒ, NGÀY ĐÔNG: <= 3 NGƯỜI/VAI TRÒ)
   const roomRoleStaff = {};
+  const roomActiveCases = {};
   for (const phong in db.roomBeds) {
     roomRoleStaff[phong] = { 'BS': new Set(), 'KTV': new Set(), 'DD': new Set() };
+    roomActiveCases[phong] = [];
     const defaultStaff = roomStaff[phong] || [];
     defaultStaff.forEach(st => {
       const r = (staffRole[st] || '').toLowerCase();
@@ -687,6 +689,30 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       staffLoad[resolvedNvPhu].used_mins += (staffEnd - gioStart) + (hasTeardown ? 1 : 0);
       staffLoad[resolvedNvPhu].procs_done[tenThuThuat] = (staffLoad[resolvedNvPhu].procs_done[tenThuThuat] || 0) + 1;
     }
+
+    // 🔒 KHÓA NHÂN SỰ VÀ CA PHÒNG TỪ LỊCH ĐÃ CÓ (cleanExisting)
+    if (phong && roomRoleStaff[phong]) {
+      const getStaffCat = (st) => {
+        if (!st) return null;
+        const r = (staffRole[st] || '').toLowerCase();
+        const isDoc = /bác sĩ|bac si|^bs\b/i.test(r) || /^bs\b/i.test(st);
+        const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(r);
+        return isDoc ? 'BS' : (isNurse ? 'DD' : 'KTV');
+      };
+      const cat1 = getStaffCat(resolvedNvChinh || nvChinh);
+      const cat2 = getStaffCat(resolvedNvPhu || nvPhu);
+      if (cat1 && roomRoleStaff[phong][cat1]) roomRoleStaff[phong][cat1].add(resolvedNvChinh || nvChinh);
+      if (cat2 && roomRoleStaff[phong][cat2]) roomRoleStaff[phong][cat2].add(resolvedNvPhu || nvPhu);
+
+      if (roomActiveCases[phong]) {
+        roomActiveCases[phong].push({
+          s: gioStart,
+          e: gioEnd,
+          nvChinh: resolvedNvChinh || nvChinh,
+          nvPhu: resolvedNvPhu || nvPhu
+        });
+      }
+    }
   });
   const tempDropList = [], results = [], localProcCount = {};
   
@@ -701,11 +727,6 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
   // - Ngày đông (crowdedVal = 1): Đồng thời <= 2 người/vai trò, Tổng ngày <= 3 người/vai trò
   const maxConcurrentPerRole = isCrowdedDay ? 2 : 1;
   const maxDailyUniquePerRole = isCrowdedDay ? 3 : 2;
-
-  const roomActiveCases = {};
-  for (const phong in db.roomBeds) {
-    roomActiveCases[phong] = [];
-  }
 
   const checkRoomRoleFeasibility = (rm, s, e, mainStaff, subStaff) => {
     if (!rm || !roomActiveCases[rm]) return true;
@@ -1994,6 +2015,13 @@ function getPatientSignature(pat) {
             if (o._e > testStart && o._e < testEnd) checkPoints.push(o._e);
           }
         }
+        for (let j = 0; j < fixedList.length; j++) {
+          const f = fixedList[j];
+          if (f.phong === curRoom && is_overlap(testStart, testEnd, f.s, f.e)) {
+            if (f.s > testStart && f.s < testEnd) checkPoints.push(f.s);
+            if (f.e > testStart && f.e < testEnd) checkPoints.push(f.e);
+          }
+        }
 
         for (let p = 0; p < checkPoints.length; p++) {
           const t = checkPoints[p];
@@ -2022,6 +2050,21 @@ function getPatientSignature(pat) {
               if (oCat2 === 'BS') activeBS.add(o.nvPhu);
               else if (oCat2 === 'KTV') activeKTV.add(o.nvPhu);
               else if (oCat2 === 'DD') activeDD.add(o.nvPhu);
+            }
+          }
+
+          for (let j = 0; j < fixedList.length; j++) {
+            const f = fixedList[j];
+            if (f.phong === curRoom && f.s <= t && t < f.e) {
+              const fCat1 = getStaffCat(f.nv1);
+              const fCat2 = getStaffCat(f.nv2);
+              if (fCat1 === 'BS') activeBS.add(f.nv1);
+              else if (fCat1 === 'KTV') activeKTV.add(f.nv1);
+              else if (fCat1 === 'DD') activeDD.add(f.nv1);
+
+              if (fCat2 === 'BS') activeBS.add(f.nv2);
+              else if (fCat2 === 'KTV') activeKTV.add(f.nv2);
+              else if (fCat2 === 'DD') activeDD.add(f.nv2);
             }
           }
 

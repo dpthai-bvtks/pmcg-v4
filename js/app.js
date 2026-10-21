@@ -7543,29 +7543,14 @@ var dataCache = window.dataCache;
                     pushScheduleHistory('Chạy xếp lịch tổng (' + dateVal + ')');
                 }
 
-                // 🔒 TÍNH NĂNG 1: TỰ ĐỘNG GHIM CỨNG CÁC CA CỦA BỆNH NHÂN RA VIỆN, CHỈ XÁO TRỘN CÁC CA CÒN LẠI
-                const rawCurrentSched = window.currentScheduleData || (typeof dataCache !== 'undefined' && dataCache.schedule) || [];
-                const patCacheList = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.pat)) ? dataCache.pat : [];
-                const dischargedMap = new Map();
-                patCacheList.forEach(p => {
-                    const leave = String(p.gioRa || p.leave_time || '').trim();
-                    if (leave && leave.toLowerCase() !== 'none') {
-                        const kName = String(p.ten || p.name || '').trim().toLowerCase();
-                        const kNs = String(p.namSinh || '').trim();
-                        dischargedMap.set(`${kName}|${kNs}`, leave);
-                        dischargedMap.set(kName, leave);
-                        if (p.id) dischargedMap.set(String(p.id), leave);
-                    }
-                });
-
+                // 🔒 CHỈ GHIM CÁC CA ĐƯỢC NGƯỜI DÙNG CHỦ ĐỘNG GHIM TAY (__isPinnedByUser)
+                // Khi "Chạy Xếp Lịch Tổng", toàn bộ bệnh nhân (kể cả BN ra viện) được giải thuật xếp mới tối ưu từ đầu
+                // theo đúng trần nhân sự của kịch bản vừa chọn (bệnh nhân ra viện vẫn tự động xếp xong trước giờ ra viện).
                 const pinnedDischargedSched = [];
                 (Array.isArray(rawCurrentSched) ? rawCurrentSched : []).forEach(row => {
                     if (!row || isDroppedScheduleRow(row) || !row.gioDienRa || row.gioDienRa === '--' || String(row.gioDienRa).includes('Rớt')) return;
-                    const rName = String(row.tenBN || '').trim().toLowerCase();
-                    const rNs = String(row.namSinh || '').trim();
-                    const isDischarged = row.__isDischarged || dischargedMap.has(`${rName}|${rNs}`) || dischargedMap.has(rName) || (row.pId && dischargedMap.has(String(row.pId)));
-                    if (isDischarged) {
-                        const copyRow = { ...row, __isDischarged: true, __isPinned: true };
+                    if (row.__isPinnedByUser || row.__manualPinned) {
+                        const copyRow = { ...row, __isPinned: true, __isPinnedByUser: true };
                         pinnedDischargedSched.push(copyRow);
                     }
                 });
@@ -7615,7 +7600,7 @@ var dataCache = window.dataCache;
                 const unschCount = (out && out.unscheduledCount !== undefined) ? out.unscheduledCount : unsch.length;
                 let engineInfo = (out && out.engine) ? out.engine : 'Turbo-Engine';
                 if (pinnedDischargedSched.length > 0) {
-                    engineInfo += ` (🔒 Ghim ${pinnedDischargedSched.length} ca RV)`;
+                    engineInfo += ` (🔒 Ghim ${pinnedDischargedSched.length} ca ghim tay)`;
                 }
 
                 window.currentScheduleData = markDischargedInSchedule(sched);

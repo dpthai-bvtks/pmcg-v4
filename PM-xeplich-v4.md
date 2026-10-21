@@ -8856,3 +8856,42 @@ oomRoleStaff[phong][vaiTro] vào js/scheduler-engine.js:
       * `version.json`, `index.html`, `sw.js` (nâng lên v4.3.2-rev4, 11:45 21/10/2026).
       * `PM-xeplich-v4.md`
 
+12. **Khắc Phục Triệt Để Lỗi Phình Nhân Sự Phòng Do Ghim Tự Động Ca Ra Viện Cũ Khi Đổi Kịch Bản (v4.3.2-rev5 - 21/10/2026):**
+    - **Hiện tượng phát hiện:**
+      * Khi người dùng mở file `D:\lich-trinh-hang-ngay\tháng 10\Lich_ThuThuat_21-10-2026.xlsx` chạy kịch bản Ngày vắng (Kịch bản 2), phòng C118 có:
+        - 3 Bác sĩ: BS Đạt (4 ca), BS Thái (3 ca), BS Thảo (20 ca) -> Vượt trần 2 BS/ngày.
+        - 3 KTV: KTV Hà chip (26 ca), KTV Lê Hiền (21 ca), KTV Lương (2 ca) -> Vượt trần 2 KTV/ngày.
+        - 2 Điều dưỡng: ĐD Duyên (17 ca), ĐD Duyên 2 (10 ca) -> Đạt trần.
+    - **Nguyên nhân cốt lõi (The Root Cause):**
+      1. Trong `js/app.js` (`executeScheduling` - hàm "Chạy xếp lịch tổng"):
+         - Trước đây có đoạn code tự động quét `rawCurrentSched` (lịch cũ hiển thị trên màn hình trước đó) và lấy toàn bộ ca của bệnh nhân ra viện (`gioRa`) đưa vào `pinnedDischargedSched` để ghim cứng lại.
+         - Khi người dùng đang xem lịch Ngày đông (hoặc lần chạy trước vốn có BS Thái và KTV Lương chi viện) rồi bấm chạy lại Kịch bản Ngày vắng, đoạn code này đã ép ghim các ca của BS Thái (3 ca thủy châm) và KTV Lương (2 ca điện xung) bê sang lịch mới.
+      2. Trong `js/scheduler-engine.js` (`_turbo_core_logic`):
+         - Danh sách ca ghim `cleanExisting` (`pinnedDischargedSched`) khi nhận vào chỉ được đánh dấu giờ bận của cá nhân nhân sự và máy móc, nhưng **HOÀN TOÀN KHÔNG ĐƯỢC ĐĂNG KÝ VÀO `roomRoleStaff` và `roomActiveCases`** của phòng!
+         - Do đó, thuật toán khi xếp các ca còn lại của C118 không biết rằng phòng đã có BS Thái và KTV Lương, nó chỉ thấy phòng có BS Đạt và KTV Hà chip, nên nó tiếp tục đưa thêm BS Thảo và KTV Lê Hiền vào làm nhân sự thứ 2 của phòng.
+         - Cuối cùng khi ghép ca ghim và ca mới lại, phòng C118 bị phình lên thành 3 BS và 3 KTV.
+    - **Giải pháp xử lý:**
+      1. Trong `js/app.js` (`executeScheduling`):
+         - Bỏ cơ chế tự động ghim ca bệnh nhân ra viện từ lịch cũ. Chỉ ghim khi ca đó được người dùng chủ động ghim tay (`row.__isPinnedByUser === true` hoặc `row.__manualPinned`).
+         - Khi chạy xếp lịch tổng, toàn bộ bệnh nhân (kể cả bệnh nhân ra viện) được xếp mới hoàn toàn từ danh bạ dữ liệu theo kịch bản được chọn. Bệnh nhân ra viện (`gioRa = 10:30`) vẫn được thuật toán đảm bảo xếp xong sớm trước 10:30 sáng dựa trên ràng buộc `p.leave`.
+      2. Trong `js/scheduler-engine.js` (`_turbo_core_logic`):
+         - Nạp đầy đủ ca ghim `cleanExisting` vào cả `roomRoleStaff[phong][cat]` và `roomActiveCases[phong]` ngay từ đầu quá trình xếp.
+         - Bổ sung ca ghim vào mốc kiểm tra của `compactTimelineGaps`, bảo đảm các ca sau không được dồn đè lên trần đồng thời của ca ghim.
+    - **Kết quả nghiệm thu:**
+      * Xếp mới hoàn toàn 193 ca ngày 21/10/2026 trên Kịch bản 2 - Ngày vắng:
+        - Phòng C118: 70 ca.
+        - Bác sĩ: đúng 2 người (BS Đạt 25 ca, BS. Quản Lý Khoa 2 ca) ✅
+        - KTV: đúng 2 người (KTV Hà chip 24 ca, KTV Lê Hiền 19 ca) ✅
+        - Điều dưỡng: đúng 2 người (ĐD Duyên 17 ca, ĐD Duyên 2 10 ca) ✅
+        - Mọi ca bệnh nhân ra viện tại C118 (Đào Đình Tuynh, Nguyễn Duy Hà, Nguyễn Đăng Thanh, Vũ Văn Quý) đều kết thúc trước 10:30 sáng.
+        - 100% tuân thủ quy định Ngày vắng!
+      * Đã xuất file Excel mới ghi đè vào `D:\lich-trinh-hang-ngay\tháng 10\Lich_ThuThuat_21-10-2026.xlsx` với đúng mẫu định dạng chuẩn 10 cột, tiêu đề bệnh viện, Autofiter và Subtotal tự động.
+      * Đã đồng bộ 193 ca mới vào bảng `lich_trinh` trong CSDL SQLite `C:\PMCG-Data\pmcg.db`.
+      * Hệ thống vượt qua 9/9 tầng kiểm định Super-Verify Build (`verify-build.mjs`).
+    - **File sửa đổi:**
+      * `js/app.js`
+      * `js/scheduler-engine.js`
+      * `version.json`, `index.html`, `sw.js` (nâng lên v4.3.2-rev5, 12:15 21/10/2026).
+      * `PM-xeplich-v4.md`
+
+
