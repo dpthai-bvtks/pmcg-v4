@@ -3509,10 +3509,7 @@ var dataCache = window.dataCache;
                             }
                         }
 
-                        if (scheduleIsStale) {
-                            b.schedule = [];
-                            try { localStorage.setItem(cacheKey, JSON.stringify(b)); } catch(e) {}
-                        }
+                        // 🛡️ Không tự ý xóa b.schedule = [] để tránh làm trống bảng khi người dùng vừa mở app hoặc đang ngoại tuyến
 
                         const curActiveTab = (window.location.hash || '').replace(/^#tab=|^#/, '').trim() || 'tab-home';
                         const shouldRenderTab = (tabId) => (curActiveTab === tabId);
@@ -7134,20 +7131,11 @@ var dataCache = window.dataCache;
                             const rawDate = savedDate || (Array.isArray(localSched[0]) ? localSched[0][0] : (localSched[0]?.ngay || localSched[0]?.NGAY || localSched[0]?.date || ''));
                             const schedDate3 = toYMD3(rawDate);
                             
-                            // ⚠️ CHỈ dùng cache local NẾU có ngày xác định và ĐÚNG ngày hôm nay!
-                            if (schedDate3 && schedDate3 === todayYMD3) {
+                            // ⚠️ Sử dụng cache local nếu có dữ liệu hợp lệ, tránh làm trắng bảng khi chưa nạp xong server
+                            if (Array.isArray(localSched) && localSched.length > 0) {
                                 data = localSched;
                                 if (typeof dataCache !== 'undefined') dataCache.schedule = localSched;
                                 if (window.dataCache) window.dataCache.schedule = localSched;
-                            } else {
-                                localStorage.removeItem(getUnitStorageKey('meds_success'));
-                                localStorage.removeItem(getUnitStorageKey('meds_schedule_date'));
-                                localStorage.removeItem(getUnitStorageKey('meds_unscheduled'));
-                                localStorage.removeItem('meds_success');
-                                localStorage.removeItem('meds_schedule_date');
-                                localStorage.removeItem('meds_unscheduled');
-                                localStorage.removeItem('meds_schedule_unit');
-                                data = [];
                             }
                         }
                     } else {
@@ -9277,6 +9265,7 @@ var dataCache = window.dataCache;
             if (typeof renderBusyStaff === 'function') renderBusyStaff();
             if (typeof renderLeavePat === 'function') renderLeavePat();
         }
+        window.applyHistoryDataToTabs = applyHistoryDataToTabs;
 
         function restoreHistoryTabs() {
             if (!window._liveDataCacheBackup) return;
@@ -9292,6 +9281,7 @@ var dataCache = window.dataCache;
             const old = document.getElementById('history-detail-panel');
             if (old) old.remove();
         }
+        window.restoreHistoryTabs = restoreHistoryTabs;
 
         function xemLichSu() {
             const d = document.getElementById('history-date')?.value || '';

@@ -147,9 +147,6 @@ export async function handleBackupSyncAction(action, ctx) {
     }
 
     case "getBootstrapData": {
-      // Tự động kiểm tra chốt sổ khi nạp dữ liệu đầu ngày
-      await checkAutoChotSo(db, unitCode);
-
       // Lấy ngày từ client, hoặc tự tính theo múi giờ Việt Nam (UTC+7)
       const todayArg = String(args[0] || "").trim();
       let todayVN = todayArg;
@@ -176,7 +173,7 @@ export async function handleBackupSyncAction(action, ctx) {
         }
       }
 
-      const [settingsRes, staffRes, machinesRes, roomsRes, proceduresRes, patientsRes, scheduleRes, accountsRes, phacDoRes, tenantRes] = await db.batch([
+      const [settingsRes, staffRes, machinesRes, roomsRes, proceduresRes, patientsRes, scheduleRes, accountsRes, phacDoRes, tenantRes, gioBanRes] = await db.batch([
         db.prepare("SELECT key, value FROM cai_dat WHERE unit_code = ?").bind(unitCode),
         db.prepare("SELECT * FROM nhan_su WHERE unit_code = ? ORDER BY priority ASC, id ASC").bind(unitCode),
         db.prepare("SELECT * FROM may_moc WHERE unit_code = ? ORDER BY order_idx ASC, id ASC").bind(unitCode),
@@ -186,7 +183,8 @@ export async function handleBackupSyncAction(action, ctx) {
         db.prepare("SELECT * FROM lich_trinh WHERE unit_code = ? AND (date = ? OR date = ?) ORDER BY order_idx ASC, start_time ASC").bind(unitCode, ymd, dmy),
         db.prepare("SELECT id, username, role, permissions FROM tai_khoan WHERE unit_code = ?").bind(unitCode),
         db.prepare("SELECT * FROM phac_do WHERE unit_code = ? AND is_active = 1 ORDER BY order_idx ASC, id ASC").bind(unitCode),
-        db.prepare("SELECT * FROM tenants WHERE unit_code = ?").bind(unitCode)
+        db.prepare("SELECT * FROM tenants WHERE unit_code = ?").bind(unitCode),
+        db.prepare("SELECT * FROM gio_ban_chung_cu WHERE unit_code = ? AND (date = ? OR date = ?)").bind(unitCode, ymd, dmy)
       ]);
 
       const settingsObj = {};
@@ -310,12 +308,45 @@ export async function handleBackupSyncAction(action, ctx) {
         };
       });
 
+      // Build fallback maps from gio_ban_chung_cu
+      const chungBusyRows = (gioBanRes && gioBanRes.results) ? gioBanRes.results : [];
+      const staffBusyFallbackMap = {};
+      const patBusyFallbackMap = {};
+      const patLeaveFallbackMap = {};
+      chungBusyRows.forEach(b => {
+        const str = String(b.busy_ranges || '').trim();
+        if (!str || str === '[]' || str === '[""]') return;
+        const normName = String(b.name || '').trim().toLowerCase();
+        if (b.target_type === 'nhan_su') {
+          staffBusyFallbackMap[normName] = str;
+        } else if (b.target_type === 'benh_nhan') {
+          patBusyFallbackMap[normName] = str;
+        } else if (b.target_type === 'ra_vien') {
+          patLeaveFallbackMap[normName] = str;
+        }
+      });
+
       // Staff
       const staffList = (staffRes.results || []).map((s, idx) => {
         const skillsArr = parseStringOrJsonArray(s.skills);
         const tempBusyArr = parseStringOrJsonArray(s.temp_busy);
         const kyNangStr = skillsArr.join(", ");
-        const gioBanStr = tempBusyArr.join(", ");
+        let gioBanStr = tempBusyArr.join(", ");
+
+        // Fallback từ gio_ban_chung_cu nếu temp_busy đang rỗng
+        if (!gioBanStr) {
+          const sNormName = String(s.name || '').trim().toLowerCase();
+          const fbRanges = staffBusyFallbackMap[sNormName];
+          if (fbRanges) {
+            try {
+              const fbArr = JSON.parse(fbRanges);
+              if (Array.isArray(fbArr)) gioBanStr = fbArr.join(", ");
+              else gioBanStr = String(fbRanges);
+            } catch(e) {
+              gioBanStr = String(fbRanges);
+            }
+          }
+        }
 
         return {
           id: s.id || (idx + 1),
@@ -354,7 +385,18 @@ export async function handleBackupSyncAction(action, ctx) {
         const thuThuatStr = procsArr.join(",");
 
         const patCleanName = healBackendPatientName(p.name);
+        const patNormName = patCleanName.trim().toLowerCase();
         const patMaBN = String(p.ma_bn || p.maBN || p.pId || p.mabn || "").trim();
+
+        let patGioBan = p.gio_ban || "";
+        if (!patGioBan && patBusyFallbackMap[patNormName]) {
+          patGioBan = patBusyFallbackMap[patNormName];
+        }
+        let patGioRa = p.leave_time || "";
+        if (!patGioRa && patLeaveFallbackMap[patNormName]) {
+          patGioRa = patLeaveFallbackMap[patNormName];
+        }
+
         return {
           id: String(p.id || (idx + 1)),
           maBN: patMaBN,
@@ -365,8 +407,8 @@ export async function handleBackupSyncAction(action, ctx) {
           namSinh: String(p.age || ""),
           ngayVao: p.ngay_vao || "",
           gioVao: p.arrive_time === "07:30" ? "" : (p.arrive_time || ""),
-          gioBan: p.gio_ban || "",
-          gioRa: p.leave_time || "",
+          gioBan: patGioBan,
+          gioRa: patGioRa,
           phong: p.room || "",
           thuThuat: thuThuatStr,
           status: p.status,
@@ -393,18 +435,30 @@ export async function handleBackupSyncAction(action, ctx) {
       let isFinalizedToday = false;
       let finalizedTodayCount = 0;
       // 🛡️ Nếu lich_trinh chưa có dữ liệu ngày hôm nay, kiểm tra xem đã chốt sổ vào lich_su chưa
-      // Nếu đã chốt sổ: trả về schedule RỖNG + cờ is_finalized_today=true + số lượng ca
-      // → Frontend sẽ hiện thông báo "Đã hoàn tất chốt sổ ngày (X ca)" thay vì bảng lịch trình
-      // Điều này giúp nhân viên không nhầm lẫn giữa "lịch đang live" và "lịch đã lưu trữ"
+      // Nếu đã chốt sổ: Nạp toàn bộ ca từ lich_su đổ vào scheduleRows để Frontend hiển thị đầy đủ bảng lịch trình!
+      // Đồng thời bật cờ is_finalized_today=true để hiển thị banner "Đã chốt sổ / Lưu trữ" và nút Hoàn tác.
+      // Tuyệt đối KHÔNG trả về schedule rỗng [] gây hiểu lầm là mất dữ liệu!
       if (scheduleRows.length === 0) {
         try {
           const histTodayRes = await db.prepare(
-            "SELECT COUNT(*) as cnt FROM lich_su WHERE unit_code = ? AND (date = ? OR date = ?)"
-          ).bind(unitCode, ymd, dmy).first();
-          if (histTodayRes && histTodayRes.cnt > 0) {
+            "SELECT * FROM lich_su WHERE unit_code = ? AND (date = ? OR date = ?) ORDER BY start_time ASC"
+          ).bind(unitCode, ymd, dmy).all();
+          if (histTodayRes && histTodayRes.results && histTodayRes.results.length > 0) {
             isFinalizedToday = true;
-            finalizedTodayCount = Number(histTodayRes.cnt);
-            // scheduleRows giữ nguyên RỖNG [] — Frontend tự hiện thông báo "Đã chốt sổ"
+            finalizedTodayCount = histTodayRes.results.length;
+            scheduleRows = histTodayRes.results.map(s => ([
+              s.date,
+              healBackendPatientName(s.patient_name, true),
+              s.dob || "",
+              s.room || "",
+              s.procedure_name,
+              s.start_time,
+              s.end_time,
+              s.staff_name || "",
+              s.sub_staff_name || "",
+              s.machine_name || "",
+              s.bed || ""
+            ]));
           }
         } catch(e) {
           console.warn("Lỗi kiểm tra lich_su hôm nay:", e);

@@ -1410,13 +1410,10 @@ async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
     let reason = "";
 
     // 1. Kích hoạt chốt sổ hôm nay khi đã đến hoặc qua giờ chốt sổ (ví dụ: >= 16:20)
-    const todaySched = await db.prepare(
-      "SELECT date FROM lich_trinh WHERE unit_code = ? AND (date = ? OR date = ?) LIMIT 1"
-    ).bind(unitCode, todayDateStr, todayYMD).first().catch(() => null);
-
-    // CHỈ tự động chốt nếu hôm nay chưa chốt (lastChotSoDate !== todayDateStr && lastChotSoDate !== todayYMD)
-    // Nếu người dùng xếp lại lịch sau giờ chốt sổ, TUYỆT ĐỐI không tự ý xóa sạch lịch vừa tạo!
-    if (currentHourMin >= chotSoTime && todaySched) {
+    // CHỈ tự động chốt hôm nay nếu đơn vị BẬT tính năng chốt sổ tự động hàng ngày ('auto_chot_so_enable' === '1')
+    // Mặc định: tắt (chỉ chốt khi người dùng chủ động bấm "Chốt Sổ" trên giao diện) để tránh xóa lịch đang làm việc!
+    const isAutoChotSoEnabled = (settings.auto_chot_so_enable === '1' || settings.autoChotSoEnable === '1');
+    if (isAutoChotSoEnabled && currentHourMin >= chotSoTime && todaySched) {
       if (lastChotSoDate !== todayDateStr && lastChotSoDate !== todayYMD) {
         shouldClose = true;
         closeTargetDate = todaySched.date || todayYMD;
@@ -1455,9 +1452,10 @@ async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
 
     if (shouldClose) {
       const targetArchiveDate = closeTargetDate || todayYMD;
+      const isClosingToday = (targetArchiveDate === todayYMD || targetArchiveDate === todayDateStr);
       console.log(`[Worker Auto-ChotSo]: Triggering auto closure for unit '${unitCode}'. Lý do: ${reason}. targetArchiveDate=${targetArchiveDate}, today=${todayDateStr}, lastClosed=${lastChotSoDate}, time=${currentHourMin}, chotSoTime=${chotSoTime}`);
       
-      const countRes = await db.prepare("SELECT count(*) as cnt FROM lich_trinh WHERE unit_code = ?").bind(unitCode).first().catch(() => null);
+      const countRes = await db.prepare("SELECT count(*) as cnt FROM lich_trinh WHERE unit_code = ? AND date = ?").bind(unitCode, targetArchiveDate).first().catch(() => null);
       const countToArchive = countRes ? Number(countRes.cnt || 0) : 0;
 
       const statements = [
@@ -1468,13 +1466,21 @@ async function checkAutoChotSo(db, unitCode = "bvtks-cs2") {
         db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'benh_nhan', name, age, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(targetArchiveDate, unitCode),
         // 3. Sao lưu giờ ra viện của bệnh nhân trước khi reset
         db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'ra_vien', name, age, leave_time FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(targetArchiveDate, unitCode),
-        db.prepare("DELETE FROM lich_su WHERE unit_code = ? AND date IN (SELECT DISTINCT date FROM lich_trinh WHERE unit_code = ?)").bind(unitCode, unitCode),
-        db.prepare("INSERT INTO lich_su (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE unit_code = ?").bind(unitCode),
-        db.prepare("DELETE FROM lich_trinh WHERE unit_code = ?").bind(unitCode),
-        db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(unitCode),
-        db.prepare("UPDATE benh_nhan SET arrive_time = '07:30', gio_ban = '', leave_time = '', status = 'Chưa xếp', updated_at = CURRENT_TIMESTAMP WHERE unit_code = ?").bind(unitCode),
-        db.prepare("UPDATE nhan_su SET temp_busy = '[]', updated_at = CURRENT_TIMESTAMP WHERE unit_code = ?").bind(unitCode)
+        // 4. Lưu trữ lịch trình của đúng ngày cần chốt vào lich_su (KHÔNG XÓA ngày khác)
+        db.prepare("DELETE FROM lich_su WHERE unit_code = ? AND date = ?").bind(unitCode, targetArchiveDate),
+        db.prepare("INSERT INTO lich_su (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE unit_code = ? AND date = ?").bind(unitCode, targetArchiveDate),
+        // 5. CHỈ XÓA ĐÚNG NGÀY ĐÃ CHỐT TRONG LICH_TRINH (Tuyệt đối không xóa toàn bộ lich_trinh của ngày hôm nay/tương lai)
+        db.prepare("DELETE FROM lich_trinh WHERE unit_code = ? AND date = ?").bind(unitCode, targetArchiveDate)
       ];
+
+      // CHỈ reset danh sách bệnh nhân và nhân sự nếu chốt sổ ngày HÔM NAY
+      if (isClosingToday) {
+        statements.push(
+          db.prepare("DELETE FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(unitCode),
+          db.prepare("UPDATE benh_nhan SET arrive_time = '07:30', gio_ban = '', leave_time = '', status = 'Chưa xếp', updated_at = CURRENT_TIMESTAMP WHERE unit_code = ?").bind(unitCode),
+          db.prepare("UPDATE nhan_su SET temp_busy = '[]', updated_at = CURRENT_TIMESTAMP WHERE unit_code = ?").bind(unitCode)
+        );
+      }
 
       await db.batch(statements);
       // Ghi nhận lastChotSoDate theo đúng ngày thực tế vừa chốt (tránh làm tê liệt ngày hôm nay)
