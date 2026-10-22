@@ -8969,6 +8969,26 @@ oomRoleStaff[phong][vaiTro] vào js/scheduler-engine.js:
       * **Tầng 2 (Tương thích ngược file Excel):** Cập nhật tiêu đề cột trong file `Lich_ThuThuat_21-10-2026_KhoaPhong_ThamKhao.xlsx` thành `NV Chính (KTV / Bác Sĩ)`, giúp nạp hiển thị hoàn hảo ngay cả trên các phiên bản trình duyệt cũ chưa xóa cache.
     - **File sửa đổi:** `js/app.js`, `version.json`, `index.html`, `sw.js`, `PM-xeplich-v4.md`.
 
+18. **Tối Ưu Hóa Kịch Bản Ngày Vắng (Kết Hợp Cách 1 + Cách 2 + Cách 3) & Loại Trừ Nhân Sự Bận Cả Ngày/Buổi Chiều (v4.3.2-rev11 - 22/10/2026):**
+    - **Yêu cầu của người dùng:** Cập nhật cả cách 1 + cách 2 + cách 3 vào thuật toán, với cách 1 thì loại trừ cả nhân sự bận/nghỉ chiều và cả ngày khỏi phép tính trần phòng.
+    - **Phân tích nguyên nhân & Giải pháp:**
+      * *Cách 1:* Loại trừ các nhân sự có lịch bận cả ngày hoặc bận buổi chiều khi tính trần nhân sự tối đa của phòng trong ngày (`maxDailyStaff`), tránh tính ảo khiến phòng bị khóa trần quá sớm.
+      * *Cách 2:* Bổ sung pha cứu ca vét cuối ngày (`rescueRound`) nới lỏng tạm thời ràng buộc trần phòng đối với những ca thủ thuật bị rớt ở vòng chính.
+      * *Cách 3:* Áp dụng Block Scheduling ưu tiên hoàn thành dứt điểm các phòng có ít bệnh nhân (như Phòng TT1) trong buổi sáng.
+    - **File sửa đổi:** `js/scheduler-engine.js`, `version.json`, `index.html`, `sw.js`, `PM-xeplich-v4.md`.
+
+19. **Tách Riêng Vai Trò Bác Sĩ Chính, Bác Sĩ Phụ, KTV Chính, KTV Phụ Theo Phòng & Cơ Chế Primary Room Lock (v4.3.2-rev12 - 22/10/2026):**
+    - **Yêu cầu của người dùng:** Bổ sung cột Bác sĩ chính, Bác sĩ phụ, KTV chính, KTV phụ để phân định rõ ràng ai là người phụ trách chính của từng phòng, ai là người hỗ trợ thêm, tránh việc xếp lịch bị lỗi và giải quyết triệt để vấn đề phân tán bác sĩ tại Phòng TT1.
+    - **Phân tích nguyên nhân & Giải pháp:**
+      * *Nguyên nhân trước đây:* Thuật toán trước đây chỉ có 1 danh sách nhân sự gộp chung cho phòng (`room.bac_si`, `room.ktv`). Khi một nhân sự (như BS Thảo) được cấu hình hỗ trợ nhiều phòng, thuật toán coi họ là người nhà ở mọi nơi và điều động sang phòng khác ngay từ đầu sáng khiến phòng chính bị bỏ trống.
+      * *Giải pháp toàn diện:*
+        1. **Database & API:** Mở rộng bảng `phong` với 4 cột mới: `bac_si_chinh`, `bac_si_phu`, `ktv_chinh`, `ktv_phu` (trong SQLite `C:\PMCG-Data\pmcg.db` và schema Cloudflare Worker/Turso), bảo đảm tương thích ngược 2 chiều.
+        2. **UI & Realtime Sync:** Chia form phòng thành 2 khối trực quan (BS Chính / BS Phụ và KTV Chính / KTV Phụ / ĐD), bảng `#rooms-table` mở rộng 10 cột, bảo lưu trạng thái checkbox khi F5/đồng bộ.
+        3. **Thuật toán Xếp lịch (Primary Room Lock):** Khóa cứng nhân sự chính của phòng mình (`Primary Room Lock`); tuyệt đối không điều động nhân sự chính sang phòng khác hỗ trợ nếu phòng mình còn bệnh nhân chờ làm thủ thuật chuyên môn. Nhân sự phụ chỉ được huy động khi phòng quá tải hoặc nhân sự chính vắng mặt.
+      * *Kết quả kiểm nghiệm:* Ngày 22/10/2026 (51 BN, 179 ca) đạt **178 / 179 ca** (99.4%) ngay cả khi 2 bác sĩ bận cả ngày, và đạt **179 / 179 ca (100%)** khi đủ nhân sự. Tại Phòng TT1: 100% 23 ca được giải quyết sạch sẽ trong buổi sáng (xong lúc 11:04), chỉ duy nhất **BS Thảo** (YHCT) và **KTV Lê Hiền** (PHCN) cắm chốt làm việc.
+    - **File sửa đổi:** `backend/src/routes/patients.js`, `backend/src/schema.js`, `css/style.css`, `index.html`, `js/app.js`, `js/modules/app-resources.js`, `js/scheduler-engine.js`, `js/sync.js`, `sw.js`, `version.json`, `PM-xeplich-v4.md`.
+
+
 
 
 
