@@ -494,7 +494,11 @@ export async function handlePatientsAction(action, ctx) {
         tenPhong: r.ten_phong,
         name: r.ten_phong,
         bacSi: r.bac_si || "",
+        bacSiChinh: r.bac_si_chinh || "",
+        bacSiPhu: r.bac_si_phu || "",
         ktv: r.ktv || "",
+        ktvChinh: r.ktv_chinh || "",
+        ktvPhu: r.ktv_phu || "",
         dieuDuong: r.dieu_duong || "",
         danhSachMay: r.danh_sach_may || "",
         soGiuong: r.so_giuong || 0,
@@ -520,19 +524,43 @@ export async function handlePatientsAction(action, ctx) {
           soGiuong: args[offset + 4],
           danhSachGiuong: args[offset + 5],
           oldTenPhong: args[offset + 6],
-          dieuDuong: args[offset + 7] || ""
+          dieuDuong: args[offset + 7] || "",
+          bacSiChinh: args[offset + 8] || "",
+          bacSiPhu: args[offset + 9] || "",
+          ktvChinh: args[offset + 10] || "",
+          ktvPhu: args[offset + 11] || ""
         };
       }
       const tenPhong = sanitizeInputText(String(payload.tenPhong || payload.ten_phong || payload.name || "").trim());
       if (!tenPhong) return error("Tên phòng không hợp lệ");
-      const bacSi = String(payload.bacSi || payload.bac_si || "");
-      const ktv = String(payload.ktv || "");
-      const dieuDuong = String(payload.dieuDuong || payload.dieu_duong || payload.dd || "");
-      const danhSachMay = String(payload.danhSachMay || payload.danh_sach_may || "");
+      let bacSiChinh = String(payload.bacSiChinh || payload.bac_si_chinh || "").trim();
+      let bacSiPhu = String(payload.bacSiPhu || payload.bac_si_phu || "").trim();
+      let ktvChinh = String(payload.ktvChinh || payload.ktv_chinh || "").trim();
+      let ktvPhu = String(payload.ktvPhu || payload.ktv_phu || "").trim();
+      let bacSi = String(payload.bacSi || payload.bac_si || "").trim();
+      let ktv = String(payload.ktv || "").trim();
+      const dieuDuong = String(payload.dieuDuong || payload.dieu_duong || payload.dd || "").trim();
+      const danhSachMay = String(payload.danhSachMay || payload.danh_sach_may || "").trim();
       const soGiuong = parseInt(payload.soGiuong || payload.so_giuong) || 0;
-      const danhSachGiuong = String(payload.danhSachGiuong || payload.danh_sach_giuong || "");
-      const oldTenPhong = String(payload.oldTenPhong || payload.old_ten_phong || "");
+      const danhSachGiuong = String(payload.danhSachGiuong || payload.danh_sach_giuong || "").trim();
+      const oldTenPhong = String(payload.oldTenPhong || payload.old_ten_phong || "").trim();
       const id = payload.id || null;
+
+      // 🛡️ Tự động đồng bộ 2 chiều (Chính/Phụ <-> Gộp) để bảo toàn tương thích ngược 100%
+      if (!bacSi && (bacSiChinh || bacSiPhu)) {
+        bacSi = [...new Set([...bacSiChinh.split(','), ...bacSiPhu.split(',')].map(s => s.trim()).filter(Boolean))].join(', ');
+      } else if (bacSi && !bacSiChinh && !bacSiPhu) {
+        const parts = bacSi.split(',').map(s => s.trim()).filter(Boolean);
+        bacSiChinh = parts[0] || '';
+        bacSiPhu = parts.slice(1).join(', ');
+      }
+      if (!ktv && (ktvChinh || ktvPhu)) {
+        ktv = [...new Set([...ktvChinh.split(','), ...ktvPhu.split(',')].map(s => s.trim()).filter(Boolean))].join(', ');
+      } else if (ktv && !ktvChinh && !ktvPhu) {
+        const parts = ktv.split(',').map(s => s.trim()).filter(Boolean);
+        ktvChinh = parts[0] || '';
+        ktvPhu = parts.slice(1).join(', ');
+      }
 
       let updated = false;
       let actualOldTenPhong = oldTenPhong;
@@ -546,17 +574,17 @@ export async function handlePatientsAction(action, ctx) {
       if (id || actualOldTenPhong || tenPhong) {
         const targetSearchName = actualOldTenPhong || tenPhong;
         const updateRes = await db.prepare(
-          `UPDATE phong SET ten_phong = ?, bac_si = ?, ktv = ?, dieu_duong = ?, danh_sach_may = ?, so_giuong = ?, danh_sach_giuong = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ? AND (id = ? OR ten_phong = ?)`
-        ).bind(tenPhong, bacSi, ktv, dieuDuong, danhSachMay, soGiuong, danhSachGiuong, unitCode, id || -1, targetSearchName).run();
+          `UPDATE phong SET ten_phong = ?, bac_si = ?, bac_si_chinh = ?, bac_si_phu = ?, ktv = ?, ktv_chinh = ?, ktv_phu = ?, dieu_duong = ?, danh_sach_may = ?, so_giuong = ?, danh_sach_giuong = ?, updated_at = CURRENT_TIMESTAMP WHERE unit_code = ? AND (id = ? OR ten_phong = ?)`
+        ).bind(tenPhong, bacSi, bacSiChinh, bacSiPhu, ktv, ktvChinh, ktvPhu, dieuDuong, danhSachMay, soGiuong, danhSachGiuong, unitCode, id || -1, targetSearchName).run();
         if (updateRes && (updateRes.meta?.changes > 0 || updateRes.changes > 0 || updateRes.affected_row_count > 0)) {
           updated = true;
         }
       }
       if (!updated) {
-        const stmt = db.prepare(`INSERT INTO phong (unit_code, ten_phong, bac_si, ktv, dieu_duong, danh_sach_may, so_giuong, danh_sach_giuong, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-          ON CONFLICT(unit_code, ten_phong) DO UPDATE SET bac_si = excluded.bac_si, ktv = excluded.ktv, dieu_duong = excluded.dieu_duong, danh_sach_may = excluded.danh_sach_may, so_giuong = excluded.so_giuong, danh_sach_giuong = excluded.danh_sach_giuong, updated_at = CURRENT_TIMESTAMP`)
-          .bind(unitCode, tenPhong, bacSi, ktv, dieuDuong, danhSachMay, soGiuong, danhSachGiuong);
+        const stmt = db.prepare(`INSERT INTO phong (unit_code, ten_phong, bac_si, bac_si_chinh, bac_si_phu, ktv, ktv_chinh, ktv_phu, dieu_duong, danh_sach_may, so_giuong, danh_sach_giuong, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(unit_code, ten_phong) DO UPDATE SET bac_si = excluded.bac_si, bac_si_chinh = excluded.bac_si_chinh, bac_si_phu = excluded.bac_si_phu, ktv = excluded.ktv, ktv_chinh = excluded.ktv_chinh, ktv_phu = excluded.ktv_phu, dieu_duong = excluded.dieu_duong, danh_sach_may = excluded.danh_sach_may, so_giuong = excluded.so_giuong, danh_sach_giuong = excluded.danh_sach_giuong, updated_at = CURRENT_TIMESTAMP`)
+          .bind(unitCode, tenPhong, bacSi, bacSiChinh, bacSiPhu, ktv, ktvChinh, ktvPhu, dieuDuong, danhSachMay, soGiuong, danhSachGiuong);
         await db.batch([stmt, makeBumpDataVersionStmt(db, unitCode)]);
       } else {
         await bumpDataVersion(db, unitCode);

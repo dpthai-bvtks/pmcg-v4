@@ -9,9 +9,13 @@ export async function ensureSchema(db) {
     await db.prepare("ALTER TABLE benh_nhan ADD COLUMN ma_bn TEXT DEFAULT ''").run().catch(() => {});
   } catch(eCol) {}
 
-  // 🛡️ Migration tức thời: Đảm bảo cột dieu_duong luôn tồn tại trong phong
+  // 🛡️ Migration tức thời: Đảm bảo các cột nhân sự phòng luôn tồn tại trong phong
   try {
     await db.prepare("ALTER TABLE phong ADD COLUMN dieu_duong TEXT DEFAULT ''").run().catch(() => {});
+    await db.prepare("ALTER TABLE phong ADD COLUMN bac_si_chinh TEXT DEFAULT ''").run().catch(() => {});
+    await db.prepare("ALTER TABLE phong ADD COLUMN bac_si_phu TEXT DEFAULT ''").run().catch(() => {});
+    await db.prepare("ALTER TABLE phong ADD COLUMN ktv_chinh TEXT DEFAULT ''").run().catch(() => {});
+    await db.prepare("ALTER TABLE phong ADD COLUMN ktv_phu TEXT DEFAULT ''").run().catch(() => {});
   } catch(eCol2) {}
 
   if (schemaEnsured) return;
@@ -93,7 +97,11 @@ export async function ensureSchema(db) {
         unit_code TEXT NOT NULL DEFAULT 'bvtks-cs2',
         ten_phong TEXT NOT NULL,
         bac_si TEXT DEFAULT '',
+        bac_si_chinh TEXT DEFAULT '',
+        bac_si_phu TEXT DEFAULT '',
         ktv TEXT DEFAULT '',
+        ktv_chinh TEXT DEFAULT '',
+        ktv_phu TEXT DEFAULT '',
         dieu_duong TEXT DEFAULT '',
         danh_sach_may TEXT DEFAULT '',
         so_giuong INTEGER DEFAULT 0,

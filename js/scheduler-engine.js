@@ -512,6 +512,9 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
   const { machineRarity, staffBySkill, baseTimeline, staffShifts, baseLoad, staffRole, staffMyRooms } = db._precomputed;
   const { machineTypes, roomStaff } = db;
+  const roomStaffMain = db.roomStaffMain || {};
+  const roomStaffSub = db.roomStaffSub || {};
+  const staffPrimaryRoom = db.staffPrimaryRoom || {};
   const staffTimeline = {}, staffLoad = {}, staffLastProc = {}, staffSetupReady = {}, staffCurrentRoom = {};
 
   db.rawStaff.forEach(r => {
@@ -567,6 +570,23 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
   });
 
   let patients = db.rawPatients.map(p => ({ ...p, pId: p.pId, pending: [...p.pending], failed: false, busy: p.busy ? p.busy.map(b => [...b]) : [], loaiBN: p.loaiBN, buoiDieuTri: p.buoiDieuTri }));
+
+  // 🏥 Kiểm tra xem phòng có còn bệnh nhân chờ cần kỹ năng chuyên môn của nhân sự không
+  const roomHasWaitingCases = (rm, staffName) => {
+    if (!rm) return false;
+    for (let i = 0; i < patients.length; i++) {
+      const p = patients[i];
+      if ((p.room === rm || p.phong === rm) && p.pending && p.pending.length > 0) {
+        if (!staffName) return true;
+        const hasSkill = p.pending.some(procKey => {
+          const list = staffBySkill[procKey.toLowerCase()] || [];
+          return list.includes(staffName);
+        });
+        if (hasSkill) return true;
+      }
+    }
+    return false;
+  };
 
   const resolveStaffKey = rawName => {
     if (!rawName) return null;
@@ -1097,6 +1117,25 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       if (candidatesMain.length === 0) continue;
 
       candidatesMain.sort((a, b) => {
+        // 🌟 TỐI ƯU HÓA THEO VAI TRÒ CHÍNH / PHỤ (PHƯƠNG ÁN 1):
+        // 0: Nhân sự CHÍNH của phòng này (Ưu tiên cao nhất)
+        // 1: Nhân sự PHỤ của phòng này (Ưu tiên nhì)
+        // 2: Nhân sự tự do / ngoài phòng (Ưu tiên ba)
+        // 3: Nhân sự CHÍNH của phòng khác đang còn bệnh nhân chờ (Khóa cắm chốt phòng mình)
+        const getAffinity = (name) => {
+          const isMainOfThisRoom = (roomStaffMain[targetRoom] || []).includes(name);
+          if (isMainOfThisRoom) return 0;
+          const isSubOfThisRoom = (roomStaffSub[targetRoom] || []).includes(name);
+          const primRoom = staffPrimaryRoom[name];
+          const isMyPrimaryBusy = primRoom && primRoom !== targetRoom && roomHasWaitingCases(primRoom, name);
+          if (isMyPrimaryBusy) return 3;
+          if (isSubOfThisRoom) return 1;
+          const isInMyRoom = (staffMyRooms[name] || []).includes(targetRoom);
+          return isInMyRoom ? 1 : 2;
+        };
+        const affA = getAffinity(a), affB = getAffinity(b);
+        if (affA !== affB) return affA - affB;
+
         const rmA = (staffMyRooms[a] || []).includes(targetRoom) ? 0 : 1, rmB = (staffMyRooms[b] || []).includes(targetRoom) ? 0 : 1;
         if (rmA !== rmB) return rmA - rmB;
         if (rmA !== 0 && rmB !== 0) {
@@ -1215,6 +1254,17 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       }
 
       for (const nvChinh of candidatesMain) {
+        // 🔒 KHÓA CẮM CHỐT NHÂN SỰ CHÍNH (PRIMARY ROOM LOCK - PHƯƠNG ÁN 1):
+        // Nếu nvChinh là nhân sự CHÍNH của một phòng khác (ví dụ: BS Thảo là BS Chính của Phòng TT1),
+        // và phòng chính của họ VẪN CÒN bệnh nhân chờ làm thủ thuật,
+        // thì tuyệt đối KHÔNG cho phép điều động nvChinh sang làm ca phòng khác ở vòng xếp chính!
+        const primRoom = staffPrimaryRoom[nvChinh];
+        if (primRoom && primRoom !== targetRoom && roomHasWaitingCases(primRoom, nvChinh)) {
+          if (!isRelaxedPass && !isSupplemental) {
+            continue;
+          }
+        }
+
         const isInMyRoom = (staffMyRooms[nvChinh] || []).includes(targetRoom);
         const isFloating = (staffMyRooms[nvChinh] || []).length === 0;
         if (!(isInMyRoom || isFloating)) {
@@ -1232,7 +1282,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
             let isMyRoomBusy = false;
             if (myRooms) {
               for (let r = 0; r < myRooms.length; r++) {
-                if (roomsWithWaiting.has(myRooms[r])) { isMyRoomBusy = true; break; }
+                if (roomHasWaitingCases(myRooms[r], nvChinh)) { isMyRoomBusy = true; break; }
               }
             }
             if (isMyRoomBusy) continue;
@@ -1293,6 +1343,11 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
             const inRoomA = (roomRoleStaff[targetRoom]?.['DD']?.has(a)) ? 0 : 1;
             const inRoomB = (roomRoleStaff[targetRoom]?.['DD']?.has(b)) ? 0 : 1;
             if (inRoomA !== inRoomB) return inRoomA - inRoomB;
+
+            // Ưu tiên nhân sự PHỤ / CHÍNH được gán cho phòng này
+            const rmSubA = ((roomStaffSub[targetRoom] || []).includes(a) || (roomStaffMain[targetRoom] || []).includes(a)) ? 0 : 1;
+            const rmSubB = ((roomStaffSub[targetRoom] || []).includes(b) || (roomStaffMain[targetRoom] || []).includes(b)) ? 0 : 1;
+            if (rmSubA !== rmSubB) return rmSubA - rmSubB;
 
             const aR = (staffMyRooms[a] || []).includes(targetRoom) ? 0 : 1, bR = (staffMyRooms[b] || []).includes(targetRoom) ? 0 : 1;
             return aR !== bR ? aR - bR : (staffLoad[a]?.used_mins || 0) - (staffLoad[b]?.used_mins || 0);
@@ -2513,6 +2568,9 @@ function getSafeCache() {
       thuThuatInfo: {},
       replacementMap: {},
       roomStaff: {},
+      roomStaffMain: {},
+      roomStaffSub: {},
+      staffPrimaryRoom: {},
       roomBeds: {},
       rawStaff: [],
       rawPatients: [],
@@ -2699,13 +2757,31 @@ function getSafeCache() {
         });
       }
 
-      const bsStr = String(r.bacSi || r[2] || "");
+      const bsStr = String(r.bacSi || r.bac_si || r[2] || "");
       const ktvStr = String(r.ktv || r[3] || "");
       const ddStr = String(r.dieuDuong || r.dieu_duong || r.dd || (Array.isArray(r) ? r[7] : "") || "");
+      const bsChinhStr = String(r.bacSiChinh || r.bac_si_chinh || "");
+      const bsPhuStr = String(r.bacSiPhu || r.bac_si_phu || "");
+      const ktvChinhStr = String(r.ktvChinh || r.ktv_chinh || "");
+      const ktvPhuStr = String(r.ktvPhu || r.ktv_phu || "");
+
       const dsBacSi = bsStr.split(",").map(x => x.trim()).filter(Boolean);
       const dsKTV = ktvStr.split(",").map(x => x.trim()).filter(Boolean);
       const dsDD = ddStr.split(",").map(x => x.trim()).filter(Boolean);
-      database.roomStaff[roomName] = [...new Set([...dsBacSi, ...dsKTV, ...dsDD].map(x => database.replacementMap[x] || x))];
+
+      let dsBsChinh = bsChinhStr ? bsChinhStr.split(",").map(x => x.trim()).filter(Boolean) : (dsBacSi.length ? [dsBacSi[0]] : []);
+      let dsBsPhu = bsPhuStr ? bsPhuStr.split(",").map(x => x.trim()).filter(Boolean) : (dsBacSi.length > 1 ? dsBacSi.slice(1) : []);
+      let dsKtvChinh = ktvChinhStr ? ktvChinhStr.split(",").map(x => x.trim()).filter(Boolean) : (dsKTV.length ? [dsKTV[0]] : []);
+      let dsKtvPhu = ktvPhuStr ? ktvPhuStr.split(",").map(x => x.trim()).filter(Boolean) : (dsKTV.length > 1 ? dsKTV.slice(1) : []);
+
+      database.roomStaffMain[roomName] = [...new Set([...dsBsChinh, ...dsKtvChinh].map(x => database.replacementMap[x] || x))];
+      database.roomStaffSub[roomName] = [...new Set([...dsBsPhu, ...dsKtvPhu, ...dsDD].map(x => database.replacementMap[x] || x))];
+      database.roomStaff[roomName] = [...new Set([...database.roomStaffMain[roomName], ...database.roomStaffSub[roomName]])];
+
+      // Ghi nhận phòng chính cho nhân sự (Primary Room Lock)
+      database.roomStaffMain[roomName].forEach(st => {
+        if (!database.staffPrimaryRoom[st]) database.staffPrimaryRoom[st] = roomName;
+      });
     });
 
     // 5. Patients
@@ -3955,10 +4031,18 @@ const UnscheduledDiagnosticEngine = (function () {
         if (ok) pushQ(r[0]);
       });
     }
-    // Ưu tiên nhân sự thuộc phòng của bệnh nhân
+    // Ưu tiên nhân sự thuộc phòng của bệnh nhân (Chính > Phụ > Khác)
+    const roomStaffMainList = (db.roomStaffMain && (db.roomStaffMain[roomKey] || db.roomStaffMain[room])) || [];
+    const roomStaffSubList = (db.roomStaffSub && (db.roomStaffSub[roomKey] || db.roomStaffSub[room])) || [];
     const roomStaffList = (db.roomStaff && (db.roomStaff[roomKey] || db.roomStaff[room])) || [];
+    const mainClean = new Set(roomStaffMainList.map(cleanStaff));
+    const subClean = new Set(roomStaffSubList.map(cleanStaff));
     const roomStaffClean = new Set(roomStaffList.map(cleanStaff));
-    qualifiedStaff.sort((a, b) => (roomStaffClean.has(cleanStaff(b)) ? 1 : 0) - (roomStaffClean.has(cleanStaff(a)) ? 1 : 0));
+    qualifiedStaff.sort((a, b) => {
+      const scoreA = mainClean.has(cleanStaff(a)) ? 2 : (subClean.has(cleanStaff(a)) ? 1 : (roomStaffClean.has(cleanStaff(a)) ? 1 : 0));
+      const scoreB = mainClean.has(cleanStaff(b)) ? 2 : (subClean.has(cleanStaff(b)) ? 1 : (roomStaffClean.has(cleanStaff(b)) ? 1 : 0));
+      return scoreB - scoreA;
+    });
 
     // 5. Chiếm dụng tài nguyên từ TOÀN BỘ lịch hiện tại (lịch cũ + ca mới)
     const staffOcc = new Map();

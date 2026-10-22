@@ -5308,13 +5308,25 @@ var dataCache = window.dataCache;
             const ktvGrid = document.getElementById('room-ktv-grid');
             const ddGrid = document.getElementById('room-dd-grid');
             const staffGrid = document.getElementById('room-staff-grid');
-            if (docGrid && (ktvGrid || staffGrid)) {
+            const docMainGrid = document.getElementById('room-doc-main-grid');
+            const docSubGrid = document.getElementById('room-doc-sub-grid');
+            const ktvMainGrid = document.getElementById('room-ktv-main-grid');
+            const ktvSubGrid = document.getElementById('room-ktv-sub-grid');
+
+            if (docMainGrid || docGrid) {
                 // 🛡️ BẢO VỆ CHỐNG MẤT TÍCH CHỌN PHÒNG KHI ĐỒNG BỘ / TẢI LẠI
+                const checkedDocMain = new Set(Array.from(document.querySelectorAll('.room-doc-main-cb:checked')).map(cb => cb.value.trim().toLowerCase()));
+                const checkedDocSub = new Set(Array.from(document.querySelectorAll('.room-doc-sub-cb:checked')).map(cb => cb.value.trim().toLowerCase()));
+                const checkedKtvMain = new Set(Array.from(document.querySelectorAll('.room-ktv-main-cb:checked')).map(cb => cb.value.trim().toLowerCase()));
+                const checkedKtvSub = new Set(Array.from(document.querySelectorAll('.room-ktv-sub-cb:checked')).map(cb => cb.value.trim().toLowerCase()));
                 const checkedDocs = new Set(Array.from(document.querySelectorAll('.room-doc-cb:checked')).map(cb => cb.value.trim().toLowerCase()));
                 const checkedKtvs = new Set(Array.from(document.querySelectorAll('.room-ktv-cb:checked')).map(cb => cb.value.trim().toLowerCase()));
                 const checkedDds = new Set(Array.from(document.querySelectorAll('.room-dd-cb:checked')).map(cb => cb.value.trim().toLowerCase()));
 
+                let docMainHtml = '<div class="skills-col">', docSubHtml = '<div class="skills-col">';
+                let ktvMainHtml = '<div class="skills-col">', ktvSubHtml = '<div class="skills-col">';
                 let docHtml = '<div class="skills-col">', ktvHtml = '<div class="skills-col">', ddHtml = '<div class="skills-col">';
+
                 staffList.forEach(s => {
                     if (!s || !s.ten) return;
                     const role = String(s.vaiTro || s.role || '').toLowerCase();
@@ -5323,20 +5335,49 @@ var dataCache = window.dataCache;
                     const isKtv = role.includes('kỹ thuật viên') || role.includes('ktv') || tenLower.startsWith('ktv');
                     
                     if (isDoc) {
+                        docMainHtml += `<label class="checkbox-item"><input type="checkbox" class="room-doc-main-cb" value="${escapeHtml(s.ten)}"> ${escapeHtml(s.ten)}</label>`;
+                        docSubHtml += `<label class="checkbox-item"><input type="checkbox" class="room-doc-sub-cb" value="${escapeHtml(s.ten)}"> ${escapeHtml(s.ten)}</label>`;
                         docHtml += `<label class="checkbox-item"><input type="checkbox" class="room-doc-cb" value="${escapeHtml(s.ten)}"> ${escapeHtml(s.ten)}</label>`;
                     } else if (isKtv) {
+                        ktvMainHtml += `<label class="checkbox-item"><input type="checkbox" class="room-ktv-main-cb" value="${escapeHtml(s.ten)}"> ${escapeHtml(s.ten)}</label>`;
+                        ktvSubHtml += `<label class="checkbox-item"><input type="checkbox" class="room-ktv-sub-cb" value="${escapeHtml(s.ten)}"> ${escapeHtml(s.ten)}</label>`;
                         ktvHtml += `<label class="checkbox-item"><input type="checkbox" class="room-ktv-cb room-stf-cb" value="${escapeHtml(s.ten)}"> ${escapeHtml(s.ten)}</label>`;
                     } else {
                         ddHtml += `<label class="checkbox-item"><input type="checkbox" class="room-dd-cb room-stf-cb" value="${escapeHtml(s.ten)}"> ${escapeHtml(s.ten)}</label>`;
                     }
                 });
-                docGrid.innerHTML = docHtml + '</div>';
+
+                if (docMainGrid) docMainGrid.innerHTML = docMainHtml + '</div>';
+                if (docSubGrid) docSubGrid.innerHTML = docSubHtml + '</div>';
+                if (ktvMainGrid) ktvMainGrid.innerHTML = ktvMainHtml + '</div>';
+                if (ktvSubGrid) ktvSubGrid.innerHTML = ktvSubHtml + '</div>';
+                if (docGrid) docGrid.innerHTML = docHtml + '</div>';
                 if (ktvGrid) ktvGrid.innerHTML = ktvHtml + '</div>';
                 if (ddGrid) ddGrid.innerHTML = ddHtml + '</div>';
                 if (staffGrid) staffGrid.innerHTML = ktvHtml + ddHtml + '</div>';
 
                 // 🛡️ Khôi phục lại toàn bộ checkbox đã tick
-                if (checkedDocs.size > 0) {
+                if (checkedDocMain.size > 0 && docMainGrid) {
+                    docMainGrid.querySelectorAll('.room-doc-main-cb').forEach(cb => {
+                        if (checkedDocMain.has(cb.value.trim().toLowerCase())) cb.checked = true;
+                    });
+                }
+                if (checkedDocSub.size > 0 && docSubGrid) {
+                    docSubGrid.querySelectorAll('.room-doc-sub-cb').forEach(cb => {
+                        if (checkedDocSub.has(cb.value.trim().toLowerCase())) cb.checked = true;
+                    });
+                }
+                if (checkedKtvMain.size > 0 && ktvMainGrid) {
+                    ktvMainGrid.querySelectorAll('.room-ktv-main-cb').forEach(cb => {
+                        if (checkedKtvMain.has(cb.value.trim().toLowerCase())) cb.checked = true;
+                    });
+                }
+                if (checkedKtvSub.size > 0 && ktvSubGrid) {
+                    ktvSubGrid.querySelectorAll('.room-ktv-sub-cb').forEach(cb => {
+                        if (checkedKtvSub.has(cb.value.trim().toLowerCase())) cb.checked = true;
+                    });
+                }
+                if (checkedDocs.size > 0 && docGrid) {
                     docGrid.querySelectorAll('.room-doc-cb').forEach(cb => {
                         if (checkedDocs.has(cb.value.trim().toLowerCase())) cb.checked = true;
                     });

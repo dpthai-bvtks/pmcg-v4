@@ -2261,16 +2261,16 @@
             min-width: 85px !important;
         }
 
-        #rooms-table th:nth-child(7),
-        #rooms-table td:nth-child(7) {
+        #rooms-table th:nth-child(9),
+        #rooms-table td:nth-child(9) {
             width: 65px !important;
             min-width: 60px !important;
             white-space: nowrap !important;
             text-align: center !important;
         }
 
-        #rooms-table th:nth-child(8),
-        #rooms-table td:nth-child(8) {
+        #rooms-table th:nth-child(10),
+        #rooms-table td:nth-child(10) {
             width: 70px !important;
             min-width: 65px !important;
             white-space: nowrap !important;

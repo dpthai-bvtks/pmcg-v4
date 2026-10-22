@@ -196,6 +196,10 @@
             });
 
             // Bảo lưu các checkbox phòng & máy móc
+            const savedRoomDocsMain = Array.from(document.querySelectorAll('.room-doc-main-cb:checked')).map(cb => cb.value);
+            const savedRoomDocsSub = Array.from(document.querySelectorAll('.room-doc-sub-cb:checked')).map(cb => cb.value);
+            const savedRoomKtvsMain = Array.from(document.querySelectorAll('.room-ktv-main-cb:checked')).map(cb => cb.value);
+            const savedRoomKtvsSub = Array.from(document.querySelectorAll('.room-ktv-sub-cb:checked')).map(cb => cb.value);
             const savedRoomDocs = Array.from(document.querySelectorAll('.room-doc-cb:checked')).map(cb => cb.value);
             const savedRoomKtvs = Array.from(document.querySelectorAll('.room-ktv-cb:checked, .room-stf-cb:checked')).map(cb => cb.value);
             const savedRoomDds = Array.from(document.querySelectorAll('.room-dd-cb:checked')).map(cb => cb.value);
@@ -267,6 +271,30 @@
                     }
                 }
                 // Khôi phục checkbox phòng
+                if (savedRoomDocsMain.length > 0) {
+                    savedRoomDocsMain.forEach(val => {
+                        const cb = document.querySelector(`.room-doc-main-cb[value="${val}"]`);
+                        if (cb) cb.checked = true;
+                    });
+                }
+                if (savedRoomDocsSub.length > 0) {
+                    savedRoomDocsSub.forEach(val => {
+                        const cb = document.querySelector(`.room-doc-sub-cb[value="${val}"]`);
+                        if (cb) cb.checked = true;
+                    });
+                }
+                if (savedRoomKtvsMain.length > 0) {
+                    savedRoomKtvsMain.forEach(val => {
+                        const cb = document.querySelector(`.room-ktv-main-cb[value="${val}"]`);
+                        if (cb) cb.checked = true;
+                    });
+                }
+                if (savedRoomKtvsSub.length > 0) {
+                    savedRoomKtvsSub.forEach(val => {
+                        const cb = document.querySelector(`.room-ktv-sub-cb[value="${val}"]`);
+                        if (cb) cb.checked = true;
+                    });
+                }
                 if (savedRoomDocs.length > 0) {
                     savedRoomDocs.forEach(val => {
                         const cb = document.querySelector(`.room-doc-cb[value="${val}"]`);

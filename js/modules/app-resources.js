@@ -403,6 +403,38 @@
         };
     }
 
+    function resolveRoomRoles(item, cache) {
+        const staff = splitKtvAndDd(item, cache);
+        let bsChinh = String(item.bacSiChinh || item.bac_si_chinh || '').trim();
+        let bsPhu = String(item.bacSiPhu || item.bac_si_phu || '').trim();
+        let ktvChinh = String(item.ktvChinh || item.ktv_chinh || '').trim();
+        let ktvPhu = String(item.ktvPhu || item.ktv_phu || '').trim();
+
+        // 🛡️ Fallback tự động: Nếu chưa thiết lập cột riêng thì người đầu tiên là Chính, người sau là Phụ
+        if (!bsChinh && !bsPhu) {
+            const rawBs = String(item.bacSi || item.bac_si || (Array.isArray(item) ? item[2] : '') || '').split(',').map(s => s.trim()).filter(Boolean);
+            if (rawBs.length > 0) {
+                bsChinh = rawBs[0];
+                bsPhu = rawBs.slice(1).join(', ');
+            }
+        }
+        if (!ktvChinh && !ktvPhu) {
+            const rawKtv = String(staff.ktv || '').split(',').map(s => s.trim()).filter(Boolean);
+            if (rawKtv.length > 0) {
+                ktvChinh = rawKtv[0];
+                ktvPhu = rawKtv.slice(1).join(', ');
+            }
+        }
+
+        return {
+            bsChinh,
+            bsPhu,
+            ktvChinh,
+            ktvPhu,
+            dieuDuong: staff.dieuDuong
+        };
+    }
+
     function renderRoomsTable() {
         const cache = getCache();
         const tbody = document.getElementById('rooms-list');
@@ -424,19 +456,21 @@
         }
 
         if (!cache.room || !cache.room.length) {
-            tbody.innerHTML = emptyRowHtml(8, 'Chưa có dữ liệu phòng');
+            tbody.innerHTML = emptyRowHtml(10, 'Chưa có dữ liệu phòng');
             return;
         }
 
         tbody.innerHTML = cache.room.map((item, i) => {
             const idx = cache.room.indexOf(item);
-            const staff = splitKtvAndDd(item, cache);
+            const roles = resolveRoomRoles(item, cache);
             return `<tr class="draggable-row editable-row" data-drag-idx="${i}" onclick="if(!window._isDraggingRow) editRoom(${idx})" title="Bấm sửa (Kéo thả nút ☰ hoặc bấm ▲/▼ để đổi thứ tự, Phím Delete để xóa)">
                 <td style="text-align:center;">${sttControlHtml("rooms", i, cache.room.length)}</td>
                 <td><strong>${safeEscape(item.tenPhong || item[1] || '')}</strong></td>
-                <td>${safeEscape(item.bacSi || item[2] || '')}</td>
-                <td style="font-size:11px;">${safeEscape(staff.ktv)}</td>
-                <td style="font-size:11px;">${safeEscape(staff.dieuDuong)}</td>
+                <td><span style="color:#166534; font-weight:600;">${safeEscape(roles.bsChinh)}</span></td>
+                <td style="font-size:11px; color:#475569;">${safeEscape(roles.bsPhu)}</td>
+                <td style="font-size:11px;"><span style="color:#166534; font-weight:600;">${safeEscape(roles.ktvChinh)}</span></td>
+                <td style="font-size:11px; color:#475569;">${safeEscape(roles.ktvPhu)}</td>
+                <td style="font-size:11px; color:#92400e;">${safeEscape(roles.dieuDuong)}</td>
                 <td style="font-size:11px; word-break:break-word;" title="${safeEscape(item.danhSachMay || item[4] || '')}">${safeEscape(item.danhSachMay || item[4] || '')}</td>
                 <td style="text-align:center;">${item.soGiuong || item[5] || 0}</td>
                 <td style="text-align:center;"><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteRoom(${idx})">Xóa</button></td>
@@ -467,15 +501,38 @@
 
         if (!ten) return alert("Nhập tên phòng");
 
-        const bs = Array.from(document.querySelectorAll('.room-doc-cb:checked')).map(cb => cb.value.trim()).filter(Boolean).join(', ');
-        let ktv = Array.from(document.querySelectorAll('.room-ktv-cb:checked')).map(cb => cb.value.trim()).filter(Boolean).join(', ');
+        const bsChinh = Array.from(document.querySelectorAll('.room-doc-main-cb:checked')).map(cb => cb.value.trim()).filter(Boolean).join(', ');
+        const bsPhu = Array.from(document.querySelectorAll('.room-doc-sub-cb:checked')).map(cb => cb.value.trim()).filter(Boolean).join(', ');
+        const ktvChinh = Array.from(document.querySelectorAll('.room-ktv-main-cb:checked')).map(cb => cb.value.trim()).filter(Boolean).join(', ');
+        const ktvPhu = Array.from(document.querySelectorAll('.room-ktv-sub-cb:checked')).map(cb => cb.value.trim()).filter(Boolean).join(', ');
         let dd = Array.from(document.querySelectorAll('.room-dd-cb:checked')).map(cb => cb.value.trim()).filter(Boolean).join(', ');
 
-        if (!ktv && !dd && document.querySelectorAll('.room-stf-cb:checked').length) {
+        let finalBsChinh = bsChinh, finalBsPhu = bsPhu, finalKtvChinh = ktvChinh, finalKtvPhu = ktvPhu;
+        // Fallback nếu dùng form cũ chỉ có room-doc-cb hoặc room-ktv-cb
+        if (!finalBsChinh && !finalBsPhu && document.querySelectorAll('.room-doc-cb:checked').length) {
+            const docs = Array.from(document.querySelectorAll('.room-doc-cb:checked')).map(cb => cb.value.trim()).filter(Boolean);
+            finalBsChinh = docs[0] || '';
+            finalBsPhu = docs.slice(1).join(', ');
+        }
+        if (!finalKtvChinh && !finalKtvPhu && document.querySelectorAll('.room-ktv-cb:checked').length) {
+            const ktvs = Array.from(document.querySelectorAll('.room-ktv-cb:checked')).map(cb => cb.value.trim()).filter(Boolean);
+            finalKtvChinh = ktvs[0] || '';
+            finalKtvPhu = ktvs.slice(1).join(', ');
+        }
+
+        const allBs = [...new Set([...finalBsChinh.split(','), ...finalBsPhu.split(',')].map(s => s.trim()).filter(Boolean))].join(', ');
+        let allKtv = [...new Set([...finalKtvChinh.split(','), ...finalKtvPhu.split(',')].map(s => s.trim()).filter(Boolean))].join(', ');
+
+        if (!allKtv && !dd && document.querySelectorAll('.room-stf-cb:checked').length) {
             const allStf = Array.from(document.querySelectorAll('.room-stf-cb:checked')).map(cb => cb.value.trim()).filter(Boolean);
             const spl = splitKtvAndDd({ ktv: allStf.join(', ') }, cache);
-            ktv = spl.ktv;
+            allKtv = spl.ktv;
             dd = spl.dieuDuong;
+            if (!finalKtvChinh && !finalKtvPhu) {
+                const kParts = allKtv.split(',').map(s => s.trim()).filter(Boolean);
+                finalKtvChinh = kParts[0] || '';
+                finalKtvPhu = kParts.slice(1).join(', ');
+            }
         }
 
         const roomIdx = editIdx.room > -1 ? editIdx.room : (cache.room || []).length;
@@ -534,7 +591,20 @@
             const oldName = oldItem ? String(oldItem.tenPhong || oldItem.ten_phong || (Array.isArray(oldItem) ? oldItem[1] : '') || '').trim() : '';
             const oldId = oldItem ? oldItem.id : null;
 
-            cache.room[editIdx.room] = { id: oldId, tenPhong: ten, bacSi: bs, ktv, dieuDuong: dd, danhSachMay: dsMay, soGiuong: slGiuong, danhSachGiuong: dsGiuong };
+            cache.room[editIdx.room] = {
+                id: oldId,
+                tenPhong: ten,
+                bacSi: allBs,
+                bacSiChinh: finalBsChinh,
+                bacSiPhu: finalBsPhu,
+                ktv: allKtv,
+                ktvChinh: finalKtvChinh,
+                ktvPhu: finalKtvPhu,
+                dieuDuong: dd,
+                danhSachMay: dsMay,
+                soGiuong: slGiuong,
+                danhSachGiuong: dsGiuong
+            };
 
             if (oldName !== ten) {
                 if (cache.pat) {
@@ -572,31 +642,51 @@
                     oldTenPhong: oldName,
                     id: oldId,
                     tenPhong: ten,
-                    bacSi: bs,
-                    ktv: ktv,
+                    bacSi: allBs,
+                    bacSiChinh: finalBsChinh,
+                    bacSiPhu: finalBsPhu,
+                    ktv: allKtv,
+                    ktvChinh: finalKtvChinh,
+                    ktvPhu: finalKtvPhu,
                     dieuDuong: dd,
                     danhSachMay: dsMay,
                     soGiuong: slGiuong,
                     danhSachGiuong: dsGiuong
-                }, editIdx.room, ten, bs, ktv, dsMay, slGiuong, dsGiuong, oldName, dd],
+                }, editIdx.room, ten, allBs, allKtv, dsMay, slGiuong, dsGiuong, oldName, dd, finalBsChinh, finalBsPhu, finalKtvChinh, finalKtvPhu],
                 () => notifyMsg(`Đã cập nhật phòng "${ten}" thành công!`, 'success'),
                 e => alert('Lỗi khi cập nhật phòng: ' + e));
             } else {
                 notifyMsg(`Đã cập nhật phòng "${ten}" thành công!`, 'success');
             }
         } else {
-            cache.room.push({ tenPhong: ten, bacSi: bs, ktv, dieuDuong: dd, danhSachMay: dsMay, soGiuong: slGiuong, danhSachGiuong: dsGiuong });
+            cache.room.push({
+                tenPhong: ten,
+                bacSi: allBs,
+                bacSiChinh: finalBsChinh,
+                bacSiPhu: finalBsPhu,
+                ktv: allKtv,
+                ktvChinh: finalKtvChinh,
+                ktvPhu: finalKtvPhu,
+                dieuDuong: dd,
+                danhSachMay: dsMay,
+                soGiuong: slGiuong,
+                danhSachGiuong: dsGiuong
+            });
 
             if (typeof callApi === 'function') {
                 callApi('addPhong', [{
                     tenPhong: ten,
-                    bacSi: bs,
-                    ktv: ktv,
+                    bacSi: allBs,
+                    bacSiChinh: finalBsChinh,
+                    bacSiPhu: finalBsPhu,
+                    ktv: allKtv,
+                    ktvChinh: finalKtvChinh,
+                    ktvPhu: finalKtvPhu,
                     dieuDuong: dd,
                     danhSachMay: dsMay,
                     soGiuong: slGiuong,
                     danhSachGiuong: dsGiuong
-                }, ten, bs, ktv, dsMay, slGiuong, dsGiuong, dd],
+                }, ten, allBs, allKtv, dsMay, slGiuong, dsGiuong, dd, finalBsChinh, finalBsPhu, finalKtvChinh, finalKtvPhu],
                 () => notifyMsg(`Đã thêm phòng "${ten}" thành công!`, 'success'),
                 e => alert('Lỗi khi thêm phòng: ' + e));
             } else {
@@ -650,7 +740,7 @@
         if (nameEl) nameEl.value = item.tenPhong || item[1] || '';
         if (bedsEl) bedsEl.value = item.soGiuong || item[5] || 0;
 
-        document.querySelectorAll('.room-doc-cb, .room-ktv-cb, .room-dd-cb, .room-stf-cb').forEach(cb => cb.checked = false);
+        document.querySelectorAll('.room-doc-main-cb, .room-doc-sub-cb, .room-ktv-main-cb, .room-ktv-sub-cb, .room-doc-cb, .room-ktv-cb, .room-dd-cb, .room-stf-cb').forEach(cb => cb.checked = false);
 
         function matchCheckbox(selector, val) {
             if (!val) return null;
@@ -667,23 +757,41 @@
             return null;
         }
 
-        const bacSi = item.bacSi || item[2] || '';
-        if (bacSi) {
-            bacSi.split(',').forEach(b => {
-                const cb = matchCheckbox('.room-doc-cb', b);
+        const roles = resolveRoomRoles(item, cache);
+        if (roles.bsChinh) {
+            roles.bsChinh.split(',').forEach(b => {
+                const cb = matchCheckbox('.room-doc-main-cb', b);
                 if (cb) cb.checked = true;
+                const legacyCb = matchCheckbox('.room-doc-cb', b);
+                if (legacyCb) legacyCb.checked = true;
             });
         }
-
-        const staffSplit = splitKtvAndDd(item, cache);
-        if (staffSplit.ktv) {
-            staffSplit.ktv.split(',').forEach(k => {
-                const cb = matchCheckbox('.room-ktv-cb, .room-stf-cb', k);
+        if (roles.bsPhu) {
+            roles.bsPhu.split(',').forEach(b => {
+                const cb = matchCheckbox('.room-doc-sub-cb', b);
                 if (cb) cb.checked = true;
+                const legacyCb = matchCheckbox('.room-doc-cb', b);
+                if (legacyCb) legacyCb.checked = true;
             });
         }
-        if (staffSplit.dieuDuong) {
-            staffSplit.dieuDuong.split(',').forEach(d => {
+        if (roles.ktvChinh) {
+            roles.ktvChinh.split(',').forEach(k => {
+                const cb = matchCheckbox('.room-ktv-main-cb', k);
+                if (cb) cb.checked = true;
+                const legacyCb = matchCheckbox('.room-ktv-cb, .room-stf-cb', k);
+                if (legacyCb) legacyCb.checked = true;
+            });
+        }
+        if (roles.ktvPhu) {
+            roles.ktvPhu.split(',').forEach(k => {
+                const cb = matchCheckbox('.room-ktv-sub-cb', k);
+                if (cb) cb.checked = true;
+                const legacyCb = matchCheckbox('.room-ktv-cb, .room-stf-cb', k);
+                if (legacyCb) legacyCb.checked = true;
+            });
+        }
+        if (roles.dieuDuong) {
+            roles.dieuDuong.split(',').forEach(d => {
                 const cb = matchCheckbox('.room-dd-cb, .room-stf-cb', d);
                 if (cb) cb.checked = true;
             });
