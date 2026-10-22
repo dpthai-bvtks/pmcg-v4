@@ -1,6 +1,6 @@
 {
     "version": "4.3.2-rev12",
     "releaseDate": "22/10/2026",
-    "releaseTime": "10:45 22/10/2026",
-    "notes": "Tách bạch vai trò Bác sĩ chính, Bác sĩ phụ, KTV chính, KTV phụ theo phòng điều trị; Nâng cấp Primary Room Lock trong thuật toán xếp lịch chống dàn trải nhân sự (ưu tiên giải quyết sạch bệnh nhân phòng phụ trách chính trước khi hỗ trợ phòng khác)."
+    "releaseTime": "11:15 22/10/2026",
+    "notes": "Tách bạch vai trò Bác sĩ chính, Bác sĩ phụ, KTV chính, KTV phụ theo phòng điều trị; Nâng cấp cơ chế Primary Room Lock trong thuật toán xếp lịch chống dàn trải nhân sự (ưu tiên giải quyết sạch bệnh nhân phòng phụ trách chính trước khi hỗ trợ phòng khác); Bảo vệ và cảnh báo khi chốt sổ sớm kèm nút Hoàn tác chốt sổ (Undo Chốt Sổ) khôi phục dữ liệu; Chống mất dữ liệu đang nhập ở form bệnh nhân và phòng."
 }

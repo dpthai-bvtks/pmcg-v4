@@ -465,14 +465,14 @@
             const roles = resolveRoomRoles(item, cache);
             return `<tr class="draggable-row editable-row" data-drag-idx="${i}" onclick="if(!window._isDraggingRow) editRoom(${idx})" title="Bấm sửa (Kéo thả nút ☰ hoặc bấm ▲/▼ để đổi thứ tự, Phím Delete để xóa)">
                 <td style="text-align:center;">${sttControlHtml("rooms", i, cache.room.length)}</td>
-                <td><strong>${safeEscape(item.tenPhong || item[1] || '')}</strong></td>
-                <td><span style="color:#166534; font-weight:600;">${safeEscape(roles.bsChinh)}</span></td>
-                <td style="font-size:11px; color:#475569;">${safeEscape(roles.bsPhu)}</td>
-                <td style="font-size:11px;"><span style="color:#166534; font-weight:600;">${safeEscape(roles.ktvChinh)}</span></td>
-                <td style="font-size:11px; color:#475569;">${safeEscape(roles.ktvPhu)}</td>
-                <td style="font-size:11px; color:#92400e;">${safeEscape(roles.dieuDuong)}</td>
-                <td style="font-size:11px; word-break:break-word;" title="${safeEscape(item.danhSachMay || item[4] || '')}">${safeEscape(item.danhSachMay || item[4] || '')}</td>
-                <td style="text-align:center;">${item.soGiuong || item[5] || 0}</td>
+                <td><strong style="color:#0f172a; font-size:12.5px;">${safeEscape(item.tenPhong || item[1] || '')}</strong></td>
+                <td><span style="color:#15803d; font-weight:700; font-size:12.5px;">${safeEscape(roles.bsChinh)}</span></td>
+                <td style="font-size:12px; color:#475569; font-weight:500;">${safeEscape(roles.bsPhu)}</td>
+                <td><span style="color:#0369a1; font-weight:700; font-size:12.5px;">${safeEscape(roles.ktvChinh)}</span></td>
+                <td style="font-size:12px; color:#475569; font-weight:500;">${safeEscape(roles.ktvPhu)}</td>
+                <td style="font-size:12px; color:#b45309; font-weight:500;">${safeEscape(roles.dieuDuong)}</td>
+                <td style="font-size:11.5px; line-height:1.45; word-break:break-word; color:#334155;" title="${safeEscape(item.danhSachMay || item[4] || '')}">${safeEscape(item.danhSachMay || item[4] || '')}</td>
+                <td style="text-align:center; font-weight:700; font-size:12.5px; color:#334155;">${item.soGiuong || item[5] || 0}</td>
                 <td style="text-align:center;"><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteRoom(${idx})">Xóa</button></td>
             </tr>`;
         }).join('');

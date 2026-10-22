@@ -8985,8 +8985,11 @@ oomRoleStaff[phong][vaiTro] vào js/scheduler-engine.js:
         1. **Database & API:** Mở rộng bảng `phong` với 4 cột mới: `bac_si_chinh`, `bac_si_phu`, `ktv_chinh`, `ktv_phu` (trong SQLite `C:\PMCG-Data\pmcg.db` và schema Cloudflare Worker/Turso), bảo đảm tương thích ngược 2 chiều.
         2. **UI & Realtime Sync:** Chia form phòng thành 2 khối trực quan (BS Chính / BS Phụ và KTV Chính / KTV Phụ / ĐD), bảng `#rooms-table` mở rộng 10 cột, bảo lưu trạng thái checkbox khi F5/đồng bộ.
         3. **Thuật toán Xếp lịch (Primary Room Lock):** Khóa cứng nhân sự chính của phòng mình (`Primary Room Lock`); tuyệt đối không điều động nhân sự chính sang phòng khác hỗ trợ nếu phòng mình còn bệnh nhân chờ làm thủ thuật chuyên môn. Nhân sự phụ chỉ được huy động khi phòng quá tải hoặc nhân sự chính vắng mặt.
+        4. **Cơ chế Cảnh báo & Hoàn tác Chốt Sổ Sớm:** Thêm cảnh báo chi tiết khi người dùng nhấn "Chốt sổ" trước giờ quy định (`currentTimeStr < chotSoTime`); triển khai API `undoChotSo` và nút `[↩️ Mở lại sổ / Hoàn tác]` khôi phục 100% lịch trình, giờ bận nhân viên/bệnh nhân và hồ sơ bệnh nhân ra viện nếu lỡ tay chốt sổ sớm.
+        5. **Bảo vệ dữ liệu đang nhập:** Nâng cấp `isPatientFormActive` và `isRoomFormActive` ngăn chặn đồng bộ nền xóa đè khi người dùng đang nhập tên, mã hoặc tích chọn thủ thuật/nhân sự.
       * *Kết quả kiểm nghiệm:* Ngày 22/10/2026 (51 BN, 179 ca) đạt **178 / 179 ca** (99.4%) ngay cả khi 2 bác sĩ bận cả ngày, và đạt **179 / 179 ca (100%)** khi đủ nhân sự. Tại Phòng TT1: 100% 23 ca được giải quyết sạch sẽ trong buổi sáng (xong lúc 11:04), chỉ duy nhất **BS Thảo** (YHCT) và **KTV Lê Hiền** (PHCN) cắm chốt làm việc.
-    - **File sửa đổi:** `backend/src/routes/patients.js`, `backend/src/schema.js`, `css/style.css`, `index.html`, `js/app.js`, `js/modules/app-resources.js`, `js/scheduler-engine.js`, `js/sync.js`, `sw.js`, `version.json`, `PM-xeplich-v4.md`.
+    - **File sửa đổi:** `backend/src/routes/patients.js`, `backend/src/routes/schedules.js`, `backend/src/schema.js`, `css/style.css`, `index.html`, `js/app.js`, `js/modules/app-resources.js`, `js/modules/app-tenant-admin.js`, `js/scheduler-engine.js`, `js/sync.js`, `sw.js`, `version.json`, `PM-xeplich-v4.md`.
+
 
 
 

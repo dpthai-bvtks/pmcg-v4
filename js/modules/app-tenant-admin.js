@@ -768,7 +768,7 @@ window.filterGioBanChungCuClient = function() {};
                             const countInfo = window._finalizedTodayCount ? ` (${window._finalizedTodayCount} ca)` : '';
                             const displayEl = document.getElementById('display-date');
                             if (displayEl) {
-                                displayEl.innerHTML = `<span style="color:#b45309; background:#fef3c7; padding:2px 8px; border-radius:6px; font-weight:700;">📋 Hôm nay (Đã chốt sổ${countInfo})</span>`;
+                                displayEl.innerHTML = `<span style="color:#b45309; background:#fef3c7; padding:2px 8px; border-radius:6px; font-weight:700;">📋 Hôm nay (Đã chốt sổ${countInfo})</span> <button type="button" class="btn btn-sm" onclick="window.callUndoChotSo()" style="margin-left:6px; font-size:11px; padding:2px 8px; cursor:pointer; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; border-radius:4px; font-weight:600;" title="Bấm để khôi phục lại lịch hôm nay nếu lỡ chốt sổ sớm">↩️ Mở lại sổ / Hoàn tác</button>`;
                             }
                             const statusEl = document.getElementById('utils-lich-status');
                             if (statusEl) {

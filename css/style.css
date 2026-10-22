@@ -2236,43 +2236,97 @@
 
         #rooms-table {
             width: 100% !important;
-            table-layout: auto !important;
+            table-layout: fixed !important;
         }
 
         #rooms-table th,
         #rooms-table td {
             white-space: normal !important;
-            word-break: break-word !important;
+            word-break: normal !important;
             overflow-wrap: break-word !important;
             height: auto !important;
-            line-height: 1.35 !important;
+            line-height: 1.4 !important;
+            vertical-align: middle !important;
+            padding: 8px 6px !important;
         }
 
+        /* 1. STT */
         #rooms-table th:nth-child(1),
         #rooms-table td:nth-child(1) {
-            width: 45px !important;
+            width: 48px !important;
             min-width: 45px !important;
             white-space: nowrap !important;
             text-align: center !important;
         }
 
+        /* 2. Tên Phòng */
         #rooms-table th:nth-child(2),
         #rooms-table td:nth-child(2) {
-            min-width: 85px !important;
+            width: 110px !important;
+            min-width: 95px !important;
+            font-weight: 700 !important;
         }
 
+        /* 3. BS Chính */
+        #rooms-table th:nth-child(3),
+        #rooms-table td:nth-child(3) {
+            width: 110px !important;
+            min-width: 95px !important;
+        }
+
+        /* 4. BS Phụ */
+        #rooms-table th:nth-child(4),
+        #rooms-table td:nth-child(4) {
+            width: 105px !important;
+            min-width: 90px !important;
+        }
+
+        /* 5. KTV Chính */
+        #rooms-table th:nth-child(5),
+        #rooms-table td:nth-child(5) {
+            width: 115px !important;
+            min-width: 100px !important;
+        }
+
+        /* 6. KTV Phụ */
+        #rooms-table th:nth-child(6),
+        #rooms-table td:nth-child(6) {
+            width: 110px !important;
+            min-width: 95px !important;
+        }
+
+        /* 7. Điều dưỡng */
+        #rooms-table th:nth-child(7),
+        #rooms-table td:nth-child(7) {
+            width: 130px !important;
+            min-width: 110px !important;
+        }
+
+        /* 8. Các máy (Giảm độ rộng, tự động xuống dòng mềm mại) */
+        #rooms-table th:nth-child(8),
+        #rooms-table td:nth-child(8) {
+            width: 250px !important;
+            max-width: 280px !important;
+            font-size: 11.5px !important;
+            line-height: 1.45 !important;
+            color: #334155 !important;
+            word-break: break-word !important;
+        }
+
+        /* 9. Số giường */
         #rooms-table th:nth-child(9),
         #rooms-table td:nth-child(9) {
             width: 65px !important;
-            min-width: 60px !important;
+            min-width: 55px !important;
             white-space: nowrap !important;
             text-align: center !important;
         }
 
+        /* 10. Thao tác */
         #rooms-table th:nth-child(10),
         #rooms-table td:nth-child(10) {
-            width: 70px !important;
-            min-width: 65px !important;
+            width: 65px !important;
+            min-width: 55px !important;
             white-space: nowrap !important;
             text-align: center !important;
         }

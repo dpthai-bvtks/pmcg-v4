@@ -741,6 +741,18 @@ window.showGlobalLoading = function (text) {
             }, 600);
         }
 
+        // Check for pending undo chot so success toast on reload
+        if (sessionStorage.getItem('undo_chot_so_success_toast') === 'true') {
+            sessionStorage.removeItem('undo_chot_so_success_toast');
+            setTimeout(() => {
+                if (typeof showCustomAlert === 'function') {
+                    showCustomAlert('Khôi phục chốt sổ thành công', 'Hệ thống đã phục hồi toàn bộ lịch trình điều trị và giờ bận của ngày hôm nay!', '↩️', '#2563eb');
+                } else {
+                    alert('✅ Đã khôi phục toàn bộ lịch trình hôm nay thành công!');
+                }
+            }, 600);
+        }
+
         window.onerror = function (msg, url, lineNo, columnNo, error) {
             // Bỏ qua lỗi cross-origin (Script error. dòng 0) từ CDN/extension/JSONP
             if (msg === 'Script error.' || lineNo === 0 || !lineNo) {
@@ -3809,7 +3821,7 @@ var dataCache = window.dataCache;
                         const countInfo = window._finalizedTodayCount ? ` (${window._finalizedTodayCount} ca)` : '';
                         const displayEl = document.getElementById('display-date');
                         if (displayEl) {
-                            displayEl.innerHTML = `<span style="color:#b45309; background:#fef3c7; padding:2px 8px; border-radius:6px; font-weight:700;">📋 Hôm nay (Đã chốt sổ${countInfo})</span>`;
+                            displayEl.innerHTML = `<span style="color:#b45309; background:#fef3c7; padding:2px 8px; border-radius:6px; font-weight:700;">📋 Hôm nay (Đã chốt sổ${countInfo})</span> <button type="button" class="btn btn-sm" onclick="window.callUndoChotSo()" style="margin-left:6px; font-size:11px; padding:2px 8px; cursor:pointer; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; border-radius:4px; font-weight:600;" title="Bấm để khôi phục lại lịch hôm nay nếu lỡ chốt sổ sớm">↩️ Mở lại sổ / Hoàn tác</button>`;
                         }
                         const statusEl = document.getElementById('utils-lich-status');
                         if (statusEl) {
@@ -9017,14 +9029,49 @@ var dataCache = window.dataCache;
 }
 
         function callChotSo() {
-            showCustomConfirm("Chốt sổ?", "Bạn có chắc chắn muốn chốt sổ ngày hôm nay?", function () {
+            const nowVN = new Date(Date.now() + 7 * 60 * 60 * 1000);
+            const currentH = String(nowVN.getUTCHours()).padStart(2, '0');
+            const currentM = String(nowVN.getUTCMinutes()).padStart(2, '0');
+            const currentTimeStr = `${currentH}:${currentM}`;
+
+            let chotSoTime = "16:20";
+            const chotSoEl = document.getElementById("admin-chotso-time");
+            if (chotSoEl && chotSoEl.value) {
+                chotSoTime = chotSoEl.value.trim();
+            } else if (window.dataCache?.settings?.chotSoTime) {
+                chotSoTime = String(window.dataCache.settings.chotSoTime).trim();
+            }
+
+            const isEarly = currentTimeStr < chotSoTime;
+
+            let confirmTitle = "Chốt sổ hôm nay?";
+            let confirmMsg = "Bạn có chắc chắn muốn chốt sổ và lưu trữ dữ liệu lịch trình ngày hôm nay vào Lịch sử?";
+
+            if (isEarly) {
+                confirmTitle = `⚠️ CẢNH BÁO: CHỐT SỔ SỚM (${currentTimeStr} < ${chotSoTime})`;
+                confirmMsg = `<div style="text-align:left; font-size:13px; line-height:1.6; color:#1e293b;">
+                    <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:10px 12px; margin-bottom:12px; color:#991b1b; font-weight:600;">
+                        ⏱ Hiện tại là <b>${currentTimeStr}</b>, chưa đến giờ chốt sổ quy định (<b>${chotSoTime}</b>).
+                    </div>
+                    <p style="margin:0 0 8px 0; font-weight:600;">Nếu Bác sĩ chốt sổ lúc này:</p>
+                    <ul style="margin:0 0 12px 18px; padding:0; color:#475569;">
+                        <li>Toàn bộ <b>lịch trình điều trị hôm nay</b> sẽ bị lưu vào Lịch sử và xóa khỏi bảng Live.</li>
+                        <li>Bệnh nhân có giờ ra viện hôm nay sẽ bị đóng hồ sơ điều trị.</li>
+                        <li>Giờ bận của nhân viên và bệnh nhân trong ngày sẽ bị làm sạch để chuẩn bị cho ngày mai.</li>
+                    </ul>
+                    <p style="margin:0; font-weight:700; color:#dc2626;">Bác sĩ có thực sự chắc chắn muốn CHỐT SỔ SỚM không?</p>
+                </div>`;
+            }
+
+            const confirmFn = window.showCustomConfirm || ((t, m, cb) => { if (confirm(m.replace(/<[^>]*>/g, ''))) cb(); });
+            confirmFn(confirmTitle, confirmMsg, function () {
                 const btn = document.getElementById('btn-chot-so');
-                btn.innerText = '⏳ Đang xử lý...'; btn.disabled = true;
+                if (btn) { btn.innerText = '⏳ Đang xử lý...'; btn.disabled = true; }
                 window._chotSoDone = false;
 
                 if (window.showGlobalLoading) window.showGlobalLoading("Đang thực hiện chốt sổ ngày cũ và mở sổ ngày mới...");
 
-                callApi('chuyenNgayMoi', [], res => {
+                callApi('chotSo', [], res => {
                     // Xóa toàn bộ cache phía client để mở ngày mới sạch sẽ
                     window.currentScheduleData = [];
                     window.lastUnscheduledData = [];
@@ -9070,11 +9117,37 @@ var dataCache = window.dataCache;
                 }, err => {
                     if (window.hideGlobalLoading) window.hideGlobalLoading();
                     alert("Lỗi chốt sổ: " + (typeof err === 'string' ? err : (err && err.message) || JSON.stringify(err)));
-                    btn.innerText = '📋 Chốt sổ';
-                    btn.disabled = false;
+                    if (btn) { btn.innerText = '📋 Chốt sổ'; btn.disabled = false; }
                 });
             });
         }
+        window.callChotSo = callChotSo;
+
+        function callUndoChotSo() {
+            const confirmFn = window.showCustomConfirm || ((t, m, cb) => { if (confirm(m.replace(/<[^>]*>/g, ''))) cb(); });
+            confirmFn("Hoàn tác chốt sổ?", 
+                `<div style="text-align:left; font-size:13px; line-height:1.6; color:#1e293b;">
+                    <p style="margin:0 0 8px 0;">Bác sĩ có chắc chắn muốn <b>Hoàn tác chốt sổ / Mở lại lịch hôm nay</b>?</p>
+                    <ul style="margin:0 0 10px 18px; padding:0; color:#475569;">
+                        <li>Toàn bộ lịch trình điều trị đã chốt sổ của ngày hôm nay sẽ được khôi phục về bảng xếp lịch.</li>
+                        <li>Giờ bận và giờ ra viện của nhân viên & bệnh nhân sẽ được phục hồi nguyên vẹn.</li>
+                        <li>Trạng thái sổ sẽ chuyển lại thành <b>🟢 Hôm nay (Live)</b>.</li>
+                    </ul>
+                </div>`, 
+                function () {
+                    if (window.showGlobalLoading) window.showGlobalLoading("Đang khôi phục dữ liệu lịch trình từ lịch sử...");
+                    callApi('undoChotSo', [], res => {
+                        if (window.hideGlobalLoading) window.hideGlobalLoading();
+                        sessionStorage.setItem('undo_chot_so_success_toast', 'true');
+                        location.reload();
+                    }, err => {
+                        if (window.hideGlobalLoading) window.hideGlobalLoading();
+                        alert("Lỗi khi hoàn tác chốt sổ: " + (typeof err === 'string' ? err : (err && err.message) || JSON.stringify(err)));
+                    });
+                }
+            );
+        }
+        window.callUndoChotSo = callUndoChotSo;
 
         window._historyCache = window._historyCache || {};
         // Backup/restore dataCache khi chuyển sang chế độ xem lịch cũ
@@ -11955,26 +12028,34 @@ var dataCache = window.dataCache;
         function isPatientFormActive() {
             if (window._savePatientLock) return true;
 
-            const activeEl = document.activeElement;
             const tabPat = document.getElementById('tab-patients');
             if (!tabPat) return false;
 
             const formContainer = tabPat.querySelector('.sidebar-form');
-            // Chỉ coi là active khi con trỏ chuột ĐANG nằm trong các ô input của form nhập liệu .sidebar-form
+            const activeEl = document.activeElement;
+            // 1. Con trỏ đang nằm trong ô input / select / textarea của form bệnh nhân
             if (activeEl && formContainer && formContainer.contains(activeEl) &&
                 (activeEl.tagName === 'INPUT' || activeEl.tagName === 'SELECT' || activeEl.tagName === 'TEXTAREA')) {
-                // Bỏ qua các nút bấm hoặc ô tìm kiếm
                 if (activeEl.tagName !== 'BUTTON' && activeEl.id !== 'pat-search-input') {
                     return true;
                 }
             }
 
-            // Chỉ coi là đang sửa nếu nút Hủy đang hiển thị (đang trong phiên edit) VÀ con trỏ đang ở form
+            // 2. Đang trong chế độ sửa bệnh nhân (nút Hủy đang hiện hoặc editIndex.pat > -1)
             const btnCancel = document.getElementById('btn-cancel-pat');
-            const isEditingMode = btnCancel && btnCancel.style.display !== 'none' && typeof editIndex !== 'undefined' && editIndex.pat > -1;
-            if (isEditingMode && activeEl && formContainer && formContainer.contains(activeEl)) {
+            if ((btnCancel && btnCancel.style.display !== 'none') || (typeof editIndex !== 'undefined' && editIndex.pat > -1)) {
                 return true;
             }
+
+            // 3. Người dùng đã nhập tên hoặc mã hoặc năm sinh bệnh nhân
+            const nameEl = document.getElementById('pat-name');
+            if (nameEl && nameEl.value.trim().length > 0) return true;
+            const codeEl = document.getElementById('pat-code');
+            if (codeEl && codeEl.value.trim().length > 0) return true;
+
+            // 4. Có ít nhất một thủ thuật được tick chọn trong form bệnh nhân
+            const hasProcChecked = tabPat.querySelector('.pat-skill-cb:checked, input.skill-cb:checked, input[type="checkbox"]:checked');
+            if (hasProcChecked) return true;
 
             return false;
         }
@@ -12018,7 +12099,7 @@ var dataCache = window.dataCache;
             const nameEl = document.getElementById('room-name');
             if (nameEl && nameEl.value.trim().length > 0) return true;
 
-            const hasChecked = tabRooms.querySelector('.room-doc-cb:checked, .room-ktv-cb:checked, .room-stf-cb:checked, .room-dd-cb:checked');
+            const hasChecked = tabRooms.querySelector('.room-doc-main-cb:checked, .room-doc-sub-cb:checked, .room-ktv-main-cb:checked, .room-ktv-sub-cb:checked, .room-doc-cb:checked, .room-ktv-cb:checked, .room-stf-cb:checked, .room-dd-cb:checked');
             if (hasChecked) return true;
 
             // 4. Có nhập số máy móc nào > 0

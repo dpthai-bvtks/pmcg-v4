@@ -170,7 +170,12 @@ export async function handleSchedulesAction(action, ctx) {
         // 2. Sao lưu giờ bận thực tế của bệnh nhân trước khi reset
         db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'benh_nhan', name, age, gio_ban FROM benh_nhan WHERE unit_code = ? AND gio_ban IS NOT NULL AND TRIM(gio_ban) != ''").bind(targetDateStr, unitCode),
         // 3. Sao lưu giờ ra viện của bệnh nhân trước khi reset
-        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'ra_vien', name, age, leave_time FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(targetDateStr, unitCode)
+        db.prepare("INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges) SELECT unit_code, ?, 'ra_vien', name, age, leave_time FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'").bind(targetDateStr, unitCode),
+        // 3b. Sao lưu toàn bộ hồ sơ bệnh nhân ra viện để có thể hoàn tác nếu chốt sổ sớm nhầm
+        db.prepare(`INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges)
+                    SELECT unit_code, ?, 'ra_vien_full', name, age,
+                    json_object('name', name, 'age', age, 'pId', pId, 'room', room, 'procedures', procedures, 'leave_time', leave_time, 'arrive_time', arrive_time, 'gio_ban', gio_ban, 'loai_bn', loai_bn, 'ngay_vao', ngay_vao)
+                    FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'`).bind(targetDateStr, unitCode)
       );
 
       if (date && typeof date === "string" && date.trim()) {
@@ -198,6 +203,13 @@ export async function handleSchedulesAction(action, ctx) {
       );
 
       await db.batch(statements);
+      // Ghi nhận lastChotSoDate để ngăn auto-chot-so chạy trùng lặp
+      if (typeof setCaiDat === 'function') {
+        await setCaiDat(db, unitCode, 'lastChotSoDate', targetDateStr);
+      } else {
+        await db.prepare("INSERT INTO cai_dat (unit_code, key, value) VALUES (?, 'lastChotSoDate', ?) ON CONFLICT(unit_code, key) DO UPDATE SET value = excluded.value").bind(unitCode, targetDateStr).run().catch(() => {});
+      }
+
       // Tự động huấn luyện mô hình AI ngay sau khi chuyển dữ liệu vào lịch sử (nếu không tắt)
       try {
         const aiSetting = await db.prepare("SELECT value FROM cai_dat WHERE unit_code = ? AND key = 'ai_auto_train_enable'").bind(unitCode).first();
@@ -209,6 +221,111 @@ export async function handleSchedulesAction(action, ctx) {
       }
       await bumpDataVersion(db, unitCode);
       return success({ message: "Đã chốt sổ và chuyển ngày mới thành công!" });
+    }
+
+    // ============================================================
+    // ↩️ HOÀN TÁC CHỐT SỔ / MỞ LẠI SỔ ĐIỀU TRỊ (BẢO VỆ KHI ẤN SỚM)
+    // ============================================================
+
+    case "undoChotSo": {
+      const nowVN = new Date(Date.now() + 7 * 60 * 60 * 1000);
+      const dd = String(nowVN.getUTCDate()).padStart(2, "0");
+      const mm = String(nowVN.getUTCMonth() + 1).padStart(2, "0");
+      const yyyy = nowVN.getUTCFullYear();
+      const dmy = `${dd}/${mm}/${yyyy}`;
+      const ymd = `${yyyy}-${mm}-${dd}`;
+      const targetDate = (args[0] && typeof args[0] === "string" && args[0].trim()) ? args[0].trim() : dmy;
+
+      // 1. Kiểm tra xem trong lich_su có dữ liệu ngày cần khôi phục không
+      const checkRes = await db.prepare(
+        "SELECT count(*) as cnt FROM lich_su WHERE unit_code = ? AND (date = ? OR date = ? OR date = ?)"
+      ).bind(unitCode, targetDate, dmy, ymd).first().catch(() => null);
+
+      const count = checkRes ? Number(checkRes.cnt || 0) : 0;
+      if (count === 0) {
+        return error(`Không tìm thấy dữ liệu lịch sử đã chốt sổ của ngày (${targetDate}) để hoàn tác.`);
+      }
+
+      const statements = [
+        // 1. Dọn lịch trình rác hiện tại của ngày này (nếu có)
+        db.prepare("DELETE FROM lich_trinh WHERE unit_code = ? AND (date = ? OR date = ? OR date = ?)").bind(unitCode, targetDate, dmy, ymd),
+        // 2. Chép toàn bộ ca từ lich_su trở lại lich_trinh
+        db.prepare(`INSERT INTO lich_trinh (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed)
+                    SELECT unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed
+                    FROM lich_su WHERE unit_code = ? AND (date = ? OR date = ? OR date = ?)`).bind(unitCode, targetDate, dmy, ymd),
+        // 3. Xóa các ca này khỏi lich_su để tránh trùng lặp
+        db.prepare("DELETE FROM lich_su WHERE unit_code = ? AND (date = ? OR date = ? OR date = ?)").bind(unitCode, targetDate, dmy, ymd),
+        // 4. Khôi phục giờ bận của nhân viên từ gio_ban_chung_cu
+        db.prepare(`UPDATE nhan_su SET temp_busy = (
+          SELECT busy_ranges FROM gio_ban_chung_cu
+          WHERE gio_ban_chung_cu.unit_code = nhan_su.unit_code
+            AND (gio_ban_chung_cu.date = ? OR gio_ban_chung_cu.date = ? OR gio_ban_chung_cu.date = ?)
+            AND gio_ban_chung_cu.target_type = 'nhan_su'
+            AND gio_ban_chung_cu.name = nhan_su.name
+          LIMIT 1
+        ) WHERE unit_code = ? AND EXISTS (
+          SELECT 1 FROM gio_ban_chung_cu
+          WHERE gio_ban_chung_cu.unit_code = nhan_su.unit_code
+            AND (gio_ban_chung_cu.date = ? OR gio_ban_chung_cu.date = ? OR gio_ban_chung_cu.date = ?)
+            AND gio_ban_chung_cu.target_type = 'nhan_su'
+            AND gio_ban_chung_cu.name = nhan_su.name
+        )`).bind(targetDate, dmy, ymd, unitCode, targetDate, dmy, ymd),
+        // 5. Khôi phục giờ bận của bệnh nhân từ gio_ban_chung_cu
+        db.prepare(`UPDATE benh_nhan SET gio_ban = (
+          SELECT busy_ranges FROM gio_ban_chung_cu
+          WHERE gio_ban_chung_cu.unit_code = benh_nhan.unit_code
+            AND (gio_ban_chung_cu.date = ? OR gio_ban_chung_cu.date = ? OR gio_ban_chung_cu.date = ?)
+            AND gio_ban_chung_cu.target_type = 'benh_nhan'
+            AND gio_ban_chung_cu.name = benh_nhan.name
+          LIMIT 1
+        ) WHERE unit_code = ? AND EXISTS (
+          SELECT 1 FROM gio_ban_chung_cu
+          WHERE gio_ban_chung_cu.unit_code = benh_nhan.unit_code
+            AND (gio_ban_chung_cu.date = ? OR gio_ban_chung_cu.date = ? OR gio_ban_chung_cu.date = ?)
+            AND gio_ban_chung_cu.target_type = 'benh_nhan'
+            AND gio_ban_chung_cu.name = benh_nhan.name
+        )`).bind(targetDate, dmy, ymd, unitCode, targetDate, dmy, ymd),
+        // 6. Khôi phục giờ ra viện của bệnh nhân từ gio_ban_chung_cu
+        db.prepare(`UPDATE benh_nhan SET leave_time = (
+          SELECT busy_ranges FROM gio_ban_chung_cu
+          WHERE gio_ban_chung_cu.unit_code = benh_nhan.unit_code
+            AND (gio_ban_chung_cu.date = ? OR gio_ban_chung_cu.date = ? OR gio_ban_chung_cu.date = ?)
+            AND gio_ban_chung_cu.target_type = 'ra_vien'
+            AND gio_ban_chung_cu.name = benh_nhan.name
+          LIMIT 1
+        ) WHERE unit_code = ? AND EXISTS (
+          SELECT 1 FROM gio_ban_chung_cu
+          WHERE gio_ban_chung_cu.unit_code = benh_nhan.unit_code
+            AND (gio_ban_chung_cu.date = ? OR gio_ban_chung_cu.date = ? OR gio_ban_chung_cu.date = ?)
+            AND gio_ban_chung_cu.target_type = 'ra_vien'
+            AND gio_ban_chung_cu.name = benh_nhan.name
+        )`).bind(targetDate, dmy, ymd, unitCode, targetDate, dmy, ymd),
+        // 7. Xóa lastChotSoDate để khôi phục trạng thái Live
+        db.prepare("DELETE FROM cai_dat WHERE unit_code = ? AND key = 'lastChotSoDate'").bind(unitCode)
+      ];
+
+      // 8. Khôi phục bệnh nhân ra viện bị xóa nhầm (nếu có trong ra_vien_full)
+      const dischargedPats = await db.prepare(
+        "SELECT busy_ranges FROM gio_ban_chung_cu WHERE unit_code = ? AND (date = ? OR date = ? OR date = ?) AND target_type = 'ra_vien_full'"
+      ).bind(unitCode, targetDate, dmy, ymd).all().catch(() => ({ results: [] }));
+
+      for (const row of (dischargedPats.results || [])) {
+        try {
+          const patObj = JSON.parse(row.busy_ranges);
+          if (patObj && patObj.name) {
+            statements.push(
+              db.prepare(`INSERT OR IGNORE INTO benh_nhan (unit_code, name, age, pId, room, procedures, leave_time, arrive_time, gio_ban, loai_bn, ngay_vao)
+                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
+                unitCode, patObj.name, patObj.age || "", patObj.pId || "", patObj.room || "", patObj.procedures || "", patObj.leave_time || "", patObj.arrive_time || "07:30", patObj.gio_ban || "", patObj.loai_bn || "NoiTru", patObj.ngay_vao || ""
+              )
+            );
+          }
+        } catch(e) {}
+      }
+
+      await db.batch(statements);
+      await bumpDataVersion(db, unitCode);
+      return success({ message: `Đã hoàn tác chốt sổ thành công! Đã khôi phục ${count} ca điều trị về bảng xếp lịch hôm nay.`, count });
     }
 
     // ============================================================
