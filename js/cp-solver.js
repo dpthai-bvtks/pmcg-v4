@@ -587,7 +587,8 @@ function isContinuousProcedureLocal(info, dur) {
         }
         if (cat2) {
           const stSet = roomRoleStaff[p][cat2];
-          if (stSet && !stSet.has(nv2) && stSet.size >= maxDailyUniquePerRole) return false;
+          const effLimit = cat2 === 'DD' ? 4 : maxDailyUniquePerRole;
+          if (stSet && !stSet.has(nv2) && stSet.size >= effLimit) return false;
         }
       }
 
@@ -834,7 +835,11 @@ function isContinuousProcedureLocal(info, dur) {
               .filter(s => {
                 if (!s.name || s.name === validStaff) return false;
                 const isDoc = /bác sĩ|bac si|^bs\b/i.test(s.role) || /^bs\b/i.test(s.name);
-                return !isDoc;
+                if (isDoc) return false;
+                const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(s.role);
+                const reqNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b/i.test(String(ttInfo[6] || '')) || ttInfo[3] === 'YHCT';
+                if (reqNurse && !isNurse) return false;
+                return true;
               })
               .sort((a, b) => {
                 const aIsNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly|phụ/i.test(a.role) || /^phụ\b/i.test(a.name);

@@ -785,7 +785,8 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       }
       if (subStaff && sCat) {
         const stSub = roomRoleStaff[rm][sCat];
-        if (stSub && !stSub.has(subStaff) && stSub.size >= effectiveLimit) {
+        const effLimitSub = (sCat === 'DD') ? 4 : effectiveLimit;
+        if (stSub && !stSub.has(subStaff) && stSub.size >= effLimitSub) {
           return false;
         }
       }
@@ -1050,7 +1051,12 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         // 🔒 CHỐNG DÀN TRẢI / NHẢY PHÒNG ZICZAC:
         // Ở vòng xếp chính (không phải ca vét), nếu phòng có nhân sự phụ trách có kỹ năng này thì ưu tiên tuyệt đối nhân sự phòng đó, cấm nhân sự ngoài phòng nhảy vào cướp ca lộn xộn!
         if (targetRoom && roomAssignedStaff.length > 0) {
-          const hasRoomStaffWithSkill = roomAssignedStaff.some(st => (staffBySkill[tenThuThuat.toLowerCase()] || []).includes(st));
+          const hasRoomStaffWithSkill = roomAssignedStaff.some(st => {
+            const tl = staffTimeline[st] || [];
+            const isAllDayBusy = tl.some(b => b[0] <= 450 && b[1] >= 960);
+            if (isAllDayBusy) return false;
+            return (staffBySkill[tenThuThuat.toLowerCase()] || []).includes(st);
+          });
           if (hasRoomStaffWithSkill && !roomAssignedStaff.includes(tenNV)) {
             // Đối với ca ra viện: cấm 100% trong mọi trường hợp
             if (isDischargedPat) return;
@@ -1077,8 +1083,9 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         // Ngày vắng: Tối đa 2 người / vai trò
         // Ngày đông: Tối đa 3 người / vai trò
         // 🛡️ CÁCH 2: Ở pha cứu ca vét (isRelaxedPass), nới trần lên 3 để nhân sự ngoài phòng có thể hỗ trợ ca sắp rớt
+        // Riêng Điều dưỡng (DD): Cho phép tới 4 để linh hoạt phụ bác sĩ giữa các phòng
         const roleCat = isDoc ? 'BS' : (isNurse ? 'DD' : 'KTV');
-        const maxStaffPerRole = isCrowdedDay ? 3 : (isRelaxedPass ? 3 : 2);
+        const maxStaffPerRole = (roleCat === 'DD') ? 4 : (isCrowdedDay ? 3 : (isRelaxedPass ? 3 : 2));
         if (targetRoom && roomRoleStaff[targetRoom]) {
           const currentStaffInRoom = roomRoleStaff[targetRoom][roleCat];
           if (currentStaffInRoom && !currentStaffInRoom.has(tenNV) && currentStaffInRoom.size >= maxStaffPerRole) {
@@ -1088,11 +1095,13 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
         // Đối với candidatesSub (Người phụ): nếu ca yêu cầu người phụ khóa giờ kết thúc, người phụ phải rảnh ở tearStart..tearEnd!
         const isFreeForSubTeardown = !subNeedsTeardown || !checkSlot(tearStart, tearEnd);
+        const dsPhuStr = String(info[6] || '').toLowerCase();
+        const reqNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b/i.test(dsPhuStr) || info[3] === 'YHCT';
 
         // Chỉ BS hoặc KTV mới được làm NV Chính; Điều dưỡng chỉ được làm NV Phụ
         if ((isDoc || isKtv) && !isNurse) {
           candidatesMain.push(tenNV);
-          if (isKtv && isFreeForSubTeardown) candidatesSub.push(tenNV);
+          if (isKtv && isFreeForSubTeardown && !reqNurse) candidatesSub.push(tenNV);
 
         } else {
           if (isFreeForSubTeardown) candidatesSub.push(tenNV);
@@ -1107,6 +1116,10 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
           const rRole = (staffRole[sName] || '').toLowerCase();
           const isDoc = /bác sĩ|bac si|^bs\b/i.test(rRole) || /^bs\b/i.test(sName);
           if (isDoc) return; // Bác sĩ không làm NV Phụ
+          const isNurseRole = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(rRole);
+          const dsPhuStr2 = String(info[6] || '').toLowerCase();
+          const reqNurse2 = /điều dưỡng|dieu duong|^đd\b|^dd\b/i.test(dsPhuStr2) || info[3] === 'YHCT';
+          if (reqNurse2 && !isNurseRole) return; // KTV tuyệt đối không làm NV phụ khi thủ thuật yêu cầu Điều dưỡng!
           if (tNow < (staffSetupReady[sName] || 0)) return;
           const isFreeForSubTeardown = !subNeedsTeardown || !checkStaffSlot(sName, tearStart, tearEnd);
           if (isFreeForSubTeardown && !checkStaffSlot(sName, tNow, tNow + khoangCach)) {
@@ -1305,20 +1318,31 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
             if (isDoc) return false;
 
             const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(r);
+            const dsPhuStr3 = String(info[6] || '').toLowerCase();
+            const reqNurse3 = /điều dưỡng|dieu duong|^đd\b|^dd\b/i.test(dsPhuStr3) || info[3] === 'YHCT';
+            if (reqNurse3 && !isNurse) return false; // TUYỆT ĐỐI CẤM KTV LỌT VÀO NV PHỤ KHI CẦN ĐIỀU DƯỠNG!
             const subCat = isNurse ? 'DD' : 'KTV';
+
             if (targetRoom && roomAssignedStaff.length > 0) {
-              const hasRoomSubWithSkill = roomAssignedStaff.some(st => {
+              const hasRoomSubAvailableNow = roomAssignedStaff.some(st => {
                 const rSt = (staffRole[st] || '').toLowerCase();
-                return !/bác sĩ|bac si|^bs\b/i.test(rSt) && !/^bs\b/i.test(st) && (staffBySkill[tenThuThuat.toLowerCase()] || []).includes(st);
+                if (/bác sĩ|bac si|^bs\b/i.test(rSt) || /^bs\b/i.test(st)) return false;
+                const stIsNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(rSt);
+                if (reqNurse3 && !stIsNurse) return false;
+                if (checkStaffSlot(st, tNow, tNow + khoangCach)) return false;
+                if (subNeedsTeardown && checkStaffSlot(st, tearStart, tearEnd)) return false;
+                return true;
               });
-              if (hasRoomSubWithSkill && !roomAssignedStaff.includes(x)) {
+
+              if (hasRoomSubAvailableNow && !roomAssignedStaff.includes(x)) {
                 if (isDischargedPat) return false;
                 if (!isSupplemental && !isRelaxedPass) return false;
               }
             }
             if (roomRoleStaff[targetRoom]) {
               const currentSubSet = roomRoleStaff[targetRoom][subCat];
-              const effSubLimit = isCrowdedDay ? 3 : (isRelaxedPass ? 3 : 2);
+              // Cho phép tối đa 4 Điều dưỡng xuất hiện trong phòng để chi viện khi phòng quá tải
+              const effSubLimit = (subCat === 'DD') ? 4 : (isCrowdedDay ? 3 : (isRelaxedPass ? 3 : 2));
               if (currentSubSet && !currentSubSet.has(x) && currentSubSet.size >= effSubLimit) {
                 return false;
               }
@@ -1360,6 +1384,15 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
             if (checkRoomRoleFeasibility(targetRoom, tNow, gioKetThuc, nvChinh, candSub, isRelaxedPass)) {
               chosenSub = candSub;
               break;
+            }
+          }
+          if (!chosenSub && filteredSubs !== validSubs) {
+            for (let sIdx = 0; sIdx < validSubs.length; sIdx++) {
+              const candSub = validSubs[sIdx];
+              if (checkRoomRoleFeasibility(targetRoom, tNow, gioKetThuc, nvChinh, candSub, isRelaxedPass)) {
+                chosenSub = candSub;
+                break;
+              }
             }
           }
           if (!chosenSub) continue;

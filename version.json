@@ -1,6 +1,6 @@
 {
-    "version": "4.3.3-rev1",
+    "version": "4.3.3-rev2",
     "releaseDate": "22/10/2026",
-    "releaseTime": "11:20 22/10/2026",
-    "notes": "Tách bạch vai trò Bác sĩ chính, Bác sĩ phụ, KTV chính, KTV phụ theo phòng điều trị; Nâng cấp cơ chế Primary Room Lock trong thuật toán xếp lịch chống dàn trải nhân sự (ưu tiên giải quyết sạch bệnh nhân phòng phụ trách chính trước khi hỗ trợ phòng khác); Bảo vệ và cảnh báo khi chốt sổ sớm kèm nút Hoàn tác chốt sổ (Undo Chốt Sổ) khôi phục dữ liệu; Chống mất dữ liệu đang nhập ở form bệnh nhân và phòng."
+    "releaseTime": "14:40 22/10/2026",
+    "notes": "Khắc phục triệt để lỗi KTV bị xếp vào cột NV Phụ; Chuẩn hóa 100% NV Phụ cho Bác sĩ làm thủ thuật châm cứu/thủy châm bắt buộc phải là Điều dưỡng; Cho phép Điều dưỡng chi viện liên phòng khi phòng quá tải hoặc nhân sự phòng đang bận."
 }

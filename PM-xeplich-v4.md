@@ -8990,6 +8990,25 @@ oomRoleStaff[phong][vaiTro] vào js/scheduler-engine.js:
       * *Kết quả kiểm nghiệm:* Ngày 22/10/2026 (51 BN, 179 ca) đạt **178 / 179 ca** (99.4%) ngay cả khi 2 bác sĩ bận cả ngày, và đạt **179 / 179 ca (100%)** khi đủ nhân sự. Tại Phòng TT1: 100% 23 ca được giải quyết sạch sẽ trong buổi sáng (xong lúc 11:04), chỉ duy nhất **BS Thảo** (YHCT) và **KTV Lê Hiền** (PHCN) cắm chốt làm việc.
     - **File sửa đổi:** `backend/src/routes/patients.js`, `backend/src/routes/schedules.js`, `backend/src/schema.js`, `css/style.css`, `index.html`, `js/app.js`, `js/modules/app-resources.js`, `js/modules/app-tenant-admin.js`, `js/scheduler-engine.js`, `js/sync.js`, `sw.js`, `version.json`, `PM-xeplich-v4.md`.
 
+20. **Khắc Phục Triệt Để Lỗi KTV Bị Xếp Vào Cột NV Phụ & Chuẩn Hóa 100% NV Phụ Phải Là Điều Dưỡng (v4.3.3-rev2 - 22/10/2026):**
+    - **Hiện tượng người dùng phản ánh:**
+      * Tại Phòng C118 lúc 08:06 và 10:09 ngày 22/10/2026, ca Điện châm của BS Đạt và Thủy châm của BS Hoa bị thuật toán xếp `KTV Hà chip` vào cột **NV PHỤ**.
+      * Trong khi đó, `KTV Hà chip` là Kỹ thuật viên PHCN chuyên môn máy móc, tập vận động và đang làm NV Chính phụ trách máy tại phòng (ví dụ ca Sóng ngắn 08:00 - 08:15 cho BN Chu Mạnh Thắng).
+    - **Nguyên nhân kỹ thuật gốc rễ:**
+      1. *Lỗ hổng phân loại candidatesSub:* Trong `_turbo_core_logic` (`js/scheduler-engine.js`), dòng 1095 và dòng 1104 tự động đẩy mọi KTV rảnh vào danh sách ứng viên người phụ (`candidatesSub`) mà không kiểm tra xem thủ thuật đó có yêu cầu Điều dưỡng hay không.
+      2. *Lỗi xung đột lịch bận Điều dưỡng:* Tại Phòng C118, 2 Điều dưỡng biên chế (`ĐD Duyên`, `ĐD Duyên 2`) đều có lịch bận sáng `["07:30-08:30"]`. Lúc 08:06, khi Điều dưỡng phòng đang bận, bộ lọc nhân sự phòng (`roomAssignedStaff`) thấy phòng có `KTV Hà chip` nên chặn Điều dưỡng rảnh ngoài phòng vào hỗ trợ, đồng thời giữ lại duy nhất `KTV Hà chip` trong danh sách phụ và gán KTV làm NV Phụ cho Bác sĩ.
+      3. *Lỗ hổng trong CP-SAT Solver:* Trong `js/cp-solver.js` (dòng 836), bộ giải cứu ca cũng chỉ loại trừ Bác sĩ (`return !isDoc`), nên khi cứu các ca Thủy châm ở Phòng 1+2+3, solver đã gán `KTV Lương` và `KTV Lê Hiền` làm NV Phụ.
+    - **Giải pháp xử lý triệt để 4 tầng:**
+      1. *Khóa cứng chức danh NV Phụ:* Nếu thủ thuật có `canNguoiPhu = 1` và yêu cầu Điều dưỡng (hoặc thuộc hệ YHCT: Điện châm, Thủy châm, Hào châm, Cấy chỉ), loại trừ 100% KTV khỏi `candidatesSub` trong `js/scheduler-engine.js` và `subPool` trong `js/cp-solver.js`. Tuyệt đối không cho phép KTV làm NV Phụ châm cứu dưới bất kỳ hình thức nào.
+      2. *Cơ chế Chi viện Điều dưỡng Linh hoạt (Cross-Room Nurse Support):* Khi Điều dưỡng biên chế của phòng đang bận (như lúc 07:30 - 08:30 ở C118), hệ thống cho phép Điều dưỡng rảnh ngoài phòng (`ĐD Thuyến`, `ĐD Thuyến 2`) chi viện hỗ trợ, không bị chặn bởi bộ lọc nhân sự phòng.
+      3. *Nới trần Điều dưỡng phòng quá tải:* Điều chỉnh trần nhân sự tối đa trong ngày của vai trò `DD` lên 4 người/phòng để các Điều dưỡng có thể luân phiên hỗ trợ châm cứu giữa các phòng khi các phòng quá tải.
+      4. *Loại trừ nhân sự bận cả ngày khỏi bộ lọc kỹ năng phòng:* Khi kiểm tra `hasRoomStaffWithSkill`, loại trừ các nhân sự nghỉ/bận cả ngày để không gây nghẽn điều phối bác sĩ.
+    - **Kết quả kiểm nghiệm:**
+      * 100% Sạch KTV khỏi cột NV Phụ trên toàn viện: **`Total KTV in NV Phu = 0`**.
+      * Tại Phòng C118: Ca Điện châm của BS Đạt lúc 08:06 được phụ bởi `ĐD Thuyến 2` (chi viện đầu giờ), sau 08:30 được phụ bởi `ĐD Duyên` chuẩn xác. `KTV Hà chip` 100% chỉ làm NV Chính phụ trách máy PHCN.
+      * Toàn bộ 9 tầng kiểm thử `verify-build` đạt 100% PASS.
+    - **File sửa đổi:** `js/scheduler-engine.js`, `js/cp-solver.js`, `sw.js`, `version.json`, `index.html`, `PM-xeplich-v4.md`.
+
 
 
 
