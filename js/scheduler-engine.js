@@ -545,6 +545,12 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
     roomActiveCases[phong] = [];
     const defaultStaff = roomStaff[phong] || [];
     defaultStaff.forEach(st => {
+      // 🛡️ CÁCH 1: Loại trừ nhân sự bận/nghỉ cả ngày hoặc bận/nghỉ chiều khỏi trần ban đầu của phòng
+      const tl = staffTimeline[st] || [];
+      const isAllDayBusy = tl.some(b => b[0] <= 450 && b[1] >= 960);
+      const isAfternoonBusy = tl.some(b => b[0] <= 780 && b[1] >= 960);
+      if (isAllDayBusy || isAfternoonBusy) return;
+
       const r = (staffRole[st] || '').toLowerCase();
       const isDoc = /bác sĩ|bac si|^bs\b/i.test(r) || /^bs\b/i.test(st);
       const isNurse = /điều dưỡng|dieu duong|^đd\b|^dd\b|y tá|y ta|hộ lý|ho ly|trợ lý|tro ly/i.test(r);
@@ -552,6 +558,13 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       roomRoleStaff[phong][cat].add(st);
     });
   }
+
+  // 🏥 CÁCH 3 (Phục vụ Block Scheduling): Đếm nhu cầu bệnh nhân theo từng phòng
+  const roomPatDemand = {};
+  (db.rawPatients || []).forEach(p => {
+    const rm = p.room || p.phong || '';
+    if (rm) roomPatDemand[rm] = (roomPatDemand[rm] || 0) + 1;
+  });
 
   let patients = db.rawPatients.map(p => ({ ...p, pId: p.pId, pending: [...p.pending], failed: false, busy: p.busy ? p.busy.map(b => [...b]) : [], loaiBN: p.loaiBN, buoiDieuTri: p.buoiDieuTri }));
 
@@ -728,7 +741,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
   const maxConcurrentPerRole = isCrowdedDay ? 3 : 2;
   const maxDailyUniquePerRole = isCrowdedDay ? 3 : 2;
 
-  const checkRoomRoleFeasibility = (rm, s, e, mainStaff, subStaff) => {
+  const checkRoomRoleFeasibility = (rm, s, e, mainStaff, subStaff, isRelaxed = false) => {
     if (!rm || !roomActiveCases[rm]) return true;
 
     const mRole = (staffRole[mainStaff] || '').toLowerCase();
@@ -743,14 +756,16 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
     }
 
     // 1. Kiểm tra trần nhân sự tổng ngày (Daily Unique Limit)
+    // 🛡️ CÁCH 2: Ở pha cứu ca vét (isRelaxed), nới lỏng trần lên 3 người/vai trò để cứu ca sắp rớt
+    const effectiveLimit = isCrowdedDay ? 3 : (isRelaxed ? 3 : 2);
     if (roomRoleStaff[rm]) {
       const stMain = roomRoleStaff[rm][mCat];
-      if (stMain && !stMain.has(mainStaff) && stMain.size >= maxDailyUniquePerRole) {
+      if (stMain && !stMain.has(mainStaff) && stMain.size >= effectiveLimit) {
         return false;
       }
       if (subStaff && sCat) {
         const stSub = roomRoleStaff[rm][sCat];
-        if (stSub && !stSub.has(subStaff) && stSub.size >= maxDailyUniquePerRole) {
+        if (stSub && !stSub.has(subStaff) && stSub.size >= effectiveLimit) {
           return false;
         }
       }
@@ -883,6 +898,21 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
     const allowedOvertimeAtEnd = isYHCT ? yhctEndLimit : OVERTIME_ALLOWANCE;
     const allowedOvertimeAtLunch = isYHCT ? yhctLunchLimit : 0;
 
+    const checkStaffSlot = (sName, slotStart, slotEnd) => {
+      return (staffTimeline[sName] || []).some(slot => {
+        if (slotStart >= slot[1]) return false;
+        const isEndOfDay = slot[1] === 1440;
+        const isLunch = slot[1] - slot[0] >= 60 && !isEndOfDay;
+        if (isLunch || isEndOfDay) {
+          const yhctLimit = isEndOfDay ? yhctEndLimit : yhctLunchLimit;
+          const allowedOvertime = isYHCT ? yhctLimit : (isEndOfDay ? OVERTIME_ALLOWANCE : 0);
+          const allowedEnd = slot[0] + allowedOvertime;
+          if ((slotEnd - 1) <= allowedEnd && slotStart <= slot[0]) return false;
+        }
+        return is_overlap(slotStart, slotEnd, slot[0], slot[1]);
+      });
+    };
+
     if (loaiBN === 'NgoaiTru') {
       const tgMay = Math.max(info[1], info[2]);
       const gioKetThuc = tNow + tgMay;
@@ -1010,20 +1040,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         }
         if (tNow < (staffSetupReady[tenNV] || 0)) return;
         
-        const checkSlot = (slotStart, slotEnd) => {
-          return (staffTimeline[tenNV] || []).some(slot => {
-            if (slotStart >= slot[1]) return false;
-            const isEndOfDay = slot[1] === 1440;
-            const isLunch = slot[1] - slot[0] >= 60 && !isEndOfDay;
-            if (isLunch || isEndOfDay) {
-              const yhctLimit = isEndOfDay ? yhctEndLimit : yhctLunchLimit;
-              const allowedOvertime = isYHCT ? yhctLimit : (isEndOfDay ? OVERTIME_ALLOWANCE : 0);
-              const allowedEnd = slot[0] + allowedOvertime;
-              if ((slotEnd - 1) <= allowedEnd && slotStart <= slot[0]) return false;
-            }
-            return is_overlap(slotStart, slotEnd, slot[0], slot[1]);
-          });
-        };
+        const checkSlot = (slotStart, slotEnd) => checkStaffSlot(tenNV, slotStart, slotEnd);
 
         if (checkSlot(tNow, tNow + khoangCach)) return;
         // Khóa giờ kết thúc đối với Thủ thuật viên chính
@@ -1039,8 +1056,9 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
         // 🏥 KHỐNG CHẾ TRẦN NHÂN SỰ PHÒNG THEO KỊCH BẢN:
         // Ngày vắng: Tối đa 2 người / vai trò
         // Ngày đông: Tối đa 3 người / vai trò
+        // 🛡️ CÁCH 2: Ở pha cứu ca vét (isRelaxedPass), nới trần lên 3 để nhân sự ngoài phòng có thể hỗ trợ ca sắp rớt
         const roleCat = isDoc ? 'BS' : (isNurse ? 'DD' : 'KTV');
-        const maxStaffPerRole = isCrowdedDay ? 3 : 2;
+        const maxStaffPerRole = isCrowdedDay ? 3 : (isRelaxedPass ? 3 : 2);
         if (targetRoom && roomRoleStaff[targetRoom]) {
           const currentStaffInRoom = roomRoleStaff[targetRoom][roleCat];
           if (currentStaffInRoom && !currentStaffInRoom.has(tenNV) && currentStaffInRoom.size >= maxStaffPerRole) {
@@ -1060,6 +1078,22 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
           if (isFreeForSubTeardown) candidatesSub.push(tenNV);
         }
       });
+
+      // 🛡️ Bổ sung các nhân sự phụ (KTV/Điều dưỡng) khác rảnh trong ca để không bị bỏ sót khi phòng cần phụ
+      if (canPhu === 1) {
+        db.rawStaff.forEach(r => {
+          const sName = r[0];
+          if (candidatesSub.includes(sName)) return;
+          const rRole = (staffRole[sName] || '').toLowerCase();
+          const isDoc = /bác sĩ|bac si|^bs\b/i.test(rRole) || /^bs\b/i.test(sName);
+          if (isDoc) return; // Bác sĩ không làm NV Phụ
+          if (tNow < (staffSetupReady[sName] || 0)) return;
+          const isFreeForSubTeardown = !subNeedsTeardown || !checkStaffSlot(sName, tearStart, tearEnd);
+          if (isFreeForSubTeardown && !checkStaffSlot(sName, tNow, tNow + khoangCach)) {
+            candidatesSub.push(sName);
+          }
+        });
+      }
       if (candidatesMain.length === 0) continue;
 
       candidatesMain.sort((a, b) => {
@@ -1189,7 +1223,8 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
             const isDocCheck = /bác sĩ|bac si|^bs\b/i.test(mRoleCheck) || /^bs\b/i.test(nvChinh);
             const mCatCheck = isDocCheck ? 'BS' : 'KTV';
             const curSet = roomRoleStaff[targetRoom]?.[mCatCheck];
-            if (curSet && !curSet.has(nvChinh) && curSet.size >= maxDailyUniquePerRole) {
+            const effLimit = isCrowdedDay ? 3 : (isRelaxedPass ? 3 : 2);
+            if (curSet && !curSet.has(nvChinh) && curSet.size >= effLimit) {
               continue;
             }
 
@@ -1206,7 +1241,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
         // RÀNG BUỘC PHÒNG: Nếu ca không cần phụ, kiểm tra nvChinh
         if (canPhu === 0) {
-          if (!checkRoomRoleFeasibility(targetRoom, tNow, gioKetThuc, nvChinh, "")) {
+          if (!checkRoomRoleFeasibility(targetRoom, tNow, gioKetThuc, nvChinh, "", isRelaxedPass)) {
             continue;
           }
         }
@@ -1233,7 +1268,8 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
             }
             if (roomRoleStaff[targetRoom]) {
               const currentSubSet = roomRoleStaff[targetRoom][subCat];
-              if (currentSubSet && !currentSubSet.has(x) && currentSubSet.size >= maxDailyUniquePerRole) {
+              const effSubLimit = isCrowdedDay ? 3 : (isRelaxedPass ? 3 : 2);
+              if (currentSubSet && !currentSubSet.has(x) && currentSubSet.size >= effSubLimit) {
                 return false;
               }
             }
@@ -1242,7 +1278,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
           if (validSubs.length === 0) continue;
 
           const hasSubInRoom = validSubs.some(s => (staffMyRooms[s] || []).includes(targetRoom));
-          const filteredSubs = (!isSupplemental && !isCrowdedDay && hasSubInRoom)
+          const filteredSubs = (!isSupplemental && !isCrowdedDay && !isRelaxedPass && hasSubInRoom)
             ? validSubs.filter(x => (staffMyRooms[x] || []).includes(targetRoom) || (staffMyRooms[x] || []).length === 0)
             : validSubs;
 
@@ -1266,7 +1302,7 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
           let chosenSub = null;
           for (let sIdx = 0; sIdx < filteredSubs.length; sIdx++) {
             const candSub = filteredSubs[sIdx];
-            if (checkRoomRoleFeasibility(targetRoom, tNow, gioKetThuc, nvChinh, candSub)) {
+            if (checkRoomRoleFeasibility(targetRoom, tNow, gioKetThuc, nvChinh, candSub, isRelaxedPass)) {
               chosenSub = candSub;
               break;
             }
@@ -1461,6 +1497,12 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
 
         eligible.sort((a, b) => {
           const base = sortPatientPriority(a, b, tNow); if (base !== 0) return base;
+          // 🏥 CÁCH 3: Block scheduling - Buổi sáng ưu tiên phòng có ít bệnh nhân/thủ thuật hơn để hoàn thành sớm, giải phóng nhân sự sang hỗ trợ
+          if (tNow < morningShiftEnd) {
+            const dA = roomPatDemand[a.room] || 999;
+            const dB = roomPatDemand[b.room] || 999;
+            if (dA !== dB) return dA - dB;
+          }
           if (a.has_yhct !== b.has_yhct) return a.has_yhct - b.has_yhct;
           if (a.has_toan_tg !== b.has_toan_tg) return a.has_toan_tg - b.has_toan_tg;
           if (a._feasible !== b._feasible) return b._feasible - a._feasible;

@@ -1,6 +1,6 @@
 {
-    "version": "4.3.2-rev10",
-    "releaseDate": "21/10/2026",
-    "releaseTime": "14:50 21/10/2026",
-    "notes": "Khắc phục lỗi nạp file lịch cũ: Tự động nhận diện đa dạng tiêu đề cột Nhân viên chính (NV Chính, KTV / Bác Sĩ, KTV/BS, Bác sĩ/KTV, Người thực hiện...)."
+    "version": "4.3.2-rev11",
+    "releaseDate": "22/10/2026",
+    "releaseTime": "09:40 22/10/2026",
+    "notes": "Tối ưu hóa kịch bản Ngày vắng (Cách 1+2+3): Loại trừ nhân sự bận/nghỉ cả ngày & buổi chiều khỏi trần phòng; Bổ sung pha cứu ca vét cuối ngày; Áp dụng block scheduling ưu tiên hoàn thành phòng ít bệnh nhân buổi sáng."
 }
