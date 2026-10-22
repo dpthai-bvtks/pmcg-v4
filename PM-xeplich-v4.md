@@ -8977,7 +8977,7 @@ oomRoleStaff[phong][vaiTro] vào js/scheduler-engine.js:
       * *Cách 3:* Áp dụng Block Scheduling ưu tiên hoàn thành dứt điểm các phòng có ít bệnh nhân (như Phòng TT1) trong buổi sáng.
     - **File sửa đổi:** `js/scheduler-engine.js`, `version.json`, `index.html`, `sw.js`, `PM-xeplich-v4.md`.
 
-19. **Tách Riêng Vai Trò Bác Sĩ Chính, Bác Sĩ Phụ, KTV Chính, KTV Phụ Theo Phòng & Cơ Chế Primary Room Lock (v4.3.2-rev12 - 22/10/2026):**
+19. **Tách Riêng Vai Trò Bác Sĩ Chính, Bác Sĩ Phụ, KTV Chính, KTV Phụ Theo Phòng & Cơ Chế Primary Room Lock (v4.3.3-rev1 - 22/10/2026):**
     - **Yêu cầu của người dùng:** Bổ sung cột Bác sĩ chính, Bác sĩ phụ, KTV chính, KTV phụ để phân định rõ ràng ai là người phụ trách chính của từng phòng, ai là người hỗ trợ thêm, tránh việc xếp lịch bị lỗi và giải quyết triệt để vấn đề phân tán bác sĩ tại Phòng TT1.
     - **Phân tích nguyên nhân & Giải pháp:**
       * *Nguyên nhân trước đây:* Thuật toán trước đây chỉ có 1 danh sách nhân sự gộp chung cho phòng (`room.bac_si`, `room.ktv`). Khi một nhân sự (như BS Thảo) được cấu hình hỗ trợ nhiều phòng, thuật toán coi họ là người nhà ở mọi nơi và điều động sang phòng khác ngay từ đầu sáng khiến phòng chính bị bỏ trống.
