@@ -174,7 +174,7 @@ export async function handleSchedulesAction(action, ctx) {
         // 3b. Sao lưu toàn bộ hồ sơ bệnh nhân ra viện để có thể hoàn tác nếu chốt sổ sớm nhầm
         db.prepare(`INSERT INTO gio_ban_chung_cu (unit_code, date, target_type, name, dob, busy_ranges)
                     SELECT unit_code, ?, 'ra_vien_full', name, age,
-                    json_object('name', name, 'age', age, 'pId', pId, 'room', room, 'procedures', procedures, 'leave_time', leave_time, 'arrive_time', arrive_time, 'gio_ban', gio_ban, 'loai_bn', loai_bn, 'ngay_vao', ngay_vao)
+                    json_object('name', name, 'age', age, 'ma_bn', ma_bn, 'pId', ma_bn, 'room', room, 'thu_thuat', thu_thuat, 'procedures', thu_thuat, 'leave_time', leave_time, 'arrive_time', arrive_time, 'gio_ban', gio_ban, 'loai_bn', loai_bn, 'ngay_vao', ngay_vao)
                     FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'`).bind(targetDateStr, unitCode)
       );
 
@@ -314,9 +314,9 @@ export async function handleSchedulesAction(action, ctx) {
           const patObj = JSON.parse(row.busy_ranges);
           if (patObj && patObj.name) {
             statements.push(
-              db.prepare(`INSERT OR IGNORE INTO benh_nhan (unit_code, name, age, pId, room, procedures, leave_time, arrive_time, gio_ban, loai_bn, ngay_vao)
+              db.prepare(`INSERT OR IGNORE INTO benh_nhan (unit_code, name, age, ma_bn, room, thu_thuat, leave_time, arrive_time, gio_ban, loai_bn, ngay_vao)
                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
-                unitCode, patObj.name, patObj.age || "", patObj.pId || "", patObj.room || "", patObj.procedures || "", patObj.leave_time || "", patObj.arrive_time || "07:30", patObj.gio_ban || "", patObj.loai_bn || "NoiTru", patObj.ngay_vao || ""
+                unitCode, patObj.name, patObj.age || "", patObj.ma_bn || patObj.pId || "", patObj.room || "", patObj.thu_thuat || patObj.procedures || "", patObj.leave_time || "", patObj.arrive_time || "07:30", patObj.gio_ban || "", patObj.loai_bn || "NoiTru", patObj.ngay_vao || ""
               )
             );
           }
