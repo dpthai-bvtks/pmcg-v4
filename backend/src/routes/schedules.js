@@ -178,16 +178,30 @@ export async function handleSchedulesAction(action, ctx) {
                     FROM benh_nhan WHERE unit_code = ? AND leave_time IS NOT NULL AND TRIM(leave_time) != '' AND LOWER(leave_time) != 'none'`).bind(targetDateStr, unitCode)
       );
 
+      const parseD = (s) => {
+        if (!s) return { ymd: "", dmy: "" };
+        if (s.includes("/")) {
+          const p = s.split("/");
+          return { ymd: `${p[2]}-${p[1].padStart(2, "0")}-${p[0].padStart(2, "0")}`, dmy: s };
+        }
+        if (s.includes("-")) {
+          const p = s.split("-");
+          return { ymd: s, dmy: `${p[2].padStart(2, "0")}/${p[1].padStart(2, "0")}/${p[0]}` };
+        }
+        return { ymd: s, dmy: s };
+      };
+      const { ymd: targetYMD, dmy: targetDMY } = parseD(targetDateStr);
+
       if (date && typeof date === "string" && date.trim()) {
-        const targetDate = date.trim();
+        const { ymd: tYMD, dmy: tDMY } = parseD(date.trim());
         statements.push(
-          db.prepare("DELETE FROM lich_su WHERE unit_code = ? AND date = ?").bind(unitCode, targetDate),
-          db.prepare("INSERT INTO lich_su (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE unit_code = ? AND date = ?").bind(unitCode, targetDate),
-          db.prepare("DELETE FROM lich_trinh WHERE unit_code = ? AND date = ?").bind(unitCode, targetDate)
+          db.prepare("DELETE FROM lich_su WHERE unit_code = ? AND (date = ? OR date = ?)").bind(unitCode, tYMD, tDMY),
+          db.prepare("INSERT INTO lich_su (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT unit_code, ?, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE unit_code = ? AND (date = ? OR date = ?)").bind(unitCode, tYMD, unitCode, tYMD, tDMY),
+          db.prepare("DELETE FROM lich_trinh WHERE unit_code = ? AND (date = ? OR date = ?)").bind(unitCode, tYMD, tDMY)
         );
       } else {
         statements.push(
-          db.prepare("DELETE FROM lich_su WHERE unit_code = ? AND date IN (SELECT DISTINCT date FROM lich_trinh WHERE unit_code = ?)").bind(unitCode, unitCode),
+          db.prepare("DELETE FROM lich_su WHERE unit_code = ? AND (date IN (SELECT DISTINCT date FROM lich_trinh WHERE unit_code = ?) OR date = ? OR date = ?)").bind(unitCode, unitCode, targetYMD, targetDMY),
           db.prepare("INSERT INTO lich_su (unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed) SELECT unit_code, date, patient_name, dob, room, procedure_name, start_time, end_time, staff_name, sub_staff_name, machine_name, bed FROM lich_trinh WHERE unit_code = ?").bind(unitCode),
           db.prepare("DELETE FROM lich_trinh WHERE unit_code = ?").bind(unitCode)
         );
