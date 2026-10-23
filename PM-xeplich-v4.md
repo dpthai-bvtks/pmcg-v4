@@ -9007,7 +9007,31 @@ oomRoleStaff[phong][vaiTro] vào js/scheduler-engine.js:
       * 100% Sạch KTV khỏi cột NV Phụ trên toàn viện: **`Total KTV in NV Phu = 0`**.
       * Tại Phòng C118: Ca Điện châm của BS Đạt lúc 08:06 được phụ bởi `ĐD Thuyến 2` (chi viện đầu giờ), sau 08:30 được phụ bởi `ĐD Duyên` chuẩn xác. `KTV Hà chip` 100% chỉ làm NV Chính phụ trách máy PHCN.
       * Toàn bộ 9 tầng kiểm thử `verify-build` đạt 100% PASS.
-    - **File sửa đổi:** `js/scheduler-engine.js`, `js/cp-solver.js`, `sw.js`, `version.json`, `index.html`, `PM-xeplich-v4.md`.
+21. **Khắc Phục Lỗi Nút Sửa/Giờ Rảnh Ở Bảng Lịch Trình & Tối Ưu Modal Chi Tiết Ca Điều Trị (v4.3.4-rev1 - 23/10/2026):**
+    - **Yêu cầu của người dùng:** Kiểm tra tại sao khi bấm vào nút "⚡ Sửa/Giờ rảnh" ở bảng lịch trình thì hình như không hoạt động.
+    - **Phân tích nguyên nhân kỹ thuật gốc rễ:**
+      * *Lỗi mất tham chiếu chỉ mục (`itemRawIdx = -1`):*
+        1. Trong hàm `filterSchedule()` (`js/app.js`), dữ liệu hiển thị `safeData` được tạo từ `(window.currentScheduleData || []).map(normalizeScheduleRow)`.
+        2. Sau đó, `displayData = [...safeData.map(row => ({ ...row, __dropped: false })), ...droppedData]` tiếp tục sao chép nông các dòng bằng object spread syntax (`{ ...row }`).
+        3. Trong `renderSchedPage()`, lệnh `const itemRawIdx = rawList.indexOf(item);` dùng toán tử so sánh địa chỉ tham chiếu bộ nhớ (`===`). Do `item` là đối tượng mới được tạo ra trong `displayData`, `rawList.indexOf(item)` **luôn luôn trả về `-1`** cho 100% các dòng trong bảng.
+        4. Nút bấm trên HTML được render thành: `onclick="openScheduleItemDetailModal(-1)"`.
+        5. Khi người dùng click chuột vào nút, hàm `openScheduleItemDetailModal(index)` nhận `index = -1`, lệnh `const item = list[-1];` trả về `undefined`, và câu lệnh `if (!item) return;` âm thầm thoát ngay lập tức khiến modal không mở và giao diện hoàn toàn không có phản ứng.
+    - **Giải pháp xử lý toàn diện:**
+      1. *Bảo toàn chỉ mục gốc `__rawIdx`:* Trong `filterSchedule()`, khi duyệt qua mảng `window.currentScheduleData`, đính kèm trực tiếp thuộc tính `norm.__rawIdx = idx` cùng trạng thái ghim/ra viện.
+      2. *Cơ chế giải quyết chỉ mục 2 lớp (2-Tier Index Resolution):* Trong `renderSchedPage()`, ưu tiên lấy `item.__rawIdx`. Nếu trường hợp đặc biệt không có, tự động dò tìm thông minh theo `findIndex` khớp bộ ba `tenBN`, `thuThuat`, `gioDienRa`.
+      3. *Phân tách nút cho ca đã xếp vs ca rớt:*
+         - Với ca đã xếp lịch bình thường: Hiển thị nút `[⚡ Sửa/Giờ rảnh]` màu xanh lục, mở modal chi tiết với thông số đầy đủ.
+         - Với ca bị rớt (`item.__dropped`): Hiển thị nút `[💡 Cứu ca rớt]` màu đỏ cam, kích hoạt ngay `modal-unscheduled-advisor` để chẩn đoán nguyên nhân và cứu ca.
+      4. *Bảo vệ dữ liệu & Tối ưu trải nghiệm Modal:*
+         - Chuẩn hóa định dạng `HH:mm` (2 chữ số giờ) cho các thẻ `<input type="time">`, tránh lỗi trình duyệt từ chối hiển thị khi giờ có 1 chữ số (như `8:00` -> `08:00`).
+         - Tự động tính toán lại Giờ kết thúc (`msid-input-end`) theo thời lượng thủ thuật tương ứng khi người dùng điều chỉnh Giờ bắt đầu (`msid-input-start`).
+         - Tự động sao lưu đồng bộ vào `OfflineSyncEngine` khi người dùng Lưu thay đổi hoặc Xóa ca.
+    - **Kết quả kiểm nghiệm:**
+      * Bấm nút "⚡ Sửa/Giờ rảnh" trên mọi dòng ở bảng Lịch trình lập tức mở popup chi tiết với đầy đủ Bệnh nhân, Phòng, Giường, KTV, Máy, Giờ bắt đầu/kết thúc.
+      * Nút "⚡ Tự tìm giờ rảnh" hoạt động mượt mà, tự động tìm và chuyển ca sang slot rảnh không xung đột.
+      * Đạt 100% PASS bộ kiểm tra 9 tầng `verify-build.mjs`.
+    - **File sửa đổi:** `js/app.js`, `index.html`, `sw.js`, `version.json`, `PM-xeplich-v4.md`.
+
 
 
 

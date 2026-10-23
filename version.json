@@ -1,6 +1,6 @@
 {
-    "version": "4.3.3-rev2",
-    "releaseDate": "22/10/2026",
-    "releaseTime": "14:40 22/10/2026",
-    "notes": "Khắc phục triệt để lỗi KTV bị xếp vào cột NV Phụ; Chuẩn hóa 100% NV Phụ cho Bác sĩ làm thủ thuật châm cứu/thủy châm bắt buộc phải là Điều dưỡng; Cho phép Điều dưỡng chi viện liên phòng khi phòng quá tải hoặc nhân sự phòng đang bận."
+    "version": "4.3.4-rev1",
+    "releaseDate": "23/10/2026",
+    "releaseTime": "10:30 23/10/2026",
+    "notes": "Khắc phục triệt để lỗi nút Sửa/Giờ rảnh ở bảng lịch trình không hoạt động do mất tham chiếu chỉ mục; Chuẩn hóa mở Modal Chi Tiết Ca Điều Trị & Tự Động Tìm Giờ Rảnh 1-Click theo thời gian thực."
 }
