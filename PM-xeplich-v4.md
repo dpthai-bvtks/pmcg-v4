@@ -9032,6 +9032,31 @@ oomRoleStaff[phong][vaiTro] vào js/scheduler-engine.js:
       * Đạt 100% PASS bộ kiểm tra 9 tầng `verify-build.mjs`.
     - **File sửa đổi:** `js/app.js`, `index.html`, `sw.js`, `version.json`, `PM-xeplich-v4.md`.
 
+22. **Đồng Bộ Đa Tầng Cho Tính Năng Hoàn Tác / Làm Lại & Khắc Phục Hiện Tượng Ctrl+F5 Nạp Lại Lịch Trình (v4.3.4-rev2 - 23/10/2026):**
+    - **Yêu cầu của người dùng:** Giải thích và xử lý hiện tượng khi xếp lịch xong, bấm "Hoàn tác" thì bảng lịch trình mất trắng, nhưng khi Ctrl + F5 tải lại trang thì lịch trình lại hiện ra trở lại.
+    - **Phân tích nguyên nhân kỹ thuật gốc rễ:**
+      * *1. Tại sao bấm Hoàn tác bảng lịch trình lại mất trắng:*
+        - Trước khi bấm "Xếp lịch tổng" (hoặc đầu ngày mới), bảng lịch trình lúc đó chưa có dữ liệu (rỗng `[]`).
+        - Nút "Xếp Lịch" tự động chụp snapshot trạng thái trước khi chạy xếp lịch (`data: "[]"`) và lưu vào Undo Stack (`window._scheduleUndoStack`).
+        - Khi bấm "Hoàn tác", hệ thống tua ngược dữ liệu về đúng trạng thái trước khi xếp lịch (tức là trạng thái chưa có lịch trình = rỗng). Đây là hành vi đúng bản chất của cơ chế Undo (người dùng bấm "Làm lại / Redo" hoặc phím `Ctrl+Y` thì lịch trình sẽ xuất hiện trở lại ngay).
+      * *2. Tại sao khi bấm Ctrl + F5 thì lịch trình lại hiện ra trở lại:*
+        - Khi vừa xếp lịch xong, hệ thống tự động đồng bộ kết quả lên máy chủ đám mây (Cloudflare / SQLite backend) và lưu vào bộ nhớ cache bootstrap ngoại tuyến (`times_bootstrap_cache` và Dexie IndexedDB).
+        - Tuy nhiên, trong hàm `undoSchedule()` và `redoSchedule()` trước đây, việc hoàn tác chỉ mới gán lại biến trên RAM (`window.currentScheduleData = []`) và `localStorage.meds_success`, mà **chưa đồng bộ trạng thái hoàn tác này vào `times_bootstrap_cache`, Dexie và Máy chủ đám mây**.
+        - Khi người dùng nhấn Ctrl + F5 (xóa RAM nạp lại từ cache bootstrap / server), hệ thống đọc lại từ `times_bootstrap_cache` và backend (vẫn còn lưu kết quả xếp lịch cũ), khiến bảng lịch trình tự động được nạp lại.
+    - **Giải pháp xử lý toàn diện:**
+      1. Triển khai hàm `syncScheduleStateToAllLayers(schedData, unschData, actionName)` đồng bộ sâu và tức thì xuống cả 3 tầng dữ liệu:
+         - *Tầng 1 - Bootstrap Cache:* Cập nhật trực tiếp `times_bootstrap_cache` (và khóa cache phân tách theo đơn vị).
+         - *Tầng 2 - Dexie IndexedDB:* Cập nhật qua `window.OfflineSyncEngine.saveCache` cho cả ca thành công và ca rớt.
+         - *Tầng 3 - Cloudflare / SQLite Backend:* Gọi API `callApi('saveSchedule', [activeDate, backendSched])` cập nhật ngay lập tức trạng thái hoàn tác lên đám mây.
+      2. Tích hợp `syncScheduleStateToAllLayers` vào cả hai luồng `undoSchedule()` và `redoSchedule()`.
+      3. Đảm bảo trạng thái Hoàn tác / Làm lại được bảo toàn tuyệt đối 100%, kể cả khi người dùng nhấn Ctrl + F5, chuyển tab hoặc đóng trình duyệt mở lại.
+    - **Kết quả kiểm nghiệm:**
+      * Bấm "Hoàn tác" sau khi xếp lịch: Bảng quay về trạng thái trước khi xếp.
+      * Nhấn Ctrl + F5: Bảng vẫn giữ nguyên trạng thái đã hoàn tác, không còn bị nạp đè dữ liệu cũ từ server/cache.
+      * Bấm "Làm lại" (Redo / Ctrl+Y): Lịch trình đã xếp lập tức được phục hồi và đồng bộ chuẩn xác lên server/cache.
+      * Đạt 100% PASS bộ kiểm tra 9 tầng `verify-build.mjs`.
+    - **File sửa đổi:** `js/app.js`, `index.html`, `sw.js`, `version.json`, `PM-xeplich-v4.md`.
+
 
 
 

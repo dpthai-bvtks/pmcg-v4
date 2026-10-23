@@ -8024,6 +8024,10 @@ var dataCache = window.dataCache;
                 localStorage.setItem(getUnitStorageKey('meds_success'), JSON.stringify(restoredData));
                 localStorage.setItem('meds_success', JSON.stringify(restoredData));
                 localStorage.setItem(getUnitStorageKey('meds_unscheduled'), JSON.stringify(restoredUnscheduled));
+                localStorage.setItem('meds_unscheduled', JSON.stringify(restoredUnscheduled));
+
+                // 🔄 Đồng bộ sâu toàn diện 3 tầng: Bootstrap Cache, Dexie IndexedDB và Cloudflare/SQLite Server
+                syncScheduleStateToAllLayers(restoredData, restoredUnscheduled, 'undoSchedule');
 
                 loadScheduleList();
                 if (typeof renderScheduleGanttTimeline === 'function' && document.getElementById('schedule-gantt-wrap')?.style.display !== 'none') {
@@ -8082,6 +8086,10 @@ var dataCache = window.dataCache;
                 localStorage.setItem(getUnitStorageKey('meds_success'), JSON.stringify(restoredData));
                 localStorage.setItem('meds_success', JSON.stringify(restoredData));
                 localStorage.setItem(getUnitStorageKey('meds_unscheduled'), JSON.stringify(restoredUnscheduled));
+                localStorage.setItem('meds_unscheduled', JSON.stringify(restoredUnscheduled));
+
+                // 🔄 Đồng bộ sâu toàn diện 3 tầng: Bootstrap Cache, Dexie IndexedDB và Cloudflare/SQLite Server
+                syncScheduleStateToAllLayers(restoredData, restoredUnscheduled, 'redoSchedule');
 
                 loadScheduleList();
                 if (typeof renderScheduleGanttTimeline === 'function' && document.getElementById('schedule-gantt-wrap')?.style.display !== 'none') {
@@ -8098,6 +8106,40 @@ var dataCache = window.dataCache;
             }
         }
         window.redoSchedule = redoSchedule;
+
+        // 🔄 Hàm trợ lý đồng bộ trạng thái lịch trình xuống toàn bộ các tầng dữ liệu (Bootstrap Cache, Dexie, Server API)
+        function syncScheduleStateToAllLayers(schedData, unschData, actionName = 'Sync') {
+            try {
+                // 1. Cập nhật times_bootstrap_cache (tránh bị nạp lại dữ liệu cũ khi Ctrl+F5)
+                const bKey = (typeof window.getBootstrapCacheKey === 'function') ? window.getBootstrapCacheKey() : 'times_bootstrap_cache';
+                const cachedStr = localStorage.getItem(bKey) || localStorage.getItem('times_bootstrap_cache');
+                if (cachedStr) {
+                    const b = JSON.parse(cachedStr);
+                    b.schedule = Array.isArray(schedData) ? schedData : [];
+                    localStorage.setItem(bKey, JSON.stringify(b));
+                    localStorage.setItem('times_bootstrap_cache', JSON.stringify(b));
+                }
+
+                // 2. Cập nhật Dexie IndexedDB qua OfflineSyncEngine
+                if (window.OfflineSyncEngine && typeof window.OfflineSyncEngine.saveCache === 'function') {
+                    window.OfflineSyncEngine.saveCache('meds_success', Array.isArray(schedData) ? schedData : []);
+                    window.OfflineSyncEngine.saveCache('meds_unscheduled', Array.isArray(unschData) ? unschData : []);
+                }
+
+                // 3. Đồng bộ lên máy chủ đám mây (Cloudflare / SQLite backend)
+                const activeDate = window._systemActiveYMD || localStorage.getItem(getUnitStorageKey('meds_schedule_date')) || localStorage.getItem('meds_schedule_date') || '';
+                if (typeof callApi === 'function' && activeDate) {
+                    const backendSched = (Array.isArray(schedData) ? schedData : []).map(x => scheduleRowToBackendArray(x, activeDate));
+                    callApi('saveSchedule', [activeDate, backendSched], (res) => {
+                        console.log(`[${actionName}] Đã đồng bộ trạng thái hoàn tác lên đám mây thành công!`);
+                    }, (err) => {
+                        console.warn(`[${actionName}] Lỗi đồng bộ đám mây:`, err);
+                    });
+                }
+            } catch (e) {
+                console.warn(`[${actionName}] Lỗi cập nhật đa tầng:`, e);
+            }
+        }
 
         // Bắt phím tắt Ctrl+Z (Undo) và Ctrl+Y / Ctrl+Shift+Z (Redo) toàn cục
         window.addEventListener('keydown', function(e) {

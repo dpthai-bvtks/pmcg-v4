@@ -1,6 +1,6 @@
 {
-    "version": "4.3.4-rev1",
+    "version": "4.3.4-rev2",
     "releaseDate": "23/10/2026",
-    "releaseTime": "10:30 23/10/2026",
-    "notes": "Khắc phục triệt để lỗi nút Sửa/Giờ rảnh ở bảng lịch trình không hoạt động do mất tham chiếu chỉ mục; Chuẩn hóa mở Modal Chi Tiết Ca Điều Trị & Tự Động Tìm Giờ Rảnh 1-Click theo thời gian thực."
+    "releaseTime": "10:45 23/10/2026",
+    "notes": "Đồng bộ sâu toàn diện 3 tầng (RAM, Bootstrap Cache & Dexie, Cloudflare API) cho tính năng Hoàn tác (Undo) và Làm lại (Redo) lịch trình; Ngăn chặn triệt để hiện tượng Ctrl+F5 phục hồi lại lịch cũ sau khi đã bấm hoàn tác."
 }
