@@ -317,7 +317,10 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
     patient_intervals = {}          # p_id -> list of intervals
     patient_scheduled_tasks = {}    # p_id -> list of tv
     bed_intervals = {}              # (room, bed) -> list of intervals
-    staff_intervals = {}            # staff_name -> list of intervals
+    staff_intervals = {}            # staff_name -> list of intervals (chiếm dụng thực: 5p cài đặt + 1p rút kim + giờ bận)
+    # 🫀 NHỊP CA (Cadence): mỗi ca chiếm khoảng [start, start + tg_nv + gap] chỉ trong nhóm này.
+    # NoOverlap trên nhóm này ⇔ start_ca_sau >= start_ca_truoc + (tg_nv + gap), KHÔNG chặn giờ rút kim của ca khác.
+    staff_cadence_intervals = {}
     staff_assigned_loads = {s: [] for s in doc_ktv_names}  # s -> list of (dur_expr)
 
     # Cụm máy móc cho AddCumulative (Symmetry Breaking)
@@ -328,6 +331,7 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
 
     for s_name in staff_names:
         staff_intervals[s_name] = []
+        staff_cadence_intervals[s_name] = []
         # Chặn các mốc ngoài ca làm việc thực tế của nhân sự
         s_shifts = staff_dict[s_name]["shifts"]
         if s_shifts:
@@ -395,16 +399,19 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
                         matched_s = sn
                         break
 
-            if matched_s:
+            ex_work_dur = min(ex_tg_nv, ex_dur)
+
+            def _freeze_staff(sn, tag):
                 if ex_is_cont:
-                    st_old_iv = model.NewIntervalVar(ex_s, ex_dur + ex_gap, ex_e + ex_gap, f"old_st_{ex_idx}")
-                    staff_intervals[matched_s].append(st_old_iv)
+                    staff_intervals[sn].append(model.NewIntervalVar(ex_s, ex_dur + ex_gap, ex_e + ex_gap, f"old_{tag}_{ex_idx}"))
                 else:
-                    st_set_old = model.NewIntervalVar(ex_s, ex_setup_dur, ex_s + ex_setup_dur, f"old_st_set_{ex_idx}")
-                    staff_intervals[matched_s].append(st_set_old)
+                    staff_intervals[sn].append(model.NewIntervalVar(ex_s, ex_work_dur, ex_s + ex_work_dur, f"old_{tag}_set_{ex_idx}"))
+                    staff_cadence_intervals[sn].append(model.NewIntervalVar(ex_s, ex_setup_dur, ex_s + ex_setup_dur, f"old_{tag}_cad_{ex_idx}"))
                     if ex_has_teardown:
-                        st_tear_old = model.NewIntervalVar(ex_e - 1, ex_teardown_dur, ex_e + ex_gap, f"old_st_tear_{ex_idx}")
-                        staff_intervals[matched_s].append(st_tear_old)
+                        staff_intervals[sn].append(model.NewIntervalVar(ex_e, 1, ex_e + 1, f"old_{tag}_tear_{ex_idx}"))
+
+            if matched_s:
+                _freeze_staff(matched_s, "st")
 
             # 3. Khóa KTV / Điều dưỡng phụ cũ
             ex_sub = str(ex.get("nvPhu") or ex.get("NV PHỤ") or "").strip()
@@ -415,15 +422,7 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
                         matched_sub = sn
                         break
             if matched_sub:
-                if ex_is_cont:
-                    sub_old_iv = model.NewIntervalVar(ex_s, ex_dur + ex_gap, ex_e + ex_gap, f"old_sub_{ex_idx}")
-                    staff_intervals[matched_sub].append(sub_old_iv)
-                else:
-                    sub_set_old = model.NewIntervalVar(ex_s, ex_setup_dur, ex_s + ex_setup_dur, f"old_sub_set_{ex_idx}")
-                    staff_intervals[matched_sub].append(sub_set_old)
-                    if ex_has_teardown:
-                        sub_tear_old = model.NewIntervalVar(ex_e - 1, ex_teardown_dur, ex_e + ex_gap, f"old_sub_tear_{ex_idx}")
-                        staff_intervals[matched_sub].append(sub_tear_old)
+                _freeze_staff(matched_sub, "sub")
 
             # 4. Khóa Giường bệnh cũ
             ex_phong = str(ex.get("phong") or ex.get("PHONG") or "").strip()
@@ -592,12 +591,14 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
         staff_choice_vars = {}
         # 🧩 Áp dụng luật Ép gối cục bộ (Local Squeezing từ PMXL): cho phép co nhẹ thời gian đệm khi xếp bổ sung
         eff_gap = max(1, gap_min - max_squeeze) if is_supplemental else gap_min
+        # setup_dur = nhịp ca (cài đặt + nghỉ) — CHỈ dùng cho ràng buộc chênh lệch start, không khóa cứng nhân sự
         setup_dur = min(tg_nv + eff_gap, tg_may)
+        work_dur = min(tg_nv, tg_may)        # chiếm dụng thực: thao tác cài đặt/châm kim
         has_teardown = not is_cont and (tg_may > tg_nv)
-        teardown_dur = 1 + eff_gap
+        teardown_dur = 1                      # chiếm dụng thực: 1 phút rút kim/tháo máy [end, end+1]
 
         # Thời lượng nhân sự làm việc để cân bằng tải
-        staff_work_dur = tg_may if is_cont else (setup_dur + (teardown_dur if has_teardown else 0))
+        staff_work_dur = tg_may if is_cont else (work_dur + (teardown_dur if has_teardown else 0))
 
         for s_name in staff_candidates:
             s_var = model.NewBoolVar(f"st_{tid}_{s_name}")
@@ -608,11 +609,10 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
                 st_iv = model.NewOptionalIntervalVar(start_var, full_dur, start_var + full_dur, s_var, f"st_full_{tid}_{s_name}")
                 staff_intervals[s_name].append(st_iv)
             else:
-                st_setup_iv = model.NewOptionalIntervalVar(start_var, setup_dur, start_var + setup_dur, s_var, f"st_set_{tid}_{s_name}")
-                staff_intervals[s_name].append(st_setup_iv)
+                staff_intervals[s_name].append(model.NewOptionalIntervalVar(start_var, work_dur, start_var + work_dur, s_var, f"st_set_{tid}_{s_name}"))
+                staff_cadence_intervals[s_name].append(model.NewOptionalIntervalVar(start_var, setup_dur, start_var + setup_dur, s_var, f"st_cad_{tid}_{s_name}"))
                 if has_teardown:
-                    st_tear_iv = model.NewOptionalIntervalVar(end_var - 1, teardown_dur, end_var + gap_min, s_var, f"st_tear_{tid}_{s_name}")
-                    staff_intervals[s_name].append(st_tear_iv)
+                    staff_intervals[s_name].append(model.NewOptionalIntervalVar(end_var, teardown_dur, end_var + teardown_dur, s_var, f"st_tear_{tid}_{s_name}"))
 
             # Đóng góp khối lượng công việc vào nhân viên s_name
             if s_name in staff_assigned_loads:
@@ -632,11 +632,10 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
                     n_iv = model.NewOptionalIntervalVar(start_var, n_full_dur, start_var + n_full_dur, n_var, f"n_full_{tid}_{n_name}")
                     staff_intervals[n_name].append(n_iv)
                 else:
-                    n_setup_iv = model.NewOptionalIntervalVar(start_var, setup_dur, start_var + setup_dur, n_var, f"n_set_{tid}_{n_name}")
-                    staff_intervals[n_name].append(n_setup_iv)
+                    staff_intervals[n_name].append(model.NewOptionalIntervalVar(start_var, work_dur, start_var + work_dur, n_var, f"n_set_{tid}_{n_name}"))
+                    staff_cadence_intervals[n_name].append(model.NewOptionalIntervalVar(start_var, setup_dur, start_var + setup_dur, n_var, f"n_cad_{tid}_{n_name}"))
                     if has_teardown:
-                        n_tear_iv = model.NewOptionalIntervalVar(end_var - 1, teardown_dur, end_var + gap_min, n_var, f"n_tear_{tid}_{n_name}")
-                        staff_intervals[n_name].append(n_tear_iv)
+                        staff_intervals[n_name].append(model.NewOptionalIntervalVar(end_var, teardown_dur, end_var + teardown_dur, n_var, f"n_tear_{tid}_{n_name}"))
 
             model.Add(sum(sub_choice_vars.values()) == is_scheduled)
 
@@ -684,6 +683,11 @@ def solve_schedule(db: Dict[str, Any], options: Optional[Dict[str, Any]] = None)
 
     # 4. Nhân sự: không trùng ca làm việc (theo khoảng bận Setup, Teardown, giờ bận)
     for s_name, iv_list in staff_intervals.items():
+        if len(iv_list) > 1:
+            model.AddNoOverlap(iv_list)
+
+    # 5. Nhịp ca nhân sự: start_ca_sau >= start_ca_truoc + (tg_nv + gap) — tách riêng khỏi khóa chiếm dụng
+    for s_name, iv_list in staff_cadence_intervals.items():
         if len(iv_list) > 1:
             model.AddNoOverlap(iv_list)
 

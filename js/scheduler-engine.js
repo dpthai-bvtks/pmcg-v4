@@ -1031,10 +1031,13 @@ function _turbo_core_logic(db, ngayXep, seedVal, existingSched = [], scenario = 
       // Riêng Thủy châm: Áp dụng khóa giờ kết thúc cho TTV chính từ ngày 25/09/2026 trở đi (trước ngày này không khóa).
       const isDayFrom25 = isNgayFrom25Sep2026(ngayXep);
       const applyThuyChamTryMainTeardown = isThuyChamProc && isDayFrom25;
-      const mainNeedsTeardown = hasTeardown && (isDienChamProc || isHaoChamProc || applyThuyChamTryMainTeardown || (info[4] === 1));
+      // 🗓️ THỨ 7 (v3-compat): Ca có người phụ thì không khóa phút rút kim cho TTV chính (tránh vùng chết 26p mỗi 4 ca
+      // do setup 6p > khe 5p giữa 2 mốc rút kim), người phụ cũng không bị khóa mốc rút kim trên T7.
+      const satRelaxTeardown = !!db.isSaturday;
+      const mainNeedsTeardown = hasTeardown && (!satRelaxTeardown || canPhu !== 1) && (isDienChamProc || isHaoChamProc || applyThuyChamTryMainTeardown || (info[4] === 1));
 
       // 2. Người phụ (Điều dưỡng): bị khóa giờ kết thúc cho Điện châm, Hào châm (rút kim) hoặc Thủy châm (theo dõi đến hết ca).
-      const subNeedsTeardown = hasTeardown && (isDienChamProc || isHaoChamProc || isThuyChamProc);
+      const subNeedsTeardown = hasTeardown && !satRelaxTeardown && (isDienChamProc || isHaoChamProc || isThuyChamProc);
 
       // 🔒 RÀNG BUỘC CHẶN GIỜ NGHỈ TRƯA VÀ HẾT CA: Tuân thủ tuyệt đối cài đặt yhctLunch và yhctEnd
       if (tNow < morningShiftEnd && gioKetThuc > (morningShiftEnd + allowedOvertimeAtLunch)) continue;

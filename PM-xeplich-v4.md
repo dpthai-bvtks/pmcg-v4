@@ -9120,3 +9120,21 @@ oomRoleStaff[phong][vaiTro] vào js/scheduler-engine.js:
       * Tương thích 100% trên Microsoft Excel mọi phiên bản (2007, 2010, 2013, 2016, 2019, 2021, Office 365), WPS Office, Google Sheets, LibreOffice.
       * Vượt qua 100% 9 tầng kiểm thử của `scripts/verify-build.mjs`.
     - **File sửa đổi:** `js/modules/app-export-reports.js`, `index.html`, `sw.js`, `version.json`, `PM-xeplich-v4.md`.
+
+26. **Tối Ưu Hóa Nhịp Ca CP-SAT & Khóa Giờ Rút Kim Không Cần Đệm, Loại Bỏ Vùng Chết 26 Phút (v4.3.4-rev6 - 23/10/2026):**
+    - **Yêu cầu & Phân tích hiện trạng:**
+      * Thuật toán CP-SAT của T.I.M.E.S trước đó gom bệnh nhân thành từng cụm 2 ca, tạo ra lỗ hổng 26 phút giữa các đợt làm giảm công suất buổi sáng (chỉ xếp được ~14 ca điện châm thay vì ~27 ca).
+      * Nguyên nhân: Biến "Khoảng cách nghỉ = 4 phút" bị gộp chung vào IntervalVar khóa cứng nhân sự, khiến mốc rút kim (phút thứ 25) của ca trước đè vào block nghỉ của ca sau, gây xung đột giả tạo ra chu kỳ "nhận 2 ca - trống 20+ phút - nhận 2 ca".
+    - **Giải pháp xử lý đột phá:**
+      * **Tách nhịp ca (Cadence NoOverlap) khỏi chiếm dụng thực (Occupancy NoOverlap):**
+        - Mảng `staff_intervals`: Chỉ chiếm dụng đúng thời gian nhân sự trực tiếp thao tác cài đặt/châm kim (`min(tg_nv, tg_may) = 5 phút`) và đúng 1 phút rút kim/tháo máy tại thời điểm kết thúc ca (`[end, end + 1]`), tuyệt đối không khóa cứng khoảng nghỉ.
+        - Mảng riêng `staff_cadence_intervals`: Tạo khoảng `[start, start + tg_nv + gap]` (ví dụ: `5 + 4 = 9 phút`) và áp dụng `AddNoOverlap` riêng trên mảng này. Điều này tương đương với ràng buộc nhịp ca `start_ca_sau >= start_ca_truoc + 9 phút`, cho phép ca sau bắt đầu đúng nhịp 9 phút mà không bao giờ chặn giờ rút kim của các ca trước.
+      * **Khóa giờ rút kim & Bỏ khoảng đệm rút kim:** Giữ nguyên khóa giờ kết thúc (rút kim) cho TTV chính/phụ để đảm bảo an toàn lâm sàng, nhưng không yêu cầu thêm khoảng đệm rút kim, giúp nhân sự có thể rút kim liền kề nhịp thao tác một cách tối ưu.
+      * **Phòng hộ chốt sổ:** Bổ sung cơ chế bảo vệ trong `backend/src/routes/schedules.js` khi chốt sổ lúc `lich_trinh` đã trống thì không xóa/ghi đè bảng `lich_su` để tránh mất dữ liệu đã chốt.
+      * **Đồng bộ hệ thống trạm Mini PC:** Cập nhật tệp `local-solver/solver.py`, đồng bộ sang `C:\PMCG-System\PMCG-Solver\solver.py` và restart dịch vụ `PMCG_ORTools_Solver`.
+    - **Kết quả nghiệm thu:**
+      * Mô hình CP-SAT dàn đều nhịp 9 phút/ca: `07:33`, `07:42`, `07:51`, `08:00`, `08:09`...
+      * Công suất buổi sáng tăng gần gấp đôi: xếp được 27 ca điện châm (so với 14 ca trước đó). 30 ca/ngày xếp thành công 100%, 0 ca rớt.
+      * Bộ kiểm thử `test_solver.py` vượt qua 100% (cả chế độ cơ bản và chế độ xếp bổ sung).
+      * Vượt qua 100% 9 tầng kiểm thử của `scripts/verify-build.mjs`.
+    - **File sửa đổi:** `local-solver/solver.py`, `backend/src/routes/schedules.js`, `js/scheduler-engine.js`, `index.html`, `sw.js`, `version.json`, `PM-xeplich-v4.md`.

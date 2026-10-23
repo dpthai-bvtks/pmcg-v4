@@ -1,6 +1,6 @@
 {
-    "version": "4.3.4-rev5",
+    "version": "4.3.4-rev6",
     "releaseDate": "23/10/2026",
-    "releaseTime": "13:20 23/10/2026",
-    "notes": "Liên kết công thức động (INDEX + MATCH + IFERROR kết hợp cột phụ _DuLieuGoc) cho ô chọn phòng E3 trên bảng lịch trình Excel xuất ra, giúp danh sách bệnh nhân và ca thủ thuật tự động cập nhật lọc tức thì khi chọn bất kỳ phòng nào từ danh sách thả xuống."
+    "releaseTime": "17:55 23/10/2026",
+    "notes": "Tối ưu hóa mô hình CP-SAT: tách nhịp ca (cadence NoOverlap) độc lập khỏi khoảng chiếm dụng thực (5p thao tác + 1p rút kim), không yêu cầu đệm rút kim, loại bỏ điểm nghẽn phong tỏa 26p giúp dàn đều 9p/ca và tối đa hóa công suất."
 }

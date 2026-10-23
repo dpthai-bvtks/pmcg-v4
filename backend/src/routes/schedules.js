@@ -192,7 +192,15 @@ export async function handleSchedulesAction(action, ctx) {
       };
       const { ymd: targetYMD, dmy: targetDMY } = parseD(targetDateStr);
 
-      if (date && typeof date === "string" && date.trim()) {
+      let hasLiveSchedule = true;
+      try {
+        const cntRow = await db.prepare("SELECT COUNT(*) AS c FROM lich_trinh WHERE unit_code = ?").bind(unitCode).first();
+        hasLiveSchedule = Number(cntRow?.c || 0) > 0;
+      } catch (e) { hasLiveSchedule = true; }
+
+      if (!hasLiveSchedule) {
+        // Bảng Live đã trống (đã chốt trước đó): không xóa/ghi đè lich_su để tránh mất lịch sử
+      } else if (date && typeof date === "string" && date.trim()) {
         const { ymd: tYMD, dmy: tDMY } = parseD(date.trim());
         statements.push(
           db.prepare("DELETE FROM lich_su WHERE unit_code = ? AND (date = ? OR date = ?)").bind(unitCode, tYMD, tDMY),
