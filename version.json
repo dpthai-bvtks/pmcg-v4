@@ -1,6 +1,6 @@
 {
-    "version": "4.3.4-rev3",
+    "version": "4.3.4-rev4",
     "releaseDate": "23/10/2026",
-    "releaseTime": "11:00 23/10/2026",
-    "notes": "Nâng cấp tính năng Sửa/Giờ rảnh: Hỗ trợ tìm kiếm theo nhân sự đang chọn hoặc toàn bộ KTV có kỹ năng, kèm danh sách gợi ý đa khung giờ rảnh khả thi để áp dụng 1-click."
+    "releaseTime": "11:35 23/10/2026",
+    "notes": "Cập nhật định dạng file Excel lịch trình xuất ra: Dòng 1 (KHOA YHCT & PHCN - BVTKSCS2), Dòng 2 (BẢNG LỊCH TRÌNH NGÀY...), Dòng 3 (Phòng... kèm nút chọn phòng Data Validation), ẩn cột Phòng Điều Trị trong bảng dữ liệu và phân tách sheet từng phòng."
 }

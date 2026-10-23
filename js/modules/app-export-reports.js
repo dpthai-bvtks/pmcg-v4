@@ -18,13 +18,24 @@
     const escapeHtml = (str) => (typeof window.escapeHtml === 'function' ? window.escapeHtml(str) : String(str || ''));
 
         // ============================================================
-        // 📤 XUẤT LỊCH Y LỆNH EXCEL (1 SHEET KÈM DROP-LIST LỌC PHÒNG, A-Z & RV ĐẦU BẢNG)
+        // 📤 XUẤT LỊCH Y LỆNH EXCEL (KHOA YHCT & PHCN - BVTKSCS2, BẢNG LỊCH TRÌNH NGÀY..., CÓ NÚT CHỌN PHÒNG, ẨN CỘT PHÒNG)
         // ============================================================
-        function exportSchedule() {
-            if (typeof XLSX === 'undefined') {
-                return alert("Thư viện xuất Excel đang được nạp, vui lòng thử lại sau 1-2 giây!");
-            }
+        function saveExcelBuffer(buffer, fileName) {
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }, 300);
+        }
 
+        async function exportSchedule() {
             const safeSched = (window.currentScheduleData || []).map(normalizeScheduleRow).filter(r => !isDroppedScheduleRow(r));
             const activeDateVal = (document.getElementById('schedule-date')?.value) || (safeSched[0]?.ngay) || '';
             let displayDate = activeDateVal ? activeDateVal.split('-').reverse().join('/') : new Date().toLocaleDateString('vi-VN');
@@ -52,231 +63,433 @@
                 return String(a.gioDienRa || '').localeCompare(String(b.gioDienRa || ''));
             });
 
+            // Lấy danh sách các phòng hiện có trong ngày xếp lịch
+            const roomMap = {};
+            safeSched.forEach(row => {
+                const rName = String(row.phong || 'Chưa phân phòng').trim();
+                if (!roomMap[rName]) roomMap[rName] = [];
+                roomMap[rName].push(row);
+            });
+            const existingRooms = Object.keys(roomMap).sort((a, b) => a.localeCompare(b, 'vi', { numeric: true }));
+
+            // Dòng 1: KHOA YHCT & PHCN - BVTKSCS2 (chuẩn theo mã đơn vị)
+            const unitCode = String(typeof getCurrentUnitCode === 'function' ? getCurrentUnitCode() : (localStorage.getItem('pm_current_unit') || 'bvtks_cs2')).toUpperCase();
+            const unitShort = (unitCode === 'BVTKS_CS2' ? 'BVTKSCS2' : unitCode);
+            const row1Text = `KHOA YHCT & PHCN - ${unitShort}`;
+
+            // Dòng 2: BẢNG LỊCH TRÌNH NGÀY .....(tương ứng với ngày xếp lịch)
+            const row2Text = `BẢNG LỊCH TRÌNH NGÀY ${displayDate}`;
+
+            const fileName = `Lich_ThuThuat_${displayDate.replace(/\//g, '-')}.xlsx`;
+
+            // === CƠ CHẾ 1: EXCELJS ENGINE (Hỗ trợ Dropdown List Data Validation và Ẩn cột chuẩn OpenXML) ===
+            if (typeof ExcelJS !== 'undefined') {
+                try {
+                    const workbook = new ExcelJS.Workbook();
+                    workbook.creator = 'T.I.M.E.S System - ' + row1Text;
+                    workbook.created = new Date();
+
+                    function buildExcelJSSheet(wsTitle, currentRoomText, rowsData) {
+                        const ws = workbook.addWorksheet(wsTitle, {
+                            views: [{ showGridLines: true }]
+                        });
+
+                        // 10 Cột: STT, Tên BN, Năm Sinh, Phòng Điều Trị (ẨN), Thủ Thuật, Bắt Đầu, Kết Thúc, KTV, NV Phụ, Máy
+                        ws.columns = [
+                            { key: 'stt', width: 6 },
+                            { key: 'tenBN', width: 28 },
+                            { key: 'namSinh', width: 11 },
+                            { key: 'phong', width: 20, hidden: true }, // 🎯 ẨN CỘT PHÒNG HIỆN TẠI ĐI!
+                            { key: 'thuThuat', width: 28 },
+                            { key: 'gioDienRa', width: 11 },
+                            { key: 'gioKetThuc', width: 11 },
+                            { key: 'nvChinh', width: 20 },
+                            { key: 'nvPhu', width: 18 },
+                            { key: 'may', width: 18 }
+                        ];
+
+                        // Dòng 1: KHOA YHCT & PHCN - BVTKSCS2
+                        ws.mergeCells(1, 1, 1, 10);
+                        const c1 = ws.getCell(1, 1);
+                        c1.value = row1Text;
+                        c1.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF1E3D2B' } };
+                        c1.alignment = { horizontal: 'center', vertical: 'middle' };
+                        ws.getRow(1).height = 20;
+
+                        // Dòng 2: BẢNG LỊCH TRÌNH NGÀY .....(tương ứng với ngày xếp lịch)
+                        ws.mergeCells(2, 1, 2, 10);
+                        const c2 = ws.getCell(2, 1);
+                        c2.value = row2Text;
+                        c2.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FF059669' } };
+                        c2.alignment = { horizontal: 'center', vertical: 'middle' };
+                        ws.getRow(2).height = 26;
+
+                        // Dòng 3: Phòng .... (tương ứng với các phòng hiện có) và có nút để chọn phòng
+                        ws.mergeCells(3, 1, 3, 3);
+                        const c3Label = ws.getCell(3, 1);
+                        c3Label.value = 'Phòng:';
+                        c3Label.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF1E293B' } };
+                        c3Label.alignment = { horizontal: 'right', vertical: 'middle' };
+
+                        ws.mergeCells(3, 5, 3, 7); // Merge từ cột E đến G (tránh cột D đang bị ẩn)
+                        const c3Val = ws.getCell(3, 5);
+                        c3Val.value = currentRoomText;
+                        c3Val.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF1D4ED8' } };
+                        c3Val.alignment = { horizontal: 'center', vertical: 'middle' };
+                        c3Val.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEBF5FF' } };
+                        c3Val.border = {
+                            top: { style: 'thin', color: { argb: 'FF93C5FD' } },
+                            bottom: { style: 'thin', color: { argb: 'FF93C5FD' } },
+                            left: { style: 'thin', color: { argb: 'FF93C5FD' } },
+                            right: { style: 'thin', color: { argb: 'FF93C5FD' } }
+                        };
+
+                        // Gán nút chọn phòng: Data Validation Dropdown List
+                        const allRoomOptions = ['Tất cả các phòng', ...existingRooms];
+                        c3Val.dataValidation = {
+                            type: 'list',
+                            allowBlank: false,
+                            formulae: [`"${allRoomOptions.join(',')}"`],
+                            showErrorMessage: true,
+                            errorTitle: 'Chọn phòng',
+                            error: 'Vui lòng chọn phòng trong danh sách các phòng hiện có'
+                        };
+                        ws.getRow(3).height = 22;
+
+                        // Dòng 4: Dòng trống
+                        ws.getRow(4).height = 10;
+
+                        // Dòng 5: Tiêu đề cột bảng
+                        const headerNames = ["STT", "Tên Bệnh Nhân", "Năm Sinh", "Phòng Điều Trị", "Thủ Thuật", "Bắt Đầu", "Kết Thúc", "KTV / Bác Sĩ", "NV Phụ", "Máy Móc"];
+                        ws.getRow(5).height = 26;
+                        headerNames.forEach((hName, idx) => {
+                            const c = ws.getCell(5, idx + 1);
+                            c.value = hName;
+                            c.font = { name: 'Arial', size: 10.5, bold: true, color: { argb: 'FF1E3D2B' } };
+                            c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F8F5' } };
+                            c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                            c.border = {
+                                top: { style: 'medium', color: { argb: 'FF000000' } },
+                                bottom: { style: 'medium', color: { argb: 'FF000000' } },
+                                left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                                right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+                            };
+                        });
+
+                        // Dòng dữ liệu từ Dòng 6
+                        rowsData.forEach((row, rIdx) => {
+                            const rowNum = 6 + rIdx;
+                            ws.getRow(rowNum).height = 22;
+
+                            let tenBNText = String(row.tenBN || '').trim();
+                            if (row.__isDischarged) tenBNText += ' (RV)';
+                            if (row.__dropped) tenBNText += ' (❌ Rớt)';
+
+                            const nvChinhVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvChinh) : (row.nvChinh || '')).trim();
+                            const nvPhuVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvPhu) : (row.nvPhu || '')).trim();
+
+                            const isRV = !!row.__isDischarged;
+                            const rowCells = [
+                                rIdx + 1,
+                                tenBNText,
+                                String(row.namSinh || '').trim(),
+                                String(row.phong || 'Chưa phân phòng').trim(),
+                                String(row.thuThuat || '').trim(),
+                                String(row.gioDienRa || '').trim(),
+                                String(row.gioKetThuc || '').trim(),
+                                nvChinhVal,
+                                nvPhuVal,
+                                String(row.may || '--').trim()
+                            ];
+
+                            rowCells.forEach((val, cIdx) => {
+                                const c = ws.getCell(rowNum, cIdx + 1);
+                                c.value = val;
+
+                                const alignH = (cIdx === 0 || cIdx === 2 || cIdx === 3 || cIdx === 5 || cIdx === 6) ? 'center' : 'left';
+                                const fontColor = isRV ? (cIdx === 1 ? 'FF7C3AED' : 'FF1E293B') : (cIdx === 5 ? 'FF059669' : 'FF1E293B');
+
+                                c.font = {
+                                    name: 'Arial',
+                                    size: 10,
+                                    bold: isRV || cIdx === 0 || cIdx === 5 || cIdx === 7 || cIdx === 8,
+                                    color: { argb: fontColor }
+                                };
+                                c.alignment = { horizontal: alignH, vertical: 'middle' };
+
+                                if (isRV) {
+                                    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5EEF8' } };
+                                } else if (rIdx % 2 === 1) {
+                                    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+                                }
+
+                                c.border = {
+                                    top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                                    bottom: { style: 'medium', color: { argb: 'FF000000' } },
+                                    left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                                    right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+                                };
+                            });
+                        });
+
+                        const lastDataRow = 5 + rowsData.length;
+
+                        // Dòng tổng kết cuối bảng
+                        const totRow = lastDataRow + 2;
+                        ws.getRow(totRow).height = 24;
+                        ws.mergeCells(totRow, 1, totRow, 3);
+                        const totLabel = ws.getCell(totRow, 1);
+                        totLabel.value = 'TỔNG SỐ THỦ THUẬT:';
+                        totLabel.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF92400E' } };
+                        totLabel.alignment = { horizontal: 'right', vertical: 'middle' };
+
+                        ws.mergeCells(totRow, 5, totRow, 10);
+                        const totCount = ws.getCell(totRow, 5);
+                        totCount.value = `${rowsData.length} ca thủ thuật (tự động cập nhật theo phòng)`;
+                        totCount.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF92400E' } };
+                        totCount.alignment = { horizontal: 'left', vertical: 'middle' };
+
+                        for (let c = 1; c <= 10; c++) {
+                            const cell = ws.getCell(totRow, c);
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+                            cell.border = {
+                                top: { style: 'medium', color: { argb: 'FF000000' } },
+                                bottom: { style: 'medium', color: { argb: 'FF000000' } },
+                                left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                                right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+                            };
+                        }
+
+                        // AutoFilter
+                        if (rowsData.length > 0) {
+                            ws.autoFilter = {
+                                from: { row: 5, column: 1 },
+                                to: { row: lastDataRow, column: 10 }
+                            };
+                        }
+
+                        // Cài đặt trang in A4 ngang chuẩn
+                        ws.pageSetup = {
+                            paperSize: 9,
+                            orientation: 'landscape',
+                            fitToPage: true,
+                            fitToWidth: 1,
+                            fitToHeight: 0,
+                            margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 }
+                        };
+                    }
+
+                    // 1. Tạo Sheet tổng quan: Tất cả các phòng
+                    buildExcelJSSheet('Tất cả phòng', 'Tất cả các phòng', safeSched);
+
+                    // 2. Tạo Sheet riêng cho từng phòng hiện có
+                    if (existingRooms.length > 1) {
+                        const usedNames = new Set(['tất cả phòng']);
+                        existingRooms.forEach(rName => {
+                            let cleanName = String(rName || '').trim().replace(/[\\/?*:[\]]/g, '-').substring(0, 31);
+                            if (!cleanName) cleanName = 'Phòng';
+                            let finalSheetName = cleanName;
+                            let cnt = 1;
+                            while (usedNames.has(finalSheetName.toLowerCase())) {
+                                finalSheetName = `${cleanName.substring(0, 27)}_${cnt++}`;
+                            }
+                            usedNames.add(finalSheetName.toLowerCase());
+
+                            buildExcelJSSheet(finalSheetName, rName, roomMap[rName] || []);
+                        });
+                    }
+
+                    const buffer = await workbook.xlsx.writeBuffer();
+                    saveExcelBuffer(buffer, fileName);
+                    if (typeof showToast === 'function') showToast("📂 Đã xuất file Excel lịch trình có nút chọn phòng!");
+                    return;
+                } catch (errExcelJS) {
+                    console.warn('[exportSchedule] Lỗi ExcelJS, chuyển sang fallback XLSX:', errExcelJS);
+                }
+            }
+
+            // === CƠ CHẾ 2: FALLBACK BẰNG XLSX (xlsx-js-style) ===
+            if (typeof XLSX === 'undefined') {
+                return alert("Thư viện xuất Excel đang được nạp, vui lòng thử lại sau 1-2 giây!");
+            }
+
             const wb = XLSX.utils.book_new();
 
-            // Xây dựng ma trận dữ liệu Excel (10 Cột có Cột NV Phụ & Cột Phòng Điều Trị)
-            const ws_data = [
-                [(localStorage.getItem('pm_unit_name') || 'Bệnh viện Than - Khoáng sản Cơ sở 2').toUpperCase() + " - KHOA YHCT & PHCN"],
-                ["BẢNG LỊCH TRÌNH ĐIỀU TRỊ THỦ THUẬT"],
-                [`Ngày thực hiện: ${displayDate}`],
-                [""], // Dòng trống cách quãng
-                ["STT", "Tên Bệnh Nhân", "Năm Sinh", "Phòng Điều Trị", "Thủ Thuật", "Bắt Đầu", "Kết Thúc", "KTV / Bác Sĩ", "NV Phụ", "Máy Móc"]
-            ];
+            function buildXLSXSheet(currentRoomText, rowsData) {
+                const ws_data = [
+                    [row1Text],
+                    [row2Text],
+                    [`Phòng: ${currentRoomText}`],
+                    [""],
+                    ["STT", "Tên Bệnh Nhân", "Năm Sinh", "Phòng Điều Trị", "Thủ Thuật", "Bắt Đầu", "Kết Thúc", "KTV / Bác Sĩ", "NV Phụ", "Máy Móc"]
+                ];
 
-            const dischargedCount = safeSched.filter(r => r.__isDischarged).length;
+                rowsData.forEach((row, idx) => {
+                    let tenBNText = String(row.tenBN || '').trim();
+                    if (row.__isDischarged) tenBNText += ' (RV)';
+                    if (row.__dropped) tenBNText += ' (❌ Rớt)';
 
-            safeSched.forEach((row, idx) => {
-                let tenBNText = String(row.tenBN || '').trim();
-                if (row.__isDischarged) tenBNText += ' (RV)';
-                if (row.__dropped) tenBNText += ' (❌ Rớt)';
+                    const nvChinhVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvChinh) : (row.nvChinh || '')).trim();
+                    const nvPhuVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvPhu) : (row.nvPhu || '')).trim();
 
-                const nvChinhVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvChinh) : (row.nvChinh || '')).trim();
-                const nvPhuVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvPhu) : (row.nvPhu || '')).trim();
+                    ws_data.push([
+                        idx + 1,
+                        tenBNText,
+                        String(row.namSinh || '').trim(),
+                        String(row.phong || 'Chưa phân phòng').trim(),
+                        String(row.thuThuat || '').trim(),
+                        String(row.gioDienRa || '').trim(),
+                        String(row.gioKetThuc || '').trim(),
+                        nvChinhVal,
+                        nvPhuVal,
+                        String(row.may || '--').trim()
+                    ]);
+                });
 
+                const firstDataRow = 6;
+                const lastDataRow = rowsData.length + 5;
+
+                ws_data.push([""]);
                 ws_data.push([
-                    idx + 1,
-                    tenBNText,
-                    String(row.namSinh || '').trim(),
-                    String(row.phong || 'Chưa phân phòng').trim(),
-                    String(row.thuThuat || '').trim(),
-                    String(row.gioDienRa || '').trim(),
-                    String(row.gioKetThuc || '').trim(),
-                    nvChinhVal,
-                    nvPhuVal,
-                    String(row.may || '--').trim()
+                    "TỔNG SỐ THỦ THUẬT:",
+                    "",
+                    "",
+                    "",
+                    `${rowsData.length} ca thủ thuật (tự động cập nhật theo phòng)`,
+                    "", "", "", "", ""
                 ]);
-            });
 
-            const firstDataRow = 6; // Dòng 6 trong Excel (index 1-based)
-            const lastDataRow = safeSched.length + 5; // Dòng dữ liệu cuối cùng
+                const ws = XLSX.utils.aoa_to_sheet(ws_data);
+                ws['!autofilter'] = { ref: `A5:J${lastDataRow}` };
 
-            // Dòng tổng kết tự động co giãn theo bộ lọc phòng bằng hàm SUBTOTAL(103)
-            ws_data.push([""]);
-            ws_data.push([
-                "TỔNG SỐ THỦ THUẬT:",
-                "",
-                "",
-                { t: 'n', f: `SUBTOTAL(103, B${firstDataRow}:B${lastDataRow})`, v: safeSched.length },
-                "ca thủ thuật (tự động cập nhật khi chọn phòng)",
-                "",
-                "",
-                "",
-                "",
-                ""
-            ]);
+                ws['!merges'] = [
+                    { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },
+                    { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },
+                    { s: { r: 2, c: 0 }, e: { r: 2, c: 9 } },
+                    { s: { r: ws_data.length - 1, c: 0 }, e: { r: ws_data.length - 1, c: 2 } },
+                    { s: { r: ws_data.length - 1, c: 4 }, e: { r: ws_data.length - 1, c: 9 } }
+                ];
 
-            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+                ws['!cols'] = [
+                    { wch: 6 },
+                    { wch: 28 },
+                    { wch: 11 },
+                    { wch: 20, hidden: true }, // 🎯 ẨN CỘT PHÒNG HIỆN TẠI ĐI!
+                    { wch: 28 },
+                    { wch: 11 },
+                    { wch: 11 },
+                    { wch: 20 },
+                    { wch: 18 },
+                    { wch: 18 }
+                ];
 
-            // 🎯 Kích hoạt Drop-list Filter (AutoFilter) tại dòng Header (A5:J${lastDataRow})
-            ws['!autofilter'] = { ref: `A5:J${lastDataRow}` };
+                ws['!rows'] = [];
+                ws['!rows'][0] = { hpt: 20 };
+                ws['!rows'][1] = { hpt: 26 };
+                ws['!rows'][2] = { hpt: 22 };
+                ws['!rows'][4] = { hpt: 26 };
+                for (let r = 5; r < ws_data.length - 2; r++) {
+                    ws['!rows'][r] = { hpt: 22 };
+                }
+                ws['!rows'][ws_data.length - 1] = { hpt: 24 };
 
-            // Merge các dòng tiêu đề (Cột A đến J: c=0 đến c=9)
-            ws['!merges'] = [
-                { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } }, // Dòng 1: Tên bệnh viện
-                { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } }, // Dòng 2: Tên bảng
-                { s: { r: 2, c: 0 }, e: { r: 2, c: 9 } }, // Dòng 3: Ngày thực hiện
-                { s: { r: ws_data.length - 1, c: 0 }, e: { r: ws_data.length - 1, c: 2 } }, // Dòng tổng: Cột A-C
-                { s: { r: ws_data.length - 1, c: 4 }, e: { r: ws_data.length - 1, c: 9 } }  // Dòng tổng: Cột E-J
-            ];
-
-            // Độ rộng tối ưu 10 cột
-            ws['!cols'] = [
-                { wch: 6 },   // STT
-                { wch: 28 },  // Tên Bệnh Nhân
-                { wch: 11 },  // Năm Sinh
-                { wch: 20 },  // Phòng Điều Trị (Có Drop-list)
-                { wch: 28 },  // Thủ Thuật
-                { wch: 11 },  // Bắt Đầu
-                { wch: 11 },  // Kết Thúc
-                { wch: 20 },  // KTV / Bác Sĩ
-                { wch: 18 },  // NV Phụ
-                { wch: 18 }   // Máy Móc
-            ];
-
-            // Chiều cao dòng
-            ws['!rows'] = [];
-            ws['!rows'][0] = { hpt: 20 };
-            ws['!rows'][1] = { hpt: 26 };
-            ws['!rows'][2] = { hpt: 18 };
-            ws['!rows'][4] = { hpt: 26 }; // Header bảng
-            for (let r = 5; r < ws_data.length - 2; r++) {
-                ws['!rows'][r] = { hpt: 22 }; // Các dòng dữ liệu
-            }
-            ws['!rows'][ws_data.length - 1] = { hpt: 24 }; // Dòng tổng kết
-
-            // Định dạng Style chuyên nghiệp bằng xlsx-js-style
-            try {
-                const range = XLSX.utils.decode_range(ws['!ref']);
-                for (let R = range.s.r; R <= range.e.r; R++) {
-                    // Tiêu đề dòng 1 (Tên bệnh viện)
-                    if (R === 0) {
-                        const addr = XLSX.utils.encode_cell({ r: 0, c: 0 });
-                        if (ws[addr]) {
-                            ws[addr].s = {
-                                font: { name: "Arial", sz: 11, bold: true, color: { rgb: "1E3D2B" } },
-                                alignment: { horizontal: "center", vertical: "center" }
-                            };
+                try {
+                    const range = XLSX.utils.decode_range(ws['!ref']);
+                    for (let R = range.s.r; R <= range.e.r; R++) {
+                        if (R === 0) {
+                            const addr = XLSX.utils.encode_cell({ r: 0, c: 0 });
+                            if (ws[addr]) ws[addr].s = { font: { name: "Arial", sz: 11, bold: true, color: { rgb: "1E3D2B" } }, alignment: { horizontal: "center", vertical: "center" } };
+                            continue;
                         }
-                        continue;
-                    }
-                    // Tiêu đề dòng 2 (Tên bảng)
-                    if (R === 1) {
-                        const addr = XLSX.utils.encode_cell({ r: 1, c: 0 });
-                        if (ws[addr]) {
-                            ws[addr].s = {
-                                font: { name: "Arial", sz: 14, bold: true, color: { rgb: "059669" } },
-                                alignment: { horizontal: "center", vertical: "center" }
-                            };
+                        if (R === 1) {
+                            const addr = XLSX.utils.encode_cell({ r: 1, c: 0 });
+                            if (ws[addr]) ws[addr].s = { font: { name: "Arial", sz: 14, bold: true, color: { rgb: "059669" } }, alignment: { horizontal: "center", vertical: "center" } };
+                            continue;
                         }
-                        continue;
-                    }
-                    // Tiêu đề dòng 3 (Ngày thực hiện)
-                    if (R === 2) {
-                        const addr = XLSX.utils.encode_cell({ r: 2, c: 0 });
-                        if (ws[addr]) {
-                            ws[addr].s = {
-                                font: { name: "Arial", sz: 10, italic: true, color: { rgb: "475569" } },
-                                alignment: { horizontal: "center", vertical: "center" }
-                            };
+                        if (R === 2) {
+                            const addr = XLSX.utils.encode_cell({ r: 2, c: 0 });
+                            if (ws[addr]) ws[addr].s = { font: { name: "Arial", sz: 11, bold: true, color: { rgb: "1D4ED8" } }, alignment: { horizontal: "center", vertical: "center" } };
+                            continue;
                         }
-                        continue;
-                    }
-                    // Dòng trống
-                    if (R === 3 || R === ws_data.length - 2) continue;
+                        if (R === 3 || R === ws_data.length - 2) continue;
 
-                    // Tiêu đề cột bảng (Dòng 4, index r=4)
-                    if (R === 4) {
-                        for (let C = 0; C <= 9; C++) {
-                            const addr = XLSX.utils.encode_cell({ r: 4, c: C });
-                            if (ws[addr]) {
-                                ws[addr].s = {
+                        if (R === 4) {
+                            for (let C = 0; C <= 9; C++) {
+                                const addr = XLSX.utils.encode_cell({ r: 4, c: C });
+                                if (ws[addr]) ws[addr].s = {
                                     fill: { fgColor: { rgb: "E8F8F5" } },
                                     font: { name: "Arial", sz: 10.5, bold: true, color: { rgb: "1E3D2B" } },
                                     alignment: { horizontal: "center", vertical: "center", wrapText: true },
-                                    border: {
-                                        top: { style: "medium", color: { rgb: "000000" } },
-                                        bottom: { style: "medium", color: { rgb: "000000" } },
-                                        left: { style: "thin", color: { rgb: "CBD5E1" } },
-                                        right: { style: "thin", color: { rgb: "CBD5E1" } }
-                                    }
+                                    border: { top: { style: "medium", color: { rgb: "000000" } }, bottom: { style: "medium", color: { rgb: "000000" } }, left: { style: "thin", color: { rgb: "CBD5E1" } }, right: { style: "thin", color: { rgb: "CBD5E1" } } }
                                 };
                             }
+                            continue;
                         }
-                        continue;
-                    }
 
-                    // Dòng tổng kết cuối bảng
-                    if (R === ws_data.length - 1) {
-                        for (let C = 0; C <= 9; C++) {
-                            const addr = XLSX.utils.encode_cell({ r: R, c: C });
-                            if (ws[addr]) {
-                                ws[addr].s = {
+                        if (R === ws_data.length - 1) {
+                            for (let C = 0; C <= 9; C++) {
+                                const addr = XLSX.utils.encode_cell({ r: R, c: C });
+                                if (ws[addr]) ws[addr].s = {
                                     fill: { fgColor: { rgb: "FEF3C7" } },
                                     font: { name: "Arial", sz: 11, bold: true, color: { rgb: "92400E" } },
-                                    alignment: { horizontal: C === 3 ? "center" : (C === 0 ? "right" : "left"), vertical: "center" },
-                                    border: {
-                                        top: { style: "medium", color: { rgb: "000000" } },
-                                        bottom: { style: "medium", color: { rgb: "000000" } },
-                                        left: { style: "thin", color: { rgb: "CBD5E1" } },
-                                        right: { style: "thin", color: { rgb: "CBD5E1" } }
-                                    }
+                                    alignment: { horizontal: C === 4 ? "left" : (C === 0 ? "right" : "center"), vertical: "center" },
+                                    border: { top: { style: "medium", color: { rgb: "000000" } }, bottom: { style: "medium", color: { rgb: "000000" } }, left: { style: "thin", color: { rgb: "CBD5E1" } }, right: { style: "thin", color: { rgb: "CBD5E1" } } }
                                 };
                             }
+                            continue;
                         }
-                        continue;
+
+                        const dataIdx = R - 5;
+                        const rowObj = rowsData[dataIdx];
+                        const isRV = rowObj && !!rowObj.__isDischarged;
+                        const centerCols = new Set([0, 2, 3, 5, 6]);
+
+                        for (let C = 0; C <= 9; C++) {
+                            const addr = XLSX.utils.encode_cell({ r: R, c: C });
+                            if (!ws[addr]) continue;
+
+                            const alignH = centerCols.has(C) ? "center" : "left";
+                            const fontColor = isRV ? (C === 1 ? "7C3AED" : "1E293B") : (C === 5 ? "059669" : "1E293B");
+
+                            ws[addr].s = {
+                                fill: isRV ? { fgColor: { rgb: "F5EEF8" } } : (dataIdx % 2 === 1 ? { fgColor: { rgb: "F8FAFC" } } : undefined),
+                                font: { name: "Arial", sz: 10, bold: isRV || C === 0 || C === 5 || C === 7 || C === 8, color: { rgb: fontColor } },
+                                alignment: { horizontal: alignH, vertical: "center" },
+                                border: { top: { style: "thin", color: { rgb: "CBD5E1" } }, bottom: { style: "medium", color: { rgb: "000000" } }, left: { style: "thin", color: { rgb: "CBD5E1" } }, right: { style: "thin", color: { rgb: "CBD5E1" } } }
+                            };
+                        }
                     }
-
-                    // Các dòng dữ liệu bệnh nhân (R >= 5)
-                    const dataIdx = R - 5;
-                    const rowObj = safeSched[dataIdx];
-                    const isRV = rowObj && !!rowObj.__isDischarged;
-                    const centerCols = new Set([0, 2, 3, 5, 6]); // STT, NamSinh, Phong, BatDau, KetThuc
-
-                    for (let C = 0; C <= 9; C++) {
-                        const addr = XLSX.utils.encode_cell({ r: R, c: C });
-                        if (!ws[addr]) continue;
-
-                        const alignH = centerCols.has(C) ? "center" : "left";
-                        const fontColor = isRV ? (C === 1 ? "7C3AED" : "1E293B") : (C === 5 ? "059669" : "1E293B");
-
-                        ws[addr].s = {
-                            fill: isRV ? { fgColor: { rgb: "F5EEF8" } } : (dataIdx % 2 === 1 ? { fgColor: { rgb: "F8FAFC" } } : undefined),
-                            font: {
-                                name: "Arial",
-                                sz: 10,
-                                bold: isRV || C === 0 || C === 5 || C === 7 || C === 8,
-                                color: { rgb: fontColor }
-                            },
-                            alignment: { horizontal: alignH, vertical: "center" },
-                            border: {
-                                top: { style: "thin", color: { rgb: "CBD5E1" } },
-                                bottom: { style: "medium", color: { rgb: "000000" } }, // Dòng kẻ ngang đậm ngăn cách rõ ràng
-                                left: { style: "thin", color: { rgb: "CBD5E1" } },
-                                right: { style: "thin", color: { rgb: "CBD5E1" } }
-                            }
-                        };
-                    }
+                } catch (e) {
+                    console.warn("Lỗi style Excel XLSX:", e);
                 }
-            } catch (e) {
-                console.warn("Lỗi style Excel:", e);
+
+                ws['!pageSetup'] = { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+                ws['!margins'] = { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 };
+                return ws;
             }
 
-            // Thiết lập trang in A4 ngang chuẩn
-            ws['!pageSetup'] = {
-                paperSize: 9,          // A4
-                orientation: 'landscape',
-                fitToPage: true,
-                fitToWidth: 1,
-                fitToHeight: 0
-            };
-            ws['!margins'] = { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 };
+            const mainWs = buildXLSXSheet('Tất cả các phòng', safeSched);
+            XLSX.utils.book_append_sheet(wb, mainWs, "Tất cả phòng");
 
-            XLSX.utils.book_append_sheet(wb, ws, "Lịch Trình");
+            if (existingRooms.length > 1) {
+                const usedNames = new Set(['tất cả phòng']);
+                existingRooms.forEach(rName => {
+                    let cleanName = String(rName || '').trim().replace(/[\\/?*:[\]]/g, '-').substring(0, 31);
+                    if (!cleanName) cleanName = 'Phòng';
+                    let finalSheetName = cleanName;
+                    let cnt = 1;
+                    while (usedNames.has(finalSheetName.toLowerCase())) {
+                        finalSheetName = `${cleanName.substring(0, 27)}_${cnt++}`;
+                    }
+                    usedNames.add(finalSheetName.toLowerCase());
 
-            // Xuất và tải file Excel
-            const fileName = `Lich_ThuThuat_${displayDate.replace(/\//g, '-')}.xlsx`;
+                    const rWs = buildXLSXSheet(rName, roomMap[rName] || []);
+                    XLSX.utils.book_append_sheet(wb, rWs, finalSheetName);
+                });
+            }
+
             XLSX.writeFile(wb, fileName);
-            if (typeof showToast === 'function') showToast("📂 Đã xuất file Excel lịch trình có bộ lọc phòng!");
+            if (typeof showToast === 'function') showToast("📂 Đã xuất file Excel lịch trình có nút chọn phòng!");
         }
 
         function printSchedule() {

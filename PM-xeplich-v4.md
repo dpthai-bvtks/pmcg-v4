@@ -9081,6 +9081,23 @@ oomRoleStaff[phong][vaiTro] vào js/scheduler-engine.js:
       * Đạt 100% PASS toàn bộ 9 tầng kiểm tra của `scripts/verify-build.mjs`.
     - **File sửa đổi:** `js/app.js`, `index.html`, `sw.js`, `version.json`, `PM-xeplich-v4.md`.
 
+24. **Chuẩn Hóa Tiêu Đề File Excel Lịch Trình, Bổ Sung Nút Chọn Phòng Data Validation & Ẩn Cột Phòng (v4.3.4-rev4 - 23/10/2026):**
+    - **Yêu cầu của người dùng:** "sửa lại file lịch trình xuất ra chỗ đoạn ảnh chụp thành như sau: dòng 1 - KHOA YHCT & PHCN - BVTKSCS2; dòng 2 - BẢNG LỊCH TRÌNH NGÀY .....(tương ứng với ngày xếp lịch); dòng 3 - Phòng .... (tương ứng với các phòng hiện có) và có nút để chọn phòng, ẩn cột Phòng hiện tại đi"
+    - **Phân tích hiện trạng & Giải pháp xử lý:**
+      * *Dòng 1:* Đổi tiêu đề dòng 1 thành `KHOA YHCT & PHCN - BVTKSCS2` (tự động thích ứng theo mã đơn vị rút gọn của tenant). Căn giữa, in đậm Arial 11pt, màu xanh đen `1E3D2B`.
+      * *Dòng 2:* Đổi tiêu đề dòng 2 thành `BẢNG LỊCH TRÌNH NGÀY [dd/mm/yyyy]` (tương ứng với ngày xếp lịch được chọn), căn giữa, in đậm Arial 14pt, màu xanh lục `059669`.
+      * *Dòng 3:* Thiết kế mục `Phòng: [Tên phòng / Tất cả các phòng]` nổi bật:
+        - Sử dụng thư viện `ExcelJS` tích hợp cơ chế Data Validation (`list`), tạo nút mũi tên thả xuống `[ ▾ ]` ngay trên ô Excel để người dùng click chọn phòng linh hoạt từ danh sách các phòng hiện có trong ngày xếp lịch.
+        - Tự động tạo thêm các Sheet riêng biệt cho từng phòng hiện có (`Phòng 1+2+3`, `Phòng 4`, `Phòng 5`...), giúp người dùng có thể click chọn tab từng phòng hoặc in ấn theo từng phòng ngay lập tức.
+      * *Ẩn cột Phòng Điều Trị:* Thiết lập ẩn cột Phòng Điều Trị (cột D / index 4) trong bảng dữ liệu (`hidden = true`), giúp bảng lịch trình thu gọn ngang, loại bỏ trùng lặp thông tin phòng trên từng dòng khi tiêu đề phòng đã được hiển thị trang trọng ở Dòng 3.
+      * *Hỗ trợ Đa Động Cơ (Dual-Engine Export):* Ưu tiên chạy động cơ `ExcelJS` (chuẩn OpenXML full Data Validation & Hidden Column) và duy trì cơ chế dự phòng `xlsx-js-style` (`XLSX`) đảm bảo 100% không bao giờ gặp lỗi xuất file.
+    - **Kết quả kiểm nghiệm:**
+      * File Excel xuất ra có Dòng 1, Dòng 2, Dòng 3 đúng 100% mẫu người dùng yêu cầu.
+      * Dòng 3 có ô chọn phòng kèm nút xổ xuống `[ ▾ ]` chứa đầy đủ các phòng hiện có.
+      * Cột Phòng Điều Trị trong bảng được ẩn hoàn toàn, bảng gọn gàng và đẹp mắt.
+      * Vượt qua 100% 9 tầng kiểm thử của `scripts/verify-build.mjs`.
+    - **File sửa đổi:** `js/modules/app-export-reports.js`, `index.html`, `sw.js`, `version.json`, `PM-xeplich-v4.md`.
+
 
 
 
