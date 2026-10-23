@@ -8204,8 +8204,9 @@ var dataCache = window.dataCache;
             const bnName = String(target.tenBN || '').trim().toUpperCase();
             const bnNs = String(target.namSinh || '').trim();
             const ttName = String(target.thuThuat || '').trim();
-            const currentStaff = String(target.nvChinh || '').trim();
-            const currentMach = String(target.may || '').trim();
+            const chosenStaff = String(options.preferredStaff || options.staff || target.nvChinh || '').trim();
+            const chosenMach = String(options.preferredMachine || options.machine || target.may || '').trim();
+            const searchScope = options.scope || 'selected'; // 'selected' | 'all'
 
             // 1. Thông tin Bệnh nhân
             const patList = (typeof dataCache !== 'undefined' && Array.isArray(dataCache.pat)) ? dataCache.pat : [];
@@ -8274,11 +8275,13 @@ var dataCache = window.dataCache;
                 const isQualified = !skills || skills.includes(ttName.toLowerCase()) || skills.includes('tất cả') || skills === 'all';
                 if (isQualified) qualifiedStaff.push(sName);
             });
-            if (currentStaff && qualifiedStaff.includes(currentStaff)) {
-                qualifiedStaff.splice(qualifiedStaff.indexOf(currentStaff), 1);
-                qualifiedStaff.unshift(currentStaff);
-            } else if (currentStaff) {
-                qualifiedStaff.unshift(currentStaff);
+
+            // Ưu tiên đưa chosenStaff lên đầu danh sách tìm kiếm
+            if (chosenStaff && qualifiedStaff.includes(chosenStaff)) {
+                qualifiedStaff.splice(qualifiedStaff.indexOf(chosenStaff), 1);
+                qualifiedStaff.unshift(chosenStaff);
+            } else if (chosenStaff) {
+                qualifiedStaff.unshift(chosenStaff);
             }
             if (!qualifiedStaff.length && staffList.length) {
                 staffList.forEach(s => { if (s && (s.ten || s.name)) qualifiedStaff.push(s.ten || s.name); });
@@ -8295,22 +8298,27 @@ var dataCache = window.dataCache;
                         candidateMachines.push(mName);
                     }
                 });
-                if (currentMach && !candidateMachines.includes(currentMach)) {
-                    candidateMachines.unshift(currentMach);
+                if (chosenMach && !candidateMachines.includes(chosenMach)) {
+                    candidateMachines.unshift(chosenMach);
                 }
-                if (!candidateMachines.length) candidateMachines.push(currentMach || loaiMay);
+                if (!candidateMachines.length) candidateMachines.push(chosenMach || loaiMay);
             } else {
                 candidateMachines.push('Thủ công');
             }
 
             // 6. Quét tìm slot rảnh đồng thời cả BN, KTV và Máy
-            let bestSlot = null;
             const scanWindows = [];
-            if (buoiDT !== 'Chieu') scanWindows.push({ start: 450, end: defaultMorningEnd });
-            if (buoiDT !== 'Sang') scanWindows.push({ start: 780, end: 990 });
+            if (buoiDT !== 'Chieu') scanWindows.push({ start: 450, end: defaultMorningEnd, session: 'Sáng' });
+            if (buoiDT !== 'Sang') scanWindows.push({ start: 780, end: 990, session: 'Chiều' });
+
+            const allFoundSlots = [];
+
+            // Nếu người dùng chọn "Chỉ tìm cho nhân sự đang chọn", ưu tiên quét người đó trước
+            const staffScanPool = (searchScope === 'selected' && chosenStaff)
+                ? [chosenStaff, ...qualifiedStaff.filter(s => s !== chosenStaff)]
+                : qualifiedStaff;
 
             for (const win of scanWindows) {
-                if (bestSlot) break;
                 const effStart = Math.max(win.start, arriveMins);
                 const effEnd = Math.min(win.end, leaveMins);
 
@@ -8323,7 +8331,7 @@ var dataCache = window.dataCache;
                     if (bnConflict) continue;
 
                     // B. KTV nào rảnh?
-                    for (const stName of qualifiedStaff) {
+                    for (const stName of staffScanPool) {
                         const staffObj = staffList.find(s => (s.ten || s.name || s[0]) === stName);
                         if (staffObj && staffObj.thoiGianLam && !String(staffObj.thoiGianLam).includes('Cả ngày')) {
                             const shiftStr = String(staffObj.thoiGianLam);
@@ -8360,24 +8368,46 @@ var dataCache = window.dataCache;
                             if (!pickedMach) continue;
                         }
 
-                        bestSlot = {
+                        allFoundSlots.push({
                             startMin: slotStart,
                             endMin: slotEnd,
                             startStr: helperM2T(slotStart),
                             endStr: helperM2T(slotEnd),
                             staff: stName,
-                            machine: pickedMach
-                        };
-                        break;
+                            machine: pickedMach,
+                            session: win.session,
+                            isChosenStaff: (chosenStaff && stName.toLowerCase() === chosenStaff.toLowerCase())
+                        });
+
+                        // Với mỗi mốc t, nếu đã có slot cho nhân sự đang chọn thì dừng mốc t đó
+                        if (searchScope === 'selected' && chosenStaff && stName.toLowerCase() === chosenStaff.toLowerCase()) {
+                            break;
+                        }
                     }
-                    if (bestSlot) break;
                 }
             }
 
-            if (!bestSlot) {
+            if (!allFoundSlots.length) {
                 const msg = `Không tìm thấy khung giờ rảnh phù hợp cho BN ${bnName} (${ttName}) trong ngày hôm nay!`;
                 notify('⚠️ ' + msg, 'warning');
-                return { success: false, message: msg };
+                return { success: false, message: msg, allSlots: [] };
+            }
+
+            // Chọn slot tốt nhất
+            let bestSlot = null;
+            let staffBusyNotice = false;
+
+            if (searchScope === 'selected' && chosenStaff) {
+                const chosenSlots = allFoundSlots.filter(s => s.isChosenStaff);
+                if (chosenSlots.length > 0) {
+                    bestSlot = chosenSlots[0];
+                } else {
+                    // Nhân sự đang chọn đã kín lịch cả ngày! Lấy slot tốt nhất của nhân sự khác
+                    staffBusyNotice = true;
+                    bestSlot = allFoundSlots[0];
+                }
+            } else {
+                bestSlot = allFoundSlots[0];
             }
 
             // 7. Cập nhật vào ca điều trị
@@ -8394,8 +8424,9 @@ var dataCache = window.dataCache;
             localStorage.setItem(getUnitStorageKey('meds_success'), JSON.stringify(currentList));
             localStorage.setItem('meds_success', JSON.stringify(currentList));
 
-            if (window.OfflineSyncEngine && typeof window.OfflineSyncEngine.saveCache === 'function') {
-                window.OfflineSyncEngine.saveCache('meds_success', currentList);
+            // Đồng bộ sâu đa tầng (Bootstrap Cache, Dexie, Server API)
+            if (typeof syncScheduleStateToAllLayers === 'function') {
+                syncScheduleStateToAllLayers(currentList, window.lastUnscheduledData, 'autoFindFreeSlot');
             }
 
             loadScheduleList();
@@ -8403,9 +8434,20 @@ var dataCache = window.dataCache;
                 renderScheduleGanttTimeline();
             }
 
-            const successMsg = `⚡ Đã chuyển ca BN ${bnName} (${ttName}) sang [${bestSlot.startStr} - ${bestSlot.endStr}] (KTV: ${bestSlot.staff}${bestSlot.machine !== 'Thủ công' ? ', Máy: ' + bestSlot.machine : ''})`;
-            notify(successMsg, 'success');
-            return { success: true, slot: bestSlot, message: successMsg };
+            const successMsg = `⚡ Đã chuyển ca BN ${bnName} (${ttName}) sang [${bestSlot.startStr} - ${bestSlot.endStr}] (${bestSlot.staff}${bestSlot.machine !== 'Thủ công' ? ', ' + bestSlot.machine : ''})`;
+            if (staffBusyNotice) {
+                notify(`⚠️ Nhân sự [${chosenStaff}] đã kín lịch cả ngày! Hệ thống tự động chọn khung giờ rảnh của [${bestSlot.staff}].`, 'warning');
+            } else {
+                notify(successMsg, 'success');
+            }
+
+            return { 
+                success: true, 
+                slot: bestSlot, 
+                allSlots: allFoundSlots, 
+                message: successMsg,
+                staffBusyNotice
+            };
         }
         window.autoFindFreeSlotForSchedule = autoFindFreeSlotForSchedule;
 
@@ -8435,6 +8477,18 @@ var dataCache = window.dataCache;
                     const eM = String(eMins % 60).padStart(2, '0');
                     const endInput = document.getElementById('msid-input-end');
                     if (endInput) endInput.value = `${eH}:${eM}`;
+                });
+            }
+
+            const staffSelect = document.getElementById('msid-select-staff');
+            if (staffSelect && !staffSelect._hasScopeChangeListener) {
+                staffSelect._hasScopeChangeListener = true;
+                staffSelect.addEventListener('change', function() {
+                    const sName = this.value;
+                    const label = document.getElementById('msid-scope-label-selected');
+                    if (label) {
+                        label.innerText = sName ? `Ưu tiên nhân sự đang chọn (${sName})` : 'Ưu tiên nhân sự đang chọn ở trên';
+                    }
                 });
             }
         }
@@ -8505,6 +8559,16 @@ var dataCache = window.dataCache;
                 }).join('');
             }
 
+            // Cập nhật nhãn radio theo nhân sự đang chọn
+            const scopeLabel = document.getElementById('msid-scope-label-selected');
+            if (scopeLabel) {
+                scopeLabel.innerText = item.nvChinh ? `Ưu tiên nhân sự đang chọn (${item.nvChinh})` : 'Ưu tiên nhân sự đang chọn ở trên';
+            }
+
+            // Ẩn danh sách gợi ý cũ khi vừa mở modal
+            const slotsContainer = document.getElementById('msid-slots-container');
+            if (slotsContainer) slotsContainer.style.display = 'none';
+
             initScheduleItemDetailModalEvents();
 
             const modal = document.getElementById('modal-schedule-item-detail');
@@ -8521,16 +8585,97 @@ var dataCache = window.dataCache;
         async function onBtnAutoFindFreeSlotClick() {
             const idx = parseInt(document.getElementById('msid-item-index').value, 10);
             if (isNaN(idx) || idx < 0) return;
-            const res = await autoFindFreeSlotForSchedule(idx);
+
+            const selectedStaff = (document.getElementById('msid-select-staff')?.value || '').trim();
+            const selectedMach = (document.getElementById('msid-input-machine')?.value || '').trim();
+            const scope = document.querySelector('input[name="msid-search-scope"]:checked')?.value || 'selected';
+
+            const res = await autoFindFreeSlotForSchedule(idx, {
+                preferredStaff: selectedStaff,
+                preferredMachine: selectedMach,
+                scope: scope
+            });
+
             if (res && res.success && res.slot) {
                 document.getElementById('msid-input-start').value = res.slot.startStr;
                 document.getElementById('msid-input-end').value = res.slot.endStr;
                 document.getElementById('msid-select-staff').value = res.slot.staff;
                 if (res.slot.machine) document.getElementById('msid-input-machine').value = res.slot.machine;
-                setTimeout(() => closeScheduleItemDetailModal(), 800);
+
+                // Render danh sách các gợi ý slot rảnh khác vào modal
+                renderSlotSuggestionsInModal(res.allSlots || [], res.slot);
             }
         }
         window.onBtnAutoFindFreeSlotClick = onBtnAutoFindFreeSlotClick;
+
+        function renderSlotSuggestionsInModal(allSlots, activeSlot) {
+            const container = document.getElementById('msid-slots-container');
+            const listEl = document.getElementById('msid-slots-list');
+            const countEl = document.getElementById('msid-slots-count');
+            if (!container || !listEl) return;
+
+            // Sắp xếp: ưu tiên slot của nhân sự được chọn lên đầu, sau đó theo thời gian bắt đầu
+            const sortedSlots = [...allSlots].sort((a, b) => {
+                if (a.isChosenStaff && !b.isChosenStaff) return -1;
+                if (!a.isChosenStaff && b.isChosenStaff) return 1;
+                return a.startMin - b.startMin;
+            });
+
+            const uniqueSlots = [];
+            const seenKeys = new Set();
+            for (const s of sortedSlots) {
+                const key = `${s.startStr}_${s.staff}`;
+                if (!seenKeys.has(key)) {
+                    seenKeys.add(key);
+                    uniqueSlots.push(s);
+                    if (uniqueSlots.length >= 8) break;
+                }
+            }
+
+            if (uniqueSlots.length <= 1) {
+                container.style.display = 'none';
+                return;
+            }
+
+            countEl.innerText = `${uniqueSlots.length} gợi ý`;
+            listEl.innerHTML = uniqueSlots.map(s => {
+                const isCurrent = (s.startStr === activeSlot.startStr && s.staff === activeSlot.staff);
+                const staffColor = s.isChosenStaff ? '#166534' : '#1e40af';
+                const staffBg = s.isChosenStaff ? '#dcfce7' : '#eff6ff';
+                const staffBorder = s.isChosenStaff ? '#86efac' : '#bfdbfe';
+
+                return `<div style="display:flex; justify-content:space-between; align-items:center; padding:7px 10px; background:${isCurrent ? '#f0fdf4' : '#ffffff'}; border:1px solid ${isCurrent ? '#86efac' : '#e2e8f0'}; border-radius:6px; font-size:12px; gap:8px;">
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <span style="font-weight:800; color:#0f172a;">⏱ ${s.startStr} - ${s.endStr}</span>
+                        <span style="background:${staffBg}; color:${staffColor}; border:1px solid ${staffBorder}; padding:2px 7px; border-radius:12px; font-weight:700; font-size:11px;">
+                            ${escapeHtml(s.staff)}${s.isChosenStaff ? ' (Ưu tiên)' : ''}
+                        </span>
+                        <span style="color:#64748b; font-size:11.5px;">[${escapeHtml(s.machine || 'Thủ công')}]</span>
+                    </div>
+                    ${isCurrent ? `
+                        <span style="color:#16a34a; font-weight:700; font-size:11px; white-space:nowrap;">✔ Đang chọn</span>
+                    ` : `
+                        <button type="button" class="btn btn-sm" onclick="applyScheduleSlotSuggestion('${s.startStr}', '${s.endStr}', '${escapeHtml(s.staff)}', '${escapeHtml(s.machine || '')}')"
+                            style="padding:3px 10px; font-size:11px; font-weight:700; background:#2563eb; color:#ffffff; border:none; border-radius:4px; cursor:pointer; white-space:nowrap;">
+                            Áp dụng
+                        </button>
+                    `}
+                </div>`;
+            }).join('');
+
+            container.style.display = 'block';
+        }
+        window.renderSlotSuggestionsInModal = renderSlotSuggestionsInModal;
+
+        function applyScheduleSlotSuggestion(startStr, endStr, staff, machine) {
+            document.getElementById('msid-input-start').value = startStr;
+            document.getElementById('msid-input-end').value = endStr;
+            document.getElementById('msid-select-staff').value = staff;
+            if (machine) document.getElementById('msid-input-machine').value = machine;
+
+            saveScheduleItemChanges();
+        }
+        window.applyScheduleSlotSuggestion = applyScheduleSlotSuggestion;
 
         function saveScheduleItemChanges() {
             const idx = parseInt(document.getElementById('msid-item-index').value, 10);
@@ -8556,6 +8701,10 @@ var dataCache = window.dataCache;
 
             if (window.OfflineSyncEngine && typeof window.OfflineSyncEngine.saveCache === 'function') {
                 window.OfflineSyncEngine.saveCache('meds_success', list);
+            }
+
+            if (typeof syncScheduleStateToAllLayers === 'function') {
+                syncScheduleStateToAllLayers(list, window.lastUnscheduledData, 'saveItemChanges');
             }
 
             loadScheduleList();
@@ -8588,6 +8737,10 @@ var dataCache = window.dataCache;
 
             if (window.OfflineSyncEngine && typeof window.OfflineSyncEngine.saveCache === 'function') {
                 window.OfflineSyncEngine.saveCache('meds_success', list);
+            }
+
+            if (typeof syncScheduleStateToAllLayers === 'function') {
+                syncScheduleStateToAllLayers(list, window.lastUnscheduledData, 'deleteItem');
             }
 
             loadScheduleList();

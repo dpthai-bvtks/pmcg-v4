@@ -9057,6 +9057,30 @@ oomRoleStaff[phong][vaiTro] vào js/scheduler-engine.js:
       * Đạt 100% PASS bộ kiểm tra 9 tầng `verify-build.mjs`.
     - **File sửa đổi:** `js/app.js`, `index.html`, `sw.js`, `version.json`, `PM-xeplich-v4.md`.
 
+23. **Nâng Cấp Tính Năng Sửa/Giờ Rảnh: Hỗ Trợ Tìm Kiếm Theo Nhân Sự Đang Chọn & Gợi Ý Đa Khung Giờ Khả Thi (v4.3.4-rev3 - 23/10/2026):**
+    - **Yêu cầu của người dùng:** "phần Sửa/giờ rảnh chỉ tìm được với nhân sự ban đầu chứ không tìm được của người khác à"
+    - **Phân tích nguyên nhân kỹ thuật gốc rễ:**
+      * Trước đây, hàm `autoFindFreeSlotForSchedule(targetIdxOrObj)` chỉ đọc `nvChinh` cố định từ đối tượng ca điều trị trong lịch (`target.nvChinh`) mà không đọc giá trị nhân sự mà người dùng đang chọn trên dropdown `msid-select-staff` của Modal chi tiết ca.
+      * Trong thuật toán quét, mảng `qualifiedStaff` cố định đưa `nvChinh` ban đầu lên đầu tiên (`qualifiedStaff.unshift(currentStaff)`), đồng thời vòng lặp chọn ngay slot khả thi đầu tiên của nhân sự ban đầu, khiến người dùng không thể tìm giờ rảnh cho một kỹ thuật viên khác mà họ muốn phân công lại.
+      * Ngoài ra, hệ thống chỉ tự động gán slot đầu tiên tìm thấy mà không đưa ra danh sách các khung giờ rảnh thay thế khác để người dùng chủ động lựa chọn khung giờ phù hợp nhất.
+    - **Giải pháp xử lý toàn diện:**
+      1. *Hỗ trợ Tùy chọn Phạm vi Tìm kiếm (Search Scope):*
+         - Bổ sung 2 tùy chọn radio trong modal:
+           + `🎯 Ưu tiên nhân sự đang chọn ở trên`: Quét tìm giờ rảnh cụ thể cho kỹ thuật viên được chọn ở dropdown `msid-select-staff`. Nếu người này đã kín lịch cả ngày, hệ thống sẽ cảnh báo và thông minh chuyển sang tìm nhân sự có kỹ năng khác.
+           + `🎯 Tìm tất cả nhân sự có kỹ năng`: Quét toàn diện trên tất cả kỹ thuật viên đủ điều kiện thực hiện kỹ thuật đó để tìm slot rảnh sớm nhất.
+         - Tự động cập nhật nhãn radio theo tên nhân sự khi người dùng đổi lựa chọn trong dropdown `msid-select-staff`.
+      2. *Hiển thị Danh sách Gợi ý Đa Khung Giờ Rảnh (Slot Suggestions):*
+         - Khởi tạo container `#msid-slots-container` ngay dưới nút tìm giờ rảnh.
+         - Liệt kê tối đa 8 khung giờ rảnh khả thi nhất trong ngày (bao gồm cả buổi sáng và chiều), hiển thị rõ ràng: Thời gian (Bắt đầu - Kết thúc), Tên KTV (có huy hiệu nổi bật nếu là nhân sự ưu tiên), Tên máy điều trị.
+         - Mỗi khung giờ có nút `[Áp dụng]` 1-click: Bấm vào là cập nhật ngay lập tức ca điều trị sang khung giờ và nhân sự đó, đồng thời tự động lưu và đóng modal.
+      3. *Đồng bộ Đa tầng Toàn diện:*
+         - Tích hợp `syncScheduleStateToAllLayers` vào các hành vi Áp dụng gợi ý, Lưu thủ công (`saveScheduleItemChanges`), và Xóa ca (`deleteCurrentScheduleItem`), đảm bảo mọi thao tác điều chỉnh trong modal đều được bảo toàn trên cả RAM, IndexedDB và Máy chủ đám mây.
+    - **Kết quả kiểm nghiệm:**
+      * Người dùng có thể đổi sang bất kỳ kỹ thuật viên nào trong dropdown và bấm "⚡ Tự tìm giờ rảnh", hệ thống sẽ tìm chính xác giờ rảnh cho người đó.
+      * Bảng gợi ý slot khả thi hiện ra đầy đủ các lựa chọn, cho phép đổi giờ linh hoạt chỉ với 1 click.
+      * Đạt 100% PASS toàn bộ 9 tầng kiểm tra của `scripts/verify-build.mjs`.
+    - **File sửa đổi:** `js/app.js`, `index.html`, `sw.js`, `version.json`, `PM-xeplich-v4.md`.
+
 
 
 

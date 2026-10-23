@@ -1,6 +1,6 @@
 {
-    "version": "4.3.4-rev2",
+    "version": "4.3.4-rev3",
     "releaseDate": "23/10/2026",
-    "releaseTime": "10:45 23/10/2026",
-    "notes": "Đồng bộ sâu toàn diện 3 tầng (RAM, Bootstrap Cache & Dexie, Cloudflare API) cho tính năng Hoàn tác (Undo) và Làm lại (Redo) lịch trình; Ngăn chặn triệt để hiện tượng Ctrl+F5 phục hồi lại lịch cũ sau khi đã bấm hoàn tác."
+    "releaseTime": "11:00 23/10/2026",
+    "notes": "Nâng cấp tính năng Sửa/Giờ rảnh: Hỗ trợ tìm kiếm theo nhân sự đang chọn hoặc toàn bộ KTV có kỹ năng, kèm danh sách gợi ý đa khung giờ rảnh khả thi để áp dụng 1-click."
 }
