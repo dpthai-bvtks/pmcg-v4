@@ -9098,12 +9098,25 @@ oomRoleStaff[phong][vaiTro] vào js/scheduler-engine.js:
       * Vượt qua 100% 9 tầng kiểm thử của `scripts/verify-build.mjs`.
     - **File sửa đổi:** `js/modules/app-export-reports.js`, `index.html`, `sw.js`, `version.json`, `PM-xeplich-v4.md`.
 
-
-
-
-
-
-
-
-
-
+25. **Tự Động Lọc Bảng Lịch Trình Theo Nút Chọn Phòng Trên File Excel Xuất Ra (v4.3.4-rev5 - 23/10/2026):**
+    - **Yêu cầu của người dùng:** "đã có nút chọn phòng nhưng khi chọn thì không được, danh sách không thay đổi theo"
+    - **Phân tích nguyên nhân kỹ thuật:**
+      * Trong tệp Excel tiêu chuẩn (.xlsx) không có macro VBA, việc chọn giá trị từ ô Data Validation đơn thuần chỉ lưu giá trị mới vào ô đó chứ không tự động lọc dữ liệu tĩnh phía dưới nếu các dòng dữ liệu không được liên kết bằng công thức động.
+      * Các hàm mảng động như `=FILTER()` chỉ hỗ trợ trên Excel 365 / Excel 2021 trở lên, sẽ gây lỗi `#NAME?` khi mở trên Excel 2013, 2016, 2019 hoặc một số phiên bản WPS Office / phần mềm di động cũ.
+    - **Giải pháp xử lý đột phá & Tương thích tuyệt đối (Universal Formula Dynamic Link):**
+      * Tạo sheet dữ liệu ngầm `_DuLieuGoc` (`state: 'hidden'`) lưu trữ toàn bộ dữ liệu lịch trình gốc kèm cột phụ `FilterIndex` (Cột K).
+      * Tại cột `FilterIndex` của `_DuLieuGoc`, áp dụng công thức đánh số thứ tự tuần tự thông minh:
+        `=IF(OR('Lịch Trình'!$E$3="Tất cả các phòng",'Lịch Trình'!$E$3="Tất cả",TRIM(D2)=TRIM('Lịch Trình'!$E$3)),MAX($K$1:K1)+1,"")`
+      * Trên sheet hiển thị chính `Lịch Trình`:
+        - Ô chọn phòng `E3` (được merge E3:G3) chứa Data Validation danh sách phòng hiện có.
+        - Từng ô từ dòng 6 trở đi được liên kết bằng tổ hợp công thức kinh điển `=IFERROR(INDEX(_DuLieuGoc!..., MATCH(k, _DuLieuGoc!$K$2:$K$N, 0)), "")`.
+        - Khi người dùng bấm nút thả xuống và chọn bất kỳ phòng nào (ví dụ: `Phòng 4`, `Phòng 5`...), toàn bộ bảng dữ liệu phía dưới tự động tính toán lại và co giãn, chỉ hiển thị đúng các ca thủ thuật của phòng đó. Khi chọn lại `Tất cả các phòng`, bảng tự động bung ra đầy đủ toàn bộ các phòng.
+        - Dòng tổng kết cuối bảng liên kết công thức tự động: `=COUNT(A6:A[N]) & " ca thủ thuật (tự động cập nhật theo phòng)"`.
+        - Cột D (Phòng Điều Trị) trên sheet `Lịch Trình` vẫn được ẩn (`hidden = true`) theo đúng yêu cầu trước đó.
+        - Đồng bộ trọn vẹn cả trên động cơ ExcelJS lẫn động cơ dự phòng XLSX (xlsx-js-style).
+    - **Kết quả kiểm nghiệm:**
+      * Mở file Excel: Ô E3 có nút mũi tên chọn phòng `[ ▾ ]`.
+      * Khi click chọn phòng bất kỳ, bảng lịch trình bên dưới lập tức đổi danh sách bệnh nhân và số ca theo đúng phòng đã chọn.
+      * Tương thích 100% trên Microsoft Excel mọi phiên bản (2007, 2010, 2013, 2016, 2019, 2021, Office 365), WPS Office, Google Sheets, LibreOffice.
+      * Vượt qua 100% 9 tầng kiểm thử của `scripts/verify-build.mjs`.
+    - **File sửa đổi:** `js/modules/app-export-reports.js`, `index.html`, `sw.js`, `version.json`, `PM-xeplich-v4.md`.

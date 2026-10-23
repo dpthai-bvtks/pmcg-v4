@@ -12,6 +12,7 @@
     "d1:init": "wrangler d1 execute pmcg-db --file=./schema.sql --remote"
   },
   "devDependencies": {
+    "exceljs": "^4.4.0",
     "wrangler": "^3.72.0"
   },
   "dependencies": {

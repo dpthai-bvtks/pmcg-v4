@@ -1,6 +1,6 @@
 {
-    "version": "4.3.4-rev4",
+    "version": "4.3.4-rev5",
     "releaseDate": "23/10/2026",
-    "releaseTime": "11:35 23/10/2026",
-    "notes": "Cập nhật định dạng file Excel lịch trình xuất ra: Dòng 1 (KHOA YHCT & PHCN - BVTKSCS2), Dòng 2 (BẢNG LỊCH TRÌNH NGÀY...), Dòng 3 (Phòng... kèm nút chọn phòng Data Validation), ẩn cột Phòng Điều Trị trong bảng dữ liệu và phân tách sheet từng phòng."
+    "releaseTime": "13:20 23/10/2026",
+    "notes": "Liên kết công thức động (INDEX + MATCH + IFERROR kết hợp cột phụ _DuLieuGoc) cho ô chọn phòng E3 trên bảng lịch trình Excel xuất ra, giúp danh sách bệnh nhân và ca thủ thuật tự động cập nhật lọc tức thì khi chọn bất kỳ phòng nào từ danh sách thả xuống."
 }

@@ -279,12 +279,422 @@
                         };
                     }
 
-                    // 1. Tạo Sheet tổng quan: Tất cả các phòng
-                    buildExcelJSSheet('Tất cả phòng', 'Tất cả các phòng', safeSched);
+                    // 1. Tạo Sheet ẩn chứa dữ liệu gốc _DuLieuGoc
+                    const dataWs = workbook.addWorksheet('_DuLieuGoc', { state: 'hidden' });
+                    dataWs.columns = [
+                        { key: 'stt', width: 6 },
+                        { key: 'tenBN', width: 28 },
+                        { key: 'namSinh', width: 11 },
+                        { key: 'phong', width: 20 },
+                        { key: 'thuThuat', width: 28 },
+                        { key: 'gioDienRa', width: 11 },
+                        { key: 'gioKetThuc', width: 11 },
+                        { key: 'nvChinh', width: 20 },
+                        { key: 'nvPhu', width: 18 },
+                        { key: 'may', width: 18 },
+                        { key: 'filterIdx', width: 10 }
+                    ];
 
-                    // 2. Tạo Sheet riêng cho từng phòng hiện có
+                    // Header dòng 1 của _DuLieuGoc (ô K1 đặt số 0 để hàm MAX luôn tính chính xác)
+                    dataWs.addRow(["STT", "Tên Bệnh Nhân", "Năm Sinh", "Phòng Điều Trị", "Thủ Thuật", "Bắt Đầu", "Kết Thúc", "KTV / Bác Sĩ", "NV Phụ", "Máy Móc", 0]);
+
+                    safeSched.forEach((row, idx) => {
+                        const rNum = idx + 2;
+                        let tenBNText = String(row.tenBN || '').trim();
+                        if (row.__isDischarged) tenBNText += ' (RV)';
+                        if (row.__dropped) tenBNText += ' (❌ Rớt)';
+
+                        const nvChinhVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvChinh) : (row.nvChinh || '')).trim();
+                        const nvPhuVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvPhu) : (row.nvPhu || '')).trim();
+
+                        const dRow = dataWs.addRow([
+                            idx + 1,
+                            tenBNText,
+                            String(row.namSinh || '').trim(),
+                            String(row.phong || 'Chưa phân phòng').trim(),
+                            String(row.thuThuat || '').trim(),
+                            String(row.gioDienRa || '').trim(),
+                            String(row.gioKetThuc || '').trim(),
+                            nvChinhVal,
+                            nvPhuVal,
+                            String(row.may || '--').trim()
+                        ]);
+
+                        // Cột 11 (K): FilterIndex tính toán động theo ô E3 của sheet 'Lịch Trình'
+                        dRow.getCell(11).value = {
+                            formula: `IF(OR('Lịch Trình'!$E$3="Tất cả các phòng",'Lịch Trình'!$E$3="Tất cả",TRIM(D${rNum})=TRIM('Lịch Trình'!$E$3)),MAX($K$1:K${rNum - 1})+1,"")`,
+                            result: idx + 1
+                        };
+                    });
+
+                    const totalDataRows = safeSched.length;
+
+                    // 2. Tạo Sheet hiển thị chính: 'Lịch Trình' (tương tác động với dropdown chọn phòng)
+                    const ws = workbook.addWorksheet('Lịch Trình', {
+                        views: [{ showGridLines: true }]
+                    });
+
+                    // 10 Cột: STT, Tên BN, Năm Sinh, Phòng Điều Trị (ẨN), Thủ Thuật, Bắt Đầu, Kết Thúc, KTV, NV Phụ, Máy
+                    ws.columns = [
+                        { key: 'stt', width: 6 },
+                        { key: 'tenBN', width: 28 },
+                        { key: 'namSinh', width: 11 },
+                        { key: 'phong', width: 20, hidden: true }, // 🎯 ẨN CỘT PHÒNG HIỆN TẠI ĐI!
+                        { key: 'thuThuat', width: 28 },
+                        { key: 'gioDienRa', width: 11 },
+                        { key: 'gioKetThuc', width: 11 },
+                        { key: 'nvChinh', width: 20 },
+                        { key: 'nvPhu', width: 18 },
+                        { key: 'may', width: 18 }
+                    ];
+
+                    // Dòng 1: KHOA YHCT & PHCN - BVTKSCS2
+                    ws.mergeCells(1, 1, 1, 10);
+                    const c1 = ws.getCell(1, 1);
+                    c1.value = row1Text;
+                    c1.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF1E3D2B' } };
+                    c1.alignment = { horizontal: 'center', vertical: 'middle' };
+                    ws.getRow(1).height = 20;
+
+                    // Dòng 2: BẢNG LỊCH TRÌNH NGÀY .....(tương ứng với ngày xếp lịch)
+                    ws.mergeCells(2, 1, 2, 10);
+                    const c2 = ws.getCell(2, 1);
+                    c2.value = row2Text;
+                    c2.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FF059669' } };
+                    c2.alignment = { horizontal: 'center', vertical: 'middle' };
+                    ws.getRow(2).height = 26;
+
+                    // Dòng 3: Phòng .... (tương ứng với các phòng hiện có) và có nút để chọn phòng
+                    ws.mergeCells(3, 1, 3, 3);
+                    const c3Label = ws.getCell(3, 1);
+                    c3Label.value = 'Phòng:';
+                    c3Label.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF1E293B' } };
+                    c3Label.alignment = { horizontal: 'right', vertical: 'middle' };
+
+                    ws.mergeCells(3, 5, 3, 7); // Merge từ cột E đến G (tránh cột D đang bị ẩn)
+                    const c3Val = ws.getCell(3, 5);
+                    c3Val.value = 'Tất cả các phòng';
+                    c3Val.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF1D4ED8' } };
+                    c3Val.alignment = { horizontal: 'center', vertical: 'middle' };
+                    c3Val.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEBF5FF' } };
+                    c3Val.border = {
+                        top: { style: 'thin', color: { argb: 'FF93C5FD' } },
+                        bottom: { style: 'thin', color: { argb: 'FF93C5FD' } },
+                        left: { style: 'thin', color: { argb: 'FF93C5FD' } },
+                        right: { style: 'thin', color: { argb: 'FF93C5FD' } }
+                    };
+
+                    // Gán nút chọn phòng: Data Validation Dropdown List
+                    const allRoomOptions = ['Tất cả các phòng', ...existingRooms];
+                    c3Val.dataValidation = {
+                        type: 'list',
+                        allowBlank: false,
+                        formulae: [`"${allRoomOptions.join(',')}"`],
+                        showErrorMessage: true,
+                        errorTitle: 'Chọn phòng',
+                        error: 'Vui lòng chọn phòng trong danh sách các phòng hiện có'
+                    };
+                    ws.getRow(3).height = 22;
+
+                    // Dòng 4: Dòng trống
+                    ws.getRow(4).height = 10;
+
+                    // Dòng 5: Tiêu đề cột bảng
+                    const headerNames = ["STT", "Tên Bệnh Nhân", "Năm Sinh", "Phòng Điều Trị", "Thủ Thuật", "Bắt Đầu", "Kết Thúc", "KTV / Bác Sĩ", "NV Phụ", "Máy Móc"];
+                    ws.getRow(5).height = 26;
+                    headerNames.forEach((hName, idx) => {
+                        const c = ws.getCell(5, idx + 1);
+                        c.value = hName;
+                        c.font = { name: 'Arial', size: 10.5, bold: true, color: { argb: 'FF1E3D2B' } };
+                        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F8F5' } };
+                        c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                        c.border = {
+                            top: { style: 'medium', color: { argb: 'FF000000' } },
+                            bottom: { style: 'medium', color: { argb: 'FF000000' } },
+                            left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                            right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+                        };
+                    });
+
+                    // Dòng dữ liệu từ Dòng 6: Sử dụng CÔNG THỨC ĐỘNG liên kết với _DuLieuGoc và ô chọn phòng E3
+                    safeSched.forEach((row, rIdx) => {
+                        const rowNum = 6 + rIdx;
+                        const k = rIdx + 1; // Số thứ tự dòng cần lấy
+                        ws.getRow(rowNum).height = 22;
+
+                        let tenBNText = String(row.tenBN || '').trim();
+                        if (row.__isDischarged) tenBNText += ' (RV)';
+                        if (row.__dropped) tenBNText += ' (❌ Rớt)';
+
+                        const nvChinhVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvChinh) : (row.nvChinh || '')).trim();
+                        const nvPhuVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvPhu) : (row.nvPhu || '')).trim();
+
+                        const isRV = !!row.__isDischarged;
+
+                        // Định nghĩa công thức + kết quả mặc định ban đầu cho từng cột
+                        const cellConfigs = [
+                            // 1. STT
+                            { formula: `IFERROR(IF(MATCH(${k},_DuLieuGoc!$K$2:$K$${totalDataRows + 1},0),${k},""),"")`, result: k },
+                            // 2. Tên BN
+                            { formula: `IFERROR(INDEX(_DuLieuGoc!$B$2:$B$${totalDataRows + 1},MATCH(${k},_DuLieuGoc!$K$2:$K$${totalDataRows + 1},0)),"")`, result: tenBNText },
+                            // 3. Năm Sinh
+                            { formula: `IFERROR(INDEX(_DuLieuGoc!$C$2:$C$${totalDataRows + 1},MATCH(${k},_DuLieuGoc!$K$2:$K$${totalDataRows + 1},0)),"")`, result: String(row.namSinh || '').trim() },
+                            // 4. Phòng (Cột ẩn)
+                            { formula: `IFERROR(INDEX(_DuLieuGoc!$D$2:$D$${totalDataRows + 1},MATCH(${k},_DuLieuGoc!$K$2:$K$${totalDataRows + 1},0)),"")`, result: String(row.phong || 'Chưa phân phòng').trim() },
+                            // 5. Thủ Thuật
+                            { formula: `IFERROR(INDEX(_DuLieuGoc!$E$2:$E$${totalDataRows + 1},MATCH(${k},_DuLieuGoc!$K$2:$K$${totalDataRows + 1},0)),"")`, result: String(row.thuThuat || '').trim() },
+                            // 6. Bắt Đầu
+                            { formula: `IFERROR(INDEX(_DuLieuGoc!$F$2:$F$${totalDataRows + 1},MATCH(${k},_DuLieuGoc!$K$2:$K$${totalDataRows + 1},0)),"")`, result: String(row.gioDienRa || '').trim() },
+                            // 7. Kết Thúc
+                            { formula: `IFERROR(INDEX(_DuLieuGoc!$G$2:$G$${totalDataRows + 1},MATCH(${k},_DuLieuGoc!$K$2:$K$${totalDataRows + 1},0)),"")`, result: String(row.gioKetThuc || '').trim() },
+                            // 8. KTV / Bác Sĩ
+                            { formula: `IFERROR(INDEX(_DuLieuGoc!$H$2:$H$${totalDataRows + 1},MATCH(${k},_DuLieuGoc!$K$2:$K$${totalDataRows + 1},0)),"")`, result: nvChinhVal },
+                            // 9. NV Phụ
+                            { formula: `IFERROR(INDEX(_DuLieuGoc!$I$2:$I$${totalDataRows + 1},MATCH(${k},_DuLieuGoc!$K$2:$K$${totalDataRows + 1},0)),"")`, result: nvPhuVal },
+                            // 10. Máy Móc
+                            { formula: `IFERROR(INDEX(_DuLieuGoc!$J$2:$J$${totalDataRows + 1},MATCH(${k},_DuLieuGoc!$K$2:$K$${totalDataRows + 1},0)),"")`, result: String(row.may || '--').trim() }
+                        ];
+
+                        cellConfigs.forEach((cfg, cIdx) => {
+                            const c = ws.getCell(rowNum, cIdx + 1);
+                            c.value = cfg;
+
+                            const alignH = (cIdx === 0 || cIdx === 2 || cIdx === 3 || cIdx === 5 || cIdx === 6) ? 'center' : 'left';
+                            const fontColor = isRV ? (cIdx === 1 ? 'FF7C3AED' : 'FF1E293B') : (cIdx === 5 ? 'FF059669' : 'FF1E293B');
+
+                            c.font = {
+                                name: 'Arial',
+                                size: 10,
+                                bold: isRV || cIdx === 0 || cIdx === 5 || cIdx === 7 || cIdx === 8,
+                                color: { argb: fontColor }
+                            };
+                            c.alignment = { horizontal: alignH, vertical: 'middle' };
+
+                            if (isRV) {
+                                c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5EEF8' } };
+                            } else if (rIdx % 2 === 1) {
+                                c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+                            }
+
+                            c.border = {
+                                top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                                bottom: { style: 'medium', color: { argb: 'FF000000' } },
+                                left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                                right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+                            };
+                        });
+                    });
+
+                    const lastDataRow = 5 + totalDataRows;
+
+                    // Dòng tổng kết cuối bảng: Sử dụng công thức COUNT tự động co giãn theo số ca lọc được
+                    const totRow = lastDataRow + 2;
+                    ws.getRow(totRow).height = 24;
+                    ws.mergeCells(totRow, 1, totRow, 3);
+                    const totLabel = ws.getCell(totRow, 1);
+                    totLabel.value = 'TỔNG SỐ THỦ THUẬT:';
+                    totLabel.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF92400E' } };
+                    totLabel.alignment = { horizontal: 'right', vertical: 'middle' };
+
+                    ws.mergeCells(totRow, 5, totRow, 10);
+                    const totCount = ws.getCell(totRow, 5);
+                    totCount.value = {
+                        formula: `COUNT(A6:A${lastDataRow}) & " ca thủ thuật (tự động cập nhật theo phòng)"`,
+                        result: `${totalDataRows} ca thủ thuật (tự động cập nhật theo phòng)`
+                    };
+                    totCount.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF92400E' } };
+                    totCount.alignment = { horizontal: 'left', vertical: 'middle' };
+
+                    for (let c = 1; c <= 10; c++) {
+                        const cell = ws.getCell(totRow, c);
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+                        cell.border = {
+                            top: { style: 'medium', color: { argb: 'FF000000' } },
+                            bottom: { style: 'medium', color: { argb: 'FF000000' } },
+                            left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                            right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+                        };
+                    }
+
+                    // Cài đặt trang in A4 ngang chuẩn
+                    ws.pageSetup = {
+                        paperSize: 9,
+                        orientation: 'landscape',
+                        fitToPage: true,
+                        fitToWidth: 1,
+                        fitToHeight: 0,
+                        margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 }
+                    };
+
+                    // 3. Tạo thêm các Sheet riêng biệt tĩnh cho từng phòng hiện có (rất thuận tiện khi in ấn phân phòng)
                     if (existingRooms.length > 1) {
-                        const usedNames = new Set(['tất cả phòng']);
+                        function buildStaticRoomSheet(wsTitle, currentRoomText, rowsData) {
+                            const rWs = workbook.addWorksheet(wsTitle, {
+                                views: [{ showGridLines: true }]
+                            });
+
+                            rWs.columns = [
+                                { key: 'stt', width: 6 },
+                                { key: 'tenBN', width: 28 },
+                                { key: 'namSinh', width: 11 },
+                                { key: 'phong', width: 20, hidden: true },
+                                { key: 'thuThuat', width: 28 },
+                                { key: 'gioDienRa', width: 11 },
+                                { key: 'gioKetThuc', width: 11 },
+                                { key: 'nvChinh', width: 20 },
+                                { key: 'nvPhu', width: 18 },
+                                { key: 'may', width: 18 }
+                            ];
+
+                            // Dòng 1: KHOA YHCT & PHCN - BVTKSCS2
+                            rWs.mergeCells(1, 1, 1, 10);
+                            const rc1 = rWs.getCell(1, 1);
+                            rc1.value = row1Text;
+                            rc1.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF1E3D2B' } };
+                            rc1.alignment = { horizontal: 'center', vertical: 'middle' };
+                            rWs.getRow(1).height = 20;
+
+                            // Dòng 2: BẢNG LỊCH TRÌNH NGÀY .....(tương ứng ngày xếp lịch)
+                            rWs.mergeCells(2, 1, 2, 10);
+                            const rc2 = rWs.getCell(2, 1);
+                            rc2.value = row2Text;
+                            rc2.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FF059669' } };
+                            rc2.alignment = { horizontal: 'center', vertical: 'middle' };
+                            rWs.getRow(2).height = 26;
+
+                            // Dòng 3: Phòng ....
+                            rWs.mergeCells(3, 1, 3, 3);
+                            const rc3Label = rWs.getCell(3, 1);
+                            rc3Label.value = 'Phòng:';
+                            rc3Label.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF1E293B' } };
+                            rc3Label.alignment = { horizontal: 'right', vertical: 'middle' };
+
+                            rWs.mergeCells(3, 5, 3, 7);
+                            const rc3Val = rWs.getCell(3, 5);
+                            rc3Val.value = currentRoomText;
+                            rc3Val.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF1D4ED8' } };
+                            rc3Val.alignment = { horizontal: 'center', vertical: 'middle' };
+                            rc3Val.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEBF5FF' } };
+                            rc3Val.border = {
+                                top: { style: 'thin', color: { argb: 'FF93C5FD' } },
+                                bottom: { style: 'thin', color: { argb: 'FF93C5FD' } },
+                                left: { style: 'thin', color: { argb: 'FF93C5FD' } },
+                                right: { style: 'thin', color: { argb: 'FF93C5FD' } }
+                            };
+                            rWs.getRow(3).height = 22;
+
+                            // Dòng 4: Dòng trống
+                            rWs.getRow(4).height = 10;
+
+                            // Dòng 5: Tiêu đề cột
+                            rWs.getRow(5).height = 26;
+                            headerNames.forEach((hName, idx) => {
+                                const c = rWs.getCell(5, idx + 1);
+                                c.value = hName;
+                                c.font = { name: 'Arial', size: 10.5, bold: true, color: { argb: 'FF1E3D2B' } };
+                                c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F8F5' } };
+                                c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                                c.border = {
+                                    top: { style: 'medium', color: { argb: 'FF000000' } },
+                                    bottom: { style: 'medium', color: { argb: 'FF000000' } },
+                                    left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                                    right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+                                };
+                            });
+
+                            // Dòng dữ liệu từ Dòng 6
+                            rowsData.forEach((row, rIdx) => {
+                                const rowNum = 6 + rIdx;
+                                rWs.getRow(rowNum).height = 22;
+
+                                let tenBNText = String(row.tenBN || '').trim();
+                                if (row.__isDischarged) tenBNText += ' (RV)';
+                                if (row.__dropped) tenBNText += ' (❌ Rớt)';
+
+                                const nvChinhVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvChinh) : (row.nvChinh || '')).trim();
+                                const nvPhuVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvPhu) : (row.nvPhu || '')).trim();
+
+                                const isRV = !!row.__isDischarged;
+                                const rowCells = [
+                                    rIdx + 1,
+                                    tenBNText,
+                                    String(row.namSinh || '').trim(),
+                                    String(row.phong || 'Chưa phân phòng').trim(),
+                                    String(row.thuThuat || '').trim(),
+                                    String(row.gioDienRa || '').trim(),
+                                    String(row.gioKetThuc || '').trim(),
+                                    nvChinhVal,
+                                    nvPhuVal,
+                                    String(row.may || '--').trim()
+                                ];
+
+                                rowCells.forEach((val, cIdx) => {
+                                    const c = rWs.getCell(rowNum, cIdx + 1);
+                                    c.value = val;
+
+                                    const alignH = (cIdx === 0 || cIdx === 2 || cIdx === 3 || cIdx === 5 || cIdx === 6) ? 'center' : 'left';
+                                    const fontColor = isRV ? (cIdx === 1 ? 'FF7C3AED' : 'FF1E293B') : (cIdx === 5 ? 'FF059669' : 'FF1E293B');
+
+                                    c.font = {
+                                        name: 'Arial',
+                                        size: 10,
+                                        bold: isRV || cIdx === 0 || cIdx === 5 || cIdx === 7 || cIdx === 8,
+                                        color: { argb: fontColor }
+                                    };
+                                    c.alignment = { horizontal: alignH, vertical: 'middle' };
+
+                                    if (isRV) {
+                                        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5EEF8' } };
+                                    } else if (rIdx % 2 === 1) {
+                                        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+                                    }
+
+                                    c.border = {
+                                        top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                                        bottom: { style: 'medium', color: { argb: 'FF000000' } },
+                                        left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                                        right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+                                    };
+                                });
+                            });
+
+                            const roomLastRow = 5 + rowsData.length;
+                            const roomTotRow = roomLastRow + 2;
+                            rWs.getRow(roomTotRow).height = 24;
+                            rWs.mergeCells(roomTotRow, 1, roomTotRow, 3);
+                            const rTotLabel = rWs.getCell(roomTotRow, 1);
+                            rTotLabel.value = 'TỔNG SỐ THỦ THUẬT:';
+                            rTotLabel.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF92400E' } };
+                            rTotLabel.alignment = { horizontal: 'right', vertical: 'middle' };
+
+                            rWs.mergeCells(roomTotRow, 5, roomTotRow, 10);
+                            const rTotCount = rWs.getCell(roomTotRow, 5);
+                            rTotCount.value = `${rowsData.length} ca thủ thuật`;
+                            rTotCount.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF92400E' } };
+                            rTotCount.alignment = { horizontal: 'left', vertical: 'middle' };
+
+                            for (let c = 1; c <= 10; c++) {
+                                const cell = rWs.getCell(roomTotRow, c);
+                                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+                                cell.border = {
+                                    top: { style: 'medium', color: { argb: 'FF000000' } },
+                                    bottom: { style: 'medium', color: { argb: 'FF000000' } },
+                                    left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+                                    right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+                                };
+                            }
+
+                            rWs.pageSetup = {
+                                paperSize: 9,
+                                orientation: 'landscape',
+                                fitToPage: true,
+                                fitToWidth: 1,
+                                fitToHeight: 0,
+                                margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 }
+                            };
+                        }
+
+                        const usedNames = new Set(['lịch trình', '_dulieugoc']);
                         existingRooms.forEach(rName => {
                             let cleanName = String(rName || '').trim().replace(/[\\/?*:[\]]/g, '-').substring(0, 31);
                             if (!cleanName) cleanName = 'Phòng';
@@ -295,13 +705,13 @@
                             }
                             usedNames.add(finalSheetName.toLowerCase());
 
-                            buildExcelJSSheet(finalSheetName, rName, roomMap[rName] || []);
+                            buildStaticRoomSheet(finalSheetName, rName, roomMap[rName] || []);
                         });
                     }
 
                     const buffer = await workbook.xlsx.writeBuffer();
                     saveExcelBuffer(buffer, fileName);
-                    if (typeof showToast === 'function') showToast("📂 Đã xuất file Excel lịch trình có nút chọn phòng!");
+                    if (typeof showToast === 'function') showToast("📂 Đã xuất file Excel lịch trình có nút chọn phòng tương tác!");
                     return;
                 } catch (errExcelJS) {
                     console.warn('[exportSchedule] Lỗi ExcelJS, chuyển sang fallback XLSX:', errExcelJS);
@@ -315,164 +725,124 @@
 
             const wb = XLSX.utils.book_new();
 
-            function buildXLSXSheet(currentRoomText, rowsData) {
-                const ws_data = [
-                    [row1Text],
-                    [row2Text],
-                    [`Phòng: ${currentRoomText}`],
-                    [""],
-                    ["STT", "Tên Bệnh Nhân", "Năm Sinh", "Phòng Điều Trị", "Thủ Thuật", "Bắt Đầu", "Kết Thúc", "KTV / Bác Sĩ", "NV Phụ", "Máy Móc"]
-                ];
+            // 1. Tạo Sheet ẩn dữ liệu gốc _DuLieuGoc
+            const dataRows = [
+                ["STT", "Tên Bệnh Nhân", "Năm Sinh", "Phòng Điều Trị", "Thủ Thuật", "Bắt Đầu", "Kết Thúc", "KTV / Bác Sĩ", "NV Phụ", "Máy Móc", 0]
+            ];
+            safeSched.forEach((row, idx) => {
+                const rNum = idx + 2;
+                let tenBNText = String(row.tenBN || '').trim();
+                if (row.__isDischarged) tenBNText += ' (RV)';
+                if (row.__dropped) tenBNText += ' (❌ Rớt)';
 
-                rowsData.forEach((row, idx) => {
-                    let tenBNText = String(row.tenBN || '').trim();
-                    if (row.__isDischarged) tenBNText += ' (RV)';
-                    if (row.__dropped) tenBNText += ' (❌ Rớt)';
+                const nvChinhVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvChinh) : (row.nvChinh || '')).trim();
+                const nvPhuVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvPhu) : (row.nvPhu || '')).trim();
 
-                    const nvChinhVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvChinh) : (row.nvChinh || '')).trim();
-                    const nvPhuVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvPhu) : (row.nvPhu || '')).trim();
-
-                    ws_data.push([
-                        idx + 1,
-                        tenBNText,
-                        String(row.namSinh || '').trim(),
-                        String(row.phong || 'Chưa phân phòng').trim(),
-                        String(row.thuThuat || '').trim(),
-                        String(row.gioDienRa || '').trim(),
-                        String(row.gioKetThuc || '').trim(),
-                        nvChinhVal,
-                        nvPhuVal,
-                        String(row.may || '--').trim()
-                    ]);
-                });
-
-                const firstDataRow = 6;
-                const lastDataRow = rowsData.length + 5;
-
-                ws_data.push([""]);
-                ws_data.push([
-                    "TỔNG SỐ THỦ THUẬT:",
-                    "",
-                    "",
-                    "",
-                    `${rowsData.length} ca thủ thuật (tự động cập nhật theo phòng)`,
-                    "", "", "", "", ""
+                dataRows.push([
+                    idx + 1,
+                    tenBNText,
+                    String(row.namSinh || '').trim(),
+                    String(row.phong || 'Chưa phân phòng').trim(),
+                    String(row.thuThuat || '').trim(),
+                    String(row.gioDienRa || '').trim(),
+                    String(row.gioKetThuc || '').trim(),
+                    nvChinhVal,
+                    nvPhuVal,
+                    String(row.may || '--').trim(),
+                    { t: 'n', f: `IF(OR('Lịch Trình'!$E$3="Tất cả các phòng",'Lịch Trình'!$E$3="Tất cả",TRIM(D${rNum})=TRIM('Lịch Trình'!$E$3)),MAX($K$1:K${rNum - 1})+1,"")`, v: idx + 1 }
                 ]);
-
-                const ws = XLSX.utils.aoa_to_sheet(ws_data);
-                ws['!autofilter'] = { ref: `A5:J${lastDataRow}` };
-
-                ws['!merges'] = [
-                    { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },
-                    { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },
-                    { s: { r: 2, c: 0 }, e: { r: 2, c: 9 } },
-                    { s: { r: ws_data.length - 1, c: 0 }, e: { r: ws_data.length - 1, c: 2 } },
-                    { s: { r: ws_data.length - 1, c: 4 }, e: { r: ws_data.length - 1, c: 9 } }
-                ];
-
-                ws['!cols'] = [
-                    { wch: 6 },
-                    { wch: 28 },
-                    { wch: 11 },
-                    { wch: 20, hidden: true }, // 🎯 ẨN CỘT PHÒNG HIỆN TẠI ĐI!
-                    { wch: 28 },
-                    { wch: 11 },
-                    { wch: 11 },
-                    { wch: 20 },
-                    { wch: 18 },
-                    { wch: 18 }
-                ];
-
-                ws['!rows'] = [];
-                ws['!rows'][0] = { hpt: 20 };
-                ws['!rows'][1] = { hpt: 26 };
-                ws['!rows'][2] = { hpt: 22 };
-                ws['!rows'][4] = { hpt: 26 };
-                for (let r = 5; r < ws_data.length - 2; r++) {
-                    ws['!rows'][r] = { hpt: 22 };
-                }
-                ws['!rows'][ws_data.length - 1] = { hpt: 24 };
-
-                try {
-                    const range = XLSX.utils.decode_range(ws['!ref']);
-                    for (let R = range.s.r; R <= range.e.r; R++) {
-                        if (R === 0) {
-                            const addr = XLSX.utils.encode_cell({ r: 0, c: 0 });
-                            if (ws[addr]) ws[addr].s = { font: { name: "Arial", sz: 11, bold: true, color: { rgb: "1E3D2B" } }, alignment: { horizontal: "center", vertical: "center" } };
-                            continue;
-                        }
-                        if (R === 1) {
-                            const addr = XLSX.utils.encode_cell({ r: 1, c: 0 });
-                            if (ws[addr]) ws[addr].s = { font: { name: "Arial", sz: 14, bold: true, color: { rgb: "059669" } }, alignment: { horizontal: "center", vertical: "center" } };
-                            continue;
-                        }
-                        if (R === 2) {
-                            const addr = XLSX.utils.encode_cell({ r: 2, c: 0 });
-                            if (ws[addr]) ws[addr].s = { font: { name: "Arial", sz: 11, bold: true, color: { rgb: "1D4ED8" } }, alignment: { horizontal: "center", vertical: "center" } };
-                            continue;
-                        }
-                        if (R === 3 || R === ws_data.length - 2) continue;
-
-                        if (R === 4) {
-                            for (let C = 0; C <= 9; C++) {
-                                const addr = XLSX.utils.encode_cell({ r: 4, c: C });
-                                if (ws[addr]) ws[addr].s = {
-                                    fill: { fgColor: { rgb: "E8F8F5" } },
-                                    font: { name: "Arial", sz: 10.5, bold: true, color: { rgb: "1E3D2B" } },
-                                    alignment: { horizontal: "center", vertical: "center", wrapText: true },
-                                    border: { top: { style: "medium", color: { rgb: "000000" } }, bottom: { style: "medium", color: { rgb: "000000" } }, left: { style: "thin", color: { rgb: "CBD5E1" } }, right: { style: "thin", color: { rgb: "CBD5E1" } } }
-                                };
-                            }
-                            continue;
-                        }
-
-                        if (R === ws_data.length - 1) {
-                            for (let C = 0; C <= 9; C++) {
-                                const addr = XLSX.utils.encode_cell({ r: R, c: C });
-                                if (ws[addr]) ws[addr].s = {
-                                    fill: { fgColor: { rgb: "FEF3C7" } },
-                                    font: { name: "Arial", sz: 11, bold: true, color: { rgb: "92400E" } },
-                                    alignment: { horizontal: C === 4 ? "left" : (C === 0 ? "right" : "center"), vertical: "center" },
-                                    border: { top: { style: "medium", color: { rgb: "000000" } }, bottom: { style: "medium", color: { rgb: "000000" } }, left: { style: "thin", color: { rgb: "CBD5E1" } }, right: { style: "thin", color: { rgb: "CBD5E1" } } }
-                                };
-                            }
-                            continue;
-                        }
-
-                        const dataIdx = R - 5;
-                        const rowObj = rowsData[dataIdx];
-                        const isRV = rowObj && !!rowObj.__isDischarged;
-                        const centerCols = new Set([0, 2, 3, 5, 6]);
-
-                        for (let C = 0; C <= 9; C++) {
-                            const addr = XLSX.utils.encode_cell({ r: R, c: C });
-                            if (!ws[addr]) continue;
-
-                            const alignH = centerCols.has(C) ? "center" : "left";
-                            const fontColor = isRV ? (C === 1 ? "7C3AED" : "1E293B") : (C === 5 ? "059669" : "1E293B");
-
-                            ws[addr].s = {
-                                fill: isRV ? { fgColor: { rgb: "F5EEF8" } } : (dataIdx % 2 === 1 ? { fgColor: { rgb: "F8FAFC" } } : undefined),
-                                font: { name: "Arial", sz: 10, bold: isRV || C === 0 || C === 5 || C === 7 || C === 8, color: { rgb: fontColor } },
-                                alignment: { horizontal: alignH, vertical: "center" },
-                                border: { top: { style: "thin", color: { rgb: "CBD5E1" } }, bottom: { style: "medium", color: { rgb: "000000" } }, left: { style: "thin", color: { rgb: "CBD5E1" } }, right: { style: "thin", color: { rgb: "CBD5E1" } } }
-                            };
-                        }
-                    }
-                } catch (e) {
-                    console.warn("Lỗi style Excel XLSX:", e);
-                }
-
-                ws['!pageSetup'] = { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
-                ws['!margins'] = { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 };
-                return ws;
+            });
+            const wsData = XLSX.utils.aoa_to_sheet(dataRows);
+            XLSX.utils.book_append_sheet(wb, wsData, "_DuLieuGoc");
+            if (typeof XLSX.utils.book_set_sheet_visibility === 'function') {
+                XLSX.utils.book_set_sheet_visibility(wb, 0, 1); // 1 = Hidden
             }
 
-            const mainWs = buildXLSXSheet('Tất cả các phòng', safeSched);
-            XLSX.utils.book_append_sheet(wb, mainWs, "Tất cả phòng");
+            // 2. Tạo Sheet Lịch Trình động
+            const totalDataRows = safeSched.length;
+            const ws_data = [
+                [row1Text],
+                [row2Text],
+                ["", "", "", "", "Tất cả các phòng"],
+                [""],
+                ["STT", "Tên Bệnh Nhân", "Năm Sinh", "Phòng Điều Trị", "Thủ Thuật", "Bắt Đầu", "Kết Thúc", "KTV / Bác Sĩ", "NV Phụ", "Máy Móc"]
+            ];
+            ws_data[2][0] = "Phòng:";
 
+            safeSched.forEach((row, idx) => {
+                const k = idx + 1;
+                let tenBNText = String(row.tenBN || '').trim();
+                if (row.__isDischarged) tenBNText += ' (RV)';
+                if (row.__dropped) tenBNText += ' (❌ Rớt)';
+
+                const nvChinhVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvChinh) : (row.nvChinh || '')).trim();
+                const nvPhuVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvPhu) : (row.nvPhu || '')).trim();
+
+                ws_data.push([
+                    { t: 'n', f: `IFERROR(IF(MATCH(${k},_DuLieuGoc!$K$2:$K$${totalDataRows + 1},0),${k},""),"")`, v: k },
+                    { t: 's', f: `IFERROR(INDEX(_DuLieuGoc!$B$2:$B$${totalDataRows + 1},MATCH(${k},_DuLieuGoc!$K$2:$K$${totalDataRows + 1},0)),"")`, v: tenBNText },
+                    { t: 's', f: `IFERROR(INDEX(_DuLieuGoc!$C$2:$C$${totalDataRows + 1},MATCH(${k},_DuLieuGoc!$K$2:$K$${totalDataRows + 1},0)),"")`, v: String(row.namSinh || '').trim() },
+                    { t: 's', f: `IFERROR(INDEX(_DuLieuGoc!$D$2:$D$${totalDataRows + 1},MATCH(${k},_DuLieuGoc!$K$2:$K$${totalDataRows + 1},0)),"")`, v: String(row.phong || 'Chưa phân phòng').trim() },
+                    { t: 's', f: `IFERROR(INDEX(_DuLieuGoc!$E$2:$E$${totalDataRows + 1},MATCH(${k},_DuLieuGoc!$K$2:$K$${totalDataRows + 1},0)),"")`, v: String(row.thuThuat || '').trim() },
+                    { t: 's', f: `IFERROR(INDEX(_DuLieuGoc!$F$2:$F$${totalDataRows + 1},MATCH(${k},_DuLieuGoc!$K$2:$K$${totalDataRows + 1},0)),"")`, v: String(row.gioDienRa || '').trim() },
+                    { t: 's', f: `IFERROR(INDEX(_DuLieuGoc!$G$2:$G$${totalDataRows + 1},MATCH(${k},_DuLieuGoc!$K$2:$K$${totalDataRows + 1},0)),"")`, v: String(row.gioKetThuc || '').trim() },
+                    { t: 's', f: `IFERROR(INDEX(_DuLieuGoc!$H$2:$H$${totalDataRows + 1},MATCH(${k},_DuLieuGoc!$K$2:$K$${totalDataRows + 1},0)),"")`, v: nvChinhVal },
+                    { t: 's', f: `IFERROR(INDEX(_DuLieuGoc!$I$2:$I$${totalDataRows + 1},MATCH(${k},_DuLieuGoc!$K$2:$K$${totalDataRows + 1},0)),"")`, v: nvPhuVal },
+                    { t: 's', f: `IFERROR(INDEX(_DuLieuGoc!$J$2:$J$${totalDataRows + 1},MATCH(${k},_DuLieuGoc!$K$2:$K$${totalDataRows + 1},0)),"")`, v: String(row.may || '--').trim() }
+                ]);
+            });
+
+            const firstDataRow = 6;
+            const lastDataRow = totalDataRows + 5;
+
+            ws_data.push([""]);
+            ws_data.push([
+                "TỔNG SỐ THỦ THUẬT:",
+                "",
+                "",
+                "",
+                { t: 's', f: `COUNT(A6:A${lastDataRow}) & " ca thủ thuật (tự động cập nhật theo phòng)"`, v: `${totalDataRows} ca thủ thuật (tự động cập nhật theo phòng)` },
+                "", "", "", "", ""
+            ]);
+
+            const wsMain = XLSX.utils.aoa_to_sheet(ws_data);
+            wsMain['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },
+                { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },
+                { s: { r: 2, c: 0 }, e: { r: 2, c: 2 } }, // A3:C3 "Phòng:"
+                { s: { r: 2, c: 4 }, e: { r: 2, c: 6 } }, // E3:G3 "Tất cả các phòng"
+                { s: { r: ws_data.length - 1, c: 0 }, e: { r: ws_data.length - 1, c: 2 } },
+                { s: { r: ws_data.length - 1, c: 4 }, e: { r: ws_data.length - 1, c: 9 } }
+            ];
+
+            wsMain['!cols'] = [
+                { wch: 6 },
+                { wch: 28 },
+                { wch: 11 },
+                { wch: 20, hidden: true }, // 🎯 ẨN CỘT PHÒNG HIỆN TẠI ĐI!
+                { wch: 28 },
+                { wch: 11 },
+                { wch: 11 },
+                { wch: 20 },
+                { wch: 18 },
+                { wch: 18 }
+            ];
+
+            wsMain['!rows'] = [];
+            wsMain['!rows'][0] = { hpt: 20 };
+            wsMain['!rows'][1] = { hpt: 26 };
+            wsMain['!rows'][2] = { hpt: 22 };
+            wsMain['!rows'][4] = { hpt: 26 };
+            for (let r = 5; r < ws_data.length - 2; r++) {
+                wsMain['!rows'][r] = { hpt: 22 };
+            }
+            wsMain['!rows'][ws_data.length - 1] = { hpt: 24 };
+
+            XLSX.utils.book_append_sheet(wb, wsMain, "Lịch Trình");
+
+            // 3. Tạo các Sheet riêng biệt cho từng phòng
             if (existingRooms.length > 1) {
-                const usedNames = new Set(['tất cả phòng']);
+                const usedNames = new Set(['lịch trình', '_dulieugoc']);
                 existingRooms.forEach(rName => {
                     let cleanName = String(rName || '').trim().replace(/[\\/?*:[\]]/g, '-').substring(0, 31);
                     if (!cleanName) cleanName = 'Phòng';
@@ -483,13 +853,57 @@
                     }
                     usedNames.add(finalSheetName.toLowerCase());
 
-                    const rWs = buildXLSXSheet(rName, roomMap[rName] || []);
+                    const roomRows = roomMap[rName] || [];
+                    const r_ws_data = [
+                        [row1Text],
+                        [row2Text],
+                        ["Phòng: " + rName],
+                        [""],
+                        ["STT", "Tên Bệnh Nhân", "Năm Sinh", "Phòng Điều Trị", "Thủ Thuật", "Bắt Đầu", "Kết Thúc", "KTV / Bác Sĩ", "NV Phụ", "Máy Móc"]
+                    ];
+                    roomRows.forEach((row, idx) => {
+                        let tenBNText = String(row.tenBN || '').trim();
+                        if (row.__isDischarged) tenBNText += ' (RV)';
+                        if (row.__dropped) tenBNText += ' (❌ Rớt)';
+
+                        const nvChinhVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvChinh) : (row.nvChinh || '')).trim();
+                        const nvPhuVal = String(typeof window.cleanAndHealStaffName === 'function' ? window.cleanAndHealStaffName(row.nvPhu) : (row.nvPhu || '')).trim();
+
+                        r_ws_data.push([
+                            idx + 1,
+                            tenBNText,
+                            String(row.namSinh || '').trim(),
+                            String(row.phong || 'Chưa phân phòng').trim(),
+                            String(row.thuThuat || '').trim(),
+                            String(row.gioDienRa || '').trim(),
+                            String(row.gioKetThuc || '').trim(),
+                            nvChinhVal,
+                            nvPhuVal,
+                            String(row.may || '--').trim()
+                        ]);
+                    });
+                    r_ws_data.push([""]);
+                    r_ws_data.push([
+                        "TỔNG SỐ THỦ THUẬT:", "", "", "", `${roomRows.length} ca thủ thuật`, "", "", "", "", ""
+                    ]);
+
+                    const rWs = XLSX.utils.aoa_to_sheet(r_ws_data);
+                    rWs['!merges'] = [
+                        { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },
+                        { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },
+                        { s: { r: 2, c: 0 }, e: { r: 2, c: 9 } },
+                        { s: { r: r_ws_data.length - 1, c: 0 }, e: { r: r_ws_data.length - 1, c: 2 } },
+                        { s: { r: r_ws_data.length - 1, c: 4 }, e: { r: r_ws_data.length - 1, c: 9 } }
+                    ];
+                    rWs['!cols'] = [
+                        { wch: 6 }, { wch: 28 }, { wch: 11 }, { wch: 20, hidden: true }, { wch: 28 }, { wch: 11 }, { wch: 11 }, { wch: 20 }, { wch: 18 }, { wch: 18 }
+                    ];
                     XLSX.utils.book_append_sheet(wb, rWs, finalSheetName);
                 });
             }
 
             XLSX.writeFile(wb, fileName);
-            if (typeof showToast === 'function') showToast("📂 Đã xuất file Excel lịch trình có nút chọn phòng!");
+            if (typeof showToast === 'function') showToast("📂 Đã xuất file Excel lịch trình có nút chọn phòng tương tác!");
         }
 
         function printSchedule() {
