@@ -9,6 +9,7 @@
     "deploy": "wrangler deploy",
     "deploy:web": "wrangler pages deploy .. --project-name=pmcg-v3 --branch=main --commit-dirty=true",
     "deploy:all": "wrangler deploy && wrangler pages deploy .. --project-name=pmcg-v3 --branch=main --commit-dirty=true",
+    "pack:source": "node ../scripts/pack-source.mjs",
     "d1:init": "wrangler d1 execute pmcg-db --file=./schema.sql --remote"
   },
   "devDependencies": {

@@ -88,16 +88,27 @@ Sau mỗi lần giải quyết xong một yêu cầu hoặc nâng cấp tính n�
 
 ---
 
-## 7. 🧹 Dọn dẹp thư mục & Báo cáo kết quả cho người dùng
+## 7. 🗜️ Tự Động Cập Nhật Gói Mã Nguồn `pmcg-v4-source-code.zip` Sau Mỗi Lần Sửa Code
+- **Quy tắc bắt buộc:** Sau mỗi phiên sửa đổi code (dù là Frontend, Backend hay Local Solver), AI **bắt buộc phải chạy lệnh cập nhật lại tệp zip mã nguồn cốt lõi**:
+  `node scripts/pack-source.mjs` (hoặc `npm run pack:source`).
+- **Mục tiêu của gói zip:**
+  + Tạo ra tệp `pmcg-v4-source-code.zip` tại thư mục gốc với dung lượng nhẹ (< 1MB) và đầy đủ các thành phần logic cốt lõi (Frontend JS/modules, Backend Workers API, Local Solver, CSS, Rules, Docs).
+  + Loại bỏ hoàn toàn `node_modules`, `.git`, `.wrangler`, các file cache và thư viện minified bên thứ 3 (`*.min.js`, `vfs_fonts.js`, hình ảnh nặng) để người dùng có thể gửi ngay lên Claude hoặc các mô hình AI khác làm việc mà không bị vượt ngưỡng dung lượng hay context window.
+- **Thời điểm kích hoạt:** Chạy cùng lúc hoặc ngay sau khi chạy test verify / trước khi bàn giao cho người dùng.
+
+---
+
+## 8. 🧹 Dọn dẹp thư mục & Báo cáo kết quả cho người dùng
 - Xóa bỏ mọi file tạm, file scratch hoặc file test phát sinh trong quá trình làm việc.
 - Trả lời người dùng ngắn gọn, súc tích:
   + Tóm tắt những thay đổi đã hoàn thành.
   + Báo cáo trạng thái Deploy Cloudflare (kèm link kiểm tra).
+  + Báo cáo trạng thái cập nhật gói `pmcg-v4-source-code.zip`.
   + Báo cáo trạng thái Git commit/push.
 
 ---
 
-## 8. 🛡️ Tiêu chuẩn An toàn Bảo mật & Chống rò rỉ dữ liệu (Hardening Checklist theo vibecode)
+## 9. 🛡️ Tiêu chuẩn An toàn Bảo mật & Chống rò rỉ dữ liệu (Hardening Checklist theo vibecode)
 *Áp dụng nghiêm ngặt 20 điểm kiểm tra bảo mật (7 nhóm) trước khi public phiên bản thương mại:*
 
 1. **Nhóm 1 - Quản lý Tài khoản & Đăng nhập:**

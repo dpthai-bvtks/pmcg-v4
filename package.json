@@ -4,6 +4,10 @@
   "description": "Phần mềm quản lý và xếp lịch MEDS System",
   "author": "CONG TY TNHH THUONG MAI VA DICH VU LAM THANG PHAT",
   "main": "main.js",
+  "scripts": {
+    "pack:source": "node scripts/pack-source.mjs",
+    "verify": "node scripts/verify-build.mjs"
+  },
   "dependencies": {
     "node-machine-id": "^1.1.12",
     "sql.js": "^1.14.2",
